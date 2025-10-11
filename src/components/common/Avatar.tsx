@@ -1,0 +1,107 @@
+/**
+ * Avatar Component
+ * Компонент аватара пользователя
+ */
+
+import React from 'react';
+import { View, Image, Text, StyleSheet, ViewStyle } from 'react-native';
+
+interface AvatarProps {
+  name?: string;
+  imageUrl?: string;
+  size?: number;
+  status?: 'online' | 'offline' | 'busy' | 'away';
+  showStatus?: boolean;
+  style?: ViewStyle;
+}
+
+const Avatar: React.FC<AvatarProps> = ({
+  name = 'User',
+  imageUrl,
+  size = 40,
+  status,
+  showStatus = false,
+  style,
+}) => {
+  const getInitials = (fullName: string): string => {
+    const names = fullName.trim().split(' ');
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+    return fullName.substring(0, 2).toUpperCase();
+  };
+
+  const getStatusColor = (): string => {
+    switch (status) {
+      case 'online':
+        return '#10B981';
+      case 'busy':
+        return '#EF4444';
+      case 'away':
+        return '#F59E0B';
+      case 'offline':
+      default:
+        return '#9CA3AF';
+    }
+  };
+
+  const avatarSize = { width: size, height: size, borderRadius: size / 2 };
+  const statusSize = size * 0.25;
+  const statusPosition = {
+    width: statusSize,
+    height: statusSize,
+    borderRadius: statusSize / 2,
+    bottom: 0,
+    right: 0,
+  };
+
+  return (
+    <View style={[styles.container, style]}>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={[styles.avatar, avatarSize]} />
+      ) : (
+        <View style={[styles.avatar, styles.avatarPlaceholder, avatarSize]}>
+          <Text style={[styles.initials, { fontSize: size * 0.4 }]}>
+            {getInitials(name)}
+          </Text>
+        </View>
+      )}
+
+      {showStatus && status && (
+        <View
+          style={[
+            styles.status,
+            statusPosition,
+            { backgroundColor: getStatusColor() },
+          ]}
+        />
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+  },
+  avatar: {
+    backgroundColor: '#E5E7EB',
+  },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#DC2626',
+  },
+  initials: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  status: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+});
+
+export { Avatar };
+export default Avatar;
