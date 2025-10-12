@@ -5,7 +5,9 @@
       "Bash(npm install:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(del \"src\\screens\\profile\\ProfileScreen.tsx\")",
+      "Bash(move \"src\\screens\\profile\\ProfileScreen_new.tsx\" \"src\\screens\\profile\\ProfileScreen.tsx\")"
     ],
     "deny": [],
     "ask": []

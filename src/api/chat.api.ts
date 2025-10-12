@@ -150,22 +150,38 @@ export const getMessages = async (
     after_message_id: params?.after_message_id,
   };
 
-  const response = await api.get<ApiResponse<PaginatedResponse<Message>>>(
+  const response = await api.get<{
+    messages: Message[];
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  }>(
     API_ENDPOINTS.CHAT.MESSAGES(chatId),
     { params: queryParams }
   );
-  return response.data.data;
+
+  // Normalize response to match PaginatedResponse interface
+  return {
+    data: response.data.messages,
+    messages: response.data.messages,
+    total: response.data.total,
+    limit: response.data.limit,
+    offset: response.data.offset,
+    hasMore: response.data.has_more,
+    has_more: response.data.has_more,
+  };
 };
 
 /**
  * Send message to chat
  */
 export const sendMessage = async (chatId: number, data: SendMessageDto): Promise<Message> => {
-  const response = await api.post<ApiResponse<Message>>(
-    API_ENDPOINTS.CHAT.SEND_MESSAGE(chatId),
-    data
+  const response = await api.post<{ message: Message }>(
+    API_ENDPOINTS.CHAT.SEND_MESSAGE,
+    { ...data, chat_id: chatId }
   );
-  return response.data.data;
+  return response.data.message;
 };
 
 /**

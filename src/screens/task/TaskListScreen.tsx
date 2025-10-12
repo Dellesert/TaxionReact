@@ -6,20 +6,20 @@ import {
   TouchableOpacity,
   RefreshControl,
   TextInput,
+  StyleSheet,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskItem } from '@components/task/TaskItem';
 import { Loading } from '@components/common/Loading';
-import { Task } from '@types/task.types';
-import { taskApi } from '@api/task.api';
+import { Task, TaskStatus } from '@types/task.types';
+import { useTaskStore } from '@store/taskStore';
 
-type TaskFilter = 'all' | 'pending' | 'in_progress' | 'completed';
+type TaskFilter = 'all' | 'todo' | 'in_progress' | 'review' | 'done';
 
 const TaskListScreen: React.FC = () => {
   const navigation = useNavigation();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { tasks, isLoading, loadTasks: fetchTasks } = useTaskStore();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<TaskFilter>('all');
@@ -30,13 +30,9 @@ const TaskListScreen: React.FC = () => {
 
   const loadTasks = async () => {
     try {
-      setIsLoading(true);
-      const response = await taskApi.getTasks();
-      setTasks(response.data);
+      await fetchTasks();
     } catch (error) {
       console.error('Failed to load tasks:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -47,12 +43,13 @@ const TaskListScreen: React.FC = () => {
   };
 
   const handleTaskPress = (task: Task) => {
-    navigation.navigate('TaskDetail' as never, { taskId: task.id } as never);
+    console.log('Task pressed:', task.id);
+    // TODO: Navigate to task detail
   };
 
   const handleNewTask = () => {
-    // TODO: Navigate to create task screen
     console.log('Create new task');
+    // TODO: Navigate to create task screen
   };
 
   const filteredTasks = tasks
@@ -63,7 +60,6 @@ const TaskListScreen: React.FC = () => {
       return searchText.includes(searchQuery.toLowerCase());
     })
     .sort((a, b) => {
-      // Сортируем по приоритету и сроку
       const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
       const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4;
       const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4;
@@ -79,32 +75,29 @@ const TaskListScreen: React.FC = () => {
 
   const filterButtons: { key: TaskFilter; label: string; icon: string }[] = [
     { key: 'all', label: 'Все', icon: 'apps-outline' },
-    { key: 'pending', label: 'Ожидают', icon: 'time-outline' },
+    { key: 'todo', label: 'Новые', icon: 'time-outline' },
     { key: 'in_progress', label: 'В работе', icon: 'play-circle-outline' },
-    { key: 'completed', label: 'Завершены', icon: 'checkmark-circle-outline' },
+    { key: 'done', label: 'Готовые', icon: 'checkmark-circle-outline' },
   ];
 
-  if (isLoading) {
+  if (isLoading && tasks.length === 0) {
     return <Loading text="Загрузка задач..." fullScreen />;
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className="bg-white px-4 pt-3 pb-2 border-b border-gray-200">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-2xl font-bold text-gray-900">Задачи</Text>
-          <TouchableOpacity
-            onPress={handleNewTask}
-            className="bg-blue-500 rounded-full w-10 h-10 items-center justify-center"
-          >
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Задачи</Text>
+          <TouchableOpacity onPress={handleNewTask} style={styles.addButton}>
             <Ionicons name="add" size={24} color="white" />
           </TouchableOpacity>
         </View>
 
-        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2 mb-3">
+        <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#9CA3AF" />
           <TextInput
-            className="flex-1 ml-2 text-base"
+            style={styles.searchInput}
             placeholder="Поиск задач..."
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
@@ -117,14 +110,16 @@ const TaskListScreen: React.FC = () => {
           )}
         </View>
 
-        <View className="flex-row space-x-2">
-          {filterButtons.map((btn) => (
+        <View style={styles.filterContainer}>
+          {filterButtons.map((btn, index) => (
             <TouchableOpacity
               key={btn.key}
               onPress={() => setFilter(btn.key)}
-              className={`flex-1 flex-row items-center justify-center py-2 px-3 rounded-lg ${
-                filter === btn.key ? 'bg-blue-500' : 'bg-gray-100'
-              }`}
+              style={[
+                styles.filterButton,
+                filter === btn.key && styles.filterButtonActive,
+                index > 0 && styles.filterButtonMargin,
+              ]}
             >
               <Ionicons
                 name={btn.icon as any}
@@ -132,9 +127,10 @@ const TaskListScreen: React.FC = () => {
                 color={filter === btn.key ? 'white' : '#6B7280'}
               />
               <Text
-                className={`text-xs ml-1 ${
-                  filter === btn.key ? 'text-white font-semibold' : 'text-gray-600'
-                }`}
+                style={[
+                  styles.filterButtonText,
+                  filter === btn.key && styles.filterButtonTextActive,
+                ]}
               >
                 {btn.label}
               </Text>
@@ -144,12 +140,12 @@ const TaskListScreen: React.FC = () => {
       </View>
 
       {filteredTasks.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-6">
+        <View style={styles.emptyContainer}>
           <Ionicons name="checkmark-done-outline" size={64} color="#D1D5DB" />
-          <Text className="text-lg font-semibold text-gray-600 mt-4">
+          <Text style={styles.emptyTitle}>
             {searchQuery ? 'Задачи не найдены' : 'Нет задач'}
           </Text>
-          <Text className="text-sm text-gray-500 text-center mt-2">
+          <Text style={styles.emptySubtitle}>
             {searchQuery
               ? 'Попробуйте изменить поисковый запрос'
               : 'Создайте новую задачу для начала работы'}
@@ -158,9 +154,9 @@ const TaskListScreen: React.FC = () => {
       ) : (
         <FlatList
           data={filteredTasks}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => <TaskItem task={item} onPress={handleTaskPress} />}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
@@ -169,5 +165,104 @@ const TaskListScreen: React.FC = () => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  header: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  addButton: {
+    backgroundColor: '#E94444',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#111827',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+  },
+  filterButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  filterButtonActive: {
+    backgroundColor: '#E94444',
+  },
+  filterButtonMargin: {
+    marginLeft: 8,
+  },
+  filterButtonText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  filterButtonTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  listContent: {
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+});
 
 export default TaskListScreen;

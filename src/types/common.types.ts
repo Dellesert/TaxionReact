@@ -24,11 +24,13 @@ export interface PaginationParams {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
+  data?: T[];
+  messages?: T[];
   total: number;
   limit: number;
   offset: number;
-  hasMore: boolean;
+  hasMore?: boolean;
+  has_more?: boolean;
 }
 
 // Search Types

@@ -106,12 +106,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadMessages: async (chatId: number) => {
     try {
       set({ isLoading: true, error: null });
-      const response = await chatApi.getMessages(chatId, { limit: 50 });
+
+      let messages;
+      if (isMockMode()) {
+        console.log('🔧 Using mock messages for chat:', chatId);
+        const { mockGetMessages } = await import('@utils/mockData');
+        messages = await mockGetMessages(String(chatId));
+      } else {
+        const response = await chatApi.getMessages(chatId, { limit: 50 });
+        // Response has both .data and .messages, use .messages or .data
+        messages = (response.messages || response.data || []).reverse(); // Reverse to show oldest first
+      }
 
       set((state) => ({
         messages: {
           ...state.messages,
-          [chatId]: response.data.reverse(), // Reverse to show oldest first
+          [chatId]: messages,
         },
         isLoading: false,
       }));
@@ -130,11 +140,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
         before_message_id: beforeMessageId,
       });
 
-      if (response.data.length > 0) {
+      const responseMessages = response.messages || response.data || [];
+      if (responseMessages.length > 0) {
         set((state) => ({
           messages: {
             ...state.messages,
-            [chatId]: [...response.data.reverse(), ...(state.messages[chatId] || [])],
+            [chatId]: [...responseMessages.reverse(), ...(state.messages[chatId] || [])],
           },
         }));
       }

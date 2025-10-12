@@ -5,15 +5,19 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet } from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
 import { Chat } from '@types/chat.types';
 
+type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'ChatList'>;
+
 const ChatListScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<ChatListNavigationProp>();
   const { chats, isLoading, loadChats: fetchChats, createChat } = useChatStore();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,7 +41,10 @@ const ChatListScreen: React.FC = () => {
   };
 
   const handleChatPress = (chat: Chat) => {
-    navigation.navigate('ChatDetail' as never, { chatId: chat.id } as never);
+    navigation.navigate('Chat', {
+      chatId: chat.id,
+      chatName: chat.name,
+    });
   };
 
   const handleNewChat = async () => {
@@ -47,7 +54,10 @@ const ChatListScreen: React.FC = () => {
       console.log('Chat created:', newChat);
 
       // Navigate to the new chat
-      navigation.navigate('ChatDetail' as never, { chatId: newChat.id } as never);
+      navigation.navigate('Chat', {
+        chatId: newChat.id,
+        chatName: newChat.name,
+      });
     } catch (error: any) {
       console.error('Failed to create chat:', error);
       alert(error.message || 'Failed to create chat');

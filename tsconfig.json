@@ -41,6 +41,9 @@
       ],
       "@navigation/*": [
         "./src/navigation/*"
+      ],
+      "@services/*": [
+        "./src/services/*"
       ]
     }
   },

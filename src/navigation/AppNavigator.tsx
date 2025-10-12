@@ -3,12 +3,11 @@
  * Корневая навигация приложения
  */
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '@hooks/useAuth';
-import { useWebSocket } from '@hooks/useWebSocket';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import ChatDetailScreen from '@screens/chat/ChatDetailScreen';
@@ -30,17 +29,7 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator: React.FC = () => {
-  const { isAuthenticated, isInitializing, user } = useAuth();
-
-  // Initialize WebSocket when authenticated
-  const { isConnected } = useWebSocket();
-
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      console.log('User authenticated:', user.name);
-      console.log('WebSocket connected:', isConnected);
-    }
-  }, [isAuthenticated, user, isConnected]);
+  const { isAuthenticated, isInitializing } = useAuth();
 
   // Show loading screen while initializing
   if (isInitializing) {

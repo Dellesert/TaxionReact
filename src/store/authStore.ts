@@ -173,17 +173,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ isLoading: true });
 
-      // Call logout API
-      try {
-        await authApi.logout();
-      } catch (error) {
-        console.error('Logout API call failed:', error);
+      // Call logout API only if not in mock mode
+      if (!isMockMode()) {
+        try {
+          await authApi.logout();
+        } catch (error) {
+          console.error('Logout API call failed:', error);
+        }
+      } else {
+        console.log('🔧 Mock logout - skipping API call');
       }
 
       // Clear tokens from secure storage
       await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+
+      console.log('✅ Logged out successfully');
 
       // Clear state
       set({
@@ -194,8 +200,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('❌ Logout failed:', error);
       set({ isLoading: false });
+      throw error;
     }
   },
 

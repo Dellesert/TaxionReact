@@ -1,81 +1,140 @@
-import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  KeyboardAvoidingView,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface MessageInputProps {
-  onSend: (content: string) => Promise<void>;
-  onTyping?: () => void;
-  placeholder?: string;
+  onSend: (message: string) => void;
+  onTyping?: (isTyping: boolean) => void;
   disabled?: boolean;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
   onTyping,
-  placeholder = 'Введите сообщение...',
   disabled = false,
 }) => {
   const [message, setMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
-
-  const handleSend = async () => {
-    if (!message.trim() || isSending) return;
-
-    setIsSending(true);
-    try {
-      await onSend(message.trim());
-      setMessage('');
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    } finally {
-      setIsSending(false);
-    }
-  };
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleChangeText = (text: string) => {
     setMessage(text);
-    onTyping?.();
+
+    // Send typing indicator
+    if (onTyping) {
+      onTyping(true);
+
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Stop typing after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        onTyping(false);
+      }, 2000);
+    }
+  };
+
+  const handleSend = () => {
+    if (message.trim()) {
+      // Clear typing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Stop typing indicator
+      if (onTyping) {
+        onTyping(false);
+      }
+
+      onSend(message.trim());
+      setMessage('');
+    }
   };
 
   return (
-    <View className="flex-row items-center px-4 py-3 bg-white border-t border-gray-200">
-      <TouchableOpacity
-        className="mr-2"
-        disabled={disabled}
-        onPress={() => {
-          // TODO: Implement file attachment
-          console.log('Attach file');
-        }}
-      >
-        <Ionicons name="add-circle-outline" size={28} color="#3B82F6" />
-      </TouchableOpacity>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <View style={styles.container}>
+        <TouchableOpacity style={styles.attachButton} disabled={disabled}>
+          <Ionicons name="attach" size={24} color="#9CA3AF" />
+        </TouchableOpacity>
 
-      <TextInput
-        className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-base"
-        placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
-        value={message}
-        onChangeText={handleChangeText}
-        multiline
-        maxLength={4000}
-        editable={!disabled && !isSending}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Введите сообщение..."
+          placeholderTextColor="#9CA3AF"
+          value={message}
+          onChangeText={handleChangeText}
+          multiline
+          maxLength={4000}
+          editable={!disabled}
+          onSubmitEditing={handleSend}
+        />
 
-      <TouchableOpacity
-        className="ml-2"
-        onPress={handleSend}
-        disabled={!message.trim() || disabled || isSending}
-      >
-        {isSending ? (
-          <ActivityIndicator size="small" color="#3B82F6" />
-        ) : (
+        <TouchableOpacity
+          style={[styles.sendButton, !message.trim() && styles.sendButtonDisabled]}
+          onPress={handleSend}
+          disabled={disabled || !message.trim()}
+        >
           <Ionicons
             name="send"
-            size={24}
-            color={message.trim() ? '#3B82F6' : '#9CA3AF'}
+            size={20}
+            color={message.trim() ? '#FFFFFF' : '#9CA3AF'}
           />
-        )}
-      </TouchableOpacity>
-    </View>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  attachButton: {
+    padding: 8,
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
+    maxHeight: 100,
+    color: '#1F2937',
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E94444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#F3F4F6',
+  },
+});
+
+export default MessageInput;

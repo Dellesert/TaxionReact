@@ -55,7 +55,7 @@ const refreshAccessToken = async (): Promise<string> => {
     }
 
     const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
-      `${API_BASE_URL}/auth/refresh`,
+      `${API_BASE_URL}/api/v1/auth/refresh`,
       { refresh_token: refreshToken },
       {
         headers: {
@@ -64,7 +64,7 @@ const refreshAccessToken = async (): Promise<string> => {
       }
     );
 
-    const { access_token, refresh_token: new_refresh_token } = response.data.data;
+    const { access_token, refresh_token: new_refresh_token } = response.data.tokens || response.data.data;
 
     // Store new tokens
     await secureStorage.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, access_token);

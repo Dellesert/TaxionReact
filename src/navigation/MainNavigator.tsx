@@ -6,19 +6,12 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import ChatListScreen from '@screens/chat/ChatListScreen';
+import { MainTabParamList } from './types';
+import ChatNavigator from './ChatNavigator';
 import TaskListScreen from '@screens/task/TaskListScreen';
 import CalendarScreen from '@screens/calendar/CalendarScreen';
 import PollListScreen from '@screens/poll/PollListScreen';
 import ProfileScreen from '@screens/profile/ProfileScreen';
-
-export type MainTabParamList = {
-  ChatList: undefined;
-  TaskList: undefined;
-  Calendar: undefined;
-  PollList: undefined;
-  Profile: undefined;
-};
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -31,7 +24,7 @@ const MainNavigator: React.FC = () => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           switch (route.name) {
-            case 'ChatList':
+            case 'Chats':
               iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
               break;
             case 'TaskList':
@@ -52,7 +45,7 @@ const MainNavigator: React.FC = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#DC2626',
+        tabBarActiveTintColor: '#E94444',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
@@ -69,8 +62,8 @@ const MainNavigator: React.FC = () => {
       })}
     >
       <Tab.Screen
-        name="ChatList"
-        component={ChatListScreen}
+        name="Chats"
+        component={ChatNavigator}
         options={{ tabBarLabel: 'Чаты' }}
       />
       <Tab.Screen

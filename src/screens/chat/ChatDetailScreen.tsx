@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useChatStore } from '@store/chatStore';
@@ -17,53 +17,42 @@ type ChatDetailRouteParams = {
 
 const ChatDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: ChatDetailRouteParams }, 'params'>>();
-  const { chatId } = route.params;
+  const { chatId: chatIdParam } = route.params;
+  const chatId = Number(chatIdParam);
 
   const user = useAuthStore((state) => state.user);
-  const {
-    chats,
-    messages,
-    isLoading,
-    fetchMessages,
-    sendMessage,
-    addReaction,
-    markAsRead,
-  } = useChatStore();
+
+  // Use individual selectors to prevent re-renders
+  const loadMessages = useChatStore((state) => state.loadMessages);
+  const sendMessage = useChatStore((state) => state.sendMessage);
+  const addReaction = useChatStore((state) => state.addReaction);
+  const chats = useChatStore((state) => state.chats);
+  const isLoading = useChatStore((state) => state.isLoading);
+  const chatMessages = useChatStore((state) => state.messages[chatId] || []);
 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const hasLoadedRef = useRef(false);
   const flatListRef = useRef<FlatList>(null);
 
-  const chat = chats.find((c) => c.id === chatId);
-  const chatMessages = messages[chatId] || [];
+  const chat = useMemo(() => chats.find((c) => c.id === chatId), [chats, chatId]);
 
   const { sendTyping } = useWebSocket();
   const { startTyping, typingUsers } = useTypingIndicator(chatId);
 
   useEffect(() => {
-    loadMessages();
-    markChatAsRead();
+    if (chatId && !isNaN(chatId) && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadMessages(chatId).catch((error) => {
+        console.error('Failed to load messages:', error);
+        Alert.alert('Ошибка', 'Не удалось загрузить сообщения');
+        hasLoadedRef.current = false;
+      });
+    }
   }, [chatId]);
-
-  const loadMessages = async () => {
-    try {
-      await fetchMessages(chatId);
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить сообщения');
-    }
-  };
-
-  const markChatAsRead = async () => {
-    try {
-      await markAsRead(chatId);
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
-    }
-  };
 
   const handleSendMessage = async (content: string) => {
     try {
-      await sendMessage(chatId, { content });
+      await sendMessage(chatId, content);
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     } catch (error: any) {
       Alert.alert('Ошибка', error.message || 'Не удалось отправить сообщение');
@@ -76,9 +65,9 @@ const ChatDetailScreen: React.FC = () => {
     sendTyping(chatId);
   };
 
-  const handleReaction = async (messageId: string, emoji: string) => {
+  const handleReaction = async (messageId: number, emoji: string) => {
     try {
-      await addReaction(chatId, messageId, emoji);
+      await addReaction(messageId, emoji);
     } catch (error) {
       console.error('Failed to add reaction:', error);
     }
@@ -126,7 +115,7 @@ const ChatDetailScreen: React.FC = () => {
       <FlatList
         ref={flatListRef}
         data={chatMessages}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <MessageBubble
             message={item}
