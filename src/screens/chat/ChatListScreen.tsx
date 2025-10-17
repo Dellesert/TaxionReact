@@ -12,6 +12,7 @@ import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
+import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { Chat } from '@types/chat.types';
 import { websocketService } from '@services/websocket.service';
 
@@ -82,6 +83,7 @@ const ChatListScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <ConnectionStatus />
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Чаты</Text>

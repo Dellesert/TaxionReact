@@ -185,7 +185,15 @@ export const getTaskComments = async (taskId: number): Promise<TaskComment[]> =>
   const response = await api.get<ApiResponse<TaskComment[]>>(
     API_ENDPOINTS.TASK.COMMENTS(taskId)
   );
-  return response.data.data;
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (Array.isArray(response.data)) {
+    return response.data;
+  }
+
+  return [];
 };
 
 /**
@@ -199,7 +207,15 @@ export const addTaskComment = async (
     API_ENDPOINTS.TASK.ADD_COMMENT(taskId),
     data
   );
-  return response.data.data;
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.comment) {
+    return response.data.comment;
+  }
+
+  return response.data as any;
 };
 
 // ============= Project Operations =============

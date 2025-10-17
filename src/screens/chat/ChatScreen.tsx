@@ -15,6 +15,7 @@ import { ChatStackParamList } from '@navigation/types';
 import { MessageItem } from '@components/chat/MessageItem';
 import { MessageInput } from '@components/chat/MessageInput';
 import { ChatMembersModal } from '@components/chat/ChatMembersModal';
+import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,6 +39,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const loadMessages = useChatStore((state) => state.loadMessages);
   const setError = useChatStore((state) => state.set);
   const getChatById = useChatStore((state) => state.getChatById);
+  const setActiveChat = useChatStore((state) => state.setActiveChat);
+  const markMessageRead = useChatStore((state) => state.markMessageRead);
 
   // ✅ ДОБАВЬ ЭТО
   const headerHeight = useHeaderHeight();
@@ -51,9 +54,12 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     navigation.setOptions({
       title: chatName || 'Чат',
       headerRight: () => (
-        <TouchableOpacity onPress={() => setMembersModalVisible(true)} style={{ marginRight: 8 }}>
-          <Ionicons name="people" size={24} color="#E94444" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <ConnectionStatus compact />
+          <TouchableOpacity onPress={() => setMembersModalVisible(true)} style={{ marginLeft: 12, marginRight: 8 }}>
+            <Ionicons name="people" size={24} color="#E94444" />
+          </TouchableOpacity>
+        </View>
       ),
     });
   }, [chatName, navigation]);
@@ -63,6 +69,13 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       hasLoadedRef.current = true;
       loadMessages(chatIdNum);
     }
+
+    // Set active chat and reset unread count
+    const chat = getChatById(chatIdNum);
+    if (chat) {
+      setActiveChat(chat);
+    }
+
     const connectWebSocket = async () => {
       if (!websocketService.isConnected()) {
         const token = (await AsyncStorage.getItem('jwtToken')) || '';
@@ -78,11 +91,13 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     };
     connectWebSocket();
     return () => {
+      // Clear active chat when leaving
+      setActiveChat(null);
       if (websocketService.isConnected()) {
         websocketService.leaveChat(chatIdNum);
       }
     };
-  }, [chatIdNum, setError, getChatById]);
+  }, [chatIdNum, setError, getChatById, setActiveChat]);
 
   useEffect(() => {
   if (messages.length > 0) {
@@ -90,6 +105,17 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     return () => cancelAnimationFrame(id);
   }
 }, [messages.length]);
+
+  // Mark messages as read when entering chat
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Mark the last message as read to indicate all messages in chat are read
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage) {
+        markMessageRead(lastMessage.id);
+      }
+    }
+  }, [chatIdNum, messages.length, markMessageRead]);
 
   const handleSendMessage = (content: string) => {
     if (!content.trim()) {
