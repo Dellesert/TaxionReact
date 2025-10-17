@@ -4,8 +4,14 @@
  */
 
 import { create } from 'zustand';
-import { Task, TaskStatus, UpdateTaskDto } from '@types/task.types';
-import { mockGetTasks, mockGetTask, isMockMode } from '@utils/mockData';
+import { Task, TaskStatus, UpdateTaskDto, CreateTaskDto } from '@types/task.types';
+import {
+  getTasks,
+  getTask,
+  createTask,
+  updateTask as apiUpdateTask,
+  deleteTask
+} from '@api/task.api';
 
 interface TaskStore {
   tasks: Task[];
@@ -16,8 +22,10 @@ interface TaskStore {
   // Actions
   loadTasks: () => Promise<void>;
   loadTask: (taskId: number) => Promise<void>;
+  createTask: (data: CreateTaskDto) => Promise<Task>;
   updateTaskStatus: (taskId: number, status: TaskStatus) => Promise<void>;
   updateTask: (taskId: number, updates: UpdateTaskDto) => Promise<void>;
+  deleteTask: (taskId: number) => Promise<void>;
   clearError: () => void;
   clearSelectedTask: () => void;
 }
@@ -31,19 +39,15 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   loadTasks: async () => {
     try {
       set({ isLoading: true, error: null });
+      console.log('📋 Loading tasks from backend...');
 
-      let tasks: Task[];
-      if (isMockMode()) {
-        console.log('🔧 Using mock tasks');
-        tasks = await mockGetTasks();
-      } else {
-        // TODO: Replace with real API call
-        throw new Error('Real API not implemented yet');
-      }
+      const response = await getTasks();
+      const tasks = response.data || [];
 
+      console.log('📋 Tasks loaded:', tasks.length);
       set({ tasks, isLoading: false });
     } catch (error: any) {
-      console.error('Failed to load tasks:', error);
+      console.error('❌ Failed to load tasks:', error);
       set({
         error: error.message || 'Failed to load tasks',
         isLoading: false,
@@ -54,19 +58,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   loadTask: async (taskId: number) => {
     try {
       set({ isLoading: true, error: null });
+      console.log('📋 Loading task:', taskId);
 
-      let task: Task;
-      if (isMockMode()) {
-        console.log('🔧 Loading mock task:', taskId);
-        task = await mockGetTask(taskId);
-      } else {
-        // TODO: Replace with real API call
-        throw new Error('Real API not implemented yet');
-      }
+      const task = await getTask(taskId);
 
+      console.log('📋 Task loaded:', task);
       set({ selectedTask: task, isLoading: false });
     } catch (error: any) {
-      console.error('Failed to load task:', error);
+      console.error('❌ Failed to load task:', error);
       set({
         error: error.message || 'Failed to load task',
         isLoading: false,
@@ -74,55 +73,99 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
+  createTask: async (data: CreateTaskDto) => {
+    try {
+      console.log('📋 Creating task:', data);
+
+      const newTask = await createTask(data);
+
+      console.log('📋 Task created:', newTask);
+
+      // Add to tasks array
+      const tasks = [newTask, ...get().tasks];
+      set({ tasks });
+
+      return newTask;
+    } catch (error: any) {
+      console.error('❌ Failed to create task:', error);
+      set({ error: error.message || 'Failed to create task' });
+      throw error;
+    }
+  },
+
   updateTaskStatus: async (taskId: number, status: TaskStatus) => {
     try {
-      if (isMockMode()) {
-        console.log('🔧 Updating task status:', taskId, status);
+      console.log('📋 Updating task status:', taskId, status);
 
-        // Update in tasks array
-        const tasks = get().tasks.map((task) =>
-          task.id === taskId ? { ...task, status } : task
-        );
-        set({ tasks });
+      const updatedTask = await apiUpdateTask(taskId, { status });
 
-        // Update selected task if it matches
-        const selectedTask = get().selectedTask;
-        if (selectedTask && selectedTask.id === taskId) {
-          set({ selectedTask: { ...selectedTask, status } });
-        }
-      } else {
-        // TODO: Replace with real API call
-        throw new Error('Real API not implemented yet');
+      console.log('📋 Task status updated:', updatedTask);
+
+      // Update in tasks array
+      const tasks = get().tasks.map((task) =>
+        task.id === taskId ? updatedTask : task
+      );
+      set({ tasks });
+
+      // Update selected task if it matches
+      const selectedTask = get().selectedTask;
+      if (selectedTask && selectedTask.id === taskId) {
+        set({ selectedTask: updatedTask });
       }
     } catch (error: any) {
-      console.error('Failed to update task status:', error);
+      console.error('❌ Failed to update task status:', error);
       set({ error: error.message || 'Failed to update task status' });
+      throw error;
     }
   },
 
   updateTask: async (taskId: number, updates: UpdateTaskDto) => {
     try {
-      if (isMockMode()) {
-        console.log('🔧 Updating task:', taskId, updates);
+      console.log('📋 Updating task:', taskId, updates);
 
-        // Update in tasks array
-        const tasks = get().tasks.map((task) =>
-          task.id === taskId ? { ...task, ...updates } : task
-        );
-        set({ tasks });
+      const updatedTask = await apiUpdateTask(taskId, updates);
 
-        // Update selected task if it matches
-        const selectedTask = get().selectedTask;
-        if (selectedTask && selectedTask.id === taskId) {
-          set({ selectedTask: { ...selectedTask, ...updates } });
-        }
-      } else {
-        // TODO: Replace with real API call
-        throw new Error('Real API not implemented yet');
+      console.log('📋 Task updated:', updatedTask);
+
+      // Update in tasks array
+      const tasks = get().tasks.map((task) =>
+        task.id === taskId ? updatedTask : task
+      );
+      set({ tasks });
+
+      // Update selected task if it matches
+      const selectedTask = get().selectedTask;
+      if (selectedTask && selectedTask.id === taskId) {
+        set({ selectedTask: updatedTask });
       }
     } catch (error: any) {
-      console.error('Failed to update task:', error);
+      console.error('❌ Failed to update task:', error);
       set({ error: error.message || 'Failed to update task' });
+      throw error;
+    }
+  },
+
+  deleteTask: async (taskId: number) => {
+    try {
+      console.log('📋 Deleting task:', taskId);
+
+      await deleteTask(taskId);
+
+      console.log('📋 Task deleted');
+
+      // Remove from tasks array
+      const tasks = get().tasks.filter((task) => task.id !== taskId);
+      set({ tasks });
+
+      // Clear selected task if it matches
+      const selectedTask = get().selectedTask;
+      if (selectedTask && selectedTask.id === taskId) {
+        set({ selectedTask: null });
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to delete task:', error);
+      set({ error: error.message || 'Failed to delete task' });
+      throw error;
     }
   },
 

@@ -8,17 +8,21 @@ import {
   TextInput,
   StyleSheet,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskItem } from '@components/task/TaskItem';
 import { Loading } from '@components/common/Loading';
 import { Task, TaskStatus } from '@types/task.types';
 import { useTaskStore } from '@store/taskStore';
+import { TaskStackParamList } from '@navigation/types';
 
 type TaskFilter = 'all' | 'todo' | 'in_progress' | 'review' | 'done';
+type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
 
 const TaskListScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const { tasks, isLoading, loadTasks: fetchTasks } = useTaskStore();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,12 +48,12 @@ const TaskListScreen: React.FC = () => {
 
   const handleTaskPress = (task: Task) => {
     console.log('Task pressed:', task.id);
-    // TODO: Navigate to task detail
+    navigation.navigate('TaskDetail', { taskId: task.id });
   };
 
   const handleNewTask = () => {
     console.log('Create new task');
-    // TODO: Navigate to create task screen
+    navigation.navigate('CreateTask');
   };
 
   const filteredTasks = tasks
@@ -85,12 +89,12 @@ const TaskListScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, {backgroundColor: '#fff'}]}  edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Задачи</Text>
           <TouchableOpacity onPress={handleNewTask} style={styles.addButton}>
-            <Ionicons name="add" size={24} color="white" />
+            <Ionicons name="add" size={26} color="#ff0000ff" />
           </TouchableOpacity>
         </View>
 
@@ -162,7 +166,7 @@ const TaskListScreen: React.FC = () => {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -174,8 +178,8 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 8,
+    paddingTop: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
@@ -191,10 +195,6 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   addButton: {
-    backgroundColor: '#E94444',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },

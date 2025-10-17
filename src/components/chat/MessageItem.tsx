@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Message } from '@types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
+import { getUser } from '@api/user.api'; // Assume this exists
 
 interface MessageItemProps {
   message: Message;
@@ -10,14 +11,19 @@ interface MessageItemProps {
 
 export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const currentUser = useAuthStore((state) => state.user);
+  const [sender, setSender] = useState<User | null>(message.sender || null);
 
-  // Safe check for sender
-  if (!message.sender) {
-    console.error('Message without sender:', message);
-    return null;
-  }
+  // Fetch sender if missing
+  useEffect(() => {
+    if (!message.sender && message.sender_id) {
+      console.warn('Message without sender:', message);
+      getUser(message.sender_id)
+        .then((user) => setSender(user))
+        .catch(() => console.error('Failed to fetch sender'));
+    }
+  }, [message.sender, message.sender_id]);
 
-  const isOwnMessage = message.sender.id === currentUser?.id;
+  const isOwnMessage = message.sender_id === currentUser?.id;
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -31,8 +37,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     <View style={[styles.container, isOwnMessage && styles.ownMessageContainer]}>
       {!isOwnMessage && (
         <Avatar
-          uri={message.sender?.avatar}
-          name={message.sender?.full_name || 'Unknown'}
+          uri={sender?.avatar}
+          name={sender?.full_name || `User ${message.sender_id}`}
           size={32}
           style={styles.avatar}
         />
@@ -40,7 +46,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
         {!isOwnMessage && (
           <Text style={styles.senderName}>
-            {message.sender?.full_name || 'Unknown User'}
+            {sender?.full_name || `User ${message.sender_id}`}
           </Text>
         )}
         <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>
@@ -59,8 +65,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       </View>
       {isOwnMessage && (
         <Avatar
-          uri={message.sender?.avatar}
-          name={message.sender?.full_name || 'You'}
+          uri={sender?.avatar}
+          name={sender?.full_name || 'You'}
           size={32}
           style={styles.avatar}
         />

@@ -4,20 +4,19 @@
  */
 
 import { create } from 'zustand';
-import { Chat, Message, TypingIndicator } from '@types/chat.types';
+import { Chat, Message, TypingIndicator, MessageType } from '@types/chat.types';
 import * as chatApi from '@api/chat.api';
 import { isMockMode, mockGetChats } from '@utils/mockData';
+import { useAuthStore } from '@store/authStore';
+import { websocketService } from '@services/websocket.service';
 
 interface ChatState {
-  // State
   chats: Chat[];
   activeChat: Chat | null;
-  messages: Record<number, Message[]>; // chatId -> messages
+  messages: Record<number, Message[]>;
   isLoading: boolean;
   error: string | null;
-  typingUsers: Record<number, TypingIndicator[]>; // chatId -> typing users
-
-  // Actions
+  typingUsers: Record<number, TypingIndicator[]>;
   loadChats: () => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
   loadMessages: (chatId: number) => Promise<void>;
@@ -33,21 +32,21 @@ interface ChatState {
   unpinChat: (chatId: number) => Promise<void>;
   muteChat: (chatId: number) => Promise<void>;
   unmuteChat: (chatId: number) => Promise<void>;
-
-  // WebSocket handlers
   handleNewMessage: (message: Message) => void;
   handleMessageUpdate: (message: Message) => void;
   handleMessageDelete: (messageId: number, chatId: number) => void;
   handleTypingStart: (chatId: number, typing: TypingIndicator) => void;
   handleTypingStop: (chatId: number, userId: number) => void;
-
-  // Utility
+  handleUserJoin: (chatId: number, userId?: number) => void;
+  handleUserLeave: (chatId: number, userId?: number) => void;
+  handleMessageRead: (chatId: number, messageId: number) => void;
+  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number) => void;
   clearError: () => void;
   getChatById: (chatId: number) => Chat | undefined;
+  set: (state: Partial<ChatState>) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
-  // Initial state
   chats: [],
   activeChat: null,
   messages: {},
@@ -55,13 +54,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
   typingUsers: {},
 
-  /**
-   * Load all chats
-   */
   loadChats: async () => {
     try {
       set({ isLoading: true, error: null });
-
       let chats;
       if (isMockMode()) {
         console.log('🔧 Using mock chats');
@@ -76,9 +71,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Create new chat
-   */
   createChat: async (name: string, memberIds: number[], type: 'private' | 'group' = 'group') => {
     try {
       set({ isLoading: true, error: null });
@@ -87,12 +79,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         name,
         member_ids: memberIds,
       });
-
       set((state) => ({
         chats: [newChat, ...state.chats],
         isLoading: false,
       }));
-
       return newChat;
     } catch (error: any) {
       set({ error: error.message || 'Failed to create chat', isLoading: false });
@@ -100,13 +90,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Load messages for a chat
-   */
   loadMessages: async (chatId: number) => {
     try {
       set({ isLoading: true, error: null });
-
       let messages;
       if (isMockMode()) {
         console.log('🔧 Using mock messages for chat:', chatId);
@@ -114,10 +100,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages = await mockGetMessages(String(chatId));
       } else {
         const response = await chatApi.getMessages(chatId, { limit: 50 });
-        // Response has both .data and .messages, use .messages or .data
-        messages = (response.messages || response.data || []).reverse(); // Reverse to show oldest first
+        messages = (response.messages || response.data || []).reverse();
       }
-
       set((state) => ({
         messages: {
           ...state.messages,
@@ -130,16 +114,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Load more messages (pagination)
-   */
   loadMoreMessages: async (chatId: number, beforeMessageId: number) => {
     try {
       const response = await chatApi.getMessages(chatId, {
         limit: 50,
         before_message_id: beforeMessageId,
       });
-
       const responseMessages = response.messages || response.data || [];
       if (responseMessages.length > 0) {
         set((state) => ({
@@ -154,55 +134,53 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Set active chat
-   */
   setActiveChat: (chat: Chat | null) => {
-    set({ activeChat: chat });
+    set((state) => ({
+      activeChat: chat,
+      // Reset unread count for the chat being opened
+      chats: chat
+        ? state.chats.map((c) => (c.id === chat.id ? { ...c, unread_count: 0 } : c))
+        : state.chats,
+    }));
 
-    // Load messages if not already loaded
     if (chat && !get().messages[chat.id]) {
       get().loadMessages(chat.id);
     }
   },
 
-  /**
-   * Send message
-   */
   sendMessage: async (chatId: number, content: string, replyToId?: number) => {
-    try {
-      const message = await chatApi.sendMessage(chatId, {
-        content,
-        reply_to_id: replyToId,
-      });
+  try {
+    if (!content.trim()) throw new Error('Message content cannot be empty');
 
-      // Add message to local state
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [chatId]: [...(state.messages[chatId] || []), message],
+    if (websocketService.isConnected()) {
+      websocketService.send({
+        type: 'new_message', // <- важно
+        chat_id: chatId,
+        data: {
+          content: content.trim(),
+          type: 'text',
+          reply_to_id: replyToId || null, // если нужно
         },
-      }));
-
-      // Update chat's last message
-      set((state) => ({
-        chats: state.chats.map((chat) =>
-          chat.id === chatId ? { ...chat, last_message: message } : chat
-        ),
-      }));
-    } catch (error: any) {
-      set({ error: error.message || 'Failed to send message' });
-      throw error;
+      });
     }
-  },
 
-  /**
-   * Update message
-   */
+    // Также сохраняем через API
+    const message = await chatApi.sendMessage(chatId, {
+      content: content.trim(),
+      reply_to_id: replyToId,
+    });
+
+    get().handleNewMessage(message);
+
+  } catch (error: any) {
+    set({ error: error.message || 'Failed to send message' });
+    throw error;
+  }
+},
+
   updateMessage: async (messageId: number, content: string) => {
     try {
       const updatedMessage = await chatApi.updateMessage(messageId, { content });
-
       set((state) => ({
         messages: {
           ...state.messages,
@@ -217,27 +195,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Delete message
-   */
   deleteMessage: async (messageId: number) => {
     try {
       await chatApi.deleteMessage(messageId);
-
-      // Remove from local state via WebSocket handler
     } catch (error: any) {
       set({ error: error.message || 'Failed to delete message' });
       throw error;
     }
   },
 
-  /**
-   * Add reaction
-   */
   addReaction: async (messageId: number, emoji: string) => {
     try {
       const updatedMessage = await chatApi.addReaction(messageId, { emoji });
-
       set((state) => ({
         messages: {
           ...state.messages,
@@ -251,13 +220,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Remove reaction
-   */
   removeReaction: async (messageId: number, emoji: string) => {
     try {
       const updatedMessage = await chatApi.removeReaction(messageId, emoji);
-
       set((state) => ({
         messages: {
           ...state.messages,
@@ -271,9 +236,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Mark message as read
-   */
   markMessageRead: async (messageId: number) => {
     try {
       await chatApi.markMessageRead(messageId);
@@ -282,13 +244,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Pin chat
-   */
   pinChat: async (chatId: number) => {
     try {
       const updatedChat = await chatApi.pinChat(chatId);
-
       set((state) => ({
         chats: state.chats.map((chat) => (chat.id === chatId ? updatedChat : chat)),
       }));
@@ -297,13 +255,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Unpin chat
-   */
   unpinChat: async (chatId: number) => {
     try {
       const updatedChat = await chatApi.unpinChat(chatId);
-
       set((state) => ({
         chats: state.chats.map((chat) => (chat.id === chatId ? updatedChat : chat)),
       }));
@@ -312,13 +266,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Mute chat
-   */
   muteChat: async (chatId: number) => {
     try {
       const updatedChat = await chatApi.muteChat(chatId);
-
       set((state) => ({
         chats: state.chats.map((chat) => (chat.id === chatId ? updatedChat : chat)),
       }));
@@ -327,13 +277,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  /**
-   * Unmute chat
-   */
   unmuteChat: async (chatId: number) => {
     try {
       const updatedChat = await chatApi.unmuteChat(chatId);
-
       set((state) => ({
         chats: state.chats.map((chat) => (chat.id === chatId ? updatedChat : chat)),
       }));
@@ -342,28 +288,59 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  // ============= WebSocket Handlers =============
-
-  /**
-   * Handle new message from WebSocket
-   */
   handleNewMessage: (message: Message) => {
-    set((state) => ({
-      messages: {
+    const currentUser = useAuthStore.getState().user;
+    const isOwnMessage = currentUser && message.sender_id === currentUser.id;
+    const activeChat = get().activeChat;
+    const isInActiveChat = activeChat && activeChat.id === message.chat_id;
+
+    set((state) => {
+      // Check if message already exists (deduplication)
+      const existingMessages = state.messages[message.chat_id] || [];
+      const messageExists = existingMessages.some((msg) => msg.id === message.id);
+
+      if (messageExists) {
+        console.log('⚠️ Duplicate message detected, skipping:', message.id);
+        return state; // Skip processing duplicate message
+      }
+
+      // Add message to messages list
+      const updatedMessages = {
         ...state.messages,
-        [message.chat_id]: [...(state.messages[message.chat_id] || []), message],
-      },
-      chats: state.chats.map((chat) =>
-        chat.id === message.chat_id
-          ? { ...chat, last_message: message, unread_count: chat.unread_count + 1 }
-          : chat
-      ),
-    }));
+        [message.chat_id]: [...existingMessages, message],
+      };
+
+      // Update chats list
+      const updatedChats = state.chats.map((chat) => {
+        if (chat.id === message.chat_id) {
+          // Increment unread_count only if:
+          // 1. Message is not from current user
+          // 2. User is not currently viewing this chat
+          const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+
+          return {
+            ...chat,
+            last_message: message,
+            unread_count: shouldIncrementUnread ? (chat.unread_count || 0) + 1 : chat.unread_count || 0,
+          };
+        }
+        return chat;
+      });
+
+      // Sort chats by last message time (most recent first)
+      const sortedChats = [...updatedChats].sort((a, b) => {
+        const timeA = a.last_message?.created_at || a.created_at || '';
+        const timeB = b.last_message?.created_at || b.created_at || '';
+        return new Date(timeB).getTime() - new Date(timeA).getTime();
+      });
+
+      return {
+        messages: updatedMessages,
+        chats: sortedChats,
+      };
+    });
   },
 
-  /**
-   * Handle message update from WebSocket
-   */
   handleMessageUpdate: (message: Message) => {
     set((state) => ({
       messages: {
@@ -375,9 +352,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
   },
 
-  /**
-   * Handle message delete from WebSocket
-   */
   handleMessageDelete: (messageId: number, chatId: number) => {
     set((state) => ({
       messages: {
@@ -387,18 +361,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
   },
 
-  /**
-   * Handle typing start
-   */
   handleTypingStart: (chatId: number, typing: TypingIndicator) => {
     set((state) => {
       const currentTyping = state.typingUsers[chatId] || [];
       const alreadyTyping = currentTyping.some((t) => t.user_id === typing.user_id);
-
       if (alreadyTyping) {
         return state;
       }
-
       return {
         typingUsers: {
           ...state.typingUsers,
@@ -408,9 +377,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
-  /**
-   * Handle typing stop
-   */
   handleTypingStop: (chatId: number, userId: number) => {
     set((state) => ({
       typingUsers: {
@@ -420,17 +386,70 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
   },
 
-  /**
-   * Clear error
-   */
+  handleUserJoin: (chatId: number, userId?: number) => {
+    // Could update online status or member list if needed
+  },
+
+  handleUserLeave: (chatId: number, userId?: number) => {
+    // Could update online status or member list if needed
+  },
+
+  handleMessageRead: (chatId: number, messageId: number) => {
+    // Update read_by array in message
+    set((state) => ({
+      messages: {
+        ...state.messages,
+        [chatId]: (state.messages[chatId] || []).map((msg) =>
+          msg.id === messageId
+            ? { ...msg, read_by: [...(msg.read_by || []), useAuthStore.getState().user?.id].filter((id): id is number => id !== undefined) }
+            : msg
+        ),
+      },
+    }));
+  },
+
+  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number) => {
+    // Update reactions array in message
+    set((state) => ({
+      messages: {
+        ...state.messages,
+        [chatId]: (state.messages[chatId] || []).map((msg) => {
+          if (msg.id === messageId) {
+            const existingReaction = msg.reactions.find(
+              (r) => r.emoji === emoji && r.user_id === userId
+            );
+            if (existingReaction) {
+              return msg; // Reaction already exists
+            }
+            return {
+              ...msg,
+              reactions: [
+                ...msg.reactions,
+                {
+                  id: Date.now(), // temporary ID
+                  message_id: messageId,
+                  user_id: userId || 0,
+                  emoji,
+                  created_at: new Date().toISOString(),
+                },
+              ],
+            };
+          }
+          return msg;
+        }),
+      },
+    }));
+  },
+
   clearError: () => {
     set({ error: null });
   },
 
-  /**
-   * Get chat by ID
-   */
   getChatById: (chatId: number) => {
     return get().chats.find((chat) => chat.id === chatId);
+  },
+
+  set: (state: Partial<ChatState>) => {
+    set(state);
   },
 }));

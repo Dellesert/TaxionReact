@@ -75,11 +75,47 @@ export const getUsers = async (
     offset: pagination?.offset || PAGINATION.DEFAULT_OFFSET,
   };
 
+  console.log('📞 getUsers called with params:', params);
+  console.log('🔗 Endpoint:', API_ENDPOINTS.USER.LIST);
+  console.log('🌐 Full URL will be:', `${process.env.EXPO_PUBLIC_API_BASE_URL}${API_ENDPOINTS.USER.LIST}`);
+
   const response = await api.get<ApiResponse<PaginatedResponse<User>>>(
     API_ENDPOINTS.USER.LIST,
     { params }
   );
-  return response.data.data;
+
+  console.log('✅ getUsers full response:', response);
+  console.log('✅ getUsers response.data:', response.data);
+  console.log('✅ getUsers response.data.data:', response.data.data);
+  console.log('✅ getUsers response.data type:', typeof response.data);
+  console.log('✅ getUsers response.data keys:', Object.keys(response.data));
+
+  // Пробуем разные варианты структуры ответа
+  if (response.data.data) {
+    console.log('📦 Using response.data.data');
+    return response.data.data;
+  } else if (Array.isArray(response.data)) {
+    console.log('📦 Response.data is array, wrapping it');
+    return {
+      data: response.data,
+      total: response.data.length,
+      limit: params.limit,
+      offset: params.offset,
+      hasMore: false,
+    };
+  } else if (response.data.users) {
+    console.log('📦 Using response.data.users');
+    return {
+      data: response.data.users,
+      total: response.data.total || response.data.users.length,
+      limit: params.limit,
+      offset: params.offset,
+      hasMore: response.data.has_more || false,
+    };
+  } else {
+    console.log('📦 Unknown response structure, returning as is');
+    return response.data as any;
+  }
 };
 
 /**

@@ -8,7 +8,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
-import TaskListScreen from '@screens/task/TaskListScreen';
+import TaskNavigator from './TaskNavigator';
 import CalendarScreen from '@screens/calendar/CalendarScreen';
 import PollListScreen from '@screens/poll/PollListScreen';
 import ProfileScreen from '@screens/profile/ProfileScreen';
@@ -18,6 +18,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const MainNavigator: React.FC = () => {
   return (
     <Tab.Navigator
+      initialRouteName="Chats"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
@@ -27,14 +28,14 @@ const MainNavigator: React.FC = () => {
             case 'Chats':
               iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
               break;
-            case 'TaskList':
+            case 'Tasks':
               iconName = focused ? 'checkbox' : 'checkbox-outline';
               break;
             case 'Calendar':
               iconName = focused ? 'calendar' : 'calendar-outline';
               break;
             case 'PollList':
-              iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+              iconName = focused ? 'bar-chart-outline' : 'bar-chart-outline';
               break;
             case 'Profile':
               iconName = focused ? 'person' : 'person-outline';
@@ -43,38 +44,40 @@ const MainNavigator: React.FC = () => {
               iconName = 'help-outline';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={26} color={color} />;
         },
         tabBarActiveTintColor: '#E94444',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarInactiveTintColor: '#888888ff',
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: '#f2f2f2ff',
           borderTopWidth: 1,
           borderTopColor: '#E5E7EB',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 85,
+          paddingTop: 6,
+          paddingHorizontal: 12,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
+          paddingTop: 2,
         },
       })}
     >
+
       <Tab.Screen
-        name="Chats"
-        component={ChatNavigator}
-        options={{ tabBarLabel: 'Чаты' }}
-      />
-      <Tab.Screen
-        name="TaskList"
-        component={TaskListScreen}
+        name="Tasks"
+        component={TaskNavigator}
         options={{ tabBarLabel: 'Задачи' }}
       />
       <Tab.Screen
         name="Calendar"
         component={CalendarScreen}
-        options={{ tabBarLabel: 'Календарь' }}
+        options={{ tabBarLabel: 'События' }}
+      />
+      <Tab.Screen
+        name="Chats"
+        component={ChatNavigator}
+        options={{ tabBarLabel: 'Чаты' }}
       />
       <Tab.Screen
         name="PollList"
@@ -84,7 +87,7 @@ const MainNavigator: React.FC = () => {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarLabel: 'Профиль' }}
+        options={{ tabBarLabel: 'Я' }}
       />
     </Tab.Navigator>
   );

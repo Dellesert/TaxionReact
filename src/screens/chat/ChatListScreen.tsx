@@ -6,13 +6,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
 import { Chat } from '@types/chat.types';
+import { websocketService } from '@services/websocket.service';
 
 type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'ChatList'>;
 
@@ -25,6 +26,23 @@ const ChatListScreen: React.FC = () => {
   useEffect(() => {
     loadChats();
   }, []);
+
+  // Subscribe to all chats when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      // Join all chats to receive WebSocket events
+      chats.forEach((chat) => {
+        websocketService.joinChat(chat.id);
+      });
+
+      // Cleanup: leave chats when screen loses focus
+      return () => {
+        chats.forEach((chat) => {
+          websocketService.leaveChat(chat.id);
+        });
+      };
+    }, [chats])
+  );
 
   const loadChats = async () => {
     try {
@@ -47,21 +65,8 @@ const ChatListScreen: React.FC = () => {
     });
   };
 
-  const handleNewChat = async () => {
-    try {
-      // For now, create a test chat with the current user
-      const newChat = await createChat('Test Group Chat', [1], 'group');
-      console.log('Chat created:', newChat);
-
-      // Navigate to the new chat
-      navigation.navigate('Chat', {
-        chatId: newChat.id,
-        chatName: newChat.name,
-      });
-    } catch (error: any) {
-      console.error('Failed to create chat:', error);
-      alert(error.message || 'Failed to create chat');
-    }
+  const handleNewChat = () => {
+    navigation.navigate('CreateChat');
   };
 
   const filteredChats = chats.filter((chat) => {
@@ -81,7 +86,7 @@ const ChatListScreen: React.FC = () => {
         <View style={styles.headerTop}>
           <Text style={styles.title}>Чаты</Text>
           <TouchableOpacity onPress={handleNewChat} style={styles.newChatButton}>
-            <Ionicons name="create-outline" size={24} color="white" />
+            <Ionicons name="create-outline" size={24} color="#ff0000ff" />
           </TouchableOpacity>
         </View>
 
@@ -117,7 +122,7 @@ const ChatListScreen: React.FC = () => {
       ) : (
         <FlatList
           data={filteredChats}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => `chat-${item.id}`}
           renderItem={({ item }) => (
             <ChatItem chat={item} onPress={handleChatPress} />
           )}
@@ -138,7 +143,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 60,
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
@@ -155,10 +160,6 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   newChatButton: {
-    backgroundColor: '#E94444',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },

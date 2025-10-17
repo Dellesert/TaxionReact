@@ -110,7 +110,7 @@ const ProfileScreen: React.FC = () => {
           <Switch
             value={notifications.push}
             onValueChange={(value) => handleToggleNotification('push', value)}
-            trackColor={{ false: '#D1D5DB', true: '#FCA5A5' }}
+            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
             thumbColor={notifications.push ? '#E94444' : '#F3F4F6'}
           />
         </View>
@@ -123,8 +123,8 @@ const ProfileScreen: React.FC = () => {
           <Switch
             value={notifications.email}
             onValueChange={(value) => handleToggleNotification('email', value)}
-            trackColor={{ false: '#D1D5DB', true: '#FCA5A5' }}
-            thumbColor={notifications.email ? '#E94444' : '#F3F4F6'}
+            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
+            thumbColor={notifications.email ? '#E94444' : '#ffffffff'}
           />
         </View>
 
@@ -136,7 +136,7 @@ const ProfileScreen: React.FC = () => {
           <Switch
             value={notifications.messages}
             onValueChange={(value) => handleToggleNotification('messages', value)}
-            trackColor={{ false: '#D1D5DB', true: '#FCA5A5' }}
+            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
             thumbColor={notifications.messages ? '#E94444' : '#F3F4F6'}
           />
         </View>
@@ -149,7 +149,7 @@ const ProfileScreen: React.FC = () => {
           <Switch
             value={notifications.mentions}
             onValueChange={(value) => handleToggleNotification('mentions', value)}
-            trackColor={{ false: '#D1D5DB', true: '#FCA5A5' }}
+            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
             thumbColor={notifications.mentions ? '#E94444' : '#F3F4F6'}
           />
         </View>
@@ -162,7 +162,7 @@ const ProfileScreen: React.FC = () => {
           <Switch
             value={notifications.tasks}
             onValueChange={(value) => handleToggleNotification('tasks', value)}
-            trackColor={{ false: '#D1D5DB', true: '#FCA5A5' }}
+            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
             thumbColor={notifications.tasks ? '#E94444' : '#F3F4F6'}
           />
         </View>
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 60,
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',

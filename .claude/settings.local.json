@@ -7,7 +7,9 @@
       "Bash(findstr:*)",
       "Bash(taskkill:*)",
       "Bash(del \"src\\screens\\profile\\ProfileScreen.tsx\")",
-      "Bash(move \"src\\screens\\profile\\ProfileScreen_new.tsx\" \"src\\screens\\profile\\ProfileScreen.tsx\")"
+      "Bash(move \"src\\screens\\profile\\ProfileScreen_new.tsx\" \"src\\screens\\profile\\ProfileScreen.tsx\")",
+      "Bash(ipconfig:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

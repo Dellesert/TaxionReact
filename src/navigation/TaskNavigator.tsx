@@ -1,18 +1,18 @@
 /**
- * Chat Navigator
- * Стек навигации для чатов
+ * Task Navigator
+ * Стек навигации для задач
  */
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ChatStackParamList } from './types';
-import ChatListScreen from '@screens/chat/ChatListScreen';
-import CreateChatScreen from '@screens/chat/CreateChatScreen';
-import ChatScreen from '@screens/chat/ChatScreen';
+import { TaskStackParamList } from './types';
+import TaskListScreen from '@screens/task/TaskListScreen';
+import CreateTaskScreen from '@screens/task/CreateTaskScreen';
+import TaskDetailScreen from '@screens/task/TaskDetailScreen';
 
-const Stack = createNativeStackNavigator<ChatStackParamList>();
+const Stack = createNativeStackNavigator<TaskStackParamList>();
 
-const ChatNavigator: React.FC = () => {
+const TaskNavigator: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
@@ -28,29 +28,28 @@ const ChatNavigator: React.FC = () => {
       }}
     >
       <Stack.Screen
-        name="ChatList"
-        component={ChatListScreen}
+        name="TaskList"
+        component={TaskListScreen}
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="CreateChat"
-        component={CreateChatScreen}
+        name="CreateTask"
+        component={CreateTaskScreen}
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="Chat"
-        component={ChatScreen}
+        name="TaskDetail"
+        component={TaskDetailScreen}
         options={{
-          headerShown: true,
-          headerBackTitleVisible: false,
+          headerShown: false,
         }}
       />
     </Stack.Navigator>
   );
 };
 
-export default ChatNavigator;
+export default TaskNavigator;

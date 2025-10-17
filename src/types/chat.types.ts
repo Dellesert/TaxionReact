@@ -74,9 +74,9 @@ export interface Chat {
   type: ChatType;
   description?: string;
   avatar?: string;
-  avatar_url?: string; // Alias for compatibility
+  avatar_url?: string;
   creator_id: number;
-  created_by?: number; // Alias for compatibility
+  created_by?: number;
   creator?: User;
   is_pinned?: boolean;
   is_muted?: boolean;
@@ -85,7 +85,7 @@ export interface Chat {
   last_message?: Message;
   members?: ChatMember[];
   member_count?: number;
-  members_count?: number; // Alias for compatibility
+  members_count?: number;
   created_at: ISODateString;
   updated_at: ISODateString;
 }

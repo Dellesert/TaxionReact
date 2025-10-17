@@ -75,7 +75,7 @@ const PollListScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Опросы</Text>
         <TouchableOpacity onPress={handleCreatePoll} style={styles.createButton}>
-          <Ionicons name="add" size={24} color="white" />
+          <Ionicons name="add" size={26} color="#ff0000ff" />
         </TouchableOpacity>
       </View>
 
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 60,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
@@ -173,10 +173,6 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   createButton: {
-    backgroundColor: '#E94444',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },

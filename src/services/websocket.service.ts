@@ -1,6 +1,6 @@
 /**
- * WebSocket Service
- * Управление WebSocket соединением для real-time коммуникации
+ * WebSocket Service - ИСПРАВЛЕННАЯ ВЕРСИЯ
+ * Управляет WebSocket соединением для real-time общения
  */
 
 import { useChatStore } from '@store/chatStore';
@@ -9,20 +9,16 @@ import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 
 type WSMessageType =
-  | 'user_join'
-  | 'user_leave'
-  | 'typing'
-  | 'new_message'
-  | 'message_update'
-  | 'message_delete'
-  | 'message_read'
-  | 'error'
-  | 'pong';
+  | 'user_join' | 'user_leave' | 'typing' | 'new_message'
+  | 'message_read' | 'message_edit' | 'message_delete'
+  | 'reaction' | 'error' | 'pong' | 'ping';
 
 interface WSMessage {
   type: WSMessageType;
   chat_id: number;
+  user_id?: number;
   data: any;
+  timestamp?: string;
 }
 
 class WebSocketService {
@@ -58,7 +54,6 @@ class WebSocketService {
       this.ws.onmessage = this.handleMessage.bind(this);
       this.ws.onerror = this.handleError.bind(this);
       this.ws.onclose = this.handleClose.bind(this);
-
     } catch (error) {
       console.error('❌ Failed to connect WebSocket:', error);
     }
@@ -83,14 +78,25 @@ class WebSocketService {
   }
 
   /**
-   * Send message through WebSocket
+   * ИСПРАВЛЕННЫЙ метод отправки сообщений
+   * Всегда отправляет правильную структуру WSMessage
    */
-  send(message: WSMessage): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-      console.log('📤 WebSocket sent:', message);
-    } else {
-      console.error('❌ WebSocket is not connected');
+  private send(message: WSMessage): void {
+    if (!this.isConnected()) {
+      console.error('❌ WebSocket not connected - cannot send:', message);
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('❌ WebSocket is not connected - cannot send:', message);
+      return;
+    }
+
+    try {
+      const raw = JSON.stringify(message);
+      this.ws.send(raw);
+    } catch (err) {
+      console.error('❌ Failed to send WS message:', err, message);
     }
   }
 
@@ -128,6 +134,68 @@ class WebSocketService {
   }
 
   /**
+   * ИСПРАВЛЕННЫЙ метод отправки чат-сообщений
+   * Отправляет правильную структуру для new_message
+   */
+sendChatMessage(chatId: number, content: string, replyToId?: number) {
+  this.send({
+    type: 'new_message',   // обязательно new_message
+    chat_id: chatId,
+    data: {
+      content,
+      type: 'text',         // !!! соответствует ожиданиям Go
+      reply_to_id: replyToId || null,
+    },
+  });
+}
+
+
+
+  /**
+   * Mark message as read
+   */
+  sendRead(chatId: number, messageId: number): void {
+    this.send({
+      type: 'message_read',
+      chat_id: chatId,
+      data: { message_id: messageId },
+    });
+  }
+
+  /**
+   * Edit a message
+   */
+  editMessage(chatId: number, messageId: number, content: string): void {
+    this.send({
+      type: 'message_edit',
+      chat_id: chatId,
+      data: { message_id: messageId, content },
+    });
+  }
+
+  /**
+   * Delete a message
+   */
+  deleteMessage(chatId: number, messageId: number): void {
+    this.send({
+      type: 'message_delete',
+      chat_id: chatId,
+      data: { message_id: messageId },
+    });
+  }
+
+  /**
+   * Add reaction to a message
+   */
+  addReaction(chatId: number, messageId: number, emoji: string): void {
+    this.send({
+      type: 'reaction',
+      chat_id: chatId,
+      data: { message_id: messageId, emoji },
+    });
+  }
+
+  /**
    * Handle WebSocket open
    */
   private handleOpen(event: Event): void {
@@ -149,26 +217,74 @@ class WebSocketService {
    */
   private handleMessage(event: MessageEvent): void {
     try {
-      const message: WSMessage = JSON.parse(event.data);
+      console.log('🔸 Raw event.data:', event.data);
+
+      // Handle case where backend sends multiple JSON objects in one message
+      const rawData = event.data.trim();
+
+      // Try to split by newlines or by finding multiple JSON objects
+      let messages: WSMessage[] = [];
+
+      // Check if it's a single valid JSON
+      try {
+        const singleMessage = JSON.parse(rawData);
+        messages = [singleMessage];
+      } catch (e) {
+        // If single parse fails, try to split multiple JSONs
+        // Split by newlines or consecutive closing/opening braces
+        const jsonStrings = rawData.split(/\n|(?<=\})(?=\{)/);
+
+        for (const jsonStr of jsonStrings) {
+          const trimmed = jsonStr.trim();
+          if (trimmed) {
+            try {
+              messages.push(JSON.parse(trimmed));
+            } catch (parseErr) {
+              console.error('❌ Failed to parse JSON fragment:', trimmed, parseErr);
+            }
+          }
+        }
+      }
+
+      // Process each message
+      for (const message of messages) {
+        this.processMessage(message);
+      }
+    } catch (error) {
+      console.error('❌ Error handling WebSocket message:', error);
+    }
+  }
+
+  /**
+   * Process a single WebSocket message
+   */
+  private processMessage(message: WSMessage): void {
+    try {
       console.log('📨 WebSocket received:', message);
 
       const chatStore = useChatStore.getState();
+      const authStore = useAuthStore.getState();
+      const currentUser = authStore.user;
 
       switch (message.type) {
         case 'new_message':
-          console.log('🔍 Raw message.data:', message.data);
-          console.log('🔍 message.user_id:', message.user_id);
-
-          // Get current user info to use as sender if it's our message
-          const authStore = useAuthStore.getState();
-          const currentUser = authStore.user;
-
           // Construct full message object from WebSocket data
           const newMessage = {
-            ...message.data,
+            id: message.data?.id || Date.now(), // temporary ID if not provided
             chat_id: message.chat_id,
+            sender_id: message.user_id || message.data?.sender_id,
+            content: message.data?.content || '',
+            message_type: message.data?.message_type || message.data?.type || 'text',
+            is_edited: message.data?.is_edited || false,
+            is_pinned: message.data?.is_pinned || false,
+            is_deleted: message.data?.is_deleted || false,
+            attachments: message.data?.attachments || [],
+            reactions: message.data?.reactions || [],
+            read_by: message.data?.read_by || [],
             created_at: message.timestamp || message.data?.created_at || new Date().toISOString(),
-            // If sender is not in data, use current user if user_id matches, otherwise generic
+            updated_at: message.data?.updated_at || message.timestamp || new Date().toISOString(),
+            reply_to_id: message.data?.reply_to_id,
+            reply_to: message.data?.reply_to,
             sender: message.data?.sender || (currentUser && message.user_id === currentUser.id ? {
               id: currentUser.id,
               full_name: currentUser.full_name,
@@ -181,12 +297,16 @@ class WebSocketService {
               avatar: null,
             }),
           };
-          console.log('📥 Constructed message:', newMessage);
+
           chatStore.handleNewMessage(newMessage);
           break;
 
-        case 'message_update':
-          chatStore.handleMessageUpdate(message.data);
+        case 'message_edit':
+          chatStore.handleMessageUpdate({
+            message_id: message.data.message_id,
+            content: message.data.content,
+            chat_id: message.chat_id,
+          });
           break;
 
         case 'message_delete':
@@ -203,22 +323,35 @@ class WebSocketService {
 
         case 'user_join':
           console.log('👋 User joined chat:', message.chat_id);
+          chatStore.handleUserJoin(message.chat_id, message.user_id);
           break;
 
         case 'user_leave':
           console.log('👋 User left chat:', message.chat_id);
+          chatStore.handleUserLeave(message.chat_id, message.user_id);
           break;
 
         case 'message_read':
           console.log('✅ Message read:', message.data);
+          chatStore.handleMessageRead(message.chat_id, message.data.message_id);
+          break;
+
+        case 'reaction':
+          console.log('😊 Reaction added:', message.data);
+          chatStore.handleReaction(message.chat_id, message.data.message_id, message.data.emoji, message.user_id);
           break;
 
         case 'error':
           console.error('❌ WebSocket error message:', message.data);
           break;
 
+        case 'ping':
+          console.log('🏓 Server ping received - replying pong');
+          this.send({ type: 'pong', chat_id: 0, data: {} });
+          break;
+
         case 'pong':
-          // Heartbeat response
+          console.log('🏓 Pong received');
           break;
 
         default:
@@ -264,13 +397,16 @@ class WebSocketService {
 
   /**
    * Start heartbeat to keep connection alive
+   * Note: Server sends 'ping', client responds with 'pong' (handled in handleMessage)
    */
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ type: 'ping' }));
+      // Just check if connection is still alive
+      // Server will send ping, and we respond with pong in handleMessage
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        console.warn('⚠️ WebSocket connection check: Not connected');
       }
-    }, 30000); // Send ping every 30 seconds
+    }, 30000);
   }
 
   /**

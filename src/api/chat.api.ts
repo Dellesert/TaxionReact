@@ -19,7 +19,7 @@ import {
   GetMessagesParams,
   ChatListFilters,
 } from '@types/chat.types';
-import { ApiResponse, PaginatedResponse, PaginationParams } from '@types/common.types';
+import { ApiResponse, PaginatedResponse } from '@types/common.types';
 
 // ============= Chat Operations =============
 
@@ -35,14 +35,48 @@ export const getChats = async (filters?: ChatListFilters): Promise<Chat[]> => {
   const response = await api.get<{ chats: Chat[] }>(API_ENDPOINTS.CHAT.LIST, {
     params,
   });
-  return response.data.chats;
+
+  // Normalize last_message to match Message type
+  const normalizedChats = response.data.chats.map(chat => {
+    if (chat.last_message) {
+      return {
+        ...chat,
+        last_message: {
+          ...chat.last_message,
+          message_type: chat.last_message.type || chat.last_message.message_type || 'text',
+          attachments: chat.last_message.attachments || [],
+          reactions: chat.last_message.reactions || [],
+          read_by: chat.last_message.read_by || [],
+          is_pinned: chat.last_message.is_pinned || false,
+        }
+      };
+    }
+    return chat;
+  });
+
+  return normalizedChats;
 };
 
 /**
  * Create new chat
  */
 export const createChat = async (data: CreateChatDto): Promise<Chat> => {
+  console.log('🆕 Creating chat with data:', data);
+  console.log('🔗 Endpoint:', API_ENDPOINTS.CHAT.CREATE);
+
   const response = await api.post<Chat>(API_ENDPOINTS.CHAT.CREATE, data);
+
+  console.log('✅ Chat created, full response:', response);
+  console.log('✅ Chat created, response.data:', response.data);
+  console.log('✅ New chat ID:', response.data?.id);
+  console.log('✅ New chat ID type:', typeof response.data?.id);
+
+  // Проверяем структуру ответа
+  if (response.data && response.data.chat) {
+    console.log('📦 Response has chat field, extracting it');
+    return response.data.chat;
+  }
+
   return response.data;
 };
 
@@ -107,10 +141,30 @@ export const unmuteChat = async (id: number): Promise<Chat> => {
  * Get chat members
  */
 export const getChatMembers = async (chatId: number): Promise<ChatMember[]> => {
+  console.log('👥 Getting chat members for chat:', chatId);
+  console.log('🔗 Endpoint:', API_ENDPOINTS.CHAT.MEMBERS(chatId));
+
   const response = await api.get<ApiResponse<ChatMember[]>>(
     API_ENDPOINTS.CHAT.MEMBERS(chatId)
   );
-  return response.data.data;
+
+  console.log('✅ Chat members response:', response.data);
+  console.log('✅ Response keys:', Object.keys(response.data));
+
+  // Сервер возвращает {count, members}
+  if (response.data && response.data.members) {
+    console.log('📦 Found members array:', response.data.members.length);
+    return response.data.members;
+  }
+
+  // Или стандартный формат {data: [...]}
+  if (response.data && response.data.data) {
+    console.log('📦 Found data array:', response.data.data.length);
+    return response.data.data;
+  }
+
+  console.warn('⚠️ Unexpected response format, returning empty array');
+  return [];
 };
 
 /**

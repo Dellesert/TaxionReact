@@ -9,16 +9,26 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // Chat Stack
 export type ChatStackParamList = {
   ChatList: undefined;
+  CreateChat: undefined;
   Chat: {
     chatId: number;
     chatName?: string;
   };
 };
 
+// Task Stack
+export type TaskStackParamList = {
+  TaskList: undefined;
+  CreateTask: undefined;
+  TaskDetail: {
+    taskId: number;
+  };
+};
+
 // Main Tab Navigator
 export type MainTabParamList = {
   Chats: NavigatorScreenParams<ChatStackParamList>;
-  TaskList: undefined;
+  Tasks: NavigatorScreenParams<TaskStackParamList>;
   Calendar: undefined;
   PollList: undefined;
   Profile: undefined;

@@ -36,35 +36,107 @@ export const getTasks = async (
     offset: pagination?.offset || PAGINATION.DEFAULT_OFFSET,
   };
 
+  console.log('📋 Fetching tasks with params:', params);
+
   const response = await api.get<ApiResponse<PaginatedResponse<Task>>>(
     API_ENDPOINTS.TASK.LIST,
     { params }
   );
-  return response.data.data;
+
+  console.log('📋 Tasks response:', response.data);
+
+  // Handle different response formats from backend
+  if (response.data.data) {
+    return response.data.data;
+  } else if (Array.isArray(response.data)) {
+    // Server returns array directly
+    return {
+      data: response.data,
+      total: response.data.length,
+      limit: params.limit,
+      offset: params.offset,
+      hasMore: false,
+    };
+  } else if (response.data.tasks) {
+    // Server returns {tasks: [...], count: number}
+    return {
+      data: response.data.tasks,
+      total: response.data.count || response.data.tasks.length,
+      limit: params.limit,
+      offset: params.offset,
+      hasMore: response.data.tasks.length === params.limit,
+    };
+  }
+
+  // Fallback
+  return {
+    data: [],
+    total: 0,
+    limit: params.limit,
+    offset: params.offset,
+    hasMore: false,
+  };
 };
 
 /**
  * Create new task
  */
 export const createTask = async (data: CreateTaskDto): Promise<Task> => {
+  console.log('📋 Creating task:', data);
+
   const response = await api.post<ApiResponse<Task>>(API_ENDPOINTS.TASK.CREATE, data);
-  return response.data.data;
+
+  console.log('📋 Task created:', response.data);
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.task) {
+    return response.data.task;
+  }
+
+  // Server might return task directly
+  return response.data as any;
 };
 
 /**
  * Get task by ID
  */
 export const getTask = async (id: number): Promise<Task> => {
+  console.log('📋 Fetching task:', id);
+
   const response = await api.get<ApiResponse<Task>>(API_ENDPOINTS.TASK.BY_ID(id));
-  return response.data.data;
+
+  console.log('📋 Task response:', response.data);
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.task) {
+    return response.data.task;
+  }
+
+  return response.data as any;
 };
 
 /**
  * Update task
  */
 export const updateTask = async (id: number, data: UpdateTaskDto): Promise<Task> => {
+  console.log('📋 Updating task:', id, data);
+
   const response = await api.put<ApiResponse<Task>>(API_ENDPOINTS.TASK.UPDATE(id), data);
-  return response.data.data;
+
+  console.log('📋 Task updated:', response.data);
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.task) {
+    return response.data.task;
+  }
+
+  return response.data as any;
 };
 
 /**

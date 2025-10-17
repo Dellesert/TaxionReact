@@ -33,11 +33,11 @@ export const API_ENDPOINTS = {
     PROFILE_BY_ID: (id: number) => `/profile/${id}`,
     UPDATE_PASSWORD: '/profile/password',
     UPDATE_STATUS: '/profile/status',
-    LIST: '/users',
-    BY_ID: (id: number) => `/users/${id}`,
-    CREATE: '/users',
-    UPDATE: (id: number) => `/users/${id}`,
-    DELETE: (id: number) => `/users/${id}`,
+    LIST: '/users/',
+    BY_ID: (id: number) => `/users/${id}/`,
+    CREATE: '/users/',
+    UPDATE: (id: number) => `/users/${id}/`,
+    DELETE: (id: number) => `/users/${id}/`,
   },
 
   // Department
@@ -81,8 +81,8 @@ export const API_ENDPOINTS = {
 
   // Task
   TASK: {
-    LIST: '/tasks',
-    CREATE: '/tasks',
+    LIST: '/tasks/',
+    CREATE: '/tasks/',
     BY_ID: (id: number) => `/tasks/${id}`,
     UPDATE: (id: number) => `/tasks/${id}`,
     DELETE: (id: number) => `/tasks/${id}`,
