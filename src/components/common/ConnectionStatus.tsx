@@ -123,7 +123,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: '#3a3a3aff',
     borderRadius: 12,
   },
   compactText: {

@@ -215,10 +215,31 @@ export const getMessages = async (
     { params: queryParams }
   );
 
+  // Логируем сырой ответ с бэкенда
+  if (response.data.messages.length > 0) {
+    console.log('🔍 Raw backend message sample:', {
+      id: response.data.messages[0].id,
+      sender_id: response.data.messages[0].sender_id,
+      read_receipts: (response.data.messages[0] as any).read_receipts,
+      reactions: response.data.messages[0].reactions,
+    });
+  }
+
+  // Normalize messages to ensure all fields are present
+  const normalizedMessages = response.data.messages.map(msg => ({
+    ...msg,
+    message_type: (msg as any).type || msg.message_type || 'text',
+    attachments: msg.attachments || [],
+    reactions: msg.reactions || [],
+    read_receipts: (msg as any).read_receipts || [],
+    read_by: msg.read_by || [],
+    is_pinned: msg.is_pinned || false,
+  }));
+
   // Normalize response to match PaginatedResponse interface
   return {
-    data: response.data.messages,
-    messages: response.data.messages,
+    data: normalizedMessages,
+    messages: normalizedMessages,
     total: response.data.total,
     limit: response.data.limit,
     offset: response.data.offset,
@@ -273,7 +294,9 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
  * Mark message as read
  */
 export const markMessageRead = async (messageId: number): Promise<void> => {
+  console.log(`✅ Marking message ${messageId} as read`);
   await api.post(API_ENDPOINTS.MESSAGE.MARK_READ(messageId));
+  console.log(`✅ Message ${messageId} marked as read successfully`);
 };
 
 /**

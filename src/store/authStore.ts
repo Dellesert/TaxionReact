@@ -45,11 +45,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    */
   initialize: async () => {
     try {
+      console.log('🔄 Initializing auth from storage...');
       set({ isInitializing: true });
 
       // Load tokens from secure storage
       const accessToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
       const refreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+
+      console.log('🔑 Tokens loaded:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        accessTokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : null,
+      });
 
       if (accessToken && refreshToken) {
         const tokens: TokenPair = {
@@ -59,39 +66,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         set({ tokens });
 
-        // Load user data
-        try {
-          // In mock mode, load user from storage instead of API
-          if (isMockMode()) {
-            const storedUser = await secureStorage.getItemAsync(STORAGE_KEYS.USER_DATA);
-            if (storedUser) {
-              const user = JSON.parse(storedUser);
-              set({
-                user,
-                isAuthenticated: true,
-                isInitializing: false,
-              });
-            } else {
-              set({ isInitializing: false });
-            }
-          } else {
-            const user = await userApi.getProfile();
-            set({
-              user,
-              isAuthenticated: true,
-              isInitializing: false,
-            });
-          }
-        } catch (error) {
-          // Token might be expired, will be handled by axios interceptor
-          console.error('Failed to load user profile:', error);
-          set({ isInitializing: false });
+        // Load user data from storage (NOT from API)
+        // This prevents 404 errors when token hasn't been set in axios yet
+        const storedUser = await secureStorage.getItemAsync(STORAGE_KEYS.USER_DATA);
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          console.log('✅ Auth restored from storage:', user.email);
+          set({
+            user,
+            isAuthenticated: true,
+            isInitializing: false,
+          });
+        } else {
+          console.log('⚠️ No user data in storage');
+          // Clear tokens if user data is missing
+          await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+          await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+          set({ isInitializing: false, tokens: null });
         }
       } else {
+        console.log('⚠️ No tokens found in storage');
         set({ isInitializing: false });
       }
     } catch (error) {
-      console.error('Failed to initialize auth:', error);
+      console.error('❌ Failed to initialize auth:', error);
       set({ isInitializing: false });
     }
   },
@@ -113,7 +111,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         response = await authApi.login(credentials);
       }
 
+      console.log('📝 Login response received:', {
+        hasUser: !!response.user,
+        hasTokens: !!response.tokens,
+        hasAccessToken: !!response.tokens?.access_token,
+        hasRefreshToken: !!response.tokens?.refresh_token,
+      });
+
       // Store tokens in secure storage
+      console.log('💾 Saving tokens to storage...');
       await secureStorage.setItemAsync(
         STORAGE_KEYS.ACCESS_TOKEN,
         response.tokens.access_token
@@ -126,6 +132,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Store user data
       await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(response.user));
 
+      console.log('✅ Tokens saved successfully!');
+      console.log('🔑 Verifying saved tokens...');
+      const savedAccessToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      const savedRefreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+      console.log('✓ Verification:', {
+        accessTokenSaved: !!savedAccessToken,
+        refreshTokenSaved: !!savedRefreshToken,
+      });
+
       set({
         user: response.user,
         tokens: response.tokens,
@@ -133,6 +148,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch (error: any) {
+      console.error('❌ Login error:', error);
       set({
         error: error.message || 'Login failed',
         isLoading: false,

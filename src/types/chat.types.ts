@@ -34,6 +34,14 @@ export interface Reaction {
   created_at: ISODateString;
 }
 
+// Read Receipt Interface
+export interface ReadReceipt {
+  id: number;
+  message_id: number;
+  user_id: number;
+  read_at: ISODateString;
+}
+
 // Message Interface
 export interface Message {
   id: number;
@@ -49,6 +57,7 @@ export interface Message {
   is_deleted: boolean;
   attachments: Attachment[];
   reactions: Reaction[];
+  read_receipts?: ReadReceipt[];
   read_by: number[];
   created_at: ISODateString;
   updated_at: ISODateString;

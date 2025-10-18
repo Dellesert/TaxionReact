@@ -16,9 +16,11 @@ import { MessageItem } from '@components/chat/MessageItem';
 import { MessageInput } from '@components/chat/MessageInput';
 import { ChatMembersModal } from '@components/chat/ChatMembersModal';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
+import { UnreadMessagesBanner } from '@components/chat/UnreadMessagesBanner';
 import { useTheme } from '@hooks/useTheme';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
+import { useAuthStore } from '@store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ✅ ДОБАВЬ ЭТО
@@ -44,6 +46,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const setActiveChat = useChatStore((state) => state.setActiveChat);
   const markMessageRead = useChatStore((state) => state.markMessageRead);
   const sendMessage = useChatStore((state) => state.sendMessage);
+  const currentUser = useAuthStore((state) => state.user);
 
   // ✅ ДОБАВЬ ЭТО
   const headerHeight = useHeaderHeight();
@@ -52,6 +55,72 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const messages = useMemo(() => allMessages[chatIdNum] || [], [allMessages, chatIdNum]);
   const hasLoadedRef = useRef(false);
   const [membersModalVisible, setMembersModalVisible] = useState(false);
+
+  // Calculate first unread message index and total unread count
+  const { firstUnreadIndex, unreadCount } = useMemo(() => {
+    if (!currentUser || messages.length === 0) {
+      return { firstUnreadIndex: -1, unreadCount: 0 };
+    }
+
+    let firstIndex = -1;
+    let count = 0;
+
+    // Логируем структуру сообщений для отладки
+    if (messages.length > 0) {
+      console.log('📨 Messages info:', {
+        total: messages.length,
+        firstMsg: { id: messages[0].id, sender_id: messages[0].sender_id },
+        lastMsg: { id: messages[messages.length - 1].id, sender_id: messages[messages.length - 1].sender_id },
+        currentUserId: currentUser.id,
+      });
+
+      // Детальная информация о нескольких последних сообщениях
+      const lastFew = messages.slice(-5);
+      console.log('📨 Last 5 messages detail:', lastFew.map(m => ({
+        id: m.id,
+        sender_id: m.sender_id,
+        content: m.content.substring(0, 30),
+        read_receipts: m.read_receipts,
+        read_by: m.read_by,
+      })));
+    }
+
+    // Ищем первое непрочитанное сообщение
+    // Массив отсортирован от старых к новым (старые вверху [0], новые внизу [length-1])
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
+
+      // Message is unread if:
+      // 1. It's not sent by current user
+      // 2. Current user is not in read_receipts array
+      const readReceipts = message.read_receipts || [];
+      const hasReadReceipt = readReceipts.some((receipt) => receipt.user_id === currentUser.id);
+
+      const isUnread = message.sender_id !== currentUser.id && !hasReadReceipt;
+
+      // Логируем каждое непрочитанное сообщение
+      if (isUnread && count < 3) {
+        console.log(`🔴 Unread message #${count + 1}:`, {
+          index: i,
+          id: message.id,
+          sender_id: message.sender_id,
+          content: message.content.substring(0, 30),
+          readReceipts: readReceipts.length,
+          hasReadReceipt,
+        });
+      }
+
+      if (isUnread) {
+        if (firstIndex === -1) {
+          firstIndex = i; // Запоминаем индекс ПЕРВОГО непрочитанного (самого старого)
+        }
+        count++;
+      }
+    }
+
+    console.log(`📊 Unread messages: ${count}, first unread at index: ${firstIndex} (of ${messages.length})`);
+    return { firstUnreadIndex: firstIndex, unreadCount: count };
+  }, [messages, currentUser]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -109,23 +178,59 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [chatIdNum]); // ✅ ИСПРАВЛЕНИЕ: Удалены setError, getChatById, setActiveChat из dependencies
 
+  // Smart scroll: scroll to first unread message or to end
   useEffect(() => {
-  if (messages.length > 0) {
-    const id = requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: false }));
-    return () => cancelAnimationFrame(id);
-  }
-}, [messages.length]);
+    if (messages.length > 0 && !initialScrolled) {
+      // Wait for layout to be calculated
+      const scrollTimer = setTimeout(() => {
+        // Если непрочитанных много (>10) или они в самом начале чата,
+        // скорее всего они за пределами загруженных - скроллим в конец
+        const tooManyUnread = unreadCount > 10;
+        const unreadAtStart = firstUnreadIndex >= 0 && firstUnreadIndex < 5;
 
-  // Mark messages as read when entering chat
-  useEffect(() => {
-    if (messages.length > 0) {
-      // Mark the last message as read to indicate all messages in chat are read
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage) {
-        markMessageRead(lastMessage.id);
-      }
+        if (firstUnreadIndex >= 0 && unreadCount > 0 && !tooManyUnread && !unreadAtStart) {
+          // Scroll to first unread message - показать баннер и первое непрочитанное
+          console.log(`📜 Scrolling to first unread message at index ${firstUnreadIndex} (${unreadCount} unread)`);
+          listRef.current?.scrollToIndex({
+            index: firstUnreadIndex,
+            animated: false,
+            viewPosition: 0.2, // Показать баннер чуть выше середины экрана
+          });
+        } else {
+          // No unread messages OR too many unread OR unread at very start - scroll to end
+          const reason = unreadCount === 0 ? 'no unread' :
+                        tooManyUnread ? `too many unread (${unreadCount})` :
+                        'unread at start';
+          console.log(`📜 Scrolling to end (${reason})`);
+          listRef.current?.scrollToEnd({ animated: false });
+        }
+        setInitialScrolled(true);
+      }, 150);
+
+      return () => clearTimeout(scrollTimer);
+    } else if (messages.length > 0 && initialScrolled) {
+      // After initial scroll, only scroll to end for new messages
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToEnd({ animated: false });
+      });
     }
-  }, [chatIdNum, messages.length, markMessageRead]);
+  }, [messages.length, firstUnreadIndex, unreadCount, initialScrolled]);
+
+  // Mark messages as read when entering chat - WITH DELAY to show unread banner first
+  useEffect(() => {
+    if (messages.length > 0 && initialScrolled) {
+      // Задержка перед маркировкой как прочитанных - дать пользователю увидеть баннер
+      const markReadTimer = setTimeout(() => {
+        // Mark the last message as read to indicate all messages in chat are read
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage) {
+          markMessageRead(lastMessage.id);
+        }
+      }, 2000); // Задержка 2 секунды чтобы пользователь увидел баннер
+
+      return () => clearTimeout(markReadTimer);
+    }
+  }, [chatIdNum, messages.length, markMessageRead, initialScrolled]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) {
@@ -184,23 +289,34 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     <FlatList
       ref={listRef}
       data={messages}
-      renderItem={({ item }) => <MessageItem message={item} />}
+      renderItem={({ item, index }) => {
+        // Show banner only if we're scrolling to unread messages
+        const shouldShowBanner = index === firstUnreadIndex &&
+                                 unreadCount > 0 &&
+                                 unreadCount <= 10 &&
+                                 firstUnreadIndex >= 5;
+
+        return (
+          <>
+            {shouldShowBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
+            <MessageItem message={item} />
+          </>
+        );
+      }}
       keyExtractor={(item) => String(item.id)}
       contentContainerStyle={[
         styles.messagesList,
-        { paddingBottom: inputHeight + insets.bottom }, // 👈 место для инпута
+        { paddingBottom: inputHeight + insets.bottom },
       ]}
       inverted={false}
       keyboardShouldPersistTaps="handled"
       removeClippedSubviews={false}
-
-      // 👇 как только контент посчитан/обновился — уезжаем в самый низ
-      onContentSizeChange={() => {
-        if (messages.length === 0) return;
-        listRef.current?.scrollToEnd({ animated: false });
-        requestAnimationFrame(() => {
+      onScrollToIndexFailed={(info) => {
+        // Fallback: scroll to end if scrollToIndex fails
+        console.warn('scrollToIndex failed:', info);
+        setTimeout(() => {
           listRef.current?.scrollToEnd({ animated: false });
-        });
+        }, 100);
       }}
     />
 
