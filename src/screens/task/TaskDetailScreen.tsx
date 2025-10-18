@@ -14,6 +14,7 @@ import { Task, TaskComment } from '@types/task.types';
 import * as taskApi from '@api/task.api';
 import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
+import { useTheme } from '@hooks/useTheme';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -25,6 +26,7 @@ const TaskDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: TaskDetailRouteParams }, 'params'>>();
   const navigation = useNavigation();
   const { taskId } = route.params;
+  const { theme } = useTheme();
 
   const [task, setTask] = useState<Task | null>(null);
   const [comments, setComments] = useState<TaskComment[]>([]);
@@ -159,26 +161,145 @@ const TaskDetailScreen: React.FC = () => {
     new Date(task.due_date) < new Date() &&
     task.status !== 'completed';
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      backgroundColor: theme.backgroundSecondary,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      paddingTop: 60,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginLeft: 12,
+      flex: 1,
+      color: theme.text,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    card: {
+      backgroundColor: theme.card,
+      padding: 16,
+      marginBottom: 12,
+    },
+    taskTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginBottom: 12,
+    },
+    taskDescription: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      marginBottom: 16,
+      lineHeight: 24,
+    },
+    priorityBadge: {
+      backgroundColor: theme.backgroundTertiary,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      marginBottom: 8,
+    },
+    sectionTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textSecondary,
+      marginBottom: 12,
+    },
+    statusButtonInactive: {
+      backgroundColor: theme.backgroundTertiary,
+    },
+    statusButtonText: {
+      fontSize: 14,
+      color: theme.text,
+    },
+    infoLabel: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginLeft: 8,
+      marginRight: 8,
+    },
+    infoValue: {
+      fontSize: 14,
+      color: theme.text,
+      fontWeight: '500',
+      marginLeft: 8,
+    },
+    infoText: {
+      fontSize: 14,
+      color: theme.text,
+    },
+    commentInput: {
+      flex: 1,
+      backgroundColor: theme.input,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      fontSize: 16,
+      marginRight: 8,
+      minHeight: 40,
+      maxHeight: 100,
+      color: theme.text,
+    },
+    commentItem: {
+      flexDirection: 'row',
+      marginBottom: 12,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    commentAuthor: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    commentDate: {
+      fontSize: 12,
+      color: theme.textTertiary,
+    },
+    commentText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      lineHeight: 20,
+    },
+    emptyComments: {
+      fontSize: 14,
+      color: theme.textTertiary,
+      textAlign: 'center',
+      paddingVertical: 16,
+    },
+  });
+
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={dynamicStyles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Детали задачи</Text>
+        <Text style={dynamicStyles.headerTitle}>Детали задачи</Text>
         <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={24} color="#3B82F6" />
+          <Ionicons name="ellipsis-vertical" size={24} color={theme.info} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={dynamicStyles.scrollView}>
         {/* Task Info */}
-        <View style={styles.card}>
-          <Text style={styles.taskTitle}>{task.title}</Text>
+        <View style={dynamicStyles.card}>
+          <Text style={dynamicStyles.taskTitle}>{task.title}</Text>
 
           {task.description && (
-            <Text style={styles.taskDescription}>{task.description}</Text>
+            <Text style={dynamicStyles.taskDescription}>{task.description}</Text>
           )}
 
           <View style={styles.badgeContainer}>
@@ -186,7 +307,7 @@ const TaskDetailScreen: React.FC = () => {
               <Text style={styles.statusBadgeText}>{getStatusText(task.status)}</Text>
             </View>
 
-            <View style={styles.priorityBadge}>
+            <View style={dynamicStyles.priorityBadge}>
               <Text style={[styles.priorityBadgeText, { color: getPriorityColor(task.priority) }]}>
                 {getPriorityText(task.priority)}
               </Text>
@@ -195,8 +316,8 @@ const TaskDetailScreen: React.FC = () => {
         </View>
 
         {/* Quick Actions */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Изменить статус</Text>
+        <View style={dynamicStyles.card}>
+          <Text style={dynamicStyles.sectionTitle}>Изменить статус</Text>
           <View style={styles.statusButtonContainer}>
             {['pending', 'in_progress', 'completed', 'cancelled'].map((status) => (
               <TouchableOpacity
@@ -206,12 +327,12 @@ const TaskDetailScreen: React.FC = () => {
                   styles.statusButton,
                   task.status === status
                     ? { backgroundColor: getStatusColor(status) }
-                    : styles.statusButtonInactive,
+                    : dynamicStyles.statusButtonInactive,
                 ]}
               >
                 <Text
                   style={[
-                    styles.statusButtonText,
+                    dynamicStyles.statusButtonText,
                     task.status === status && styles.statusButtonTextActive,
                   ]}
                 >
@@ -223,23 +344,23 @@ const TaskDetailScreen: React.FC = () => {
         </View>
 
         {/* Details */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Информация</Text>
+        <View style={dynamicStyles.card}>
+          <Text style={dynamicStyles.sectionTitle}>Информация</Text>
 
           {task.assignee && (
             <View style={styles.infoRow}>
-              <Ionicons name="person-outline" size={20} color="#6B7280" />
-              <Text style={styles.infoLabel}>Исполнитель:</Text>
+              <Ionicons name="person-outline" size={20} color={theme.textSecondary} />
+              <Text style={dynamicStyles.infoLabel}>Исполнитель:</Text>
               <Avatar source={task.assignee.avatar} name={task.assignee.full_name || 'User'} size={24} />
-              <Text style={styles.infoValue}>{task.assignee.full_name}</Text>
+              <Text style={dynamicStyles.infoValue}>{task.assignee.full_name}</Text>
             </View>
           )}
 
           {task.project && (
             <View style={styles.infoRow}>
-              <Ionicons name="folder-outline" size={20} color="#6B7280" />
-              <Text style={styles.infoLabel}>Проект:</Text>
-              <Text style={styles.infoValue}>{task.project.name}</Text>
+              <Ionicons name="folder-outline" size={20} color={theme.textSecondary} />
+              <Text style={dynamicStyles.infoLabel}>Проект:</Text>
+              <Text style={dynamicStyles.infoValue}>{task.project.name}</Text>
             </View>
           )}
 
@@ -248,10 +369,10 @@ const TaskDetailScreen: React.FC = () => {
               <Ionicons
                 name="calendar-outline"
                 size={20}
-                color={isOverdue ? '#EF4444' : '#6B7280'}
+                color={isOverdue ? theme.error : theme.textSecondary}
               />
-              <Text style={styles.infoLabel}>Срок:</Text>
-              <Text style={[styles.infoValue, isOverdue && styles.overdueText]}>
+              <Text style={dynamicStyles.infoLabel}>Срок:</Text>
+              <Text style={[dynamicStyles.infoValue, isOverdue && styles.overdueText]}>
                 {format(new Date(task.due_date), 'dd MMMM yyyy, HH:mm', { locale: ru })}
                 {isOverdue && ' (просрочено)'}
               </Text>
@@ -259,27 +380,27 @@ const TaskDetailScreen: React.FC = () => {
           )}
 
           <View style={styles.infoRow}>
-            <Ionicons name="time-outline" size={20} color="#6B7280" />
-            <Text style={styles.infoLabel}>Создано:</Text>
-            <Text style={styles.infoText}>
+            <Ionicons name="time-outline" size={20} color={theme.textSecondary} />
+            <Text style={dynamicStyles.infoLabel}>Создано:</Text>
+            <Text style={dynamicStyles.infoText}>
               {format(new Date(task.created_at), 'dd MMMM yyyy, HH:mm', { locale: ru })}
             </Text>
           </View>
         </View>
 
         {/* Comments */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Комментарии ({comments.length})</Text>
+        <View style={dynamicStyles.card}>
+          <Text style={dynamicStyles.sectionTitle}>Комментарии ({comments.length})</Text>
 
           {/* Add Comment */}
           <View style={styles.commentInputContainer}>
             <TextInput
-              style={styles.commentInput}
+              style={dynamicStyles.commentInput}
               placeholder="Добавить комментарий..."
               value={newComment}
               onChangeText={setNewComment}
               multiline
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={theme.inputPlaceholder}
             />
             <TouchableOpacity
               onPress={handleSendComment}
@@ -295,7 +416,7 @@ const TaskDetailScreen: React.FC = () => {
 
           {/* Comments List */}
           {comments.map((comment) => (
-            <View key={comment.id} style={styles.commentItem}>
+            <View key={comment.id} style={dynamicStyles.commentItem}>
               <Avatar
                 source={comment.author.avatar}
                 name={comment.author.full_name || 'User'}
@@ -303,18 +424,18 @@ const TaskDetailScreen: React.FC = () => {
               />
               <View style={styles.commentContent}>
                 <View style={styles.commentHeader}>
-                  <Text style={styles.commentAuthor}>{comment.author.full_name}</Text>
-                  <Text style={styles.commentDate}>
+                  <Text style={dynamicStyles.commentAuthor}>{comment.author.full_name}</Text>
+                  <Text style={dynamicStyles.commentDate}>
                     {format(new Date(comment.created_at), 'dd.MM.yyyy HH:mm')}
                   </Text>
                 </View>
-                <Text style={styles.commentText}>{comment.content}</Text>
+                <Text style={dynamicStyles.commentText}>{comment.content}</Text>
               </View>
             </View>
           ))}
 
           {comments.length === 0 && (
-            <Text style={styles.emptyComments}>Комментариев пока нет</Text>
+            <Text style={dynamicStyles.emptyComments}>Комментариев пока нет</Text>
           )}
         </View>
       </ScrollView>
@@ -323,47 +444,6 @@ const TaskDetailScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 12,
-    flex: 1,
-    color: '#111827',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    marginBottom: 12,
-  },
-  taskTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  taskDescription: {
-    fontSize: 16,
-    color: '#374151',
-    marginBottom: 16,
-    lineHeight: 24,
-  },
   badgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -381,22 +461,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  priorityBadge: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginBottom: 8,
-  },
   priorityBadgeText: {
     fontSize: 14,
     fontWeight: '500',
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 12,
   },
   statusButtonContainer: {
     flexDirection: 'row',
@@ -409,13 +476,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
   },
-  statusButtonInactive: {
-    backgroundColor: '#F3F4F6',
-  },
-  statusButtonText: {
-    fontSize: 14,
-    color: '#374151',
-  },
   statusButtonTextActive: {
     color: '#FFFFFF',
     fontWeight: '600',
@@ -425,22 +485,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  infoLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginLeft: 8,
-    marginRight: 8,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#111827',
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#111827',
-  },
   overdueText: {
     color: '#DC2626',
   },
@@ -448,17 +492,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  commentInput: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    marginRight: 8,
-    minHeight: 40,
-    maxHeight: 100,
   },
   sendButton: {
     width: 40,
@@ -473,13 +506,6 @@ const styles = StyleSheet.create({
   sendButtonInactive: {
     backgroundColor: '#D1D5DB',
   },
-  commentItem: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
   commentContent: {
     flex: 1,
     marginLeft: 12,
@@ -489,26 +515,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
-  },
-  commentAuthor: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  commentDate: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  commentText: {
-    fontSize: 14,
-    color: '#374151',
-    lineHeight: 20,
-  },
-  emptyComments: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingVertical: 16,
   },
 });
 

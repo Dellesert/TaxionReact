@@ -16,6 +16,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@hooks/useTheme';
 import { User } from '@types/user.types';
 import { ChatMember } from '@types/chat.types';
 import { getChatMembers, addChatMembers } from '@api/chat.api';
@@ -33,6 +34,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   chatId,
   onClose,
 }) => {
+  const { theme } = useTheme();
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
@@ -213,23 +215,113 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       })
     : (members || []);
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      backgroundColor: theme.background,
+    },
+    header: {
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomColor: theme.border,
+    },
+    closeButton: {},
+    headerTitle: {
+      color: theme.text,
+    },
+    addButton: {
+      backgroundColor: theme.primary,
+    },
+    addButtonDisabled: {
+      backgroundColor: theme.borderLight,
+    },
+    memberCount: {
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomColor: theme.border,
+    },
+    memberCountText: {
+      color: theme.textSecondary,
+    },
+    selectedCount: {
+      backgroundColor: theme.primaryLight,
+    },
+    selectedCountText: {
+      color: theme.primary,
+    },
+    searchContainer: {
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomColor: theme.border,
+    },
+    searchInput: {
+      color: theme.text,
+    },
+    memberItem: {
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomColor: theme.borderLight,
+    },
+    userItem: {
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomColor: theme.borderLight,
+    },
+    userItemSelected: {
+      backgroundColor: theme.primaryLight,
+    },
+    avatar: {
+      backgroundColor: theme.backgroundTertiary,
+    },
+    avatarText: {
+      color: theme.textSecondary,
+    },
+    statusDot: {},
+    memberName: {
+      color: theme.text,
+    },
+    memberEmail: {
+      color: theme.textSecondary,
+    },
+    memberPosition: {
+      color: theme.textTertiary,
+    },
+    checkbox: {
+      borderColor: theme.border,
+    },
+    checkboxSelected: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    loadingText: {
+      color: theme.textSecondary,
+    },
+    emptyText: {
+      color: theme.textTertiary,
+    },
+    footer: {
+      backgroundColor: theme.backgroundSecondary,
+      borderTopColor: theme.border,
+    },
+    cancelButton: {
+      backgroundColor: theme.backgroundTertiary,
+    },
+    cancelButtonText: {
+      color: theme.textSecondary,
+    },
+  });
+
   const renderMemberItem = ({ item }: { item: ChatMember }) => {
     const user = item.user;
     if (!user) return null;
 
     return (
-      <View style={styles.memberItem}>
+      <View style={[styles.memberItem, dynamicStyles.memberItem]}>
         <View style={styles.memberInfo}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
+            <View style={[styles.avatar, dynamicStyles.avatar]}>
+              <Text style={[styles.avatarText, dynamicStyles.avatarText]}>{getInitials(user.name)}</Text>
             </View>
             <View style={[styles.statusDot, { backgroundColor: getStatusColor(user.status) }]} />
           </View>
           <View style={styles.memberDetails}>
-            <Text style={styles.memberName}>{user.name}</Text>
-            <Text style={styles.memberEmail}>{user.email}</Text>
-            {user.position && <Text style={styles.memberPosition}>{user.position}</Text>}
+            <Text style={[styles.memberName, dynamicStyles.memberName]}>{user.name}</Text>
+            <Text style={[styles.memberEmail, dynamicStyles.memberEmail]}>{user.email}</Text>
+            {user.position && <Text style={[styles.memberPosition, dynamicStyles.memberPosition]}>{user.position}</Text>}
           </View>
         </View>
         <View style={[styles.roleBadge, { backgroundColor: getRoleBadgeColor(item.role) }]}>
@@ -244,23 +336,23 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
     return (
       <TouchableOpacity
-        style={[styles.userItem, isSelected && styles.userItemSelected]}
+        style={[styles.userItem, dynamicStyles.userItem, isSelected && [styles.userItemSelected, dynamicStyles.userItemSelected]]}
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.memberInfo}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
+            <View style={[styles.avatar, dynamicStyles.avatar]}>
+              <Text style={[styles.avatarText, dynamicStyles.avatarText]}>{getInitials(item.name)}</Text>
             </View>
             <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
           </View>
           <View style={styles.memberDetails}>
-            <Text style={styles.memberName}>{item.name}</Text>
-            <Text style={styles.memberEmail}>{item.email}</Text>
-            {item.position && <Text style={styles.memberPosition}>{item.position}</Text>}
+            <Text style={[styles.memberName, dynamicStyles.memberName]}>{item.name}</Text>
+            <Text style={[styles.memberEmail, dynamicStyles.memberEmail]}>{item.email}</Text>
+            {item.position && <Text style={[styles.memberPosition, dynamicStyles.memberPosition]}>{item.position}</Text>}
           </View>
         </View>
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+        <View style={[styles.checkbox, dynamicStyles.checkbox, isSelected && [styles.checkboxSelected, dynamicStyles.checkboxSelected]]}>
           {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
         </View>
       </TouchableOpacity>
@@ -269,13 +361,13 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <View style={[styles.container, dynamicStyles.container]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, dynamicStyles.header]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#111827" />
+            <Ionicons name="close" size={24} color={theme.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>
             {isAddingMode ? 'Добавить участников' : 'Участники чата'}
           </Text>
           {isAddingMode ? (
@@ -284,7 +376,8 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
               disabled={isAdding || selectedUsers.length === 0}
               style={[
                 styles.addButton,
-                selectedUsers.length === 0 && styles.addButtonDisabled,
+                dynamicStyles.addButton,
+                selectedUsers.length === 0 && [styles.addButtonDisabled, dynamicStyles.addButtonDisabled],
               ]}
             >
               {isAdding ? (
@@ -295,7 +388,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={handleAddMode} style={styles.addIconButton}>
-              <Ionicons name="person-add" size={24} color="#E94444" />
+              <Ionicons name="person-add" size={24} color={theme.primary} />
             </TouchableOpacity>
           )}
         </View>
@@ -303,15 +396,15 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
         {/* Member count or selected count */}
         {isAddingMode ? (
           selectedUsers.length > 0 && (
-            <View style={styles.selectedCount}>
-              <Ionicons name="people" size={20} color="#E94444" />
-              <Text style={styles.selectedCountText}>Выбрано: {selectedUsers.length}</Text>
+            <View style={[styles.selectedCount, dynamicStyles.selectedCount]}>
+              <Ionicons name="people" size={20} color={theme.primary} />
+              <Text style={[styles.selectedCountText, dynamicStyles.selectedCountText]}>Выбрано: {selectedUsers.length}</Text>
             </View>
           )
         ) : (
-          <View style={styles.memberCount}>
-            <Ionicons name="people" size={20} color="#6B7280" />
-            <Text style={styles.memberCountText}>
+          <View style={[styles.memberCount, dynamicStyles.memberCount]}>
+            <Ionicons name="people" size={20} color={theme.textSecondary} />
+            <Text style={[styles.memberCountText, dynamicStyles.memberCountText]}>
               {members?.length || 0} {(members?.length || 0) === 1 ? 'участник' : 'участников'}
             </Text>
           </View>
@@ -319,18 +412,18 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
         {/* Search */}
         {isAddingMode && (
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#9CA3AF" />
+          <View style={[styles.searchContainer, dynamicStyles.searchContainer]}>
+            <Ionicons name="search" size={20} color={theme.textTertiary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, dynamicStyles.searchInput]}
               placeholder="Поиск пользователей..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={theme.inputPlaceholder}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
@@ -339,8 +432,8 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
         {/* List */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#E94444" />
-            <Text style={styles.loadingText}>Загрузка...</Text>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Загрузка...</Text>
           </View>
         ) : (
           <FlatList
@@ -352,8 +445,8 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={64} color="#D1D5DB" />
-                <Text style={styles.emptyText}>
+                <Ionicons name="people-outline" size={64} color={theme.borderLight} />
+                <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
                   {isAddingMode ? 'Нет пользователей для добавления' : 'Нет участников'}
                 </Text>
               </View>
@@ -363,9 +456,9 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
         {/* Cancel button in add mode */}
         {isAddingMode && (
-          <View style={styles.footer}>
-            <TouchableOpacity onPress={handleCancelAdd} style={styles.cancelButton}>
-              <Text style={styles.cancelButtonText}>Отмена</Text>
+          <View style={[styles.footer, dynamicStyles.footer]}>
+            <TouchableOpacity onPress={handleCancelAdd} style={[styles.cancelButton, dynamicStyles.cancelButton]}>
+              <Text style={[styles.cancelButtonText, dynamicStyles.cancelButtonText]}>Отмена</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -377,17 +470,14 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 60,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   closeButton: {
     padding: 4,
@@ -396,22 +486,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     marginLeft: 12,
   },
   addIconButton: {
     padding: 4,
   },
   addButton: {
-    backgroundColor: '#E94444',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     minWidth: 80,
     alignItems: 'center',
-  },
-  addButtonDisabled: {
-    backgroundColor: '#D1D5DB',
   },
   addButtonText: {
     color: 'white',
@@ -421,22 +506,18 @@ const styles = StyleSheet.create({
   memberCount: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   memberCountText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
   },
   selectedCount: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
     paddingHorizontal: 16,
     paddingVertical: 8,
     gap: 8,
@@ -444,22 +525,18 @@ const styles = StyleSheet.create({
   selectedCountText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#E94444',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
-    color: '#111827',
   },
   listContent: {
     paddingVertical: 8,
@@ -468,24 +545,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  userItemSelected: {
-    backgroundColor: '#FEF2F2',
   },
   memberInfo: {
     flexDirection: 'row',
@@ -499,14 +569,12 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6B7280',
   },
   statusDot: {
     position: 'absolute',
@@ -525,16 +593,13 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 2,
   },
   memberEmail: {
     fontSize: 14,
-    color: '#6B7280',
   },
   memberPosition: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginTop: 2,
   },
   roleBadge: {
@@ -552,13 +617,8 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  checkboxSelected: {
-    backgroundColor: '#E94444',
-    borderColor: '#E94444',
   },
   loadingContainer: {
     flex: 1,
@@ -569,7 +629,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -578,18 +637,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9CA3AF',
     marginTop: 16,
   },
   footer: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
   },
   cancelButton: {
-    backgroundColor: '#F3F4F6',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -597,6 +652,5 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
   },
 });

@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTheme } from '@hooks/useTheme';
 import { ChatStackParamList } from './types';
 import ChatListScreen from '@screens/chat/ChatListScreen';
 import CreateChatScreen from '@screens/chat/CreateChatScreen';
@@ -13,16 +14,19 @@ import ChatScreen from '@screens/chat/ChatScreen';
 const Stack = createNativeStackNavigator<ChatStackParamList>();
 
 const ChatNavigator: React.FC = () => {
+  const { theme } = useTheme();
+
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: theme.backgroundSecondary,
         },
-        headerTintColor: '#1F2937',
+        headerTintColor: theme.text,
         headerTitleStyle: {
           fontWeight: '600',
           fontSize: 18,
+          color: theme.text,
         },
         headerShadowVisible: true,
       }}

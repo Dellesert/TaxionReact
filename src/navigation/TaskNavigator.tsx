@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTheme } from '@hooks/useTheme';
 import { TaskStackParamList } from './types';
 import TaskListScreen from '@screens/task/TaskListScreen';
 import CreateTaskScreen from '@screens/task/CreateTaskScreen';
@@ -13,16 +14,19 @@ import TaskDetailScreen from '@screens/task/TaskDetailScreen';
 const Stack = createNativeStackNavigator<TaskStackParamList>();
 
 const TaskNavigator: React.FC = () => {
+  const { theme } = useTheme();
+
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: theme.backgroundSecondary,
         },
-        headerTintColor: '#1F2937',
+        headerTintColor: theme.text,
         headerTitleStyle: {
           fontWeight: '600',
           fontSize: 18,
+          color: theme.text,
         },
         headerShadowVisible: true,
       }}

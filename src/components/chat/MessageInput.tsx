@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@hooks/useTheme';
 
 interface MessageInputProps {
   onSend: (message: string) => void;
@@ -20,6 +21,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onTyping,
   disabled = false,
 }) => {
+  const { theme } = useTheme();
   const [message, setMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -59,20 +61,40 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      backgroundColor: theme.backgroundSecondary,
+      borderTopColor: theme.border,
+    },
+    attachButton: {
+      // Icon color handled inline
+    },
+    input: {
+      backgroundColor: theme.input,
+      color: theme.text,
+    },
+    sendButton: {
+      backgroundColor: theme.primary,
+    },
+    sendButtonDisabled: {
+      backgroundColor: theme.backgroundTertiary,
+    },
+  });
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, dynamicStyles.container]}>
         <TouchableOpacity style={styles.attachButton} disabled={disabled}>
-          <Ionicons name="attach" size={24} color="#9CA3AF" />
+          <Ionicons name="attach" size={24} color={theme.textTertiary} />
         </TouchableOpacity>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, dynamicStyles.input]}
           placeholder="Введите сообщение..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={theme.inputPlaceholder}
           value={message}
           onChangeText={handleChangeText}
           multiline
@@ -82,14 +104,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         />
 
         <TouchableOpacity
-          style={[styles.sendButton, !message.trim() && styles.sendButtonDisabled]}
+          style={[styles.sendButton, dynamicStyles.sendButton, !message.trim() && dynamicStyles.sendButtonDisabled]}
           onPress={handleSend}
           disabled={disabled || !message.trim()}
         >
           <Ionicons
             name="send"
             size={20}
-            color={message.trim() ? '#FFFFFF' : '#9CA3AF'}
+            color={message.trim() ? '#FFFFFF' : theme.textTertiary}
           />
         </TouchableOpacity>
       </View>
@@ -104,9 +126,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
     paddingTop: 8,
-    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
   },
   attachButton: {
     padding: 8,
@@ -116,25 +136,19 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
     maxHeight: 100,
-    color: '#1F2937',
   },
   sendButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E94444',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#F3F4F6',
   },
 });
 

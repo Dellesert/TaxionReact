@@ -28,6 +28,7 @@ interface ChatState {
   addReaction: (messageId: number, emoji: string) => Promise<void>;
   removeReaction: (messageId: number, emoji: string) => Promise<void>;
   markMessageRead: (messageId: number) => Promise<void>;
+  markChatAsRead: (chatId: number) => Promise<void>;
   pinChat: (chatId: number) => Promise<void>;
   unpinChat: (chatId: number) => Promise<void>;
   muteChat: (chatId: number) => Promise<void>;
@@ -149,34 +150,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (chatId: number, content: string, replyToId?: number) => {
-  try {
-    if (!content.trim()) throw new Error('Message content cannot be empty');
+    try {
+      if (!content.trim()) throw new Error('Message content cannot be empty');
 
-    if (websocketService.isConnected()) {
-      websocketService.send({
-        type: 'new_message', // <- важно
-        chat_id: chatId,
-        data: {
-          content: content.trim(),
-          type: 'text',
-          reply_to_id: replyToId || null, // если нужно
-        },
+      // Send message through API (not WebSocket)
+      // Server will broadcast it to all WebSocket clients
+      const message = await chatApi.sendMessage(chatId, {
+        content: content.trim(),
+        reply_to_id: replyToId,
       });
+
+      // Handle new message locally
+      get().handleNewMessage(message);
+
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to send message' });
+      throw error;
     }
-
-    // Также сохраняем через API
-    const message = await chatApi.sendMessage(chatId, {
-      content: content.trim(),
-      reply_to_id: replyToId,
-    });
-
-    get().handleNewMessage(message);
-
-  } catch (error: any) {
-    set({ error: error.message || 'Failed to send message' });
-    throw error;
-  }
-},
+  },
 
   updateMessage: async (messageId: number, content: string) => {
     try {
@@ -244,6 +235,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  markChatAsRead: async (chatId: number) => {
+    try {
+      await chatApi.markChatAsRead(chatId);
+      // Update unread count in state
+      set((state) => ({
+        chats: state.chats.map((chat) =>
+          chat.id === chatId ? { ...chat, unread_count: 0 } : chat
+        ),
+      }));
+    } catch (error: any) {
+      console.error('Failed to mark chat as read:', error);
+    }
+  },
+
   pinChat: async (chatId: number) => {
     try {
       const updatedChat = await chatApi.pinChat(chatId);
@@ -299,9 +304,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const existingMessages = state.messages[message.chat_id] || [];
       const messageExists = existingMessages.some((msg) => msg.id === message.id);
 
-      if (messageExists) {
-        console.log('⚠️ Duplicate message detected, skipping:', message.id);
-        return state; // Skip processing duplicate message
+      // ✅ ИСПРАВЛЕНИЕ: Пропускаем дубликат только для собственных сообщений
+      // Для чужих сообщений - всегда добавляем (может придти через WebSocket broadcast)
+      if (messageExists && isOwnMessage) {
+        console.log('⚠️ Duplicate own message detected, skipping:', message.id);
+        return state; // Skip processing duplicate message only for own messages
       }
 
       // Add message to messages list

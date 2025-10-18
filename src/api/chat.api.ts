@@ -273,7 +273,14 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
  * Mark message as read
  */
 export const markMessageRead = async (messageId: number): Promise<void> => {
-  await api.put(API_ENDPOINTS.MESSAGE.MARK_READ(messageId));
+  await api.post(API_ENDPOINTS.MESSAGE.MARK_READ(messageId));
+};
+
+/**
+ * Mark all messages in chat as read
+ */
+export const markChatAsRead = async (chatId: number): Promise<void> => {
+  await api.post(API_ENDPOINTS.MESSAGE.MARK_CHAT_READ(chatId));
 };
 
 /**

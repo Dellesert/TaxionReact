@@ -7,13 +7,16 @@ import {
   Switch,
   Alert,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
+import { useTheme } from '@hooks/useTheme';
 
 const ProfileScreen: React.FC = () => {
   const { user, logout } = useAuthStore();
+  const { theme, mode, isDark, toggleTheme } = useTheme();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [notifications, setNotifications] = useState({
     push: true,
@@ -24,6 +27,18 @@ const ProfileScreen: React.FC = () => {
   });
 
   const handleLogout = async () => {
+  if (Platform.OS === 'web') {
+    // Веб: просто выполняем выход
+    try {
+      setIsLoggingOut(true);
+      await logout();
+    } catch (error) {
+      console.error('Ошибка при выходе:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  } else {
+    // Мобильные платформы: показываем диалог подтверждения
     Alert.alert('Выход', 'Вы уверены, что хотите выйти?', [
       { text: 'Отмена', style: 'cancel' },
       {
@@ -41,7 +56,8 @@ const ProfileScreen: React.FC = () => {
         },
       },
     ]);
-  };
+  }
+};
 
   const handleToggleNotification = (key: keyof typeof notifications, value: boolean) => {
     setNotifications((prev) => ({ ...prev, [key]: value }));
@@ -51,167 +67,231 @@ const ProfileScreen: React.FC = () => {
     return null;
   }
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      backgroundColor: theme.backgroundSecondary,
+      paddingHorizontal: 16,
+      paddingTop: 60,
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.text,
+    },
+    userInfoSection: {
+      backgroundColor: theme.backgroundSecondary,
+      padding: 16,
+      marginBottom: 12,
+      alignItems: 'center',
+    },
+    userName: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginTop: 16,
+    },
+    userEmail: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      marginTop: 4,
+    },
+    departmentBadge: {
+      backgroundColor: theme.primaryLight,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 16,
+      marginTop: 8,
+    },
+    departmentText: {
+      fontSize: 14,
+      color: theme.primary,
+      fontWeight: '500',
+    },
+    userPosition: {
+      fontSize: 14,
+      color: theme.textTertiary,
+      marginTop: 8,
+    },
+    section: {
+      backgroundColor: theme.backgroundSecondary,
+      marginBottom: 12,
+    },
+    sectionHeader: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    sectionTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    menuItemLast: {
+      borderBottomWidth: 0,
+    },
+    menuItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    menuItemText: {
+      flex: 1,
+      marginLeft: 12,
+      fontSize: 16,
+      color: theme.text,
+    },
+    menuItemValue: {
+      fontSize: 14,
+      color: theme.textTertiary,
+      marginRight: 8,
+    },
+    logoutContainer: {
+      paddingHorizontal: 16,
+      marginBottom: 32,
+    },
+    logoutButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      paddingVertical: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    logoutButtonDisabled: {
+      opacity: 0.6,
+    },
+    logoutButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+    versionInfo: {
+      alignItems: 'center',
+      paddingBottom: 24,
+    },
+    versionText: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginTop: 4,
+    },
+  });
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={dynamicStyles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Профиль</Text>
+      <View style={dynamicStyles.header}>
+        <Text style={dynamicStyles.headerTitle}>Профиль</Text>
       </View>
 
       {/* User Info */}
-      <View style={styles.userInfoSection}>
+      <View style={dynamicStyles.userInfoSection}>
         <Avatar uri={user.avatar} name={user.full_name || user.email} size={100} />
-        <Text style={styles.userName}>{user.full_name || 'Без имени'}</Text>
-        <Text style={styles.userEmail}>{user.email}</Text>
+        <Text style={dynamicStyles.userName}>{user.full_name || 'Без имени'}</Text>
+        <Text style={dynamicStyles.userEmail}>{user.email}</Text>
         {user.department && (
-          <View style={styles.departmentBadge}>
-            <Text style={styles.departmentText}>{user.department.name}</Text>
+          <View style={dynamicStyles.departmentBadge}>
+            <Text style={dynamicStyles.departmentText}>{user.department.name}</Text>
           </View>
         )}
-        {user.position && <Text style={styles.userPosition}>{user.position}</Text>}
+        {user.position && <Text style={dynamicStyles.userPosition}>{user.position}</Text>}
       </View>
 
       {/* Account Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Настройки аккаунта</Text>
+      <View style={dynamicStyles.section}>
+        <View style={dynamicStyles.sectionHeader}>
+          <Text style={dynamicStyles.sectionTitle}>Настройки аккаунта</Text>
         </View>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="person-outline" size={24} color="#E94444" />
-          <Text style={styles.menuItemText}>Редактировать профиль</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <TouchableOpacity style={dynamicStyles.menuItem}>
+          <Ionicons name="person-outline" size={24} color={theme.primary} />
+          <Text style={dynamicStyles.menuItemText}>Редактировать профиль</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="lock-closed-outline" size={24} color="#E94444" />
-          <Text style={styles.menuItemText}>Изменить пароль</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <TouchableOpacity style={dynamicStyles.menuItem}>
+          <Ionicons name="lock-closed-outline" size={24} color={theme.primary} />
+          <Text style={dynamicStyles.menuItemText}>Изменить пароль</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]}>
-          <Ionicons name="shield-checkmark-outline" size={24} color="#E94444" />
-          <Text style={styles.menuItemText}>Безопасность</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Notification Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Уведомления</Text>
-        </View>
-
-        <View style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="notifications-outline" size={24} color="#E94444" />
-            <Text style={styles.menuItemText}>Push-уведомления</Text>
+        <View style={dynamicStyles.menuItem}>
+          <View style={dynamicStyles.menuItemLeft}>
+            <Ionicons name="notifications-outline" size={24} color={theme.primary} />
+            <Text style={dynamicStyles.menuItemText}>Push-уведомления</Text>
           </View>
           <Switch
             value={notifications.push}
             onValueChange={(value) => handleToggleNotification('push', value)}
-            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
-            thumbColor={notifications.push ? '#E94444' : '#F3F4F6'}
-          />
-        </View>
-
-        <View style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="mail-outline" size={24} color="#E94444" />
-            <Text style={styles.menuItemText}>Email-уведомления</Text>
-          </View>
-          <Switch
-            value={notifications.email}
-            onValueChange={(value) => handleToggleNotification('email', value)}
-            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
-            thumbColor={notifications.email ? '#E94444' : '#ffffffff'}
-          />
-        </View>
-
-        <View style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="chatbox-outline" size={24} color="#E94444" />
-            <Text style={styles.menuItemText}>Новые сообщения</Text>
-          </View>
-          <Switch
-            value={notifications.messages}
-            onValueChange={(value) => handleToggleNotification('messages', value)}
-            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
-            thumbColor={notifications.messages ? '#E94444' : '#F3F4F6'}
-          />
-        </View>
-
-        <View style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="at-outline" size={24} color="#E94444" />
-            <Text style={styles.menuItemText}>Упоминания</Text>
-          </View>
-          <Switch
-            value={notifications.mentions}
-            onValueChange={(value) => handleToggleNotification('mentions', value)}
-            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
-            thumbColor={notifications.mentions ? '#E94444' : '#F3F4F6'}
-          />
-        </View>
-
-        <View style={[styles.menuItem, styles.menuItemLast]}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="checkmark-circle-outline" size={24} color="#E94444" />
-            <Text style={styles.menuItemText}>Задачи</Text>
-          </View>
-          <Switch
-            value={notifications.tasks}
-            onValueChange={(value) => handleToggleNotification('tasks', value)}
-            trackColor={{ false: '#D1D5DB', true: '#efefefff' }}
-            thumbColor={notifications.tasks ? '#E94444' : '#F3F4F6'}
+            trackColor={{ false: '#D1D5DB', true: theme.primaryLight }}
+            thumbColor={notifications.push ? theme.primary : '#F3F4F6'}
           />
         </View>
       </View>
 
       {/* App Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Приложение</Text>
+      <View style={dynamicStyles.section}>
+        <View style={dynamicStyles.sectionHeader}>
+          <Text style={dynamicStyles.sectionTitle}>Приложение</Text>
         </View>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="color-palette-outline" size={24} color="#E94444" />
-          <Text style={styles.menuItemText}>Тема оформления</Text>
-          <Text style={styles.menuItemValue}>Светлая</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <View style={dynamicStyles.menuItem}>
+          <View style={dynamicStyles.menuItemLeft}>
+            <Ionicons name="color-palette-outline" size={24} color={theme.primary} />
+            <Text style={dynamicStyles.menuItemText}>Темная тема</Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            trackColor={{ false: '#D1D5DB', true: '#4B5563' }}
+            thumbColor={isDark ? theme.primary : '#F3F4F6'}
+          />
+        </View>
+
+        <TouchableOpacity style={dynamicStyles.menuItem}>
+          <Ionicons name="language-outline" size={24} color={theme.primary} />
+          <Text style={dynamicStyles.menuItemText}>Язык</Text>
+          <Text style={dynamicStyles.menuItemValue}>Русский</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="language-outline" size={24} color="#E94444" />
-          <Text style={styles.menuItemText}>Язык</Text>
-          <Text style={styles.menuItemValue}>Русский</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]}>
-          <Ionicons name="information-circle-outline" size={24} color="#E94444" />
-          <Text style={styles.menuItemText}>О приложении</Text>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <TouchableOpacity style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
+          <Ionicons name="information-circle-outline" size={24} color={theme.primary} />
+          <Text style={dynamicStyles.menuItemText}>О приложении</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
       </View>
 
       {/* Logout Button */}
-      <View style={styles.logoutContainer}>
+      <View style={dynamicStyles.logoutContainer}>
         <TouchableOpacity
-          style={[styles.logoutButton, isLoggingOut && styles.logoutButtonDisabled]}
+          style={[dynamicStyles.logoutButton, isLoggingOut && dynamicStyles.logoutButtonDisabled]}
           onPress={handleLogout}
           disabled={isLoggingOut}
         >
-          <Text style={styles.logoutButtonText}>
+          <Text style={dynamicStyles.logoutButtonText}>
             {isLoggingOut ? 'Выход...' : 'Выйти из аккаунта'}
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Version Info */}
-      <View style={styles.versionInfo}>
-        <Text style={styles.versionText}>Версия 1.0.0</Text>
-        <Text style={styles.versionText}>© 2025 Tachyon Messenger</Text>
+      <View style={dynamicStyles.versionInfo}>
+        <Text style={dynamicStyles.versionText}>Версия 1.0.0</Text>
+        <Text style={dynamicStyles.versionText}>© 2025 Tachyon Messenger</Text>
       </View>
     </ScrollView>
   );

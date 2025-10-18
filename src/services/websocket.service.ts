@@ -199,8 +199,9 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
    * Handle WebSocket open
    */
   private handleOpen(event: Event): void {
-    console.log('✅ WebSocket connected');
+    console.log('✅ WebSocket connected successfully');
     this.reconnectAttempts = 0;
+    this.isIntentionalClose = false;
 
     // Start heartbeat
     this.startHeartbeat();
@@ -346,12 +347,10 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'ping':
-          console.log('🏓 Server ping received - replying pong');
-          this.send({ type: 'pong', chat_id: 0, data: {} });
-          break;
-
         case 'pong':
-          console.log('🏓 Pong received');
+          // WebSocket ping/pong frames are handled automatically by the browser
+          // If we receive these as JSON messages, just log them
+          console.log('🏓 Ping/Pong message (handled automatically)');
           break;
 
         default:
@@ -397,16 +396,41 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
   /**
    * Start heartbeat to keep connection alive
-   * Note: Server sends 'ping', client responds with 'pong' (handled in handleMessage)
+   * Note: Browser automatically responds to WebSocket ping/pong control frames
+   * This heartbeat just monitors connection state
    */
   private startHeartbeat(): void {
+    // Clear existing interval if any
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+
+    // Monitor connection state every 20 seconds (less than backend's 54s ping period)
     this.heartbeatInterval = setInterval(() => {
-      // Just check if connection is still alive
-      // Server will send ping, and we respond with pong in handleMessage
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        console.warn('⚠️ WebSocket connection check: Not connected');
+      if (!this.ws) {
+        console.warn('⚠️ WebSocket: No connection object');
+        return;
       }
-    }, 30000);
+
+      const state = this.ws.readyState;
+
+      if (state === WebSocket.CONNECTING) {
+        console.log('🔄 WebSocket: Still connecting...');
+      } else if (state === WebSocket.OPEN) {
+        // Connection is alive - no action needed
+        // Browser automatically responds to ping frames from server
+        console.log('✅ WebSocket: Connection alive');
+      } else if (state === WebSocket.CLOSING) {
+        console.warn('⚠️ WebSocket: Connection closing...');
+      } else if (state === WebSocket.CLOSED) {
+        console.error('❌ WebSocket: Connection closed unexpectedly');
+        // Try to reconnect
+        if (!this.isIntentionalClose && this.reconnectAttempts < this.maxReconnectAttempts) {
+          console.log('🔄 Attempting to reconnect...');
+          this.connect();
+        }
+      }
+    }, 20000);
   }
 
   /**

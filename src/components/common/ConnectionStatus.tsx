@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, ActivityIndicator, Platform } from 'react-native';
 import { websocketService } from '@services/websocket.service';
 
 interface ConnectionStatusProps {
@@ -17,84 +17,87 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
 
   useEffect(() => {
     const checkStatus = () => {
-      if (websocketService.isConnected()) {
-        setStatus('connected');
-      } else {
-        setStatus('connecting');
+      try {
+        if (websocketService.isConnected()) {
+          setStatus('connected');
+        } else {
+          setStatus('connecting'); // при желании тут можно детектить 'disconnected'
+        }
+      } catch {
+        setStatus('disconnected');
       }
     };
 
-    // Check status immediately
+    // сразу проверяем
     checkStatus();
 
-    // Check status periodically
+    // периодическая проверка
     const interval = setInterval(checkStatus, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    // Fade in animation when status changes
+    // Плавное появление/исчезание
     Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.delay(status === 'connected' ? 2000 : 0),
-      Animated.timing(fadeAnim, {
-        toValue: status === 'connected' ? 0 : 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: status === 'connected' ? 0 : 1, duration: 300, useNativeDriver: true }),
     ]).start();
   }, [status, fadeAnim]);
 
-  // Don't show anything if connected (after fade out)
-  if (status === 'connected' && compact) {
-    return null;
-  }
+  // В компактном режиме, когда подключено и баннер уже погас — ничего не показываем
+  if (status === 'connected' && compact) return null;
 
   const getStatusConfig = () => {
     switch (status) {
       case 'connected':
-        return {
-          text: 'Подключено',
-          color: '#10B981',
-          icon: '●',
-        };
+        return { text: 'Подключено', color: '#2ecc71' }; // зелёный
       case 'connecting':
-        return {
-          text: 'Подключение...',
-          color: '#F59E0B',
-          icon: '●',
-        };
+        return { text: 'Подключение...', color: '#434343ff' }; // желтовато-оранжевый
       case 'disconnected':
-        return {
-          text: 'Нет подключения',
-          color: '#EF4444',
-          icon: '●',
-        };
+      default:
+        return { text: 'Нет подключения', color: '#e74c3c' }; // красный
     }
   };
 
   const config = getStatusConfig();
 
+  const Icon = () => {
+    if (status === 'connecting') {
+      // Спиннер: размер поменьше в компактном режиме
+      return (
+        <ActivityIndicator
+          size={'small'}
+          // цвет для web может игнорироваться браузером, но RNW прокидывает стиль
+          color={config.color}
+          style={styles.spinner}
+        />
+      );
+    }
+    // Точка-иконка для connected / disconnected
+    return <View style={[styles.dot, { backgroundColor: config.color }]} />;
+  };
+
   if (compact) {
     return (
       <Animated.View style={[styles.compactContainer, { opacity: fadeAnim }]}>
-        <Text style={[styles.compactIcon, { color: config.color }]}>{config.icon}</Text>
+        <Icon />
         <Text style={styles.compactText}>{config.text}</Text>
       </Animated.View>
     );
   }
 
   return (
-    <Animated.View style={[styles.banner, { backgroundColor: config.color, opacity: fadeAnim }]}>
-      <Text style={styles.bannerText}>{config.text}</Text>
+    <Animated.View style={[styles.banner, { opacity: fadeAnim }]}>
+      <View style={styles.bannerRow}>
+        <Icon />
+        <Text style={styles.bannerText}>{config.text}</Text>
+      </View>
     </Animated.View>
   );
 };
+
+const DOT_SIZE = 10;
 
 const styles = StyleSheet.create({
   banner: {
@@ -103,26 +106,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  bannerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   bannerText: {
-    color: '#FFFFFF',
+    color: '#2c2c2cff',
     fontSize: 14,
     fontWeight: '500',
+    marginLeft: 8,
+  },
+  spinner: {
+    marginRight: 4,
   },
   compactContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#3a3a3aff',
     borderRadius: 12,
-  },
-  compactIcon: {
-    fontSize: 12,
-    marginRight: 4,
   },
   compactText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#323232ff',
     fontWeight: '500',
+    marginLeft: 6,
+  },
+  dot: {
+    width: DOT_SIZE,
+    height: DOT_SIZE,
+    borderRadius: DOT_SIZE / 2,
   },
 });

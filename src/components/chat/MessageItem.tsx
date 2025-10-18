@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Message } from '@types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
+import { useTheme } from '@hooks/useTheme';
 import { getUser } from '@api/user.api'; // Assume this exists
 
 interface MessageItemProps {
@@ -11,6 +12,7 @@ interface MessageItemProps {
 
 export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const currentUser = useAuthStore((state) => state.user);
+  const { theme } = useTheme();
   const [sender, setSender] = useState<User | null>(message.sender || null);
 
   // Fetch sender if missing
@@ -33,6 +35,36 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     });
   };
 
+  const dynamicStyles = StyleSheet.create({
+    messageBubble: {
+      backgroundColor: theme.messageOther,
+    },
+    ownMessageBubble: {
+      backgroundColor: theme.messageOwn,
+    },
+    senderName: {
+      color: theme.primary,
+    },
+    messageText: {
+      color: theme.text,
+    },
+    ownMessageText: {
+      color: '#FFFFFF',
+    },
+    time: {
+      color: theme.textTertiary,
+    },
+    ownTime: {
+      color: 'rgba(255, 255, 255, 0.7)',
+    },
+    edited: {
+      color: theme.textTertiary,
+    },
+    ownEdited: {
+      color: 'rgba(255, 255, 255, 0.7)',
+    },
+  });
+
   return (
     <View style={[styles.container, isOwnMessage && styles.ownMessageContainer]}>
       {!isOwnMessage && (
@@ -43,21 +75,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           style={styles.avatar}
         />
       )}
-      <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
+      <View style={[styles.messageBubble, dynamicStyles.messageBubble, isOwnMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble]]}>
         {!isOwnMessage && (
-          <Text style={styles.senderName}>
+          <Text style={[styles.senderName, dynamicStyles.senderName]}>
             {sender?.full_name || `User ${message.sender_id}`}
           </Text>
         )}
-        <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>
+        <Text style={[styles.messageText, dynamicStyles.messageText, isOwnMessage && dynamicStyles.ownMessageText]}>
           {message.content}
         </Text>
         <View style={styles.messageFooter}>
-          <Text style={[styles.time, isOwnMessage && styles.ownTime]}>
+          <Text style={[styles.time, dynamicStyles.time, isOwnMessage && dynamicStyles.ownTime]}>
             {formatTime(message.created_at)}
           </Text>
           {message.is_edited && (
-            <Text style={[styles.edited, isOwnMessage && styles.ownEdited]}>
+            <Text style={[styles.edited, dynamicStyles.edited, isOwnMessage && dynamicStyles.ownEdited]}>
               изменено
             </Text>
           )}
@@ -90,29 +122,22 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '70%',
-    backgroundColor: '#F3F4F6',
     borderRadius: 16,
     borderTopLeftRadius: 4,
     padding: 12,
   },
   ownMessageBubble: {
-    backgroundColor: '#E94444',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 4,
   },
   senderName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#E94444',
     marginBottom: 4,
   },
   messageText: {
     fontSize: 15,
-    color: '#1F2937',
     lineHeight: 20,
-  },
-  ownMessageText: {
-    color: '#FFFFFF',
   },
   messageFooter: {
     flexDirection: 'row',
@@ -121,19 +146,11 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 11,
-    color: '#9CA3AF',
-  },
-  ownTime: {
-    color: 'rgba(255, 255, 255, 0.7)',
   },
   edited: {
     fontSize: 11,
-    color: '#9CA3AF',
     marginLeft: 6,
     fontStyle: 'italic',
-  },
-  ownEdited: {
-    color: 'rgba(255, 255, 255, 0.7)',
   },
 });
 

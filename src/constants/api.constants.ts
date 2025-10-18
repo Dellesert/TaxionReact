@@ -76,6 +76,7 @@ export const API_ENDPOINTS = {
     ADD_REACTION: (id: number) => `/messages/${id}/reactions`,
     REMOVE_REACTION: (id: number, emoji: string) => `/messages/${id}/reactions/${emoji}`,
     MARK_READ: (id: number) => `/messages/${id}/read`,
+    MARK_CHAT_READ: (chatId: number) => `/messages/chat/${chatId}/read`,
     SEARCH: '/messages/search',
   },
 

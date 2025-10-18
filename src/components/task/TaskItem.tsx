@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task } from '@types/task.types';
+import { useTheme } from '@hooks/useTheme';
 
 interface TaskItemProps {
   task: Task;
@@ -9,6 +10,7 @@ interface TaskItemProps {
 }
 
 export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
+  const { theme } = useTheme();
   const getPriorityBgColor = () => {
     switch (task.priority) {
       case 'urgent':
@@ -96,19 +98,44 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
     });
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+    },
+    title: {
+      color: theme.text,
+    },
+    description: {
+      color: theme.textSecondary,
+    },
+    dateText: {
+      color: theme.textSecondary,
+    },
+    assigneeText: {
+      color: theme.textSecondary,
+    },
+    tagText: {
+      color: theme.textTertiary,
+    },
+    moreTagsText: {
+      color: theme.textTertiary,
+    },
+  });
+
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, dynamicStyles.container]}
       onPress={() => onPress(task)}
       activeOpacity={0.7}
     >
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={styles.title} numberOfLines={2}>
+          <Text style={[styles.title, dynamicStyles.title]} numberOfLines={2}>
             {task.title}
           </Text>
           {task.description && (
-            <Text style={styles.description} numberOfLines={2}>
+            <Text style={[styles.description, dynamicStyles.description]} numberOfLines={2}>
               {task.description}
             </Text>
           )}
@@ -136,10 +163,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
             <Ionicons
               name="calendar-outline"
               size={16}
-              color={isOverdue ? '#EF4444' : '#6B7280'}
+              color={isOverdue ? theme.error : theme.textSecondary}
             />
             <Text
-              style={[styles.dateText, isOverdue && styles.overdueText]}
+              style={[styles.dateText, dynamicStyles.dateText, isOverdue && styles.overdueText]}
             >
               {formatDate(task.due_date)}
             </Text>
@@ -148,8 +175,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
 
         {task.assignee && (
           <View style={styles.assigneeRow}>
-            <Ionicons name="person-outline" size={16} color="#6B7280" />
-            <Text style={styles.assigneeText} numberOfLines={1}>
+            <Ionicons name="person-outline" size={16} color={theme.textSecondary} />
+            <Text style={[styles.assigneeText, dynamicStyles.assigneeText]} numberOfLines={1}>
               {task.assignee.full_name}
             </Text>
           </View>
@@ -157,12 +184,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
 
         {task.tags && task.tags.length > 0 && (
           <View style={styles.tagsRow}>
-            <Ionicons name="pricetag-outline" size={14} color="#9CA3AF" />
-            <Text style={styles.tagText} numberOfLines={1}>
+            <Ionicons name="pricetag-outline" size={14} color={theme.textTertiary} />
+            <Text style={[styles.tagText, dynamicStyles.tagText]} numberOfLines={1}>
               {task.tags[0]}
             </Text>
             {task.tags.length > 1 && (
-              <Text style={styles.moreTagsText}>+{task.tags.length - 1}</Text>
+              <Text style={[styles.moreTagsText, dynamicStyles.moreTagsText]}>+{task.tags.length - 1}</Text>
             )}
           </View>
         )}
@@ -173,13 +200,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     marginBottom: 12,
     marginHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -199,12 +224,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     lineHeight: 22,
   },
   description: {
     fontSize: 14,
-    color: '#6B7280',
     marginTop: 4,
     lineHeight: 20,
   },
@@ -239,7 +262,6 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 13,
-    color: '#6B7280',
     marginLeft: 4,
   },
   overdueText: {
@@ -252,7 +274,6 @@ const styles = StyleSheet.create({
   },
   assigneeText: {
     fontSize: 13,
-    color: '#6B7280',
     marginLeft: 4,
     maxWidth: 100,
   },
@@ -262,13 +283,11 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginLeft: 4,
     maxWidth: 80,
   },
   moreTagsText: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginLeft: 4,
   },
 });

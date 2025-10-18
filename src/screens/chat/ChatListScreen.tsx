@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +14,7 @@ import { useChatStore } from '@store/chatStore';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
+import { useTheme } from '@hooks/useTheme';
 import { Chat } from '@types/chat.types';
 import { websocketService } from '@services/websocket.service';
 
@@ -21,6 +23,7 @@ type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Cha
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
   const { chats, isLoading, loadChats: fetchChats, createChat } = useChatStore();
+  const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -81,29 +84,56 @@ const ChatListScreen: React.FC = () => {
     return <Loading text="Загрузка чатов..." fullScreen />;
   }
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      backgroundColor: theme.background,
+    },
+    header: {
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomColor: theme.border,
+    },
+    title: {
+      color: theme.text,
+    },
+    searchContainer: {
+      backgroundColor: theme.input,
+    },
+    searchInput: {
+      color: theme.text,
+    },
+    emptyTitle: {
+      color: theme.textSecondary,
+    },
+    emptySubtitle: {
+      color: theme.textTertiary,
+    },
+  });
+
   return (
-    <View style={styles.container}>
-      <ConnectionStatus />
-      <View style={styles.header}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
+    <View style={[styles.container, dynamicStyles.container]}>
+      
+      <View style={[styles.header, dynamicStyles.header]}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Чаты</Text>
+          <Text style={[styles.title, dynamicStyles.title]}>Чаты</Text>
+          <ConnectionStatus />
           <TouchableOpacity onPress={handleNewChat} style={styles.newChatButton}>
-            <Ionicons name="create-outline" size={24} color="#ff0000ff" />
+            <Ionicons name="create-outline" size={24} color={theme.primary} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#9CA3AF" />
+        <View style={[styles.searchContainer, dynamicStyles.searchContainer]}>
+          <Ionicons name="search" size={20} color={theme.textTertiary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, dynamicStyles.searchInput]}
             placeholder="Поиск чатов..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={theme.inputPlaceholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
@@ -111,11 +141,11 @@ const ChatListScreen: React.FC = () => {
 
       {filteredChats.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubbles-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>
+          <Ionicons name="chatbubbles-outline" size={64} color={theme.borderLight} />
+          <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>
             {searchQuery ? 'Чаты не найдены' : 'Нет чатов'}
           </Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptySubtitle, dynamicStyles.emptySubtitle]}>
             {searchQuery
               ? 'Попробуйте изменить поисковый запрос'
               : 'Начните новый разговор или присоединитесь к группе'}
@@ -134,21 +164,19 @@ const ChatListScreen: React.FC = () => {
         />
       )}
     </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingTop: 60,
+    paddingTop: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   headerTop: {
     flexDirection: 'row',
@@ -159,7 +187,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
   },
   newChatButton: {
     alignItems: 'center',
@@ -168,7 +195,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -177,7 +203,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
-    color: '#111827',
   },
   emptyContainer: {
     flex: 1,
@@ -188,12 +213,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6B7280',
     marginTop: 16,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 8,
   },

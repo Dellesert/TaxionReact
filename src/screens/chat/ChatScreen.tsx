@@ -16,6 +16,7 @@ import { MessageItem } from '@components/chat/MessageItem';
 import { MessageInput } from '@components/chat/MessageInput';
 import { ChatMembersModal } from '@components/chat/ChatMembersModal';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
+import { useTheme } from '@hooks/useTheme';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,6 +30,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const { chatId, chatName } = route.params;
   const chatIdNum = useMemo(() => Number(chatId), [chatId]);
+  const { theme } = useTheme();
 
   const listRef = useRef<FlatList<any>>(null);
   const [initialScrolled, setInitialScrolled] = useState(false);
@@ -41,6 +43,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const getChatById = useChatStore((state) => state.getChatById);
   const setActiveChat = useChatStore((state) => state.setActiveChat);
   const markMessageRead = useChatStore((state) => state.markMessageRead);
+  const sendMessage = useChatStore((state) => state.sendMessage);
 
   // ✅ ДОБАВЬ ЭТО
   const headerHeight = useHeaderHeight();
@@ -80,13 +83,19 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       if (!websocketService.isConnected()) {
         const token = (await AsyncStorage.getItem('jwtToken')) || '';
         if (token) {
-          websocketService.connect(token);
+          await websocketService.connect(token);
+          // Wait a bit for connection to establish
+          await new Promise(resolve => setTimeout(resolve, 500));
         } else {
           setError({ error: 'No authentication token found' });
+          return;
         }
       }
+
+      // Join chat room after WebSocket is connected
       if (websocketService.isConnected() && getChatById(chatIdNum)) {
         websocketService.joinChat(chatIdNum);
+        console.log('📍 Joined chat room:', chatIdNum);
       }
     };
     connectWebSocket();
@@ -95,9 +104,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       setActiveChat(null);
       if (websocketService.isConnected()) {
         websocketService.leaveChat(chatIdNum);
+        console.log('📍 Left chat room:', chatIdNum);
       }
     };
-  }, [chatIdNum, setError, getChatById, setActiveChat]);
+  }, [chatIdNum]); // ✅ ИСПРАВЛЕНИЕ: Удалены setError, getChatById, setActiveChat из dependencies
 
   useEffect(() => {
   if (messages.length > 0) {
@@ -117,7 +127,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [chatIdNum, messages.length, markMessageRead]);
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
     if (!content.trim()) {
       setError({ error: 'Message content cannot be empty' });
       return;
@@ -126,14 +136,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       setError({ error: 'Chat not found' });
       return;
     }
-    if (websocketService.isConnected()) {
-      websocketService.send({
-        type: 'new_message',
-        chat_id: chatIdNum,
-        data: { content: content.trim(), type: 'text' },
-      });
-    } else {
-      setError({ error: 'WebSocket not connected' });
+
+    try {
+      // Send message through HTTP API
+      // Server will broadcast it to all WebSocket clients including sender
+      await sendMessage(chatIdNum, content.trim());
+    } catch (error: any) {
+      console.error('Failed to send message:', error);
+      setError({ error: error.message || 'Failed to send message' });
     }
   };
 
@@ -143,10 +153,22 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      backgroundColor: theme.background,
+    },
+    loadingContainer: {
+      backgroundColor: theme.background,
+    },
+    emptyText: {
+      color: theme.textSecondary,
+    },
+  });
+
   if (isLoading && messages.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E94444" />
+      <View style={[styles.loadingContainer, dynamicStyles.loadingContainer]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -154,7 +176,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <>
       <KeyboardAvoidingView
-  style={styles.container}
+  style={[styles.container, dynamicStyles.container]}
   behavior={Platform.OS === 'ios' ? 'padding' : undefined}
   keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
 >
@@ -205,16 +227,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  inner: { flex: 1 }, // ✅ важно
+  container: { flex: 1 },
+  inner: { flex: 1 },
   loadingContainer: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF',
+    flex: 1, justifyContent: 'center', alignItems: 'center',
   },
   messagesList: { paddingVertical: 20 },
   emptyContainer: {
     flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40,
   },
-  emptyText: { fontSize: 16, color: '#9CA3AF' },
+  emptyText: { fontSize: 16 },
 });
 
 export default ChatScreen;

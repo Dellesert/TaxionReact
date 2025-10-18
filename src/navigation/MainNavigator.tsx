@@ -6,6 +6,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@hooks/useTheme';
 import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
@@ -16,6 +17,8 @@ import ProfileScreen from '@screens/profile/ProfileScreen';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const MainNavigator: React.FC = () => {
+  const { theme } = useTheme();
+
   return (
     <Tab.Navigator
       initialRouteName="Chats"
@@ -46,12 +49,12 @@ const MainNavigator: React.FC = () => {
 
           return <Ionicons name={iconName} size={26} color={color} />;
         },
-        tabBarActiveTintColor: '#E94444',
-        tabBarInactiveTintColor: '#888888ff',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textTertiary,
         tabBarStyle: {
-          backgroundColor: '#f2f2f2ff',
+          backgroundColor: theme.backgroundSecondary,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: theme.border,
           height: 85,
           paddingTop: 6,
           paddingHorizontal: 12,

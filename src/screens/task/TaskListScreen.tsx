@@ -8,7 +8,7 @@ import {
   TextInput,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ import { TaskItem } from '@components/task/TaskItem';
 import { Loading } from '@components/common/Loading';
 import { Task, TaskStatus } from '@types/task.types';
 import { useTaskStore } from '@store/taskStore';
+import { useTheme } from '@hooks/useTheme';
 import { TaskStackParamList } from '@navigation/types';
 
 type TaskFilter = 'all' | 'todo' | 'in_progress' | 'review' | 'done';
@@ -24,6 +25,7 @@ type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
 const TaskListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { tasks, isLoading, loadTasks: fetchTasks } = useTaskStore();
+  const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<TaskFilter>('all');
@@ -88,28 +90,93 @@ const TaskListScreen: React.FC = () => {
     return <Loading text="Загрузка задач..." fullScreen />;
   }
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      backgroundColor: theme.backgroundSecondary,
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+      paddingTop: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.text,
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.input,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginBottom: 12,
+    },
+    searchInput: {
+      flex: 1,
+      marginLeft: 8,
+      fontSize: 16,
+      color: theme.text,
+    },
+    filterButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: theme.backgroundTertiary,
+    },
+    filterButtonActive: {
+      backgroundColor: theme.primary,
+    },
+    filterButtonText: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      marginLeft: 4,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.textSecondary,
+      marginTop: 16,
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: theme.textTertiary,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+  });
+
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: '#fff'}]}  edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
+      <View style={dynamicStyles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Задачи</Text>
+          <Text style={dynamicStyles.title}>Задачи</Text>
           <TouchableOpacity onPress={handleNewTask} style={styles.addButton}>
-            <Ionicons name="add" size={26} color="#ff0000ff" />
+            <Ionicons name="add" size={26} color={theme.primary} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#9CA3AF" />
+        <View style={dynamicStyles.searchContainer}>
+          <Ionicons name="search" size={20} color={theme.textTertiary} />
           <TextInput
-            style={styles.searchInput}
+            style={dynamicStyles.searchInput}
             placeholder="Поиск задач..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={theme.inputPlaceholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
@@ -120,19 +187,19 @@ const TaskListScreen: React.FC = () => {
               key={btn.key}
               onPress={() => setFilter(btn.key)}
               style={[
-                styles.filterButton,
-                filter === btn.key && styles.filterButtonActive,
+                dynamicStyles.filterButton,
+                filter === btn.key && dynamicStyles.filterButtonActive,
                 index > 0 && styles.filterButtonMargin,
               ]}
             >
               <Ionicons
                 name={btn.icon as any}
                 size={16}
-                color={filter === btn.key ? 'white' : '#6B7280'}
+                color={filter === btn.key ? 'white' : theme.textSecondary}
               />
               <Text
                 style={[
-                  styles.filterButtonText,
+                  dynamicStyles.filterButtonText,
                   filter === btn.key && styles.filterButtonTextActive,
                 ]}
               >
@@ -145,11 +212,11 @@ const TaskListScreen: React.FC = () => {
 
       {filteredTasks.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="checkmark-done-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>
+          <Ionicons name="checkmark-done-outline" size={64} color={theme.borderLight} />
+          <Text style={dynamicStyles.emptyTitle}>
             {searchQuery ? 'Задачи не найдены' : 'Нет задач'}
           </Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={dynamicStyles.emptySubtitle}>
             {searchQuery
               ? 'Попробуйте изменить поисковый запрос'
               : 'Создайте новую задачу для начала работы'}
@@ -171,71 +238,21 @@ const TaskListScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    paddingTop: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
   addButton: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-    color: '#111827',
-  },
   filterContainer: {
     flexDirection: 'row',
   },
-  filterButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  filterButtonActive: {
-    backgroundColor: '#E94444',
-  },
   filterButtonMargin: {
     marginLeft: 8,
-  },
-  filterButtonText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginLeft: 4,
   },
   filterButtonTextActive: {
     color: '#FFFFFF',
@@ -246,18 +263,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 8,
   },
   listContent: {
     paddingTop: 16,

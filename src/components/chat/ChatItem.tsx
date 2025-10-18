@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Chat } from '@types/chat.types';
 import { Avatar } from '@components/common/Avatar';
+import { useTheme } from '@hooks/useTheme';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +13,7 @@ interface ChatItemProps {
 }
 
 export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress }) => {
+  const { theme } = useTheme();
   const getChatName = () => {
     return chat.name || 'Unnamed Chat';
   };
@@ -25,9 +27,25 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress }) => {
     return chat.last_message.content || 'Нет сообщений';
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomColor: theme.borderLight,
+    },
+    name: {
+      color: theme.text,
+    },
+    time: {
+      color: theme.textTertiary,
+    },
+    preview: {
+      color: theme.textSecondary,
+    },
+  });
+
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, dynamicStyles.container]}
       onPress={() => onPress(chat)}
       activeOpacity={0.7}
     >
@@ -39,11 +57,11 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress }) => {
 
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, dynamicStyles.name]} numberOfLines={1}>
             {getChatName()}
           </Text>
           {chat.last_message && (
-            <Text style={styles.time}>
+            <Text style={[styles.time, dynamicStyles.time]}>
               {formatDistanceToNow(new Date(chat.last_message.created_at), {
                 addSuffix: false,
                 locale: ru,
@@ -53,16 +71,16 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress }) => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.preview} numberOfLines={1}>
+          <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
             {getLastMessagePreview()}
           </Text>
 
           <View style={styles.badges}>
             {chat.is_muted && (
-              <Ionicons name="notifications-off" size={16} color="#9CA3AF" style={styles.muteIcon} />
+              <Ionicons name="notifications-off" size={16} color={theme.textTertiary} style={styles.muteIcon} />
             )}
             {chat.unread_count > 0 && (
-              <View style={styles.unreadBadge}>
+              <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]}>
                 <Text style={styles.unreadText}>
                   {chat.unread_count > 99 ? '99+' : chat.unread_count}
                 </Text>
@@ -79,11 +97,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   content: {
     flex: 1,
@@ -98,12 +114,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     flex: 1,
   },
   time: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginLeft: 8,
   },
   footer: {
@@ -113,7 +127,6 @@ const styles = StyleSheet.create({
   },
   preview: {
     fontSize: 14,
-    color: '#6B7280',
     flex: 1,
   },
   badges: {
@@ -125,7 +138,6 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   unreadBadge: {
-    backgroundColor: '#E94444',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
