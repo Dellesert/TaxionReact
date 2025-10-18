@@ -13,8 +13,8 @@ import {
   NotificationListFilters,
   NotificationStats,
   PushTokenDto,
-} from '@types/notification.types';
-import { ApiResponse, PaginatedResponse, PaginationParams } from '@types/common.types';
+} from '../types/notification.types';
+import { ApiResponse, PaginatedResponse, PaginationParams } from '../types/common.types';
 
 // ============= Notification Operations =============
 

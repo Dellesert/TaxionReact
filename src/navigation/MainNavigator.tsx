@@ -73,19 +73,19 @@ const MainNavigator: React.FC = () => {
         options={{ tabBarLabel: 'Задачи' }}
       />
       <Tab.Screen
-        name="Calendar"
-        component={CalendarScreen}
-        options={{ tabBarLabel: 'События' }}
+        name="PollList"
+        component={PollListScreen}
+        options={{ tabBarLabel: 'Опросы' }}
       />
       <Tab.Screen
         name="Chats"
         component={ChatNavigator}
         options={{ tabBarLabel: 'Чаты' }}
       />
-      <Tab.Screen
-        name="PollList"
-        component={PollListScreen}
-        options={{ tabBarLabel: 'Опросы' }}
+       <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ tabBarLabel: 'События' }}
       />
       <Tab.Screen
         name="Profile"

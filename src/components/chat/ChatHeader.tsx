@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Avatar } from '@components/common/Avatar';
-import { Chat } from '@types/chat.types';
+import { Chat } from '../../types/chat.types';
 
 interface ChatHeaderProps {
   chat: Chat;

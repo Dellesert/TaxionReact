@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Message, Reaction } from '@types/chat.types';
+import { Message, Reaction } from '../../types/chat.types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 

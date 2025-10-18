@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { TaskStackParamList } from '@navigation/types';
 import { useTaskStore } from '@store/taskStore';
-import { TaskPriority, CreateTaskDto } from '@types/task.types';
+import { TaskPriority, CreateTaskDto } from '../../types/task.types';
 
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'CreateTask'>;
 

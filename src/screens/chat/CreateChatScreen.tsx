@@ -19,7 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
-import { User } from '@types/user.types';
+import { User } from '../../types/user.types';
 import { getUsers } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@utils/mockData';
 

@@ -7,8 +7,8 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import * as secureStorage from '@utils/secureStorage';
 import { API_BASE_URL, HTTP_STATUS, TIMEOUTS } from '@constants/api.constants';
 import { STORAGE_KEYS } from '@constants/app.constants';
-import { ApiError, ApiResponse } from '@types/common.types';
-import { RefreshTokenResponse } from '@types/user.types';
+import { ApiError, ApiResponse } from '../types/common.types';
+import { RefreshTokenResponse } from '../types/user.types';
 
 // Create Axios instance
 const api = axios.create({

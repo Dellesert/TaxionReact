@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Message } from '@types/chat.types';
+import { Message } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
@@ -49,13 +49,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       color: theme.text,
     },
     ownMessageText: {
-      color: '#FFFFFF',
+      color: theme.text,
     },
     time: {
       color: theme.textTertiary,
     },
     ownTime: {
-      color: 'rgba(255, 255, 255, 0.7)',
+      color: theme.textTertiary,
     },
     edited: {
       color: theme.textTertiary,
@@ -125,6 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderTopLeftRadius: 4,
     padding: 12,
+    minWidth: 100,
   },
   ownMessageBubble: {
     borderTopLeftRadius: 16,
@@ -141,8 +142,9 @@ const styles = StyleSheet.create({
   },
   messageFooter: {
     flexDirection: 'row',
-    marginTop: 4,
+    marginTop: 0,
     alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   time: {
     fontSize: 11,

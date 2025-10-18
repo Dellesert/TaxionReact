@@ -15,7 +15,7 @@ import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { useTheme } from '@hooks/useTheme';
-import { Chat } from '@types/chat.types';
+import { Chat } from '../../types/chat.types';
 import { websocketService } from '@services/websocket.service';
 
 type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'ChatList'>;

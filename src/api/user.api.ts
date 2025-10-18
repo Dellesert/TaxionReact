@@ -16,8 +16,8 @@ import {
   Department,
   CreateDepartmentDto,
   UpdateDepartmentDto,
-} from '@types/user.types';
-import { ApiResponse, PaginatedResponse, PaginationParams } from '@types/common.types';
+} from '../types/user.types';
+import { ApiResponse, PaginatedResponse, PaginationParams } from '../types/common.types';
 
 // ============= Profile Operations =============
 

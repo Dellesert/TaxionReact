@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Chat } from '@types/chat.types';
+import { Chat } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { useTheme } from '@hooks/useTheme';
 import { formatDistanceToNow } from 'date-fns';

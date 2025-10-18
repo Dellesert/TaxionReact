@@ -15,8 +15,8 @@ import {
   PollResults,
   PollListFilters,
   PollVote,
-} from '@types/poll.types';
-import { ApiResponse } from '@types/common.types';
+} from '../types/poll.types';
+import { ApiResponse } from '../types/common.types';
 
 // ============= Poll Operations =============
 

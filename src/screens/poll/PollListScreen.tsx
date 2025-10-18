@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Poll, PollStatus } from '@types/poll.types';
+import { Poll, PollStatus } from '../../types/poll.types';
 import { PollItem } from '@components/poll/PollItem';
 import { mockGetPolls, isMockMode } from '@utils/mockData';
 

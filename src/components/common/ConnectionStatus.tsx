@@ -74,8 +74,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
         />
       );
     }
-    // Точка-иконка для connected / disconnected
-    return <View style={[styles.dot, { backgroundColor: config.color }]} />;
+   
   };
 
   if (compact) {

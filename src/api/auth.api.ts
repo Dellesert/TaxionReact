@@ -12,8 +12,8 @@ import {
   RegisterResponse,
   RefreshTokenDto,
   RefreshTokenResponse,
-} from '@types/user.types';
-import { ApiResponse } from '@types/common.types';
+} from '../types/user.types';
+import { ApiResponse } from '../types/common.types';
 
 /**
  * Login user

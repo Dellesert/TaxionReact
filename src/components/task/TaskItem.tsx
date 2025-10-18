@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Task } from '@types/task.types';
+import { Task } from '../../types/task.types';
 import { useTheme } from '@hooks/useTheme';
 
 interface TaskItemProps {

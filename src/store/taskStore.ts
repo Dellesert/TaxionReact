@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { Task, TaskStatus, UpdateTaskDto, CreateTaskDto } from '@types/task.types';
+import { Task, TaskStatus, UpdateTaskDto, CreateTaskDto } from '../types/task.types';
 import {
   getTasks,
   getTask,

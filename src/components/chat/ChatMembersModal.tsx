@@ -17,8 +17,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
-import { User } from '@types/user.types';
-import { ChatMember } from '@types/chat.types';
+import { User } from '../../types/user.types';
+import { ChatMember } from '../../types/chat.types';
 import { getChatMembers, addChatMembers } from '@api/chat.api';
 import { getUsers } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@utils/mockData';

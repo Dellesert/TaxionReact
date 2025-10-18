@@ -18,8 +18,8 @@ import {
   UpdateProjectDto,
   TaskListFilters,
   TaskStats,
-} from '@types/task.types';
-import { ApiResponse, PaginatedResponse, PaginationParams } from '@types/common.types';
+} from '../types/task.types';
+import { ApiResponse, PaginatedResponse, PaginationParams } from '../types/common.types';
 
 // ============= Task Operations =============
 

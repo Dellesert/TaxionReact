@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Event } from '@types/calendar.types';
+import { Event } from '../../types/calendar.types';
 import { EventItem } from '@components/calendar/EventItem';
 import { mockGetEvents, isMockMode } from '@utils/mockData';
 

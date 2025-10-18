@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Task, TaskComment } from '@types/task.types';
+import { Task, TaskComment } from '../../types/task.types';
 import * as taskApi from '@api/task.api';
 import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';

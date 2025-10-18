@@ -79,10 +79,9 @@ export const lightTheme: Theme = {
   info: '#3B82F6',
 
   // Chat/Message colors
-  messageOwn: '#E94444',
-  messageOther: '#F3F4F6',
+  messageOwn: '#F3F4F6',
+  messageOther: '#ffffffff',
 
-  // Card colors
   card: '#FFFFFF',
   cardHover: '#F9FAFB',
 
@@ -126,8 +125,8 @@ export const darkTheme: Theme = {
   info: '#3B82F6',
 
   // Chat/Message colors
-  messageOwn: '#7F1D1D',
-  messageOther: '#374151',
+  messageOwn: '#374151',
+  messageOther: '#222831ff',
 
   // Card colors
   card: '#1F2937',

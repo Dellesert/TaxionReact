@@ -8,7 +8,7 @@ import { Loading } from '@components/common/Loading';
 import { ChatHeader } from '@components/chat/ChatHeader';
 import { MessageBubble } from '@components/chat/MessageBubble';
 import { MessageInput } from '@components/chat/MessageInput';
-import { Message } from '@types/chat.types';
+import { Message } from '../../types/chat.types';
 import { useAuthStore } from '@store/authStore';
 
 type ChatDetailRouteParams = {

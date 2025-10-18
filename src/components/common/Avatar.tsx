@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   avatarPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#DC2626',
+    backgroundColor: '#e04f4fff',
   },
   initials: {
     color: '#FFFFFF',

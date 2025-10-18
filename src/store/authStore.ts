@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import * as secureStorage from '@utils/secureStorage';
-import { User, TokenPair, LoginDto, RegisterDto } from '@types/user.types';
+import { User, TokenPair, LoginDto, RegisterDto } from '../types/user.types';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import * as authApi from '@api/auth.api';
 import * as userApi from '@api/user.api';

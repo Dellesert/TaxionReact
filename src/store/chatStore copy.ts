@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { Chat, Message, TypingIndicator, MessageType } from '../types/chat.types';
+import { Chat, Message, TypingIndicator, MessageType } from '@types/chat.types';
 import * as chatApi from '@api/chat.api';
 import { isMockMode, mockGetChats } from '@utils/mockData';
 import { useAuthStore } from '@store/authStore';
@@ -143,11 +143,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ? state.chats.map((c) => (c.id === chat.id ? { ...c, unread_count: 0 } : c))
         : state.chats,
     }));
-
-    // Mark all messages in chat as read on server
-    if (chat && chat.unread_count && chat.unread_count > 0) {
-      get().markChatAsRead(chat.id);
-    }
 
     if (chat && !get().messages[chat.id]) {
       get().loadMessages(chat.id);

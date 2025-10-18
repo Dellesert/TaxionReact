@@ -16,8 +16,8 @@ import {
   ConflictResponse,
   EventListFilters,
   CalendarParams,
-} from '@types/calendar.types';
-import { ApiResponse } from '@types/common.types';
+} from '../types/calendar.types';
+import { ApiResponse } from '../types/common.types';
 
 // ============= Event Operations =============
 

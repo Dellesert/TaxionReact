@@ -14,7 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskItem } from '@components/task/TaskItem';
 import { Loading } from '@components/common/Loading';
-import { Task, TaskStatus } from '@types/task.types';
+import type { Task, TaskStatus } from '../../types/task.types';
 import { useTaskStore } from '@store/taskStore';
 import { useTheme } from '@hooks/useTheme';
 import { TaskStackParamList } from '@navigation/types';
