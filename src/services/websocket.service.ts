@@ -211,6 +211,18 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
     if (user) {
       console.log('👤 User connected:', user.full_name);
     }
+
+    // ✅ РЕШЕНИЕ: Join all user's chats to receive last_message updates
+    // This allows chat list to show new messages in real-time
+    // without interfering with ChatScreen's join/leave logic
+    const chatStore = useChatStore.getState();
+    const chats = chatStore.chats;
+    if (chats && chats.length > 0) {
+      chats.forEach((chat) => {
+        this.joinChat(chat.id);
+      });
+      console.log(`📍 Joined ${chats.length} chats for updates`);
+    }
   }
 
   /**
