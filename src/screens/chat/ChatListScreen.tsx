@@ -31,22 +31,21 @@ const ChatListScreen: React.FC = () => {
     loadChats();
   }, []);
 
-  // Subscribe to all chats when screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      // Join all chats to receive WebSocket events
-      chats.forEach((chat) => {
-        websocketService.joinChat(chat.id);
-      });
-
-      // Cleanup: leave chats when screen loses focus
-      return () => {
-        chats.forEach((chat) => {
-          websocketService.leaveChat(chat.id);
-        });
-      };
-    }, [chats])
-  );
+  // ИСПРАВЛЕНО: НЕ нужно joinChat для всех чатов в списке
+  // WebSocket соединение глобальное, обновления last_message приходят автоматически
+  // Пользователь должен быть подписан только на чат, который он открыл (в ChatScreen)
+  // useFocusEffect(
+  //   React.useCallback(() => {
+  //     chats.forEach((chat) => {
+  //       websocketService.joinChat(chat.id);
+  //     });
+  //     return () => {
+  //       chats.forEach((chat) => {
+  //         websocketService.leaveChat(chat.id);
+  //       });
+  //     };
+  //   }, [chats])
+  // );
 
   const loadChats = async () => {
     try {
