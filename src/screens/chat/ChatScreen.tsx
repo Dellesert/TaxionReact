@@ -17,6 +17,8 @@ import { MessageInput } from '@components/chat/MessageInput';
 import { ChatMembersModal } from '@components/chat/ChatMembersModal';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { UnreadMessagesBanner } from '@components/chat/UnreadMessagesBanner';
+import { TypingIndicator } from '@components/chat/TypingIndicator';
+import { Avatar } from '@components/common/Avatar';
 import { useTheme } from '@hooks/useTheme';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
@@ -46,6 +48,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const setActiveChat = useChatStore((state) => state.setActiveChat);
   const markMessageRead = useChatStore((state) => state.markMessageRead);
   const sendMessage = useChatStore((state) => state.sendMessage);
+  const typingUsers = useChatStore((state) => state.typingUsers);
   const currentUser = useAuthStore((state) => state.user);
 
   // ✅ ДОБАВЬ ЭТО
@@ -64,6 +67,17 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
   const lastOldestMessageId = useRef<number | null>(null);
+
+  // Флаг для отслеживания, показывали ли уже баннер при входе в чат
+  const [showUnreadBanner, setShowUnreadBanner] = useState(true);
+
+  // Получаем имена печатающих пользователей (исключая текущего пользователя)
+  const typingUserNames = useMemo(() => {
+    const typing = typingUsers[chatIdNum] || [];
+    return typing
+      .filter(t => t.user_id !== currentUser?.id)
+      .map(t => t.user?.name || t.user?.email?.split('@')[0] || `User ${t.user_id}`);
+  }, [typingUsers, chatIdNum, currentUser]);
 
   // Обработчик скролла - используем простую защиту через isLoadingMore
   const handleScroll = (event: any) => {
@@ -149,19 +163,61 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     return { firstUnreadIndex: firstIndex, unreadCount: count };
   }, [messages, currentUser]);
 
+  const [isConnected, setIsConnected] = useState(websocketService.isConnected());
+
+  // Проверяем статус подключения каждую секунду
   useEffect(() => {
+    const interval = setInterval(() => {
+      setIsConnected(websocketService.isConnected());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const chat = getChatById(chatIdNum);
+
     navigation.setOptions({
-      title: chatName || 'Чат',
+      headerTitle: () => (
+        <TouchableOpacity
+          onPress={() => {
+            navigation.navigate('ChatSettings', {
+              chatId: chatIdNum,
+              chatName: chatName,
+            });
+          }}
+          activeOpacity={0.7}
+        >
+          {isConnected ? (
+            <Text style={{ fontSize: 18, fontWeight: '600', color: theme.text }}>
+              {chatName || 'Чат'}
+            </Text>
+          ) : (
+            <ConnectionStatus compact />
+          )}
+        </TouchableOpacity>
+      ),
+      headerTitleAlign: 'center',
       headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <ConnectionStatus compact />
-          <TouchableOpacity onPress={() => setMembersModalVisible(true)} style={{ marginLeft: 12, marginRight: 8 }}>
-            <Ionicons name="people" size={24} color="#E94444" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => {
+            navigation.navigate('ChatSettings', {
+              chatId: chatIdNum,
+              chatName: chatName,
+            });
+          }}
+          activeOpacity={0.7}
+          style={{ marginRight: 8 }}
+        >
+          <Avatar
+            imageUrl={chat?.avatar_url || chat?.avatar}
+            name={chatName || 'Чат'}
+            size={36}
+          />
+        </TouchableOpacity>
       ),
     });
-  }, [chatName, navigation]);
+  }, [chatName, navigation, isConnected, theme, chatIdNum, getChatById]);
 
   useEffect(() => {
     // Сбрасываем состояние при смене чата
@@ -169,6 +225,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     setInitialScrolled(false);
     scrollToEndOnce.current = false;
     lastOldestMessageId.current = null;
+    setShowUnreadBanner(true); // Показываем баннер при входе в новый чат
 
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
@@ -229,19 +286,22 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Mark messages as read when entering chat - WITH DELAY to show unread banner first
   useEffect(() => {
-    if (messages.length > 0 && initialScrolled) {
+    if (messages.length > 0 && initialScrolled && showUnreadBanner) {
       // Задержка перед маркировкой как прочитанных - дать пользователю увидеть баннер
       const markReadTimer = setTimeout(() => {
         // Mark the last message as read to indicate all messages in chat are read
         const lastMessage = messages[messages.length - 1];
         if (lastMessage) {
           markMessageRead(lastMessage.id);
+          // Скрываем баннер после отметки - больше не показываем для новых сообщений пока в чате
+          setShowUnreadBanner(false);
+          console.log('🚫 Unread banner hidden - messages marked as read');
         }
       }, 2000); // Задержка 2 секунды чтобы пользователь увидел баннер
 
       return () => clearTimeout(markReadTimer);
     }
-  }, [chatIdNum, messages.length, markMessageRead, initialScrolled]);
+  }, [chatIdNum, messages.length, markMessageRead, initialScrolled, showUnreadBanner]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) {
@@ -350,12 +410,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
 >
   <View style={styles.inner}>
+    {/* Индикатор печатающих пользователей */}
+      <TypingIndicator userNames={typingUserNames} />
     <FlatList
       ref={listRef}
       data={messages}
       renderItem={({ item, index }) => {
-        // Показываем баннер перед первым непрочитанным сообщением
-        const shouldShowBanner = index === firstUnreadIndex && unreadCount > 0;
+        // Показываем баннер только при первом входе в чат (showUnreadBanner=true)
+        // После автоматической отметки сообщений как прочитанных баннер скрывается
+        const shouldShowBanner = index === firstUnreadIndex && unreadCount > 0 && showUnreadBanner;
 
         return (
           <>
@@ -393,6 +456,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         if (h !== inputHeight) setInputHeight(h);
       }}
     >
+      
+
       <MessageInput onSend={handleSendMessage} onTyping={handleTyping} />
     </View>
   </View>

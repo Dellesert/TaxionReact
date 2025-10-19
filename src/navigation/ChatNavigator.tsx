@@ -10,6 +10,7 @@ import { ChatStackParamList } from './types';
 import ChatListScreen from '@screens/chat/ChatListScreen';
 import CreateChatScreen from '@screens/chat/CreateChatScreen';
 import ChatScreen from '@screens/chat/ChatScreen';
+import ChatSettingsScreen from '@screens/chat/ChatSettingsScreen';
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
 
@@ -51,6 +52,15 @@ const ChatNavigator: React.FC = () => {
         options={{
           headerShown: true,
           headerBackTitleVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="ChatSettings"
+        component={ChatSettingsScreen}
+        options={{
+          headerShown: true,
+          headerBackTitleVisible: false,
+          title: 'Настройки чата',
         }}
       />
     </Stack.Navigator>

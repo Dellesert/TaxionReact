@@ -22,13 +22,24 @@ type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Cha
 
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
-  const { chats, isLoading, loadChats: fetchChats, createChat } = useChatStore();
+  const { chats, isLoading, loadChats: fetchChats, createChat, deleteChat, updateChat, leaveChat } = useChatStore();
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isConnected, setIsConnected] = useState(websocketService.isConnected());
 
   useEffect(() => {
     loadChats();
+  }, []);
+
+  // Проверяем статус подключения каждую секунду
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsConnected(websocketService.isConnected());
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // ИСПРАВЛЕНО: НЕ нужно joinChat для всех чатов в списке
@@ -70,6 +81,33 @@ const ChatListScreen: React.FC = () => {
 
   const handleNewChat = () => {
     navigation.navigate('CreateChat');
+  };
+
+  const handleDeleteChat = async (chatId: number) => {
+    try {
+      await deleteChat(chatId);
+      console.log(`✅ Chat ${chatId} deleted`);
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+    }
+  };
+
+  const handleRenameChat = async (chatId: number, newName: string) => {
+    try {
+      await updateChat(chatId, newName);
+      console.log(`✅ Chat ${chatId} renamed to "${newName}"`);
+    } catch (error) {
+      console.error('Failed to rename chat:', error);
+    }
+  };
+
+  const handleLeaveChat = async (chatId: number) => {
+    try {
+      await leaveChat(chatId);
+      console.log(`✅ Left chat ${chatId}`);
+    } catch (error) {
+      console.error('Failed to leave chat:', error);
+    }
   };
 
   const filteredChats = chats.filter((chat) => {
@@ -114,11 +152,34 @@ const ChatListScreen: React.FC = () => {
       
       <View style={[styles.header, dynamicStyles.header]}>
         <View style={styles.headerTop}>
-          <Text style={[styles.title, dynamicStyles.title]}>Чаты</Text>
-          <ConnectionStatus />
-          <TouchableOpacity onPress={handleNewChat} style={styles.newChatButton}>
-            <Ionicons name="create-outline" size={24} color={theme.primary} />
+          {/* Левая кнопка - Изменить */}
+          <TouchableOpacity
+            onPress={() => setIsEditMode(!isEditMode)}
+            style={styles.editButton}
+          >
+            <Ionicons
+              name={isEditMode ? "checkmark-outline" : "create-outline"}
+              size={24}
+              color={isEditMode ? theme.success || theme.primary : theme.textSecondary}
+            />
           </TouchableOpacity>
+
+          {/* Центр - Заголовок или статус подключения */}
+          <View style={styles.centerContent}>
+            {isConnected ? (
+              <Text style={[styles.title, dynamicStyles.title]}>Чаты</Text>
+            ) : (
+              <ConnectionStatus />
+            )}
+          </View>
+
+          {/* Правая кнопка - Добавить */}
+          {!isEditMode && (
+            <TouchableOpacity onPress={handleNewChat} style={styles.newChatButton}>
+              <Ionicons name="add-outline" size={28} color={theme.primary} />
+            </TouchableOpacity>
+          )}
+          {isEditMode && <View style={styles.newChatButton} />}
         </View>
 
         <View style={[styles.searchContainer, dynamicStyles.searchContainer]}>
@@ -155,7 +216,13 @@ const ChatListScreen: React.FC = () => {
           data={filteredChats}
           keyExtractor={(item) => `chat-${item.id}`}
           renderItem={({ item }) => (
-            <ChatItem chat={item} onPress={handleChatPress} />
+            <ChatItem
+              chat={item}
+              onPress={handleChatPress}
+              onDelete={isEditMode ? handleDeleteChat : undefined}
+              onRename={isEditMode ? handleRenameChat : undefined}
+              onLeave={isEditMode ? handleLeaveChat : undefined}
+            />
           )}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -182,12 +249,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+    minHeight: 32,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
   },
+  editButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   newChatButton: {
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },

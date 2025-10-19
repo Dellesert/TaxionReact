@@ -19,6 +19,9 @@ interface ChatState {
   typingUsers: Record<number, TypingIndicator[]>;
   loadChats: () => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
+  updateChat: (chatId: number, name: string) => Promise<void>;
+  deleteChat: (chatId: number) => Promise<void>;
+  leaveChat: (chatId: number) => Promise<void>;
   loadMessages: (chatId: number) => Promise<void>;
   loadMoreMessages: (chatId: number, beforeMessageId: number) => Promise<void>;
   setActiveChat: (chat: Chat | null) => void;
@@ -87,6 +90,61 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return newChat;
     } catch (error: any) {
       set({ error: error.message || 'Failed to create chat', isLoading: false });
+      throw error;
+    }
+  },
+
+  updateChat: async (chatId: number, name: string) => {
+    try {
+      const updatedChat = await chatApi.updateChat(chatId, { name });
+      set((state) => ({
+        chats: state.chats.map((chat) =>
+          chat.id === chatId ? { ...chat, name: updatedChat.name } : chat
+        ),
+        activeChat: state.activeChat?.id === chatId
+          ? { ...state.activeChat, name: updatedChat.name }
+          : state.activeChat,
+      }));
+      console.log(`✏️ Chat ${chatId} renamed to "${name}"`);
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to update chat' });
+      throw error;
+    }
+  },
+
+  deleteChat: async (chatId: number) => {
+    try {
+      await chatApi.deleteChat(chatId);
+      set((state) => ({
+        chats: state.chats.filter((chat) => chat.id !== chatId),
+        messages: Object.fromEntries(
+          Object.entries(state.messages).filter(([id]) => Number(id) !== chatId)
+        ),
+        activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
+      }));
+      console.log(`🗑️ Chat ${chatId} deleted successfully`);
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to delete chat' });
+      throw error;
+    }
+  },
+
+  leaveChat: async (chatId: number) => {
+    try {
+      const currentUser = useAuthStore.getState().user;
+      if (!currentUser) throw new Error('User not authenticated');
+
+      await chatApi.removeChatMember(chatId, currentUser.id);
+      set((state) => ({
+        chats: state.chats.filter((chat) => chat.id !== chatId),
+        messages: Object.fromEntries(
+          Object.entries(state.messages).filter(([id]) => Number(id) !== chatId)
+        ),
+        activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
+      }));
+      console.log(`👋 Left chat ${chatId} successfully`);
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to leave chat' });
       throw error;
     }
   },

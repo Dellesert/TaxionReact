@@ -14,6 +14,10 @@ export type ChatStackParamList = {
     chatId: number;
     chatName?: string;
   };
+  ChatSettings: {
+    chatId: number;
+    chatName?: string;
+  };
 };
 
 // Task Stack

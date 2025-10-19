@@ -27,12 +27,14 @@ interface ChatMembersModalProps {
   visible: boolean;
   chatId: number;
   onClose: () => void;
+  isCreator?: boolean;
 }
 
 export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   visible,
   chatId,
   onClose,
+  isCreator = false,
 }) => {
   const { theme } = useTheme();
   const [members, setMembers] = useState<ChatMember[]>([]);
@@ -387,9 +389,11 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
               )}
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity onPress={handleAddMode} style={styles.addIconButton}>
-              <Ionicons name="person-add" size={24} color={theme.primary} />
-            </TouchableOpacity>
+            isCreator && (
+              <TouchableOpacity onPress={handleAddMode} style={styles.addIconButton}>
+                <Ionicons name="person-add" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            )
           )}
         </View>
 

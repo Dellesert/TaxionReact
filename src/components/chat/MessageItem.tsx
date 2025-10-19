@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Message } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
 import { getUser } from '@api/user.api'; // Assume this exists
+import { User } from '../../types/user.types';
 
 interface MessageItemProps {
   message: Message;
@@ -33,6 +34,34 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleUserPress = () => {
+    console.log('👤 User pressed!');
+    console.log('👤 Sender:', sender);
+    console.log('👤 Message:', message);
+
+    if (!sender) {
+      console.warn('⚠️ Sender not found!');
+      // Показываем хотя бы базовую информацию
+      Alert.alert(
+        'Пользователь',
+        `ID: ${message.sender_id}`,
+        [{ text: 'Закрыть', style: 'cancel' }]
+      );
+      return;
+    }
+
+    // TODO: Открыть экран профиля пользователя
+    // Пока показываем информацию в Alert
+    console.log('✅ Opening user profile');
+    Alert.alert(
+      sender.full_name || sender.email || 'Пользователь',
+      `Email: ${sender.email || 'Не указан'}\nID: ${sender.id}`,
+      [
+        { text: 'Закрыть', style: 'cancel' }
+      ]
+    );
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -68,18 +97,22 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   return (
     <View style={[styles.container, isOwnMessage && styles.ownMessageContainer]}>
       {!isOwnMessage && (
-        <Avatar
-          uri={sender?.avatar}
-          name={sender?.full_name || `User ${message.sender_id}`}
-          size={32}
-          style={styles.avatar}
-        />
+        <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
+          <Avatar
+            uri={sender?.avatar}
+            name={sender?.full_name || `User ${message.sender_id}`}
+            size={32}
+            style={styles.avatar}
+          />
+        </TouchableOpacity>
       )}
       <View style={[styles.messageBubble, dynamicStyles.messageBubble, isOwnMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble]]}>
         {!isOwnMessage && (
-          <Text style={[styles.senderName, dynamicStyles.senderName]}>
-            {sender?.full_name || `User ${message.sender_id}`}
-          </Text>
+          <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
+            <Text style={[styles.senderName, dynamicStyles.senderName]}>
+              {sender?.full_name || `User ${message.sender_id}`}
+            </Text>
+          </TouchableOpacity>
         )}
         <Text style={[styles.messageText, dynamicStyles.messageText, isOwnMessage && dynamicStyles.ownMessageText]}>
           {message.content}

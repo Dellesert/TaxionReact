@@ -3,10 +3,13 @@
  * Главная навигация с bottom tabs для авторизованных пользователей
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useChatStore } from '@store/chatStore';
 import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
@@ -18,6 +21,12 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const MainNavigator: React.FC = () => {
   const { theme } = useTheme();
+  const chats = useChatStore((state) => state.chats);
+
+  // Подсчитываем общее количество непрочитанных сообщений
+  const totalUnreadCount = useMemo(() => {
+    return chats.reduce((total, chat) => total + (chat.unread_count || 0), 0);
+  }, [chats]);
 
   return (
     <Tab.Navigator
@@ -47,9 +56,23 @@ const MainNavigator: React.FC = () => {
               iconName = 'help-outline';
           }
 
+          // Для чатов добавляем бейдж с количеством непрочитанных
+          if (route.name === 'Chats' && totalUnreadCount > 0) {
+            return (
+              <View style={{ width: 26, height: 26 }}>
+                <Ionicons name={iconName} size={26} color={color} />
+                <View style={[styles.badge, { backgroundColor: theme.error || '#FF3B30' }]}>
+                  <Text style={styles.badgeText}>
+                    {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                  </Text>
+                </View>
+              </View>
+            );
+          }
+
           return <Ionicons name={iconName} size={26} color={color} />;
         },
-        tabBarActiveTintColor: theme.primary,
+        tabBarActiveTintColor: theme.primaryDark,
         tabBarInactiveTintColor: theme.textTertiary,
         tabBarStyle: {
           backgroundColor: theme.backgroundSecondary,
@@ -80,7 +103,25 @@ const MainNavigator: React.FC = () => {
       <Tab.Screen
         name="Chats"
         component={ChatNavigator}
-        options={{ tabBarLabel: 'Чаты' }}
+        options={({ route }) => ({
+          tabBarLabel: 'Чаты',
+          tabBarStyle: ((route) => {
+            const routeName = getFocusedRouteNameFromRoute(route) ?? 'ChatList';
+            if (routeName === 'Chat' || routeName === 'ChatSettings') {
+              // Скрываем табы на экране чата и настроек
+              return { display: 'none' };
+            }
+            // Показываем табы на остальных экранах
+            return {
+              backgroundColor: theme.backgroundSecondary,
+              borderTopWidth: 1,
+              borderTopColor: theme.border,
+              height: 85,
+              paddingTop: 6,
+              paddingHorizontal: 12,
+            };
+          })(route),
+        })}
       />
        <Tab.Screen
         name="Calendar"
@@ -95,5 +136,24 @@ const MainNavigator: React.FC = () => {
     </Tab.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+});
 
 export default MainNavigator;

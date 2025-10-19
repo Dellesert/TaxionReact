@@ -92,8 +92,26 @@ export const getChat = async (id: number): Promise<Chat> => {
  * Update chat
  */
 export const updateChat = async (id: number, data: UpdateChatDto): Promise<Chat> => {
-  const response = await api.put<ApiResponse<Chat>>(API_ENDPOINTS.CHAT.UPDATE(id), data);
-  return response.data.data;
+  console.log('✏️ Updating chat:', id, 'with data:', data);
+  const response = await api.put<any>(API_ENDPOINTS.CHAT.UPDATE(id), data);
+  console.log('✅ Update response:', response.data);
+
+  // Проверяем разные форматы ответа
+  if (response.data && response.data.data) {
+    return response.data.data;
+  }
+
+  // Если формат { chat: Chat } (как в UpdateChat handler)
+  if (response.data && response.data.chat) {
+    return response.data.chat;
+  }
+
+  // Если вернулся сам чат напрямую
+  if (response.data && response.data.id) {
+    return response.data as Chat;
+  }
+
+  throw new Error('Invalid response format from update chat API');
 };
 
 /**
