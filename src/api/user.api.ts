@@ -122,8 +122,27 @@ export const getUsers = async (
  * Get single user by ID (Admin)
  */
 export const getUser = async (id: number): Promise<User> => {
+  console.log('📞 getUser called for ID:', id);
   const response = await api.get<ApiResponse<User>>(API_ENDPOINTS.USER.BY_ID(id));
-  return response.data.data;
+
+  console.log('✅ getUser full response:', response);
+  console.log('✅ getUser response.data:', response.data);
+  console.log('✅ getUser response.data keys:', Object.keys(response.data));
+
+  // Пробуем разные форматы ответа
+  if (response.data.data) {
+    console.log('📦 Using response.data.data');
+    return response.data.data;
+  } else if (response.data.user) {
+    console.log('📦 Using response.data.user');
+    return response.data.user;
+  } else if (response.data.id) {
+    console.log('📦 Using response.data directly (has id field)');
+    return response.data as User;
+  } else {
+    console.log('⚠️ Unknown response structure!');
+    return response.data as any;
+  }
 };
 
 /**
