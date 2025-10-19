@@ -52,9 +52,36 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
 
-  const messages = useMemo(() => allMessages[chatIdNum] || [], [allMessages, chatIdNum]);
+  // Инвертируем массив для inverted FlatList
+  // [новые -> старые] для отображения
+  const messages = useMemo(() => {
+    const msgs = allMessages[chatIdNum] || [];
+    return [...msgs].reverse();
+  }, [allMessages, chatIdNum]);
   const hasLoadedRef = useRef(false);
   const [membersModalVisible, setMembersModalVisible] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
+  const lastOldestMessageId = useRef<number | null>(null);
+
+  // Обработчик скролла - используем простую защиту через isLoadingMore
+  const handleScroll = (event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromEnd = contentSize.height - layoutMeasurement.height - contentOffset.y;
+
+    // В inverted списке при скролле ВВЕРХ (к старым) offset.y увеличивается
+    // Самая надёжная защита - проверяем только isLoadingMore флаг
+    // React гарантирует, что этот флаг установлен правильно
+    if (
+      distanceFromEnd < 300 &&
+      !isLoadingMore &&
+      hasMoreMessages &&
+      initialScrolled
+    ) {
+      handleLoadMore();
+    }
+  };
 
   // Calculate first unread message index and total unread count
   const { firstUnreadIndex, unreadCount } = useMemo(() => {
@@ -137,6 +164,12 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [chatName, navigation]);
 
   useEffect(() => {
+    // Сбрасываем состояние при смене чата
+    setHasMoreMessages(true);
+    setInitialScrolled(false);
+    scrollToEndOnce.current = false;
+    lastOldestMessageId.current = null;
+
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
       loadMessages(chatIdNum);
@@ -178,43 +211,21 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [chatIdNum]); // ✅ ИСПРАВЛЕНИЕ: Удалены setError, getChatById, setActiveChat из dependencies
 
-  // Smart scroll: scroll to first unread message or to end
-  useEffect(() => {
-    if (messages.length > 0 && !initialScrolled) {
-      // Wait for layout to be calculated
-      const scrollTimer = setTimeout(() => {
-        // Если непрочитанных много (>10) или они в самом начале чата,
-        // скорее всего они за пределами загруженных - скроллим в конец
-        const tooManyUnread = unreadCount > 10;
-        const unreadAtStart = firstUnreadIndex >= 0 && firstUnreadIndex < 5;
+  // Scroll to end (newest messages at bottom) - DISABLED
+  // Используем onContentSizeChange вместо useEffect для надежного скролла
+  const scrollToEndOnce = useRef(false);
 
-        if (firstUnreadIndex >= 0 && unreadCount > 0 && !tooManyUnread && !unreadAtStart) {
-          // Scroll to first unread message - показать баннер и первое непрочитанное
-          console.log(`📜 Scrolling to first unread message at index ${firstUnreadIndex} (${unreadCount} unread)`);
-          listRef.current?.scrollToIndex({
-            index: firstUnreadIndex,
-            animated: false,
-            viewPosition: 0.2, // Показать баннер чуть выше середины экрана
-          });
-        } else {
-          // No unread messages OR too many unread OR unread at very start - scroll to end
-          const reason = unreadCount === 0 ? 'no unread' :
-                        tooManyUnread ? `too many unread (${unreadCount})` :
-                        'unread at start';
-          console.log(`📜 Scrolling to end (${reason})`);
-          listRef.current?.scrollToEnd({ animated: false });
-        }
+  const handleContentSizeChange = () => {
+    if (!scrollToEndOnce.current && messages.length > 0) {
+      console.log(`📜 Scrolling to top (newest) (${messages.length} messages)`);
+      setTimeout(() => {
+        // С inverted=true, scrollToOffset(0) = самые новые сообщения
+        listRef.current?.scrollToOffset({ offset: 0, animated: false });
+        scrollToEndOnce.current = true;
         setInitialScrolled(true);
-      }, 150);
-
-      return () => clearTimeout(scrollTimer);
-    } else if (messages.length > 0 && initialScrolled) {
-      // After initial scroll, only scroll to end for new messages
-      requestAnimationFrame(() => {
-        listRef.current?.scrollToEnd({ animated: false });
-      });
+      }, 100);
     }
-  }, [messages.length, firstUnreadIndex, unreadCount, initialScrolled]);
+  };
 
   // Mark messages as read when entering chat - WITH DELAY to show unread banner first
   useEffect(() => {
@@ -258,9 +269,62 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  // Подгружаем старые сообщения при скролле ВНИЗ (в inverted списке)
+  const handleLoadMore = async () => {
+    console.log(`\n🔄 === handleLoadMore called ===`);
+
+    // НЕ загружаем пока не произошел первый скролл
+    if (!initialScrolled) {
+      console.log(`⏸️ Waiting for initial scroll before loading more`);
+      return;
+    }
+
+    // Проверяем условия для загрузки
+    if (isLoadingMore || messages.length === 0 || !hasMoreMessages) {
+      console.log(`⏸️ Skipping load more: isLoading=${isLoadingMore}, hasMore=${hasMoreMessages}, count=${messages.length}`);
+      return;
+    }
+
+    // Массив инвертирован: [новые ... старые]
+    // Последнее сообщение в массиве - самое старое
+    const oldestMessage = messages[messages.length - 1];
+    if (!oldestMessage) {
+      console.log(`❌ No oldest message found`);
+      return;
+    }
+
+    // Проверяем, что ID самого старого сообщения изменился с последней загрузки
+    if (lastOldestMessageId.current === oldestMessage.id) {
+      console.log(`⏸️ Already loading messages before ID ${oldestMessage.id}, skipping duplicate request`);
+      return;
+    }
+
+    console.log(`📜 Loading more messages before ID ${oldestMessage.id} (total messages: ${messages.length})`);
+    lastOldestMessageId.current = oldestMessage.id;
+    setIsLoadingMore(true);
+
+    try {
+      const addedCount = await loadMoreMessages(chatIdNum, oldestMessage.id);
+      console.log(`✅ Added ${addedCount} NEW older messages to the list`);
+
+      // Если не добавлено новых сообщений, значит все дубликаты или конец достигнут
+      if (addedCount === 0) {
+        console.log(`🏁 No new messages added (all duplicates or end reached)`);
+        setHasMoreMessages(false);
+      } else {
+        console.log(`➕ Added ${addedCount} messages, can continue loading`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load more messages:', error);
+    } finally {
+      setIsLoadingMore(false);
+      console.log(`🔄 === handleLoadMore finished ===\n`);
+    }
+  };
+
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.background,
+      backgroundColor: theme.backgroundTertiary,
     },
     loadingContainer: {
       backgroundColor: theme.background,
@@ -290,34 +354,36 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       ref={listRef}
       data={messages}
       renderItem={({ item, index }) => {
-        // Show banner only if we're scrolling to unread messages
-        const shouldShowBanner = index === firstUnreadIndex &&
-                                 unreadCount > 0 &&
-                                 unreadCount <= 10 &&
-                                 firstUnreadIndex >= 5;
+        // Показываем баннер перед первым непрочитанным сообщением
+        const shouldShowBanner = index === firstUnreadIndex && unreadCount > 0;
 
         return (
           <>
-            {shouldShowBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
             <MessageItem message={item} />
+            {shouldShowBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
           </>
         );
       }}
       keyExtractor={(item) => String(item.id)}
       contentContainerStyle={[
         styles.messagesList,
-        { paddingBottom: inputHeight + insets.bottom },
+        { paddingTop: inputHeight + insets.bottom },
       ]}
-      inverted={false}
+      inverted={true}
       keyboardShouldPersistTaps="handled"
       removeClippedSubviews={false}
-      onScrollToIndexFailed={(info) => {
-        // Fallback: scroll to end if scrollToIndex fails
-        console.warn('scrollToIndex failed:', info);
-        setTimeout(() => {
-          listRef.current?.scrollToEnd({ animated: false });
-        }, 100);
-      }}
+      // Скролл к самым новым при первой загрузке
+      onContentSizeChange={handleContentSizeChange}
+      // Используем onScroll вместо onEndReached для надежности
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+      ListFooterComponent={
+        isLoadingMore ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={theme.primary} />
+          </View>
+        ) : null
+      }
     />
 
     {/* Оборачиваем панель, чтобы измерить её высоту */}

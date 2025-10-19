@@ -95,14 +95,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       let messages;
+
       if (isMockMode()) {
         console.log('🔧 Using mock messages for chat:', chatId);
         const { mockGetMessages } = await import('@utils/mockData');
         messages = await mockGetMessages(String(chatId));
       } else {
-        const response = await chatApi.getMessages(chatId, { limit: 50 });
+        // Загружаем только последние 30 сообщений
+        // Старые сообщения будут подгружаться при скролле вверх
+        const limit = 30;
+        console.log(`📚 Loading last ${limit} messages`);
+
+        const response = await chatApi.getMessages(chatId, { limit });
         messages = (response.messages || response.data || []).reverse();
       }
+
       set((state) => ({
         messages: {
           ...state.messages,
@@ -117,21 +124,50 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadMoreMessages: async (chatId: number, beforeMessageId: number) => {
     try {
+      console.log(`📚 Loading more messages before ID ${beforeMessageId}`);
+      console.log(`🔍 Request params: chatId=${chatId}, before_message_id=${beforeMessageId}, limit=30`);
       const response = await chatApi.getMessages(chatId, {
-        limit: 50,
+        limit: 30,
         before_message_id: beforeMessageId,
       });
       const responseMessages = response.messages || response.data || [];
+
+      console.log(`📚 Received ${responseMessages.length} older messages`);
       if (responseMessages.length > 0) {
-        set((state) => ({
-          messages: {
-            ...state.messages,
-            [chatId]: [...responseMessages.reverse(), ...(state.messages[chatId] || [])],
-          },
-        }));
+        const ids = responseMessages.map(m => m.id).sort((a, b) => a - b);
+        console.log(`📚 Received message IDs: first=${ids[0]}, last=${ids[ids.length - 1]}, all=[${ids.slice(0, 5).join(',')}...${ids.slice(-3).join(',')}]`);
       }
+
+      let addedCount = 0;
+
+      if (responseMessages.length > 0) {
+        set((state) => {
+          const existingMessages = state.messages[chatId] || [];
+          const existingIds = new Set(existingMessages.map(m => m.id));
+
+          // Фильтруем дубликаты - добавляем только новые сообщения
+          const newMessages = responseMessages
+            .reverse() // Переворачиваем (от новых к старым -> от старых к новым)
+            .filter(msg => !existingIds.has(msg.id));
+
+          addedCount = newMessages.length;
+          console.log(`📚 Adding ${newMessages.length} new messages (filtered ${responseMessages.length - newMessages.length} duplicates)`);
+
+          return {
+            messages: {
+              ...state.messages,
+              [chatId]: [...newMessages, ...existingMessages], // Старые добавляем В НАЧАЛО
+            },
+          };
+        });
+      }
+
+      // Возвращаем количество НОВЫХ сообщений (не дубликатов) для проверки "больше нет"
+      console.log(`📚 Returning ${addedCount} new messages (from ${responseMessages.length} received)`);
+      return addedCount;
     } catch (error: any) {
       set({ error: error.message || 'Failed to load more messages' });
+      return 0;
     }
   },
 

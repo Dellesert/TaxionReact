@@ -200,9 +200,12 @@ export const getMessages = async (
   const queryParams = {
     limit: params?.limit || PAGINATION.DEFAULT_LIMIT,
     offset: params?.offset || PAGINATION.DEFAULT_OFFSET,
-    before_message_id: params?.before_message_id,
-    after_message_id: params?.after_message_id,
+    before: params?.before_message_id, // Backend expects "before" not "before_message_id"
+    after: params?.after_message_id,   // Backend expects "after" not "after_message_id"
   };
+
+  console.log(`🌐 API getMessages: chatId=${chatId}, queryParams=`, queryParams);
+  console.log(`🌐 API URL: ${API_ENDPOINTS.CHAT.MESSAGES(chatId)}`);
 
   const response = await api.get<{
     messages: Message[];

@@ -16,39 +16,38 @@ export const UnreadMessagesBanner: React.FC<UnreadMessagesBannerProps> = ({ unre
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.primary + '15', // 15 = ~8% opacity
-      borderColor: theme.primary,
+      backgroundColor: theme.background, // 15 = ~8% opacity
+      borderColor: theme.textTertiary + 45,
     },
     text: {
-      color: theme.primary,
+      color: theme.textSecondary,
     },
   });
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      <View style={styles.line} />
       <Text style={[styles.text, dynamicStyles.text]}>
         {unreadCount} {unreadCount === 1 ? 'непрочитанное сообщение' : 'непрочитанных сообщений'}
       </Text>
-      <View style={styles.line} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     alignItems: 'center',
+    width: '50%',
+    margin: 'auto',
     paddingVertical: 8,
     paddingHorizontal: 16,
     marginVertical: 8,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
+    borderWidth: 1,
+    borderRadius: 12,
   },
   line: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E94444',
+    backgroundColor: '#d3d3d3ff',
     opacity: 0.3,
   },
   text: {
