@@ -11,7 +11,7 @@ import { STORAGE_KEYS } from '@constants/app.constants';
 type WSMessageType =
   | 'user_join' | 'user_leave' | 'typing' | 'new_message'
   | 'message_read' | 'message_edit' | 'message_delete'
-  | 'reaction' | 'error' | 'pong' | 'ping';
+  | 'reaction' | 'error' | 'pong' | 'ping' | 'user_presence';
 
 interface WSMessage {
   type: WSMessageType;
@@ -356,6 +356,11 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
         case 'error':
           console.error('❌ WebSocket error message:', message.data);
+          break;
+
+        case 'user_presence':
+          console.log('👤 User presence update:', message.data);
+          chatStore.handleUserPresence(message.data);
           break;
 
         case 'ping':

@@ -9,6 +9,7 @@ import { useAuthStore } from '@store/authStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
+import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion } from '@utils/chatUtils';
 
 interface ChatItemProps {
   chat: Chat;
@@ -26,11 +27,17 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onR
   const [showRenameDialog, setShowRenameDialog] = useState(false);
 
   const getChatName = () => {
-    return chat.name || 'Unnamed Chat';
+    return getChatDisplayName(chat, currentUser?.id);
   };
 
   const getChatAvatar = () => {
-    return chat.avatar || chat.avatar_url;
+    return getChatDisplayAvatar(chat, currentUser?.id);
+  };
+
+  const getCompanionOnlineStatus = () => {
+    if (chat.type !== 'private') return false;
+    const companion = getPersonalChatCompanion(chat, currentUser?.id);
+    return companion?.status === 'online';
   };
 
   const getLastMessagePreview = () => {
@@ -120,11 +127,16 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onR
         onPress={() => onPress(chat)}
         activeOpacity={0.7}
       >
-        <Avatar
-          imageUrl={getChatAvatar()}
-          name={getChatName()}
-          size={50}
-        />
+        <View style={styles.avatarContainer}>
+          <Avatar
+            imageUrl={getChatAvatar()}
+            name={getChatName()}
+            size={50}
+          />
+          {getCompanionOnlineStatus() && (
+            <View style={[styles.onlineIndicator, { borderColor: theme.backgroundSecondary }]} />
+          )}
+        </View>
 
         <View style={styles.content}>
           <View style={styles.header}>
@@ -162,7 +174,7 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onR
         </View>
       </TouchableOpacity>
 
-      {onRename && isCreator && (
+      {onRename && isCreator && chat.type !== 'private' && (
         <TouchableOpacity
           style={[styles.renameButton, { backgroundColor: theme.primary }]}
           onPress={handleRename}
@@ -178,7 +190,7 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onR
           onPress={handleDelete}
           activeOpacity={0.7}
         >
-          <Ionicons name={isCreator ? "trash-outline" : "exit-outline"} size={20} color="#FFFFFF" />
+          <Ionicons name={"trash-outline" } size={20} color="#FFFFFF" />
         </TouchableOpacity>
       )}
 
@@ -234,6 +246,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
   },
   renameButton: {
     width: 60,

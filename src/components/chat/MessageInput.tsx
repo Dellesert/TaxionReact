@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
+  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -11,19 +12,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 
 interface MessageInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, replyToId?: number) => void;
   onTyping?: (isTyping: boolean) => void;
   disabled?: boolean;
+  editingMessage?: any | null;
+  onCancelEdit?: () => void;
+  replyingToMessage?: any | null;
+  onCancelReply?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
   onTyping,
   disabled = false,
+  editingMessage,
+  onCancelEdit,
+  replyingToMessage,
+  onCancelReply,
 }) => {
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // При установке editingMessage заполняем поле ввода
+  useEffect(() => {
+    if (editingMessage) {
+      setMessage(editingMessage.content || '');
+    }
+  }, [editingMessage]);
 
   const handleChangeText = (text: string) => {
     setMessage(text);
@@ -56,9 +72,27 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         onTyping(false);
       }
 
-      onSend(message.trim());
+      // Если редактируем, добавим префикс с ID сообщения
+      if (editingMessage) {
+        onSend(`EDIT:${editingMessage.id}:${message.trim()}`);
+        if (onCancelEdit) onCancelEdit();
+      } else {
+        // Отправляем сообщение с reply_to_id если отвечаем
+        onSend(message.trim(), replyingToMessage?.id);
+        if (onCancelReply) onCancelReply();
+      }
+
       setMessage('');
     }
+  };
+
+  const handleCancelEdit = () => {
+    setMessage('');
+    if (onCancelEdit) onCancelEdit();
+  };
+
+  const handleCancelReply = () => {
+    if (onCancelReply) onCancelReply();
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -67,7 +101,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       borderTopColor: theme.border,
     },
     attachButton: {
-      // Icon color handled inline
+      backgroundColor: theme.backgroundTertiary,
     },
     input: {
       backgroundColor: theme.input,
@@ -86,14 +120,49 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
+      {/* Индикатор редактирования */}
+      {editingMessage && (
+        <View style={[styles.editIndicator, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
+          <View style={styles.editInfo}>
+            <Ionicons name="create-outline" size={16} color={theme.primary} />
+            <Text style={[styles.editText, { color: theme.text }]} numberOfLines={1}>
+              Редактирование: {editingMessage.content}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={handleCancelEdit} style={styles.cancelButton}>
+            <Ionicons name="close" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Индикатор ответа */}
+      {replyingToMessage && !editingMessage && (
+        <View style={[styles.replyIndicator, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border, borderLeftColor: theme.primary }]}>
+          <View style={styles.replyInfo}>
+            <Ionicons name="return-down-forward-outline" size={16} color={theme.primary} />
+            <View style={styles.replyTextContainer}>
+              <Text style={[styles.replyLabel, { color: theme.primary }]}>
+                Ответ на сообщение
+              </Text>
+              <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
+                {replyingToMessage.content}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={handleCancelReply} style={styles.cancelButton}>
+            <Ionicons name="close" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={[styles.container, dynamicStyles.container]}>
-        <TouchableOpacity style={styles.attachButton} disabled={disabled}>
-          <Ionicons name="attach" size={24} color={theme.textTertiary} />
+        <TouchableOpacity style={[styles.attachButton, dynamicStyles.attachButton]} disabled={disabled}>
+          <Ionicons name="attach" size={26} color={theme.textTertiary} />
         </TouchableOpacity>
 
         <TextInput
           style={[styles.input, dynamicStyles.input]}
-          placeholder="Введите сообщение..."
+          placeholder="Сообщение"
           placeholderTextColor={theme.inputPlaceholder}
           value={message}
           onChangeText={handleChangeText}
@@ -110,7 +179,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         >
           <Ionicons
             name="send"
-            size={20}
+            size={16}
             color={message.trim() ? '#FFFFFF' : theme.textTertiary}
           />
         </TouchableOpacity>
@@ -129,27 +198,79 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   attachButton: {
+    width: 40,
+    height: 42,
     padding: 8,
-    marginRight: 8,
+    marginRight: 5,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 12,
   },
   input: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingTop: 10,
     // paddingVertical: 10,
     fontSize: 15,
-    maxHeight: 100,
+    maxHeight: 42,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 42,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
+  },
+  editIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+  },
+  editInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  editText: {
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  cancelButton: {
+    padding: 4,
+  },
+  replyIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderLeftWidth: 3,
+  },
+  replyInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 8,
+  },
+  replyTextContainer: {
+    marginLeft: 8,
+    flex: 1,
+  },
+  replyLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  replyText: {
+    fontSize: 13,
   },
 });
 

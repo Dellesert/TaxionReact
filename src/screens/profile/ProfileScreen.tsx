@@ -70,12 +70,12 @@ const ProfileScreen: React.FC = () => {
   const dynamicStyles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.background,
+      backgroundColor: theme.primaryDark,
     },
     header: {
       backgroundColor: theme.backgroundSecondary,
       paddingHorizontal: 16,
-      paddingTop: 60,
+      paddingTop: 12,
       paddingBottom: 8,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
@@ -86,20 +86,30 @@ const ProfileScreen: React.FC = () => {
       color: theme.text,
     },
     userInfoSection: {
-      backgroundColor: theme.backgroundSecondary,
+      backgroundColor: theme.primaryDark,
       padding: 16,
       marginBottom: 12,
       alignItems: 'center',
     },
+    userAvatar: {
+      borderWidth: 1,
+      borderRadius: 50,
+      borderColor: '#cf0000ff',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      elevation: 6,
+    },
     userName: {
       fontSize: 24,
       fontWeight: 'bold',
-      color: theme.text,
+      color: '#FFFFFF',
       marginTop: 16,
     },
     userEmail: {
       fontSize: 16,
-      color: theme.textSecondary,
+      color: '#FFFFFF',
       marginTop: 4,
     },
     departmentBadge: {
@@ -111,14 +121,27 @@ const ProfileScreen: React.FC = () => {
     },
     departmentText: {
       fontSize: 14,
-      color: theme.primary,
+      color: '#FFFFFF',
       fontWeight: '500',
     },
     userPosition: {
       fontSize: 14,
-      color: theme.textTertiary,
+      color: '#FFFFFF',
       marginTop: 8,
     },
+    card: {
+    backgroundColor: theme.backgroundSecondary, // «поверхность»
+    borderTopLeftRadius: 16,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: isDark ? theme.border : 'transparent',
+    overflow: 'hidden',
+  },
     section: {
       backgroundColor: theme.backgroundSecondary,
       marginBottom: 12,
@@ -193,15 +216,10 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <ScrollView style={dynamicStyles.container}>
-      {/* Header */}
-      <View style={dynamicStyles.header}>
-        <Text style={dynamicStyles.headerTitle}>Профиль</Text>
-      </View>
-
       {/* User Info */}
       <View style={dynamicStyles.userInfoSection}>
-        <Avatar uri={user.avatar} name={user.full_name || user.email} size={100} />
-        <Text style={dynamicStyles.userName}>{user.full_name || 'Без имени'}</Text>
+        <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar_url} name={user.name || user.email} size={100} />
+        <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>
         <Text style={dynamicStyles.userEmail}>{user.email}</Text>
         {user.department && (
           <View style={dynamicStyles.departmentBadge}>
@@ -210,27 +228,36 @@ const ProfileScreen: React.FC = () => {
         )}
         {user.position && <Text style={dynamicStyles.userPosition}>{user.position}</Text>}
       </View>
-
-      {/* Account Settings */}
+    <View style={[styles.card, dynamicStyles.card]}>
       <View style={dynamicStyles.section}>
-        <View style={dynamicStyles.sectionHeader}>
-          <Text style={dynamicStyles.sectionTitle}>Настройки аккаунта</Text>
-        </View>
-
         <TouchableOpacity style={dynamicStyles.menuItem}>
-          <Ionicons name="person-outline" size={24} color={theme.primary} />
-          <Text style={dynamicStyles.menuItemText}>Редактировать профиль</Text>
+          <Ionicons name="pencil-outline" size={22} color={theme.primary} />
+          <Text style={dynamicStyles.menuItemText}>Изменить статус</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
 
         <TouchableOpacity style={dynamicStyles.menuItem}>
-          <Ionicons name="lock-closed-outline" size={24} color={theme.primary} />
-          <Text style={dynamicStyles.menuItemText}>Изменить пароль</Text>
+          <Ionicons name="camera-outline" size={24} color={theme.primary} />
+          <Text style={dynamicStyles.menuItemText}>Изменить фотографию</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Account Settings */}
+      <View style={dynamicStyles.section}>
+        <TouchableOpacity style={dynamicStyles.menuItem}>
+          <Ionicons style={[styles.menuIcon, {backgroundColor: '#e9af44ff'}]}  name="person-outline" size={20} color={theme.primary} />
+          <Text style={dynamicStyles.menuItemText}>Профиль</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={dynamicStyles.menuItem}>
+          <Ionicons style={[styles.menuIcon, {backgroundColor: '#a2a2a2ff'}]} name="lock-closed-outline" size={20} color={theme.primary} />
+          <Text style={[dynamicStyles.menuItemText]}>Конфиденциальность</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
         <View style={dynamicStyles.menuItem}>
           <View style={dynamicStyles.menuItemLeft}>
-            <Ionicons name="notifications-outline" size={24} color={theme.primary} />
+            <Ionicons style={[styles.menuIcon, {backgroundColor: '#E94444'}]} name="notifications-outline" size={20} color={theme.primary} />
             <Text style={dynamicStyles.menuItemText}>Push-уведомления</Text>
           </View>
           <Switch
@@ -244,13 +271,9 @@ const ProfileScreen: React.FC = () => {
 
       {/* App Settings */}
       <View style={dynamicStyles.section}>
-        <View style={dynamicStyles.sectionHeader}>
-          <Text style={dynamicStyles.sectionTitle}>Приложение</Text>
-        </View>
-
         <View style={dynamicStyles.menuItem}>
           <View style={dynamicStyles.menuItemLeft}>
-            <Ionicons name="color-palette-outline" size={24} color={theme.primary} />
+            <Ionicons style={[styles.menuIcon, {backgroundColor: '#44aae9ff'}]} name="color-palette-outline" size={20} color={theme.primary} />
             <Text style={dynamicStyles.menuItemText}>Темная тема</Text>
           </View>
           <Switch
@@ -262,14 +285,14 @@ const ProfileScreen: React.FC = () => {
         </View>
 
         <TouchableOpacity style={dynamicStyles.menuItem}>
-          <Ionicons name="language-outline" size={24} color={theme.primary} />
+          <Ionicons style={[styles.menuIcon, {backgroundColor: '#9444e9ff'}]} name="language-outline" size={20} color={theme.primary} />
           <Text style={dynamicStyles.menuItemText}>Язык</Text>
           <Text style={dynamicStyles.menuItemValue}>Русский</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
 
         <TouchableOpacity style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
-          <Ionicons name="information-circle-outline" size={24} color={theme.primary} />
+          <Ionicons style={[styles.menuIcon, {backgroundColor: '#3ed6ccff'}]} name="information-circle-outline" size={20} color={theme.primary} />
           <Text style={dynamicStyles.menuItemText}>О приложении</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
@@ -293,6 +316,7 @@ const ProfileScreen: React.FC = () => {
         <Text style={dynamicStyles.versionText}>Версия 1.0.0</Text>
         <Text style={dynamicStyles.versionText}>© 2025 Tachyon Messenger</Text>
       </View>
+      </View>
     </ScrollView>
   );
 };
@@ -305,7 +329,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingTop: 60,
+    paddingTop: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
@@ -349,6 +373,12 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 8,
   },
+  card: {
+    borderTopRightRadius: 12,
+    borderTopLeftRadius: 12,
+    height: '100%',
+    maxHeight: '80%',
+  },
   section: {
     backgroundColor: '#FFFFFF',
     marginBottom: 12,
@@ -385,6 +415,11 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 16,
     color: '#111827',
+  },
+  menuIcon: {
+    color: '#FFFFFF',
+    padding: 4,
+    borderRadius: 6,
   },
   menuItemValue: {
     fontSize: 14,

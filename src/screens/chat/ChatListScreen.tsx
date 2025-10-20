@@ -15,10 +15,12 @@ import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { useTheme } from '@hooks/useTheme';
-import { Chat } from '../../types/chat.types';
+import { Chat, ChatType } from '../../types/chat.types';
 import { websocketService } from '@services/websocket.service';
 
 type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'ChatList'>;
+
+type ChatFilter = 'all' | 'group' | 'private';
 
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
@@ -28,6 +30,7 @@ const ChatListScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [isConnected, setIsConnected] = useState(websocketService.isConnected());
+  const [chatFilter, setChatFilter] = useState<ChatFilter>('all');
 
   useEffect(() => {
     loadChats();
@@ -111,6 +114,11 @@ const ChatListScreen: React.FC = () => {
   };
 
   const filteredChats = chats.filter((chat) => {
+    // Фильтр по типу
+    if (chatFilter === 'group' && chat.type !== 'group') return false;
+    if (chatFilter === 'private' && chat.type !== 'private') return false;
+
+    // Фильтр по поиску
     if (!searchQuery) return true;
     const chatName = chat.name || '';
     const searchText = chatName.toLowerCase();
@@ -123,6 +131,7 @@ const ChatListScreen: React.FC = () => {
 
   const dynamicStyles = StyleSheet.create({
     container: {
+      flex: 1,
       backgroundColor: theme.background,
     },
     header: {
@@ -148,7 +157,6 @@ const ChatListScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-    <View style={[styles.container, dynamicStyles.container]}>
       
       <View style={[styles.header, dynamicStyles.header]}>
         <View style={styles.headerTop}>
@@ -157,11 +165,7 @@ const ChatListScreen: React.FC = () => {
             onPress={() => setIsEditMode(!isEditMode)}
             style={styles.editButton}
           >
-            <Ionicons
-              name={isEditMode ? "checkmark-outline" : "create-outline"}
-              size={24}
-              color={isEditMode ? theme.success || theme.primary : theme.textSecondary}
-            />
+            <Text style={[styles.textEdit]}>{isEditMode ? "Готово" : "Изм."}</Text>
           </TouchableOpacity>
 
           {/* Центр - Заголовок или статус подключения */}
@@ -199,6 +203,56 @@ const ChatListScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* Фильтры типов чатов */}
+      <View style={[styles.filterContainer, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
+        <TouchableOpacity
+          style={[
+            styles.filterTab,
+            chatFilter === 'all' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
+          ]}
+          onPress={() => setChatFilter('all')}
+        >
+          <Text style={[
+            styles.filterText,
+            { color: chatFilter === 'all' ? theme.primary : theme.textSecondary }
+          ]}>
+            Все
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterTab,
+            chatFilter === 'private' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
+          ]}
+          onPress={() => setChatFilter('private')}
+        >
+          <Text style={[
+            styles.filterText,
+            { color: chatFilter === 'private' ? theme.primary : theme.textSecondary }
+          ]}>
+            Чаты
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterTab,
+            chatFilter === 'group' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
+          ]}
+          onPress={() => setChatFilter('group')}
+        >
+          <Text style={[
+            styles.filterText,
+            { color: chatFilter === 'group' ? theme.primary : theme.textSecondary }
+          ]}>
+            Группы
+          </Text>
+        </TouchableOpacity>
+
+        
+      </View>
+
       {filteredChats.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="chatbubbles-outline" size={64} color={theme.borderLight} />
@@ -220,7 +274,6 @@ const ChatListScreen: React.FC = () => {
               chat={item}
               onPress={handleChatPress}
               onDelete={isEditMode ? handleDeleteChat : undefined}
-              onRename={isEditMode ? handleRenameChat : undefined}
               onLeave={isEditMode ? handleLeaveChat : undefined}
             />
           )}
@@ -229,7 +282,6 @@ const ChatListScreen: React.FC = () => {
           }
         />
       )}
-    </View>
     </SafeAreaView>
   );
 };
@@ -237,12 +289,12 @@ const ChatListScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    
   },
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
-    borderBottomWidth: 1,
   },
   headerTop: {
     flexDirection: 'row',
@@ -283,6 +335,25 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  textEdit: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E94444',
   },
   emptyContainer: {
     flex: 1,

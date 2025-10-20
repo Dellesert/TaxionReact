@@ -34,6 +34,7 @@ export interface Theme {
   // Chat/Message colors
   messageOwn: string;
   messageOther: string;
+  chatBackground: string;
 
   // Card colors
   card: string;
@@ -81,6 +82,7 @@ export const lightTheme: Theme = {
   // Chat/Message colors
   messageOwn: '#ffffffff',
   messageOther: '#ffffffff',
+  chatBackground: '#d6dde7ff',
 
   card: '#FFFFFF',
   cardHover: '#F9FAFB',
@@ -127,6 +129,7 @@ export const darkTheme: Theme = {
   // Chat/Message colors
   messageOwn: '#222831ff',
   messageOther: '#222831ff',
+  chatBackground: '#0b0f13ff',
 
   // Card colors
   card: '#1F2937',

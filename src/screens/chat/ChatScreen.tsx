@@ -15,6 +15,7 @@ import { ChatStackParamList } from '@navigation/types';
 import { MessageItem } from '@components/chat/MessageItem';
 import { MessageInput } from '@components/chat/MessageInput';
 import { ChatMembersModal } from '@components/chat/ChatMembersModal';
+import { ForwardMessageModal } from '@components/chat/ForwardMessageModal';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { UnreadMessagesBanner } from '@components/chat/UnreadMessagesBanner';
 import { TypingIndicator } from '@components/chat/TypingIndicator';
@@ -24,6 +25,7 @@ import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion, getUserStatusText } from '@utils/chatUtils';
 
 // ✅ ДОБАВЬ ЭТО
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -65,6 +67,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [editingMessage, setEditingMessage] = useState<any | null>(null);
+  const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<any | null>(null);
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
   const lastOldestMessageId = useRef<number | null>(null);
 
@@ -176,6 +182,18 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   useEffect(() => {
     const chat = getChatById(chatIdNum);
+    const displayName = chat ? getChatDisplayName(chat, currentUser?.id) : (chatName || 'Чат');
+    const displayAvatar = chat ? getChatDisplayAvatar(chat, currentUser?.id) : undefined;
+
+    // Для личных чатов получаем собеседника и его статус
+    const companion = chat ? getPersonalChatCompanion(chat, currentUser?.id) : null;
+    const statusText = companion ? getUserStatusText(companion) : '';
+    const isPrivateChat = chat?.type === 'private';
+
+    // Для групповых чатов получаем список участников
+    const membersText = chat && chat.type === 'group' && chat.members
+      ? `${chat.members.length} участников`
+      : '';
 
     navigation.setOptions({
       headerTitle: () => (
@@ -183,15 +201,27 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
           onPress={() => {
             navigation.navigate('ChatSettings', {
               chatId: chatIdNum,
-              chatName: chatName,
+              chatName: displayName,
             });
           }}
           activeOpacity={0.7}
         >
           {isConnected ? (
-            <Text style={{ fontSize: 18, fontWeight: '600', color: theme.text }}>
-              {chatName || 'Чат'}
-            </Text>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: theme.text }}>
+                {displayName}
+              </Text>
+              {isPrivateChat && statusText && (
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  {statusText}
+                </Text>
+              )}
+              {!isPrivateChat && membersText && (
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  {membersText}
+                </Text>
+              )}
+            </View>
           ) : (
             <ConnectionStatus compact />
           )}
@@ -203,21 +233,21 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
           onPress={() => {
             navigation.navigate('ChatSettings', {
               chatId: chatIdNum,
-              chatName: chatName,
+              chatName: displayName,
             });
           }}
           activeOpacity={0.7}
           style={{ marginRight: 8 }}
         >
           <Avatar
-            imageUrl={chat?.avatar_url || chat?.avatar}
-            name={chatName || 'Чат'}
+            imageUrl={displayAvatar}
+            name={displayName}
             size={36}
           />
         </TouchableOpacity>
       ),
     });
-  }, [chatName, navigation, isConnected, theme, chatIdNum, getChatById]);
+  }, [chatName, navigation, isConnected, theme, chatIdNum, getChatById, currentUser]);
 
   useEffect(() => {
     // Сбрасываем состояние при смене чата
@@ -303,7 +333,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [chatIdNum, messages.length, markMessageRead, initialScrolled, showUnreadBanner]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, replyToId?: number) => {
     if (!content.trim()) {
       setError({ error: 'Message content cannot be empty' });
       return;
@@ -314,12 +344,27 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
 
     try {
-      // Send message through HTTP API
-      // Server will broadcast it to all WebSocket clients including sender
-      await sendMessage(chatIdNum, content.trim());
+      // Check if editing a message (MessageInput formats as "EDIT:{id}:{content}")
+      if (content.startsWith('EDIT:')) {
+        const parts = content.split(':');
+        const messageId = parseInt(parts[1]);
+        const newContent = parts.slice(2).join(':');
+
+        console.log('Editing message:', messageId, 'new content:', newContent);
+
+        // Call edit API
+        await useChatStore.getState().updateMessage(messageId, newContent);
+
+        // Clear editing state
+        setEditingMessage(null);
+      } else {
+        // Send message through HTTP API with optional reply_to_id
+        // Server will broadcast it to all WebSocket clients including sender
+        await sendMessage(chatIdNum, content.trim(), replyToId);
+      }
     } catch (error: any) {
-      console.error('Failed to send message:', error);
-      setError({ error: error.message || 'Failed to send message' });
+      console.error('Failed to send/edit message:', error);
+      setError({ error: error.message || 'Failed to send/edit message' });
     }
   };
 
@@ -382,9 +427,102 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  // Message action handlers
+  const handleReply = (message: any) => {
+    console.log('Reply to message:', message.id);
+    setReplyingToMessage(message);
+  };
+
+  const handleEdit = (message: any) => {
+    console.log('Edit message:', message.id);
+    setEditingMessage(message);
+  };
+
+  const handleDelete = (messageId: number) => {
+    console.log('Delete message:', messageId);
+    // TODO: Implement delete functionality
+  };
+
+  const handlePin = (messageId: number) => {
+    console.log('Pin message:', messageId);
+    // TODO: Implement pin functionality
+  };
+
+  const handleForward = (message: any) => {
+    console.log('Forward message:', message.id);
+    setForwardingMessage(message);
+  };
+
+  const handleForwardToChat = async (targetChatId: number) => {
+    if (!forwardingMessage) return;
+
+    try {
+      console.log('Forwarding message', forwardingMessage.id, 'to chat', targetChatId);
+
+      // Получаем имя отправителя оригинального сообщения
+      const senderName = forwardingMessage.sender?.name ||
+                        forwardingMessage.sender?.email?.split('@')[0] ||
+                        `User ${forwardingMessage.sender_id}`;
+
+      // Получаем название чата, откуда пересылается сообщение
+      const sourceChat = getChatById(chatIdNum);
+      const sourceChatName = sourceChat ? getChatDisplayName(sourceChat) : '';
+
+      // Форматируем временную метку
+      const timestamp = new Date().toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // Форматируем пересланное сообщение с префиксом и разделителем
+      const forwardPrefix = `📩 Переслано от ${senderName}${sourceChatName ? ` (${sourceChatName})` : ''}`;
+      const timestampLine = `📅 ${timestamp}`;
+      const separator = '\n─────────────\n';
+      const forwardedContent = `${forwardPrefix}\n${timestampLine}${separator}${forwardingMessage.content}\n\n⚠️ Это копия сообщения на момент пересылки`;
+
+      await sendMessage(targetChatId, forwardedContent);
+
+      console.log('Message forwarded successfully');
+    } catch (error: any) {
+      console.error('Failed to forward message:', error);
+      setError({ error: error.message || 'Failed to forward message' });
+      throw error; // Пробрасываем ошибку для обработки в модальном окне
+    }
+  };
+
+  const handleReplyPress = (messageId: number) => {
+    console.log('Scroll to message:', messageId);
+
+    // Находим индекс сообщения в инвертированном массиве
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+
+    if (messageIndex !== -1) {
+      // Прокручиваем к сообщению
+      listRef.current?.scrollToIndex({
+        index: messageIndex,
+        animated: true,
+        viewPosition: 0.5, // Центрируем сообщение на экране
+      });
+
+      // Подсвечиваем сообщение
+      setHighlightedMessageId(messageId);
+
+      // Убираем подсветку через 2 секунды
+      setTimeout(() => {
+        setHighlightedMessageId(null);
+      }, 2000);
+    } else {
+      console.log('Message not found in current list, may need to load older messages');
+      // TODO: Можно добавить загрузку старых сообщений до нужного ID
+    }
+  };
+
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.backgroundTertiary,
+      backgroundColor: theme.background,
     },
     loadingContainer: {
       backgroundColor: theme.background,
@@ -422,7 +560,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
         return (
           <>
-            <MessageItem message={item} />
+            <MessageItem
+              message={item}
+              onReply={handleReply}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onPin={handlePin}
+              onForward={handleForward}
+              onReplyPress={handleReplyPress}
+              isHighlighted={item.id === highlightedMessageId}
+            />
             {shouldShowBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
           </>
         );
@@ -440,6 +587,20 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       // Используем onScroll вместо onEndReached для надежности
       onScroll={handleScroll}
       scrollEventThrottle={16}
+      // Обработчик ошибки прокрутки
+      onScrollToIndexFailed={(info) => {
+        console.log('Failed to scroll to index:', info);
+        // Попробуем прокрутить через небольшую задержку
+        setTimeout(() => {
+          if (info.index < messages.length) {
+            listRef.current?.scrollToIndex({
+              index: info.index,
+              animated: true,
+              viewPosition: 0.5,
+            });
+          }
+        }, 100);
+      }}
       ListFooterComponent={
         isLoadingMore ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
@@ -458,7 +619,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     >
       
 
-      <MessageInput onSend={handleSendMessage} onTyping={handleTyping} />
+      <MessageInput
+        onSend={handleSendMessage}
+        onTyping={handleTyping}
+        editingMessage={editingMessage}
+        onCancelEdit={() => setEditingMessage(null)}
+        replyingToMessage={replyingToMessage}
+        onCancelReply={() => setReplyingToMessage(null)}
+      />
     </View>
   </View>
 </KeyboardAvoidingView>
@@ -468,6 +636,13 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         visible={membersModalVisible}
         chatId={chatIdNum}
         onClose={() => setMembersModalVisible(false)}
+      />
+
+      <ForwardMessageModal
+        visible={!!forwardingMessage}
+        message={forwardingMessage}
+        onClose={() => setForwardingMessage(null)}
+        onForward={handleForwardToChat}
       />
     </>
   );

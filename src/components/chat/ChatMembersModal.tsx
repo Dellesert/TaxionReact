@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 60,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
   closeButton: {

@@ -22,8 +22,6 @@ export default function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
-    console.log('🚀 APP STARTED - VERSION 3.0 - FIXED INFINITE LOOP!');
-    console.log('📱 Tachyon Messenger Initializing...');
     // Initialize auth state and theme on app start
     initialize();
     loadTheme();
@@ -32,10 +30,8 @@ export default function App() {
   // Connect/disconnect WebSocket based on auth state
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('🔌 User authenticated, connecting WebSocket...');
       websocketService.connect();
     } else {
-      console.log('🔌 User not authenticated, disconnecting WebSocket...');
       websocketService.disconnect();
     }
 

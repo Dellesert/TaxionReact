@@ -297,11 +297,11 @@ export const updateMessage = async (
   messageId: number,
   data: UpdateMessageDto
 ): Promise<Message> => {
-  const response = await api.put<ApiResponse<Message>>(
+  const response = await api.put<{ message: Message }>(
     API_ENDPOINTS.MESSAGE.UPDATE(messageId),
     data
   );
-  return response.data.data;
+  return response.data.message;
 };
 
 /**

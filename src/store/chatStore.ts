@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { Chat, Message, TypingIndicator, MessageType } from '../types/chat.types';
 import * as chatApi from '@api/chat.api';
+import { getUser } from '@api/user.api';
 import { isMockMode, mockGetChats } from '@utils/mockData';
 import { useAuthStore } from '@store/authStore';
 import { websocketService } from '@services/websocket.service';
@@ -43,12 +44,39 @@ interface ChatState {
   handleTypingStop: (chatId: number, userId: number) => void;
   handleUserJoin: (chatId: number, userId?: number) => void;
   handleUserLeave: (chatId: number, userId?: number) => void;
+  handleUserPresence: (presence: any) => void;
   handleMessageRead: (chatId: number, messageId: number) => void;
   handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number) => void;
   clearError: () => void;
   getChatById: (chatId: number) => Chat | undefined;
   set: (state: Partial<ChatState>) => void;
 }
+
+// Helper function to enrich chat with user data
+const enrichChatWithUsers = async (chat: Chat): Promise<Chat> => {
+  if (!chat.members || chat.members.length === 0) {
+    return chat;
+  }
+
+  // Load user data for each member who doesn't have it
+  const enrichedMembers = await Promise.all(
+    chat.members.map(async (member) => {
+      if (member.user) {
+        return member; // Already has user data
+      }
+
+      try {
+        const user = await getUser(member.user_id);
+        return { ...member, user };
+      } catch (error) {
+        console.error(`Failed to load user ${member.user_id}:`, error);
+        return member; // Return member without user data
+      }
+    })
+  );
+
+  return { ...chat, members: enrichedMembers };
+};
 
 export const useChatStore = create<ChatState>((set, get) => ({
   chats: [],
@@ -67,6 +95,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         chats = await mockGetChats();
       } else {
         chats = await chatApi.getChats();
+        // Enrich chats with user data
+        chats = await Promise.all(chats.map(enrichChatWithUsers));
       }
 
       set({ chats, isLoading: false });
@@ -78,11 +108,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
   createChat: async (name: string, memberIds: number[], type: 'private' | 'group' = 'group') => {
     try {
       set({ isLoading: true, error: null });
-      const newChat = await chatApi.createChat({
+      let newChat = await chatApi.createChat({
         type,
         name,
         member_ids: memberIds,
       });
+
+      // Enrich chat with user data
+      newChat = await enrichChatWithUsers(newChat);
+
       set((state) => ({
         chats: [newChat, ...state.chats],
         isLoading: false,
@@ -467,7 +501,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
   },
 
-  handleTypingStart: (chatId: number, typing: TypingIndicator) => {
+  handleTypingStart: async (chatId: number, typing: TypingIndicator) => {
+    // Load user data if not present
+    if (!typing.user) {
+      try {
+        const user = await getUser(typing.user_id);
+        typing = { ...typing, user };
+      } catch (error) {
+        console.error(`Failed to load user for typing indicator:`, error);
+      }
+    }
+
     set((state) => {
       const currentTyping = state.typingUsers[chatId] || [];
       const alreadyTyping = currentTyping.some((t) => t.user_id === typing.user_id);
@@ -498,6 +542,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   handleUserLeave: (chatId: number, userId?: number) => {
     // Could update online status or member list if needed
+  },
+
+  handleUserPresence: (presence: any) => {
+    // Update user status in all chats where user is a member
+    const { user_id, status, last_seen } = presence;
+
+    set((state) => ({
+      chats: state.chats.map((chat) => {
+        if (!chat.members) return chat;
+
+        // Check if user is a member of this chat
+        const hasMember = chat.members.some(m => m.user_id === user_id);
+        if (!hasMember) return chat;
+
+        // Update the member's user status
+        const updatedMembers = chat.members.map(member => {
+          if (member.user_id === user_id && member.user) {
+            return {
+              ...member,
+              user: {
+                ...member.user,
+                status,
+                last_seen_at: last_seen || member.user.last_seen_at,
+              }
+            };
+          }
+          return member;
+        });
+
+        return { ...chat, members: updatedMembers };
+      }),
+    }));
   },
 
   handleMessageRead: (chatId: number, messageId: number) => {

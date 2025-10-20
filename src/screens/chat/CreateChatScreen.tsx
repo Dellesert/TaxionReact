@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { User } from '../../types/user.types';
+import { ChatType } from '../../types/chat.types';
 import { getUsers } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@utils/mockData';
 
@@ -29,6 +30,7 @@ const CreateChatScreen: React.FC = () => {
   const navigation = useNavigation<CreateChatNavigationProp>();
   const { createChat } = useChatStore();
 
+  const [chatType, setChatType] = useState<ChatType>('group');
   const [chatName, setChatName] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
@@ -120,24 +122,44 @@ const CreateChatScreen: React.FC = () => {
   };
 
   const handleCreateChat = async () => {
-    if (!chatName.trim()) {
-      Alert.alert('Ошибка', 'Введите название чата');
-      return;
+    // Валидация для группового чата
+    if (chatType === 'group') {
+      if (!chatName.trim()) {
+        Alert.alert('Ошибка', 'Введите название группового чата');
+        return;
+      }
     }
 
+    // Валидация количества участников
     if (selectedUsers.length === 0) {
       Alert.alert('Ошибка', 'Выберите хотя бы одного участника');
       return;
     }
 
+    if (chatType === 'private' && selectedUsers.length > 1) {
+      Alert.alert('Ошибка', 'Личный чат может быть только с одним пользователем');
+      return;
+    }
+
     try {
       setIsCreating(true);
-      console.log('📝 Creating chat:', { name: chatName.trim(), memberIds: selectedUsers });
 
-      const newChat = await createChat(chatName.trim(), selectedUsers, 'group');
+      // Для личного чата имя не обязательно, используем имя собеседника
+      const finalChatName = chatType === 'private'
+        ? '' // Сервер должен сам установить или клиент отобразит имя собеседника
+        : chatName.trim();
+
+      console.log('📝 Creating chat:', {
+        type: chatType,
+        name: finalChatName,
+        memberIds: selectedUsers
+      });
+
+      const newChat = await createChat(finalChatName, selectedUsers, chatType);
 
       console.log('✅ Chat created successfully:', newChat);
       console.log('✅ Chat ID:', newChat.id, 'Type:', typeof newChat.id);
+      console.log('✅ Chat type:', newChat.type);
       console.log('✅ Chat name:', newChat.name);
 
       // Проверяем что ID валидный
@@ -217,6 +239,10 @@ const CreateChatScreen: React.FC = () => {
     );
   };
 
+  const canCreate = chatType === 'private'
+    ? selectedUsers.length === 1
+    : chatName.trim() && selectedUsers.length > 0;
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -227,10 +253,10 @@ const CreateChatScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Новый чат</Text>
         <TouchableOpacity
           onPress={handleCreateChat}
-          disabled={isCreating || !chatName.trim() || selectedUsers.length === 0}
+          disabled={isCreating || !canCreate}
           style={[
             styles.createButton,
-            (!chatName.trim() || selectedUsers.length === 0) && styles.createButtonDisabled,
+            !canCreate && styles.createButtonDisabled,
           ]}
         >
           {isCreating ? (
@@ -241,26 +267,93 @@ const CreateChatScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Chat Name Input */}
+      {/* Chat Type Selector */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Название чата</Text>
-        <TextInput
-          style={styles.chatNameInput}
-          placeholder="Введите название..."
-          placeholderTextColor="#9CA3AF"
-          value={chatName}
-          onChangeText={setChatName}
-          maxLength={50}
-        />
-        <Text style={styles.charCount}>{chatName.length}/50</Text>
+        <Text style={styles.sectionTitle}>Тип чата</Text>
+        <View style={styles.chatTypeContainer}>
+          <TouchableOpacity
+            style={[
+              styles.chatTypeButton,
+              chatType === 'private' && styles.chatTypeButtonActive,
+            ]}
+            onPress={() => {
+              setChatType('private');
+              // Очищаем выбор если больше одного пользователя
+              if (selectedUsers.length > 1) {
+                setSelectedUsers([]);
+              }
+            }}
+          >
+            <Ionicons
+              name="person"
+              size={20}
+              color={chatType === 'private' ? '#E94444' : '#6B7280'}
+            />
+            <Text
+              style={[
+                styles.chatTypeText,
+                chatType === 'private' && styles.chatTypeTextActive,
+              ]}
+            >
+              Личный
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.chatTypeButton,
+              chatType === 'group' && styles.chatTypeButtonActive,
+            ]}
+            onPress={() => setChatType('group')}
+          >
+            <Ionicons
+              name="people"
+              size={20}
+              color={chatType === 'group' ? '#E94444' : '#6B7280'}
+            />
+            <Text
+              style={[
+                styles.chatTypeText,
+                chatType === 'group' && styles.chatTypeTextActive,
+              ]}
+            >
+              Групповой
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Selected Users Count */}
+      {/* Chat Name Input - только для групповых чатов */}
+      {chatType === 'group' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Название чата</Text>
+          <TextInput
+            style={styles.chatNameInput}
+            placeholder="Введите название..."
+            placeholderTextColor="#9CA3AF"
+            value={chatName}
+            onChangeText={setChatName}
+            maxLength={50}
+          />
+          <Text style={styles.charCount}>{chatName.length}/50</Text>
+        </View>
+      )}
+
+      {/* Selected Users Count or Personal Chat Info */}
+      {chatType === 'private' && selectedUsers.length === 0 && (
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle" size={20} color="#3B82F6" />
+          <Text style={styles.infoText}>
+            Выберите одного пользователя для личного чата
+          </Text>
+        </View>
+      )}
       {selectedUsers.length > 0 && (
         <View style={styles.selectedCount}>
           <Ionicons name="people" size={20} color="#E94444" />
           <Text style={styles.selectedCountText}>
             Выбрано: {selectedUsers.length}
+            {chatType === 'private' && selectedUsers.length > 1 && ' (должен быть только 1)'}
           </Text>
         </View>
       )}
@@ -317,7 +410,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingVertical: 60,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
@@ -373,6 +466,48 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 4,
     textAlign: 'right',
+  },
+  chatTypeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  chatTypeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  chatTypeButtonActive: {
+    borderColor: '#E94444',
+    backgroundColor: '#FEF2F2',
+  },
+  chatTypeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  chatTypeTextActive: {
+    color: '#E94444',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#3B82F6',
+    flex: 1,
   },
   selectedCount: {
     flexDirection: 'row',

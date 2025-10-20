@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, ActivityIndicator, Platform } from 'react-native';
 import { websocketService } from '@services/websocket.service';
+import { useTheme } from '@hooks/useTheme';
 
 interface ConnectionStatusProps {
   compact?: boolean; // Компактный режим для отображения в header
@@ -14,6 +15,7 @@ interface ConnectionStatusProps {
 export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = false }) => {
   const [status, setStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
   const fadeAnim = useState(new Animated.Value(0))[0];
+  const { theme } = useTheme();
 
   useEffect(() => {
     const checkStatus = () => {
@@ -62,6 +64,18 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
 
   const config = getStatusConfig();
 
+  const dynamicStyles = StyleSheet.create({
+  bannerText: {
+    color: theme.text,
+  },
+  compactText: {
+    color: theme.text,
+  },
+  spinner: {
+    color: theme.text,
+  },
+ });
+
   const Icon = () => {
     if (status === 'connecting') {
       // Спиннер: размер поменьше в компактном режиме
@@ -69,7 +83,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
         <ActivityIndicator
           size={'small'}
           // цвет для web может игнорироваться браузером, но RNW прокидывает стиль
-          color={config.color}
+          color={theme.text}
           style={styles.spinner}
         />
       );
@@ -81,22 +95,25 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
     return (
       <Animated.View style={[styles.compactContainer, { opacity: fadeAnim }]}>
         <Icon />
-        <Text style={styles.compactText}>{config.text}</Text>
+        <Text style={dynamicStyles.compactText}>{config.text}</Text>
       </Animated.View>
     );
   }
+  
 
   return (
     <Animated.View style={[styles.banner, { opacity: fadeAnim }]}>
       <View style={styles.bannerRow}>
         <Icon />
-        <Text style={styles.bannerText}>{config.text}</Text>
+        <Text style={dynamicStyles.bannerText}>{config.text}</Text>
       </View>
     </Animated.View>
   );
 };
 
 const DOT_SIZE = 10;
+
+ 
 
 const styles = StyleSheet.create({
   banner: {
@@ -126,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   compactText: {
-    fontSize: 12,
+    fontSize: 30,
     color: '#323232ff',
     fontWeight: '500',
     marginLeft: 6,

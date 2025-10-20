@@ -10,6 +10,7 @@ import { STORAGE_KEYS } from '@constants/app.constants';
 import * as authApi from '@api/auth.api';
 import * as userApi from '@api/user.api';
 import { isMockMode, mockLogin, mockRegister } from '@utils/mockData';
+import { websocketService } from '@services/websocket.service';
 
 interface AuthState {
   // State
@@ -188,6 +189,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     try {
       set({ isLoading: true });
+
+      // Disconnect WebSocket first to update status to offline
+      console.log('🔌 Disconnecting WebSocket...');
+      websocketService.disconnect();
 
       // Call logout API only if not in mock mode
       if (!isMockMode()) {

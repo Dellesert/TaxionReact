@@ -50,7 +50,7 @@ const MainNavigator: React.FC = () => {
               iconName = focused ? 'bar-chart-outline' : 'bar-chart-outline';
               break;
             case 'Profile':
-              iconName = focused ? 'person' : 'person-outline';
+              iconName = focused ? 'settings' : 'settings-outline';
               break;
             default:
               iconName = 'help-outline';
@@ -61,7 +61,7 @@ const MainNavigator: React.FC = () => {
             return (
               <View style={{ width: 26, height: 26 }}>
                 <Ionicons name={iconName} size={26} color={color} />
-                <View style={[styles.badge, { backgroundColor: theme.error || '#FF3B30' }]}>
+                <View style={[styles.badge, { backgroundColor: theme.primaryDark || '#FF3B30' }]}>
                   <Text style={styles.badgeText}>
                     {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
                   </Text>
@@ -72,7 +72,7 @@ const MainNavigator: React.FC = () => {
 
           return <Ionicons name={iconName} size={26} color={color} />;
         },
-        tabBarActiveTintColor: theme.primaryDark,
+        tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textTertiary,
         tabBarStyle: {
           backgroundColor: theme.backgroundSecondary,
@@ -131,7 +131,7 @@ const MainNavigator: React.FC = () => {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarLabel: 'Я' }}
+        options={{ tabBarLabel: 'Настройки' }}
       />
     </Tab.Navigator>
   );
