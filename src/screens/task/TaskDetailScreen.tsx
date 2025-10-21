@@ -218,11 +218,11 @@ const TaskDetailScreen: React.FC = () => {
       case 'pending':
       case 'todo':
       case 'new':
-        return '#6B7280';
+        return '#F59E0B';
       case 'cancelled':
         return '#EF4444';
       case 'review':
-        return '#F59E0B';
+        return '#8B5CF6';
       default:
         return '#6B7280';
     }
@@ -246,6 +246,21 @@ const TaskDetailScreen: React.FC = () => {
         return 'На проверке';
       default:
         return 'Неизвестно';
+    }
+  };
+
+  const getStatusButtonText = (status: string) => {
+    switch (status) {
+      case 'done':
+        return 'Завершить задачу';
+      case 'review':
+        return 'На проверке';
+      case 'in_progress':
+        return 'В работе';
+      case 'new':
+        return 'Новая';
+      default:
+        return getStatusText(status);
     }
   };
 
@@ -431,29 +446,111 @@ const TaskDetailScreen: React.FC = () => {
         {/* Quick Actions */}
         <View style={dynamicStyles.card}>
           <Text style={dynamicStyles.sectionTitle}>Изменить статус</Text>
-          <View style={styles.statusButtonContainer}>
-            {['new', 'in_progress', 'done'].map((status) => (
-              <TouchableOpacity
-                key={status}
-                onPress={() => handleStatusChange(status as Task['status'])}
-                style={[
-                  styles.statusButton,
-                  task.status === status
-                    ? { backgroundColor: getStatusColor(status) }
-                    : dynamicStyles.statusButtonInactive,
-                ]}
-              >
-                <Text
-                  style={[
-                    dynamicStyles.statusButtonText,
-                    task.status === status && styles.statusButtonTextActive,
-                  ]}
-                >
-                  {getStatusText(status)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {task.status === 'review' && task.created_by !== user?.id && user?.role !== 'admin' && user?.role !== 'super_admin' ? (
+            <View style={styles.restrictedAccess}>
+              <Ionicons name="lock-closed-outline" size={20} color={theme.textTertiary} />
+              <Text style={[styles.restrictedText, { color: theme.textTertiary }]}>
+                Только создатель задачи или администратор может изменить статус из "На проверке"
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Основные статусы */}
+              <View style={styles.statusButtonContainer}>
+                {['new', 'in_progress'].map((status) => {
+                  return (
+                    <TouchableOpacity
+                      key={status}
+                      onPress={() => handleStatusChange(status as Task['status'])}
+                      style={[
+                        styles.statusButton,
+                        task.status === status
+                          ? { backgroundColor: getStatusColor(status) }
+                          : dynamicStyles.statusButtonInactive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          dynamicStyles.statusButtonText,
+                          task.status === status && styles.statusButtonTextActive,
+                        ]}
+                      >
+                        {getStatusButtonText(status)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Кнопка "Сдать на проверку" - только если задача НЕ на проверке */}
+              {task.status !== 'review' && (
+                <>
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                  <TouchableOpacity
+                    onPress={() => handleStatusChange('review')}
+                    style={[
+                      styles.actionButton,
+                      {
+                        backgroundColor: theme.backgroundTertiary,
+                        borderWidth: 2,
+                        borderColor: getStatusColor('review'),
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="glasses-outline"
+                      size={18}
+                      color={getStatusColor('review')}
+                    />
+                    <Text
+                      style={[
+                        styles.actionButtonText,
+                        { color: getStatusColor('review') },
+                      ]}
+                    >
+                      Сдать на проверку
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* Кнопка "Завершить задачу" - только для руководителей/админов и только если задача НЕ завершена */}
+              {task.status !== 'done' &&
+                (user?.role === 'admin' ||
+                  user?.role === 'super_admin' ||
+                  user?.role === 'manager' ||
+                  task.created_by === user?.id) && (
+                  <>
+                    <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                    <TouchableOpacity
+                      onPress={() => handleStatusChange('done')}
+                      style={[
+                        styles.actionButton,
+                        {
+                          backgroundColor: theme.backgroundTertiary,
+                          borderWidth: 2,
+                          borderColor: getStatusColor('done'),
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={18}
+                        color={getStatusColor('done')}
+                      />
+                      <Text
+                        style={[
+                          styles.actionButtonText,
+                          { color: getStatusColor('done') },
+                        ]}
+                      >
+                        {getStatusButtonText('done')}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+            </>
+          )}
         </View>
 
         {/* Details */}
@@ -465,6 +562,14 @@ const TaskDetailScreen: React.FC = () => {
               <Ionicons name="person-outline" size={20} color={theme.textSecondary} />
               <Text style={dynamicStyles.infoLabel}>Создал:</Text>
               <Text style={dynamicStyles.infoValue}>{task.creator.name}</Text>
+            </View>
+          )}
+
+          {task.last_status_changer && (
+            <View style={styles.infoRow}>
+              <Ionicons name="swap-horizontal-outline" size={20} color={theme.textSecondary} />
+              <Text style={dynamicStyles.infoLabel}>Изменил статус:</Text>
+              <Text style={dynamicStyles.infoValue}>{task.last_status_changer.name}</Text>
             </View>
           )}
 
@@ -615,6 +720,37 @@ const styles = StyleSheet.create({
   },
   statusButtonTextActive: {
     color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  restrictedAccess: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    gap: 8,
+  },
+  restrictedText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  dividerLine: {
+    height: 1,
+    marginVertical: 12,
+    opacity: 0.2,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 6,
+  },
+  actionButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   infoRow: {

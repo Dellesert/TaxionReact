@@ -50,7 +50,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
       case 'review':
         return '#8B5CF6';
       case 'new':
-        return '#6B7280';
+        return '#F59E0B'; // Янтарный/оранжевый цвет для "Новая"
       case 'cancelled':
         return '#EF4444';
       default:
@@ -100,11 +100,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.card,
-      borderColor: theme.border,
+      // Убрали backgroundColor и borderColor так как задача теперь внутри секции
     },
     title: {
       color: theme.text,
+    },
+    titleHighlight: {
+      backgroundColor: theme.backgroundTertiary,
+      borderLeftColor: getStatusColor(),
     },
     description: {
       color: theme.textSecondary,
@@ -129,11 +132,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
       onPress={() => onPress(task)}
       activeOpacity={0.7}
     >
+      {/* Header - заголовок и приоритет */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={[styles.title, dynamicStyles.title]} numberOfLines={2}>
-            {task.title}
-          </Text>
+          {/* Заголовок с подсветкой */}
+          <View style={[styles.titleHighlight, dynamicStyles.titleHighlight]}>
+            <Text style={[styles.title, dynamicStyles.title]} numberOfLines={2}>
+              {task.title}
+            </Text>
+          </View>
           {task.description && (
             <Text style={[styles.description, dynamicStyles.description]} numberOfLines={2}>
               {task.description}
@@ -141,56 +148,69 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
           )}
         </View>
 
-        <View style={[styles.priorityBadge, { backgroundColor: getPriorityBgColor() }]}>
-          <Text style={styles.priorityText}>{getPriorityText()}</Text>
-        </View>
+        {task.priority && task.priority !== 'low' && (
+          <View style={[styles.priorityBadge, { backgroundColor: getPriorityBgColor() }]}>
+            <Ionicons name="flag" size={14} color="#FFFFFF" />
+          </View>
+        )}
       </View>
 
+      {/* Divider */}
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+      {/* Footer - информация */}
       <View style={styles.footer}>
-        <View style={styles.statusRow}>
-          <Ionicons
-            name="checkbox-outline"
-            size={16}
-            color={getStatusColor()}
-          />
-          <Text style={[styles.statusText, { color: getStatusColor() }]}>
-            {getStatusText()}
-          </Text>
+        {/* Дата */}
+        {task.due_date && (
+          <View style={styles.infoSection}>
+            <View style={styles.infoRow}>
+              <Ionicons
+                name="calendar-outline"
+                size={16}
+                color={isOverdue ? theme.error : theme.textSecondary}
+              />
+              <Text
+                style={[styles.infoText, dynamicStyles.dateText, isOverdue && styles.overdueText]}
+              >
+                {formatDate(task.due_date)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Люди */}
+        <View style={styles.infoSection}>
+          {task.creator && (
+            <View style={styles.infoRow}>
+              <Ionicons name="person-outline" size={14} color={theme.textTertiary} />
+              <Text style={[styles.infoText, dynamicStyles.assigneeText]} numberOfLines={1}>
+                {task.creator.name}
+              </Text>
+            </View>
+          )}
+
+          {task.last_status_changer && task.last_status_changer.id !== task.creator?.id && (
+            <View style={styles.infoRow}>
+              <Ionicons name="swap-horizontal-outline" size={14} color={theme.textTertiary} />
+              <Text style={[styles.infoText, dynamicStyles.assigneeText]} numberOfLines={1}>
+                {task.last_status_changer.name}
+              </Text>
+            </View>
+          )}
         </View>
 
-        {task.due_date && (
-          <View style={styles.dateRow}>
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={isOverdue ? theme.error : theme.textSecondary}
-            />
-            <Text
-              style={[styles.dateText, dynamicStyles.dateText, isOverdue && styles.overdueText]}
-            >
-              {formatDate(task.due_date)}
-            </Text>
-          </View>
-        )}
-
-        {task.creator && (
-          <View style={styles.creatorRow}>
-            <Ionicons name="person-outline" size={14} color={theme.textTertiary} />
-            <Text style={[styles.creatorText, dynamicStyles.assigneeText]} numberOfLines={1}>
-              {task.creator.name}
-            </Text>
-          </View>
-        )}
-
+        {/* Теги */}
         {task.tags && task.tags.length > 0 && (
-          <View style={styles.tagsRow}>
-            <Ionicons name="pricetag-outline" size={14} color={theme.textTertiary} />
-            <Text style={[styles.tagText, dynamicStyles.tagText]} numberOfLines={1}>
-              {task.tags[0]}
-            </Text>
-            {task.tags.length > 1 && (
-              <Text style={[styles.moreTagsText, dynamicStyles.moreTagsText]}>+{task.tags.length - 1}</Text>
-            )}
+          <View style={styles.infoSection}>
+            <View style={styles.infoRow}>
+              <Ionicons name="pricetag-outline" size={14} color={theme.textTertiary} />
+              <Text style={[styles.infoText, dynamicStyles.tagText]} numberOfLines={1}>
+                {task.tags[0]}
+              </Text>
+              {task.tags.length > 1 && (
+                <Text style={[styles.moreTagsText, dynamicStyles.moreTagsText]}>+{task.tags.length - 1}</Text>
+              )}
+            </View>
           </View>
         )}
       </View>
@@ -200,16 +220,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
+    position: 'relative',
     padding: 16,
-    marginBottom: 12,
-    marginHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    paddingLeft: 20,
+    paddingRight: 20,
   },
   header: {
     flexDirection: 'row',
@@ -221,78 +235,64 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  titleHighlight: {
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 8,
+    borderLeftWidth: 4,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
+    fontSize: 17,
+    fontWeight: '700',
+    lineHeight: 24,
+    letterSpacing: 0.3,
   },
   description: {
     fontSize: 14,
-    marginTop: 4,
+    marginTop: 6,
     lineHeight: 20,
   },
   priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   priorityText: {
     fontSize: 11,
     color: '#FFFFFF',
     fontWeight: '600',
   },
+  divider: {
+    height: 1,
+    marginVertical: 12,
+    opacity: 0.3,
+  },
   footer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
-  statusRow: {
+  infoSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  statusText: {
-    fontSize: 13,
-    marginLeft: 4,
-    fontWeight: '500',
-  },
-  dateRow: {
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
-  dateText: {
+  infoText: {
     fontSize: 13,
-    marginLeft: 4,
+    maxWidth: 120,
   },
   overdueText: {
     color: '#EF4444',
-    fontWeight: '500',
-  },
-  assigneeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  assigneeText: {
-    fontSize: 13,
-    marginLeft: 4,
-    maxWidth: 100,
-  },
-  creatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  creatorText: {
-    fontSize: 12,
-    marginLeft: 4,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tagText: {
-    fontSize: 12,
-    marginLeft: 4,
-    maxWidth: 80,
+    fontWeight: '600',
   },
   moreTagsText: {
     fontSize: 12,

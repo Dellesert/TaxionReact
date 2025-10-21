@@ -216,6 +216,38 @@ const TaskListScreen: React.FC = () => {
     { key: 'assigned', label: 'Назначенные', icon: 'people-outline' },
   ];
 
+  // Get section color based on status
+  const getSectionColor = (status: 'new' | 'in_progress' | 'review' | 'done') => {
+    switch (status) {
+      case 'new':
+        return '#F59E0B';
+      case 'in_progress':
+        return '#3B82F6';
+      case 'review':
+        return '#8B5CF6';
+      case 'done':
+        return '#10B981';
+      default:
+        return '#6B7280';
+    }
+  };
+
+  // Get section icon based on status
+  const getSectionIcon = (status: 'new' | 'in_progress' | 'review' | 'done') => {
+    switch (status) {
+      case 'new':
+        return 'sparkles-outline';
+      case 'in_progress':
+        return 'play-circle-outline';
+      case 'review':
+        return 'glasses-outline';
+      case 'done':
+        return 'checkmark-circle-outline';
+      default:
+        return 'folder-outline';
+    }
+  };
+
   // Render section with tasks and "Load More" button
   const renderSection = (
     title: string,
@@ -227,33 +259,60 @@ const TaskListScreen: React.FC = () => {
     if (tasks.length === 0 && !isInitialLoading) return null;
 
     const hasMore = tasks.length < total;
+    const sectionColor = getSectionColor(status);
+    const sectionIcon = getSectionIcon(status);
 
     return (
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          {title} ({total})
-        </Text>
-        {tasks.map((task) => (
-          <TaskItem key={task.id} task={task} onPress={handleTaskPress} />
-        ))}
-        {hasMore && (
-          <TouchableOpacity
-            style={[styles.loadMoreButton, { backgroundColor: theme.backgroundTertiary }]}
-            onPress={() => handleLoadMore(status)}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={theme.primary} />
-            ) : (
-              <>
-                <Ionicons name="chevron-down-outline" size={20} color={theme.primary} />
-                <Text style={[styles.loadMoreText, { color: theme.primary }]}>
-                  Загрузить еще ({total - tasks.length})
+        {/* Одна большая карточка для всей секции */}
+        <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* Заголовок секции */}
+          <View style={styles.sectionHeaderContent}>
+            <View style={[styles.sectionIconContainer, { backgroundColor: sectionColor }]}>
+              <Ionicons name={sectionIcon as any} size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.sectionTitleContainer}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                {title}
+              </Text>
+              <View style={[styles.sectionBadge, { backgroundColor: sectionColor + '20' }]}>
+                <Text style={[styles.sectionBadgeText, { color: sectionColor }]}>
+                  {total}
                 </Text>
-              </>
+              </View>
+            </View>
+          </View>
+          <View style={[styles.sectionDivider, { backgroundColor: sectionColor, opacity: 0.3 }]} />
+
+          {/* Задачи внутри карточки */}
+          <View style={styles.tasksContainer}>
+            {tasks.map((task) => (
+              <View key={task.id} style={styles.taskWrapper}>
+                <View style={[styles.taskCard, { backgroundColor: theme.backgroundTertiary }]}>
+                  <TaskItem task={task} onPress={handleTaskPress} />
+                </View>
+              </View>
+            ))}
+            {hasMore && (
+              <TouchableOpacity
+                style={[styles.loadMoreButton, { borderColor: sectionColor }]}
+                onPress={() => handleLoadMore(status)}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={sectionColor} />
+                ) : (
+                  <>
+                    <Ionicons name="chevron-down-outline" size={20} color={sectionColor} />
+                    <Text style={[styles.loadMoreText, { color: sectionColor }]}>
+                      Загрузить еще ({total - tasks.length})
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
-        )}
+          </View>
+        </View>
       </View>
     );
   };
@@ -445,14 +504,82 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+  sectionCard: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sectionHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    paddingBottom: 12,
+  },
+  sectionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  sectionTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 16,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  sectionBadge: {
+    minWidth: 32,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  sectionBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  sectionDivider: {
+    height: 3,
+    width: '100%',
     marginBottom: 8,
-    marginTop: 8,
+  },
+  tasksContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  taskWrapper: {
+    marginBottom: 12,
+  },
+  taskCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   loadMoreButton: {
     flexDirection: 'row',
@@ -460,12 +587,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginHorizontal: 16,
     marginTop: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
+    marginBottom: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
   },
   loadMoreText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     marginLeft: 6,
   },
 });
