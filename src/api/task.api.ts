@@ -43,13 +43,15 @@ export const getTasks = async (
     { params }
   );
 
-  console.log('📋 Tasks response:', response.data);
+  console.log('📋 Tasks response:', JSON.stringify(response.data, null, 2));
 
   // Handle different response formats from backend
   if (response.data.data) {
+    console.log('✅ Using response.data.data format');
     return response.data.data;
   } else if (Array.isArray(response.data)) {
     // Server returns array directly
+    console.log('✅ Using array format');
     return {
       data: response.data,
       total: response.data.length,
@@ -58,17 +60,19 @@ export const getTasks = async (
       hasMore: false,
     };
   } else if (response.data.tasks) {
-    // Server returns {tasks: [...], count: number}
+    // Server returns {tasks: [...], total: number}
+    console.log('✅ Using tasks format, total:', response.data.total);
     return {
       data: response.data.tasks,
-      total: response.data.count || response.data.tasks.length,
+      total: response.data.total || response.data.tasks.length,
       limit: params.limit,
       offset: params.offset,
-      hasMore: response.data.tasks.length === params.limit,
+      hasMore: (params.offset + response.data.tasks.length) < (response.data.total || response.data.tasks.length),
     };
   }
 
   // Fallback
+  console.log('⚠️ Using fallback format');
   return {
     data: [],
     total: 0,
@@ -76,6 +80,18 @@ export const getTasks = async (
     offset: params.offset,
     hasMore: false,
   };
+};
+
+/**
+ * Get tasks by specific status with pagination
+ */
+export const getTasksByStatus = async (
+  status: 'new' | 'in_progress' | 'review' | 'done',
+  limit: number = 3,
+  offset: number = 0,
+  additionalFilters?: Omit<TaskListFilters, 'status'>
+): Promise<PaginatedResponse<Task>> => {
+  return getTasks({ ...additionalFilters, status }, { limit, offset });
 };
 
 /**

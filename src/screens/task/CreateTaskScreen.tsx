@@ -17,6 +17,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { TaskStackParamList } from '@navigation/types';
 import { useTaskStore } from '@store/taskStore';
 import { TaskPriority, CreateTaskDto } from '../../types/task.types';
+import UserPicker from '../../components/task/UserPicker';
 
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'CreateTask'>;
 
@@ -30,12 +31,13 @@ const CreateTaskScreen: React.FC = () => {
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]); // Selected user IDs
 
   const priorities: { value: TaskPriority; label: string; color: string; icon: string }[] = [
     { value: 'low', label: 'Низкий', color: '#10B981', icon: 'arrow-down' },
     { value: 'medium', label: 'Средний', color: '#F59E0B', icon: 'remove' },
     { value: 'high', label: 'Высокий', color: '#F97316', icon: 'arrow-up' },
-    { value: 'urgent', label: 'Срочный', color: '#EF4444', icon: 'alert-circle' },
+    { value: 'critical', label: 'Критический', color: '#EF4444', icon: 'alert-circle' },
   ];
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -47,7 +49,11 @@ const CreateTaskScreen: React.FC = () => {
 
   const handleCreateTask = async () => {
     if (!title.trim()) {
-      Alert.alert('Ошибка', 'Введите название задачи');
+      if (Platform.OS === 'web') {
+        alert('Введите название задачи');
+      } else {
+        Alert.alert('Ошибка', 'Введите название задачи');
+      }
       return;
     }
 
@@ -59,21 +65,31 @@ const CreateTaskScreen: React.FC = () => {
         description: description.trim() || undefined,
         priority,
         due_date: dueDate?.toISOString(),
+        assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
       };
 
       const newTask = await createTask(taskData);
 
-      Alert.alert('Успех', 'Задача создана', [
-        {
-          text: 'OK',
-          onPress: () => {
-            navigation.goBack();
+      // Для веба сразу возвращаемся, для мобильных показываем Alert
+      if (Platform.OS === 'web') {
+        navigation.goBack();
+      } else {
+        Alert.alert('Успех', 'Задача создана', [
+          {
+            text: 'OK',
+            onPress: () => {
+              navigation.goBack();
+            },
           },
-        },
-      ]);
+        ]);
+      }
     } catch (error: any) {
       console.error('Failed to create task:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось создать задачу');
+      if (Platform.OS === 'web') {
+        alert(error.message || 'Не удалось создать задачу');
+      } else {
+        Alert.alert('Ошибка', error.message || 'Не удалось создать задачу');
+      }
     } finally {
       setIsCreating(false);
     }
@@ -162,43 +178,96 @@ const CreateTaskScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* Assignees */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Исполнители (опционально)</Text>
+          <UserPicker
+            selectedUserIds={assigneeIds}
+            onSelectionChange={setAssigneeIds}
+            multiSelect={true}
+          />
+          <Text style={styles.helperText}>
+            Оставьте пустым, чтобы назначить задачу себе. Администраторы и руководители могут назначать другим пользователям.
+          </Text>
+        </View>
+
         {/* Due Date */}
         <View style={styles.section}>
           <Text style={styles.label}>Срок выполнения</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-            <Text style={styles.dateButtonText}>
-              {dueDate
-                ? dueDate.toLocaleString('ru-RU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })
-                : 'Выберите дату и время'}
-            </Text>
-            {dueDate && (
-              <TouchableOpacity
-                onPress={() => setDueDate(undefined)}
-                style={styles.clearDateButton}
-              >
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
-          </TouchableOpacity>
 
-          {showDatePicker && (
-            <DateTimePicker
-              value={dueDate || new Date()}
-              mode="datetime"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
-              minimumDate={new Date()}
-            />
+          {Platform.OS === 'web' ? (
+            /* Web DatePicker using HTML input */
+            <View style={styles.webDateContainer}>
+              <Ionicons name="calendar-outline" size={20} color="#6B7280" style={styles.webDateIcon} />
+              <input
+                type="datetime-local"
+                value={dueDate ? dueDate.toISOString().slice(0, 16) : ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setDueDate(new Date(e.target.value));
+                  }
+                }}
+                min={new Date().toISOString().slice(0, 16)}
+                style={{
+                  flex: 1,
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  color: '#374151',
+                  backgroundColor: '#F9FAFB',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  outline: 'none',
+                }}
+              />
+              {dueDate && (
+                <TouchableOpacity
+                  onPress={() => setDueDate(undefined)}
+                  style={styles.clearDateButton}
+                >
+                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            /* iOS/Android DatePicker */
+            <>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                <Text style={styles.dateButtonText}>
+                  {dueDate
+                    ? dueDate.toLocaleString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'Выберите дату и время'}
+                </Text>
+                {dueDate && (
+                  <TouchableOpacity
+                    onPress={() => setDueDate(undefined)}
+                    style={styles.clearDateButton}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={dueDate || new Date()}
+                  mode="datetime"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleDateChange}
+                  minimumDate={new Date()}
+                />
+              )}
+            </>
           )}
         </View>
 
@@ -340,6 +409,14 @@ const styles = StyleSheet.create({
   clearDateButton: {
     padding: 4,
   },
+  webDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  webDateIcon: {
+    marginLeft: 4,
+  },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -355,6 +432,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1E40AF',
     lineHeight: 18,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 6,
+    lineHeight: 16,
   },
 });
 

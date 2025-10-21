@@ -7,10 +7,10 @@ import { ISODateString } from './common.types';
 import { User } from './user.types';
 
 // Task Status
-export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled';
+export type TaskStatus = 'new' | 'in_progress' | 'review' | 'done' | 'cancelled';
 
 // Task Priority
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 
 // Task Comment Interface
 export interface TaskComment {
@@ -23,6 +23,14 @@ export interface TaskComment {
   updated_at: ISODateString;
 }
 
+// User Info (for task assignees and creators)
+export interface TaskUserInfo {
+  id: number;
+  name: string;
+  email: string;
+  position?: string;
+}
+
 // Task Interface
 export interface Task {
   id: number;
@@ -30,14 +38,17 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
-  assigned_to?: number;
+  assigned_to?: number; // Deprecated: use assignee_ids
   assignee?: User;
+  assignee_ids?: number[]; // Multiple assignees
+  assignees?: TaskUserInfo[]; // User info for assignees
+  assigned_to_department?: string; // Department assignment
   project_id?: number;
   project?: Project;
   due_date?: ISODateString;
   tags: string[];
   created_by: number;
-  creator?: User;
+  creator?: TaskUserInfo; // User info for creator
   comments?: TaskComment[];
   comments_count: number;
   created_at: ISODateString;
@@ -69,7 +80,9 @@ export interface CreateTaskDto {
   description?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
-  assigned_to?: number;
+  assigned_to?: number; // Deprecated: use assignee_ids
+  assignee_ids?: number[]; // Multiple assignees
+  assigned_to_department?: string; // Department assignment
   project_id?: number;
   due_date?: ISODateString;
   tags?: string[];

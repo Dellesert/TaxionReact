@@ -13,7 +13,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
   const { theme } = useTheme();
   const getPriorityBgColor = () => {
     switch (task.priority) {
-      case 'urgent':
+      case 'critical':
         return '#EF4444';
       case 'high':
         return '#F97316';
@@ -28,8 +28,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
 
   const getPriorityText = () => {
     switch (task.priority) {
-      case 'urgent':
-        return 'Срочно';
+      case 'critical':
+        return 'Критический';
       case 'high':
         return 'Высокий';
       case 'medium':
@@ -49,7 +49,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
         return '#3B82F6';
       case 'review':
         return '#8B5CF6';
-      case 'todo':
+      case 'new':
         return '#6B7280';
       case 'cancelled':
         return '#EF4444';
@@ -66,7 +66,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
         return 'В работе';
       case 'review':
         return 'На проверке';
-      case 'todo':
+      case 'new':
         return 'Новая';
       case 'cancelled':
         return 'Отменена';
@@ -173,11 +173,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
           </View>
         )}
 
-        {task.assignee && (
-          <View style={styles.assigneeRow}>
-            <Ionicons name="person-outline" size={16} color={theme.textSecondary} />
-            <Text style={[styles.assigneeText, dynamicStyles.assigneeText]} numberOfLines={1}>
-              {task.assignee.full_name}
+        {task.creator && (
+          <View style={styles.creatorRow}>
+            <Ionicons name="person-outline" size={14} color={theme.textTertiary} />
+            <Text style={[styles.creatorText, dynamicStyles.assigneeText]} numberOfLines={1}>
+              {task.creator.name}
             </Text>
           </View>
         )}
@@ -276,6 +276,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 4,
     maxWidth: 100,
+  },
+  creatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  creatorText: {
+    fontSize: 12,
+    marginLeft: 4,
   },
   tagsRow: {
     flexDirection: 'row',

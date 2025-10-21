@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   RefreshControl,
   TextInput,
   StyleSheet,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,188 +15,45 @@ import { Ionicons } from '@expo/vector-icons';
 import { TaskItem } from '@components/task/TaskItem';
 import { Loading } from '@components/common/Loading';
 import type { Task, TaskStatus } from '../../types/task.types';
+import { useTaskStore } from '@store/taskStore';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
 import { TaskStackParamList } from '@navigation/types';
-import * as taskApi from '@api/task.api';
 
 type TaskFilter = 'all' | 'my' | 'assigned';
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
 
-const TASKS_PER_PAGE = 3;
-
 const TaskListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { tasks, isLoading, loadTasks: fetchTasks } = useTaskStore();
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<TaskFilter>('all');
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const isFirstRender = useRef(true);
 
-  // Tasks by status
-  const [newTasks, setNewTasks] = useState<Task[]>([]);
-  const [inProgressTasks, setInProgressTasks] = useState<Task[]>([]);
-  const [reviewTasks, setReviewTasks] = useState<Task[]>([]);
-  const [doneTasks, setDoneTasks] = useState<Task[]>([]);
-
-  // Total counts for each status
-  const [newTasksTotal, setNewTasksTotal] = useState(0);
-  const [inProgressTotal, setInProgressTotal] = useState(0);
-  const [reviewTotal, setReviewTotal] = useState(0);
-  const [doneTotal, setDoneTotal] = useState(0);
-
-  // Loading states for each section
-  const [loadingNew, setLoadingNew] = useState(false);
-  const [loadingInProgress, setLoadingInProgress] = useState(false);
-  const [loadingReview, setLoadingReview] = useState(false);
-  const [loadingDone, setLoadingDone] = useState(false);
+  // Pagination state for each section (how many tasks to show)
+  const [newTasksLimit, setNewTasksLimit] = useState(3);
+  const [inProgressLimit, setInProgressLimit] = useState(3);
+  const [reviewLimit, setReviewLimit] = useState(3);
+  const [doneLimit, setDoneLimit] = useState(3);
 
   useEffect(() => {
-    loadAllTasks();
-  }, [filter]);
+    loadTasks();
+  }, []);
 
-  useEffect(() => {
-    // Debounce search
-    const timer = setTimeout(() => {
-      if (searchQuery) {
-        loadAllTasks();
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Reload tasks when screen comes into focus (e.g., when returning from task details)
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      // Skip the first render (initial load already handled by filter effect)
-      if (isFirstRender.current) {
-        isFirstRender.current = false;
-        return;
-      }
-
-      console.log('🔄 TaskListScreen focused - reloading tasks');
-      loadAllTasks();
-    });
-
-    return unsubscribe;
-  }, [navigation]);
-
-  const buildFilters = useCallback(() => {
-    const filters: any = {};
-
-    // Apply filter type
-    if (filter === 'my') {
-      filters.created_by = user?.id;
-    } else if (filter === 'assigned') {
-      filters.assigned_to = user?.id;
-    }
-
-    // Apply search
-    if (searchQuery.trim()) {
-      filters.search = searchQuery.trim();
-    }
-
-    return filters;
-  }, [filter, searchQuery, user?.id]);
-
-  const loadTasksByStatus = async (
-    status: 'new' | 'in_progress' | 'review' | 'done',
-    limit: number = TASKS_PER_PAGE,
-    offset: number = 0,
-    append: boolean = false
-  ) => {
-    const filters = buildFilters();
-
+  const loadTasks = async () => {
     try {
-      const response = await taskApi.getTasksByStatus(status, limit, offset, filters);
-      const tasks = response.data;
-
-      console.log(`📋 Loaded ${status} tasks:`, {
-        count: tasks.length,
-        total: response.total,
-        limit,
-        offset,
-        append,
-      });
-
-      // Update state based on status
-      switch (status) {
-        case 'new':
-          setNewTasks(append ? [...newTasks, ...tasks] : tasks);
-          setNewTasksTotal(response.total);
-          console.log(`✅ Set new tasks: ${append ? newTasks.length + tasks.length : tasks.length} / ${response.total}`);
-          break;
-        case 'in_progress':
-          setInProgressTasks(append ? [...inProgressTasks, ...tasks] : tasks);
-          setInProgressTotal(response.total);
-          console.log(`✅ Set in_progress tasks: ${append ? inProgressTasks.length + tasks.length : tasks.length} / ${response.total}`);
-          break;
-        case 'review':
-          setReviewTasks(append ? [...reviewTasks, ...tasks] : tasks);
-          setReviewTotal(response.total);
-          console.log(`✅ Set review tasks: ${append ? reviewTasks.length + tasks.length : tasks.length} / ${response.total}`);
-          break;
-        case 'done':
-          setDoneTasks(append ? [...doneTasks, ...tasks] : tasks);
-          setDoneTotal(response.total);
-          console.log(`✅ Set done tasks: ${append ? doneTasks.length + tasks.length : tasks.length} / ${response.total}`);
-          break;
-      }
-    } catch (error) {
-      console.error(`❌ Failed to load ${status} tasks:`, error);
-    }
-  };
-
-  const loadAllTasks = async () => {
-    try {
-      setIsInitialLoading(true);
-
-      // Load first page of each status in parallel
-      await Promise.all([
-        loadTasksByStatus('new', TASKS_PER_PAGE, 0),
-        loadTasksByStatus('in_progress', TASKS_PER_PAGE, 0),
-        loadTasksByStatus('review', TASKS_PER_PAGE, 0),
-        loadTasksByStatus('done', TASKS_PER_PAGE, 0),
-      ]);
+      await fetchTasks();
     } catch (error) {
       console.error('Failed to load tasks:', error);
-    } finally {
-      setIsInitialLoading(false);
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadAllTasks();
+    await loadTasks();
     setRefreshing(false);
-  };
-
-  const handleLoadMore = async (status: 'new' | 'in_progress' | 'review' | 'done') => {
-    // Set loading state for this section
-    switch (status) {
-      case 'new':
-        setLoadingNew(true);
-        await loadTasksByStatus(status, TASKS_PER_PAGE, newTasks.length, true);
-        setLoadingNew(false);
-        break;
-      case 'in_progress':
-        setLoadingInProgress(true);
-        await loadTasksByStatus(status, TASKS_PER_PAGE, inProgressTasks.length, true);
-        setLoadingInProgress(false);
-        break;
-      case 'review':
-        setLoadingReview(true);
-        await loadTasksByStatus(status, TASKS_PER_PAGE, reviewTasks.length, true);
-        setLoadingReview(false);
-        break;
-      case 'done':
-        setLoadingDone(true);
-        await loadTasksByStatus(status, TASKS_PER_PAGE, doneTasks.length, true);
-        setLoadingDone(false);
-        break;
-    }
   };
 
   const handleTaskPress = (task: Task) => {
@@ -210,6 +66,51 @@ const TaskListScreen: React.FC = () => {
     navigation.navigate('CreateTask');
   };
 
+  // Фильтруем задачи
+  const filteredTasks = tasks.filter((task) => {
+    // Filter by assignment type
+    if (filter === 'my') {
+      // Мои задачи - где я создатель
+      if (task.created_by !== user?.id) return false;
+    } else if (filter === 'assigned') {
+      // Назначенные мне - где я в списке исполнителей
+      const isAssignedToMe = task.assignee_ids?.includes(user?.id ?? 0) ||
+                             task.assignees?.some(a => a.id === user?.id);
+      if (!isAssignedToMe) return false;
+    }
+    // 'all' - показываем все задачи
+
+    // Search filter
+    if (!searchQuery) return true;
+    const searchText = `${task.title} ${task.description || ''}`.toLowerCase();
+    return searchText.includes(searchQuery.toLowerCase());
+  });
+
+  // Сортировка задач по приоритету и дате
+  const sortTasks = (tasks: Task[]) => {
+    return tasks.sort((a, b) => {
+      // Сортируем по приоритету
+      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4;
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4;
+
+      if (aPriority !== bPriority) return aPriority - bPriority;
+
+      // Затем по дате
+      if (a.due_date && b.due_date) {
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      }
+
+      return 0;
+    });
+  };
+
+  // Группируем задачи по статусу
+  const newTasks = sortTasks(filteredTasks.filter(task => task.status === 'new'));
+  const inProgressTasks = sortTasks(filteredTasks.filter(task => task.status === 'in_progress'));
+  const reviewTasks = sortTasks(filteredTasks.filter(task => task.status === 'review'));
+  const doneTasks = sortTasks(filteredTasks.filter(task => task.status === 'done'));
+
   const filterButtons: { key: TaskFilter; label: string; icon: string }[] = [
     { key: 'all', label: 'Все', icon: 'apps-outline' },
     { key: 'my', label: 'Мои', icon: 'person-outline' },
@@ -220,54 +121,45 @@ const TaskListScreen: React.FC = () => {
   const renderSection = (
     title: string,
     tasks: Task[],
-    total: number,
-    loading: boolean,
-    status: 'new' | 'in_progress' | 'review' | 'done'
+    limit: number,
+    setLimit: (limit: number) => void
   ) => {
-    if (tasks.length === 0 && !isInitialLoading) return null;
+    if (tasks.length === 0) return null;
 
-    const hasMore = tasks.length < total;
+    const visibleTasks = tasks.slice(0, limit);
+    const hasMore = tasks.length > limit;
 
     return (
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          {title} ({total})
+          {title} ({tasks.length})
         </Text>
-        {tasks.map((task) => (
+        {visibleTasks.map((task) => (
           <TaskItem key={task.id} task={task} onPress={handleTaskPress} />
         ))}
         {hasMore && (
           <TouchableOpacity
             style={[styles.loadMoreButton, { backgroundColor: theme.backgroundTertiary }]}
-            onPress={() => handleLoadMore(status)}
-            disabled={loading}
+            onPress={() => setLimit(limit + 3)}
           >
-            {loading ? (
-              <ActivityIndicator size="small" color={theme.primary} />
-            ) : (
-              <>
-                <Ionicons name="chevron-down-outline" size={20} color={theme.primary} />
-                <Text style={[styles.loadMoreText, { color: theme.primary }]}>
-                  Загрузить еще ({total - tasks.length})
-                </Text>
-              </>
-            )}
+            <Ionicons name="chevron-down-outline" size={20} color={theme.primary} />
+            <Text style={[styles.loadMoreText, { color: theme.primary }]}>
+              Загрузить еще ({tasks.length - limit})
+            </Text>
           </TouchableOpacity>
         )}
       </View>
     );
   };
 
-  if (isInitialLoading) {
+  if (isLoading && tasks.length === 0) {
     return <Loading text="Загрузка задач..." fullScreen />;
   }
-
-  const totalTasks = newTasksTotal + inProgressTotal + reviewTotal + doneTotal;
 
   const dynamicStyles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.backgroundSecondary,
+      backgroundColor: theme.backgroundSecondary, // Цвет заголовка распространяется на всю область включая Dynamic Island
     },
     header: {
       backgroundColor: theme.backgroundSecondary,
@@ -384,7 +276,7 @@ const TaskListScreen: React.FC = () => {
         </View>
       </View>
 
-      {totalTasks === 0 ? (
+      {filteredTasks.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="checkmark-done-outline" size={64} color={theme.borderLight} />
           <Text style={dynamicStyles.emptyTitle}>
@@ -403,10 +295,10 @@ const TaskListScreen: React.FC = () => {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          {renderSection('Новые', newTasks, newTasksTotal, loadingNew, 'new')}
-          {renderSection('В работе', inProgressTasks, inProgressTotal, loadingInProgress, 'in_progress')}
-          {renderSection('На проверке', reviewTasks, reviewTotal, loadingReview, 'review')}
-          {renderSection('Готовые', doneTasks, doneTotal, loadingDone, 'done')}
+          {renderSection('Новые', newTasks, newTasksLimit, setNewTasksLimit)}
+          {renderSection('В работе', inProgressTasks, inProgressLimit, setInProgressLimit)}
+          {renderSection('На проверке', reviewTasks, reviewLimit, setReviewLimit)}
+          {renderSection('Готовые', doneTasks, doneLimit, setDoneLimit)}
         </ScrollView>
       )}
     </SafeAreaView>

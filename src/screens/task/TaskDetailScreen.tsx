@@ -7,6 +7,7 @@ import {
   Alert,
   TextInput,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,8 @@ import * as taskApi from '@api/task.api';
 import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
 import { useTheme } from '@hooks/useTheme';
+import { useTaskStore } from '@store/taskStore';
+import { useAuthStore } from '@store/authStore';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -27,6 +30,8 @@ const TaskDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const { taskId } = route.params;
   const { theme } = useTheme();
+  const { deleteTask: deleteTaskFromStore } = useTaskStore();
+  const { user } = useAuthStore();
 
   const [task, setTask] = useState<Task | null>(null);
   const [comments, setComments] = useState<TaskComment[]>([]);
@@ -47,6 +52,9 @@ const TaskDetailScreen: React.FC = () => {
       setIsLoading(true);
       const taskIdNum = Number(taskId);
       const response = await taskApi.getTask(taskIdNum);
+      console.log('📋 Task loaded:', response);
+      console.log('🔍 Task status:', response.status);
+      console.log('🎯 Task priority:', response.priority);
       setTask(response);
     } catch (error) {
       console.error('Failed to load task:', error);
@@ -115,9 +123,79 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!task) return;
+
+    // Check permissions: only creator or admin can delete
+    const isCreator = task.created_by === user?.id;
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+
+    if (!isCreator && !isAdmin) {
+      if (Platform.OS === 'web') {
+        alert('У вас нет прав на удаление этой задачи');
+      } else {
+        Alert.alert('Ошибка', 'У вас нет прав на удаление этой задачи');
+      }
+      return;
+    }
+
+    // Show confirmation
+    const confirmDelete = () => {
+      return new Promise<boolean>((resolve) => {
+        if (Platform.OS === 'web') {
+          const confirmed = confirm('Вы уверены, что хотите удалить эту задачу?');
+          resolve(confirmed);
+        } else {
+          Alert.alert(
+            'Удалить задачу',
+            'Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.',
+            [
+              {
+                text: 'Отмена',
+                style: 'cancel',
+                onPress: () => resolve(false),
+              },
+              {
+                text: 'Удалить',
+                style: 'destructive',
+                onPress: () => resolve(true),
+              },
+            ]
+          );
+        }
+      });
+    };
+
+    const confirmed = await confirmDelete();
+    if (!confirmed) return;
+
+    try {
+      const taskIdNum = Number(taskId);
+      await deleteTaskFromStore(taskIdNum);
+
+      if (Platform.OS === 'web') {
+        navigation.goBack();
+      } else {
+        Alert.alert('Успех', 'Задача удалена', [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]);
+      }
+    } catch (error: any) {
+      console.error('Failed to delete task:', error);
+      if (Platform.OS === 'web') {
+        alert(error.message || 'Не удалось удалить задачу');
+      } else {
+        Alert.alert('Ошибка', error.message || 'Не удалось удалить задачу');
+      }
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent':
+      case 'critical':
         return '#DC2626';
       case 'high':
         return '#EA580C';
@@ -133,13 +211,18 @@ const TaskDetailScreen: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'done':
         return '#10B981';
       case 'in_progress':
         return '#3B82F6';
       case 'pending':
+      case 'todo':
+      case 'new':
         return '#6B7280';
       case 'cancelled':
         return '#EF4444';
+      case 'review':
+        return '#F59E0B';
       default:
         return '#6B7280';
     }
@@ -148,13 +231,19 @@ const TaskDetailScreen: React.FC = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'done':
         return 'Завершена';
       case 'in_progress':
         return 'В работе';
       case 'pending':
         return 'Ожидает';
+      case 'todo':
+      case 'new':
+        return 'Новая';
       case 'cancelled':
         return 'Отменена';
+      case 'review':
+        return 'На проверке';
       default:
         return 'Неизвестно';
     }
@@ -162,8 +251,8 @@ const TaskDetailScreen: React.FC = () => {
 
   const getPriorityText = (priority: string) => {
     switch (priority) {
-      case 'urgent':
-        return 'Срочно';
+      case 'critical':
+        return 'Критический';
       case 'high':
         return 'Высокий';
       case 'medium':
@@ -311,9 +400,16 @@ const TaskDetailScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={dynamicStyles.headerTitle}>Детали задачи</Text>
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={24} color={theme.info} />
-        </TouchableOpacity>
+        {/* Show delete button only if user is creator or admin */}
+        {task && user && (task.created_by === user.id || user.role === 'admin' || user.role === 'super_admin') && (
+          <TouchableOpacity onPress={handleDeleteTask}>
+            <Ionicons name="trash-outline" size={24} color={theme.error} />
+          </TouchableOpacity>
+        )}
+        {/* Placeholder to maintain spacing if delete button is not shown */}
+        {!task || !user || (task.created_by !== user.id && user.role !== 'admin' && user.role !== 'super_admin') && (
+          <View style={{ width: 24 }} />
+        )}
       </View>
 
       <ScrollView style={dynamicStyles.scrollView}>
@@ -329,12 +425,6 @@ const TaskDetailScreen: React.FC = () => {
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) }]}>
               <Text style={styles.statusBadgeText}>{getStatusText(task.status)}</Text>
             </View>
-
-            <View style={dynamicStyles.priorityBadge}>
-              <Text style={[styles.priorityBadgeText, { color: getPriorityColor(task.priority) }]}>
-                {getPriorityText(task.priority)}
-              </Text>
-            </View>
           </View>
         </View>
 
@@ -342,7 +432,7 @@ const TaskDetailScreen: React.FC = () => {
         <View style={dynamicStyles.card}>
           <Text style={dynamicStyles.sectionTitle}>Изменить статус</Text>
           <View style={styles.statusButtonContainer}>
-            {['pending', 'in_progress', 'completed', 'cancelled'].map((status) => (
+            {['new', 'in_progress', 'done'].map((status) => (
               <TouchableOpacity
                 key={status}
                 onPress={() => handleStatusChange(status as Task['status'])}
@@ -370,12 +460,21 @@ const TaskDetailScreen: React.FC = () => {
         <View style={dynamicStyles.card}>
           <Text style={dynamicStyles.sectionTitle}>Информация</Text>
 
-          {task.assignee && (
+          {task.creator && (
             <View style={styles.infoRow}>
               <Ionicons name="person-outline" size={20} color={theme.textSecondary} />
-              <Text style={dynamicStyles.infoLabel}>Исполнитель:</Text>
-              <Avatar source={task.assignee.avatar} name={task.assignee.full_name || 'User'} size={24} />
-              <Text style={dynamicStyles.infoValue}>{task.assignee.full_name}</Text>
+              <Text style={dynamicStyles.infoLabel}>Создал:</Text>
+              <Text style={dynamicStyles.infoValue}>{task.creator.name}</Text>
+            </View>
+          )}
+
+          {task.assignees && task.assignees.length > 0 && (
+            <View style={styles.infoRow}>
+              <Ionicons name="people-outline" size={20} color={theme.textSecondary} />
+              <Text style={dynamicStyles.infoLabel}>Исполнители:</Text>
+              <Text style={dynamicStyles.infoValue}>
+                {task.assignees.map(a => a.name).join(', ')}
+              </Text>
             </View>
           )}
 
@@ -442,13 +541,13 @@ const TaskDetailScreen: React.FC = () => {
             <View key={comment.id} style={dynamicStyles.commentItem}>
               <Avatar
                 source={comment.user?.avatar}
-                name={comment.user?.full_name || 'User'}
+                name={comment.user?.name || 'User'}
                 size={32}
               />
               <View style={styles.commentContent}>
                 <View style={styles.commentHeader}>
                   <Text style={dynamicStyles.commentAuthor}>
-                    {comment.user?.full_name || 'Пользователь'}
+                    {comment.user?.name || 'Пользователь'}
                   </Text>
                   <Text style={dynamicStyles.commentDate}>
                     {format(new Date(comment.created_at), 'dd.MM.yyyy HH:mm')}
