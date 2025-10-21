@@ -55,7 +55,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
       case 'connected':
         return { text: 'Подключено', color: '#2ecc71' }; // зелёный
       case 'connecting':
-        return { text: 'Подключение...', color: '#434343ff' }; // желтовато-оранжевый
+        return { text: 'Подключение', color: '#434343ff' }; // желтовато-оранжевый
       case 'disconnected':
       default:
         return { text: 'Нет подключения', color: '#e74c3c' }; // красный
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   compactText: {
-    fontSize: 30,
+    fontSize: 12,
     color: '#323232ff',
     fontWeight: '500',
     marginLeft: 6,

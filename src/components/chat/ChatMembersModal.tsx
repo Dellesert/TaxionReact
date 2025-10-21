@@ -13,8 +13,10 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Alert,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { User } from '../../types/user.types';
@@ -22,12 +24,16 @@ import { ChatMember } from '../../types/chat.types';
 import { getChatMembers, addChatMembers } from '@api/chat.api';
 import { getUsers } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@utils/mockData';
+import { useChatStore } from '@store/chatStore';
+import { useAuthStore } from '@store/authStore';
+import { ConfirmDialog } from '@components/common/ConfirmDialog';
 
 interface ChatMembersModalProps {
   visible: boolean;
   chatId: number;
   onClose: () => void;
   isCreator?: boolean;
+  creatorId?: number;
 }
 
 export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
@@ -35,8 +41,12 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   chatId,
   onClose,
   isCreator = false,
+  creatorId,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const currentUser = useAuthStore((state) => state.user);
+  const removeChatMember = useChatStore((state) => state.removeChatMember);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
@@ -44,6 +54,8 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isAddingMode, setIsAddingMode] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -166,6 +178,34 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     }
   };
 
+  const handleRemoveMember = (userId: number, userName: string) => {
+    console.log(`🚫 handleRemoveMember called for user ${userId} (${userName}) in chat ${chatId}`);
+    setUserToRemove({ id: userId, name: userName });
+    setShowRemoveDialog(true);
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!userToRemove) return;
+
+    try {
+      console.log(`🚫 Executing removal of user ${userToRemove.id} from chat ${chatId}`);
+      await removeChatMember(chatId, userToRemove.id);
+      console.log(`✅ Successfully removed user ${userToRemove.id}`);
+      setShowRemoveDialog(false);
+      setUserToRemove(null);
+      loadMembers();
+    } catch (error: any) {
+      console.error('❌ Failed to remove member:', error);
+      setShowRemoveDialog(false);
+      setUserToRemove(null);
+    }
+  };
+
+  const cancelRemoveMember = () => {
+    setShowRemoveDialog(false);
+    setUserToRemove(null);
+  };
+
   const getInitials = (name: string) => {
     const words = name.split(' ');
     if (words.length >= 2) {
@@ -219,7 +259,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.background,
+      backgroundColor: theme.backgroundSecondary,
     },
     header: {
       backgroundColor: theme.backgroundSecondary,
@@ -311,6 +351,21 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     const user = item.user;
     if (!user) return null;
 
+    // Можно удалить участника если:
+    // 1. Текущий пользователь - владелец чата
+    // 2. Участник не является владельцем чата
+    // 3. Участник не является текущим пользователем (нельзя удалить самого себя)
+    const canRemove = isCreator && item.user_id !== creatorId && currentUser && item.user_id !== currentUser.id;
+
+    console.log('🔍 Member removal check:', {
+      userId: item.user_id,
+      userName: user.name,
+      isCreator,
+      creatorId,
+      currentUserId: currentUser?.id,
+      canRemove
+    });
+
     return (
       <View style={[styles.memberItem, dynamicStyles.memberItem]}>
         <View style={styles.memberInfo}>
@@ -326,8 +381,18 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
             {user.position && <Text style={[styles.memberPosition, dynamicStyles.memberPosition]}>{user.position}</Text>}
           </View>
         </View>
-        <View style={[styles.roleBadge, { backgroundColor: getRoleBadgeColor(item.role) }]}>
-          <Text style={styles.roleBadgeText}>{getRoleLabel(item.role)}</Text>
+        <View style={styles.memberActions}>
+          <View style={[styles.roleBadge, { backgroundColor: getRoleBadgeColor(item.role) }]}>
+            <Text style={styles.roleBadgeText}>{getRoleLabel(item.role)}</Text>
+          </View>
+          {canRemove && (
+            <TouchableOpacity
+              style={[styles.removeButton, { backgroundColor: theme.error || '#FF3B30' }]}
+              onPress={() => handleRemoveMember(item.user_id, user.name)}
+            >
+              <Ionicons name="close" size={18} color="#FFF" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -362,8 +427,13 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.container, dynamicStyles.container]}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <View style={[styles.container, dynamicStyles.container, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={[styles.header, dynamicStyles.header]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -439,19 +509,32 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
             <ActivityIndicator size="large" color={theme.primary} />
             <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Загрузка...</Text>
           </View>
-        ) : (
+        ) : isAddingMode ? (
           <FlatList
-            data={filteredUsers}
-            keyExtractor={(item) =>
-              isAddingMode ? `user-${item.id}` : `member-${(item as ChatMember).id}`
-            }
-            renderItem={isAddingMode ? renderUserItem : renderMemberItem}
+            data={filteredUsers as User[]}
+            keyExtractor={(item) => `user-${item.id}`}
+            renderItem={renderUserItem}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color={theme.borderLight} />
                 <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
-                  {isAddingMode ? 'Нет пользователей для добавления' : 'Нет участников'}
+                  Нет пользователей для добавления
+                </Text>
+              </View>
+            }
+          />
+        ) : (
+          <FlatList
+            data={filteredUsers as ChatMember[]}
+            keyExtractor={(item) => `member-${item.id}`}
+            renderItem={renderMemberItem}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={64} color={theme.borderLight} />
+                <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
+                  Нет участников
                 </Text>
               </View>
             }
@@ -467,6 +550,18 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
           </View>
         )}
       </View>
+
+      {/* Confirm remove dialog */}
+      <ConfirmDialog
+        visible={showRemoveDialog}
+        title="Удалить участника"
+        message={`Вы уверены, что хотите удалить ${userToRemove?.name} из чата?`}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmRemoveMember}
+        onCancel={cancelRemoveMember}
+        destructive={true}
+      />
     </Modal>
   );
 };
@@ -615,6 +710,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  memberActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  removeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   checkbox: {
     width: 24,

@@ -33,6 +33,9 @@ const TaskDetailScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
+  const [commentsOffset, setCommentsOffset] = useState(0);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
+  const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
 
   useEffect(() => {
     loadTask();
@@ -56,10 +59,29 @@ const TaskDetailScreen: React.FC = () => {
   const loadComments = async () => {
     try {
       const taskIdNum = Number(taskId);
-      const response = await taskApi.getTaskComments(taskIdNum);
-      setComments(response);
+      const response = await taskApi.getTaskComments(taskIdNum, 20, 0);
+      setComments(response.comments);
+      setCommentsOffset(20);
+      setHasMoreComments(response.hasMore);
     } catch (error) {
       console.error('Failed to load comments:', error);
+    }
+  };
+
+  const loadMoreComments = async () => {
+    if (isLoadingMoreComments || !hasMoreComments) return;
+
+    try {
+      setIsLoadingMoreComments(true);
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTaskComments(taskIdNum, 20, commentsOffset);
+      setComments([...comments, ...response.comments]);
+      setCommentsOffset(commentsOffset + response.comments.length);
+      setHasMoreComments(response.hasMore);
+    } catch (error) {
+      console.error('Failed to load more comments:', error);
+    } finally {
+      setIsLoadingMoreComments(false);
     }
   };
 
@@ -82,9 +104,10 @@ const TaskDetailScreen: React.FC = () => {
     try {
       setIsSendingComment(true);
       const taskIdNum = Number(taskId);
-      const response = await taskApi.addTaskComment(taskIdNum, { content: newComment });
-      setComments([response, ...comments]);
+      await taskApi.addTaskComment(taskIdNum, { content: newComment });
       setNewComment('');
+      // Перезагружаем список комментариев после добавления
+      await loadComments();
     } catch (error) {
       Alert.alert('Ошибка', 'Не удалось отправить комментарий');
     } finally {
@@ -418,13 +441,15 @@ const TaskDetailScreen: React.FC = () => {
           {comments.map((comment) => (
             <View key={comment.id} style={dynamicStyles.commentItem}>
               <Avatar
-                source={comment.author.avatar}
-                name={comment.author.full_name || 'User'}
+                source={comment.user?.avatar}
+                name={comment.user?.full_name || 'User'}
                 size={32}
               />
               <View style={styles.commentContent}>
                 <View style={styles.commentHeader}>
-                  <Text style={dynamicStyles.commentAuthor}>{comment.author.full_name}</Text>
+                  <Text style={dynamicStyles.commentAuthor}>
+                    {comment.user?.full_name || 'Пользователь'}
+                  </Text>
                   <Text style={dynamicStyles.commentDate}>
                     {format(new Date(comment.created_at), 'dd.MM.yyyy HH:mm')}
                   </Text>
@@ -433,6 +458,19 @@ const TaskDetailScreen: React.FC = () => {
               </View>
             </View>
           ))}
+
+          {/* Load More Button */}
+          {hasMoreComments && (
+            <TouchableOpacity
+              onPress={loadMoreComments}
+              disabled={isLoadingMoreComments}
+              style={styles.loadMoreButton}
+            >
+              <Text style={styles.loadMoreButtonText}>
+                {isLoadingMoreComments ? 'Загрузка...' : 'Загрузить еще'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {comments.length === 0 && (
             <Text style={dynamicStyles.emptyComments}>Комментариев пока нет</Text>
@@ -515,6 +553,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  loadMoreButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  loadMoreButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

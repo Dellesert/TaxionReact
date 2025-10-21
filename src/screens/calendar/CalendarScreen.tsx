@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Event } from '../../types/calendar.types';
 import { EventItem } from '@components/calendar/EventItem';
@@ -109,7 +110,7 @@ const CalendarScreen: React.FC = () => {
   const sections = groupEventsByDate();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Календарь</Text>
@@ -145,7 +146,7 @@ const CalendarScreen: React.FC = () => {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

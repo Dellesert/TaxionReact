@@ -23,12 +23,19 @@ interface ChatState {
   updateChat: (chatId: number, name: string) => Promise<void>;
   deleteChat: (chatId: number) => Promise<void>;
   leaveChat: (chatId: number) => Promise<void>;
+  removeChatMember: (chatId: number, userId: number) => Promise<void>;
   loadMessages: (chatId: number) => Promise<void>;
   loadMoreMessages: (chatId: number, beforeMessageId: number) => Promise<void>;
   setActiveChat: (chat: Chat | null) => void;
   sendMessage: (chatId: number, content: string, replyToId?: number) => Promise<void>;
   updateMessage: (messageId: number, content: string) => Promise<void>;
   deleteMessage: (messageId: number) => Promise<void>;
+  deleteMessageForUser: (messageId: number, deleteFor: 'everyone' | 'me') => Promise<void>;
+  clearChatHistory: (chatId: number) => Promise<void>;
+  restoreMessage: (messageId: number) => Promise<void>;
+  pinMessage: (messageId: number) => Promise<void>;
+  unpinMessage: (messageId: number) => Promise<void>;
+  getPinnedMessages: (chatId: number) => Message[];
   addReaction: (messageId: number, emoji: string) => Promise<void>;
   removeReaction: (messageId: number, emoji: string) => Promise<void>;
   markMessageRead: (messageId: number) => Promise<void>;
@@ -45,7 +52,7 @@ interface ChatState {
   handleUserJoin: (chatId: number, userId?: number) => void;
   handleUserLeave: (chatId: number, userId?: number) => void;
   handleUserPresence: (presence: any) => void;
-  handleMessageRead: (chatId: number, messageId: number) => void;
+  handleMessageRead: (chatId: number, messageId: number, userId?: number) => void;
   handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number) => void;
   clearError: () => void;
   getChatById: (chatId: number) => Chat | undefined;
@@ -179,6 +186,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
       console.log(`👋 Left chat ${chatId} successfully`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to leave chat' });
+      throw error;
+    }
+  },
+
+  removeChatMember: async (chatId: number, userId: number) => {
+    console.log(`🚫 removeChatMember called: chatId=${chatId}, userId=${userId}`);
+    try {
+      console.log(`🌐 Calling API to remove user ${userId} from chat ${chatId}`);
+      await chatApi.removeChatMember(chatId, userId);
+      console.log(`✅ API call successful, updating local state`);
+
+      // Обновляем список участников в чате
+      set((state) => ({
+        chats: state.chats.map((chat) => {
+          if (chat.id === chatId && chat.members) {
+            console.log(`📝 Updating members list for chat ${chatId}`);
+            return {
+              ...chat,
+              members: chat.members.filter((member) => member.user_id !== userId),
+            };
+          }
+          return chat;
+        }),
+      }));
+      console.log(`🚫 Removed user ${userId} from chat ${chatId}`);
+    } catch (error: any) {
+      console.error(`❌ Failed to remove member:`, error);
+      set({ error: error.message || 'Failed to remove member' });
       throw error;
     }
   },
@@ -328,6 +363,109 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  deleteMessageForUser: async (messageId: number, deleteFor: 'everyone' | 'me') => {
+    try {
+      await chatApi.deleteMessageForUser(messageId, deleteFor);
+
+      // Если удаление "для меня", удаляем сообщение локально
+      if (deleteFor === 'me') {
+        set((state) => {
+          // Находим чат, в котором находится сообщение
+          let chatId: number | null = null;
+          for (const [cId, messages] of Object.entries(state.messages)) {
+            if (messages.some(msg => msg.id === messageId)) {
+              chatId = Number(cId);
+              break;
+            }
+          }
+
+          if (!chatId) return state;
+
+          return {
+            messages: {
+              ...state.messages,
+              [chatId]: state.messages[chatId].filter(msg => msg.id !== messageId),
+            },
+          };
+        });
+      }
+      // Если удаление "для всех", WebSocket отправит событие удаления
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to delete message' });
+      throw error;
+    }
+  },
+
+  clearChatHistory: async (chatId: number) => {
+    try {
+      await chatApi.clearChatHistory(chatId);
+
+      // Очищаем сообщения локально
+      set((state) => ({
+        messages: {
+          ...state.messages,
+          [chatId]: [],
+        },
+      }));
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to clear chat history' });
+      throw error;
+    }
+  },
+
+  restoreMessage: async (messageId: number) => {
+    try {
+      await chatApi.restoreMessage(messageId);
+      // WebSocket отправит обновлённое сообщение
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to restore message' });
+      throw error;
+    }
+  },
+
+  pinMessage: async (messageId: number) => {
+    try {
+      const updatedMessage = await chatApi.pinMessage(messageId);
+      // Обновляем сообщение локально
+      set((state) => ({
+        messages: {
+          ...state.messages,
+          [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
+            msg.id === messageId ? { ...msg, is_pinned: true } : msg
+          ),
+        },
+      }));
+      console.log(`📌 Message ${messageId} pinned`);
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to pin message' });
+      throw error;
+    }
+  },
+
+  unpinMessage: async (messageId: number) => {
+    try {
+      const updatedMessage = await chatApi.unpinMessage(messageId);
+      // Обновляем сообщение локально
+      set((state) => ({
+        messages: {
+          ...state.messages,
+          [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
+            msg.id === messageId ? { ...msg, is_pinned: false } : msg
+          ),
+        },
+      }));
+      console.log(`📌 Message ${messageId} unpinned`);
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to unpin message' });
+      throw error;
+    }
+  },
+
+  getPinnedMessages: (chatId: number) => {
+    const messages = get().messages[chatId] || [];
+    return messages.filter((msg) => msg.is_pinned && !msg.is_deleted);
+  },
+
   addReaction: async (messageId: number, emoji: string) => {
     try {
       const updatedMessage = await chatApi.addReaction(messageId, { emoji });
@@ -384,31 +522,42 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   pinChat: async (chatId: number) => {
     try {
-      const updatedChat = await chatApi.pinChat(chatId);
+      await chatApi.toggleChatPinned(chatId, true);
       set((state) => ({
-        chats: state.chats.map((chat) => (chat.id === chatId ? updatedChat : chat)),
+        chats: state.chats.map((chat) =>
+          chat.id === chatId ? { ...chat, is_pinned: true } : chat
+        ),
       }));
+      console.log(`📌 Chat ${chatId} pinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to pin chat' });
+      throw error;
     }
   },
 
   unpinChat: async (chatId: number) => {
     try {
-      const updatedChat = await chatApi.unpinChat(chatId);
+      await chatApi.toggleChatPinned(chatId, false);
       set((state) => ({
-        chats: state.chats.map((chat) => (chat.id === chatId ? updatedChat : chat)),
+        chats: state.chats.map((chat) =>
+          chat.id === chatId ? { ...chat, is_pinned: false } : chat
+        ),
       }));
+      console.log(`📌 Chat ${chatId} unpinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to unpin chat' });
+      throw error;
     }
   },
 
   muteChat: async (chatId: number) => {
     try {
-      const updatedChat = await chatApi.muteChat(chatId);
+      // TODO: implement mute functionality when backend endpoint is ready
+      console.warn('Mute chat not yet implemented on backend');
       set((state) => ({
-        chats: state.chats.map((chat) => (chat.id === chatId ? updatedChat : chat)),
+        chats: state.chats.map((chat) =>
+          chat.id === chatId ? { ...chat, is_muted: true } : chat
+        ),
       }));
     } catch (error: any) {
       set({ error: error.message || 'Failed to mute chat' });
@@ -417,9 +566,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   unmuteChat: async (chatId: number) => {
     try {
-      const updatedChat = await chatApi.unmuteChat(chatId);
+      // TODO: implement unmute functionality when backend endpoint is ready
+      console.warn('Unmute chat not yet implemented on backend');
       set((state) => ({
-        chats: state.chats.map((chat) => (chat.id === chatId ? updatedChat : chat)),
+        chats: state.chats.map((chat) =>
+          chat.id === chatId ? { ...chat, is_muted: false } : chat
+        ),
       }));
     } catch (error: any) {
       set({ error: error.message || 'Failed to unmute chat' });
@@ -437,17 +589,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const existingMessages = state.messages[message.chat_id] || [];
       const messageExists = existingMessages.some((msg) => msg.id === message.id);
 
-      // ✅ ИСПРАВЛЕНИЕ: Пропускаем дубликат только для собственных сообщений
-      // Для чужих сообщений - всегда добавляем (может придти через WebSocket broadcast)
-      if (messageExists && isOwnMessage) {
-        console.log('⚠️ Duplicate own message detected, skipping:', message.id);
-        return state; // Skip processing duplicate message only for own messages
+      // Если сообщение уже существует
+      if (messageExists) {
+        if (isOwnMessage) {
+          console.log('⚠️ Duplicate own message detected, skipping:', message.id);
+          return state;
+        }
+        // Для чужих сообщений - обновляем delivered_to (добавляем текущего пользователя)
+        const updatedMessages = {
+          ...state.messages,
+          [message.chat_id]: existingMessages.map(msg => {
+            if (msg.id === message.id && currentUser) {
+              const deliveredTo = msg.delivered_to || [];
+              if (!deliveredTo.includes(currentUser.id)) {
+                return { ...msg, delivered_to: [...deliveredTo, currentUser.id] };
+              }
+            }
+            return msg;
+          }),
+        };
+        return { ...state, messages: updatedMessages };
       }
+
+      // Новое сообщение - добавляем с delivered_to если это чужое сообщение
+      const messageWithDelivery = !isOwnMessage && currentUser
+        ? { ...message, delivered_to: [currentUser.id] }
+        : { ...message, delivered_to: [] };
 
       // Add message to messages list
       const updatedMessages = {
         ...state.messages,
-        [message.chat_id]: [...existingMessages, message],
+        [message.chat_id]: [...existingMessages, messageWithDelivery],
       };
 
       // Update chats list
@@ -493,10 +665,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   handleMessageDelete: (messageId: number, chatId: number) => {
+    // Вместо удаления сообщения, помечаем его как удалённое
     set((state) => ({
       messages: {
         ...state.messages,
-        [chatId]: (state.messages[chatId] || []).filter((msg) => msg.id !== messageId),
+        [chatId]: (state.messages[chatId] || []).map((msg) =>
+          msg.id === messageId
+            ? { ...msg, is_deleted: true, deleted_at: new Date().toISOString() }
+            : msg
+        ),
       },
     }));
   },
@@ -576,16 +753,46 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
   },
 
-  handleMessageRead: (chatId: number, messageId: number) => {
-    // Update read_by array in message
+  handleMessageRead: (chatId: number, messageId: number, userId?: number) => {
+    // Update read_by array and read_receipts in message
+    // userId - кто прочитал сообщение (может быть текущий пользователь или другой)
+    const readerId = userId || useAuthStore.getState().user?.id;
+
+    if (!readerId) {
+      return;
+    }
+
     set((state) => ({
       messages: {
         ...state.messages,
-        [chatId]: (state.messages[chatId] || []).map((msg) =>
-          msg.id === messageId
-            ? { ...msg, read_by: [...(msg.read_by || []), useAuthStore.getState().user?.id].filter((id): id is number => id !== undefined) }
-            : msg
-        ),
+        [chatId]: (state.messages[chatId] || []).map((msg) => {
+          if (msg.id === messageId) {
+            const currentReadBy = msg.read_by || [];
+            const currentReadReceipts = msg.read_receipts || [];
+
+            const alreadyInReadBy = currentReadBy.includes(readerId);
+            const alreadyInReceipts = currentReadReceipts.some(r => r.user_id === readerId);
+
+            if (!alreadyInReadBy || !alreadyInReceipts) {
+              const newReadBy = alreadyInReadBy ? currentReadBy : [...currentReadBy, readerId];
+              const newReadReceipts = alreadyInReceipts
+                ? currentReadReceipts
+                : [...currentReadReceipts, {
+                    id: Date.now(),
+                    message_id: messageId,
+                    user_id: readerId,
+                    read_at: new Date().toISOString(),
+                  }];
+
+              return {
+                ...msg,
+                read_by: newReadBy,
+                read_receipts: newReadReceipts,
+              };
+            }
+          }
+          return msg;
+        }),
       },
     }));
   },

@@ -122,35 +122,13 @@ export const deleteChat = async (id: number): Promise<void> => {
 };
 
 /**
- * Pin chat
+ * Join chat (for group/channel chats)
+ * @param chatId - ID of chat to join
  */
-export const pinChat = async (id: number): Promise<Chat> => {
-  const response = await api.put<ApiResponse<Chat>>(API_ENDPOINTS.CHAT.PIN(id));
-  return response.data.data;
-};
-
-/**
- * Unpin chat
- */
-export const unpinChat = async (id: number): Promise<Chat> => {
-  const response = await api.put<ApiResponse<Chat>>(API_ENDPOINTS.CHAT.UNPIN(id));
-  return response.data.data;
-};
-
-/**
- * Mute chat notifications
- */
-export const muteChat = async (id: number): Promise<Chat> => {
-  const response = await api.put<ApiResponse<Chat>>(API_ENDPOINTS.CHAT.MUTE(id));
-  return response.data.data;
-};
-
-/**
- * Unmute chat notifications
- */
-export const unmuteChat = async (id: number): Promise<Chat> => {
-  const response = await api.put<ApiResponse<Chat>>(API_ENDPOINTS.CHAT.UNMUTE(id));
-  return response.data.data;
+export const joinChat = async (chatId: number): Promise<void> => {
+  console.log(`👋 Joining chat ${chatId}`);
+  await api.post(API_ENDPOINTS.CHAT.JOIN(chatId));
+  console.log(`✅ Successfully joined chat ${chatId}`);
 };
 
 // ============= Chat Members =============
@@ -315,9 +293,7 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
  * Mark message as read
  */
 export const markMessageRead = async (messageId: number): Promise<void> => {
-  console.log(`✅ Marking message ${messageId} as read`);
   await api.post(API_ENDPOINTS.MESSAGE.MARK_READ(messageId));
-  console.log(`✅ Message ${messageId} marked as read successfully`);
 };
 
 /**
@@ -368,4 +344,80 @@ export const removeReaction = async (messageId: number, emoji: string): Promise<
     API_ENDPOINTS.MESSAGE.REMOVE_REACTION(messageId, emoji)
   );
   return response.data.data;
+};
+
+// ============= Message Deletion Operations =============
+
+/**
+ * Delete message with option to delete for everyone or just for me
+ * @param messageId - ID of message to delete
+ * @param deleteFor - 'everyone' or 'me'
+ */
+export const deleteMessageForUser = async (
+  messageId: number,
+  deleteFor: 'everyone' | 'me'
+): Promise<void> => {
+  await api.delete(API_ENDPOINTS.MESSAGE.DELETE(messageId), {
+    data: { delete_for: deleteFor },
+  });
+};
+
+/**
+ * Clear chat history for current user
+ * @param chatId - ID of chat to clear
+ */
+export const clearChatHistory = async (chatId: number): Promise<void> => {
+  await api.post(API_ENDPOINTS.CHAT.CLEAR_HISTORY(chatId));
+};
+
+/**
+ * Restore deleted message (admin only)
+ * @param messageId - ID of message to restore
+ */
+export const restoreMessage = async (messageId: number): Promise<void> => {
+  await api.post(API_ENDPOINTS.MESSAGE.RESTORE(messageId));
+};
+
+/**
+ * Pin message in chat
+ * @param messageId - ID of message to pin
+ */
+export const pinMessage = async (messageId: number): Promise<Message> => {
+  console.log(`📌 Pinning message ${messageId}`);
+  const response = await api.post<{ message: Message }>(API_ENDPOINTS.MESSAGE.PIN(messageId));
+  console.log(`✅ Message ${messageId} pinned successfully`);
+  return response.data.message;
+};
+
+/**
+ * Unpin message in chat
+ * @param messageId - ID of message to unpin
+ */
+export const unpinMessage = async (messageId: number): Promise<Message> => {
+  console.log(`📌 Unpinning message ${messageId}`);
+  const response = await api.post<{ message: Message }>(API_ENDPOINTS.MESSAGE.UNPIN(messageId));
+  console.log(`✅ Message ${messageId} unpinned successfully`);
+  return response.data.message;
+};
+
+/**
+ * Toggle favorite status for chat
+ * @param chatId - ID of chat to toggle favorite
+ * @param isFavorite - Set as favorite (true) or unfavorite (false)
+ */
+export const toggleChatFavorite = async (chatId: number, isFavorite: boolean): Promise<void> => {
+  console.log(`⭐ Toggling favorite for chat ${chatId} to ${isFavorite}`);
+  await api.put(`/chats/${chatId}/favorite`, { is_favorite: isFavorite });
+  console.log(`✅ Chat ${chatId} favorite status updated to ${isFavorite}`);
+};
+
+/**
+ * Toggle pinned status for chat
+ * @param chatId - ID of chat to toggle pinned
+ * @param isPinned - Set as pinned (true) or unpinned (false)
+ */
+export const toggleChatPinned = async (chatId: number, isPinned: boolean): Promise<void> => {
+  console.log(`📌 Toggling pinned for chat ${chatId} to ${isPinned}`);
+  await api.put(`/chats/${chatId}/pinned`, { is_pinned: isPinned });
+  console.log(`✅ Chat ${chatId} pinned status updated to ${isPinned}`);
 };

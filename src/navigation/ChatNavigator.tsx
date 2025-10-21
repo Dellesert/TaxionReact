@@ -52,15 +52,14 @@ const ChatNavigator: React.FC = () => {
         options={{
           headerShown: true,
           headerBackTitleVisible: false,
+          headerBackTitle: '',
         }}
       />
       <Stack.Screen
         name="ChatSettings"
         component={ChatSettingsScreen}
         options={{
-          headerShown: true,
-          headerBackTitleVisible: false,
-          title: 'Настройки чата',
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

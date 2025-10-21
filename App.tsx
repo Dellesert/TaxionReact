@@ -19,12 +19,21 @@ LogBox.ignoreLogs([
 export default function App() {
   const initialize = useAuthStore((state) => state.initialize);
   const loadTheme = useThemeStore((state) => state.loadTheme);
+  const initSystemThemeListener = useThemeStore((state) => state.initSystemThemeListener);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
     // Initialize auth state and theme on app start
     initialize();
     loadTheme();
+
+    // Initialize system theme listener
+    const subscription = initSystemThemeListener();
+
+    return () => {
+      // Cleanup listener on unmount
+      subscription?.remove();
+    };
   }, []);
 
   // Connect/disconnect WebSocket based on auth state

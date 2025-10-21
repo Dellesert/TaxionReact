@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
@@ -16,7 +17,7 @@ import { useTheme } from '@hooks/useTheme';
 
 const ProfileScreen: React.FC = () => {
   const { user, logout } = useAuthStore();
-  const { theme, mode, isDark, toggleTheme } = useTheme();
+  const { theme, mode, isDark, setTheme } = useTheme();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [notifications, setNotifications] = useState({
     push: true,
@@ -61,6 +62,53 @@ const ProfileScreen: React.FC = () => {
 
   const handleToggleNotification = (key: keyof typeof notifications, value: boolean) => {
     setNotifications((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const getThemeLabel = (themeMode: typeof mode): string => {
+    switch (themeMode) {
+      case 'light':
+        return 'Светлая';
+      case 'dark':
+        return 'Тёмная';
+      case 'system':
+        return 'Системная';
+      default:
+        return 'Системная';
+    }
+  };
+
+  const handleThemePress = () => {
+    if (Platform.OS === 'web') {
+      // На web просто переключаем
+      const modes: Array<typeof mode> = ['system', 'light', 'dark'];
+      const currentIndex = modes.indexOf(mode);
+      const nextMode = modes[(currentIndex + 1) % modes.length];
+      setTheme(nextMode);
+    } else {
+      // На мобильных показываем диалог выбора
+      Alert.alert(
+        'Выбор темы',
+        'Выберите тему оформления приложения',
+        [
+          {
+            text: 'Системная',
+            onPress: () => setTheme('system'),
+          },
+          {
+            text: 'Светлая',
+            onPress: () => setTheme('light'),
+          },
+          {
+            text: 'Тёмная',
+            onPress: () => setTheme('dark'),
+          },
+          {
+            text: 'Отмена',
+            style: 'cancel',
+          },
+        ]
+      );
+    }
   };
 
   if (!user) {
@@ -215,7 +263,8 @@ const ProfileScreen: React.FC = () => {
   });
 
   return (
-    <ScrollView style={dynamicStyles.container}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
+      <ScrollView style={{ flex: 1 }}>
       {/* User Info */}
       <View style={dynamicStyles.userInfoSection}>
         <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar_url} name={user.name || user.email} size={100} />
@@ -271,18 +320,12 @@ const ProfileScreen: React.FC = () => {
 
       {/* App Settings */}
       <View style={dynamicStyles.section}>
-        <View style={dynamicStyles.menuItem}>
-          <View style={dynamicStyles.menuItemLeft}>
-            <Ionicons style={[styles.menuIcon, {backgroundColor: '#44aae9ff'}]} name="color-palette-outline" size={20} color={theme.primary} />
-            <Text style={dynamicStyles.menuItemText}>Темная тема</Text>
-          </View>
-          <Switch
-            value={isDark}
-            onValueChange={toggleTheme}
-            trackColor={{ false: '#D1D5DB', true: '#4B5563' }}
-            thumbColor={isDark ? theme.primary : '#F3F4F6'}
-          />
-        </View>
+        <TouchableOpacity style={dynamicStyles.menuItem} onPress={handleThemePress}>
+          <Ionicons style={[styles.menuIcon, {backgroundColor: '#44aae9ff'}]} name="color-palette-outline" size={20} color={theme.primary} />
+          <Text style={dynamicStyles.menuItemText}>Тема оформления</Text>
+          <Text style={dynamicStyles.menuItemValue}>{getThemeLabel(mode)}</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+        </TouchableOpacity>
 
         <TouchableOpacity style={dynamicStyles.menuItem}>
           <Ionicons style={[styles.menuIcon, {backgroundColor: '#9444e9ff'}]} name="language-outline" size={20} color={theme.primary} />
@@ -317,7 +360,8 @@ const ProfileScreen: React.FC = () => {
         <Text style={dynamicStyles.versionText}>© 2025 Tachyon Messenger</Text>
       </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -377,7 +421,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 12,
     borderTopLeftRadius: 12,
     height: '100%',
-    maxHeight: '80%',
   },
   section: {
     backgroundColor: '#FFFFFF',

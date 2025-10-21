@@ -24,7 +24,7 @@ type ChatFilter = 'all' | 'group' | 'private';
 
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
-  const { chats, isLoading, loadChats: fetchChats, createChat, deleteChat, updateChat, leaveChat } = useChatStore();
+  const { chats, isLoading, loadChats: fetchChats, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat } = useChatStore();
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,17 +113,43 @@ const ChatListScreen: React.FC = () => {
     }
   };
 
-  const filteredChats = chats.filter((chat) => {
-    // Фильтр по типу
-    if (chatFilter === 'group' && chat.type !== 'group') return false;
-    if (chatFilter === 'private' && chat.type !== 'private') return false;
+  const handleTogglePinned = async (chatId: number) => {
+    try {
+      const chat = chats.find(c => c.id === chatId);
+      if (!chat) return;
 
-    // Фильтр по поиску
-    if (!searchQuery) return true;
-    const chatName = chat.name || '';
-    const searchText = chatName.toLowerCase();
-    return searchText.includes(searchQuery.toLowerCase());
-  });
+      if (chat.is_pinned) {
+        await unpinChat(chatId);
+      } else {
+        await pinChat(chatId);
+      }
+    } catch (error) {
+      console.error('Failed to toggle pin:', error);
+    }
+  };
+
+  const filteredChats = chats
+    .filter((chat) => {
+      // Фильтр по типу
+      if (chatFilter === 'group' && chat.type !== 'group') return false;
+      if (chatFilter === 'private' && chat.type !== 'private') return false;
+
+      // Фильтр по поиску
+      if (!searchQuery) return true;
+      const chatName = chat.name || '';
+      const searchText = chatName.toLowerCase();
+      return searchText.includes(searchQuery.toLowerCase());
+    })
+    .sort((a, b) => {
+      // Закрепленные чаты всегда вверху
+      if (a.is_pinned && !b.is_pinned) return -1;
+      if (!a.is_pinned && b.is_pinned) return 1;
+
+      // Затем сортируем по времени последнего сообщения
+      const timeA = a.last_message?.created_at || a.created_at || '';
+      const timeB = b.last_message?.created_at || b.created_at || '';
+      return new Date(timeB).getTime() - new Date(timeA).getTime();
+    });
 
   if (isLoading && chats.length === 0) {
     return <Loading text="Загрузка чатов..." fullScreen />;
@@ -275,6 +301,7 @@ const ChatListScreen: React.FC = () => {
               onPress={handleChatPress}
               onDelete={isEditMode ? handleDeleteChat : undefined}
               onLeave={isEditMode ? handleLeaveChat : undefined}
+              onTogglePinned={handleTogglePinned}
             />
           )}
           refreshControl={

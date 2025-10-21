@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Chat } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
-import { ConfirmDialog } from '@components/common/ConfirmDialog';
-import { InputDialog } from '@components/common/InputDialog';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,17 +13,19 @@ import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion } fr
 interface ChatItemProps {
   chat: Chat;
   onPress: (chat: Chat) => void;
+  onLongPress?: (chat: Chat) => void;
+  onMarkAsRead?: (chatId: number) => void;
   onDelete?: (chatId: number) => void;
-  onRename?: (chatId: number, newName: string) => void;
-  onLeave?: (chatId: number) => void;
+  onToggleFavorite?: (chatId: number) => void;
+  onTogglePinned?: (chatId: number) => void;
+  isEditMode?: boolean;
+  isSelected?: boolean;
 }
 
-export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onRename, onLeave }) => {
+export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, onMarkAsRead, onDelete, onToggleFavorite, onTogglePinned, isEditMode, isSelected }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showContextMenu, setShowContextMenu] = useState(false);
 
   const getChatName = () => {
     return getChatDisplayName(chat, currentUser?.id);
@@ -45,68 +46,11 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onR
     return chat.last_message.content || 'Нет сообщений';
   };
 
-  // Проверка: создатель ли текущий пользователь
-  const creatorId = chat.created_by || chat.creator_id;
-  const isCreator = currentUser && creatorId === currentUser.id;
-
-  // Отладка: логирование для проверки
-  React.useEffect(() => {
-    console.log(`Chat "${chat.name}": creator_id=${chat.creator_id}, created_by=${chat.created_by}, currentUser.id=${currentUser?.id}, isCreator=${isCreator}`);
-  }, [chat.id, chat.creator_id, chat.created_by, currentUser?.id, isCreator]);
-
-  const handleDelete = () => {
-    if (!onDelete && !onLeave) return;
-
-    if (isCreator) {
-      // Создатель может удалить чат
-      setShowDeleteDialog(true);
-    } else {
-      // Обычный участник может только выйти
-      setShowLeaveDialog(true);
-    }
-  };
-
-  const handleRename = () => {
-    if (!onRename) return;
-    setShowRenameDialog(true);
-  };
-
-  const confirmDelete = () => {
-    setShowDeleteDialog(false);
-    if (onDelete) {
-      onDelete(chat.id);
-    }
-  };
-
-  const confirmLeave = () => {
-    setShowLeaveDialog(false);
-    if (onLeave) {
-      onLeave(chat.id);
-    }
-  };
-
-  const confirmRename = (newName: string) => {
-    setShowRenameDialog(false);
-    if (onRename) {
-      onRename(chat.id, newName);
-    }
-  };
-
-  const cancelDelete = () => {
-    setShowDeleteDialog(false);
-  };
-
-  const cancelLeave = () => {
-    setShowLeaveDialog(false);
-  };
-
-  const cancelRename = () => {
-    setShowRenameDialog(false);
-  };
-
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.backgroundSecondary,
+      backgroundColor: chat.is_pinned
+        ? (theme.isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)')
+        : theme.backgroundSecondary,
       borderBottomColor: theme.borderLight,
     },
     name: {
@@ -120,13 +64,54 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onR
     },
   });
 
+  const handleLongPress = () => {
+    if (!isEditMode) {
+      setShowContextMenu(true);
+      onLongPress?.(chat);
+    }
+  };
+
+  const handleMarkAsRead = () => {
+    setShowContextMenu(false);
+    onMarkAsRead?.(chat.id);
+  };
+
+  const handleDelete = () => {
+    setShowContextMenu(false);
+    onDelete?.(chat.id);
+  };
+
+  const handleToggleFavorite = () => {
+    setShowContextMenu(false);
+    onToggleFavorite?.(chat.id);
+  };
+
+  const handleTogglePinned = () => {
+    setShowContextMenu(false);
+    onTogglePinned?.(chat.id);
+  };
+
   return (
-    <View style={[styles.wrapper]}>
+    <>
       <TouchableOpacity
         style={[styles.container, dynamicStyles.container]}
         onPress={() => onPress(chat)}
+        onLongPress={handleLongPress}
         activeOpacity={0.7}
       >
+        {/* Чекбокс в режиме редактирования */}
+        {isEditMode && (
+          <View style={styles.checkboxContainer}>
+            <View style={[
+              styles.checkbox,
+              { borderColor: theme.border },
+              isSelected && { backgroundColor: theme.primary, borderColor: theme.primary }
+            ]}>
+              {isSelected && <Ionicons name="checkmark" size={18} color="#FFF" />}
+            </View>
+          </View>
+        )}
+
         <View style={styles.avatarContainer}>
           <Avatar
             imageUrl={getChatAvatar()}
@@ -143,14 +128,24 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onR
             <Text style={[styles.name, dynamicStyles.name]} numberOfLines={1}>
               {getChatName()}
             </Text>
-            {chat.last_message && (
-              <Text style={[styles.time, dynamicStyles.time]}>
-                {formatDistanceToNow(new Date(chat.last_message.created_at), {
-                  addSuffix: false,
-                  locale: ru,
-                })}
-              </Text>
-            )}
+            <View style={styles.headerRight}>
+              {chat.is_pinned && (
+                <Ionicons
+                  name="pin"
+                  size={16}
+                  color={theme.primary}
+                  style={styles.pinIcon}
+                />
+              )}
+              {chat.last_message && (
+                <Text style={[styles.time, dynamicStyles.time]}>
+                  {formatDistanceToNow(new Date(chat.last_message.created_at), {
+                    addSuffix: false,
+                    locale: ru,
+                  })}
+                </Text>
+              )}
+            </View>
           </View>
 
           <View style={styles.footer}>
@@ -174,78 +169,108 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onDelete, onR
         </View>
       </TouchableOpacity>
 
-      {onRename && isCreator && chat.type !== 'private' && (
-        <TouchableOpacity
-          style={[styles.renameButton, { backgroundColor: theme.primary }]}
-          onPress={handleRename}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
+      {/* Контекстное меню */}
+      <Modal
+        visible={showContextMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowContextMenu(false)}
+      >
+        <BlurView intensity={80} style={styles.blurOverlay} tint="dark">
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowContextMenu(false)}
+          >
+            <View style={[styles.contextMenu, { backgroundColor: theme.backgroundSecondary }]}>
+              {/* Название чата */}
+              <View style={[styles.chatHeader, { backgroundColor: theme.background }]}>
+                <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>
+                  {getChatName()}
+                </Text>
+              </View>
 
-      {(onDelete || onLeave) && (
-        <TouchableOpacity
-          style={[styles.deleteButton, { backgroundColor: theme.error || '#FF3B30' }]}
-          onPress={handleDelete}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={"trash-outline" } size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
+              {/* Разделитель */}
+              <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
-      {/* Диалог удаления (для создателя) */}
-      <ConfirmDialog
-        visible={showDeleteDialog}
-        title="Удалить чат"
-        message={`Вы уверены, что хотите удалить чат "${getChatName()}"? Это действие нельзя отменить.`}
-        confirmText="Удалить"
-        cancelText="Отмена"
-        onConfirm={confirmDelete}
-        onCancel={cancelDelete}
-        destructive
-      />
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={handleToggleFavorite}
+              >
+                <Ionicons
+                  name={chat.is_favorite ? "star" : "star-outline"}
+                  size={22}
+                  color={chat.is_favorite ? theme.warning : theme.text}
+                />
+                <Text style={[styles.menuText, { color: theme.text }]}>
+                  {chat.is_favorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+                </Text>
+              </TouchableOpacity>
 
-      {/* Диалог выхода (для участников) */}
-      <ConfirmDialog
-        visible={showLeaveDialog}
-        title="Выйти из чата"
-        message={`Вы уверены, что хотите выйти из чата "${getChatName()}"?`}
-        confirmText="Выйти"
-        cancelText="Отмена"
-        onConfirm={confirmLeave}
-        onCancel={cancelLeave}
-        destructive
-      />
+              {/* Закрепить/открепить */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={handleTogglePinned}
+              >
+                <Ionicons
+                  name={chat.is_pinned ? "pin" : "pin-outline"}
+                  size={22}
+                  color={chat.is_pinned ? theme.primary : theme.text}
+                />
+                <Text style={[styles.menuText, { color: theme.text }]}>
+                  {chat.is_pinned ? 'Открепить' : 'Закрепить'}
+                </Text>
+              </TouchableOpacity>
 
-      {/* Диалог переименования */}
-      <InputDialog
-        visible={showRenameDialog}
-        title="Переименовать чат"
-        placeholder="Введите новое название"
-        initialValue={getChatName()}
-        confirmText="Сохранить"
-        cancelText="Отмена"
-        onConfirm={confirmRename}
-        onCancel={cancelRename}
-      />
-    </View>
+              {/* Пометить как прочитанное */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={handleMarkAsRead}
+              >
+                <Ionicons name="checkmark-done-outline" size={22} color={theme.text} />
+                <Text style={[styles.menuText, { color: theme.text }]}>
+                  Пометить как прочитанное
+                </Text>
+              </TouchableOpacity>
+
+              {/* Удалить */}
+              {onDelete && (
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={handleDelete}
+                >
+                  <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
+                  <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
+                    Удалить
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </Pressable>
+        </BlurView>
+      </Modal >
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  wrapper: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    minHeight: 74,
-  },
   container: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
+  },
+  checkboxContainer: {
+    marginRight: 12,
+    justifyContent: 'center',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarContainer: {
     position: 'relative',
@@ -259,16 +284,6 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: '#4CAF50',
     borderWidth: 2,
-  },
-  renameButton: {
-    width: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteButton: {
-    width: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   content: {
     flex: 1,
@@ -285,9 +300,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pinIcon: {
+    marginTop: -1,
+  },
   time: {
     fontSize: 12,
-    marginLeft: 8,
   },
   footer: {
     flexDirection: 'row',
@@ -318,5 +340,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  blurOverlay: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  contextMenu: {
+    minWidth: 280,
+    maxWidth: 320,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  chatHeader: {
+    padding: 16,
+    paddingBottom: 12,
+  },
+  chatName: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  separator: {
+    height: 1,
+    marginHorizontal: 12,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  menuText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

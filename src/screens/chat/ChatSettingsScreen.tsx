@@ -76,7 +76,14 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.background,
+      backgroundColor: theme.backgroundSecondary, // Цвет заголовка распространяется на область Dynamic Island
+    },
+    header: {
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      color: theme.text,
     },
     section: {
       backgroundColor: theme.backgroundSecondary,
@@ -95,7 +102,21 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   });
 
   return (
-    <SafeAreaView style={[styles.container, dynamicStyles.container]} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]} edges={['top', 'left', 'right']}>
+      {/* Header */}
+      <View style={[styles.header, dynamicStyles.header]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Ionicons name="chevron-back" size={28} color={theme.primary} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>
+          Настройки чата
+        </Text>
+        <View style={styles.backButton} />
+      </View>
+
       <ScrollView>
         {/* Участники */}
         <View style={[styles.section, dynamicStyles.section]}>
@@ -177,6 +198,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         chatId={chatId}
         onClose={() => setMembersModalVisible(false)}
         isCreator={isCreator}
+        creatorId={creatorId}
       />
 
       {/* Диалог удаления */}
@@ -221,6 +243,26 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
   },
   section: {
     borderTopWidth: 1,

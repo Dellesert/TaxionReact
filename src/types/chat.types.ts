@@ -55,6 +55,8 @@ export interface Message {
   is_edited: boolean;
   is_pinned: boolean;
   is_deleted: boolean;
+  deleted_by?: number;
+  deleted_at?: ISODateString;
   attachments: Attachment[];
   reactions: Reaction[];
   read_receipts?: ReadReceipt[];
@@ -62,6 +64,8 @@ export interface Message {
   created_at: ISODateString;
   updated_at: ISODateString;
   edited_at?: ISODateString;
+  sending?: boolean; // Локальное поле для индикации отправки
+  delivered_to?: number[]; // Локальное поле - список user IDs кто получил сообщение через WebSocket
 }
 
 // Chat Member Interface
@@ -89,6 +93,7 @@ export interface Chat {
   creator?: User;
   is_pinned?: boolean;
   is_muted?: boolean;
+  is_favorite?: boolean;
   is_active?: boolean;
   unread_count?: number;
   last_message?: Message;

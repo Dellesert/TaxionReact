@@ -153,19 +153,59 @@ export const updateTaskStatus = async (
   id: number,
   data: UpdateTaskStatusDto
 ): Promise<Task> => {
-  const response = await api.put<ApiResponse<Task>>(
+  const response = await api.patch<ApiResponse<Task>>(
     API_ENDPOINTS.TASK.UPDATE_STATUS(id),
     data
   );
-  return response.data.data;
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.task) {
+    return response.data.task;
+  }
+
+  return response.data as any;
 };
 
 /**
  * Assign task to user
  */
 export const assignTask = async (id: number, data: AssignTaskDto): Promise<Task> => {
-  const response = await api.put<ApiResponse<Task>>(API_ENDPOINTS.TASK.ASSIGN(id), data);
-  return response.data.data;
+  console.log(`📌 Assigning task ${id} to user ${data.user_id}`);
+
+  const response = await api.post<ApiResponse<Task>>(API_ENDPOINTS.TASK.ASSIGN(id), data);
+
+  console.log(`✅ Task ${id} assigned successfully`);
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.task) {
+    return response.data.task;
+  }
+
+  return response.data as any;
+};
+
+/**
+ * Unassign task from user
+ */
+export const unassignTask = async (id: number): Promise<Task> => {
+  console.log(`📌 Unassigning task ${id}`);
+
+  const response = await api.delete<ApiResponse<Task>>(API_ENDPOINTS.TASK.UNASSIGN(id));
+
+  console.log(`✅ Task ${id} unassigned successfully`);
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.task) {
+    return response.data.task;
+  }
+
+  return response.data as any;
 };
 
 /**
@@ -179,21 +219,42 @@ export const getTaskStats = async (): Promise<TaskStats> => {
 // ============= Task Comments =============
 
 /**
- * Get task comments
+ * Get task comments with pagination
  */
-export const getTaskComments = async (taskId: number): Promise<TaskComment[]> => {
-  const response = await api.get<ApiResponse<TaskComment[]>>(
-    API_ENDPOINTS.TASK.COMMENTS(taskId)
+export const getTaskComments = async (
+  taskId: number,
+  limit: number = 20,
+  offset: number = 0
+): Promise<{ comments: TaskComment[], total: number, hasMore: boolean }> => {
+  console.log(`💬 Getting comments for task ${taskId} (limit: ${limit}, offset: ${offset})`);
+
+  const response = await api.get<any>(
+    API_ENDPOINTS.TASK.COMMENTS(taskId),
+    { params: { limit, offset } }
   );
 
+  console.log(`💬 Comments response:`, response.data);
+
   // Handle different response formats
-  if (response.data.data) {
-    return response.data.data;
+  if (response.data.comments !== undefined) {
+    // Backend returns {comments: [...], total: number, limit: number, offset: number}
+    const comments = response.data.comments;
+    const total = response.data.total || comments.length;
+    const hasMore = (offset + comments.length) < total;
+
+    console.log(`✅ Found ${comments.length} comments (total: ${total}, hasMore: ${hasMore})`);
+
+    return { comments, total, hasMore };
+  } else if (response.data.data) {
+    const comments = response.data.data;
+    return { comments, total: comments.length, hasMore: false };
   } else if (Array.isArray(response.data)) {
-    return response.data;
+    const comments = response.data;
+    return { comments, total: comments.length, hasMore: false };
   }
 
-  return [];
+  console.log(`⚠️ No comments found, returning empty array`);
+  return { comments: [], total: 0, hasMore: false };
 };
 
 /**
@@ -203,10 +264,14 @@ export const addTaskComment = async (
   taskId: number,
   data: AddTaskCommentDto
 ): Promise<TaskComment> => {
+  console.log(`💬 Adding comment to task ${taskId}`);
+
   const response = await api.post<ApiResponse<TaskComment>>(
     API_ENDPOINTS.TASK.ADD_COMMENT(taskId),
     data
   );
+
+  console.log(`✅ Comment added to task ${taskId}`);
 
   // Handle different response formats
   if (response.data.data) {
@@ -216,6 +281,41 @@ export const addTaskComment = async (
   }
 
   return response.data as any;
+};
+
+/**
+ * Update comment
+ */
+export const updateComment = async (
+  commentId: number,
+  content: string
+): Promise<TaskComment> => {
+  console.log(`💬 Updating comment ${commentId}`);
+
+  const response = await api.put<ApiResponse<TaskComment>>(
+    API_ENDPOINTS.TASK.UPDATE_COMMENT(commentId),
+    { content }
+  );
+
+  console.log(`✅ Comment ${commentId} updated successfully`);
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.comment) {
+    return response.data.comment;
+  }
+
+  return response.data as any;
+};
+
+/**
+ * Delete comment
+ */
+export const deleteComment = async (commentId: number): Promise<void> => {
+  console.log(`💬 Deleting comment ${commentId}`);
+  await api.delete(API_ENDPOINTS.TASK.DELETE_COMMENT(commentId));
+  console.log(`✅ Comment ${commentId} deleted successfully`);
 };
 
 // ============= Project Operations =============

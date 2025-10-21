@@ -93,7 +93,7 @@ const TaskListScreen: React.FC = () => {
   const dynamicStyles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.background,
+      backgroundColor: theme.backgroundSecondary, // Цвет заголовка распространяется на всю область включая Dynamic Island
     },
     header: {
       backgroundColor: theme.backgroundSecondary,

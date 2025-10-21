@@ -3,7 +3,7 @@
  * Экран входа в систему
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
+  Animated,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
@@ -30,6 +31,31 @@ const LoginScreen: React.FC = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Анимация для логотипа (fade in)
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+
+  // Анимация для карточки формы (slide up from bottom)
+  const formTranslateY = useRef(new Animated.Value(600)).current;
+
+  useEffect(() => {
+    // Сначала показываем логотип
+    Animated.timing(logoOpacity, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+
+    // Через 1 секунду выезжает карточка снизу
+    setTimeout(() => {
+      Animated.spring(formTranslateY, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
+    }, 1000);
+  }, []);
 
   const handleLogin = async () => {
     console.log('Login button clicked!', { email, password });
@@ -66,7 +92,7 @@ const LoginScreen: React.FC = () => {
           bounces={false}
         >
           {/* Logo Section */}
-          <View style={styles.logoSection}>
+          <Animated.View style={[styles.logoSection, { opacity: logoOpacity }]}>
             <View>
               <Image
                 source={require('../../../assets/images/logo.png')}
@@ -75,10 +101,17 @@ const LoginScreen: React.FC = () => {
               />
             </View>
             <Text style={styles.title}>Тахион</Text>
-          </View>
+          </Animated.View>
 
           {/* Form Section */}
-          <View style={styles.formSection}>
+          <Animated.View
+            style={[
+              styles.formSection,
+              {
+                transform: [{ translateY: formTranslateY }],
+              }
+            ]}
+          >
             <View style={styles.formContainer}>
               <TextInput
                 style={styles.input}
@@ -133,7 +166,7 @@ const LoginScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

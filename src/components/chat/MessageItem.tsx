@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Message } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
@@ -14,11 +14,15 @@ interface MessageItemProps {
   message: Message;
   onReply?: (message: Message) => void;
   onEdit?: (message: Message) => void;
-  onDelete?: (messageId: number) => void;
+  onDelete?: (messageId: number, deleteFor: 'everyone' | 'me') => void;
+  onRestore?: (messageId: number) => void;
   onPin?: (messageId: number) => void;
+  onUnpin?: (messageId: number) => void;
   onForward?: (message: Message) => void;
   onReplyPress?: (messageId: number) => void;
   isHighlighted?: boolean;
+  userRole?: 'owner' | 'admin' | 'member';
+  chatMemberIds?: number[]; // ID участников чата для определения статуса "доставлено"
 }
 
 export const MessageItem: React.FC<MessageItemProps> = ({
@@ -26,16 +30,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onReply,
   onEdit,
   onDelete,
+  onRestore,
   onPin,
+  onUnpin,
   onForward,
   onReplyPress,
   isHighlighted = false,
+  userRole = 'member',
+  chatMemberIds = [],
 }) => {
   const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
   const [sender, setSender] = useState<User | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const messageBubbleRef = useRef<View>(null);
 
@@ -62,6 +71,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   }, [message.id, message.sender, message.sender_id]);
 
   const isOwnMessage = message.sender_id === currentUser?.id;
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
+
+  // Логирование для отладки
+  useEffect(() => {
+    console.log('📨 Message permissions:', {
+      messageId: message.id,
+      senderId: message.sender_id,
+      currentUserId: currentUser?.id,
+      isOwnMessage,
+      userRole,
+      isAdmin,
+      is_deleted: message.is_deleted,
+      canDeleteForEveryone: isOwnMessage || isAdmin,
+    });
+  }, [message.id, message.sender_id, currentUser?.id, isOwnMessage, userRole, isAdmin, message.is_deleted]);
 
   // Проверяем, является ли сообщение пересланным
   const isForwardedMessage = message.content.startsWith('📩 Переслано от ');
@@ -97,6 +121,72 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     });
   };
 
+  // Рендер индикатора статуса для своих сообщений
+  const renderMessageStatus = () => {
+    if (!isOwnMessage || message.is_deleted) return null;
+
+    // Если сообщение еще отправляется
+    if (message.sending) {
+      return (
+        <ActivityIndicator
+          size="small"
+          color={theme.textTertiary}
+          style={styles.statusIcon}
+        />
+      );
+    }
+
+    // Определяем количество прочитавших (исключая себя)
+    const readByArray = message.read_by || [];
+    const readReceiptsArray = message.read_receipts || [];
+    const deliveredToArray = message.delivered_to || [];
+
+    const readByOthers = readByArray.filter(id => id !== currentUser?.id);
+    const readReceiptsByOthers = readReceiptsArray.filter(r => r.user_id !== currentUser?.id);
+
+    const hasRead = readByOthers.length > 0 || readReceiptsByOthers.length > 0;
+    const hasDelivered = deliveredToArray.length > 0;
+
+    // Если прочитано кем-то (две зелёные галочки)
+    if (hasRead) {
+      return (
+        <Ionicons
+          name="checkmark-done"
+          size={16}
+          color="#4CAF50"
+          style={styles.statusIcon}
+        />
+      );
+    }
+
+    // Если доставлено хотя бы одному (две серые галочки)
+    if (hasDelivered && message.id) {
+      return (
+        <Ionicons
+          name="checkmark-done"
+          size={16}
+          color={theme.textTertiary}
+          style={styles.statusIcon}
+        />
+      );
+    }
+
+    // Если отправлено на сервер (одна серая галочка)
+    if (message.id) {
+      return (
+        <Ionicons
+          name="checkmark"
+          size={16}
+          color={theme.textTertiary}
+          style={styles.statusIcon}
+        />
+      );
+    }
+
+    // Не должно попасть сюда
+    return null;
+  };
+
   const handleUserPress = async () => {
     console.log('👤 User pressed!');
 
@@ -117,6 +207,40 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     // Открываем модальное окно
     if (senderData) {
       setShowProfileModal(true);
+    }
+  };
+
+  const handleCopyMessage = async () => {
+    try {
+      // Проверяем, доступен ли Clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(message.content);
+        console.log('✅ Message copied to clipboard:', message.content);
+        Alert.alert('Скопировано', 'Текст сообщения скопирован в буфер обмена');
+      } else {
+        // Fallback для старых браузеров
+        const textArea = document.createElement('textarea');
+        textArea.value = message.content;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+          document.execCommand('copy');
+          console.log('✅ Message copied using fallback method');
+          Alert.alert('Скопировано', 'Текст сообщения скопирован в буфер обмена');
+        } catch (err) {
+          console.error('❌ Failed to copy using fallback:', err);
+          Alert.alert('Ошибка', 'Не удалось скопировать текст');
+        }
+
+        document.body.removeChild(textArea);
+      }
+    } catch (error) {
+      console.error('❌ Failed to copy message:', error);
+      Alert.alert('Ошибка', 'Не удалось скопировать текст');
     }
   };
 
@@ -195,15 +319,35 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
   {/* Контент сообщения */}
   <View style={styles.messageContentRow}>
-    <Text
-      style={[
-        styles.messageText,
-        dynamicStyles.messageText,
-        isOwnMessage && dynamicStyles.ownMessageText,
-      ]}
-    >
-      {message.content}
-    </Text>
+    {message.is_deleted ? (
+      <View style={styles.deletedMessageContainer}>
+        <Ionicons name="trash-outline" size={16} color={theme.textTertiary} style={[styles.deletedIcon, { opacity: 0.6 }]} />
+        <Text style={[styles.deletedText, { color: theme.textTertiary, opacity: 0.6 }]}>
+          {isAdmin ? '🗑️ Сообщение удалено' : 'Сообщение удалено'}
+        </Text>
+        {isAdmin && onRestore && (
+          <TouchableOpacity
+            style={[styles.restoreButton, { backgroundColor: theme.primary }]}
+            onPress={() => {
+              console.log('🔄 Restore button clicked for message:', message.id);
+              onRestore(message.id);
+            }}
+          >
+            <Text style={styles.restoreButtonText}>Восстановить</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    ) : (
+      <Text
+        style={[
+          styles.messageText,
+          dynamicStyles.messageText,
+          isOwnMessage && dynamicStyles.ownMessageText,
+        ]}
+      >
+        {message.content}
+      </Text>
+    )}
 
     <View style={styles.messageFooter}>
       <Text
@@ -215,7 +359,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       >
         {formatTime(message.created_at)}
       </Text>
-      {message.is_edited && (
+      {message.is_edited && !message.is_deleted && (
         <Text
           style={[
             styles.edited,
@@ -226,6 +370,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           изменено
         </Text>
       )}
+      {renderMessageStatus()}
     </View>
   </View>
 </TouchableOpacity>
@@ -281,8 +426,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               style={styles.menuItem}
               onPress={() => {
                 setShowContextMenu(false);
-                // TODO: Implement copy to clipboard
-                console.log('Copy:', message.content);
+                handleCopyMessage();
               }}
             >
               <Ionicons name="copy-outline" size={20} color={theme.text} />
@@ -303,18 +447,33 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               </TouchableOpacity>
             )}
 
-            {/* Закрепить */}
-            {onPin && (
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowContextMenu(false);
-                  onPin(message.id);
-                }}
-              >
-                <Ionicons name="pin-outline" size={20} color={theme.text} />
-                <Text style={[styles.menuText, { color: theme.text }]}>Закрепить</Text>
-              </TouchableOpacity>
+            {/* Закрепить / Открепить */}
+            {message.is_pinned ? (
+              onUnpin && (
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setShowContextMenu(false);
+                    onUnpin(message.id);
+                  }}
+                >
+                  <Ionicons name="pin" size={20} color={theme.text} />
+                  <Text style={[styles.menuText, { color: theme.text }]}>Открепить</Text>
+                </TouchableOpacity>
+              )
+            ) : (
+              onPin && (
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setShowContextMenu(false);
+                    onPin(message.id);
+                  }}
+                >
+                  <Ionicons name="pin-outline" size={20} color={theme.text} />
+                  <Text style={[styles.menuText, { color: theme.text }]}>Закрепить</Text>
+                </TouchableOpacity>
+              )
             )}
 
             {/* Переслать */}
@@ -331,13 +490,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               </TouchableOpacity>
             )}
 
-            {/* Удалить (только свои сообщения и не пересланные) */}
-            {isOwnMessage && onDelete && !isForwardedMessage && (
+            {/* Удалить */}
+            {onDelete && !isForwardedMessage && !message.is_deleted && (
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setShowContextMenu(false);
-                  onDelete(message.id);
+                  setShowDeleteModal(true);
                 }}
               >
                 <Ionicons name="trash-outline" size={20} color="#E94444" />
@@ -346,6 +505,72 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             )}
           </View>
         </Pressable>
+        </BlurView>
+      </Modal>
+
+      {/* Модальное окно удаления */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <BlurView intensity={80} style={styles.blurOverlay} tint="dark">
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowDeleteModal(false)}
+          >
+            <View style={[styles.deleteModal, { backgroundColor: theme.backgroundSecondary }]}>
+              <Text style={[styles.deleteModalTitle, { color: theme.text }]}>
+                Удалить сообщение?
+              </Text>
+              <Text style={[styles.deleteModalMessage, { color: theme.textSecondary }]}>
+                {message.content.length > 100 ? message.content.substring(0, 100) + '...' : message.content}
+              </Text>
+
+              <View style={styles.deleteModalButtons}>
+                {/* Удалить для всех - только если своё или админ */}
+                {(isOwnMessage || isAdmin) && (
+                  <TouchableOpacity
+                    style={[styles.deleteModalButton, { backgroundColor: '#E94444' }]}
+                    onPress={() => {
+                      setShowDeleteModal(false);
+                      onDelete?.(message.id, 'everyone');
+                    }}
+                  >
+                    <Ionicons name="trash" size={20} color="#FFF" />
+                    <Text style={styles.deleteModalButtonText}>
+                      Удалить для всех
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Удалить для меня - всегда доступно */}
+                <TouchableOpacity
+                  style={[styles.deleteModalButton, { backgroundColor: '#FF6B35' }]}
+                  onPress={() => {
+                    setShowDeleteModal(false);
+                    onDelete?.(message.id, 'me');
+                  }}
+                >
+                  <Ionicons name="eye-off-outline" size={20} color="#FFF" />
+                  <Text style={styles.deleteModalButtonText}>
+                    Удалить для меня
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Отмена */}
+                <TouchableOpacity
+                  style={[styles.deleteModalButton, styles.deleteModalCancelButton, { backgroundColor: theme.background }]}
+                  onPress={() => setShowDeleteModal(false)}
+                >
+                  <Text style={[styles.deleteModalCancelText, { color: theme.text }]}>
+                    Отмена
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Pressable>
         </BlurView>
       </Modal>
 
@@ -419,6 +644,10 @@ edited: {
   fontStyle: 'italic',
   color: '#aaa',
   transform: [{ translateY: 3 }], // 🔹 тоже чуть ниже
+},
+
+statusIcon: {
+  marginLeft: 4,
 },
 
 tail: {
@@ -517,6 +746,77 @@ menuText: {
   fontSize: 16,
   marginLeft: 12,
   fontWeight: '500',
+},
+deletedMessageContainer: {
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+},
+deletedIcon: {
+  marginBottom: 4,
+},
+deletedText: {
+  fontSize: 14,
+  fontStyle: 'italic',
+  marginBottom: 8,
+},
+restoreButton: {
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 6,
+  marginTop: 4,
+},
+restoreButtonText: {
+  color: '#FFF',
+  fontSize: 13,
+  fontWeight: '600',
+},
+deleteModal: {
+  margin: 20,
+  borderRadius: 16,
+  padding: 20,
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 8,
+  elevation: 5,
+},
+deleteModalTitle: {
+  fontSize: 20,
+  fontWeight: '700',
+  marginBottom: 12,
+  textAlign: 'center',
+},
+deleteModalMessage: {
+  fontSize: 14,
+  lineHeight: 20,
+  marginBottom: 20,
+  textAlign: 'center',
+},
+deleteModalButtons: {
+  width: '100%',
+  gap: 10,
+},
+deleteModalButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 14,
+  paddingHorizontal: 20,
+  borderRadius: 12,
+  gap: 8,
+},
+deleteModalButtonText: {
+  color: '#FFF',
+  fontSize: 16,
+  fontWeight: '600',
+},
+deleteModalCancelButton: {
+  marginTop: 4,
+},
+deleteModalCancelText: {
+  fontSize: 16,
+  fontWeight: '600',
 },
 
 });

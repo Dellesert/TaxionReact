@@ -315,11 +315,29 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'message_edit':
-          chatStore.handleMessageUpdate({
-            message_id: message.data.message_id,
-            content: message.data.content,
-            chat_id: message.chat_id,
-          });
+          // Handle message edit/restore - backend sends full message object in data
+          const editedMessage = {
+            id: message.data?.id || message.data?.message_id,
+            chat_id: message.chat_id || message.data?.chat_id,
+            sender_id: message.user_id || message.data?.sender_id,
+            content: message.data?.content || '',
+            message_type: message.data?.message_type || message.data?.type || 'text',
+            is_edited: message.data?.is_edited || false,
+            is_pinned: message.data?.is_pinned || false,
+            is_deleted: message.data?.is_deleted || false, // Important for restore
+            attachments: message.data?.attachments || [],
+            reactions: message.data?.reactions || [],
+            read_by: message.data?.read_by || [],
+            created_at: message.data?.created_at || new Date().toISOString(),
+            updated_at: message.data?.updated_at || new Date().toISOString(),
+            edited_at: message.data?.edited_at,
+            reply_to_id: message.data?.reply_to_id,
+            reply_to: message.data?.reply_to,
+            sender: message.data?.sender,
+            deleted_by: message.data?.deleted_by,
+            deleted_at: message.data?.deleted_at,
+          };
+          chatStore.handleMessageUpdate(editedMessage);
           break;
 
         case 'message_delete':
@@ -345,8 +363,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'message_read':
-          console.log('✅ Message read:', message.data);
-          chatStore.handleMessageRead(message.chat_id, message.data.message_id);
+          chatStore.handleMessageRead(message.chat_id, message.data.message_id, message.user_id);
           break;
 
         case 'reaction':

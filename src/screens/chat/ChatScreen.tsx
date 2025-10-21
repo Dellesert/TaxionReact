@@ -20,18 +20,26 @@ import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { UnreadMessagesBanner } from '@components/chat/UnreadMessagesBanner';
 import { TypingIndicator } from '@components/chat/TypingIndicator';
 import { Avatar } from '@components/common/Avatar';
+import { PinnedMessageBanner } from '@components/chat/PinnedMessageBanner';
+import { DateSeparator } from '@components/chat/DateSeparator';
 import { useTheme } from '@hooks/useTheme';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion, getUserStatusText } from '@utils/chatUtils';
+import { getDateLabel, getDateKey } from '@utils/dateHelpers';
 
 // ✅ ДОБАВЬ ЭТО
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
+
+// Тип элемента списка - может быть сообщение или разделитель даты
+type MessageListItem =
+  | { type: 'message'; data: any }
+  | { type: 'date'; data: string };
 
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const { chatId, chatName } = route.params;
@@ -48,7 +56,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const setError = useChatStore((state) => state.set);
   const getChatById = useChatStore((state) => state.getChatById);
   const setActiveChat = useChatStore((state) => state.setActiveChat);
-  const markMessageRead = useChatStore((state) => state.markMessageRead);
+  const markChatAsRead = useChatStore((state) => state.markChatAsRead);
   const sendMessage = useChatStore((state) => state.sendMessage);
   const typingUsers = useChatStore((state) => state.typingUsers);
   const currentUser = useAuthStore((state) => state.user);
@@ -63,6 +71,45 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     const msgs = allMessages[chatIdNum] || [];
     return [...msgs].reverse();
   }, [allMessages, chatIdNum]);
+
+  // Группируем сообщения по датам с разделителями
+  // Массив messages уже инвертирован: [новые -> старые]
+  // В inverted FlatList: index 0 отображается ВНИЗУ, последний index отображается ВВЕРХУ
+  const messageListItems: MessageListItem[] = useMemo(() => {
+    if (messages.length === 0) return [];
+
+    const items: MessageListItem[] = [];
+
+    messages.forEach((message, index) => {
+      const currentDateKey = getDateKey(message.created_at);
+      const nextMessage = messages[index + 1];
+      const nextDateKey = nextMessage ? getDateKey(nextMessage.created_at) : null;
+
+      // Если следующее сообщение (визуально ВЫШЕ) имеет другую дату,
+      // добавляем разделитель ПЕРЕД текущим сообщением
+      if (nextDateKey && currentDateKey !== nextDateKey) {
+        const currentDateLabel = getDateLabel(message.created_at);
+        items.push({ type: 'date', data: currentDateLabel });
+      }
+
+      // Добавляем само сообщение
+      items.push({ type: 'message', data: message });
+    });
+
+    // Добавляем разделитель для самого старого сообщения в конец массива
+    // Он будет последним в items[], визуально отобразится ВВЕРХУ
+    if (messages.length > 0) {
+      const oldestDateLabel = getDateLabel(messages[messages.length - 1].created_at);
+      items.push({ type: 'date', data: oldestDateLabel });
+    }
+
+    return items;
+  }, [messages]);
+
+  // Создаем ключ для extraData чтобы FlatList перерисовывался при изменении read_receipts и delivered_to
+  const messagesKey = useMemo(() => {
+    return messages.map(m => `${m.id}-${m.read_receipts?.length || 0}-${m.delivered_to?.length || 0}`).join(',');
+  }, [messages]);
   const hasLoadedRef = useRef(false);
   const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -77,6 +124,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // Флаг для отслеживания, показывали ли уже баннер при входе в чат
   const [showUnreadBanner, setShowUnreadBanner] = useState(true);
 
+  // Флаг для показа кнопки "scroll to bottom"
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
   // Получаем имена печатающих пользователей (исключая текущего пользователя)
   const typingUserNames = useMemo(() => {
     const typing = typingUsers[chatIdNum] || [];
@@ -89,6 +139,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleScroll = (event: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     const distanceFromEnd = contentSize.height - layoutMeasurement.height - contentOffset.y;
+
+    // Показываем кнопку "scroll to bottom" только если НЕ находимся в самом низу чата
+    // В inverted списке offset.y близок к 0 = мы внизу (у новых сообщений)
+    // Если offset.y > 50, значит мы прокрутили вверх от самого низа
+    if (contentOffset.y > 50) {
+      setShowScrollToBottom(true);
+    } else {
+      setShowScrollToBottom(false);
+    }
 
     // В inverted списке при скролле ВВЕРХ (к старым) offset.y увеличивается
     // Самая надёжная защита - проверяем только isLoadingMore флаг
@@ -196,6 +255,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       : '';
 
     navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ marginLeft: 8 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={28} color={theme.primary} />
+        </TouchableOpacity>
+      ),
       headerTitle: () => (
         <TouchableOpacity
           onPress={() => {
@@ -314,24 +382,21 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  // Mark messages as read when entering chat - WITH DELAY to show unread banner first
+  // Mark messages as read when entering chat or receiving new messages
   useEffect(() => {
-    if (messages.length > 0 && initialScrolled && showUnreadBanner) {
-      // Задержка перед маркировкой как прочитанных - дать пользователю увидеть баннер
+    if (messages.length > 0 && initialScrolled) {
+      // Небольшая задержка чтобы успеть показать баннер непрочитанных сообщений
       const markReadTimer = setTimeout(() => {
-        // Mark the last message as read to indicate all messages in chat are read
-        const lastMessage = messages[messages.length - 1];
-        if (lastMessage) {
-          markMessageRead(lastMessage.id);
-          // Скрываем баннер после отметки - больше не показываем для новых сообщений пока в чате
+        markChatAsRead(chatIdNum);
+        // Скрываем баннер после первой отметки
+        if (showUnreadBanner) {
           setShowUnreadBanner(false);
-          console.log('🚫 Unread banner hidden - messages marked as read');
         }
-      }, 2000); // Задержка 2 секунды чтобы пользователь увидел баннер
+      }, 1000); // 1 секунда задержки
 
       return () => clearTimeout(markReadTimer);
     }
-  }, [chatIdNum, messages.length, markMessageRead, initialScrolled, showUnreadBanner]);
+  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled]);
 
   const handleSendMessage = async (content: string, replyToId?: number) => {
     if (!content.trim()) {
@@ -438,14 +503,60 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     setEditingMessage(message);
   };
 
-  const handleDelete = (messageId: number) => {
-    console.log('Delete message:', messageId);
-    // TODO: Implement delete functionality
+  const deleteMessageForUser = useChatStore((state) => state.deleteMessageForUser);
+  const restoreMessage = useChatStore((state) => state.restoreMessage);
+  const pinMessage = useChatStore((state) => state.pinMessage);
+  const unpinMessage = useChatStore((state) => state.unpinMessage);
+  const getPinnedMessages = useChatStore((state) => state.getPinnedMessages);
+
+  // Получаем закрепленные сообщения для текущего чата
+  const pinnedMessages = useMemo(() => {
+    return getPinnedMessages(chatIdNum);
+  }, [chatIdNum, messages, getPinnedMessages]);
+
+  const handleDelete = async (messageId: number, deleteFor: 'everyone' | 'me') => {
+    console.log('Delete message:', messageId, 'for:', deleteFor);
+    try {
+      await deleteMessageForUser(messageId, deleteFor);
+    } catch (error: any) {
+      console.error('Failed to delete message:', error);
+      setError({ error: error.message || 'Failed to delete message' });
+    }
   };
 
-  const handlePin = (messageId: number) => {
+  const handleRestore = async (messageId: number) => {
+    console.log('Restore message:', messageId);
+    try {
+      await restoreMessage(messageId);
+    } catch (error: any) {
+      console.error('Failed to restore message:', error);
+      setError({ error: error.message || 'Failed to restore message' });
+    }
+  };
+
+  const handlePin = async (messageId: number) => {
     console.log('Pin message:', messageId);
-    // TODO: Implement pin functionality
+    try {
+      await pinMessage(messageId);
+    } catch (error: any) {
+      console.error('Failed to pin message:', error);
+      setError({ error: error.message || 'Failed to pin message' });
+    }
+  };
+
+  const handleUnpin = async (messageId: number) => {
+    console.log('Unpin message:', messageId);
+    try {
+      await unpinMessage(messageId);
+    } catch (error: any) {
+      console.error('Failed to unpin message:', error);
+      setError({ error: error.message || 'Failed to unpin message' });
+    }
+  };
+
+  const handlePinnedMessagePress = (messageId: number) => {
+    console.log('Scroll to pinned message:', messageId);
+    handleReplyPress(messageId); // Используем ту же логику скролла, что и для ответов
   };
 
   const handleForward = (message: any) => {
@@ -520,6 +631,11 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  const handleScrollToBottom = () => {
+    // В inverted списке scrollToOffset(0) = самые новые сообщения (внизу визуально)
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.background,
@@ -549,32 +665,72 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 >
   <View style={styles.inner}>
     {/* Индикатор печатающих пользователей */}
-      <TypingIndicator userNames={typingUserNames} />
+    <TypingIndicator userNames={typingUserNames} />
+
+    {/* Баннер закрепленных сообщений */}
+    {pinnedMessages.length > 0 && (
+      <PinnedMessageBanner
+        pinnedMessages={pinnedMessages}
+        onPress={handlePinnedMessagePress}
+        onUnpin={handleUnpin}
+      />
+    )}
+
     <FlatList
       ref={listRef}
-      data={messages}
+      data={messageListItems}
+      extraData={messagesKey}
       renderItem={({ item, index }) => {
+        // Рендер разделителя даты
+        if (item.type === 'date') {
+          return <DateSeparator date={item.data} />;
+        }
+
+        // Рендер сообщения
+        const message = item.data;
+
         // Показываем баннер только при первом входе в чат (showUnreadBanner=true)
         // После автоматической отметки сообщений как прочитанных баннер скрывается
         const shouldShowBanner = index === firstUnreadIndex && unreadCount > 0 && showUnreadBanner;
 
+        // Получаем роль пользователя в этом чате
+        const currentChat = getChatById(chatIdNum);
+        const currentMember = currentChat?.members?.find(m => m.user_id === currentUser?.id);
+        const userRole = currentMember?.role || 'member';
+
+        // Логирование для первого сообщения
+        if (index === 0) {
+          console.log('🔐 User role in chat:', {
+            chatId: chatIdNum,
+            userId: currentUser?.id,
+            role: userRole,
+            membersCount: currentChat?.members?.length,
+            currentMember,
+          });
+        }
+
         return (
           <>
             <MessageItem
-              message={item}
+              message={message}
               onReply={handleReply}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onRestore={handleRestore}
               onPin={handlePin}
+              onUnpin={handleUnpin}
               onForward={handleForward}
               onReplyPress={handleReplyPress}
-              isHighlighted={item.id === highlightedMessageId}
+              isHighlighted={message.id === highlightedMessageId}
+              userRole={userRole}
             />
             {shouldShowBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
           </>
         );
       }}
-      keyExtractor={(item) => String(item.id)}
+      keyExtractor={(item, index) =>
+        item.type === 'date' ? `date-${index}` : `message-${item.data.id}`
+      }
       contentContainerStyle={[
         styles.messagesList,
         { paddingTop: inputHeight + insets.bottom },
@@ -610,6 +766,17 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       }
     />
 
+    {/* Floating кнопка "scroll to bottom" */}
+    {showScrollToBottom && (
+      <TouchableOpacity
+        style={[styles.scrollToBottomButton, { backgroundColor: theme.primary }]}
+        onPress={handleScrollToBottom}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
+    )}
+
     {/* Оборачиваем панель, чтобы измерить её высоту */}
     <View
       onLayout={(e) => {
@@ -617,7 +784,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         if (h !== inputHeight) setInputHeight(h);
       }}
     >
-      
+
 
       <MessageInput
         onSend={handleSendMessage}
@@ -659,6 +826,22 @@ const styles = StyleSheet.create({
     flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40,
   },
   emptyText: { fontSize: 16 },
+  scrollToBottomButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 80,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 999,
+  },
 });
 
 export default ChatScreen;

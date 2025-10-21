@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Poll, PollStatus } from '../../types/poll.types';
 import { PollItem } from '@components/poll/PollItem';
@@ -70,7 +71,7 @@ const PollListScreen: React.FC = () => {
   const votedCount = polls.filter((p) => p.user_has_voted).length;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Опросы</Text>
@@ -147,7 +148,7 @@ const PollListScreen: React.FC = () => {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
