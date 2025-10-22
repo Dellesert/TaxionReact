@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { FileAttachmentPicker } from './FileAttachmentPicker';
 
 interface MessageInputProps {
   onSend: (message: string, replyToId?: number) => void;
@@ -19,6 +20,8 @@ interface MessageInputProps {
   onCancelEdit?: () => void;
   replyingToMessage?: any | null;
   onCancelReply?: () => void;
+  onFilesSelected?: (fileIds: number[]) => void;
+  selectedFileIds?: number[];
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -29,6 +32,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onCancelEdit,
   replyingToMessage,
   onCancelReply,
+  onFilesSelected,
+  selectedFileIds = [],
 }) => {
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
@@ -61,7 +66,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleSend = () => {
-    if (message.trim()) {
+    // Allow sending if either message has content OR files are selected
+    if (message.trim() || selectedFileIds.length > 0) {
       // Clear typing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
@@ -155,10 +161,30 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         </View>
       )}
 
+      {/* Selected files preview */}
+      {selectedFileIds.length > 0 && (
+        <View style={[styles.selectedFilesContainer, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
+          <View style={styles.selectedFilesInfo}>
+            <Ionicons name="attach" size={16} color={theme.primary} />
+            <Text style={[styles.selectedFilesText, { color: theme.text }]}>
+              {selectedFileIds.length} {selectedFileIds.length === 1 ? 'файл' : 'файлов'}
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View style={[styles.container, dynamicStyles.container]}>
-        <TouchableOpacity style={[styles.attachButton, dynamicStyles.attachButton]} disabled={disabled}>
-          <Ionicons name="attach" size={26} color={theme.textTertiary} />
-        </TouchableOpacity>
+        {onFilesSelected && !editingMessage && (
+          <FileAttachmentPicker
+            onFilesSelected={onFilesSelected}
+            onError={(error) => console.error('File upload error:', error)}
+          />
+        )}
+        {(!onFilesSelected || editingMessage) && (
+          <TouchableOpacity style={[styles.attachButton, dynamicStyles.attachButton]} disabled={true}>
+            <Ionicons name="attach" size={26} color={theme.textTertiary} />
+          </TouchableOpacity>
+        )}
 
         <TextInput
           style={[styles.input, dynamicStyles.input]}
@@ -173,14 +199,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         />
 
         <TouchableOpacity
-          style={[styles.sendButton, dynamicStyles.sendButton, !message.trim() && dynamicStyles.sendButtonDisabled]}
+          style={[styles.sendButton, dynamicStyles.sendButton, (!message.trim() && selectedFileIds.length === 0) && dynamicStyles.sendButtonDisabled]}
           onPress={handleSend}
-          disabled={disabled || !message.trim()}
+          disabled={disabled || (!message.trim() && selectedFileIds.length === 0)}
         >
           <Ionicons
             name="send"
             size={16}
-            color={message.trim() ? '#FFFFFF' : theme.textTertiary}
+            color={(message.trim() || selectedFileIds.length > 0) ? '#FFFFFF' : theme.textTertiary}
           />
         </TouchableOpacity>
       </View>
@@ -269,6 +295,22 @@ const styles = StyleSheet.create({
   },
   replyText: {
     fontSize: 13,
+  },
+  selectedFilesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+  },
+  selectedFilesInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectedFilesText: {
+    fontSize: 14,
   },
 });
 

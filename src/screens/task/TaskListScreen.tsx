@@ -23,8 +23,9 @@ import * as taskApi from '@api/task.api';
 
 type TaskFilter = 'all' | 'my' | 'assigned';
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
+type StatusTab = 'new' | 'in_progress' | 'review' | 'done';
 
-const TASKS_PER_PAGE = 3;
+const TASKS_PER_PAGE = 10;
 
 const TaskListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -33,6 +34,7 @@ const TaskListScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<TaskFilter>('all');
+  const [activeTab, setActiveTab] = useState<StatusTab>('new');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const isFirstRender = useRef(true);
 
@@ -48,7 +50,7 @@ const TaskListScreen: React.FC = () => {
   const [reviewTotal, setReviewTotal] = useState(0);
   const [doneTotal, setDoneTotal] = useState(0);
 
-  // Loading states for each section
+  // Loading states
   const [loadingNew, setLoadingNew] = useState(false);
   const [loadingInProgress, setLoadingInProgress] = useState(false);
   const [loadingReview, setLoadingReview] = useState(false);
@@ -59,7 +61,6 @@ const TaskListScreen: React.FC = () => {
   }, [filter]);
 
   useEffect(() => {
-    // Debounce search
     const timer = setTimeout(() => {
       if (searchQuery) {
         loadAllTasks();
@@ -68,42 +69,32 @@ const TaskListScreen: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Reload tasks when screen comes into focus (e.g., when returning from task details)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      // Skip the first render (initial load already handled by filter effect)
       if (isFirstRender.current) {
         isFirstRender.current = false;
         return;
       }
-
-      console.log('🔄 TaskListScreen focused - reloading tasks');
       loadAllTasks();
     });
-
     return unsubscribe;
   }, [navigation]);
 
   const buildFilters = useCallback(() => {
     const filters: any = {};
-
-    // Apply filter type
     if (filter === 'my') {
       filters.created_by = user?.id;
     } else if (filter === 'assigned') {
       filters.assigned_to = user?.id;
     }
-
-    // Apply search
     if (searchQuery.trim()) {
       filters.search = searchQuery.trim();
     }
-
     return filters;
   }, [filter, searchQuery, user?.id]);
 
   const loadTasksByStatus = async (
-    status: 'new' | 'in_progress' | 'review' | 'done',
+    status: StatusTab,
     limit: number = TASKS_PER_PAGE,
     offset: number = 0,
     append: boolean = false
@@ -114,47 +105,32 @@ const TaskListScreen: React.FC = () => {
       const response = await taskApi.getTasksByStatus(status, limit, offset, filters);
       const tasks = response.data;
 
-      console.log(`📋 Loaded ${status} tasks:`, {
-        count: tasks.length,
-        total: response.total,
-        limit,
-        offset,
-        append,
-      });
-
-      // Update state based on status
       switch (status) {
         case 'new':
           setNewTasks(append ? [...newTasks, ...tasks] : tasks);
           setNewTasksTotal(response.total);
-          console.log(`✅ Set new tasks: ${append ? newTasks.length + tasks.length : tasks.length} / ${response.total}`);
           break;
         case 'in_progress':
           setInProgressTasks(append ? [...inProgressTasks, ...tasks] : tasks);
           setInProgressTotal(response.total);
-          console.log(`✅ Set in_progress tasks: ${append ? inProgressTasks.length + tasks.length : tasks.length} / ${response.total}`);
           break;
         case 'review':
           setReviewTasks(append ? [...reviewTasks, ...tasks] : tasks);
           setReviewTotal(response.total);
-          console.log(`✅ Set review tasks: ${append ? reviewTasks.length + tasks.length : tasks.length} / ${response.total}`);
           break;
         case 'done':
           setDoneTasks(append ? [...doneTasks, ...tasks] : tasks);
           setDoneTotal(response.total);
-          console.log(`✅ Set done tasks: ${append ? doneTasks.length + tasks.length : tasks.length} / ${response.total}`);
           break;
       }
     } catch (error) {
-      console.error(`❌ Failed to load ${status} tasks:`, error);
+      console.error(`Failed to load ${status} tasks:`, error);
     }
   };
 
   const loadAllTasks = async () => {
     try {
       setIsInitialLoading(true);
-
-      // Load first page of each status in parallel
       await Promise.all([
         loadTasksByStatus('new', TASKS_PER_PAGE, 0),
         loadTasksByStatus('in_progress', TASKS_PER_PAGE, 0),
@@ -174,8 +150,12 @@ const TaskListScreen: React.FC = () => {
     setRefreshing(false);
   };
 
-  const handleLoadMore = async (status: 'new' | 'in_progress' | 'review' | 'done') => {
-    // Set loading state for this section
+  const handleLoadMore = async (status: StatusTab) => {
+    const currentTasks = getCurrentTasks(status);
+    const total = getTotalForStatus(status);
+
+    if (currentTasks.length >= total) return;
+
     switch (status) {
       case 'new':
         setLoadingNew(true);
@@ -200,209 +180,269 @@ const TaskListScreen: React.FC = () => {
     }
   };
 
+  const getCurrentTasks = (status: StatusTab): Task[] => {
+    switch (status) {
+      case 'new': return newTasks;
+      case 'in_progress': return inProgressTasks;
+      case 'review': return reviewTasks;
+      case 'done': return doneTasks;
+    }
+  };
+
+  const getTotalForStatus = (status: StatusTab): number => {
+    switch (status) {
+      case 'new': return newTasksTotal;
+      case 'in_progress': return inProgressTotal;
+      case 'review': return reviewTotal;
+      case 'done': return doneTotal;
+    }
+  };
+
+  const getLoadingForStatus = (status: StatusTab): boolean => {
+    switch (status) {
+      case 'new': return loadingNew;
+      case 'in_progress': return loadingInProgress;
+      case 'review': return loadingReview;
+      case 'done': return loadingDone;
+    }
+  };
+
   const handleTaskPress = (task: Task) => {
-    console.log('Task pressed:', task.id);
     navigation.navigate('TaskDetail', { taskId: task.id });
   };
 
   const handleNewTask = () => {
-    console.log('Create new task');
     navigation.navigate('CreateTask');
   };
 
-  const filterButtons: { key: TaskFilter; label: string; icon: string }[] = [
-    { key: 'all', label: 'Все', icon: 'apps-outline' },
-    { key: 'my', label: 'Мои', icon: 'person-outline' },
-    { key: 'assigned', label: 'Назначенные', icon: 'people-outline' },
+  const statusTabs: { key: StatusTab; label: string; color: string }[] = [
+    { key: 'new', label: 'Новые', color: '#F59E0B' },
+    { key: 'in_progress', label: 'В работе', color: '#3B82F6' },
+    { key: 'review', label: 'Проверка', color: '#8B5CF6' },
+    { key: 'done', label: 'Готово', color: '#10B981' },
   ];
 
-  // Get section color based on status
-  const getSectionColor = (status: 'new' | 'in_progress' | 'review' | 'done') => {
-    switch (status) {
-      case 'new':
-        return '#F59E0B';
-      case 'in_progress':
-        return '#3B82F6';
-      case 'review':
-        return '#8B5CF6';
-      case 'done':
-        return '#10B981';
-      default:
-        return '#6B7280';
-    }
-  };
-
-  // Get section icon based on status
-  const getSectionIcon = (status: 'new' | 'in_progress' | 'review' | 'done') => {
-    switch (status) {
-      case 'new':
-        return 'sparkles-outline';
-      case 'in_progress':
-        return 'play-circle-outline';
-      case 'review':
-        return 'glasses-outline';
-      case 'done':
-        return 'checkmark-circle-outline';
-      default:
-        return 'folder-outline';
-    }
-  };
-
-  // Render section with tasks and "Load More" button
-  const renderSection = (
-    title: string,
-    tasks: Task[],
-    total: number,
-    loading: boolean,
-    status: 'new' | 'in_progress' | 'review' | 'done'
-  ) => {
-    if (tasks.length === 0 && !isInitialLoading) return null;
-
-    const hasMore = tasks.length < total;
-    const sectionColor = getSectionColor(status);
-    const sectionIcon = getSectionIcon(status);
-
-    return (
-      <View style={styles.section}>
-        {/* Одна большая карточка для всей секции */}
-        <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Заголовок секции */}
-          <View style={styles.sectionHeaderContent}>
-            <View style={[styles.sectionIconContainer, { backgroundColor: sectionColor }]}>
-              <Ionicons name={sectionIcon as any} size={20} color="#FFFFFF" />
-            </View>
-            <View style={styles.sectionTitleContainer}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                {title}
-              </Text>
-              <View style={[styles.sectionBadge, { backgroundColor: sectionColor + '20' }]}>
-                <Text style={[styles.sectionBadgeText, { color: sectionColor }]}>
-                  {total}
-                </Text>
-              </View>
-            </View>
-          </View>
-          <View style={[styles.sectionDivider, { backgroundColor: sectionColor, opacity: 0.3 }]} />
-
-          {/* Задачи внутри карточки */}
-          <View style={styles.tasksContainer}>
-            {tasks.map((task) => (
-              <View key={task.id} style={styles.taskWrapper}>
-                <View style={[styles.taskCard, { backgroundColor: theme.backgroundTertiary }]}>
-                  <TaskItem task={task} onPress={handleTaskPress} />
-                </View>
-              </View>
-            ))}
-            {hasMore && (
-              <TouchableOpacity
-                style={[styles.loadMoreButton, { borderColor: sectionColor }]}
-                onPress={() => handleLoadMore(status)}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color={sectionColor} />
-                ) : (
-                  <>
-                    <Ionicons name="chevron-down-outline" size={20} color={sectionColor} />
-                    <Text style={[styles.loadMoreText, { color: sectionColor }]}>
-                      Загрузить еще ({total - tasks.length})
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
-    );
-  };
+  const filterChips: { key: TaskFilter; label: string }[] = [
+    { key: 'all', label: 'Все' },
+    { key: 'my', label: 'Мои' },
+    { key: 'assigned', label: 'Назначенные' },
+  ];
 
   if (isInitialLoading) {
     return <Loading text="Загрузка задач..." fullScreen />;
   }
 
+  const currentTasks = getCurrentTasks(activeTab);
+  const currentTotal = getTotalForStatus(activeTab);
+  const isLoading = getLoadingForStatus(activeTab);
+  const hasMore = currentTasks.length < currentTotal;
   const totalTasks = newTasksTotal + inProgressTotal + reviewTotal + doneTotal;
 
-  const dynamicStyles = StyleSheet.create({
+  const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.backgroundSecondary,
+      backgroundColor: theme.background,
     },
     header: {
-      backgroundColor: theme.backgroundSecondary,
+      backgroundColor: theme.card,
       paddingHorizontal: 16,
-      paddingBottom: 8,
       paddingTop: 12,
+      paddingBottom: 0,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    editButton: {
+      paddingHorizontal: 4,
+    },
+    editButtonText: {
+      fontSize: 16,
+      fontWeight: '400',
+      color: theme.error,
+    },
     title: {
-      fontSize: 24,
-      fontWeight: 'bold',
+      fontSize: 28,
+      fontWeight: '700',
       color: theme.text,
+      flex: 1,
+      textAlign: 'center',
+    },
+    addButton: {
+      paddingHorizontal: 4,
+    },
+    addButtonText: {
+      fontSize: 38,
+      fontWeight: '200',
+      color: theme.primary,
+      lineHeight: 38,
     },
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.input,
-      borderRadius: 8,
+      backgroundColor: theme.backgroundTertiary,
+      borderRadius: 12,
       paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingVertical: 10,
       marginBottom: 12,
     },
     searchInput: {
       flex: 1,
       marginLeft: 8,
-      fontSize: 16,
+      fontSize: 15,
       color: theme.text,
     },
-    filterButton: {
-      flex: 1,
+    filtersRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 8,
+      gap: 8,
+      marginBottom: 12,
+    },
+    filterChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 20,
       backgroundColor: theme.backgroundTertiary,
     },
-    filterButtonActive: {
-      backgroundColor: theme.primary,
+    filterChipActive: {
+      backgroundColor: theme.primary + '15',
     },
-    filterButtonText: {
-      fontSize: 12,
+    filterChipText: {
+      fontSize: 13,
+      fontWeight: '500',
       color: theme.textSecondary,
-      marginLeft: 4,
+    },
+    filterChipTextActive: {
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    tabsContainer: {
+      flexDirection: 'row',
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderBottomWidth: 3,
+      borderBottomColor: 'transparent',
+    },
+    tabActive: {
+      borderBottomColor: 'transparent',
+    },
+    tabContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    tabLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.textSecondary,
+    },
+    tabLabelActive: {
+      fontWeight: '700',
+    },
+    tabCount: {
+      fontSize: 12,
+      fontWeight: '700',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 10,
+      minWidth: 22,
+      textAlign: 'center',
+    },
+    content: {
+      flex: 1,
+    },
+    taskList: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+    },
+    taskItem: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 10,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    loadMoreContainer: {
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    loadMoreButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 20,
+      backgroundColor: theme.backgroundTertiary,
+    },
+    loadMoreText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      marginLeft: 6,
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 32,
+    },
+    emptyIcon: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: theme.backgroundTertiary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
     },
     emptyTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: theme.textSecondary,
-      marginTop: 16,
+      color: theme.text,
+      marginBottom: 8,
     },
     emptySubtitle: {
       fontSize: 14,
       color: theme.textTertiary,
       textAlign: 'center',
-      marginTop: 8,
+      lineHeight: 20,
     },
   });
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-      <View style={dynamicStyles.header}>
-        <View style={styles.headerTop}>
-          <Text style={dynamicStyles.title}>Задачи</Text>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity style={styles.editButton}>
+              <Text style={styles.editButtonText}>Изм.</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.title}>Задачи</Text>
           <TouchableOpacity onPress={handleNewTask} style={styles.addButton}>
-            <Ionicons name="add" size={26} color={theme.primary} />
+            <Text style={styles.addButtonText}>+</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={dynamicStyles.searchContainer}>
+        {/* Search */}
+        <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color={theme.textTertiary} />
           <TextInput
-            style={dynamicStyles.searchInput}
-            placeholder="Поиск задач..."
+            style={styles.searchInput}
+            placeholder="Поиск..."
             placeholderTextColor={theme.inputPlaceholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -414,189 +454,136 @@ const TaskListScreen: React.FC = () => {
           )}
         </View>
 
-        <View style={styles.filterContainer}>
-          {filterButtons.map((btn, index) => (
+        {/* Filter Chips */}
+        <View style={styles.filtersRow}>
+          {filterChips.map((chip) => (
             <TouchableOpacity
-              key={btn.key}
-              onPress={() => setFilter(btn.key)}
+              key={chip.key}
+              onPress={() => setFilter(chip.key)}
               style={[
-                dynamicStyles.filterButton,
-                filter === btn.key && dynamicStyles.filterButtonActive,
-                index > 0 && styles.filterButtonMargin,
+                styles.filterChip,
+                filter === chip.key && styles.filterChipActive,
               ]}
             >
-              <Ionicons
-                name={btn.icon as any}
-                size={16}
-                color={filter === btn.key ? 'white' : theme.textSecondary}
-              />
               <Text
                 style={[
-                  dynamicStyles.filterButtonText,
-                  filter === btn.key && styles.filterButtonTextActive,
+                  styles.filterChipText,
+                  filter === chip.key && styles.filterChipTextActive,
                 ]}
               >
-                {btn.label}
+                {chip.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Status Tabs */}
+        <View style={styles.tabsContainer}>
+          {statusTabs.map((tab) => {
+            const count = getTotalForStatus(tab.key);
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  styles.tab,
+                  isActive && { ...styles.tabActive, borderBottomColor: tab.color },
+                ]}
+                onPress={() => setActiveTab(tab.key)}
+              >
+                <View style={styles.tabContent}>
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      isActive && { ...styles.tabLabelActive, color: tab.color },
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                  {count > 0 && (
+                    <Text
+                      style={[
+                        styles.tabCount,
+                        {
+                          backgroundColor: isActive ? tab.color : theme.backgroundTertiary,
+                          color: isActive ? '#FFFFFF' : theme.textTertiary,
+                        },
+                      ]}
+                    >
+                      {count}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
+      {/* Content */}
       {totalTasks === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="checkmark-done-outline" size={64} color={theme.borderLight} />
-          <Text style={dynamicStyles.emptyTitle}>
-            {searchQuery ? 'Задачи не найдены' : 'Нет задач'}
+          <View style={styles.emptyIcon}>
+            <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
+          </View>
+          <Text style={styles.emptyTitle}>
+            {searchQuery ? 'Ничего не найдено' : 'Нет задач'}
           </Text>
-          <Text style={dynamicStyles.emptySubtitle}>
+          <Text style={styles.emptySubtitle}>
             {searchQuery
-              ? 'Попробуйте изменить поисковый запрос'
-              : 'Создайте новую задачу для начала работы'}
+              ? 'Попробуйте изменить фильтры или поисковый запрос'
+              : 'Нажмите + чтобы создать первую задачу'}
+          </Text>
+        </View>
+      ) : currentTotal === 0 ? (
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIcon}>
+            <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
+          </View>
+          <Text style={styles.emptyTitle}>Нет задач</Text>
+          <Text style={styles.emptySubtitle}>
+            В этом статусе пока нет задач
           </Text>
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.listContent}
+          style={styles.content}
+          contentContainerStyle={styles.taskList}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          {renderSection('Новые', newTasks, newTasksTotal, loadingNew, 'new')}
-          {renderSection('В работе', inProgressTasks, inProgressTotal, loadingInProgress, 'in_progress')}
-          {renderSection('На проверке', reviewTasks, reviewTotal, loadingReview, 'review')}
-          {renderSection('Готовые', doneTasks, doneTotal, loadingDone, 'done')}
+          {currentTasks.map((task) => (
+            <View key={task.id} style={styles.taskItem}>
+              <TaskItem task={task} onPress={handleTaskPress} />
+            </View>
+          ))}
+
+          {/* Load More */}
+          {hasMore && (
+            <View style={styles.loadMoreContainer}>
+              <TouchableOpacity
+                style={styles.loadMoreButton}
+                onPress={() => handleLoadMore(activeTab)}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={theme.text} />
+                ) : (
+                  <>
+                    <Ionicons name="chevron-down" size={18} color={theme.text} />
+                    <Text style={styles.loadMoreText}>
+                      Ещё {currentTotal - currentTasks.length}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  addButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-  },
-  filterButtonMargin: {
-    marginLeft: 8,
-  },
-  filterButtonTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  listContent: {
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionCard: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  sectionHeaderContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    paddingBottom: 12,
-  },
-  sectionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  sectionTitleContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  sectionBadge: {
-    minWidth: 32,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  sectionBadgeText: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  sectionDivider: {
-    height: 3,
-    width: '100%',
-    marginBottom: 8,
-  },
-  tasksContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  taskWrapper: {
-    marginBottom: 12,
-  },
-  taskCard: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  loadMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-  },
-  loadMoreText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-});
 
 export default TaskListScreen;

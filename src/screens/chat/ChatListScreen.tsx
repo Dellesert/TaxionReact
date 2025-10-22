@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -20,15 +20,16 @@ import { websocketService } from '@services/websocket.service';
 
 type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'ChatList'>;
 
-type ChatFilter = 'all' | 'group' | 'private';
+type ChatFilter = 'all' | 'group' | 'private' | 'favorite';
 
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
-  const { chats, isLoading, loadChats: fetchChats, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat } = useChatStore();
+  const { chats, isLoading, loadChats: fetchChats, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedChats, setSelectedChats] = useState<number[]>([]);
   const [isConnected, setIsConnected] = useState(websocketService.isConnected());
   const [chatFilter, setChatFilter] = useState<ChatFilter>('all');
 
@@ -36,30 +37,51 @@ const ChatListScreen: React.FC = () => {
     loadChats();
   }, []);
 
-  // Проверяем статус подключения каждую секунду
+  // Подписываемся на изменения статуса подключения WebSocket
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsConnected(websocketService.isConnected());
-    }, 1000);
+    // Устанавливаем начальный статус
+    setIsConnected(websocketService.isConnected());
 
-    return () => clearInterval(interval);
+    // Подписываемся на события подключения/отключения
+    const handleConnect = () => {
+      console.log('✅ WebSocket подключен');
+      setIsConnected(true);
+    };
+
+    const handleDisconnect = () => {
+      console.log('❌ WebSocket отключен');
+      setIsConnected(false);
+    };
+
+    // Добавляем слушатели событий (если они доступны)
+    // Если websocketService не поддерживает события, используем опрос с большим интервалом
+    const checkInterval = setInterval(() => {
+      const currentStatus = websocketService.isConnected();
+      setIsConnected(prev => {
+        // Обновляем только если статус действительно изменился
+        if (prev !== currentStatus) {
+          if (currentStatus) {
+            console.log('✅ WebSocket переподключен');
+          } else {
+            console.log('❌ WebSocket соединение потеряно');
+          }
+          return currentStatus;
+        }
+        return prev;
+      });
+    }, 5000); // Проверяем каждые 5 секунд вместо 1 секунды
+
+    return () => {
+      clearInterval(checkInterval);
+    };
   }, []);
 
-  // ИСПРАВЛЕНО: НЕ нужно joinChat для всех чатов в списке
-  // WebSocket соединение глобальное, обновления last_message приходят автоматически
-  // Пользователь должен быть подписан только на чат, который он открыл (в ChatScreen)
-  // useFocusEffect(
-  //   React.useCallback(() => {
-  //     chats.forEach((chat) => {
-  //       websocketService.joinChat(chat.id);
-  //     });
-  //     return () => {
-  //       chats.forEach((chat) => {
-  //         websocketService.leaveChat(chat.id);
-  //       });
-  //     };
-  //   }, [chats])
-  // );
+  // Сброс выбора при выходе из режима редактирования
+  useEffect(() => {
+    if (!isEditMode) {
+      setSelectedChats([]);
+    }
+  }, [isEditMode]);
 
   const loadChats = async () => {
     try {
@@ -76,10 +98,24 @@ const ChatListScreen: React.FC = () => {
   };
 
   const handleChatPress = (chat: Chat) => {
-    navigation.navigate('Chat', {
-      chatId: chat.id,
-      chatName: chat.name,
-    });
+    if (isEditMode) {
+      // В режиме редактирования - выбираем чат
+      toggleChatSelection(chat.id);
+    } else {
+      // Обычный режим - открываем чат
+      navigation.navigate('Chat', {
+        chatId: chat.id,
+        chatName: chat.name,
+      });
+    }
+  };
+
+  const toggleChatSelection = (chatId: number) => {
+    setSelectedChats(prev =>
+      prev.includes(chatId)
+        ? prev.filter(id => id !== chatId)
+        : [...prev, chatId]
+    );
   };
 
   const handleNewChat = () => {
@@ -92,6 +128,43 @@ const ChatListScreen: React.FC = () => {
       console.log(`✅ Chat ${chatId} deleted`);
     } catch (error) {
       console.error('Failed to delete chat:', error);
+    }
+  };
+
+  const handleDeleteSelectedChats = async () => {
+    if (selectedChats.length === 0) return;
+
+    Alert.alert(
+      'Удалить чаты',
+      `Удалить выбранные чаты (${selectedChats.length})?`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await Promise.all(selectedChats.map(id => deleteChat(id)));
+              setSelectedChats([]);
+              setIsEditMode(false);
+            } catch (error) {
+              console.error('Failed to delete chats:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMarkSelectedAsRead = async () => {
+    if (selectedChats.length === 0) return;
+
+    try {
+      await Promise.all(selectedChats.map(id => markChatAsRead(id)));
+      setSelectedChats([]);
+      setIsEditMode(false);
+    } catch (error) {
+      console.error('Failed to mark chats as read:', error);
     }
   };
 
@@ -128,11 +201,28 @@ const ChatListScreen: React.FC = () => {
     }
   };
 
+  const handleMarkAsRead = async (chatId: number) => {
+    try {
+      await markChatAsRead(chatId);
+    } catch (error) {
+      console.error('Failed to mark chat as read:', error);
+    }
+  };
+
+  const handleToggleFavorite = async (chatId: number) => {
+    try {
+      await toggleFavorite(chatId);
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    }
+  };
+
   const filteredChats = chats
     .filter((chat) => {
       // Фильтр по типу
       if (chatFilter === 'group' && chat.type !== 'group') return false;
       if (chatFilter === 'private' && chat.type !== 'private') return false;
+      if (chatFilter === 'favorite' && !chat.is_favorite) return false;
 
       // Фильтр по поиску
       if (!searchQuery) return true;
@@ -161,7 +251,7 @@ const ChatListScreen: React.FC = () => {
       backgroundColor: theme.background,
     },
     header: {
-      backgroundColor: theme.backgroundSecondary,
+      backgroundColor: theme.card,
       borderBottomColor: theme.border,
     },
     title: {
@@ -179,19 +269,33 @@ const ChatListScreen: React.FC = () => {
     emptySubtitle: {
       color: theme.textTertiary,
     },
+    editButton: {
+      paddingHorizontal: 4,
+    },
+    editButtonText: {
+      fontSize: 16,
+      fontWeight: '400',
+      color: theme.error,
+    },
+    addButtonText: {
+      fontSize: 38,
+      fontWeight: '200',
+      color: theme.primary,
+      lineHeight: 38,
+    },
   });
 
   return (
     <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-      
+
       <View style={[styles.header, dynamicStyles.header]}>
         <View style={styles.headerTop}>
-          {/* Левая кнопка - Изменить */}
+          {/* Левая кнопка - Изменить / Готово */}
           <TouchableOpacity
             onPress={() => setIsEditMode(!isEditMode)}
-            style={styles.editButton}
+            style={dynamicStyles.editButton}
           >
-            <Text style={[styles.textEdit]}>{isEditMode ? "Готово" : "Изм."}</Text>
+            <Text style={dynamicStyles.editButtonText}>{isEditMode ? "Готово" : "Изм."}</Text>
           </TouchableOpacity>
 
           {/* Центр - Заголовок или статус подключения */}
@@ -203,13 +307,14 @@ const ChatListScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Правая кнопка - Добавить */}
-          {!isEditMode && (
+          {/* Правая кнопка - Добавить / пусто */}
+          {!isEditMode ? (
             <TouchableOpacity onPress={handleNewChat} style={styles.newChatButton}>
-              <Ionicons name="add-outline" size={28} color={theme.primary} />
+              <Text style={dynamicStyles.addButtonText}>+</Text>
             </TouchableOpacity>
+          ) : (
+            <View style={styles.newChatButton} />
           )}
-          {isEditMode && <View style={styles.newChatButton} />}
         </View>
 
         <View style={[styles.searchContainer, dynamicStyles.searchContainer]}>
@@ -230,7 +335,7 @@ const ChatListScreen: React.FC = () => {
       </View>
 
       {/* Фильтры типов чатов */}
-      <View style={[styles.filterContainer, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
+      <View style={[styles.filterContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={[
             styles.filterTab,
@@ -276,18 +381,58 @@ const ChatListScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
 
-        
+        <TouchableOpacity
+          style={[
+            styles.filterTab,
+            chatFilter === 'favorite' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
+          ]}
+          onPress={() => setChatFilter('favorite')}
+        >
+          <Text style={[
+            styles.filterText,
+            { color: chatFilter === 'favorite' ? theme.primary : theme.textSecondary }
+          ]}>
+            Избранное
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Кнопки действий в режиме редактирования */}
+      {isEditMode && selectedChats.length > 0 && (
+        <View style={[styles.actionBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
+            onPress={handleMarkSelectedAsRead}
+          >
+            <Ionicons name="checkmark-done" size={20} color={theme.text} />
+            <Text style={[styles.actionButtonText, { color: theme.text }]}>
+              Прочитано ({selectedChats.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.error + '15' }]}
+            onPress={handleDeleteSelectedChats}
+          >
+            <Ionicons name="trash" size={20} color={theme.error} />
+            <Text style={[styles.actionButtonText, { color: theme.error }]}>
+              Удалить ({selectedChats.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {filteredChats.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="chatbubbles-outline" size={64} color={theme.borderLight} />
           <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>
-            {searchQuery ? 'Чаты не найдены' : 'Нет чатов'}
+            {searchQuery ? 'Чаты не найдены' : chatFilter === 'favorite' ? 'Нет избранных чатов' : 'Нет чатов'}
           </Text>
           <Text style={[styles.emptySubtitle, dynamicStyles.emptySubtitle]}>
             {searchQuery
               ? 'Попробуйте изменить поисковый запрос'
+              : chatFilter === 'favorite'
+              ? 'Добавьте чаты в избранное через контекстное меню'
               : 'Начните новый разговор или присоединитесь к группе'}
           </Text>
         </View>
@@ -299,9 +444,13 @@ const ChatListScreen: React.FC = () => {
             <ChatItem
               chat={item}
               onPress={handleChatPress}
-              onDelete={isEditMode ? handleDeleteChat : undefined}
-              onLeave={isEditMode ? handleLeaveChat : undefined}
+              onDelete={handleDeleteChat}
+              onLeave={handleLeaveChat}
               onTogglePinned={handleTogglePinned}
+              onMarkAsRead={handleMarkAsRead}
+              onToggleFavorite={handleToggleFavorite}
+              isEditMode={isEditMode}
+              isSelected={selectedChats.includes(item.id)}
             />
           )}
           refreshControl={
@@ -316,12 +465,13 @@ const ChatListScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    
+
   },
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
+    borderBottomWidth: 1,
   },
   headerTop: {
     flexDirection: 'row',
@@ -336,32 +486,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  editButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 28,
+    fontWeight: '700',
   },
   newChatButton: {
-    width: 32,
-    height: 32,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
-    fontSize: 16,
+    fontSize: 15,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -374,13 +517,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
-  textEdit: {
-    fontSize: 16,
+  actionBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: 1,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  actionButtonText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#E94444',
   },
   emptyContainer: {
     flex: 1,

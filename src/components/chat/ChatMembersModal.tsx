@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Platform,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -249,6 +250,34 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     }
   };
 
+  const getUserRoleBadgeColor = (role?: string) => {
+    switch (role) {
+      case 'admin':
+      case 'super_admin':
+        return '#DC2626'; // Красный для администратора
+      case 'manager':
+        return '#2563EB'; // Синий для менеджера
+      case 'employee':
+        return '#059669'; // Зелёный для сотрудника
+      default:
+        return '#6B7280'; // Серый по умолчанию
+    }
+  };
+
+  const getUserRoleLabel = (role?: string) => {
+    switch (role) {
+      case 'admin':
+      case 'super_admin':
+        return 'Администратор';
+      case 'manager':
+        return 'Менеджер';
+      case 'employee':
+        return 'Сотрудник';
+      default:
+        return '';
+    }
+  };
+
   const filteredUsers = isAddingMode
     ? (allUsers || []).filter((user) => {
         if (!searchQuery) return true;
@@ -382,6 +411,13 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
           </View>
         </View>
         <View style={styles.memberActions}>
+          {/* Роль пользователя в системе */}
+          {user.role && (
+            <View style={[styles.userRoleBadge, { backgroundColor: getUserRoleBadgeColor(user.role) }]}>
+              <Text style={styles.roleBadgeText}>{getUserRoleLabel(user.role)}</Text>
+            </View>
+          )}
+          {/* Роль участника в чате */}
           <View style={[styles.roleBadge, { backgroundColor: getRoleBadgeColor(item.role) }]}>
             <Text style={styles.roleBadgeText}>{getRoleLabel(item.role)}</Text>
           </View>
@@ -705,6 +741,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
+  },
+  userRoleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginRight: 6,
   },
   roleBadgeText: {
     fontSize: 12,

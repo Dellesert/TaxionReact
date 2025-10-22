@@ -20,14 +20,14 @@ interface ChatState {
   typingUsers: Record<number, TypingIndicator[]>;
   loadChats: () => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
-  updateChat: (chatId: number, name: string) => Promise<void>;
+  updateChat: (chatId: number, data: { name?: string; avatar?: string; description?: string }) => Promise<void>;
   deleteChat: (chatId: number) => Promise<void>;
   leaveChat: (chatId: number) => Promise<void>;
   removeChatMember: (chatId: number, userId: number) => Promise<void>;
   loadMessages: (chatId: number) => Promise<void>;
   loadMoreMessages: (chatId: number, beforeMessageId: number) => Promise<void>;
   setActiveChat: (chat: Chat | null) => void;
-  sendMessage: (chatId: number, content: string, replyToId?: number) => Promise<void>;
+  sendMessage: (chatId: number, content: string, replyToId?: number, fileIds?: number[]) => Promise<void>;
   updateMessage: (messageId: number, content: string) => Promise<void>;
   deleteMessage: (messageId: number) => Promise<void>;
   deleteMessageForUser: (messageId: number, deleteFor: 'everyone' | 'me') => Promise<void>;
@@ -44,6 +44,7 @@ interface ChatState {
   unpinChat: (chatId: number) => Promise<void>;
   muteChat: (chatId: number) => Promise<void>;
   unmuteChat: (chatId: number) => Promise<void>;
+  toggleFavorite: (chatId: number) => Promise<void>;
   handleNewMessage: (message: Message) => void;
   handleMessageUpdate: (message: Message) => void;
   handleMessageDelete: (messageId: number, chatId: number) => void;
@@ -135,18 +136,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  updateChat: async (chatId: number, name: string) => {
+  updateChat: async (chatId: number, data: { name?: string; avatar?: string; description?: string }) => {
     try {
-      const updatedChat = await chatApi.updateChat(chatId, { name });
+      const updatedChat = await chatApi.updateChat(chatId, data);
       set((state) => ({
         chats: state.chats.map((chat) =>
-          chat.id === chatId ? { ...chat, name: updatedChat.name } : chat
+          chat.id === chatId ? { ...chat, ...updatedChat } : chat
         ),
         activeChat: state.activeChat?.id === chatId
-          ? { ...state.activeChat, name: updatedChat.name }
+          ? { ...state.activeChat, ...updatedChat }
           : state.activeChat,
       }));
-      console.log(`✏️ Chat ${chatId} renamed to "${name}"`);
+      console.log(`✏️ Chat ${chatId} updated:`, data);
     } catch (error: any) {
       set({ error: error.message || 'Failed to update chat' });
       throw error;
@@ -317,15 +318,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (chatId: number, content: string, replyToId?: number) => {
+  sendMessage: async (chatId: number, content: string, replyToId?: number, fileIds?: number[]) => {
     try {
-      if (!content.trim()) throw new Error('Message content cannot be empty');
+      if (!content.trim() && (!fileIds || fileIds.length === 0)) {
+        throw new Error('Message content or files are required');
+      }
 
       // Send message through API (not WebSocket)
       // Server will broadcast it to all WebSocket clients
       const message = await chatApi.sendMessage(chatId, {
         content: content.trim(),
         reply_to_id: replyToId,
+        file_ids: fileIds,
       });
 
       // Handle new message locally
@@ -575,6 +579,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }));
     } catch (error: any) {
       set({ error: error.message || 'Failed to unmute chat' });
+    }
+  },
+
+  toggleFavorite: async (chatId: number) => {
+    try {
+      const chat = get().chats.find((c) => c.id === chatId);
+      if (!chat) throw new Error('Chat not found');
+
+      const newFavoriteStatus = !chat.is_favorite;
+      await chatApi.toggleChatFavorite(chatId, newFavoriteStatus);
+
+      set((state) => ({
+        chats: state.chats.map((c) =>
+          c.id === chatId ? { ...c, is_favorite: newFavoriteStatus } : c
+        ),
+      }));
+      console.log(`⭐ Chat ${chatId} favorite status: ${newFavoriteStatus}`);
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to toggle favorite' });
+      throw error;
     }
   },
 

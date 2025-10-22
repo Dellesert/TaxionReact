@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Message, Reaction } from '../../types/chat.types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { MessageAttachments } from './MessageAttachments';
 
 interface MessageBubbleProps {
   message: Message;
@@ -18,38 +19,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onReact,
   onLongPress,
 }) => {
-  const renderAttachments = () => {
-    if (!message.attachments || message.attachments.length === 0) return null;
-
-    return (
-      <View className="mt-2 space-y-1">
-        {message.attachments.map((attachment) => (
-          <View
-            key={attachment.id}
-            className="flex-row items-center bg-gray-100 p-2 rounded"
-          >
-            <Ionicons
-              name={
-                attachment.type === 'image'
-                  ? 'image'
-                  : attachment.type === 'video'
-                  ? 'videocam'
-                  : 'document'
-              }
-              size={20}
-              color="#666"
-            />
-            <Text className="ml-2 text-sm text-gray-700 flex-1" numberOfLines={1}>
-              {attachment.name}
-            </Text>
-            <Text className="text-xs text-gray-500">
-              {(attachment.size / 1024).toFixed(1)} KB
-            </Text>
-          </View>
-        ))}
-      </View>
-    );
-  };
 
   const renderReactions = () => {
     if (!message.reactions || message.reactions.length === 0) return null;
@@ -106,11 +75,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         )}
 
-        <Text className={`text-base ${isOwnMessage ? 'text-white' : 'text-gray-900'}`}>
-          {message.content}
-        </Text>
+        {message.content && message.content.trim() !== '' && (
+          <Text className={`text-base ${isOwnMessage ? 'text-white' : 'text-gray-900'}`}>
+            {message.content}
+          </Text>
+        )}
 
-        {renderAttachments()}
+        <MessageAttachments attachments={message.attachments} />
 
         <View className="flex-row items-center justify-end mt-1 space-x-1">
           <Text className={`text-xs ${isOwnMessage ? 'text-white/70' : 'text-gray-500'}`}>

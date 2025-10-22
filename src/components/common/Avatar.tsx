@@ -3,8 +3,8 @@
  * Компонент аватара пользователя
  */
 
-import React from 'react';
-import { View, Image, Text, StyleSheet, ViewStyle } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Image, Text, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
 
 interface AvatarProps {
   name?: string;
@@ -23,6 +23,70 @@ const Avatar: React.FC<AvatarProps> = ({
   showStatus = false,
   style,
 }) => {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load image - try public endpoint first, then with authorization
+  useEffect(() => {
+    const loadImage = async () => {
+      if (!imageUrl) {
+        setBlobUrl(null);
+        return;
+      }
+
+      // If it's already a blob URL, use it directly
+      if (imageUrl.startsWith('blob:')) {
+        setBlobUrl(imageUrl);
+        return;
+      }
+
+      // If it's a public URL (contains '/public/'), use it directly without auth
+      if (imageUrl.includes('/public/')) {
+        setBlobUrl(imageUrl);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          setBlobUrl(null);
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch(imageUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          setBlobUrl(url);
+        } else {
+          console.error('Failed to load avatar:', response.status);
+          setBlobUrl(null);
+        }
+      } catch (error) {
+        console.error('Error loading avatar:', error);
+        setBlobUrl(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadImage();
+
+    // Cleanup blob URL on unmount or when imageUrl changes
+    return () => {
+      if (blobUrl && blobUrl.startsWith('blob:')) {
+        window.URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [imageUrl]);
+
   const getInitials = (fullName: string): string => {
     const names = fullName.trim().split(' ');
     if (names.length >= 2) {
@@ -57,8 +121,12 @@ const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={[styles.avatar, avatarSize]} />
+      {imageUrl && blobUrl ? (
+        <Image source={{ uri: blobUrl }} style={[styles.avatar, avatarSize]} />
+      ) : isLoading ? (
+        <View style={[styles.avatar, avatarSize, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="small" color="#666" />
+        </View>
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder, avatarSize]}>
           <Text style={[styles.initials, { fontSize: size * 0.4 }]}>

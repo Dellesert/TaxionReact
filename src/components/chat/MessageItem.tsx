@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Dimensions, Alert, ActivityIndicator, Image } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Message } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
@@ -45,8 +45,55 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<{ [key: number]: string }>({});
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const messageBubbleRef = useRef<View>(null);
+
+  // Check if file is an image
+  const isImageFile = (mimeType: string) => {
+    return mimeType.startsWith('image/');
+  };
+
+  // Load images with authorization
+  useEffect(() => {
+    const loadImages = async () => {
+      if (!message.attachments) return;
+
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      for (const attachment of message.attachments) {
+        if (isImageFile(attachment.mime_type) && !imageUrls[attachment.id]) {
+          try {
+            const response = await fetch(attachment.file_url, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+
+            if (response.ok) {
+              const blob = await response.blob();
+              const imageUrl = window.URL.createObjectURL(blob);
+              setImageUrls(prev => ({ ...prev, [attachment.id]: imageUrl }));
+            }
+          } catch (error) {
+            console.error('❌ Failed to load image preview:', error);
+          }
+        }
+      }
+    };
+
+    loadImages();
+
+    // Cleanup blob URLs on unmount
+    return () => {
+      Object.values(imageUrls).forEach(url => {
+        window.URL.revokeObjectURL(url);
+      });
+    };
+  }, [message.attachments]);
 
   // Fetch sender
   useEffect(() => {
@@ -279,7 +326,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {!isOwnMessage && (
         <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
           <Avatar
-            imageUrl={sender?.avatar_url}
+            imageUrl={sender?.avatar}
             name={sender?.name || `User ${message.sender_id}`}
             size={32}
             style={styles.avatar}
@@ -338,15 +385,147 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         )}
       </View>
     ) : (
-      <Text
-        style={[
-          styles.messageText,
-          dynamicStyles.messageText,
-          isOwnMessage && dynamicStyles.ownMessageText,
-        ]}
-      >
-        {message.content}
-      </Text>
+      <View style={styles.messageContent}>
+        {/* Render text first */}
+        {message.content && (
+          <Text
+            style={[
+              styles.messageText,
+              dynamicStyles.messageText,
+              isOwnMessage && dynamicStyles.ownMessageText,
+            ]}
+          >
+            {message.content}
+          </Text>
+        )}
+
+        {/* Render attachments below text */}
+        {message.attachments && message.attachments.length > 0 && (() => {
+          const images = message.attachments.filter(a => isImageFile(a.mime_type));
+          const files = message.attachments.filter(a => !isImageFile(a.mime_type));
+          const imageCount = images.length;
+
+          // Determine image size based on count
+          const getImageSize = () => {
+            if (imageCount === 1) return { width: 250, height: 250 };
+            if (imageCount === 2) return { width: 120, height: 120 };
+            if (imageCount === 3) return { width: 120, height: 120 };
+            return { width: 115, height: 115 }; // 4 or more
+          };
+
+          const imageSize = getImageSize();
+
+          return (
+            <View style={styles.attachmentsContainer}>
+              {/* Render images in grid */}
+              {images.length > 0 && (
+                <View style={[
+                  styles.imagesGrid,
+                  imageCount === 1 && styles.imagesGridSingle,
+                  imageCount === 2 && styles.imagesGridDouble,
+                  imageCount >= 3 && styles.imagesGridMultiple,
+                ]}>
+                  {images.map((attachment, index) => (
+                    <TouchableOpacity
+                      key={attachment.id || index}
+                      style={[
+                        styles.imageAttachment,
+                        { width: imageSize.width, height: imageSize.height },
+                        imageCount > 1 && styles.imageAttachmentGrid,
+                      ]}
+                      onPress={() => {
+                        const imageUrl = imageUrls[attachment.id];
+                        if (imageUrl) {
+                          console.log('🖼️ Opening image in fullscreen');
+                          setSelectedImage(imageUrl);
+                          setShowImageViewer(true);
+                        } else {
+                          Alert.alert('Ошибка', 'Изображение еще загружается');
+                        }
+                      }}
+                    >
+                      {imageUrls[attachment.id] ? (
+                        <Image
+                          source={{ uri: imageUrls[attachment.id] }}
+                          style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height }]}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={[
+                          styles.imagePreview,
+                          { width: imageSize.width, height: imageSize.height, backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }
+                        ]}>
+                          <ActivityIndicator size="small" color={theme.primary} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Render file attachments */}
+              {files.map((attachment, index) => (
+                <TouchableOpacity
+                  key={attachment.id || index}
+                  style={[styles.attachmentItem, { backgroundColor: theme.backgroundSecondary }]}
+                  onPress={async () => {
+                    if (attachment.file_url) {
+                      console.log('📎 Downloading file:', attachment.file_url);
+                      try {
+                        // Get auth token
+                        const token = localStorage.getItem('access_token');
+                        if (!token) {
+                          Alert.alert('Ошибка', 'Необходима авторизация для скачивания файла');
+                          return;
+                        }
+
+                        // Fetch file with auth
+                        const response = await fetch(attachment.file_url, {
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                          },
+                        });
+
+                        if (!response.ok) {
+                          const errorText = await response.text();
+                          console.error('❌ Server response:', response.status, errorText);
+                          throw new Error(`Failed to download file: ${response.status} - ${errorText}`);
+                        }
+
+                        // Get blob and create download link
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = attachment.file_name;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+
+                        console.log('✅ File downloaded:', attachment.file_name);
+                      } catch (error) {
+                        console.error('❌ Failed to download file:', error);
+                        Alert.alert('Ошибка', 'Не удалось скачать файл');
+                      }
+                    }
+                  }}
+                >
+                  <Ionicons name="document-outline" size={24} color={theme.primary} />
+                  <View style={styles.attachmentInfo}>
+                    <Text style={[styles.attachmentName, { color: theme.text }]} numberOfLines={1}>
+                      {attachment.file_name}
+                    </Text>
+                    <Text style={[styles.attachmentSize, { color: theme.textSecondary }]}>
+                      {(attachment.file_size / 1024).toFixed(2)} KB
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          );
+        })()}
+      </View>
     )}
 
     <View style={styles.messageFooter}>
@@ -580,6 +759,46 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         user={sender}
         onClose={() => setShowProfileModal(false)}
       />
+
+      {/* Полноэкранный просмотр изображения */}
+      <Modal
+        visible={showImageViewer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowImageViewer(false);
+          setSelectedImage(null);
+        }}
+      >
+        <BlurView intensity={95} style={styles.blurOverlay} tint="dark">
+          <Pressable
+            style={styles.imageViewerOverlay}
+            onPress={() => {
+              setShowImageViewer(false);
+              setSelectedImage(null);
+            }}
+          >
+            <View style={styles.imageViewerContainer}>
+              <TouchableOpacity
+                style={[styles.closeButton, { backgroundColor: theme.backgroundSecondary }]}
+                onPress={() => {
+                  setShowImageViewer(false);
+                  setSelectedImage(null);
+                }}
+              >
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+              {selectedImage && (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.fullscreenImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+          </Pressable>
+        </BlurView>
+      </Modal>
     </View>
   );
 };
@@ -619,6 +838,10 @@ const styles = StyleSheet.create({
   justifyContent: 'space-between',
 },
 
+messageContent: {
+  flex: 1,
+},
+
 messageText: {
   fontSize: 15,
   lineHeight: 20,
@@ -648,6 +871,7 @@ edited: {
 
 statusIcon: {
   marginLeft: 4,
+  transform: [{ translateY: 5 }],
 },
 
 tail: {
@@ -817,6 +1041,85 @@ deleteModalCancelButton: {
 deleteModalCancelText: {
   fontSize: 16,
   fontWeight: '600',
+},
+attachmentsContainer: {
+  marginTop: 8,
+  gap: 6,
+},
+imagesGrid: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 4,
+  marginBottom: 6,
+},
+imagesGridSingle: {
+  // Single image - no special layout
+},
+imagesGridDouble: {
+  // 2 images side by side
+},
+imagesGridMultiple: {
+  // 3+ images in grid
+},
+attachmentItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  padding: 10,
+  borderRadius: 8,
+  gap: 10,
+},
+attachmentInfo: {
+  flex: 1,
+},
+attachmentName: {
+  fontSize: 14,
+  fontWeight: '500',
+  marginBottom: 2,
+},
+attachmentSize: {
+  fontSize: 12,
+},
+imageAttachment: {
+  borderRadius: 8,
+  overflow: 'hidden',
+},
+imageAttachmentGrid: {
+  // Additional styles for grid images
+},
+imagePreview: {
+  borderRadius: 8,
+},
+imageViewerOverlay: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+imageViewerContainer: {
+  width: '90%',
+  height: '90%',
+  justifyContent: 'center',
+  alignItems: 'center',
+  position: 'relative',
+},
+fullscreenImage: {
+  width: '100%',
+  height: '100%',
+},
+closeButton: {
+  position: 'absolute',
+  top: 20,
+  right: 20,
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 10,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 4,
+  elevation: 5,
 },
 
 });

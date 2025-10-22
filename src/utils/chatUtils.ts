@@ -57,7 +57,7 @@ export const getChatDisplayAvatar = (chat: Chat, currentUserId?: number): string
   }
 
   // Для групповых чатов или если не удалось найти собеседника
-  return chat.avatar || chat.avatar_url;
+  return chat.avatar || chat.avatar;
 };
 
 /**

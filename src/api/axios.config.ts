@@ -17,12 +17,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // CORS credentials enabled for secure cross-origin requests
+  withCredentials: true,
 });
-
-// Debug: Log configuration
-console.log('📡 Axios configured with baseURL:', API_BASE_URL);
-console.log('🔧 withCredentials:', true);
 
 // Flag to prevent multiple refresh token requests
 let isRefreshing = false;
@@ -93,15 +89,10 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log('🌐 API Request:', config.method?.toUpperCase(), config.baseURL + config.url);
-    console.log('📦 API Payload:', config.data);
-    console.log('🔐 withCredentials:', config.withCredentials);
-    console.log('📋 Headers:', config.headers);
-
     return config;
   },
   (error: AxiosError) => {
-    console.error('❌ Request Interceptor Error:', error);
+    console.error('Request Interceptor Error:', error);
     return Promise.reject(error);
   }
 );
@@ -112,17 +103,10 @@ api.interceptors.request.use(
  */
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log('✅ API Response:', response.status, response.config.url);
     return response;
   },
   async (error: AxiosError) => {
-    console.error('❌ API Error:', {
-      message: error.message,
-      code: error.code,
-      status: error.response?.status,
-      url: error.config?.url,
-      data: error.response?.data,
-    });
+    console.error('API Error:', error.response?.status, error.config?.url);
 
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 

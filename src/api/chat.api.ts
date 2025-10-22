@@ -61,23 +61,53 @@ export const getChats = async (filters?: ChatListFilters): Promise<Chat[]> => {
  * Create new chat
  */
 export const createChat = async (data: CreateChatDto): Promise<Chat> => {
-  console.log('🆕 Creating chat with data:', data);
-  console.log('🔗 Endpoint:', API_ENDPOINTS.CHAT.CREATE);
-
   const response = await api.post<Chat>(API_ENDPOINTS.CHAT.CREATE, data);
 
-  console.log('✅ Chat created, full response:', response);
-  console.log('✅ Chat created, response.data:', response.data);
-  console.log('✅ New chat ID:', response.data?.id);
-  console.log('✅ New chat ID type:', typeof response.data?.id);
+  if (response.data && response.data.chat) {
+    return response.data.chat;
+  }
 
-  // Проверяем структуру ответа
+  return response.data;
+};
+
+/**
+ * Get or create direct chat with user
+ */
+export const getOrCreateDirectChat = async (userId: number): Promise<Chat> => {
+  console.log('💬 Getting or creating direct chat with user:', userId);
+  console.log('🔗 Endpoint:', API_ENDPOINTS.CHAT.DIRECT(userId));
+
+  const response = await api.post<{ chat: Chat }>(API_ENDPOINTS.CHAT.DIRECT(userId));
+
+  console.log('✅ Direct chat response:', response.data);
+
+  // Check response structure
   if (response.data && response.data.chat) {
     console.log('📦 Response has chat field, extracting it');
     return response.data.chat;
   }
 
-  return response.data;
+  return response.data as any;
+};
+
+/**
+ * Get or create task chat
+ */
+export const getOrCreateTaskChat = async (taskId: number): Promise<Chat> => {
+  console.log('📋 Getting or creating task chat for task:', taskId);
+  console.log('🔗 Endpoint:', API_ENDPOINTS.CHAT.TASK(taskId));
+
+  const response = await api.post<{ chat: Chat }>(API_ENDPOINTS.CHAT.TASK(taskId));
+
+  console.log('✅ Task chat response:', response.data);
+
+  // Check response structure
+  if (response.data && response.data.chat) {
+    console.log('📦 Response has chat field, extracting it');
+    return response.data.chat;
+  }
+
+  return response.data as any;
 };
 
 /**

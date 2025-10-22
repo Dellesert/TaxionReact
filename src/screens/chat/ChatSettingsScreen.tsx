@@ -15,6 +15,8 @@ import { useTheme } from '@hooks/useTheme';
 import { ChatMembersModal } from '@components/chat/ChatMembersModal';
 import { ConfirmDialog } from '@components/common/ConfirmDialog';
 import { InputDialog } from '@components/common/InputDialog';
+import { fileApi } from '@api/fileApi';
+import { Avatar } from '@components/common/Avatar';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ChatSettings'>;
 
@@ -31,6 +33,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const chat = getChatById(chatId);
   const creatorId = chat?.created_by || chat?.creator_id;
@@ -60,7 +63,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleRenameChat = async (newName: string) => {
     try {
-      await updateChat(chatId, newName);
+      await updateChat(chatId, { name: newName });
       setShowRenameDialog(false);
       // Обновляем заголовок в навигации
       navigation.setParams({ chatName: newName });
@@ -72,6 +75,62 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleSearchMessages = () => {
     // TODO: Реализовать поиск по сообщениям
     Alert.alert('Поиск', 'Функция поиска по сообщениям в разработке');
+  };
+
+  const handleChangeAvatar = async () => {
+    try {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+
+      input.onchange = async (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          Alert.alert('Ошибка', 'Размер файла не должен превышать 5 МБ');
+          return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          Alert.alert('Ошибка', 'Пожалуйста, выберите изображение');
+          return;
+        }
+
+        setIsUploadingAvatar(true);
+
+        try {
+          console.log('📤 Uploading chat avatar...');
+
+          // Upload file to file-service as PUBLIC file
+          const uploadedFile = await fileApi.uploadFile(file, 'avatar', undefined, true);
+          console.log('✅ Avatar uploaded:', uploadedFile);
+
+          // Use public file URL
+          const avatarUrl = fileApi.getPublicFileUrl(uploadedFile.file_name);
+          console.log('📸 Public Avatar URL:', avatarUrl);
+
+          // Update chat with new avatar URL
+          await updateChat(chatId, { avatar: avatarUrl });
+          console.log('✅ Chat updated with new avatar');
+
+          Alert.alert('Успех', 'Изображение чата обновлено');
+        } catch (error) {
+          console.error('❌ Failed to upload chat avatar:', error);
+          Alert.alert('Ошибка', 'Не удалось обновить изображение. Попробуйте снова.');
+        } finally {
+          setIsUploadingAvatar(false);
+        }
+      };
+
+      input.click();
+    } catch (error) {
+      console.error('❌ Error opening file picker:', error);
+      Alert.alert('Ошибка', 'Не удалось открыть выбор файла');
+    }
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -118,6 +177,29 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       </View>
 
       <ScrollView>
+        {/* Аватар чата (только для групповых чатов и только для создателя) */}
+        {isCreator && chat?.type === 'group' && (
+          <View style={[styles.avatarSection, dynamicStyles.section]}>
+            <View style={styles.avatarContainer}>
+              <Avatar
+                imageUrl={chat?.avatar}
+                name={chatName || 'Группа'}
+                size={100}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.changeAvatarButton, { backgroundColor: theme.primary }]}
+              onPress={handleChangeAvatar}
+              disabled={isUploadingAvatar}
+            >
+              <Ionicons name="camera" size={20} color="#fff" />
+              <Text style={styles.changeAvatarText}>
+                {isUploadingAvatar ? 'Загрузка...' : 'Изменить изображение'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Участники */}
         <View style={[styles.section, dynamicStyles.section]}>
           <TouchableOpacity
@@ -263,6 +345,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: 'center',
+  },
+  avatarSection: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  changeAvatarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  changeAvatarText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   section: {
     borderTopWidth: 1,

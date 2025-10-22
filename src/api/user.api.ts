@@ -26,7 +26,18 @@ import { ApiResponse, PaginatedResponse, PaginationParams } from '../types/commo
  */
 export const getProfile = async (): Promise<User> => {
   const response = await api.get<ApiResponse<User>>(API_ENDPOINTS.USER.PROFILE);
-  return response.data.data;
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.profile) {
+    return response.data.profile;
+  } else if (response.data.user) {
+    return response.data.user;
+  } else if (response.data.id) {
+    return response.data as User;
+  } else {
+    return response.data as any;
+  }
 };
 
 /**
@@ -75,27 +86,14 @@ export const getUsers = async (
     offset: pagination?.offset || PAGINATION.DEFAULT_OFFSET,
   };
 
-  console.log('📞 getUsers called with params:', params);
-  console.log('🔗 Endpoint:', API_ENDPOINTS.USER.LIST);
-  console.log('🌐 Full URL will be:', `${process.env.EXPO_PUBLIC_API_BASE_URL}${API_ENDPOINTS.USER.LIST}`);
-
   const response = await api.get<ApiResponse<PaginatedResponse<User>>>(
     API_ENDPOINTS.USER.LIST,
     { params }
   );
 
-  console.log('✅ getUsers full response:', response);
-  console.log('✅ getUsers response.data:', response.data);
-  console.log('✅ getUsers response.data.data:', response.data.data);
-  console.log('✅ getUsers response.data type:', typeof response.data);
-  console.log('✅ getUsers response.data keys:', Object.keys(response.data));
-
-  // Пробуем разные варианты структуры ответа
   if (response.data.data) {
-    console.log('📦 Using response.data.data');
     return response.data.data;
   } else if (Array.isArray(response.data)) {
-    console.log('📦 Response.data is array, wrapping it');
     return {
       data: response.data,
       total: response.data.length,
@@ -104,7 +102,6 @@ export const getUsers = async (
       hasMore: false,
     };
   } else if (response.data.users) {
-    console.log('📦 Using response.data.users');
     return {
       data: response.data.users,
       total: response.data.total || response.data.users.length,
@@ -113,7 +110,6 @@ export const getUsers = async (
       hasMore: response.data.has_more || false,
     };
   } else {
-    console.log('📦 Unknown response structure, returning as is');
     return response.data as any;
   }
 };
@@ -122,25 +118,15 @@ export const getUsers = async (
  * Get single user by ID (Admin)
  */
 export const getUser = async (id: number): Promise<User> => {
-  console.log('📞 getUser called for ID:', id);
   const response = await api.get<ApiResponse<User>>(API_ENDPOINTS.USER.BY_ID(id));
 
-  console.log('✅ getUser full response:', response);
-  console.log('✅ getUser response.data:', response.data);
-  console.log('✅ getUser response.data keys:', Object.keys(response.data));
-
-  // Пробуем разные форматы ответа
   if (response.data.data) {
-    console.log('📦 Using response.data.data');
     return response.data.data;
   } else if (response.data.user) {
-    console.log('📦 Using response.data.user');
     return response.data.user;
   } else if (response.data.id) {
-    console.log('📦 Using response.data directly (has id field)');
     return response.data as User;
   } else {
-    console.log('⚠️ Unknown response structure!');
     return response.data as any;
   }
 };
@@ -224,4 +210,25 @@ export const deleteDepartment = async (id: number): Promise<void> => {
 export const getDepartmentUsers = async (id: number): Promise<User[]> => {
   const response = await api.get<ApiResponse<User[]>>(API_ENDPOINTS.DEPARTMENT.USERS(id));
   return response.data.data;
+};
+
+/**
+ * Update user avatar
+ */
+export const updateAvatar = async (avatarUrl: string): Promise<User> => {
+  const response = await api.put<ApiResponse<User>>(API_ENDPOINTS.USER.PROFILE, {
+    avatar: avatarUrl,
+  });
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.profile) {
+    return response.data.profile;
+  } else if (response.data.user) {
+    return response.data.user;
+  } else if (response.data.id) {
+    return response.data as User;
+  } else {
+    return response.data as any;
+  }
 };

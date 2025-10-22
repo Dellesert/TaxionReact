@@ -18,6 +18,7 @@ export interface Attachment {
   message_id: number;
   file_url: string;
   file_name: string;
+  original_name?: string; // Original filename before server renamed it
   file_type: string;
   file_size: number;
   thumbnail_url?: string;
@@ -87,7 +88,7 @@ export interface Chat {
   type: ChatType;
   description?: string;
   avatar?: string;
-  avatar_url?: string;
+  avatar?: string;
   creator_id: number;
   created_by?: number;
   creator?: User;
@@ -109,7 +110,7 @@ export interface CreateChatDto {
   type: ChatType;
   name?: string;
   description?: string;
-  avatar_url?: string;
+  avatar?: string;
   member_ids: number[];
 }
 
@@ -117,7 +118,7 @@ export interface CreateChatDto {
 export interface UpdateChatDto {
   name?: string;
   description?: string;
-  avatar_url?: string;
+  avatar?: string;
 }
 
 // Send Message DTO
@@ -125,6 +126,7 @@ export interface SendMessageDto {
   content: string;
   message_type?: MessageType;
   reply_to_id?: number;
+  file_ids?: number[]; // IDs of uploaded files from file-service
   attachments?: {
     file_url: string;
     file_name: string;

@@ -30,7 +30,7 @@ export interface User {
   name: string;
   role: UserRole;
   status: UserStatus;
-  avatar_url?: string;
+  avatar?: string;
   position?: string;
   department_id?: number;
   department?: Department;
@@ -48,7 +48,7 @@ export interface UpdateProfileDto {
   position?: string;
   phone?: string;
   bio?: string;
-  avatar_url?: string;
+  avatar?: string;
 }
 
 export interface UpdatePasswordDto {

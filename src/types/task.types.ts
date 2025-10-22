@@ -52,7 +52,7 @@ export interface Task {
   last_status_changed_by?: number; // ID of user who last changed status
   last_status_changer?: TaskUserInfo; // User info for last status changer
   comments?: TaskComment[];
-  comments_count: number;
+  comment_count: number; // Backend returns comment_count not comments_count
   created_at: ISODateString;
   updated_at: ISODateString;
 }

@@ -118,6 +118,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
   const [forwardingMessage, setForwardingMessage] = useState<any | null>(null);
+  const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
   const lastOldestMessageId = useRef<number | null>(null);
 
@@ -273,19 +274,47 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             });
           }}
           activeOpacity={0.7}
+          style={{ maxWidth: 220 }}
         >
           {isConnected ? (
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: theme.text }}>
+            <View style={{ alignItems: 'center', width: '100%' }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: '600',
+                  color: theme.text,
+                  maxWidth: '100%',
+                }}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {displayName}
               </Text>
               {isPrivateChat && statusText && (
-                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: theme.textSecondary,
+                    marginTop: 2,
+                    maxWidth: '100%',
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {statusText}
                 </Text>
               )}
               {!isPrivateChat && membersText && (
-                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: theme.textSecondary,
+                    marginTop: 2,
+                    maxWidth: '100%',
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {membersText}
                 </Text>
               )}
@@ -399,8 +428,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [chatIdNum, messages.length, markChatAsRead, initialScrolled]);
 
   const handleSendMessage = async (content: string, replyToId?: number) => {
-    if (!content.trim()) {
-      setError({ error: 'Message content cannot be empty' });
+    console.log('📤 handleSendMessage called:', { content, replyToId, selectedFileIds });
+
+    if (!content.trim() && selectedFileIds.length === 0) {
+      setError({ error: 'Message content or files are required' });
       return;
     }
     if (!getChatById(chatIdNum)) {
@@ -423,9 +454,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         // Clear editing state
         setEditingMessage(null);
       } else {
-        // Send message through HTTP API with optional reply_to_id
+        // Send message through HTTP API with optional reply_to_id and file_ids
         // Server will broadcast it to all WebSocket clients including sender
-        await sendMessage(chatIdNum, content.trim(), replyToId);
+        const fileIdsToSend = selectedFileIds.length > 0 ? selectedFileIds : undefined;
+        console.log('📤 Sending message with file_ids:', fileIdsToSend);
+
+        await sendMessage(chatIdNum, content.trim(), replyToId, fileIdsToSend);
+
+        // Clear selected files after sending
+        console.log('🗑️ Clearing selected files');
+        setSelectedFileIds([]);
       }
     } catch (error: any) {
       console.error('Failed to send/edit message:', error);
@@ -793,6 +831,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onCancelEdit={() => setEditingMessage(null)}
         replyingToMessage={replyingToMessage}
         onCancelReply={() => setReplyingToMessage(null)}
+        onFilesSelected={(fileIds) => {
+          console.log('📎 onFilesSelected called with fileIds:', fileIds);
+          setSelectedFileIds(prev => {
+            const newFileIds = [...prev, ...fileIds];
+            console.log('📎 Updated selectedFileIds:', newFileIds);
+            return newFileIds;
+          });
+        }}
+        selectedFileIds={selectedFileIds}
       />
     </View>
   </View>

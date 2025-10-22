@@ -8,17 +8,23 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
+import { fileApi } from '@api/fileApi';
+import { updateAvatar } from '@api/user.api';
+import * as secureStorage from '@utils/secureStorage';
+import { STORAGE_KEYS } from '@constants/app.constants';
 
 const ProfileScreen: React.FC = () => {
-  const { user, logout } = useAuthStore();
+  const { user, logout, setUser, refreshUser } = useAuthStore();
   const { theme, mode, isDark, setTheme } = useTheme();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [notifications, setNotifications] = useState({
     push: true,
     email: true,
@@ -26,6 +32,88 @@ const ProfileScreen: React.FC = () => {
     mentions: true,
     tasks: true,
   });
+
+  // Refresh user data on mount to ensure we have latest profile
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        await refreshUser();
+        console.log('✅ Profile refreshed on mount');
+      } catch (error) {
+        console.error('❌ Failed to refresh profile:', error);
+      }
+    };
+    loadProfile();
+  }, []);
+
+  // Handle avatar upload
+  const handleChangeAvatar = async () => {
+    try {
+      // Create file input element
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+
+      input.onchange = async (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+
+        if (!file) return;
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          Alert.alert('Ошибка', 'Размер файла не должен превышать 5 МБ');
+          return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          Alert.alert('Ошибка', 'Пожалуйста, выберите изображение');
+          return;
+        }
+
+        setIsUploadingAvatar(true);
+
+        try {
+          console.log('📤 Uploading avatar...');
+
+          // Upload file to file-service as PUBLIC file (no auth required to view)
+          const uploadedFile = await fileApi.uploadFile(file, 'avatar', undefined, true);
+          console.log('✅ Avatar uploaded:', uploadedFile);
+
+          // Use public file URL (no authentication required)
+          const avatarUrl = fileApi.getPublicFileUrl(uploadedFile.file_name);
+          console.log('📸 Public Avatar URL:', avatarUrl);
+
+          // Update user profile with new avatar URL
+          const updatedUser = await updateAvatar(avatarUrl);
+          console.log('✅ Profile updated with new avatar:', updatedUser);
+          console.log('🔍 Avatar URL in updated profile:', updatedUser?.avatar);
+          console.log('🔍 All keys in updated profile:', Object.keys(updatedUser || {}));
+
+          // Update local user state
+          setUser(updatedUser);
+          console.log('✅ User state updated in store');
+
+          // Also update stored user data
+          await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
+          console.log('✅ User data saved to storage');
+
+          Alert.alert('Успех', 'Фотография профиля обновлена');
+        } catch (error) {
+          console.error('❌ Failed to upload avatar:', error);
+          Alert.alert('Ошибка', 'Не удалось обновить фотографию. Попробуйте снова.');
+        } finally {
+          setIsUploadingAvatar(false);
+        }
+      };
+
+      input.click();
+    } catch (error) {
+      console.error('❌ Error opening file picker:', error);
+      Alert.alert('Ошибка', 'Не удалось открыть выбор файла');
+    }
+  };
 
   const handleLogout = async () => {
   if (Platform.OS === 'web') {
@@ -267,7 +355,7 @@ const ProfileScreen: React.FC = () => {
       <ScrollView style={{ flex: 1 }}>
       {/* User Info */}
       <View style={dynamicStyles.userInfoSection}>
-        <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar_url} name={user.name || user.email} size={100} />
+        <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar} name={user.name || user.email} size={100} />
         <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>
         <Text style={dynamicStyles.userEmail}>{user.email}</Text>
         {user.department && (
@@ -285,10 +373,18 @@ const ProfileScreen: React.FC = () => {
           <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={dynamicStyles.menuItem}>
+        <TouchableOpacity
+          style={dynamicStyles.menuItem}
+          onPress={handleChangeAvatar}
+          disabled={isUploadingAvatar}
+        >
           <Ionicons name="camera-outline" size={24} color={theme.primary} />
           <Text style={dynamicStyles.menuItemText}>Изменить фотографию</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+          {isUploadingAvatar ? (
+            <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 8 }} />
+          ) : (
+            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+          )}
         </TouchableOpacity>
       </View>
 
