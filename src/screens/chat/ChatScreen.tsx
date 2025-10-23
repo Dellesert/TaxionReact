@@ -61,6 +61,27 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const typingUsers = useChatStore((state) => state.typingUsers);
   const currentUser = useAuthStore((state) => state.user);
 
+  // Подписываемся на текущий чат для реактивности при изменениях (например, статус пользователя)
+  // Используем селектор с мемоизацией чтобы обеспечить ре-рендер при изменении статуса членов чата
+  const chat = useChatStore((state) => state.chats.find(c => c.id === chatIdNum),
+    (a, b) => {
+      // Сравниваем статусы пользователей в members для обнаружения изменений
+      if (!a && !b) return true;
+      if (!a || !b) return false;
+      if (a.id !== b.id) return false;
+
+      // Сравниваем статусы всех участников
+      if (!a.members || !b.members) return a.members === b.members;
+      if (a.members.length !== b.members.length) return false;
+
+      return a.members.every((memberA, i) => {
+        const memberB = b.members![i];
+        return memberA.user?.status === memberB.user?.status &&
+               (memberA.user as any)?.last_active_at === (memberB.user as any)?.last_active_at;
+      });
+    }
+  );
+
   // ✅ ДОБАВЬ ЭТО
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
@@ -241,7 +262,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   }, []);
 
   useEffect(() => {
-    const chat = getChatById(chatIdNum);
     const displayName = chat ? getChatDisplayName(chat, currentUser?.id) : (chatName || 'Чат');
     const displayAvatar = chat ? getChatDisplayAvatar(chat, currentUser?.id) : undefined;
 
@@ -344,7 +364,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         </TouchableOpacity>
       ),
     });
-  }, [chatName, navigation, isConnected, theme, chatIdNum, getChatById, currentUser]);
+  }, [chatName, navigation, isConnected, theme, chatIdNum, chat, currentUser]);
 
   useEffect(() => {
     // Сбрасываем состояние при смене чата

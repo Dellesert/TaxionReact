@@ -43,7 +43,64 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
 
   const getLastMessagePreview = () => {
     if (!chat.last_message) return 'Нет сообщений';
-    return chat.last_message.content || 'Нет сообщений';
+
+    const message = chat.last_message;
+    const isCurrentUser = message.sender_id === currentUser?.id;
+
+    // Определяем префикс отправителя
+    let senderPrefix = '';
+    if (chat.type === 'private') {
+      // В личных чатах показываем только "Вы:" для своих сообщений
+      senderPrefix = isCurrentUser ? 'Вы: ' : '';
+    } else {
+      // В групповых чатах показываем "Вы:" или "Имя:"
+      if (isCurrentUser) {
+        senderPrefix = 'Вы: ';
+      } else {
+        // Пытаемся получить имя отправителя из разных источников
+        let senderName = '';
+
+        // 1. Из объекта sender сообщения
+        if (message.sender?.name) {
+          senderName = message.sender.name;
+        }
+        // 2. Из email отправителя
+        else if (message.sender?.email) {
+          senderName = message.sender.email.split('@')[0];
+        }
+        // 3. Из участников чата
+        else if (chat.members && chat.members.length > 0) {
+          const member = chat.members.find(m => m.user_id === message.sender_id);
+          if (member?.user) {
+            senderName = member.user.name || member.user.email?.split('@')[0] || '';
+          }
+        }
+
+        // Запасной вариант
+        if (!senderName) {
+          senderName = 'Пользователь';
+        }
+
+        senderPrefix = `${senderName}: `;
+      }
+    }
+
+    // Формируем текст сообщения
+    let messageText = message.content || '';
+
+    // Если сообщение пустое но есть вложения
+    if (!messageText && message.attachments && message.attachments.length > 0) {
+      const attachment = message.attachments[0];
+      if (attachment.file_type?.startsWith('image')) {
+        messageText = 'Фото';
+      } else if (attachment.file_type?.startsWith('video')) {
+        messageText = 'Видео';
+      } else {
+        messageText = 'Файл';
+      }
+    }
+
+    return senderPrefix + (messageText || 'Нет сообщений');
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -129,6 +186,14 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
               {getChatName()}
             </Text>
             <View style={styles.headerRight}>
+              {chat.is_favorite && (
+                <Ionicons
+                  name="star"
+                  size={16}
+                  color={theme.warning || '#FFB800'}
+                  style={styles.favoriteIcon}
+                />
+              )}
               {chat.is_pinned && (
                 <Ionicons
                   name="pin"
@@ -304,6 +369,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  favoriteIcon: {
+    marginTop: -1,
   },
   pinIcon: {
     marginTop: -1,

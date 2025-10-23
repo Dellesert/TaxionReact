@@ -6,8 +6,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
-  Modal,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -27,25 +25,43 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   const { theme } = useTheme();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
-  const [menuVisible, setMenuVisible] = useState(false);
 
   const handleImagePick = async () => {
-    setMenuVisible(false);
+    console.log('🔥 handleImagePick called! Platform:', Platform.OS);
+
     try {
+      // Пробуем использовать ImagePicker на всех платформах
+      console.log('📸 Requesting media library permissions...');
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
+        console.error('❌ Media library permission denied');
         onError?.('Нужно разрешение для доступа к галерее');
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-      });
+      console.log('✅ Media library permission granted');
+      console.log('📸 Launching image library...');
 
-      if (!result.canceled && result.assets.length > 0) {
+      // На iOS используем базовые параметры без allowsMultipleSelection
+      const pickerOptions: any = {
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        quality: 0.8,
+      };
+
+      // На Android добавляем множественный выбор
+      if (Platform.OS === 'android') {
+        pickerOptions.allowsMultipleSelection = true;
+      }
+
+      console.log('📸 Picker options:', pickerOptions);
+
+      const result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
+
+      console.log('📸 ImagePicker returned!');
+      console.log('📸 ImagePicker result:', JSON.stringify(result, null, 2));
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
         const fileObjects = await Promise.all(
           result.assets.map(async (asset) => {
             if (asset.uri.startsWith('blob:')) {
@@ -67,19 +83,106 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         await uploadFiles(fileObjects);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      onError?.('Ошибка при выборе изображения');
+      console.error('❌ Error picking image:', error);
+      onError?.('Ошибка при выборе изображения: ' + (error as Error).message);
+    }
+  };
+
+  const handleImagePickOld = async () => {
+    console.log('🔥 handleImagePick called! Platform:', Platform.OS);
+
+    try {
+      // СТАРЫЙ КОД - на случай если новый не сработает
+      if (Platform.OS === 'ios') {
+        console.log('📸 Using DocumentPicker for iOS (ImagePicker bug workaround)');
+
+        console.log('📸 About to call getDocumentAsync for images/videos...');
+
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['image/*', 'video/*'],  // Только изображения и видео
+          copyToCacheDirectory: false,
+        });
+
+        console.log('📸 DocumentPicker returned!');
+        console.log('📸 DocumentPicker result:', JSON.stringify(result, null, 2));
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          const fileObjects = await Promise.all(
+            result.assets.map(async (asset) => {
+              if (asset.uri.startsWith('blob:')) {
+                const response = await fetch(asset.uri);
+                const blob = await response.blob();
+                return new File([blob], asset.name, { type: asset.mimeType || 'image/jpeg' });
+              } else {
+                return {
+                  uri: asset.uri,
+                  name: asset.name,
+                  type: asset.mimeType || 'image/jpeg',
+                };
+              }
+            })
+          );
+
+          await uploadFiles(fileObjects);
+        }
+      } else {
+        // На Android используем ImagePicker как обычно
+        console.log('📸 Requesting media library permissions...');
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (!permission.granted) {
+          console.error('❌ Media library permission denied');
+          onError?.('Нужно разрешение для доступа к галерее');
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.All,
+          allowsMultipleSelection: true,
+          quality: 0.8,
+        });
+
+        console.log('📸 ImagePicker result:', result);
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          const fileObjects = await Promise.all(
+            result.assets.map(async (asset) => {
+              if (asset.uri.startsWith('blob:')) {
+                const response = await fetch(asset.uri);
+                const blob = await response.blob();
+                const fileName = asset.fileName || `image_${Date.now()}.jpg`;
+                const mimeType = asset.type === 'video' ? 'video/mp4' : 'image/jpeg';
+                return new File([blob], fileName, { type: mimeType });
+              } else {
+                return {
+                  uri: asset.uri,
+                  name: asset.fileName || `image_${Date.now()}.jpg`,
+                  type: asset.type === 'video' ? 'video/mp4' : 'image/jpeg',
+                };
+              }
+            })
+          );
+
+          await uploadFiles(fileObjects);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error picking image:', error);
+      onError?.('Ошибка при выборе изображения: ' + (error as Error).message);
     }
   };
 
   const handleDocumentPick = async () => {
-    setMenuVisible(false);
+    console.log('📄 handleDocumentPick called! Platform:', Platform.OS);
     try {
+      console.log('📄 Launching document picker...');
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         multiple: true,
         copyToCacheDirectory: true,
       });
+
+      console.log('📄 Document picker result:', result);
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const files = result.assets;
@@ -129,7 +232,8 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
           (fileProgress) => {
             const totalProgress = ((i + fileProgress / 100) / files.length) * 100;
             setProgress(totalProgress);
-          }
+          },
+          true  // Make chat attachments public so all chat members can access them
         );
 
         uploadedFiles.push(uploadedFile);
@@ -157,58 +261,43 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
     );
   }
 
+  // На iOS убираем modal - он блокирует нативные picker'ы
   return (
-    <>
+    <View style={styles.buttonContainer}>
       <TouchableOpacity
         style={[styles.button, { backgroundColor: theme.backgroundTertiary }]}
-        onPress={() => setMenuVisible(true)}
+        onPress={() => {
+          console.log('📸 Photo/File button pressed!');
+          handleImagePick();
+        }}
       >
-        <Ionicons name="add" size={24} color={theme.primary} />
+        <Ionicons name="image-outline" size={20} color={theme.primary} />
       </TouchableOpacity>
-
-      {/* Attachment menu modal */}
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: theme.backgroundTertiary, marginRight: 5 }]}
+        onPress={() => {
+          console.log('📄 Document button pressed!');
+          handleDocumentPick();
+        }}
       >
-        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={[styles.menuContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                <TouchableOpacity
-                  style={[styles.menuItem, { borderBottomColor: theme.border }]}
-                  onPress={handleImagePick}
-                >
-                  <Ionicons name="image-outline" size={24} color={theme.primary} />
-                  <Text style={[styles.menuText, { color: theme.text }]}>Фото и видео</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={handleDocumentPick}
-                >
-                  <Ionicons name="document-attach-outline" size={24} color={theme.primary} />
-                  <Text style={[styles.menuText, { color: theme.text }]}>Документ</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </>
+        <Ionicons name="document-attach-outline" size={20} color={theme.primary} />
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  buttonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   button: {
-    width: 40,
-    height: 42,
-    padding: 8,
-    marginRight: 5,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
+    marginRight: 5,
   },
   uploadingContainer: {
     flexDirection: 'row',
@@ -219,33 +308,5 @@ const styles = StyleSheet.create({
   },
   uploadingText: {
     fontSize: 14,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-    paddingBottom: 80, // Position above message input
-    paddingLeft: 16,
-  },
-  menuContainer: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-    width: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  menuText: {
-    fontSize: 16,
   },
 });

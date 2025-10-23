@@ -169,7 +169,17 @@ export const getDepartments = async (): Promise<Department[]> => {
  */
 export const getDepartment = async (id: number): Promise<Department> => {
   const response = await api.get<ApiResponse<Department>>(API_ENDPOINTS.DEPARTMENT.BY_ID(id));
-  return response.data.data;
+
+  // Try different response structures
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.department) {
+    return response.data.department;
+  } else if (response.data.id) {
+    return response.data as Department;
+  } else {
+    return response.data as any;
+  }
 };
 
 /**

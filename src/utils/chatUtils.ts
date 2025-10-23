@@ -70,8 +70,11 @@ export const getUserStatusText = (user: User | null | undefined): string => {
     return 'в сети';
   }
 
-  if (user.last_seen_at) {
-    const lastSeen = new Date(user.last_seen_at);
+  // Проверяем оба поля: last_active_at (из API) и last_seen_at (из типов)
+  const lastActiveTime = (user as any).last_active_at || user.last_seen_at;
+
+  if (lastActiveTime) {
+    const lastSeen = new Date(lastActiveTime);
     const now = new Date();
     const diffMs = now.getTime() - lastSeen.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -79,17 +82,17 @@ export const getUserStatusText = (user: User | null | undefined): string => {
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) {
-      return 'только что';
+      return 'Был(а) только что';
     } else if (diffMins < 60) {
-      return `${diffMins} мин. назад`;
+      return `Был(а) ${diffMins} мин. назад`;
     } else if (diffHours < 24) {
-      return `${diffHours} ч. назад`;
+      return `Был(а) ${diffHours} ч. назад`;
     } else if (diffDays === 1) {
-      return 'вчера';
+      return 'Был(а) вчера';
     } else if (diffDays < 7) {
-      return `${diffDays} дн. назад`;
+      return `Был(а) ${diffDays} дн. назад`;
     } else {
-      return lastSeen.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+      return 'Был(а) ' + lastSeen.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
     }
   }
 

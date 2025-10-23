@@ -282,10 +282,11 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
       switch (message.type) {
         case 'new_message':
           // Construct full message object from WebSocket data
+          const senderId = message.user_id || message.data?.sender_id;
           const newMessage = {
             id: message.data?.id || Date.now(), // temporary ID if not provided
             chat_id: message.chat_id,
-            sender_id: message.user_id || message.data?.sender_id,
+            sender_id: senderId,
             content: message.data?.content || '',
             message_type: message.data?.message_type || message.data?.type || 'text',
             is_edited: message.data?.is_edited || false,
@@ -298,17 +299,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             updated_at: message.data?.updated_at || message.timestamp || new Date().toISOString(),
             reply_to_id: message.data?.reply_to_id,
             reply_to: message.data?.reply_to,
-            sender: message.data?.sender || (currentUser && message.user_id === currentUser.id ? {
-              id: currentUser.id,
-              full_name: currentUser.full_name,
-              username: currentUser.username,
-              avatar: currentUser.avatar,
-            } : {
-              id: message.user_id,
-              full_name: 'User ' + message.user_id,
-              username: 'user' + message.user_id,
-              avatar: null,
-            }),
+            sender: message.data?.sender, // Don't provide fallback - let MessageItem fetch it
           };
 
           chatStore.handleNewMessage(newMessage);

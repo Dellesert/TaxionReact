@@ -747,7 +747,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   handleUserPresence: (presence: any) => {
     // Update user status in all chats where user is a member
-    const { user_id, status, last_seen } = presence;
+    const { user_id, status, last_seen, last_active_at } = presence;
+    console.log('👤 Updating user presence:', { user_id, status, last_seen, last_active_at });
+
+    // Use last_active_at if available (from API), otherwise fall back to last_seen
+    const lastActiveTime = last_active_at || last_seen;
 
     set((state) => ({
       chats: state.chats.map((chat) => {
@@ -760,13 +764,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // Update the member's user status
         const updatedMembers = chat.members.map(member => {
           if (member.user_id === user_id && member.user) {
+            const updatedUser = {
+              ...member.user,
+              status,
+              last_seen_at: lastActiveTime || member.user.last_seen_at,
+              // Also update last_active_at if it exists in the user object
+              ...(last_active_at ? { last_active_at } : {}),
+            };
+            console.log('✅ Updated user in chat:', {
+              user_id,
+              old_status: member.user.status,
+              new_status: status,
+              last_active_at: lastActiveTime
+            });
             return {
               ...member,
-              user: {
-                ...member.user,
-                status,
-                last_seen_at: last_seen || member.user.last_seen_at,
-              }
+              user: updatedUser,
             };
           }
           return member;

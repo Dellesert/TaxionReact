@@ -14,7 +14,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ userNames }) =
 
   useEffect(() => {
     const animateDot = (dot: Animated.Value, delay: number) => {
-      return Animated.loop(
+      Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
           Animated.timing(dot, {
@@ -28,23 +28,22 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ userNames }) =
             useNativeDriver: true,
           }),
         ])
-      );
+      ).start();
     };
 
-    const animation1 = animateDot(dot1, 0);
-    const animation2 = animateDot(dot2, 200);
-    const animation3 = animateDot(dot3, 400);
-
-    animation1.start();
-    animation2.start();
-    animation3.start();
+    animateDot(dot1, 0);
+    animateDot(dot2, 200);
+    animateDot(dot3, 400);
 
     return () => {
-      animation1.stop();
-      animation2.stop();
-      animation3.stop();
+      dot1.stopAnimation();
+      dot2.stopAnimation();
+      dot3.stopAnimation();
+      dot1.setValue(0);
+      dot2.setValue(0);
+      dot3.setValue(0);
     };
-  }, [dot1, dot2, dot3]);
+  }, []);
 
   if (userNames.length === 0) return null;
 

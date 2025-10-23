@@ -11,6 +11,7 @@ import * as authApi from '@api/auth.api';
 import * as userApi from '@api/user.api';
 import { isMockMode, mockLogin, mockRegister } from '@utils/mockData';
 import { websocketService } from '@services/websocket.service';
+import { tokenRefreshService } from '@services/tokenRefresh.service';
 
 interface AuthState {
   // State
@@ -78,7 +79,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isAuthenticated: true,
             isInitializing: false,
           });
-        } else {
+
+          // Start automatic token refresh
+          await tokenRefreshService.start();
+        } else{
           console.log('⚠️ No user data in storage');
           // Clear tokens if user data is missing
           await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
@@ -148,6 +152,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       });
+
+      // Start automatic token refresh after successful login
+      await tokenRefreshService.start();
     } catch (error: any) {
       console.error('❌ Login error:', error);
       set({
@@ -189,6 +196,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     try {
       set({ isLoading: true });
+
+      // Stop token refresh service
+      console.log('⏹️ Stopping token refresh service...');
+      tokenRefreshService.stop();
 
       // Disconnect WebSocket first to update status to offline
       console.log('🔌 Disconnecting WebSocket...');

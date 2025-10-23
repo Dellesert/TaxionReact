@@ -5,11 +5,12 @@
 
 import './global.css';
 import React, { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { LogBox, AppState, AppStateStatus } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
 import { useThemeStore } from './src/store/themeStore';
 import { websocketService } from './src/services/websocket.service';
+import { tokenRefreshService } from './src/services/tokenRefresh.service';
 
 // Ignore specific warnings
 LogBox.ignoreLogs([
@@ -47,6 +48,25 @@ export default function App() {
     // Cleanup on unmount
     return () => {
       websocketService.disconnect();
+    };
+  }, [isAuthenticated]);
+
+  // Handle app state changes (foreground/background)
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      console.log('📱 App state changed to:', nextAppState);
+
+      if (nextAppState === 'active' && isAuthenticated) {
+        console.log('📱 App became active, checking token validity...');
+        // When app comes to foreground, check and refresh token if needed
+        await tokenRefreshService.start();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
     };
   }, [isAuthenticated]);
 

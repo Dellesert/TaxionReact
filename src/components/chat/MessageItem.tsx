@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Dimensions, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Dimensions, Alert, ActivityIndicator, Image, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Message } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
@@ -9,6 +9,8 @@ import { useTheme } from '@hooks/useTheme';
 import { getUser } from '@api/user.api';
 import { User } from '../../types/user.types';
 import { Ionicons } from '@expo/vector-icons';
+import * as secureStorage from '@utils/secureStorage';
+import { STORAGE_KEYS } from '@constants/app.constants';
 
 interface MessageItemProps {
   message: Message;
@@ -42,6 +44,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
   const [sender, setSender] = useState<User | null>(null);
+  const [replySender, setReplySender] = useState<User | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -59,15 +62,40 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   // Load images with authorization
   useEffect(() => {
     const loadImages = async () => {
-      if (!message.attachments) return;
+      console.log('📎 MessageItem loadImages - message.id:', message.id, 'attachments:', message.attachments);
 
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
+      if (!message.attachments || message.attachments.length === 0) {
+        console.log('⚠️ No attachments in message', message.id);
+        return;
+      }
+
+      console.log('📎 Found', message.attachments.length, 'attachments for message', message.id);
+
+      const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      if (!token) {
+        console.error('❌ No access token for loading images');
+        return;
+      }
+
+      console.log('✅ Got access token for loading images');
 
       for (const attachment of message.attachments) {
-        if (isImageFile(attachment.mime_type) && !imageUrls[attachment.id]) {
+        console.log('📎 Processing attachment:', {
+          id: attachment.id,
+          mime_type: attachment.mime_type,
+          file_type: attachment.file_type,
+          file_url: attachment.file_url
+        });
+
+        const mimeType = attachment.mime_type || attachment.file_type || '';
+        if (isImageFile(mimeType) && !imageUrls[attachment.id]) {
           try {
-            const response = await fetch(attachment.file_url, {
+            // Replace localhost with real IP on ALL platforms
+            // Бэкенд возвращает localhost который не работает кросс-платформенно
+            const fileUrl = attachment.file_url.replace('http://localhost:8080', 'http://192.168.1.160:8080');
+            console.log('📸 Loading image from:', fileUrl);
+
+            const response = await fetch(fileUrl, {
               headers: {
                 'Authorization': `Bearer ${token}`,
               },
@@ -75,8 +103,29 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
             if (response.ok) {
               const blob = await response.blob();
-              const imageUrl = window.URL.createObjectURL(blob);
-              setImageUrls(prev => ({ ...prev, [attachment.id]: imageUrl }));
+
+              if (Platform.OS === 'web') {
+                // На Web используем blob URL (быстрее и меньше памяти)
+                const imageUrl = URL.createObjectURL(blob);
+                setImageUrls(prev => ({ ...prev, [attachment.id]: imageUrl }));
+                console.log('✅ Loaded image preview (blob URL) for attachment ID:', attachment.id);
+              } else {
+                // На React Native конвертируем blob в base64
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+
+                reader.onloadend = () => {
+                  const base64data = reader.result as string;
+                  setImageUrls(prev => ({ ...prev, [attachment.id]: base64data }));
+                  console.log('✅ Loaded image preview (base64) for attachment ID:', attachment.id);
+                };
+
+                reader.onerror = (error) => {
+                  console.error('❌ Failed to convert blob to base64:', error);
+                };
+              }
+            } else {
+              console.error('❌ Failed to load image, status:', response.status);
             }
           } catch (error) {
             console.error('❌ Failed to load image preview:', error);
@@ -87,11 +136,16 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
     loadImages();
 
-    // Cleanup blob URLs on unmount
+    // Cleanup blob URLs on unmount (только для веб)
     return () => {
-      Object.values(imageUrls).forEach(url => {
-        window.URL.revokeObjectURL(url);
-      });
+      if (Platform.OS === 'web') {
+        Object.values(imageUrls).forEach(url => {
+          // Только blob URLs нужно освобождать (не base64)
+          if (url && url.startsWith('blob:')) {
+            URL.revokeObjectURL(url);
+          }
+        });
+      }
     };
   }, [message.attachments]);
 
@@ -116,6 +170,28 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         });
     }
   }, [message.id, message.sender, message.sender_id]);
+
+  // Fetch reply sender
+  useEffect(() => {
+    if (message.reply_to && message.reply_to.sender_id) {
+      console.log('🔄 Fetching reply sender for message:', message.reply_to.id, 'sender_id:', message.reply_to.sender_id);
+
+      if (message.reply_to.sender) {
+        console.log('✅ Reply sender already in message:', message.reply_to.sender);
+        setReplySender(message.reply_to.sender);
+      } else {
+        console.log('📥 Fetching reply sender from API');
+        getUser(message.reply_to.sender_id)
+          .then((user) => {
+            console.log('✅ Fetched reply sender:', user);
+            setReplySender(user);
+          })
+          .catch((error) => {
+            console.error('❌ Failed to fetch reply sender:', error);
+          });
+      }
+    }
+  }, [message.reply_to?.id, message.reply_to?.sender_id, message.reply_to?.sender]);
 
   const isOwnMessage = message.sender_id === currentUser?.id;
   const isAdmin = userRole === 'owner' || userRole === 'admin';
@@ -144,8 +220,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       const menuWidth = 250;
       const menuHeight = 450; // Примерная высота меню с превью сообщения
 
-      // Позиционируем меню справа с отступом
-      const left = screenWidth - menuWidth - 20; // 20px отступ справа
+      // Позиционируем меню в зависимости от того, чье это сообщение
+      // Для своих сообщений - справа, для чужих - слева
+      const left = isOwnMessage
+        ? screenWidth - menuWidth - 20  // Свои сообщения: меню справа
+        : 20;                            // Чужие сообщения: меню слева
 
       // Рассчитываем позицию меню
       let top = y; // Начинаем от верхней границы сообщения
@@ -348,6 +427,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   {!isOwnMessage && <View style={[styles.tail, { backgroundColor: theme.messageOther }]} />}
   {isOwnMessage && <View style={[styles.tailOwn, { backgroundColor: theme.messageOwn }]} />}
 
+  {/* Имя отправителя для чужих сообщений */}
+  {!isOwnMessage && (
+    <Text style={[styles.senderName, dynamicStyles.senderName]}>
+      {sender?.name || `User ${message.sender_id}`}
+    </Text>
+  )}
+
   {/* Цитируемое сообщение (если это ответ) */}
   {message.reply_to && (
     <TouchableOpacity
@@ -356,7 +442,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       activeOpacity={0.7}
     >
       <Text style={[styles.replySender, { color: theme.primary }]} numberOfLines={1}>
-        {message.reply_to.sender?.name || `User ${message.reply_to.sender_id}`}
+        {replySender?.name || message.reply_to.sender?.name || `User ${message.reply_to.sender_id}`}
       </Text>
       <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={2}>
         {message.reply_to.content}
@@ -473,7 +559,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                       console.log('📎 Downloading file:', attachment.file_url);
                       try {
                         // Get auth token
-                        const token = localStorage.getItem('access_token');
+                        const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
                         if (!token) {
                           Alert.alert('Ошибка', 'Необходима авторизация для скачивания файла');
                           return;
@@ -514,7 +600,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                   <Ionicons name="document-outline" size={24} color={theme.primary} />
                   <View style={styles.attachmentInfo}>
                     <Text style={[styles.attachmentName, { color: theme.text }]} numberOfLines={1}>
-                      {attachment.file_name}
+                      {decodeURIComponent(attachment.file_name)}
                     </Text>
                     <Text style={[styles.attachmentSize, { color: theme.textSecondary }]}>
                       {(attachment.file_size / 1024).toFixed(2)} KB
@@ -822,7 +908,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderBottomLeftRadius: 4,
     padding: 12,
-    minWidth: 100,
   },
   ownMessageBubble: {
     borderRadius: 16,
@@ -839,13 +924,12 @@ const styles = StyleSheet.create({
 },
 
 messageContent: {
-  flex: 1,
+  flexShrink: 1,
 },
 
 messageText: {
   fontSize: 15,
   lineHeight: 20,
-  flexShrink: 1,
   color: '#fff',
 },
 

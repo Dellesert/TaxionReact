@@ -96,6 +96,9 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 source={{ uri: getFullUrl(attachment.thumbnail_url || attachment.file_url) }}
                 style={styles.image}
                 resizeMode="cover"
+                onLoadStart={() => console.log('🖼️ Image load started:', getFullUrl(attachment.thumbnail_url || attachment.file_url))}
+                onLoad={() => console.log('✅ Image loaded successfully:', attachment.file_name)}
+                onError={(error) => console.error('❌ Image load error:', error.nativeEvent.error, 'URL:', getFullUrl(attachment.thumbnail_url || attachment.file_url))}
               />
             </TouchableOpacity>
           ))}

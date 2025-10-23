@@ -206,7 +206,7 @@ const ProfileScreen: React.FC = () => {
   const dynamicStyles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.primaryDark,
+      backgroundColor: theme.primary,
     },
     header: {
       backgroundColor: theme.backgroundSecondary,
@@ -222,7 +222,7 @@ const ProfileScreen: React.FC = () => {
       color: theme.text,
     },
     userInfoSection: {
-      backgroundColor: theme.primaryDark,
+      backgroundColor: theme.primary,
       padding: 16,
       marginBottom: 12,
       alignItems: 'center',
@@ -249,7 +249,8 @@ const ProfileScreen: React.FC = () => {
       marginTop: 4,
     },
     departmentBadge: {
-      backgroundColor: theme.primaryLight,
+      backgroundColor: 'black',
+      color: theme.background,
       paddingHorizontal: 12,
       paddingVertical: 4,
       borderRadius: 16,

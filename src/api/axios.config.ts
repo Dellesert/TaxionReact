@@ -44,12 +44,15 @@ const onTokenRefreshed = (token: string): void => {
  */
 const refreshAccessToken = async (): Promise<string> => {
   try {
+    console.log('🔄 Attempting to refresh access token...');
     const refreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
 
     if (!refreshToken) {
+      console.error('❌ No refresh token available');
       throw new Error('No refresh token available');
     }
 
+    console.log('📤 Sending refresh token request to backend...');
     const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
       `${API_BASE_URL}/api/v1/auth/refresh`,
       { refresh_token: refreshToken },
@@ -60,14 +63,29 @@ const refreshAccessToken = async (): Promise<string> => {
       }
     );
 
-    const { access_token, refresh_token: new_refresh_token } = response.data.tokens || response.data.data;
+    console.log('📥 Refresh token response received:', response.status);
+    console.log('📦 Response data structure:', {
+      hasTokens: !!response.data.tokens,
+      hasData: !!response.data.data,
+      responseKeys: Object.keys(response.data),
+    });
+
+    const tokens = response.data.tokens || response.data.data || response.data;
+    console.log('🔑 Extracted tokens:', {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+    });
+
+    const { access_token, refresh_token: new_refresh_token } = tokens;
 
     // Store new tokens
     await secureStorage.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, access_token);
     await secureStorage.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, new_refresh_token);
 
+    console.log('✅ Access token refreshed successfully!');
     return access_token;
   } catch (error) {
+    console.error('❌ Failed to refresh access token:', error);
     // Clear tokens and redirect to login
     await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
     await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
@@ -112,10 +130,14 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized errors
     if (error.response?.status === HTTP_STATUS.UNAUTHORIZED && !originalRequest._retry) {
+      console.log('🔐 Received 401 Unauthorized, attempting token refresh...');
+
       if (isRefreshing) {
+        console.log('⏳ Token refresh already in progress, waiting...');
         // Wait for token refresh
         return new Promise((resolve) => {
           subscribeTokenRefresh(async (token: string) => {
+            console.log('✅ Received refreshed token from queue');
             if (originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${token}`;
             }
@@ -132,12 +154,14 @@ api.interceptors.response.use(
         isRefreshing = false;
         onTokenRefreshed(newToken);
 
+        console.log('🔄 Retrying original request with new token...');
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }
 
         return api(originalRequest);
       } catch (refreshError) {
+        console.error('❌ Token refresh failed, clearing session...');
         isRefreshing = false;
         refreshSubscribers = [];
 
