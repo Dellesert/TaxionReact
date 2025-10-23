@@ -22,7 +22,6 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: 'transparent',
   },
   dateText: {
     fontSize: 13,

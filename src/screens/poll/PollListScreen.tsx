@@ -106,7 +106,7 @@ const PollListScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft} />
           <Text style={[styles.headerTitle, { color: theme.text }]}>Опросы</Text>

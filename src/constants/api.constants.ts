@@ -139,6 +139,7 @@ export const API_ENDPOINTS = {
     VOTE: (id: number) => `/polls/${id}/vote`,
     RESULTS: (id: number) => `/polls/${id}/results`,
     MY_VOTES: (id: number) => `/polls/${id}/my-votes`, // Исправлено с /votes на /my-votes
+    VOTERS: (id: number) => `/polls/${id}/voters`,
     COMMENTS: (id: number) => `/polls/${id}/comments`,
     ADD_COMMENT: (id: number) => `/polls/${id}/comments`,
     DELETE_COMMENT: (pollId: number, commentId: number) => `/polls/${pollId}/comments/${commentId}`,

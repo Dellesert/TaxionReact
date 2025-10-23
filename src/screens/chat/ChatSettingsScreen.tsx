@@ -387,8 +387,8 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Аватар чата (только для групповых чатов и только для создателя) */}
-        {isCreator && chat?.type === 'group' && (
+        {/* Аватар чата (для всех участников групповых чатов) */}
+        {chat?.type === 'group' && (
           <View style={[styles.avatarSection, dynamicStyles.section]}>
             <View style={styles.avatarContainer}>
               <Avatar
@@ -397,16 +397,19 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
                 size={100}
               />
             </View>
-            <TouchableOpacity
-              style={[styles.changeAvatarButton, { backgroundColor: theme.primary }]}
-              onPress={handleChangeAvatar}
-              disabled={isUploadingAvatar}
-            >
-              <Ionicons name="camera" size={20} color="#fff" />
-              <Text style={styles.changeAvatarText}>
-                {isUploadingAvatar ? 'Загрузка...' : 'Изменить изображение'}
-              </Text>
-            </TouchableOpacity>
+            {/* Кнопка изменения только для создателя */}
+            {isCreator && (
+              <TouchableOpacity
+                style={[styles.changeAvatarButton, { backgroundColor: theme.primary }]}
+                onPress={handleChangeAvatar}
+                disabled={isUploadingAvatar}
+              >
+                <Ionicons name="camera" size={20} color="#fff" />
+                <Text style={styles.changeAvatarText}>
+                  {isUploadingAvatar ? 'Загрузка...' : 'Изменить изображение'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 

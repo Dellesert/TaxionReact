@@ -188,3 +188,22 @@ export interface PollListFilters {
   department_id?: number;
   search?: string;
 }
+
+// Poll Voter Response
+export interface PollVoter {
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  voted_at: ISODateString;
+  is_anonymous: boolean;
+  options?: string[]; // Names of selected options
+  comment?: string; // Comment if provided
+}
+
+// Poll Voters List Response
+export interface PollVotersList {
+  voters: PollVoter[];
+  total_voters: number;
+  poll_id: number;
+  poll_title: string;
+}

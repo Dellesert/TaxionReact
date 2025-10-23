@@ -11,6 +11,7 @@ import PollListScreen from '@screens/poll/PollListScreen';
 import PollDetailScreen from '@screens/poll/PollDetailScreen';
 import CreatePollScreen from '@screens/poll/CreatePollScreen';
 import EditPollScreen from '@screens/poll/EditPollScreen';
+import PollVotersScreen from '@screens/poll/PollVotersScreen';
 
 const Stack = createNativeStackNavigator<PollStackParamList>();
 
@@ -56,6 +57,13 @@ const PollNavigator: React.FC = () => {
       <Stack.Screen
         name="EditPoll"
         component={EditPollScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="PollVoters"
+        component={PollVotersScreen}
         options={{
           headerShown: false,
         }}

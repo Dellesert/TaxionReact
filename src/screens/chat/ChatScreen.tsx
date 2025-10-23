@@ -265,7 +265,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       headerLeft: () => (
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={{ marginLeft: 8 }}
+          style={{ marginLeft: 4 }}
           activeOpacity={0.7}
         >
           <Ionicons name="chevron-back" size={28} color={theme.primary} />
@@ -340,7 +340,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             });
           }}
           activeOpacity={0.7}
-          style={{ marginRight: 8 }}
+          style={{ marginRight: 0 }}
         >
           <Avatar
             imageUrl={displayAvatar}
@@ -738,7 +738,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       {showDateHeader && currentDateLabel && (
         <View style={[
           styles.stickyDateHeader,
-          { backgroundColor: isDark ? 'rgba(60, 60, 65, 0.95)' : 'rgba(255, 255, 255, 0.95)' }
+          { backgroundColor: theme.backgroundSecondary }
         ]}>
           <Text style={[styles.stickyDateText, { color: theme.text }]}>
             {currentDateLabel}

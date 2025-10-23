@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Dimensions, Alert, ActivityIndicator, Image, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Message } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
@@ -513,11 +515,26 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           const imageCount = images.length;
 
           // Determine image size based on count
+          const screenWidth = Dimensions.get('window').width;
+          const maxBubbleWidth = screenWidth * 0.7; // 70% от ширины экрана
+          const bubblePadding = 24; // 12px padding с каждой стороны
+          const maxImageWidth = maxBubbleWidth - bubblePadding;
+
           const getImageSize = () => {
-            if (imageCount === 1) return { width: 250, height: 250 };
-            if (imageCount === 2) return { width: 120, height: 120 };
-            if (imageCount === 3) return { width: 120, height: 120 };
-            return { width: 115, height: 115 }; // 4 or more
+            if (imageCount === 1) {
+              const size = Math.min(250, maxImageWidth);
+              return { width: size, height: size };
+            }
+            if (imageCount === 2) {
+              const size = Math.min(120, (maxImageWidth - 4) / 2); // -4 для gap между изображениями
+              return { width: size, height: size };
+            }
+            if (imageCount === 3) {
+              const size = Math.min(120, (maxImageWidth - 4) / 2);
+              return { width: size, height: size };
+            }
+            const size = Math.min(115, (maxImageWidth - 8) / 2); // 4 or more, -8 для gaps
+            return { width: size, height: size };
           };
 
           const imageSize = getImageSize();
@@ -537,7 +554,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                       key={attachment.id || index}
                       style={[
                         styles.imageAttachment,
-                        { width: imageSize.width, height: imageSize.height },
                         imageCount > 1 && styles.imageAttachmentGrid,
                       ]}
                       onPress={() => {
@@ -554,13 +570,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                       {imageUrls[attachment.id] ? (
                         <Image
                           source={{ uri: imageUrls[attachment.id] }}
-                          style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height }]}
+                          style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height, maxWidth: '100%' }]}
                           resizeMode="cover"
                         />
                       ) : (
                         <View style={[
                           styles.imagePreview,
-                          { width: imageSize.width, height: imageSize.height, backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }
+                          { width: imageSize.width, height: imageSize.height, maxWidth: '100%', backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }
                         ]}>
                           <ActivityIndicator size="small" color={theme.primary} />
                         </View>
@@ -571,10 +587,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               )}
 
               {/* Render file attachments */}
-              {files.map((attachment, index) => (
+              {files.map((attachment, index) => {
+                // Debug logging for file attachments
+                console.log('📎 File attachment:', {
+                  id: attachment.id,
+                  file_name: attachment.file_name,
+                  file_name_type: typeof attachment.file_name,
+                  file_name_length: attachment.file_name?.length,
+                  mime_type: attachment.mime_type,
+                  file_size: attachment.file_size,
+                });
+
+                return (
                 <TouchableOpacity
                   key={attachment.id || index}
-                  style={[styles.attachmentItem, { backgroundColor: theme.backgroundSecondary }]}
+                  style={[styles.attachmentItem, { width: '100%' }]}
                   onPress={async () => {
                     if (attachment.file_url) {
                       console.log('📎 Downloading file:', attachment.file_url);
@@ -586,31 +613,86 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                           return;
                         }
 
-                        // Fetch file with auth
-                        const response = await fetch(attachment.file_url, {
-                          headers: {
-                            'Authorization': `Bearer ${token}`,
-                          },
-                        });
+                        // Replace localhost with real IP
+                        const fileUrl = attachment.file_url.replace('http://localhost:8080', 'http://192.168.1.160:8080');
 
-                        if (!response.ok) {
-                          const errorText = await response.text();
-                          console.error('❌ Server response:', response.status, errorText);
-                          throw new Error(`Failed to download file: ${response.status} - ${errorText}`);
+                        if (Platform.OS === 'web') {
+                          // Web: Download using blob
+                          const response = await fetch(fileUrl, {
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                            },
+                          });
+
+                          if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('❌ Server response:', response.status, errorText);
+                            throw new Error(`Failed to download file: ${response.status} - ${errorText}`);
+                          }
+
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = attachment.file_name;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          window.URL.revokeObjectURL(url);
+                          console.log('✅ File downloaded:', attachment.file_name);
+                        } else {
+                          // Mobile: Download and open with sharing
+                          // Decode filename and create safe filename for iOS
+                          const originalFileName = decodeURIComponent(attachment.file_name);
+
+                          // Extract file extension
+                          const fileExtension = originalFileName.split('.').pop() || '';
+
+                          // Create safe filename using timestamp and original extension
+                          const safeFileName = `file_${Date.now()}.${fileExtension}`;
+
+                          // Use cache directory which is more reliable for temporary downloads
+                          const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
+
+                          console.log('📥 Starting download...');
+                          console.log('   Original name:', originalFileName);
+                          console.log('   Safe name:', safeFileName);
+                          console.log('   URL:', fileUrl);
+                          console.log('   Save to:', fileUri);
+                          console.log('   MIME:', attachment.mime_type);
+
+                          const downloadResult = await FileSystem.downloadAsync(
+                            fileUrl,
+                            fileUri,
+                            {
+                              headers: {
+                                'Authorization': `Bearer ${token}`,
+                              },
+                            }
+                          );
+
+                          console.log('✅ File downloaded successfully');
+                          console.log('   Status:', downloadResult.status);
+                          console.log('   URI:', downloadResult.uri);
+
+                          if (downloadResult.status !== 200) {
+                            throw new Error(`Download failed with status: ${downloadResult.status}`);
+                          }
+
+                          // Check if sharing is available
+                          const isAvailable = await Sharing.isAvailableAsync();
+                          console.log('📤 Sharing available:', isAvailable);
+
+                          if (isAvailable) {
+                            await Sharing.shareAsync(downloadResult.uri, {
+                              UTI: attachment.mime_type,
+                              mimeType: attachment.mime_type,
+                            });
+                            console.log('✅ File shared successfully');
+                          } else {
+                            Alert.alert('Успех', `Файл скачан:\n${originalFileName}`);
+                          }
                         }
-
-                        // Get blob and create download link
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = attachment.file_name;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-
-                        console.log('✅ File downloaded:', attachment.file_name);
                       } catch (error) {
                         console.error('❌ Failed to download file:', error);
                         Alert.alert('Ошибка', 'Не удалось скачать файл');
@@ -619,16 +701,25 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                   }}
                 >
                   <Ionicons name="document-outline" size={24} color={theme.primary} />
-                  <View style={styles.attachmentInfo}>
-                    <Text style={[styles.attachmentName, { color: theme.text }]} numberOfLines={1}>
-                      {decodeURIComponent(attachment.file_name)}
+                  <View style={{ width: Dimensions.get('window').width * 0.7 - 70 }}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '500',
+                        color: theme.text,
+                      }}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {attachment.file_name}
                     </Text>
-                    <Text style={[styles.attachmentSize, { color: theme.textSecondary }]}>
+                    <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
                       {(attachment.file_size / 1024).toFixed(2)} KB
                     </Text>
                   </View>
                 </TouchableOpacity>
-              ))}
+                );
+              })}
             </View>
           );
         })()}
@@ -816,12 +907,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       <Modal
         visible={showDeleteModal}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowDeleteModal(false)}
       >
         <BlurView intensity={80} style={styles.blurOverlay} tint="dark">
           <Pressable
-            style={styles.modalOverlay}
+            style={styles.deleteModalOverlay}
             onPress={() => setShowDeleteModal(false)}
           >
             <View style={[styles.deleteModal, { backgroundColor: theme.backgroundSecondary }]}>
@@ -1126,13 +1217,18 @@ restoreButtonText: {
   fontSize: 13,
   fontWeight: '600',
 },
+deleteModalOverlay: {
+  flex: 1,
+  justifyContent: 'flex-end',
+},
 deleteModal: {
-  margin: 20,
-  borderRadius: 16,
-  padding: 20,
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
+  padding: 24,
+  paddingBottom: 32,
   alignItems: 'center',
   shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
+  shadowOffset: { width: 0, height: -2 },
   shadowOpacity: 0.25,
   shadowRadius: 8,
   elevation: 5,
@@ -1177,6 +1273,7 @@ deleteModalCancelText: {
 attachmentsContainer: {
   marginTop: 8,
   gap: 6,
+  maxWidth: '100%',
 },
 imagesGrid: {
   flexDirection: 'row',
@@ -1202,11 +1299,13 @@ attachmentItem: {
 },
 attachmentInfo: {
   flex: 1,
+  justifyContent: 'center',
 },
 attachmentName: {
   fontSize: 14,
   fontWeight: '500',
   marginBottom: 2,
+  width: '100%',
 },
 attachmentSize: {
   fontSize: 12,
@@ -1220,6 +1319,7 @@ imageAttachmentGrid: {
 },
 imagePreview: {
   borderRadius: 8,
+  maxWidth: '100%',
 },
 imageViewerOverlay: {
   flex: 1,

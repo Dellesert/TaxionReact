@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -22,6 +23,7 @@ type PollStackParamList = {
   PollList: undefined;
   PollDetail: { pollId: number };
   EditPoll: { pollId: number };
+  PollVoters: { pollId: number };
 };
 
 type PollDetailScreenRouteProp = RouteProp<PollStackParamList, 'PollDetail'>;
@@ -47,10 +49,10 @@ const PollDetailScreen: React.FC = () => {
   const canDeleteOrClosePoll = poll && (poll.created_by === currentUser?.id || isSystemAdmin);
 
   // Check if user can edit poll:
-  // - Creator: only before publication (status === 'draft')
+  // - Creator: always can edit (except closed/archived/cancelled)
   // - System admin: always can edit
   const canEditPoll = poll && (
-    (poll.created_by === currentUser?.id && poll.status === 'draft') || // Creator only in draft
+    (poll.created_by === currentUser?.id && poll.status !== 'closed' && poll.status !== 'archived' && poll.status !== 'cancelled') || // Creator can edit unless closed
     isSystemAdmin // System admin always
   );
 
@@ -576,6 +578,15 @@ const PollDetailScreen: React.FC = () => {
             <Text style={styles.totalVotesText}>
               Всего голосов: {poll.total_votes || 0}
             </Text>
+            <TouchableOpacity
+              style={[styles.viewVotersButton, { borderColor: theme.primary }]}
+              onPress={() => navigation.navigate('PollVoters', { pollId: poll.id })}
+            >
+              <Ionicons name="people-outline" size={18} color={theme.primary} />
+              <Text style={[styles.viewVotersButtonText, { color: theme.primary }]}>
+                Кто проголосовал
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       );
@@ -611,6 +622,17 @@ const PollDetailScreen: React.FC = () => {
             <Text style={styles.totalVotesText}>
               Всего голосов: {poll.total_votes || 0}
             </Text>
+            {poll.show_results && (
+              <TouchableOpacity
+                style={[styles.viewVotersButton, { borderColor: theme.primary }]}
+                onPress={() => navigation.navigate('PollVoters', { pollId: poll.id })}
+              >
+                <Ionicons name="people-outline" size={18} color={theme.primary} />
+                <Text style={[styles.viewVotersButtonText, { color: theme.primary }]}>
+                  Кто проголосовал
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       );
@@ -621,35 +643,42 @@ const PollDetailScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Ionicons name="alert-circle" size={48} color="#EF4444" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadPollDetail}>
-          <Text style={styles.retryButtonText}>Попробовать снова</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadPollDetail}>
+            <Text style={styles.retryButtonText}>Попробовать снова</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!poll) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Опрос не найден</Text>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Опрос не найден</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      <ScrollView style={styles.scrollContent}>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
@@ -835,12 +864,16 @@ const PollDetailScreen: React.FC = () => {
       )}
 
       {renderResults()}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollContent: {
     flex: 1,
   },
   centerContainer: {
@@ -854,7 +887,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     marginRight: 12,
@@ -1124,6 +1156,21 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontWeight: '600',
+  },
+  viewVotersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  viewVotersButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });

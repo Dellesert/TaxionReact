@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Event } from '../../types/calendar.types';
 import { EventItem } from '@components/calendar/EventItem';
 import { mockGetEvents, isMockMode } from '@utils/mockData';
+import { useTheme } from '@hooks/useTheme';
 
 interface EventSection {
   title: string;
@@ -19,6 +20,7 @@ interface EventSection {
 }
 
 const CalendarScreen: React.FC = () => {
+  const { theme } = useTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -110,12 +112,12 @@ const CalendarScreen: React.FC = () => {
   const sections = groupEventsByDate();
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Календарь</Text>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Календарь</Text>
         <TouchableOpacity onPress={handleAddEvent} style={styles.addButton}>
-          <Ionicons name="add" size={26} color="#ff0000ff" />
+          <Ionicons name="add" size={26} color={theme.primary} />
         </TouchableOpacity>
       </View>
 
@@ -136,8 +138,8 @@ const CalendarScreen: React.FC = () => {
             <EventItem event={item} onPress={handleEventPress} />
           )}
           renderSectionHeader={({ section: { title } }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{title}</Text>
+            <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
             </View>
           )}
           contentContainerStyle={styles.listContent}
@@ -153,15 +155,12 @@ const CalendarScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -169,14 +168,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
   },
   addButton: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionHeader: {
-    backgroundColor: '#F9FAFB',
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginTop: 8,
@@ -184,7 +181,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     textTransform: 'capitalize',
   },
   listContent: {

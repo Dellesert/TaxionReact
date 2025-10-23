@@ -244,7 +244,7 @@ const TaskListScreen: React.FC = () => {
       backgroundColor: theme.background,
     },
     header: {
-      backgroundColor: theme.card,
+      backgroundColor: theme.background,
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 0,

@@ -301,7 +301,7 @@ const ChatListScreen: React.FC = () => {
       backgroundColor: theme.background,
     },
     header: {
-      backgroundColor: theme.card,
+      backgroundColor: theme.background,
       borderBottomColor: theme.border,
     },
     title: {
@@ -385,7 +385,7 @@ const ChatListScreen: React.FC = () => {
       </View>
 
       {/* Фильтры типов чатов */}
-      <View style={[styles.filterContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+      <View style={[styles.filterContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={[
             styles.filterTab,
@@ -449,7 +449,7 @@ const ChatListScreen: React.FC = () => {
 
       {/* Кнопки действий в режиме редактирования */}
       {isEditMode && selectedChats.length > 0 && (
-        <View style={[styles.actionBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <View style={[styles.actionBar, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
             onPress={handleMarkSelectedAsRead}

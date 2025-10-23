@@ -15,6 +15,7 @@ import {
   PollResults,
   PollListFilters,
   PollVote,
+  PollVotersList,
 } from '../types/poll.types';
 import { ApiResponse } from '../types/common.types';
 
@@ -167,6 +168,21 @@ export const getMyVotes = async (pollId: number): Promise<PollVote[]> => {
   }
 
   return [];
+};
+
+/**
+ * Get list of poll voters
+ */
+export const getPollVoters = async (pollId: number): Promise<PollVotersList> => {
+  const response = await api.get<ApiResponse<PollVotersList>>(
+    API_ENDPOINTS.POLL.VOTERS(pollId)
+  );
+
+  if (response.data.data) {
+    return response.data.data;
+  }
+
+  return response.data as any;
 };
 
 // ============= Poll Comments =============

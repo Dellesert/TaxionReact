@@ -39,6 +39,9 @@ export type PollStackParamList = {
   EditPoll: {
     pollId: number;
   };
+  PollVoters: {
+    pollId: number;
+  };
 };
 
 // Main Tab Navigator
