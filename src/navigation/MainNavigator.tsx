@@ -13,8 +13,8 @@ import { useChatStore } from '@store/chatStore';
 import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
+import PollNavigator from './PollNavigator';
 import CalendarScreen from '@screens/calendar/CalendarScreen';
-import PollListScreen from '@screens/poll/PollListScreen';
 import ProfileScreen from '@screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -46,7 +46,7 @@ const MainNavigator: React.FC = () => {
             case 'Calendar':
               iconName = focused ? 'calendar' : 'calendar-outline';
               break;
-            case 'PollList':
+            case 'Polls':
               iconName = focused ? 'bar-chart-outline' : 'bar-chart-outline';
               break;
             case 'Profile':
@@ -96,9 +96,27 @@ const MainNavigator: React.FC = () => {
         options={{ tabBarLabel: 'Задачи' }}
       />
       <Tab.Screen
-        name="PollList"
-        component={PollListScreen}
-        options={{ tabBarLabel: 'Опросы' }}
+        name="Polls"
+        component={PollNavigator}
+        options={({ route }) => ({
+          tabBarLabel: 'Опросы',
+          tabBarStyle: ((route) => {
+            const routeName = getFocusedRouteNameFromRoute(route) ?? 'PollList';
+            if (routeName === 'PollDetail') {
+              // Скрываем табы на экране детального просмотра опроса
+              return { display: 'none' };
+            }
+            // Показываем табы на остальных экранах
+            return {
+              backgroundColor: theme.backgroundSecondary,
+              borderTopWidth: 1,
+              borderTopColor: theme.border,
+              height: 85,
+              paddingTop: 6,
+              paddingHorizontal: 12,
+            };
+          })(route),
+        })}
       />
       <Tab.Screen
         name="Chats"

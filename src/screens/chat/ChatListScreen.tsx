@@ -11,6 +11,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
+import { useAuthStore } from '@store/authStore';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
@@ -24,7 +25,44 @@ type ChatFilter = 'all' | 'group' | 'private' | 'favorite';
 
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
-  const { chats, isLoading, loadChats: fetchChats, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
+
+  // Используем селектор с пользовательской функцией сравнения для отслеживания изменений статуса пользователей в чатах
+  // Это гарантирует, что компонент перерисуется при изменении статуса через WebSocket
+  const chats = useChatStore(
+    (state) => state.chats,
+    (a, b) => {
+      // Сравниваем массивы чатов
+      if (a.length !== b.length) return false;
+
+      // Сравниваем каждый чат, особенно статусы участников и read_by в last_message
+      return a.every((chatA, i) => {
+        const chatB = b[i];
+        if (!chatA || !chatB) return false;
+        if (chatA.id !== chatB.id) return false;
+
+        // Проверяем изменения в статусах участников для личных чатов
+        if (chatA.type === 'private' && chatA.members && chatB.members) {
+          const membersMatch = chatA.members.every((memberA, j) => {
+            const memberB = chatB.members![j];
+            return memberA?.user?.status === memberB?.user?.status &&
+                   (memberA?.user as any)?.last_active_at === (memberB?.user as any)?.last_active_at;
+          });
+          if (!membersMatch) return false;
+        }
+
+        // Проверяем изменения в read_by для last_message
+        const readByA = chatA.last_message?.read_by || [];
+        const readByB = chatB.last_message?.read_by || [];
+        if (readByA.length !== readByB.length) return false;
+        if (!readByA.every((id, idx) => id === readByB[idx])) return false;
+
+        return true;
+      });
+    }
+  );
+
+  const { isLoading, loadChats: fetchChats, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
+  const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +74,18 @@ const ChatListScreen: React.FC = () => {
   useEffect(() => {
     loadChats();
   }, []);
+
+  // Логируем изменения в чатах для отладки статусов
+  useEffect(() => {
+    console.log('📋 ChatList: chats updated, total:', chats.length);
+    const privateChats = chats.filter(c => c.type === 'private');
+    privateChats.forEach(chat => {
+      const companion = chat.members?.find(m => m.user_id !== currentUser?.id);
+      if (companion?.user) {
+        console.log(`  - Chat ${chat.id}: companion ${companion.user.name || companion.user.email} status = ${companion.user.status}`);
+      }
+    });
+  }, [chats]);
 
   // Подписываемся на изменения статуса подключения WebSocket
   useEffect(() => {

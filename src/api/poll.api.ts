@@ -27,7 +27,17 @@ export const getPolls = async (filters?: PollListFilters): Promise<Poll[]> => {
   const response = await api.get<ApiResponse<Poll[]>>(API_ENDPOINTS.POLL.LIST, {
     params: filters,
   });
-  return response.data.data;
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.polls) {
+    return response.data.polls;
+  } else if (Array.isArray(response.data)) {
+    return response.data;
+  }
+
+  return [];
 };
 
 /**
@@ -35,7 +45,14 @@ export const getPolls = async (filters?: PollListFilters): Promise<Poll[]> => {
  */
 export const createPoll = async (data: CreatePollDto): Promise<Poll> => {
   const response = await api.post<ApiResponse<Poll>>(API_ENDPOINTS.POLL.CREATE, data);
-  return response.data.data;
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.poll) {
+    return response.data.poll;
+  }
+
+  return response.data as any;
 };
 
 /**
@@ -43,7 +60,14 @@ export const createPoll = async (data: CreatePollDto): Promise<Poll> => {
  */
 export const getPoll = async (id: number): Promise<Poll> => {
   const response = await api.get<ApiResponse<Poll>>(API_ENDPOINTS.POLL.BY_ID(id));
-  return response.data.data;
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.poll) {
+    return response.data.poll;
+  }
+
+  return response.data as any;
 };
 
 /**
@@ -51,7 +75,14 @@ export const getPoll = async (id: number): Promise<Poll> => {
  */
 export const updatePoll = async (id: number, data: UpdatePollDto): Promise<Poll> => {
   const response = await api.put<ApiResponse<Poll>>(API_ENDPOINTS.POLL.UPDATE(id), data);
-  return response.data.data;
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.poll) {
+    return response.data.poll;
+  }
+
+  return response.data as any;
 };
 
 /**
@@ -68,11 +99,18 @@ export const updatePollStatus = async (
   id: number,
   data: UpdatePollStatusDto
 ): Promise<Poll> => {
-  const response = await api.put<ApiResponse<Poll>>(
+  const response = await api.patch<ApiResponse<Poll>>(
     API_ENDPOINTS.POLL.UPDATE_STATUS(id),
     data
   );
-  return response.data.data;
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.poll) {
+    return response.data.poll;
+  }
+
+  return response.data as any;
 };
 
 // ============= Voting =============
@@ -82,7 +120,17 @@ export const updatePollStatus = async (
  */
 export const vote = async (pollId: number, data: VoteDto): Promise<Poll> => {
   const response = await api.post<ApiResponse<Poll>>(API_ENDPOINTS.POLL.VOTE(pollId), data);
-  return response.data.data;
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.poll) {
+    return response.data.poll;
+  } else if (response.data.votes) {
+    // Return the poll from the vote response
+    return response.data as any;
+  }
+
+  return response.data as any;
 };
 
 /**
@@ -92,7 +140,14 @@ export const getPollResults = async (pollId: number): Promise<PollResults> => {
   const response = await api.get<ApiResponse<PollResults>>(
     API_ENDPOINTS.POLL.RESULTS(pollId)
   );
-  return response.data.data;
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.results) {
+    return response.data.results;
+  }
+
+  return response.data as any;
 };
 
 /**
@@ -102,7 +157,16 @@ export const getMyVotes = async (pollId: number): Promise<PollVote[]> => {
   const response = await api.get<ApiResponse<PollVote[]>>(
     API_ENDPOINTS.POLL.MY_VOTES(pollId)
   );
-  return response.data.data;
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.votes) {
+    return response.data.votes;
+  } else if (Array.isArray(response.data)) {
+    return response.data;
+  }
+
+  return [];
 };
 
 // ============= Poll Comments =============

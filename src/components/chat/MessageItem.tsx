@@ -18,6 +18,7 @@ interface MessageItemProps {
   onEdit?: (message: Message) => void;
   onDelete?: (messageId: number, deleteFor: 'everyone' | 'me') => void;
   onRestore?: (messageId: number) => void;
+  onDeletePermanent?: (messageId: number) => void;
   onPin?: (messageId: number) => void;
   onUnpin?: (messageId: number) => void;
   onForward?: (message: Message) => void;
@@ -33,6 +34,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onEdit,
   onDelete,
   onRestore,
+  onDeletePermanent,
   onPin,
   onUnpin,
   onForward,
@@ -210,8 +212,28 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     });
   }, [message.id, message.sender_id, currentUser?.id, isOwnMessage, userRole, isAdmin, message.is_deleted]);
 
-  // Проверяем, является ли сообщение пересланным
+  // Проверяем, является ли сообщение пересланным и парсим заголовок
   const isForwardedMessage = message.content.startsWith('📩 Переслано от ');
+
+  // Парсим заголовок пересланного сообщения
+  const parseForwardedMessage = () => {
+    if (!isForwardedMessage) return { header: null, content: message.content };
+
+    const lines = message.content.split('\n');
+    const header = lines[0]; // "📩 Переслано от ..."
+
+    // Находим разделитель и берём контент после него
+    const separatorIndex = message.content.indexOf('─────────────');
+    if (separatorIndex !== -1) {
+      const content = message.content.substring(separatorIndex + 13).trim(); // +13 для длины разделителя
+      return { header, content };
+    }
+
+    // Если разделителя нет, возвращаем всё кроме первой строки
+    return { header, content: lines.slice(1).join('\n').trim() };
+  };
+
+  const { header: forwardHeader, content: messageContent } = parseForwardedMessage();
 
   const handleLongPress = () => {
     messageBubbleRef.current?.measureInWindow((x, y, width, height) => {
@@ -427,8 +449,18 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   {!isOwnMessage && <View style={[styles.tail, { backgroundColor: theme.messageOther }]} />}
   {isOwnMessage && <View style={[styles.tailOwn, { backgroundColor: theme.messageOwn }]} />}
 
+  {/* Заголовок пересланного сообщения */}
+  {forwardHeader && (
+    <View style={[styles.forwardHeader, { backgroundColor: isOwnMessage ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)' }]}>
+      <Ionicons name="arrow-redo-outline" size={14} color={theme.primary} style={{ marginRight: 6 }} />
+      <Text style={[styles.forwardHeaderText, { color: theme.primary }]}>
+        {forwardHeader.replace('📩 ', '')}
+      </Text>
+    </View>
+  )}
+
   {/* Имя отправителя для чужих сообщений */}
-  {!isOwnMessage && (
+  {!isOwnMessage && !forwardHeader && (
     <Text style={[styles.senderName, dynamicStyles.senderName]}>
       {sender?.name || `User ${message.sender_id}`}
     </Text>
@@ -454,26 +486,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   <View style={styles.messageContentRow}>
     {message.is_deleted ? (
       <View style={styles.deletedMessageContainer}>
-        <Ionicons name="trash-outline" size={16} color={theme.textTertiary} style={[styles.deletedIcon, { opacity: 0.6 }]} />
+        <Ionicons name="trash-outline" size={16} color={theme.textTertiary} style={{ opacity: 0.6, marginRight: 6 }} />
         <Text style={[styles.deletedText, { color: theme.textTertiary, opacity: 0.6 }]}>
-          {isAdmin ? '🗑️ Сообщение удалено' : 'Сообщение удалено'}
+          Сообщение удалено
         </Text>
-        {isAdmin && onRestore && (
-          <TouchableOpacity
-            style={[styles.restoreButton, { backgroundColor: theme.primary }]}
-            onPress={() => {
-              console.log('🔄 Restore button clicked for message:', message.id);
-              onRestore(message.id);
-            }}
-          >
-            <Text style={styles.restoreButtonText}>Восстановить</Text>
-          </TouchableOpacity>
-        )}
       </View>
     ) : (
       <View style={styles.messageContent}>
         {/* Render text first */}
-        {message.content && (
+        {messageContent && (
           <Text
             style={[
               styles.messageText,
@@ -481,7 +502,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               isOwnMessage && dynamicStyles.ownMessageText,
             ]}
           >
-            {message.content}
+            {messageContent}
           </Text>
         )}
 
@@ -640,9 +661,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   </View>
 </TouchableOpacity>
 
-
-
-
       {/* Контекстное меню */}
       <Modal
         visible={showContextMenu}
@@ -672,8 +690,27 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             {/* Разделитель */}
             <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
-            {/* Ответить */}
-            {onReply && (
+            {/* Для удаленных сообщений показываем только восстановить */}
+            {message.is_deleted ? (
+              <>
+                {/* Восстановить (только админы) */}
+                {isAdmin && onRestore && (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      setShowContextMenu(false);
+                      onRestore(message.id);
+                    }}
+                  >
+                    <Ionicons name="reload-outline" size={20} color={theme.primary} />
+                    <Text style={[styles.menuText, { color: theme.primary }]}>Восстановить</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Ответить */}
+                {onReply && (
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
@@ -756,7 +793,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             )}
 
             {/* Удалить */}
-            {onDelete && !isForwardedMessage && !message.is_deleted && (
+            {onDelete && !message.is_deleted && (
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
@@ -767,6 +804,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 <Ionicons name="trash-outline" size={20} color="#E94444" />
                 <Text style={[styles.menuText, { color: '#E94444' }]}>Удалить</Text>
               </TouchableOpacity>
+            )}
+              </>
             )}
           </View>
         </Pressable>
@@ -1006,6 +1045,19 @@ highlightedBubble: {
 forwardedBubble: {
   borderLeftWidth: 4,
 },
+forwardHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 6,
+  marginBottom: 8,
+},
+forwardHeaderText: {
+  fontSize: 12,
+  fontWeight: '600',
+  flex: 1,
+},
 
 blurOverlay: {
   flex: 1,
@@ -1056,16 +1108,12 @@ menuText: {
   fontWeight: '500',
 },
 deletedMessageContainer: {
-  flexDirection: 'column',
-  alignItems: 'flex-start',
-},
-deletedIcon: {
-  marginBottom: 4,
+  flexDirection: 'row',
+  alignItems: 'center',
 },
 deletedText: {
   fontSize: 14,
   fontStyle: 'italic',
-  marginBottom: 8,
 },
 restoreButton: {
   paddingHorizontal: 12,

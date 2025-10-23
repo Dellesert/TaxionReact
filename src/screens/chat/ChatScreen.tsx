@@ -44,7 +44,7 @@ type MessageListItem =
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const { chatId, chatName } = route.params;
   const chatIdNum = useMemo(() => Number(chatId), [chatId]);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   const listRef = useRef<FlatList<any>>(null);
   const [initialScrolled, setInitialScrolled] = useState(false);
@@ -93,36 +93,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     return [...msgs].reverse();
   }, [allMessages, chatIdNum]);
 
-  // Группируем сообщения по датам с разделителями
-  // Массив messages уже инвертирован: [новые -> старые]
-  // В inverted FlatList: index 0 отображается ВНИЗУ, последний index отображается ВВЕРХУ
+  // Теперь отображаем только сообщения без встроенных разделителей
+  // Разделители будут в floating sticky header
   const messageListItems: MessageListItem[] = useMemo(() => {
     if (messages.length === 0) return [];
 
     const items: MessageListItem[] = [];
 
-    messages.forEach((message, index) => {
-      const currentDateKey = getDateKey(message.created_at);
-      const nextMessage = messages[index + 1];
-      const nextDateKey = nextMessage ? getDateKey(nextMessage.created_at) : null;
-
-      // Если следующее сообщение (визуально ВЫШЕ) имеет другую дату,
-      // добавляем разделитель ПЕРЕД текущим сообщением
-      if (nextDateKey && currentDateKey !== nextDateKey) {
-        const currentDateLabel = getDateLabel(message.created_at);
-        items.push({ type: 'date', data: currentDateLabel });
-      }
-
-      // Добавляем само сообщение
+    messages.forEach((message) => {
       items.push({ type: 'message', data: message });
     });
-
-    // Добавляем разделитель для самого старого сообщения в конец массива
-    // Он будет последним в items[], визуально отобразится ВВЕРХУ
-    if (messages.length > 0) {
-      const oldestDateLabel = getDateLabel(messages[messages.length - 1].created_at);
-      items.push({ type: 'date', data: oldestDateLabel });
-    }
 
     return items;
   }, [messages]);
@@ -149,6 +129,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // Флаг для показа кнопки "scroll to bottom"
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
+  // State для sticky date header
+  const [currentDateLabel, setCurrentDateLabel] = useState<string | null>(null);
+  const [showDateHeader, setShowDateHeader] = useState(false);
+
   // Получаем имена печатающих пользователей (исключая текущего пользователя)
   const typingUserNames = useMemo(() => {
     const typing = typingUsers[chatIdNum] || [];
@@ -167,8 +151,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     // Если offset.y > 50, значит мы прокрутили вверх от самого низа
     if (contentOffset.y > 50) {
       setShowScrollToBottom(true);
+      setShowDateHeader(true);
     } else {
       setShowScrollToBottom(false);
+      setShowDateHeader(false);
     }
 
     // В inverted списке при скролле ВВЕРХ (к старым) offset.y увеличивается
@@ -563,6 +549,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const deleteMessageForUser = useChatStore((state) => state.deleteMessageForUser);
   const restoreMessage = useChatStore((state) => state.restoreMessage);
+  const deletePermanentMessage = useChatStore((state) => state.deletePermanentMessage);
   const pinMessage = useChatStore((state) => state.pinMessage);
   const unpinMessage = useChatStore((state) => state.unpinMessage);
   const getPinnedMessages = useChatStore((state) => state.getPinnedMessages);
@@ -589,6 +576,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     } catch (error: any) {
       console.error('Failed to restore message:', error);
       setError({ error: error.message || 'Failed to restore message' });
+    }
+  };
+
+  const handleDeletePermanent = async (messageId: number) => {
+    console.log('Delete message permanently:', messageId);
+    try {
+      await deletePermanentMessage(messageId);
+    } catch (error: any) {
+      console.error('Failed to permanently delete message:', error);
+      setError({ error: error.message || 'Failed to permanently delete message' });
     }
   };
 
@@ -635,26 +632,28 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
       // Получаем название чата, откуда пересылается сообщение
       const sourceChat = getChatById(chatIdNum);
-      const sourceChatName = sourceChat ? getChatDisplayName(sourceChat) : '';
+      let sourceChatName = '';
 
-      // Форматируем временную метку
-      const timestamp = new Date().toLocaleString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      // Добавляем название чата только для групповых чатов
+      if (sourceChat && sourceChat.type === 'group') {
+        const fullName = getChatDisplayName(sourceChat, currentUser?.id);
+        // Сокращаем длинные названия (максимум 25 символов)
+        sourceChatName = fullName.length > 25 ? fullName.substring(0, 25) + '...' : fullName;
+      }
 
-      // Форматируем пересланное сообщение с префиксом и разделителем
+      // Форматируем пересланное сообщение с префиксом
+      // Префикс будет парситься в MessageItem для отображения в шапке
       const forwardPrefix = `📩 Переслано от ${senderName}${sourceChatName ? ` (${sourceChatName})` : ''}`;
-      const timestampLine = `📅 ${timestamp}`;
       const separator = '\n─────────────\n';
-      const forwardedContent = `${forwardPrefix}\n${timestampLine}${separator}${forwardingMessage.content}\n\n⚠️ Это копия сообщения на момент пересылки`;
+      const forwardedContent = `${forwardPrefix}${separator}${forwardingMessage.content}`;
 
+      // Отправляем сообщение в целевой чат
       await sendMessage(targetChatId, forwardedContent);
 
-      console.log('Message forwarded successfully');
+      // Удаляем сообщение из текущего чата только для себя (сохраняя в оригинале)
+      await deleteMessageForUser(forwardingMessage.id, 'me');
+
+      console.log('Message forwarded successfully and deleted from current chat');
     } catch (error: any) {
       console.error('Failed to forward message:', error);
       setError({ error: error.message || 'Failed to forward message' });
@@ -694,6 +693,25 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
+  // Отслеживаем видимые элементы для определения текущей даты
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50, // Элемент считается видимым если видно 50%
+  });
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      // Берём последний видимый элемент сообщения (который сверху экрана в inverted списке)
+      const visibleMessages = viewableItems.filter((item: any) => item.item.type === 'message');
+      const topVisibleItem = visibleMessages[visibleMessages.length - 1];
+
+      if (topVisibleItem && topVisibleItem.item.data) {
+        const message = topVisibleItem.item.data;
+        const dateLabel = getDateLabel(message.created_at);
+        setCurrentDateLabel(dateLabel);
+      }
+    }
+  }).current;
+
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.background,
@@ -716,6 +734,18 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <>
+      {/* Floating sticky date header */}
+      {showDateHeader && currentDateLabel && (
+        <View style={[
+          styles.stickyDateHeader,
+          { backgroundColor: isDark ? 'rgba(60, 60, 65, 0.95)' : 'rgba(255, 255, 255, 0.95)' }
+        ]}>
+          <Text style={[styles.stickyDateText, { color: theme.text }]}>
+            {currentDateLabel}
+          </Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView
   style={[styles.container, dynamicStyles.container]}
   behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -775,6 +805,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onRestore={handleRestore}
+              onDeletePermanent={handleDeletePermanent}
               onPin={handlePin}
               onUnpin={handleUnpin}
               onForward={handleForward}
@@ -801,6 +832,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       // Используем onScroll вместо onEndReached для надежности
       onScroll={handleScroll}
       scrollEventThrottle={16}
+      // Отслеживаем видимые элементы для sticky date header
+      onViewableItemsChanged={onViewableItemsChanged}
+      viewabilityConfig={viewabilityConfig.current}
       // Обработчик ошибки прокрутки
       onScrollToIndexFailed={(info) => {
         console.log('Failed to scroll to index:', info);
@@ -908,6 +942,26 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     zIndex: 999,
+  },
+  stickyDateHeader: {
+    position: 'absolute',
+    top: 80,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 998,
+  },
+  stickyDateText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });
 

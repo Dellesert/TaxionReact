@@ -409,6 +409,14 @@ export const restoreMessage = async (messageId: number): Promise<void> => {
 };
 
 /**
+ * Permanently delete message (admin only)
+ * @param messageId - ID of message to permanently delete
+ */
+export const deletePermanentMessage = async (messageId: number): Promise<void> => {
+  await api.delete(API_ENDPOINTS.MESSAGE.DELETE_PERMANENT(messageId));
+};
+
+/**
  * Pin message in chat
  * @param messageId - ID of message to pin
  */

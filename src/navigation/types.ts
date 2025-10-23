@@ -29,12 +29,24 @@ export type TaskStackParamList = {
   };
 };
 
+// Poll Stack
+export type PollStackParamList = {
+  PollList: undefined;
+  PollDetail: {
+    pollId: number;
+  };
+  CreatePoll: undefined;
+  EditPoll: {
+    pollId: number;
+  };
+};
+
 // Main Tab Navigator
 export type MainTabParamList = {
   Chats: NavigatorScreenParams<ChatStackParamList>;
   Tasks: NavigatorScreenParams<TaskStackParamList>;
   Calendar: undefined;
-  PollList: undefined;
+  Polls: NavigatorScreenParams<PollStackParamList>;
   Profile: undefined;
 };
 

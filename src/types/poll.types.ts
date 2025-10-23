@@ -20,23 +20,33 @@ export interface PollOption {
   id: number;
   poll_id: number;
   text: string;
-  order: number;
-  votes_count: number;
-  percentage: number;
+  description?: string;
+  position: number;
+  color?: string;
+  image_url?: string;
+  // Computed fields
+  vote_count?: number;
+  vote_percent?: number;
+  rating_avg?: number;
+  ranking_avg?: number;
   created_at: ISODateString;
+  updated_at: ISODateString;
 }
 
 // Poll Vote Interface
 export interface PollVote {
   id: number;
   poll_id: number;
-  user_id: number;
+  option_id?: number; // For single/multiple choice polls
+  user_id?: number; // Null for anonymous votes
   user?: User;
-  option_ids?: number[]; // For single/multiple choice
-  ranking?: number[]; // For ranking (array of option_ids in order)
-  rating?: number; // For rating (1-5 or 1-10)
-  text_answer?: string; // For open text
-  voted_at: ISODateString;
+  is_anonymous: boolean;
+  text_value?: string; // For open_text polls
+  rating_value?: number; // For rating polls
+  ranking_value?: number; // For ranking polls (position in rank)
+  comment?: string; // Additional comment
+  created_at: ISODateString;
+  updated_at: ISODateString;
 }
 
 // Poll Comment Interface
@@ -60,19 +70,23 @@ export interface Poll {
   visibility: PollVisibility;
   start_time?: ISODateString;
   end_time?: ISODateString;
-  is_anonymous: boolean;
-  allow_comments: boolean;
-  allow_multiple_votes: boolean;
+  allow_anonymous: boolean; // Изменено с is_anonymous для соответствия бэкенду
+  allow_multiple_vote: boolean; // Изменено с allow_multiple_votes
+  require_comment: boolean;
+  show_results: boolean;
+  show_results_after: boolean;
   created_by: number;
   creator?: User;
   options: PollOption[];
   total_votes: number;
+  total_voters: number;
   user_has_voted: boolean;
   user_vote?: PollVote;
   comments?: PollComment[];
-  comments_count: number;
+  comments_count?: number;
   department_id?: number;
-  invited_user_ids?: number[];
+  category?: string;
+  participant_rate?: number;
   created_at: ISODateString;
   updated_at: ISODateString;
 }
@@ -86,12 +100,18 @@ export interface CreatePollDto {
   visibility?: PollVisibility;
   start_time?: ISODateString;
   end_time?: ISODateString;
-  is_anonymous?: boolean;
-  allow_comments?: boolean;
-  allow_multiple_votes?: boolean;
-  options: {
+  allow_anonymous?: boolean;
+  allow_multiple_vote?: boolean;
+  require_comment?: boolean;
+  show_results?: boolean;
+  show_results_after?: boolean;
+  category?: string;
+  options?: {
     text: string;
-    order: number;
+    description?: string;
+    position?: number;
+    color?: string;
+    image_url?: string;
   }[];
   department_id?: number;
   invited_user_ids?: number[];
@@ -105,11 +125,17 @@ export interface UpdatePollDto {
   visibility?: PollVisibility;
   start_time?: ISODateString;
   end_time?: ISODateString;
-  allow_comments?: boolean;
+  require_comment?: boolean;
+  show_results?: boolean;
+  show_results_after?: boolean;
+  category?: string;
   options?: {
     id?: number; // If id exists, update option, otherwise create new
     text: string;
-    order: number;
+    description?: string;
+    position?: number;
+    color?: string;
+    image_url?: string;
   }[];
 }
 
@@ -120,10 +146,13 @@ export interface UpdatePollStatusDto {
 
 // Vote DTO
 export interface VoteDto {
-  option_ids?: number[]; // For single/multiple choice
-  ranking?: number[]; // For ranking
-  rating?: number; // For rating
-  text_answer?: string; // For open text
+  option_id?: number; // For single choice
+  option_ids?: number[]; // For multiple choice
+  rating_value?: number; // For rating
+  ranking_value?: number; // For ranking
+  text_value?: string; // For open text
+  comment?: string; // Optional comment
+  is_anonymous?: boolean;
 }
 
 // Add Poll Comment DTO

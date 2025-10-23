@@ -73,6 +73,7 @@ export const API_ENDPOINTS = {
     BY_ID: (id: number) => `/messages/${id}`,
     UPDATE: (id: number) => `/messages/${id}`,
     DELETE: (id: number) => `/messages/${id}`,
+    DELETE_PERMANENT: (id: number) => `/messages/${id}/permanent`,
     RESTORE: (id: number) => `/messages/${id}/restore`,
     PIN: (id: number) => `/messages/${id}/pin`,
     UNPIN: (id: number) => `/messages/${id}/unpin`,
@@ -137,10 +138,12 @@ export const API_ENDPOINTS = {
     UPDATE_STATUS: (id: number) => `/polls/${id}/status`,
     VOTE: (id: number) => `/polls/${id}/vote`,
     RESULTS: (id: number) => `/polls/${id}/results`,
-    MY_VOTES: (id: number) => `/polls/${id}/votes`,
+    MY_VOTES: (id: number) => `/polls/${id}/my-votes`, // Исправлено с /votes на /my-votes
     COMMENTS: (id: number) => `/polls/${id}/comments`,
     ADD_COMMENT: (id: number) => `/polls/${id}/comments`,
     DELETE_COMMENT: (pollId: number, commentId: number) => `/polls/${pollId}/comments/${commentId}`,
+    SEARCH: '/polls/search',
+    STATS: '/polls/stats',
   },
 
   // Notification

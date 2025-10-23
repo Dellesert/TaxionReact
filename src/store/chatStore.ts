@@ -33,6 +33,7 @@ interface ChatState {
   deleteMessageForUser: (messageId: number, deleteFor: 'everyone' | 'me') => Promise<void>;
   clearChatHistory: (chatId: number) => Promise<void>;
   restoreMessage: (messageId: number) => Promise<void>;
+  deletePermanentMessage: (messageId: number) => Promise<void>;
   pinMessage: (messageId: number) => Promise<void>;
   unpinMessage: (messageId: number) => Promise<void>;
   getPinnedMessages: (chatId: number) => Message[];
@@ -427,6 +428,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  deletePermanentMessage: async (messageId: number) => {
+    try {
+      await chatApi.deletePermanentMessage(messageId);
+      // Удаляем сообщение локально из всех чатов
+      set((state) => {
+        const newMessages = { ...state.messages };
+        for (const chatId in newMessages) {
+          newMessages[chatId] = newMessages[chatId].filter(msg => msg.id !== messageId);
+        }
+        return { messages: newMessages };
+      });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to permanently delete message' });
+      throw error;
+    }
+  },
+
   pinMessage: async (messageId: number) => {
     try {
       const updatedMessage = await chatApi.pinMessage(messageId);
@@ -799,8 +817,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
-    set((state) => ({
-      messages: {
+    set((state) => {
+      // Обновляем сообщения в чате
+      const updatedMessages = {
         ...state.messages,
         [chatId]: (state.messages[chatId] || []).map((msg) => {
           if (msg.id === messageId) {
@@ -830,8 +849,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
           return msg;
         }),
-      },
-    }));
+      };
+
+      // Также обновляем last_message в списке чатов, если это последнее сообщение
+      const updatedChats = state.chats.map((chat) => {
+        if (chat.id === chatId && chat.last_message && chat.last_message.id === messageId) {
+          const currentReadBy = chat.last_message.read_by || [];
+          const alreadyRead = currentReadBy.includes(readerId);
+
+          if (!alreadyRead) {
+            return {
+              ...chat,
+              last_message: {
+                ...chat.last_message,
+                read_by: [...currentReadBy, readerId],
+              },
+            };
+          }
+        }
+        return chat;
+      });
+
+      return {
+        messages: updatedMessages,
+        chats: updatedChats,
+      };
+    });
   },
 
   handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number) => {

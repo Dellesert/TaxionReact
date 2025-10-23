@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { useChatStore } from '@store/chatStore';
+import { useAuthStore } from '@store/authStore';
 import { Chat, Message } from '@types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { getChatDisplayName, getChatDisplayAvatar } from '@utils/chatUtils';
@@ -31,6 +32,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const chats = useChatStore((state) => state.chats);
+  const currentUser = useAuthStore((state) => state.user);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [isForwarding, setIsForwarding] = useState(false);
@@ -39,7 +41,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
     if (visible) {
       // Фильтруем чаты по поисковому запросу
       const filtered = chats.filter((chat) => {
-        const displayName = getChatDisplayName(chat).toLowerCase();
+        const displayName = getChatDisplayName(chat, currentUser?.id).toLowerCase();
         return displayName.includes(searchQuery.toLowerCase());
       });
       setFilteredChats(filtered);
@@ -47,7 +49,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
       setSearchQuery('');
       setIsForwarding(false);
     }
-  }, [visible, chats, searchQuery]);
+  }, [visible, chats, searchQuery, currentUser]);
 
   const handleForward = async (chatId: number) => {
     setIsForwarding(true);
@@ -62,8 +64,8 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
   };
 
   const renderChatItem = ({ item }: { item: Chat }) => {
-    const displayName = getChatDisplayName(item);
-    const avatarUrl = getChatDisplayAvatar(item);
+    const displayName = getChatDisplayName(item, currentUser?.id);
+    const avatarUrl = getChatDisplayAvatar(item, currentUser?.id);
 
     return (
       <TouchableOpacity

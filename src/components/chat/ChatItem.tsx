@@ -41,6 +41,39 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
     return companion?.status === 'online';
   };
 
+  // Получаем статус последнего сообщения (только для сообщений текущего пользователя)
+  const getMessageStatus = () => {
+    if (!chat.last_message || chat.last_message.sender_id !== currentUser?.id) {
+      return null; // Не показываем статус для чужих сообщений
+    }
+
+    const message = chat.last_message;
+
+    // Если сообщение в процессе отправки
+    if (message.sending) {
+      return 'sending';
+    }
+
+    // Подсчитываем количество участников (кроме отправителя)
+    const otherMembersCount = (chat.members?.length || 1) - 1;
+
+    // Фильтруем read_by, исключая отправителя (на случай если сервер включает его)
+    const readByOthers = (message.read_by || []).filter(userId => userId !== message.sender_id);
+
+    // Если все прочитали (кроме отправителя)
+    if (readByOthers.length >= otherMembersCount && otherMembersCount > 0) {
+      return 'read';
+    }
+
+    // Если доставлено хотя бы кому-то
+    if (message.delivered_to && message.delivered_to.length > 0) {
+      return 'delivered';
+    }
+
+    // Отправлено (но еще не доставлено)
+    return 'sent';
+  };
+
   const getLastMessagePreview = () => {
     if (!chat.last_message) return 'Нет сообщений';
 
@@ -214,9 +247,43 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
           </View>
 
           <View style={styles.footer}>
-            <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
-              {getLastMessagePreview()}
-            </Text>
+            <View style={styles.previewContainer}>
+              {/* Индикатор статуса сообщения (только для своих сообщений) */}
+              {(() => {
+                const status = getMessageStatus();
+                if (!status) return null;
+
+                let iconName: keyof typeof Ionicons.glyphMap = 'checkmark';
+                let iconColor = theme.textTertiary;
+
+                if (status === 'sending') {
+                  iconName = 'time-outline';
+                  iconColor = theme.textTertiary;
+                } else if (status === 'sent') {
+                  iconName = 'checkmark';
+                  iconColor = theme.textTertiary;
+                } else if (status === 'delivered') {
+                  iconName = 'checkmark-done';
+                  iconColor = theme.textTertiary;
+                } else if (status === 'read') {
+                  iconName = 'checkmark-done';
+                  iconColor = theme.primary;
+                }
+
+                return (
+                  <Ionicons
+                    name={iconName}
+                    size={14}
+                    color={iconColor}
+                    style={styles.statusIcon}
+                  />
+                );
+              })()}
+
+              <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
+                {getLastMessagePreview()}
+              </Text>
+            </View>
 
             <View style={styles.badges}>
               {chat.is_muted && (
@@ -312,7 +379,7 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
             </View>
           </Pressable>
         </BlurView>
-      </Modal >
+      </Modal>
     </>
   );
 };
@@ -383,6 +450,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  previewContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statusIcon: {
+    marginTop: 1,
   },
   preview: {
     fontSize: 14,
