@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import {
   View,
   FlatList,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import { TypingIndicator } from '@components/chat/TypingIndicator';
 import { Avatar } from '@components/common/Avatar';
 import { PinnedMessageBanner } from '@components/chat/PinnedMessageBanner';
 import { DateSeparator } from '@components/chat/DateSeparator';
+import { MessageSkeleton } from '@components/chat/MessageSkeleton';
 import { useTheme } from '@hooks/useTheme';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
@@ -31,7 +33,6 @@ import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion, get
 import { getDateLabel, getDateKey } from '@utils/dateHelpers';
 
 // ✅ ДОБАВЬ ЭТО
-import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
@@ -83,7 +84,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   // ✅ ДОБАВЬ ЭТО
-  const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
 
   // Инвертируем массив для inverted FlatList
@@ -401,6 +401,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [chatIdNum]); // ✅ ИСПРАВЛЕНИЕ: Удалены setError, getChatById, setActiveChat из dependencies
 
+
   // Scroll to end (newest messages at bottom) - DISABLED
   // Используем onContentSizeChange вместо useEffect для надежного скролла
   const scrollToEndOnce = useRef(false);
@@ -625,6 +626,46 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       console.log('Forwarding message', forwardingMessage.id, 'to chat', targetChatId);
 
+      // Если это опрос - пересылаем как опрос
+      if (forwardingMessage.message_type === 'poll' && forwardingMessage.poll_data) {
+        console.log('📊 Forwarding poll message:', forwardingMessage.poll_data);
+
+        // Получаем имя отправителя оригинального сообщения
+        const senderName = forwardingMessage.sender?.name ||
+                          forwardingMessage.sender?.email?.split('@')[0] ||
+                          `User ${forwardingMessage.sender_id}`;
+
+        // Получаем название чата, откуда пересылается опрос
+        const sourceChat = getChatById(chatIdNum);
+        let sourceChatName = '';
+
+        // Добавляем название чата только для групповых чатов
+        if (sourceChat && sourceChat.type === 'group') {
+          const fullName = getChatDisplayName(sourceChat, currentUser?.id);
+          sourceChatName = fullName.length > 25 ? fullName.substring(0, 25) + '...' : fullName;
+        }
+
+        // Форматируем контент с информацией о пересылке
+        const forwardPrefix = `📩 Переслано от ${senderName}${sourceChatName ? ` (${sourceChatName})` : ''}`;
+        const separator = '\n─────────────\n';
+        const forwardedContent = `${forwardPrefix}${separator}${forwardingMessage.content}`;
+
+        await sendMessage(targetChatId, forwardedContent, undefined, undefined, {
+          type: 'poll',
+          poll_data: forwardingMessage.poll_data,
+        });
+
+        // Пытаемся удалить сообщение из текущего чата только для себя
+        try {
+          await deleteMessageForUser(forwardingMessage.id, 'me');
+          console.log('Poll forwarded successfully and deleted from current chat');
+        } catch (deleteError) {
+          console.warn('Poll forwarded successfully, but failed to delete from current chat:', deleteError);
+          // Не пробрасываем ошибку - пересылка успешна, удаление необязательно
+        }
+        return;
+      }
+
       // Получаем имя отправителя оригинального сообщения
       const senderName = forwardingMessage.sender?.name ||
                         forwardingMessage.sender?.email?.split('@')[0] ||
@@ -658,6 +699,18 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       console.error('Failed to forward message:', error);
       setError({ error: error.message || 'Failed to forward message' });
       throw error; // Пробрасываем ошибку для обработки в модальном окне
+    }
+  };
+
+  const handlePollPress = (pollId: number) => {
+    console.log('📊 Opening poll:', pollId);
+    // Переходим на экран опроса на корневом уровне навигации
+    // @ts-ignore - navigation.getParent() дает доступ к root navigator
+    const rootNavigation = navigation.getParent();
+    if (rootNavigation) {
+      rootNavigation.navigate('PollDetail', { pollId, fromChat: true });
+    } else {
+      console.error('❌ Root navigation not found');
     }
   };
 
@@ -724,16 +777,11 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     },
   });
 
-  if (isLoading && messages.length === 0) {
-    return (
-      <View style={[styles.loadingContainer, dynamicStyles.loadingContainer]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
-  }
+  // Показываем skeleton'ы если сообщения еще не загружены
+  const showSkeletons = isLoading && messages.length === 0;
 
   return (
-    <>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Floating sticky date header */}
       {showDateHeader && currentDateLabel && (
         <View style={[
@@ -747,10 +795,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       )}
 
       <KeyboardAvoidingView
-  style={[styles.container, dynamicStyles.container]}
-  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-  keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
->
+        style={styles.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 114 : 0}
+      >
   <View style={styles.inner}>
     {/* Индикатор печатающих пользователей */}
     <TypingIndicator userNames={typingUserNames} />
@@ -764,18 +812,26 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       />
     )}
 
-    <FlatList
-      ref={listRef}
-      data={messageListItems}
-      extraData={messagesKey}
-      renderItem={({ item, index }) => {
-        // Рендер разделителя даты
-        if (item.type === 'date') {
-          return <DateSeparator date={item.data} />;
-        }
+    {/* Показываем skeleton'ы пока грузятся сообщения */}
+    {showSkeletons ? (
+      <View style={styles.skeletonsContainer}>
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <MessageSkeleton key={i} isOwn={i % 3 === 0} />
+        ))}
+      </View>
+    ) : (
+      <FlatList
+        ref={listRef}
+        data={messageListItems}
+        extraData={messagesKey}
+        renderItem={({ item, index }) => {
+          // Рендер разделителя даты
+          if (item.type === 'date') {
+            return <DateSeparator date={item.data} />;
+          }
 
-        // Рендер сообщения
-        const message = item.data;
+          // Рендер сообщения
+          const message = item.data;
 
         // Показываем баннер только при первом входе в чат (showUnreadBanner=true)
         // После автоматической отметки сообщений как прочитанных баннер скрывается
@@ -810,6 +866,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
               onUnpin={handleUnpin}
               onForward={handleForward}
               onReplyPress={handleReplyPress}
+              onPollPress={handlePollPress}
               isHighlighted={message.id === highlightedMessageId}
               userRole={userRole}
             />
@@ -857,6 +914,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : null
       }
     />
+    )}
 
     {/* Floating кнопка "scroll to bottom" */}
     {showScrollToBottom && (
@@ -899,7 +957,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   </View>
 </KeyboardAvoidingView>
 
-
       <ChatMembersModal
         visible={membersModalVisible}
         chatId={chatIdNum}
@@ -912,15 +969,31 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onClose={() => setForwardingMessage(null)}
         onForward={handleForwardToChat}
       />
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { flex: 1 },
+  flex1: { flex: 1 },
   loadingContainer: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
+  },
+  skeletonsContainer: {
+    flex: 1,
+    paddingVertical: 20,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10000,
+  },
+  contentContainer: {
+    flex: 1,
   },
   messagesList: { paddingVertical: 20 },
   emptyContainer: {

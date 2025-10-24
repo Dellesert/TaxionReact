@@ -3,12 +3,12 @@
  * Экран для создания нового чата
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
   TextInput,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -16,32 +16,66 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
-import { User } from '../../types/user.types';
+import { useAuthStore } from '@store/authStore';
+import { User, Department } from '../../types/user.types';
 import { ChatType } from '../../types/chat.types';
-import { getUsers } from '@api/user.api';
+import { getUsers, getDepartments } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@utils/mockData';
+import { useTheme } from '@hooks/useTheme';
 
 type CreateChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'CreateChat'>;
 
 const CreateChatScreen: React.FC = () => {
   const navigation = useNavigation<CreateChatNavigationProp>();
+  const route = useRoute<RouteProp<ChatStackParamList, 'CreateChat'>>();
   const { createChat } = useChatStore();
+  const { theme } = useTheme();
 
-  const [chatType, setChatType] = useState<ChatType>('group');
+  const [chatType, setChatType] = useState<ChatType>(route.params?.initialChatType || 'group');
   const [chatName, setChatName] = useState('');
   const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Map<number, Department>>(new Map());
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [existingPrivateChatUserIds, setExistingPrivateChatUserIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadUsers();
+    loadExistingPrivateChats();
   }, []);
+
+  const loadExistingPrivateChats = async () => {
+    try {
+      const currentUser = useAuthStore.getState().user;
+      if (!currentUser) return;
+
+      // Get chats from store
+      const { chats } = useChatStore.getState();
+
+      // Find all private chats and extract the other user's ID
+      const privateChatUserIds = new Set<number>();
+      chats.forEach(chat => {
+        if (chat.type === 'private' && chat.members) {
+          // Find the other user (not the current user)
+          const otherMember = chat.members.find(member => member.user_id !== currentUser.id);
+          if (otherMember) {
+            privateChatUserIds.add(otherMember.user_id);
+          }
+        }
+      });
+
+      console.log('🔍 Found existing private chats with users:', Array.from(privateChatUserIds));
+      setExistingPrivateChatUserIds(privateChatUserIds);
+    } catch (error) {
+      console.error('❌ Failed to load existing private chats:', error);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -84,10 +118,17 @@ const CreateChatScreen: React.FC = () => {
 
         if (usersList.length > 0) {
           console.log('First user sample:', usersList[0]);
+          console.log('Department info:', {
+            department_id: usersList[0].department_id,
+            department: usersList[0].department,
+          });
         } else {
           console.warn('⚠️ No users found in response');
         }
       }
+
+      console.log('📊 Users with departments:', usersList.filter(u => u.department).length);
+      console.log('📊 Users with department_id:', usersList.filter(u => u.department_id).length);
 
       setUsers(usersList);
     } catch (error: any) {
@@ -115,10 +156,20 @@ const CreateChatScreen: React.FC = () => {
   };
 
   const toggleUserSelection = (userId: number) => {
-    if (selectedUsers.includes(userId)) {
-      setSelectedUsers(selectedUsers.filter((id) => id !== userId));
+    if (chatType === 'private') {
+      // Для личного чата - заменяем выбор (radio behavior)
+      if (selectedUsers.includes(userId)) {
+        setSelectedUsers([]); // Снимаем выбор
+      } else {
+        setSelectedUsers([userId]); // Заменяем на нового пользователя
+      }
     } else {
-      setSelectedUsers([...selectedUsers, userId]);
+      // Для группового чата - добавляем/удаляем (checkbox behavior)
+      if (selectedUsers.includes(userId)) {
+        setSelectedUsers(selectedUsers.filter((id) => id !== userId));
+      } else {
+        setSelectedUsers([...selectedUsers, userId]);
+      }
     }
   };
 
@@ -183,14 +234,95 @@ const CreateChatScreen: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter((user) => {
-    if (!searchQuery) return true;
-    const searchText = `${user.name} ${user.email}`.toLowerCase();
-    return searchText.includes(searchQuery.toLowerCase());
-  });
+  const filteredUsers = useMemo(() => {
+    const currentUser = useAuthStore.getState().user;
+
+    return users.filter((user) => {
+      // Filter out current user
+      if (currentUser && user.id === currentUser.id) {
+        return false;
+      }
+
+      // For private chats, filter out users who already have a private chat with current user
+      if (chatType === 'private' && existingPrivateChatUserIds.has(user.id)) {
+        return false;
+      }
+
+      // Apply search query
+      if (searchQuery) {
+        const searchText = `${user.name} ${user.email}`.toLowerCase();
+        return searchText.includes(searchQuery.toLowerCase());
+      }
+
+      return true;
+    });
+  }, [users, searchQuery, chatType, existingPrivateChatUserIds]);
+
+  // Группируем пользователей по подразделениям
+  const userSections = useMemo(() => {
+    const currentUser = useAuthStore.getState().user;
+    const currentUserDepartmentId = currentUser?.department_id;
+
+    // Группируем пользователей
+    const byDepartment = new Map<number | null, User[]>();
+
+    filteredUsers.forEach((user) => {
+      const deptId = user.department_id || null;
+      if (!byDepartment.has(deptId)) {
+        byDepartment.set(deptId, []);
+      }
+      byDepartment.get(deptId)!.push(user);
+    });
+
+    const sections: Array<{ title: string; data: User[]; departmentId: number | null }> = [];
+
+    // Сначала добавляем подразделение текущего пользователя
+    if (currentUserDepartmentId && byDepartment.has(currentUserDepartmentId)) {
+      const users = byDepartment.get(currentUserDepartmentId)!;
+      const departmentName = users[0]?.department?.name || 'Мое подразделение';
+      sections.push({
+        title: departmentName,
+        data: users,
+        departmentId: currentUserDepartmentId,
+      });
+      byDepartment.delete(currentUserDepartmentId);
+    }
+
+    // Затем добавляем остальные подразделения (с названием)
+    const departmentsWithNames: Array<{ id: number; name: string; users: User[] }> = [];
+    byDepartment.forEach((users, deptId) => {
+      if (deptId !== null) {
+        const departmentName = users[0]?.department?.name || `Подразделение ${deptId}`;
+        departmentsWithNames.push({ id: deptId, name: departmentName, users });
+      }
+    });
+
+    // Сортируем по названию
+    departmentsWithNames.sort((a, b) => a.name.localeCompare(b.name));
+    departmentsWithNames.forEach((dept) => {
+      sections.push({
+        title: dept.name,
+        data: dept.users,
+        departmentId: dept.id,
+      });
+    });
+
+    // В конце добавляем пользователей без подразделения
+    if (byDepartment.has(null)) {
+      const users = byDepartment.get(null)!;
+      sections.push({
+        title: 'Без подразделения',
+        data: users,
+        departmentId: null,
+      });
+    }
+
+    return sections;
+  }, [filteredUsers]);
 
   const renderUserItem = ({ item }: { item: User }) => {
     const isSelected = selectedUsers.includes(item.id);
+    const isPrivateChat = chatType === 'private';
 
     // Get initials for avatar
     const getInitials = (name: string) => {
@@ -215,6 +347,22 @@ const CreateChatScreen: React.FC = () => {
       }
     };
 
+    // Get role text in Russian
+    const getRoleText = () => {
+      switch (item.role) {
+        case 'super_admin':
+          return 'Супер администратор';
+        case 'admin':
+          return 'Администратор';
+        case 'manager':
+          return 'Менеджер';
+        case 'employee':
+          return 'Сотрудник';
+        default:
+          return 'Пользователь';
+      }
+    };
+
     return (
       <TouchableOpacity
         style={[styles.userItem, isSelected && styles.userItemSelected]}
@@ -229,13 +377,20 @@ const CreateChatScreen: React.FC = () => {
           </View>
           <View style={styles.userDetails}>
             <Text style={styles.userName}>{item.name}</Text>
-            <Text style={styles.userEmail}>{item.email}</Text>
+            <Text style={styles.userEmail}>{getRoleText()}</Text>
             {item.position && <Text style={styles.userPosition}>{item.position}</Text>}
           </View>
         </View>
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
-        </View>
+        {/* Radio для личного чата, checkbox для группового */}
+        {isPrivateChat ? (
+          <View style={[styles.radio, isSelected && styles.radioSelected]}>
+            {isSelected && <View style={styles.radioDot} />}
+          </View>
+        ) : (
+          <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+            {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -244,12 +399,249 @@ const CreateChatScreen: React.FC = () => {
     ? selectedUsers.length === 1
     : chatName.trim() && selectedUsers.length > 0;
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.background,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    backButton: {
+      padding: 4,
+    },
+    headerTitle: {
+      flex: 1,
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.text,
+      marginLeft: 12,
+    },
+    createButton: {
+      backgroundColor: theme.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+      minWidth: 80,
+      alignItems: 'center',
+    },
+    createButtonDisabled: {
+      backgroundColor: theme.backgroundTertiary,
+    },
+    createButtonText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    section: {
+      backgroundColor: theme.card,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textSecondary,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+    },
+    chatNameInput: {
+      fontSize: 16,
+      color: theme.text,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    charCount: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginTop: 4,
+      textAlign: 'right',
+    },
+    selectedCount: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.backgroundSecondary,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      gap: 8,
+    },
+    selectedCountText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.primary,
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.card,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    searchInput: {
+      flex: 1,
+      marginLeft: 8,
+      fontSize: 16,
+      color: theme.text,
+    },
+    listContent: {
+      paddingVertical: 8,
+    },
+    userItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.card,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    userItemSelected: {
+      backgroundColor: theme.backgroundSecondary,
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    avatarContainer: {
+      position: 'relative',
+    },
+    avatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: theme.backgroundTertiary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    statusDot: {
+      position: 'absolute',
+      bottom: 2,
+      right: 2,
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: theme.card,
+    },
+    userDetails: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    userName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 2,
+    },
+    userEmail: {
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
+    userPosition: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginTop: 2,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxSelected: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    radio: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    radioSelected: {
+      borderColor: theme.primary,
+    },
+    radioDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: theme.primary,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+      backgroundColor: theme.background,
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
+    emptyContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 48,
+    },
+    emptyText: {
+      fontSize: 16,
+      color: theme.textTertiary,
+      marginTop: 16,
+    },
+    sectionHeaderContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: theme.backgroundSecondary,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    sectionHeaderText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      textTransform: 'uppercase',
+    },
+    sectionHeaderCount: {
+      fontSize: 12,
+      color: theme.textTertiary,
+    },
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Новый чат</Text>
         <TouchableOpacity
@@ -268,62 +660,6 @@ const CreateChatScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Chat Type Selector */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Тип чата</Text>
-        <View style={styles.chatTypeContainer}>
-          <TouchableOpacity
-            style={[
-              styles.chatTypeButton,
-              chatType === 'private' && styles.chatTypeButtonActive,
-            ]}
-            onPress={() => {
-              setChatType('private');
-              // Очищаем выбор если больше одного пользователя
-              if (selectedUsers.length > 1) {
-                setSelectedUsers([]);
-              }
-            }}
-          >
-            <Ionicons
-              name="person"
-              size={20}
-              color={chatType === 'private' ? '#E94444' : '#6B7280'}
-            />
-            <Text
-              style={[
-                styles.chatTypeText,
-                chatType === 'private' && styles.chatTypeTextActive,
-              ]}
-            >
-              Личный
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.chatTypeButton,
-              chatType === 'group' && styles.chatTypeButtonActive,
-            ]}
-            onPress={() => setChatType('group')}
-          >
-            <Ionicons
-              name="people"
-              size={20}
-              color={chatType === 'group' ? '#E94444' : '#6B7280'}
-            />
-            <Text
-              style={[
-                styles.chatTypeText,
-                chatType === 'group' && styles.chatTypeTextActive,
-              ]}
-            >
-              Групповой
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
       {/* Chat Name Input - только для групповых чатов */}
       {chatType === 'group' && (
         <View style={styles.section}>
@@ -331,7 +667,7 @@ const CreateChatScreen: React.FC = () => {
           <TextInput
             style={styles.chatNameInput}
             placeholder="Введите название..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={theme.inputPlaceholder}
             value={chatName}
             onChangeText={setChatName}
             maxLength={50}
@@ -340,38 +676,29 @@ const CreateChatScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Selected Users Count or Personal Chat Info */}
-      {chatType === 'private' && selectedUsers.length === 0 && (
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={20} color="#3B82F6" />
-          <Text style={styles.infoText}>
-            Выберите одного пользователя для личного чата
-          </Text>
-        </View>
-      )}
-      {selectedUsers.length > 0 && (
+      {/* Selected Users Count */}
+      {selectedUsers.length > 0 && chatType === 'group' && (
         <View style={styles.selectedCount}>
-          <Ionicons name="people" size={20} color="#E94444" />
+          <Ionicons name="people" size={20} color={theme.primary} />
           <Text style={styles.selectedCountText}>
             Выбрано: {selectedUsers.length}
-            {chatType === 'private' && selectedUsers.length > 1 && ' (должен быть только 1)'}
           </Text>
         </View>
       )}
 
       {/* Search */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#9CA3AF" />
+        <Ionicons name="search" size={20} color={theme.textTertiary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Поиск участников..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={theme.inputPlaceholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
           </TouchableOpacity>
         )}
       </View>
@@ -379,18 +706,27 @@ const CreateChatScreen: React.FC = () => {
       {/* Users List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#E94444" />
+          <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>Загрузка пользователей...</Text>
         </View>
       ) : (
-        <FlatList
-          data={filteredUsers}
+        <SectionList
+          sections={userSections}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderUserItem}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeaderText}>{section.title}</Text>
+              <Text style={styles.sectionHeaderCount}>
+                {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+              </Text>
+            </View>
+          )}
           contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={64} color="#D1D5DB" />
+              <Ionicons name="people-outline" size={64} color={theme.border} />
               <Text style={styles.emptyText}>Пользователи не найдены</Text>
             </View>
           }
@@ -399,245 +735,5 @@ const CreateChatScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF', // Цвет заголовка распространяется на область Dynamic Island
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginLeft: 12,
-  },
-  createButton: {
-    backgroundColor: '#E94444',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  createButtonDisabled: {
-    backgroundColor: '#D1D5DB',
-  },
-  createButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  chatNameInput: {
-    fontSize: 16,
-    color: '#111827',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  charCount: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
-    textAlign: 'right',
-  },
-  chatTypeContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  chatTypeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  chatTypeButtonActive: {
-    borderColor: '#E94444',
-    backgroundColor: '#FEF2F2',
-  },
-  chatTypeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  chatTypeTextActive: {
-    color: '#E94444',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#3B82F6',
-    flex: 1,
-  },
-  selectedCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  selectedCountText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#E94444',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-    color: '#111827',
-  },
-  listContent: {
-    paddingVertical: 8,
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  userItemSelected: {
-    backgroundColor: '#FEF2F2',
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  statusDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  userDetails: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  userPosition: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 2,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxSelected: {
-    backgroundColor: '#E94444',
-    borderColor: '#E94444',
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 16,
-  },
-});
 
 export default CreateChatScreen;

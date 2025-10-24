@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Alert, Modal, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -70,6 +70,7 @@ const ChatListScreen: React.FC = () => {
   const [selectedChats, setSelectedChats] = useState<number[]>([]);
   const [isConnected, setIsConnected] = useState(websocketService.isConnected());
   const [chatFilter, setChatFilter] = useState<ChatFilter>('all');
+  const [isCreateMenuVisible, setIsCreateMenuVisible] = useState(false);
 
   useEffect(() => {
     loadChats();
@@ -169,7 +170,13 @@ const ChatListScreen: React.FC = () => {
   };
 
   const handleNewChat = () => {
-    navigation.navigate('CreateChat');
+    setIsCreateMenuVisible(true);
+  };
+
+  const handleCreateChatType = (chatType: ChatType) => {
+    setIsCreateMenuVisible(false);
+    // Навигируем на экран создания чата с предвыбранным типом
+    navigation.navigate('CreateChat', { initialChatType: chatType });
   };
 
   const handleDeleteChat = async (chatId: number) => {
@@ -508,6 +515,40 @@ const ChatListScreen: React.FC = () => {
           }
         />
       )}
+
+      {/* Модальное меню выбора типа чата */}
+      <Modal
+        visible={isCreateMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsCreateMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsCreateMenuVisible(false)}
+        >
+          <View style={[styles.menuContainer, { backgroundColor: theme.card }]}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleCreateChatType('private')}
+            >
+              <Ionicons name="person" size={24} color={theme.primary} />
+              <Text style={[styles.menuItemText, { color: theme.text }]}>Личный чат</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleCreateChatType('group')}
+            >
+              <Ionicons name="people" size={24} color={theme.primary} />
+              <Text style={[styles.menuItemText, { color: theme.text }]}>Групповой чат</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -605,6 +646,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  menuContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'web' ? 60 : 100,
+    right: 16,
+    width: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 16,
+  },
+  menuItemText: {
+    fontSize: 17,
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: 1,
+    marginHorizontal: 16,
   },
 });
 
