@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { Chat, Message, TypingIndicator, MessageType } from '../types/chat.types';
 import * as chatApi from '@api/chat.api';
 import { getUser } from '@api/user.api';
-import { isMockMode, mockGetChats } from '@utils/mockData';
+import { isMockMode, mockGetChats, mockGetMessages } from '@utils/mockData';
 import { useAuthStore } from '@store/authStore';
 import { websocketService } from '@services/websocket.service';
 
@@ -27,7 +27,7 @@ interface ChatState {
   loadMessages: (chatId: number) => Promise<void>;
   loadMoreMessages: (chatId: number, beforeMessageId: number) => Promise<void>;
   setActiveChat: (chat: Chat | null) => void;
-  sendMessage: (chatId: number, content: string, replyToId?: number, fileIds?: number[]) => Promise<void>;
+  sendMessage: (chatId: number, content: string, replyToId?: number, fileIds?: number[], extraData?: any) => Promise<void>;
   updateMessage: (messageId: number, content: string) => Promise<void>;
   deleteMessage: (messageId: number) => Promise<void>;
   deleteMessageForUser: (messageId: number, deleteFor: 'everyone' | 'me') => Promise<void>;
@@ -227,7 +227,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       if (isMockMode()) {
         console.log('🔧 Using mock messages for chat:', chatId);
-        const { mockGetMessages } = await import('@utils/mockData');
         messages = await mockGetMessages(String(chatId));
       } else {
         // Загружаем только последние 30 сообщений
@@ -319,7 +318,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (chatId: number, content: string, replyToId?: number, fileIds?: number[]) => {
+  sendMessage: async (chatId: number, content: string, replyToId?: number, fileIds?: number[], extraData?: any) => {
     try {
       if (!content.trim() && (!fileIds || fileIds.length === 0)) {
         throw new Error('Message content or files are required');
@@ -331,6 +330,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content: content.trim(),
         reply_to_id: replyToId,
         file_ids: fileIds,
+        ...extraData, // Добавляем extraData (например, message_type, poll_data)
       });
 
       // Handle new message locally
@@ -448,12 +448,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   pinMessage: async (messageId: number) => {
     try {
       const updatedMessage = await chatApi.pinMessage(messageId);
-      // Обновляем сообщение локально
+      // Обновляем сообщение локально ПОЛНОСТЬЮ с сервера (включая poll_data)
       set((state) => ({
         messages: {
           ...state.messages,
           [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
-            msg.id === messageId ? { ...msg, is_pinned: true } : msg
+            msg.id === messageId ? updatedMessage : msg
           ),
         },
       }));
@@ -467,12 +467,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   unpinMessage: async (messageId: number) => {
     try {
       const updatedMessage = await chatApi.unpinMessage(messageId);
-      // Обновляем сообщение локально
+      // Обновляем сообщение локально ПОЛНОСТЬЮ с сервера (включая poll_data)
       set((state) => ({
         messages: {
           ...state.messages,
           [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
-            msg.id === messageId ? { ...msg, is_pinned: false } : msg
+            msg.id === messageId ? updatedMessage : msg
           ),
         },
       }));
@@ -696,11 +696,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   handleMessageUpdate: (message: Message) => {
+    // Parse poll_data if it's a JSON string (comes from WebSocket)
+    console.log('🔄 handleMessageUpdate called for message:', message.id);
+    console.log('🔍 Incoming message_type:', message.message_type);
+    console.log('🔍 poll_data type:', typeof (message as any).poll_data);
+    console.log('🔍 poll_data value:', (message as any).poll_data);
+
+    // Create updated message object and explicitly preserve message_type
+    const updatedMessage: any = {
+      ...message,
+      message_type: message.message_type, // Explicitly preserve
+    };
+
+    if ((message as any).poll_data && typeof (message as any).poll_data === 'string') {
+      try {
+        updatedMessage.poll_data = JSON.parse((message as any).poll_data);
+        console.log('📊 Parsed poll_data in WebSocket update:', updatedMessage.poll_data);
+      } catch (e) {
+        console.error('❌ Failed to parse poll_data in WebSocket update:', e);
+      }
+    } else {
+      console.log('⚠️ poll_data is not a string or is empty, skipping parse');
+    }
+
+    console.log('💾 Saving to store:', {
+      id: updatedMessage.id,
+      message_type: updatedMessage.message_type,
+      has_poll_data: !!updatedMessage.poll_data
+    });
+
     set((state) => ({
       messages: {
         ...state.messages,
         [message.chat_id]: (state.messages[message.chat_id] || []).map((msg) =>
-          msg.id === message.id ? message : msg
+          msg.id === message.id ? updatedMessage : msg
         ),
       },
     }));

@@ -21,7 +21,7 @@ import { useAuthStore } from '@store/authStore';
 import * as pollApi from '@api/poll.api';
 import { PollType, PollVisibility, CreatePollDto } from '@/types/poll.types';
 import { PollStackParamList } from '@navigation/types';
-import UserPicker from '@components/task/UserPicker';
+import UserSelector from '@components/common/UserSelector';
 
 type CreatePollScreenNavigationProp = StackNavigationProp<PollStackParamList, 'CreatePoll'>;
 
@@ -367,10 +367,12 @@ const CreatePollScreen: React.FC = () => {
                 Выберите пользователей, которые смогут видеть и голосовать в опросе:
               </Text>
               <View style={{ marginTop: 8 }}>
-                <UserPicker
+                <UserSelector
                   selectedUserIds={selectedUserIds}
                   onSelectionChange={setSelectedUserIds}
                   multiSelect={true}
+                  placeholder="Выберите участников опроса"
+                  modalTitle="Выбрать участников опроса"
                 />
               </View>
             </View>

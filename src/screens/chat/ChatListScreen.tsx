@@ -513,6 +513,7 @@ const ChatListScreen: React.FC = () => {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
+          contentContainerStyle={{ paddingBottom: 120 }}
         />
       )}
 

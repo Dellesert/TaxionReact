@@ -1,110 +1,378 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Message, Reaction } from '../../types/chat.types';
-import { formatDistanceToNow } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { useTheme } from '@hooks/useTheme';
+import { Message } from '../../types/chat.types';
+import { User } from '../../types/user.types';
 import { MessageAttachments } from './MessageAttachments';
+import PollMessageCard from './PollMessageCard';
+import TaskMessageCard from './TaskMessageCard';
+import { MessageStatus } from './MessageStatus';
+import { formatTime, parseForwardedMessage } from '@utils/message.utils';
 
 interface MessageBubbleProps {
   message: Message;
   isOwnMessage: boolean;
-  onReact?: (messageId: string, emoji: string) => void;
-  onLongPress?: (message: Message) => void;
+  isHighlighted: boolean;
+  sender: User | null;
+  replySender: User | null;
+  imageUrls: { [key: number]: string };
+  currentUserId?: number;
+  onLongPress: () => void;
+  onPollPress?: (pollId: number) => void;
+  onTaskPress?: (taskId: number) => void;
+  onReplyPress?: (messageId: number) => void;
+  onImagePress: (imageUrl: string) => void;
+  messageBubbleRef: React.RefObject<View>;
 }
 
+/**
+ * Компонент пузыря сообщения с контентом
+ */
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   isOwnMessage,
-  onReact,
+  isHighlighted,
+  sender,
+  replySender,
+  imageUrls,
+  currentUserId,
   onLongPress,
+  onPollPress,
+  onTaskPress,
+  onReplyPress,
+  onImagePress,
+  messageBubbleRef,
 }) => {
+  const { theme } = useTheme();
 
-  const renderReactions = () => {
-    if (!message.reactions || message.reactions.length === 0) return null;
+  // Парсим пересланное сообщение
+  const { header: forwardHeader, content: messageContent } = parseForwardedMessage(message.content);
+  const isForwarded = forwardHeader !== null;
 
-    const reactionCounts: Record<string, { count: number; userIds: string[] }> = {};
-    message.reactions.forEach((reaction) => {
-      if (!reactionCounts[reaction.emoji]) {
-        reactionCounts[reaction.emoji] = { count: 0, userIds: [] };
-      }
-      reactionCounts[reaction.emoji].count++;
-      reactionCounts[reaction.emoji].userIds.push(reaction.user_id);
-    });
+  // Проверяем, является ли сообщение задачей (встроенной в текст)
+  const taskDataMatch = message.content.match(/\[TASK_DATA\](.*?)\[\/TASK_DATA\]/s);
+  const isTaskMessage = taskDataMatch !== null;
+  let parsedTaskData = null;
 
-    return (
-      <View className="flex-row flex-wrap mt-1">
-        {Object.entries(reactionCounts).map(([emoji, data]) => (
-          <TouchableOpacity
-            key={emoji}
-            className="bg-gray-100 rounded-full px-2 py-1 mr-1 mb-1 flex-row items-center"
-            onPress={() => onReact?.(message.id, emoji)}
-          >
-            <Text className="text-sm">{emoji}</Text>
-            <Text className="text-xs text-gray-600 ml-1">{data.count}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+  if (isTaskMessage && taskDataMatch) {
+    try {
+      parsedTaskData = JSON.parse(taskDataMatch[1]);
+    } catch (e) {
+      console.error('Failed to parse task data from message:', e);
+    }
+  }
+
+  const dynamicStyles = StyleSheet.create({
+    messageBubble: {
+      backgroundColor: theme.messageOther,
+    },
+    ownMessageBubble: {
+      backgroundColor: theme.messageOwn,
+    },
+    senderName: {
+      color: theme.primary,
+    },
+    messageText: {
+      color: theme.text,
+    },
+    ownMessageText: {
+      color: theme.text,
+    },
+    time: {
+      color: theme.textTertiary,
+    },
+    ownTime: {
+      color: theme.textTertiary,
+    },
+    edited: {
+      color: theme.textTertiary,
+    },
+    ownEdited: {
+      color: 'rgba(255, 255, 255, 0.7)',
+    },
+  });
+
+  // Проверяем, является ли сообщение карточкой (опрос или задача)
+  const isCardMessage = (message.message_type === 'poll' && message.poll_data) ||
+                        (message.message_type === 'task' && message.task_data) ||
+                        (isTaskMessage && parsedTaskData);
 
   return (
-    <View
-      className={`mb-3 ${isOwnMessage ? 'items-end' : 'items-start'}`}
+    <TouchableOpacity
+      ref={messageBubbleRef}
+      activeOpacity={0.9}
+      onPress={() => {
+        // Если это опрос - открываем его
+        if (message.message_type === 'poll' && message.poll_data) {
+          onPollPress?.(message.poll_data.poll_id);
+        }
+        // Если это задача (из message_type) - открываем её
+        if (message.message_type === 'task' && message.task_data) {
+          onTaskPress?.(message.task_data.task_id);
+        }
+        // Если это задача (встроенная в текст) - открываем её
+        if (isTaskMessage && parsedTaskData) {
+          onTaskPress?.(parsedTaskData.task_id);
+        }
+      }}
+      onLongPress={onLongPress}
+      style={[
+        styles.messageBubble,
+        !isCardMessage && dynamicStyles.messageBubble,
+        isOwnMessage && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
+        isHighlighted && [styles.highlightedBubble, { backgroundColor: theme.primary + '40' }],
+        isForwarded && [styles.forwardedBubble, { borderLeftColor: theme.primary }],
+        isCardMessage && { backgroundColor: 'transparent', padding: 0 },
+      ]}
     >
-      <TouchableOpacity
-        onLongPress={() => onLongPress?.(message)}
-        activeOpacity={0.8}
-        className={`max-w-[80%] px-4 py-2 rounded-2xl ${
-          isOwnMessage
-            ? 'bg-blue-500 rounded-br-sm'
-            : 'bg-gray-200 rounded-bl-sm'
-        }`}
-      >
-        {!isOwnMessage && (
-          <Text className="text-xs font-semibold text-gray-700 mb-1">
-            {message.sender?.full_name || 'Unknown'}
+      {!isOwnMessage && !isCardMessage && <View style={[styles.tail, { backgroundColor: theme.messageOther }]} />}
+      {isOwnMessage && !isCardMessage && <View style={[styles.tailOwn, { backgroundColor: theme.messageOwn }]} />}
+
+      {/* Заголовок пересланного сообщения */}
+      {forwardHeader && (
+        <View style={[styles.forwardHeader, { backgroundColor: isOwnMessage ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)' }]}>
+          <Ionicons name="arrow-redo-outline" size={14} color={theme.primary} style={{ marginRight: 6 }} />
+          <Text style={[styles.forwardHeaderText, { color: theme.primary }]}>
+            {forwardHeader.replace('📩 ', '')}
           </Text>
-        )}
-
-        {message.reply_to && (
-          <View className="bg-black/10 p-2 rounded mb-2 border-l-2 border-gray-400">
-            <Text className="text-xs opacity-70" numberOfLines={2}>
-              {message.reply_to.content}
-            </Text>
-          </View>
-        )}
-
-        {message.content && message.content.trim() !== '' && (
-          <Text className={`text-base ${isOwnMessage ? 'text-white' : 'text-gray-900'}`}>
-            {message.content}
-          </Text>
-        )}
-
-        <MessageAttachments attachments={message.attachments} />
-
-        <View className="flex-row items-center justify-end mt-1 space-x-1">
-          <Text className={`text-xs ${isOwnMessage ? 'text-white/70' : 'text-gray-500'}`}>
-            {formatDistanceToNow(new Date(message.created_at), {
-              addSuffix: true,
-              locale: ru,
-            })}
-          </Text>
-          {isOwnMessage && (
-            <Ionicons
-              name={
-                message.read_by && message.read_by.length > 0
-                  ? 'checkmark-done'
-                  : 'checkmark'
-              }
-              size={14}
-              color={message.read_by && message.read_by.length > 0 ? '#60A5FA' : 'white'}
-            />
-          )}
         </View>
-      </TouchableOpacity>
+      )}
 
-      {renderReactions()}
-    </View>
+      {/* Имя отправителя для чужих сообщений */}
+      {!isOwnMessage && !forwardHeader && (
+        <Text style={[styles.senderName, dynamicStyles.senderName]}>
+          {sender?.name || `User ${message.sender_id}`}
+        </Text>
+      )}
+
+      {/* Цитируемое сообщение (если это ответ) */}
+      {message.reply_to && (
+        <TouchableOpacity
+          style={[styles.replyContainer, { backgroundColor: isOwnMessage ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)', borderLeftColor: theme.primary }]}
+          onPress={() => onReplyPress?.(message.reply_to_id!)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.replySender, { color: theme.primary }]} numberOfLines={1}>
+            {replySender?.name || message.reply_to.sender?.name || `User ${message.reply_to.sender_id}`}
+          </Text>
+          <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={2}>
+            {message.reply_to.content}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Контент сообщения */}
+      <View style={styles.messageContentRow}>
+        {message.is_deleted ? (
+          <>
+            <View style={styles.deletedMessageContainer}>
+              <Ionicons name="trash-outline" size={16} color={theme.textTertiary} style={{ opacity: 0.6, marginRight: 6 }} />
+              <Text style={[styles.deletedText, { color: theme.textTertiary, opacity: 0.6 }]}>
+                Сообщение удалено
+              </Text>
+            </View>
+          </>
+        ) : message.message_type === 'poll' && message.poll_data ? (
+          <>
+            <PollMessageCard
+              pollData={message.poll_data}
+              onPress={() => onPollPress?.(message.poll_data!.poll_id)}
+            />
+          </>
+        ) : message.message_type === 'task' && message.task_data ? (
+          <>
+            <TaskMessageCard
+              taskData={message.task_data}
+              onPress={() => onTaskPress?.(message.task_data!.task_id)}
+            />
+          </>
+        ) : isTaskMessage && parsedTaskData ? (
+          <>
+            <TaskMessageCard
+              taskData={parsedTaskData}
+              onPress={() => onTaskPress?.(parsedTaskData.task_id)}
+            />
+          </>
+        ) : (
+          <>
+            <View style={styles.messageContent}>
+              {/* Render text first */}
+              {messageContent && (
+                <Text
+                  style={[
+                    styles.messageText,
+                    dynamicStyles.messageText,
+                    isOwnMessage && dynamicStyles.ownMessageText,
+                  ]}
+                >
+                  {messageContent}
+                </Text>
+              )}
+
+              {/* Render attachments below text */}
+              {message.attachments && message.attachments.length > 0 && (
+                <MessageAttachments
+                  attachments={message.attachments}
+                  imageUrls={imageUrls}
+                  onImagePress={onImagePress}
+                />
+              )}
+            </View>
+          </>
+        )}
+      </View>
+
+      <View style={[styles.messageFooter, isCardMessage && styles.cardMessageFooter]}>
+        <Text
+          style={[
+            styles.time,
+            dynamicStyles.time,
+            isOwnMessage && dynamicStyles.ownTime,
+          ]}
+        >
+          {formatTime(message.created_at)}
+        </Text>
+        {message.is_edited && !message.is_deleted && (
+          <Text
+            style={[
+              styles.edited,
+              dynamicStyles.edited,
+              isOwnMessage && dynamicStyles.ownEdited,
+            ]}
+          >
+            изменено
+          </Text>
+        )}
+        {!isCardMessage && (
+          <MessageStatus
+            message={message}
+            isOwnMessage={isOwnMessage}
+            currentUserId={currentUserId}
+          />
+        )}
+      </View>
+    </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  messageBubble: {
+    maxWidth: '70%',
+    borderRadius: 16,
+    borderBottomLeftRadius: 4,
+    padding: 12,
+  },
+  ownMessageBubble: {
+    borderRadius: 16,
+  },
+  senderName: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  messageContentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  messageContent: {
+    flexShrink: 1,
+  },
+  messageText: {
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#fff',
+  },
+  messageFooter: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
+    marginTop: 4,
+  },
+  cardMessageFooter: {
+    justifyContent: 'flex-end',
+    marginTop: 4,
+    marginLeft: 0,
+  },
+  time: {
+    fontSize: 11,
+    color: '#ccc',
+    transform: [{ translateY: 3 }],
+  },
+  edited: {
+    fontSize: 11,
+    marginLeft: 4,
+    fontStyle: 'italic',
+    color: '#aaa',
+    transform: [{ translateY: 3 }],
+  },
+  tail: {
+    position: 'absolute',
+    bottom: 0,
+    left: -6,
+    width: 12,
+    height: 12,
+    backgroundColor: '#fff',
+    borderBottomRightRadius: 10,
+    transform: [{ rotate: '45deg' }],
+  },
+  tailOwn: {
+    position: 'absolute',
+    bottom: 0,
+    right: -6,
+    width: 12,
+    height: 12,
+    backgroundColor: '#fff',
+    borderBottomLeftRadius: 10,
+    transform: [{ rotate: '-45deg' }],
+  },
+  replyContainer: {
+    borderLeftWidth: 3,
+    borderRadius: 8,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingVertical: 6,
+    marginBottom: 8,
+  },
+  replySender: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  replyText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  highlightedBubble: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  forwardedBubble: {
+    borderLeftWidth: 4,
+  },
+  forwardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  forwardHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  deletedMessageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  deletedText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+});

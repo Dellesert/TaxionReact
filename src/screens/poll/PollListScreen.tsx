@@ -15,6 +15,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Poll, PollStatus } from '../../types/poll.types';
 import { PollItem } from '@components/poll/PollItem';
+import { PollSkeleton } from '@components/poll/PollSkeleton';
 import * as pollApi from '@api/poll.api';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
@@ -192,11 +193,12 @@ const PollListScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Loading */}
+      {/* Loading with skeletons */}
       {isLoading && !refreshing && polls.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.loadingText, { color: theme.text }]}>Загрузка опросов...</Text>
+        <View style={{ flex: 1, paddingTop: 8 }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <PollSkeleton key={i} />
+          ))}
         </View>
       ) : (
         <>
@@ -309,7 +311,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 120, // Для iOS с учетом tab bar
   },
   emptyContainer: {
     flex: 1,

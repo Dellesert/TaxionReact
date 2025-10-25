@@ -39,16 +39,40 @@ export const getChats = async (filters?: ChatListFilters): Promise<Chat[]> => {
   // Normalize last_message to match Message type
   const normalizedChats = response.data.chats.map(chat => {
     if (chat.last_message) {
+      const normalizedMessage: any = {
+        ...chat.last_message,
+        message_type: chat.last_message.type || chat.last_message.message_type || 'text',
+        attachments: chat.last_message.attachments || [],
+        reactions: chat.last_message.reactions || [],
+        read_by: chat.last_message.read_by || [],
+        is_pinned: chat.last_message.is_pinned || false,
+      };
+
+      // Parse poll_data if it's a JSON string
+      if ((chat.last_message as any).poll_data && typeof (chat.last_message as any).poll_data === 'string') {
+        try {
+          normalizedMessage.poll_data = JSON.parse((chat.last_message as any).poll_data);
+        } catch (e) {
+          console.error('Failed to parse poll_data in last_message:', e);
+        }
+      } else if ((chat.last_message as any).poll_data) {
+        normalizedMessage.poll_data = (chat.last_message as any).poll_data;
+      }
+
+      // Parse task_data if it's a JSON string
+      if ((chat.last_message as any).task_data && typeof (chat.last_message as any).task_data === 'string') {
+        try {
+          normalizedMessage.task_data = JSON.parse((chat.last_message as any).task_data);
+        } catch (e) {
+          console.error('Failed to parse task_data in last_message:', e);
+        }
+      } else if ((chat.last_message as any).task_data) {
+        normalizedMessage.task_data = (chat.last_message as any).task_data;
+      }
+
       return {
         ...chat,
-        last_message: {
-          ...chat.last_message,
-          message_type: chat.last_message.type || chat.last_message.message_type || 'text',
-          attachments: chat.last_message.attachments || [],
-          reactions: chat.last_message.reactions || [],
-          read_by: chat.last_message.read_by || [],
-          is_pinned: chat.last_message.is_pinned || false,
-        }
+        last_message: normalizedMessage
       };
     }
     return chat;
@@ -255,15 +279,41 @@ export const getMessages = async (
   }
 
   // Normalize messages to ensure all fields are present
-  const normalizedMessages = response.data.messages.map(msg => ({
-    ...msg,
-    message_type: (msg as any).type || msg.message_type || 'text',
-    attachments: msg.attachments || [],
-    reactions: msg.reactions || [],
-    read_receipts: (msg as any).read_receipts || [],
-    read_by: msg.read_by || [],
-    is_pinned: msg.is_pinned || false,
-  }));
+  const normalizedMessages = response.data.messages.map(msg => {
+    const message: any = {
+      ...msg,
+      message_type: (msg as any).type || msg.message_type || 'text',
+      attachments: msg.attachments || [],
+      reactions: msg.reactions || [],
+      read_receipts: (msg as any).read_receipts || [],
+      read_by: msg.read_by || [],
+      is_pinned: msg.is_pinned || false,
+    };
+
+    // Parse poll_data if it's a JSON string
+    if ((msg as any).poll_data && typeof (msg as any).poll_data === 'string') {
+      try {
+        message.poll_data = JSON.parse((msg as any).poll_data);
+      } catch (e) {
+        console.error('Failed to parse poll_data:', e);
+      }
+    } else if ((msg as any).poll_data) {
+      message.poll_data = (msg as any).poll_data;
+    }
+
+    // Parse task_data if it's a JSON string
+    if ((msg as any).task_data && typeof (msg as any).task_data === 'string') {
+      try {
+        message.task_data = JSON.parse((msg as any).task_data);
+      } catch (e) {
+        console.error('Failed to parse task_data:', e);
+      }
+    } else if ((msg as any).task_data) {
+      message.task_data = (msg as any).task_data;
+    }
+
+    return message;
+  });
 
   // Normalize response to match PaginatedResponse interface
   return {
@@ -281,10 +331,15 @@ export const getMessages = async (
  * Send message to chat
  */
 export const sendMessage = async (chatId: number, data: SendMessageDto): Promise<Message> => {
+  console.log('📤 sendMessage API called with data:', JSON.stringify(data, null, 2));
+
   const response = await api.post<{ message: Message }>(
     API_ENDPOINTS.CHAT.SEND_MESSAGE,
     { ...data, chat_id: chatId }
   );
+
+  console.log('📥 sendMessage API response:', JSON.stringify(response.data.message, null, 2));
+
   return response.data.message;
 };
 
@@ -424,7 +479,24 @@ export const pinMessage = async (messageId: number): Promise<Message> => {
   console.log(`📌 Pinning message ${messageId}`);
   const response = await api.post<{ message: Message }>(API_ENDPOINTS.MESSAGE.PIN(messageId));
   console.log(`✅ Message ${messageId} pinned successfully`);
-  return response.data.message;
+
+  // Normalize: convert 'type' to 'message_type' and parse poll_data
+  const message: any = {
+    ...response.data.message,
+    message_type: (response.data.message as any).type || (response.data.message as any).message_type || 'text',
+  };
+
+  if ((response.data.message as any).poll_data && typeof (response.data.message as any).poll_data === 'string') {
+    try {
+      message.poll_data = JSON.parse((response.data.message as any).poll_data);
+      console.log('📊 Parsed poll_data in pinMessage:', message.poll_data);
+    } catch (e) {
+      console.error('❌ Failed to parse poll_data in pinMessage:', e);
+    }
+  }
+
+  console.log('💾 pinMessage returning:', { id: message.id, message_type: message.message_type, has_poll_data: !!message.poll_data });
+  return message;
 };
 
 /**
@@ -435,7 +507,24 @@ export const unpinMessage = async (messageId: number): Promise<Message> => {
   console.log(`📌 Unpinning message ${messageId}`);
   const response = await api.post<{ message: Message }>(API_ENDPOINTS.MESSAGE.UNPIN(messageId));
   console.log(`✅ Message ${messageId} unpinned successfully`);
-  return response.data.message;
+
+  // Normalize: convert 'type' to 'message_type' and parse poll_data
+  const message: any = {
+    ...response.data.message,
+    message_type: (response.data.message as any).type || (response.data.message as any).message_type || 'text',
+  };
+
+  if ((response.data.message as any).poll_data && typeof (response.data.message as any).poll_data === 'string') {
+    try {
+      message.poll_data = JSON.parse((response.data.message as any).poll_data);
+      console.log('📊 Parsed poll_data in unpinMessage:', message.poll_data);
+    } catch (e) {
+      console.error('❌ Failed to parse poll_data in unpinMessage:', e);
+    }
+  }
+
+  console.log('💾 unpinMessage returning:', { id: message.id, message_type: message.message_type, has_poll_data: !!message.poll_data });
+  return message;
 };
 
 /**

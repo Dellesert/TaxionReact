@@ -31,6 +31,11 @@ const PollNavigator: React.FC = () => {
           color: theme.text,
         },
         headerShadowVisible: true,
+        contentStyle: {
+          backgroundColor: theme.background,
+        },
+        animation: 'fade',
+        animationDuration: 200,
       }}
     >
       <Stack.Screen
@@ -43,8 +48,14 @@ const PollNavigator: React.FC = () => {
       <Stack.Screen
         name="PollDetail"
         component={PollDetailScreen}
-        options={{
-          headerShown: false,
+        options={({ route }) => {
+          const params = route.params as any;
+          return {
+            // Показываем header только если опрос открыт из чата
+            headerShown: params?.fromChat === true,
+            title: params?.pollTitle || 'Опрос', // Используем переданный pollTitle или 'Опрос' по умолчанию
+            headerBackTitle: '',
+          };
         }}
       />
       <Stack.Screen

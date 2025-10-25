@@ -10,7 +10,7 @@ import { User } from './user.types';
 export type ChatType = 'private' | 'group' | 'channel';
 
 // Message Types
-export type MessageType = 'text' | 'image' | 'file' | 'voice' | 'video' | 'system';
+export type MessageType = 'text' | 'image' | 'file' | 'voice' | 'video' | 'system' | 'poll' | 'task';
 
 // Attachment Interface
 export interface Attachment {
@@ -43,6 +43,27 @@ export interface ReadReceipt {
   read_at: ISODateString;
 }
 
+// Poll Data in Message (для сообщений типа 'poll')
+export interface MessagePollData {
+  poll_id: number;
+  poll_title: string;
+  poll_question?: string;
+  poll_type?: string;
+  total_votes?: number;
+  ends_at?: ISODateString;
+}
+
+// Task Data in Message (для сообщений типа 'task')
+export interface MessageTaskData {
+  task_id: number;
+  task_title: string;
+  task_description?: string;
+  task_status?: 'new' | 'in_progress' | 'review' | 'done';
+  task_priority?: 'low' | 'medium' | 'high' | 'critical';
+  due_date?: ISODateString;
+  assigned_to?: number[];
+}
+
 // Message Interface
 export interface Message {
   id: number;
@@ -67,6 +88,8 @@ export interface Message {
   edited_at?: ISODateString;
   sending?: boolean; // Локальное поле для индикации отправки
   delivered_to?: number[]; // Локальное поле - список user IDs кто получил сообщение через WebSocket
+  poll_data?: MessagePollData; // Данные опроса для сообщений типа 'poll'
+  task_data?: MessageTaskData; // Данные задачи для сообщений типа 'task'
 }
 
 // Chat Member Interface

@@ -1,239 +1,264 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Linking,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image, Platform, Dimensions } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
-import { Attachment } from '../../types/chat.types';
-import { API_BASE_URL } from '../../constants/api.constants';
+import { useTheme } from '@hooks/useTheme';
+import * as secureStorage from '@utils/secureStorage';
+import { STORAGE_KEYS } from '@constants/app.constants';
+import { isImageFile, replaceLocalhostWithIP } from '@utils/message.utils';
+
+interface Attachment {
+  id: number;
+  file_url: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  file_type?: string;
+}
 
 interface MessageAttachmentsProps {
   attachments: Attachment[];
+  imageUrls: { [key: number]: string };
+  onImagePress: (imageUrl: string) => void;
 }
 
-const getFileIcon = (mimeType: string): keyof typeof Ionicons.glyphMap => {
-  if (mimeType.startsWith('image/')) return 'image-outline';
-  if (mimeType.startsWith('video/')) return 'videocam-outline';
-  if (mimeType.startsWith('audio/')) return 'musical-notes-outline';
-  if (mimeType.includes('pdf')) return 'document-text-outline';
-  if (mimeType.includes('word') || mimeType.includes('document'))
-    return 'document-text-outline';
-  if (mimeType.includes('excel') || mimeType.includes('spreadsheet'))
-    return 'grid-outline';
-  if (mimeType.includes('powerpoint') || mimeType.includes('presentation'))
-    return 'easel-outline';
-  if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('archive'))
-    return 'archive-outline';
-  return 'document-outline';
-};
-
-const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-};
-
-const isImageFile = (mimeType: string): boolean => {
-  return mimeType.startsWith('image/');
-};
-
-const isVideoFile = (mimeType: string): boolean => {
-  return mimeType.startsWith('video/');
-};
-
-// Helper to ensure full URL
-const getFullUrl = (url: string): string => {
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  // If relative path, prepend base URL without /api/v1
-  const baseUrl = API_BASE_URL.replace('/api/v1', '');
-  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
-};
-
+/**
+ * Компонент для отображения вложений сообщения (изображения и файлы)
+ */
 export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
+  imageUrls,
+  onImagePress,
 }) => {
-  if (!attachments || attachments.length === 0) {
-    return null;
-  }
+  const { theme } = useTheme();
 
-  const handleAttachmentPress = async (attachment: Attachment) => {
+  const images = attachments.filter(a => isImageFile(a.mime_type || a.file_type || ''));
+  const files = attachments.filter(a => !isImageFile(a.mime_type || a.file_type || ''));
+  const imageCount = images.length;
+
+  // Determine image size based on count
+  const screenWidth = Dimensions.get('window').width;
+  const maxBubbleWidth = screenWidth * 0.7; // 70% от ширины экрана
+  const bubblePadding = 24; // 12px padding с каждой стороны
+  const maxImageWidth = maxBubbleWidth - bubblePadding;
+
+  const getImageSize = () => {
+    if (imageCount === 1) {
+      const size = Math.min(250, maxImageWidth);
+      return { width: size, height: size };
+    }
+    if (imageCount === 2) {
+      const size = Math.min(120, (maxImageWidth - 4) / 2); // -4 для gap между изображениями
+      return { width: size, height: size };
+    }
+    if (imageCount === 3) {
+      const size = Math.min(120, (maxImageWidth - 4) / 2);
+      return { width: size, height: size };
+    }
+    const size = Math.min(115, (maxImageWidth - 8) / 2); // 4 or more, -8 для gaps
+    return { width: size, height: size };
+  };
+
+  const imageSize = getImageSize();
+
+  const handleFileDownload = async (attachment: Attachment) => {
     try {
-      const fullUrl = getFullUrl(attachment.file_url);
-      console.log('📎 Opening attachment:', { original: attachment.file_url, full: fullUrl, name: attachment.file_name });
-      const canOpen = await Linking.canOpenURL(fullUrl);
-      if (canOpen) {
-        await Linking.openURL(fullUrl);
+      // Get auth token
+      const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      if (!token) {
+        Alert.alert('Ошибка', 'Необходима авторизация для скачивания файла');
+        return;
+      }
+
+      // Replace localhost with real IP
+      const fileUrl = replaceLocalhostWithIP(attachment.file_url);
+
+      if (Platform.OS === 'web') {
+        // Web: Download using blob
+        const response = await fetch(fileUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Server response:', response.status, errorText);
+          throw new Error(`Failed to download file: ${response.status} - ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = attachment.file_name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
       } else {
-        console.warn('❌ Cannot open URL:', fullUrl);
+        // Mobile: Download and open with sharing
+        // Decode filename and create safe filename for iOS
+        const originalFileName = decodeURIComponent(attachment.file_name);
+
+        // Extract file extension
+        const fileExtension = originalFileName.split('.').pop() || '';
+
+        // Create safe filename using timestamp and original extension
+        const safeFileName = `file_${Date.now()}.${fileExtension}`;
+
+        // Use cache directory which is more reliable for temporary downloads
+        const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
+
+        const downloadResult = await FileSystem.downloadAsync(
+          fileUrl,
+          fileUri,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (downloadResult.status !== 200) {
+          throw new Error(`Download failed with status: ${downloadResult.status}`);
+        }
+
+        // Share file for viewing
+        const isAvailable = await Sharing.isAvailableAsync();
+
+        if (isAvailable) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            UTI: attachment.mime_type,
+            mimeType: attachment.mime_type,
+          });
+        } else {
+          Alert.alert('Успех', `Файл скачан:\n${originalFileName}`);
+        }
       }
     } catch (error) {
-      console.error('❌ Error opening attachment:', error);
+      console.error('❌ Failed to download file:', error);
+      Alert.alert('Ошибка', 'Не удалось скачать файл');
     }
   };
 
-  const images = attachments.filter(a => isImageFile(a.file_type));
-  const videos = attachments.filter(a => isVideoFile(a.file_type));
-  const files = attachments.filter(a => !isImageFile(a.file_type) && !isVideoFile(a.file_type));
+  if (attachments.length === 0) {
+    return null;
+  }
 
   return (
-    <View style={styles.container}>
-      {/* Image Attachments */}
+    <View style={styles.attachmentsContainer}>
+      {/* Render images in grid */}
       {images.length > 0 && (
-        <View style={styles.imagesContainer}>
-          {images.map((attachment) => (
+        <View style={[
+          styles.imagesGrid,
+          imageCount === 1 && styles.imagesGridSingle,
+          imageCount === 2 && styles.imagesGridDouble,
+          imageCount >= 3 && styles.imagesGridMultiple,
+        ]}>
+          {images.map((attachment, index) => (
             <TouchableOpacity
-              key={attachment.id}
-              style={styles.imageWrapper}
-              onPress={() => handleAttachmentPress(attachment)}
+              key={attachment.id || index}
+              style={[
+                styles.imageAttachment,
+                imageCount > 1 && styles.imageAttachmentGrid,
+              ]}
+              onPress={() => {
+                const imageUrl = imageUrls[attachment.id];
+                if (imageUrl) {
+                  onImagePress(imageUrl);
+                } else {
+                  Alert.alert('Ошибка', 'Изображение еще загружается');
+                }
+              }}
             >
-              <Image
-                source={{ uri: getFullUrl(attachment.thumbnail_url || attachment.file_url) }}
-                style={styles.image}
-                resizeMode="cover"
-                onLoadStart={() => console.log('🖼️ Image load started:', getFullUrl(attachment.thumbnail_url || attachment.file_url))}
-                onLoad={() => console.log('✅ Image loaded successfully:', attachment.file_name)}
-                onError={(error) => console.error('❌ Image load error:', error.nativeEvent.error, 'URL:', getFullUrl(attachment.thumbnail_url || attachment.file_url))}
-              />
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* Video Attachments */}
-      {videos.length > 0 && (
-        <View style={styles.videosContainer}>
-          {videos.map((attachment) => (
-            <TouchableOpacity
-              key={attachment.id}
-              style={styles.videoWrapper}
-              onPress={() => handleAttachmentPress(attachment)}
-            >
-              {attachment.thumbnail_url ? (
+              {imageUrls[attachment.id] ? (
                 <Image
-                  source={{ uri: getFullUrl(attachment.thumbnail_url) }}
-                  style={styles.videoThumbnail}
+                  source={{ uri: imageUrls[attachment.id] }}
+                  style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height, maxWidth: '100%' }]}
                   resizeMode="cover"
                 />
               ) : (
-                <View style={styles.videoPlaceholder}>
-                  <Ionicons name="videocam-outline" size={48} color="#666" />
+                <View style={[
+                  styles.imagePreview,
+                  { width: imageSize.width, height: imageSize.height, maxWidth: '100%', backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }
+                ]}>
+                  <ActivityIndicator size="small" color={theme.primary} />
                 </View>
               )}
-              <View style={styles.videoPlayIcon}>
-                <Ionicons name="play-circle" size={40} color="white" />
-              </View>
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {/* File Attachments */}
-      {files.length > 0 && (
-        <View style={styles.filesContainer}>
-          {files.map((attachment) => (
-            <TouchableOpacity
-              key={attachment.id}
-              style={styles.fileItem}
-              onPress={() => handleAttachmentPress(attachment)}
+      {/* Render file attachments */}
+      {files.map((attachment, index) => (
+        <TouchableOpacity
+          key={attachment.id || index}
+          style={[styles.attachmentItem, { width: '100%' }]}
+          onPress={() => handleFileDownload(attachment)}
+        >
+          <Ionicons name="document-outline" size={24} color={theme.primary} />
+          <View style={{ width: Dimensions.get('window').width * 0.7 - 70 }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '500',
+                color: theme.text,
+              }}
+              numberOfLines={2}
+              ellipsizeMode="tail"
             >
-              <Ionicons
-                name={getFileIcon(attachment.file_type)}
-                size={32}
-                color="#007AFF"
-              />
-              <View style={styles.fileInfo}>
-                <Text style={styles.fileName} numberOfLines={1}>
-                  {attachment.original_name || attachment.file_name}
-                </Text>
-                <Text style={styles.fileSize}>
-                  {formatFileSize(attachment.file_size)}
-                </Text>
-              </View>
-              <Ionicons name="download-outline" size={20} color="#666" />
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+              {attachment.file_name}
+            </Text>
+            <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+              {(attachment.file_size / 1024).toFixed(2)} KB
+            </Text>
+          </View>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 4,
-    gap: 8,
+  attachmentsContainer: {
+    marginTop: 8,
+    gap: 6,
+    maxWidth: '100%',
   },
-  imagesContainer: {
+  imagesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
+    marginBottom: 6,
   },
-  imageWrapper: {
-    width: 120,
-    height: 120,
-    borderRadius: 8,
-    overflow: 'hidden',
+  imagesGridSingle: {
+    // Single image - no special layout
   },
-  image: {
-    width: '100%',
-    height: '100%',
+  imagesGridDouble: {
+    // 2 images side by side
   },
-  videosContainer: {
-    gap: 8,
+  imagesGridMultiple: {
+    // 3+ images in grid
   },
-  videoWrapper: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#000',
-  },
-  videoThumbnail: {
-    width: '100%',
-    height: '100%',
-  },
-  videoPlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-  },
-  videoPlayIcon: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -20 }, { translateY: -20 }],
-  },
-  filesContainer: {
-    gap: 8,
-  },
-  fileItem: {
+  attachmentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F5F5F5',
+    padding: 10,
     borderRadius: 8,
-    gap: 12,
+    gap: 10,
   },
-  fileInfo: {
-    flex: 1,
+  imageAttachment: {
+    borderRadius: 8,
+    overflow: 'hidden',
   },
-  fileName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 2,
+  imageAttachmentGrid: {
+    // Additional styles for grid images
   },
-  fileSize: {
-    fontSize: 12,
-    color: '#666',
+  imagePreview: {
+    borderRadius: 8,
+    maxWidth: '100%',
   },
 });

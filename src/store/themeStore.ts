@@ -46,7 +46,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       const actualTheme = getActualTheme(mode, systemTheme);
       set({ mode, theme: actualTheme });
     } catch (error) {
-      console.error('Failed to save theme:', error);
+      // Silent fail - AsyncStorage issue on iOS in Expo Go
+      // Theme will still be set in memory for current session
+      const { systemTheme } = get();
+      const actualTheme = getActualTheme(mode, systemTheme);
+      set({ mode, theme: actualTheme });
     }
   },
 
@@ -79,7 +83,13 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         set({ mode: 'system', theme: actualTheme, systemTheme });
       }
     } catch (error) {
-      console.error('Failed to load theme:', error);
+      // Silent fail - this is a known issue with AsyncStorage on iOS in Expo Go
+      // The app will use system theme as fallback
+
+      // Fallback to system theme
+      const systemTheme = getSystemTheme();
+      const actualTheme = getActualTheme('system', systemTheme);
+      set({ mode: 'system', theme: actualTheme, systemTheme });
     }
   },
 

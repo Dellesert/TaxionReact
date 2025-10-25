@@ -9,7 +9,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // Chat Stack
 export type ChatStackParamList = {
   ChatList: undefined;
-  CreateChat: undefined;
+  CreateChat: {
+    initialChatType?: 'private' | 'group';
+  };
   Chat: {
     chatId: number;
     chatName?: string;
@@ -34,6 +36,8 @@ export type PollStackParamList = {
   PollList: undefined;
   PollDetail: {
     pollId: number;
+    fromChat?: boolean;
+    pollTitle?: string;
   };
   CreatePoll: undefined;
   EditPoll: {

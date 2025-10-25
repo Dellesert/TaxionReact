@@ -9,7 +9,11 @@ import {
   StyleSheet,
   Platform,
   Modal,
+  Keyboard,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -21,8 +25,10 @@ import { Avatar } from '@components/common/Avatar';
 import { useTheme } from '@hooks/useTheme';
 import { useTaskStore } from '@store/taskStore';
 import { useAuthStore } from '@store/authStore';
+import { useChatStore } from '@store/chatStore';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import ShareTaskModal from '@components/task/ShareTaskModal';
 
 type TaskDetailRouteParams = {
   taskId: string;
@@ -58,6 +64,10 @@ const TaskDetailScreen: React.FC = () => {
   // Collapsed state for sections
   const [isInfoCollapsed, setIsInfoCollapsed] = useState(true);
   const [isCommentsCollapsed, setIsCommentsCollapsed] = useState(true);
+
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const { sendMessage } = useChatStore();
 
   useEffect(() => {
     loadTask();
@@ -225,7 +235,7 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
-  const handleDeleteTask = async () => {
+  const handleDeleteTask = () => {
     if (!task) return;
 
     const isCreator = task.created_by === user?.id;
@@ -236,30 +246,80 @@ const TaskDetailScreen: React.FC = () => {
       return;
     }
 
-    const confirmDelete = () => {
-      return new Promise<boolean>((resolve) => {
-        Alert.alert(
-          'Удалить задачу',
-          'Вы уверены? Это действие нельзя отменить.',
-          [
-            { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Удалить', style: 'destructive', onPress: () => resolve(true) },
-          ]
-        );
-      });
-    };
+    // For web, use window.confirm
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.');
+      if (!confirmed) return;
 
-    const confirmed = await confirmDelete();
-    if (!confirmed) return;
+      // Perform deletion
+      const performDelete = async () => {
+        try {
+          const taskIdNum = Number(taskId);
+          await deleteTaskFromStore(taskIdNum);
+          alert('Задача удалена');
+          navigation.goBack();
+        } catch (error: any) {
+          alert('Ошибка: ' + (error.message || 'Не удалось удалить задачу'));
+        }
+      };
+      performDelete();
+    } else {
+      // For native, use Alert
+      Alert.alert(
+        'Удалить задачу',
+        'Вы уверены? Это действие нельзя отменить.',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const taskIdNum = Number(taskId);
+                await deleteTaskFromStore(taskIdNum);
+                Alert.alert('Успех', 'Задача удалена', [
+                  { text: 'OK', onPress: () => navigation.goBack() },
+                ]);
+              } catch (error: any) {
+                Alert.alert('Ошибка', error.message || 'Не удалось удалить задачу');
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleShareTask = async (chatId: number) => {
+    if (!task) return;
 
     try {
-      const taskIdNum = Number(taskId);
-      await deleteTaskFromStore(taskIdNum);
-      Alert.alert('Успех', 'Задача удалена', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } catch (error: any) {
-      Alert.alert('Ошибка', error.message || 'Не удалось удалить задачу');
+      const taskData = {
+        task_id: task.id,
+        task_title: task.title,
+        task_description: task.description,
+        task_status: task.status,
+        task_priority: task.priority,
+        due_date: task.due_date,
+        assigned_to: task.assignees?.map(a => a.id),
+      };
+
+      console.log('📤 Sharing task to chat:', chatId);
+      console.log('📋 Task data:', JSON.stringify(taskData, null, 2));
+
+      // Создаем специальное сообщение с данными задачи
+      // Бэкенд пока не поддерживает тип "task", поэтому используем тип "text"
+      // с специальным маркером для фронтенда
+      const messageContent = `📋 Задача: ${task.title}\n[TASK_DATA]${JSON.stringify(taskData)}[/TASK_DATA]`;
+
+      console.log('📦 Message content:', messageContent);
+
+      await sendMessage(chatId, messageContent, undefined, undefined, undefined);
+
+      console.log('✅ Task shared to chat:', chatId);
+    } catch (error) {
+      console.error('❌ Failed to share task:', error);
+      throw error;
     }
   };
 
@@ -345,9 +405,13 @@ const TaskDetailScreen: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.card,
+    },
     header: {
       backgroundColor: theme.card,
-      paddingTop: 60,
+      paddingTop: 12,
       paddingBottom: 16,
       paddingHorizontal: 16,
       borderBottomWidth: 1,
@@ -517,6 +581,7 @@ const TaskDetailScreen: React.FC = () => {
     collapsibleSection: {
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
+      backgroundColor: theme.background,
     },
     sectionHeader: {
       flexDirection: 'row',
@@ -543,6 +608,7 @@ const TaskDetailScreen: React.FC = () => {
     sectionContent: {
       paddingHorizontal: 16,
       paddingVertical: 12,
+      backgroundColor: theme.background,
     },
     infoRow: {
       flexDirection: 'row',
@@ -742,14 +808,28 @@ const TaskDetailScreen: React.FC = () => {
   });
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color={theme.text} />
           </TouchableOpacity>
           <View style={styles.headerButtons}>
+            {/* Кнопка поделиться */}
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => setShowShareModal(true)}
+            >
+              <Ionicons name="share-outline" size={20} color={theme.primary} />
+            </TouchableOpacity>
             {isCreator && !isEditMode && (
               <TouchableOpacity style={styles.headerButton} onPress={handleStartEdit}>
                 <Ionicons name="create-outline" size={20} color={theme.primary} />
@@ -888,7 +968,12 @@ const TaskDetailScreen: React.FC = () => {
         )}
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{ backgroundColor: theme.background }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Info Section - Collapsible */}
         <View style={styles.collapsibleSection}>
           <TouchableOpacity
@@ -1188,7 +1273,20 @@ const TaskDetailScreen: React.FC = () => {
           </TouchableOpacity>
         </TouchableOpacity>
       )}
-    </View>
+
+      {/* Share Task Modal */}
+      {task && (
+        <ShareTaskModal
+          visible={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          task={task}
+          onShare={handleShareTask}
+        />
+      )}
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

@@ -29,6 +29,10 @@ class WebSocketService {
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private isIntentionalClose = false;
 
+  // Deduplicate user_presence events
+  private lastPresenceUpdate: Map<number, number> = new Map(); // user_id -> timestamp
+  private presenceDebounceMs = 1000; // Ignore duplicates within 1 second
+
   /**
    * Connect to WebSocket server
    */
@@ -327,6 +331,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             sender: message.data?.sender,
             deleted_by: message.data?.deleted_by,
             deleted_at: message.data?.deleted_at,
+            poll_data: message.data?.poll_data, // ADDED: Include poll_data from WebSocket
           };
           chatStore.handleMessageUpdate(editedMessage);
           break;
@@ -367,6 +372,19 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'user_presence':
+          // Debounce user_presence updates to reduce spam
+          const userId = message.data.user_id;
+          const now = Date.now();
+          const lastUpdate = this.lastPresenceUpdate.get(userId) || 0;
+
+          if (now - lastUpdate < this.presenceDebounceMs) {
+            // Skip this duplicate update
+            console.log(`⏭️ Skipping duplicate presence update for user ${userId}`);
+            break;
+          }
+
+          // Update timestamp and process
+          this.lastPresenceUpdate.set(userId, now);
           console.log('👤 User presence update:', message.data);
           chatStore.handleUserPresence(message.data);
           break;

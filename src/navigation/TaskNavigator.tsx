@@ -29,6 +29,11 @@ const TaskNavigator: React.FC = () => {
           color: theme.text,
         },
         headerShadowVisible: true,
+        contentStyle: {
+          backgroundColor: theme.background,
+        },
+        animation: 'fade',
+        animationDuration: 200,
       }}
     >
       <Stack.Screen

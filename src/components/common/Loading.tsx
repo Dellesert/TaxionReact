@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet, ViewStyle } from 'react-native';
+import { useTheme } from '@hooks/useTheme';
 
 interface LoadingProps {
   text?: string;
@@ -17,16 +18,20 @@ interface LoadingProps {
 const Loading: React.FC<LoadingProps> = ({
   text,
   size = 'large',
-  color = '#DC2626',
+  color,
   fullScreen = false,
   style,
 }) => {
-  const containerStyle = fullScreen ? styles.fullScreen : styles.inline;
+  const { theme } = useTheme();
+  const containerStyle = fullScreen
+    ? [styles.fullScreen, { backgroundColor: theme.background }]
+    : styles.inline;
+  const indicatorColor = color || theme.primary;
 
   return (
     <View style={[containerStyle, style]}>
-      <ActivityIndicator size={size} color={color} />
-      {text && <Text style={styles.text}>{text}</Text>}
+      <ActivityIndicator size={size} color={indicatorColor} />
+      {text && <Text style={[styles.text, { color: theme.text }]}>{text}</Text>}
     </View>
   );
 };
@@ -36,7 +41,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
   },
   inline: {
     justifyContent: 'center',
@@ -46,7 +50,6 @@ const styles = StyleSheet.create({
   text: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
   },
 });
 

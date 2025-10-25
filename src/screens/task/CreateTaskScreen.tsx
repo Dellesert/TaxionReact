@@ -24,7 +24,7 @@ import { TaskStackParamList } from '@navigation/types';
 import { useTaskStore } from '@store/taskStore';
 import { useTheme } from '@hooks/useTheme';
 import { TaskPriority, CreateTaskDto } from '../../types/task.types';
-import UserPicker from '../../components/task/UserPicker';
+import UserSelector from '@components/common/UserSelector';
 
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'CreateTask'>;
 
@@ -475,10 +475,12 @@ const CreateTaskScreen: React.FC = () => {
             <Text style={[styles.labelDescription, dynamicStyles.labelDescription]}>
               Назначьте ответственных за выполнение
             </Text>
-            <UserPicker
+            <UserSelector
               selectedUserIds={assigneeIds}
               onSelectionChange={setAssigneeIds}
               multiSelect={true}
+              placeholder="Выберите исполнителей"
+              modalTitle="Выбрать исполнителей"
             />
             {assigneeIds.length === 0 && (
               <View style={[styles.infoBox, dynamicStyles.infoBox]}>

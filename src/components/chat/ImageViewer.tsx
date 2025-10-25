@@ -1,0 +1,88 @@
+import React from 'react';
+import { Modal, Pressable, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@hooks/useTheme';
+
+interface ImageViewerProps {
+  visible: boolean;
+  imageUrl: string | null;
+  onClose: () => void;
+}
+
+/**
+ * Компонент для полноэкранного просмотра изображения
+ */
+export const ImageViewer: React.FC<ImageViewerProps> = ({ visible, imageUrl, onClose }) => {
+  const { theme } = useTheme();
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <BlurView intensity={95} style={styles.blurOverlay} tint="dark">
+        <Pressable
+          style={styles.imageViewerOverlay}
+          onPress={onClose}
+        >
+          <View style={styles.imageViewerContainer}>
+            <TouchableOpacity
+              style={[styles.closeButton, { backgroundColor: theme.backgroundSecondary }]}
+              onPress={onClose}
+            >
+              <Ionicons name="close" size={24} color={theme.text} />
+            </TouchableOpacity>
+            {imageUrl && (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.fullscreenImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </Pressable>
+      </BlurView>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  blurOverlay: {
+    flex: 1,
+  },
+  imageViewerOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerContainer: {
+    width: '90%',
+    height: '90%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+});

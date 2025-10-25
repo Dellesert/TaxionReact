@@ -1,139 +1,105 @@
-import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Text,
-  TouchableOpacity,
-  Animated,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, StyleSheet, Platform, Keyboard } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { ChatStackParamList } from '@navigation/types';
-import { MessageItem } from '@components/chat/MessageItem';
 import { MessageInput } from '@components/chat/MessageInput';
 import { ChatMembersModal } from '@components/chat/ChatMembersModal';
 import { ForwardMessageModal } from '@components/chat/ForwardMessageModal';
-import { ConnectionStatus } from '@components/common/ConnectionStatus';
-import { UnreadMessagesBanner } from '@components/chat/UnreadMessagesBanner';
 import { TypingIndicator } from '@components/chat/TypingIndicator';
-import { Avatar } from '@components/common/Avatar';
 import { PinnedMessageBanner } from '@components/chat/PinnedMessageBanner';
-import { DateSeparator } from '@components/chat/DateSeparator';
-import { MessageSkeleton } from '@components/chat/MessageSkeleton';
+import { FloatingDateHeader } from '@components/chat/FloatingDateHeader';
+import { ScrollToBottomButton } from '@components/chat/ScrollToBottomButton';
+import { MessageListComponent } from '@components/chat/MessageListComponent';
+import { ChatHeader } from '@components/chat/ChatHeader';
 import { useTheme } from '@hooks/useTheme';
+import { useChatMessages } from '@hooks/useChatMessages';
+import { useChatActions } from '@hooks/useChatActions';
+import { useChatScroll } from '@hooks/useChatScroll';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion, getUserStatusText } from '@utils/chatUtils';
-import { getDateLabel, getDateKey } from '@utils/dateHelpers';
-
-// ✅ ДОБАВЬ ЭТО
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
 
-// Тип элемента списка - может быть сообщение или разделитель даты
-type MessageListItem =
-  | { type: 'message'; data: any }
-  | { type: 'date'; data: string };
-
+/**
+ * Рефакторенный экран чата - разделен на компоненты и хуки
+ */
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const { chatId, chatName } = route.params;
   const chatIdNum = useMemo(() => Number(chatId), [chatId]);
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  const listRef = useRef<FlatList<any>>(null);
-  const [initialScrolled, setInitialScrolled] = useState(false);
-  const [inputHeight, setInputHeight] = useState(56);
+  // Фиксированная высота инпута - НЕ меняем чтобы избежать пересчета layout
+  const inputHeight = 72;
+  const [membersModalVisible, setMembersModalVisible] = useState(false);
+  const [showUnreadBanner, setShowUnreadBanner] = useState(true);
+  const [isConnected, setIsConnected] = useState(websocketService.isConnected());
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
+  const [contentReady, setContentReady] = useState(false);
 
-  const allMessages = useChatStore((state) => state.messages);
+
+  // Хуки
+  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } = useChatMessages(chatIdNum);
+  const {
+    editingMessage,
+    setEditingMessage,
+    replyingToMessage,
+    setReplyingToMessage,
+    highlightedMessageId,
+    setHighlightedMessageId,
+    forwardingMessage,
+    setForwardingMessage,
+    selectedFileIds,
+    setSelectedFileIds,
+    handleSendMessage,
+    handleReply,
+    handleEdit,
+    handleDelete,
+    handleRestore,
+    handleDeletePermanent,
+    handlePin,
+    handleUnpin,
+    handleForward,
+    handleForwardToChat,
+  } = useChatActions(chatIdNum);
+
+  const {
+    listRef,
+    initialScrolled,
+    showScrollToBottom,
+    currentDateLabel,
+    showDateHeader,
+    isLoadingMore,
+    handleScroll,
+    handleLoadMore,
+    handleContentSizeChange,
+    handleScrollToBottom,
+    handleReplyPress: scrollToMessage,
+    onViewableItemsChanged,
+    viewabilityConfig,
+    resetScroll,
+  } = useChatScroll(chatIdNum, messages);
+
+  // Store
   const isLoading = useChatStore((state) => state.isLoading);
   const loadMessages = useChatStore((state) => state.loadMessages);
-  const setError = useChatStore((state) => state.set);
   const getChatById = useChatStore((state) => state.getChatById);
   const setActiveChat = useChatStore((state) => state.setActiveChat);
   const markChatAsRead = useChatStore((state) => state.markChatAsRead);
-  const sendMessage = useChatStore((state) => state.sendMessage);
+  const setError = useChatStore((state) => state.set);
   const typingUsers = useChatStore((state) => state.typingUsers);
+  const getPinnedMessages = useChatStore((state) => state.getPinnedMessages);
   const currentUser = useAuthStore((state) => state.user);
 
-  // Подписываемся на текущий чат для реактивности при изменениях (например, статус пользователя)
-  // Используем селектор с мемоизацией чтобы обеспечить ре-рендер при изменении статуса членов чата
-  const chat = useChatStore((state) => state.chats.find(c => c.id === chatIdNum),
-    (a, b) => {
-      // Сравниваем статусы пользователей в members для обнаружения изменений
-      if (!a && !b) return true;
-      if (!a || !b) return false;
-      if (a.id !== b.id) return false;
+  const chat = useChatStore((state) => state.chats.find(c => c.id === chatIdNum));
 
-      // Сравниваем статусы всех участников
-      if (!a.members || !b.members) return a.members === b.members;
-      if (a.members.length !== b.members.length) return false;
-
-      return a.members.every((memberA, i) => {
-        const memberB = b.members![i];
-        return memberA.user?.status === memberB.user?.status &&
-               (memberA.user as any)?.last_active_at === (memberB.user as any)?.last_active_at;
-      });
-    }
-  );
-
-  // ✅ ДОБАВЬ ЭТО
-  const insets = useSafeAreaInsets();
-
-  // Инвертируем массив для inverted FlatList
-  // [новые -> старые] для отображения
-  const messages = useMemo(() => {
-    const msgs = allMessages[chatIdNum] || [];
-    return [...msgs].reverse();
-  }, [allMessages, chatIdNum]);
-
-  // Теперь отображаем только сообщения без встроенных разделителей
-  // Разделители будут в floating sticky header
-  const messageListItems: MessageListItem[] = useMemo(() => {
-    if (messages.length === 0) return [];
-
-    const items: MessageListItem[] = [];
-
-    messages.forEach((message) => {
-      items.push({ type: 'message', data: message });
-    });
-
-    return items;
-  }, [messages]);
-
-  // Создаем ключ для extraData чтобы FlatList перерисовывался при изменении read_receipts и delivered_to
-  const messagesKey = useMemo(() => {
-    return messages.map(m => `${m.id}-${m.read_receipts?.length || 0}-${m.delivered_to?.length || 0}`).join(',');
-  }, [messages]);
-  const hasLoadedRef = useRef(false);
-  const [membersModalVisible, setMembersModalVisible] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState(true);
-  const [editingMessage, setEditingMessage] = useState<any | null>(null);
-  const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null);
-  const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
-  const [forwardingMessage, setForwardingMessage] = useState<any | null>(null);
-  const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
-  const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
-  const lastOldestMessageId = useRef<number | null>(null);
-
-  // Флаг для отслеживания, показывали ли уже баннер при входе в чат
-  const [showUnreadBanner, setShowUnreadBanner] = useState(true);
-
-  // Флаг для показа кнопки "scroll to bottom"
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-
-  // State для sticky date header
-  const [currentDateLabel, setCurrentDateLabel] = useState<string | null>(null);
-  const [showDateHeader, setShowDateHeader] = useState(false);
-
-  // Получаем имена печатающих пользователей (исключая текущего пользователя)
+  // Печатающие пользователи
   const typingUserNames = useMemo(() => {
     const typing = typingUsers[chatIdNum] || [];
     return typing
@@ -141,231 +107,101 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       .map(t => t.user?.name || t.user?.email?.split('@')[0] || `User ${t.user_id}`);
   }, [typingUsers, chatIdNum, currentUser]);
 
-  // Обработчик скролла - используем простую защиту через isLoadingMore
-  const handleScroll = (event: any) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const distanceFromEnd = contentSize.height - layoutMeasurement.height - contentOffset.y;
+  // Закрепленные сообщения
+  const pinnedMessages = useMemo(() => {
+    return getPinnedMessages(chatIdNum);
+  }, [chatIdNum, messages, getPinnedMessages]);
 
-    // Показываем кнопку "scroll to bottom" только если НЕ находимся в самом низу чата
-    // В inverted списке offset.y близок к 0 = мы внизу (у новых сообщений)
-    // Если offset.y > 50, значит мы прокрутили вверх от самого низа
-    if (contentOffset.y > 50) {
-      setShowScrollToBottom(true);
-      setShowDateHeader(true);
-    } else {
-      setShowScrollToBottom(false);
-      setShowDateHeader(false);
-    }
+  // Управление клавиатурой
+  useEffect(() => {
+    const keyboardShow = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardHide = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
 
-    // В inverted списке при скролле ВВЕРХ (к старым) offset.y увеличивается
-    // Самая надёжная защита - проверяем только isLoadingMore флаг
-    // React гарантирует, что этот флаг установлен правильно
-    if (
-      distanceFromEnd < 300 &&
-      !isLoadingMore &&
-      hasMoreMessages &&
-      initialScrolled
-    ) {
-      handleLoadMore();
-    }
-  };
+    return () => {
+      keyboardShow.remove();
+      keyboardHide.remove();
+    };
+  }, []);
 
-  // Calculate first unread message index and total unread count
-  const { firstUnreadIndex, unreadCount } = useMemo(() => {
-    if (!currentUser || messages.length === 0) {
-      return { firstUnreadIndex: -1, unreadCount: 0 };
-    }
+  // Сразу показываем UI
+  useEffect(() => {
+    setIsLayoutReady(true);
+  }, []);
 
-    let firstIndex = -1;
-    let count = 0;
+  // Показываем контент сразу без fade-in анимации
+  useFocusEffect(
+    React.useCallback(() => {
+      // Небольшая задержка для завершения slide анимации навигации
+      const readyTimer = setTimeout(() => {
+        setContentReady(true);
+      }, Platform.OS === 'ios' ? 270 : 350);
 
-    // Логируем структуру сообщений для отладки
-    if (messages.length > 0) {
-      console.log('📨 Messages info:', {
-        total: messages.length,
-        firstMsg: { id: messages[0].id, sender_id: messages[0].sender_id },
-        lastMsg: { id: messages[messages.length - 1].id, sender_id: messages[messages.length - 1].sender_id },
-        currentUserId: currentUser.id,
-      });
+      return () => {
+        clearTimeout(readyTimer);
+        setContentReady(false);
+      };
+    }, [])
+  );
 
-      // Детальная информация о нескольких последних сообщениях
-      const lastFew = messages.slice(-5);
-      console.log('📨 Last 5 messages detail:', lastFew.map(m => ({
-        id: m.id,
-        sender_id: m.sender_id,
-        content: m.content.substring(0, 30),
-        read_receipts: m.read_receipts,
-        read_by: m.read_by,
-      })));
-    }
-
-    // Ищем первое непрочитанное сообщение
-    // Массив отсортирован от старых к новым (старые вверху [0], новые внизу [length-1])
-    for (let i = 0; i < messages.length; i++) {
-      const message = messages[i];
-
-      // Message is unread if:
-      // 1. It's not sent by current user
-      // 2. Current user is not in read_receipts array
-      const readReceipts = message.read_receipts || [];
-      const hasReadReceipt = readReceipts.some((receipt) => receipt.user_id === currentUser.id);
-
-      const isUnread = message.sender_id !== currentUser.id && !hasReadReceipt;
-
-      // Логируем каждое непрочитанное сообщение
-      if (isUnread && count < 3) {
-        console.log(`🔴 Unread message #${count + 1}:`, {
-          index: i,
-          id: message.id,
-          sender_id: message.sender_id,
-          content: message.content.substring(0, 30),
-          readReceipts: readReceipts.length,
-          hasReadReceipt,
-        });
-      }
-
-      if (isUnread) {
-        if (firstIndex === -1) {
-          firstIndex = i; // Запоминаем индекс ПЕРВОГО непрочитанного (самого старого)
-        }
-        count++;
-      }
-    }
-
-    console.log(`📊 Unread messages: ${count}, first unread at index: ${firstIndex} (of ${messages.length})`);
-    return { firstUnreadIndex: firstIndex, unreadCount: count };
-  }, [messages, currentUser]);
-
-  const [isConnected, setIsConnected] = useState(websocketService.isConnected());
-
-  // Проверяем статус подключения каждую секунду
+  // Проверка подключения
   useEffect(() => {
     const interval = setInterval(() => {
       setIsConnected(websocketService.isConnected());
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
+  // Настройка заголовка
   useEffect(() => {
     const displayName = chat ? getChatDisplayName(chat, currentUser?.id) : (chatName || 'Чат');
     const displayAvatar = chat ? getChatDisplayAvatar(chat, currentUser?.id) : undefined;
-
-    // Для личных чатов получаем собеседника и его статус
     const companion = chat ? getPersonalChatCompanion(chat, currentUser?.id) : null;
     const statusText = companion ? getUserStatusText(companion) : '';
     const isPrivateChat = chat?.type === 'private';
-
-    // Для групповых чатов получаем список участников
     const membersText = chat && chat.type === 'group' && chat.members
       ? `${chat.members.length} участников`
       : '';
 
+    const handleHeaderPress = () => {
+      navigation.navigate('ChatSettings', {
+        chatId: chatIdNum,
+        chatName: displayName,
+      });
+    };
+
     navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={{ marginLeft: 4 }}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={28} color={theme.primary} />
-        </TouchableOpacity>
-      ),
+      headerLeft: () => <ChatHeader.Left onBackPress={() => navigation.goBack()} />,
       headerTitle: () => (
-        <TouchableOpacity
-          onPress={() => {
-            navigation.navigate('ChatSettings', {
-              chatId: chatIdNum,
-              chatName: displayName,
-            });
-          }}
-          activeOpacity={0.7}
-          style={{ maxWidth: 220 }}
-        >
-          {isConnected ? (
-            <View style={{ alignItems: 'center', width: '100%' }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: theme.text,
-                  maxWidth: '100%',
-                }}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {displayName}
-              </Text>
-              {isPrivateChat && statusText && (
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: theme.textSecondary,
-                    marginTop: 2,
-                    maxWidth: '100%',
-                  }}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {statusText}
-                </Text>
-              )}
-              {!isPrivateChat && membersText && (
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: theme.textSecondary,
-                    marginTop: 2,
-                    maxWidth: '100%',
-                  }}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {membersText}
-                </Text>
-              )}
-            </View>
-          ) : (
-            <ConnectionStatus compact />
-          )}
-        </TouchableOpacity>
+        <ChatHeader.Title
+          displayName={displayName}
+          statusText={statusText}
+          membersText={membersText}
+          isPrivateChat={isPrivateChat}
+          isConnected={isConnected}
+          onHeaderPress={handleHeaderPress}
+        />
       ),
       headerTitleAlign: 'center',
       headerRight: () => (
-        <TouchableOpacity
-          onPress={() => {
-            navigation.navigate('ChatSettings', {
-              chatId: chatIdNum,
-              chatName: displayName,
-            });
-          }}
-          activeOpacity={0.7}
-          style={{ marginRight: 0 }}
-        >
-          <Avatar
-            imageUrl={displayAvatar}
-            name={displayName}
-            size={36}
-          />
-        </TouchableOpacity>
+        <ChatHeader.Right
+          displayAvatar={displayAvatar}
+          displayName={displayName}
+          onHeaderPress={handleHeaderPress}
+        />
       ),
     });
-  }, [chatName, navigation, isConnected, theme, chatIdNum, chat, currentUser]);
+  }, [chatName, navigation, isConnected, chatIdNum, chat, currentUser]);
 
+  // Инициализация чата
   useEffect(() => {
-    // Сбрасываем состояние при смене чата
-    setHasMoreMessages(true);
-    setInitialScrolled(false);
-    scrollToEndOnce.current = false;
-    lastOldestMessageId.current = null;
-    setShowUnreadBanner(true); // Показываем баннер при входе в новый чат
+    resetScroll();
+    setShowUnreadBanner(true);
+    loadMessages(chatIdNum);
 
-    if (!hasLoadedRef.current) {
-      hasLoadedRef.current = true;
-      loadMessages(chatIdNum);
-    }
-
-    // Set active chat and reset unread count
     const chat = getChatById(chatIdNum);
     if (chat) {
       setActiveChat(chat);
@@ -376,107 +212,39 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         const token = (await AsyncStorage.getItem('jwtToken')) || '';
         if (token) {
           await websocketService.connect(token);
-          // Wait a bit for connection to establish
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise<void>(resolve => setTimeout(resolve, 500));
         } else {
           setError({ error: 'No authentication token found' });
           return;
         }
       }
 
-      // Join chat room after WebSocket is connected
       if (websocketService.isConnected() && getChatById(chatIdNum)) {
         websocketService.joinChat(chatIdNum);
-        console.log('📍 Joined chat room:', chatIdNum);
       }
     };
     connectWebSocket();
+
     return () => {
-      // Clear active chat when leaving
       setActiveChat(null);
       if (websocketService.isConnected()) {
         websocketService.leaveChat(chatIdNum);
-        console.log('📍 Left chat room:', chatIdNum);
       }
     };
-  }, [chatIdNum]); // ✅ ИСПРАВЛЕНИЕ: Удалены setError, getChatById, setActiveChat из dependencies
+  }, [chatIdNum]);
 
-
-  // Scroll to end (newest messages at bottom) - DISABLED
-  // Используем onContentSizeChange вместо useEffect для надежного скролла
-  const scrollToEndOnce = useRef(false);
-
-  const handleContentSizeChange = () => {
-    if (!scrollToEndOnce.current && messages.length > 0) {
-      console.log(`📜 Scrolling to top (newest) (${messages.length} messages)`);
-      setTimeout(() => {
-        // С inverted=true, scrollToOffset(0) = самые новые сообщения
-        listRef.current?.scrollToOffset({ offset: 0, animated: false });
-        scrollToEndOnce.current = true;
-        setInitialScrolled(true);
-      }, 100);
-    }
-  };
-
-  // Mark messages as read when entering chat or receiving new messages
+  // Отметить как прочитанное
   useEffect(() => {
     if (messages.length > 0 && initialScrolled) {
-      // Небольшая задержка чтобы успеть показать баннер непрочитанных сообщений
       const markReadTimer = setTimeout(() => {
         markChatAsRead(chatIdNum);
-        // Скрываем баннер после первой отметки
         if (showUnreadBanner) {
           setShowUnreadBanner(false);
         }
-      }, 1000); // 1 секунда задержки
-
+      }, 1000);
       return () => clearTimeout(markReadTimer);
     }
   }, [chatIdNum, messages.length, markChatAsRead, initialScrolled]);
-
-  const handleSendMessage = async (content: string, replyToId?: number) => {
-    console.log('📤 handleSendMessage called:', { content, replyToId, selectedFileIds });
-
-    if (!content.trim() && selectedFileIds.length === 0) {
-      setError({ error: 'Message content or files are required' });
-      return;
-    }
-    if (!getChatById(chatIdNum)) {
-      setError({ error: 'Chat not found' });
-      return;
-    }
-
-    try {
-      // Check if editing a message (MessageInput formats as "EDIT:{id}:{content}")
-      if (content.startsWith('EDIT:')) {
-        const parts = content.split(':');
-        const messageId = parseInt(parts[1]);
-        const newContent = parts.slice(2).join(':');
-
-        console.log('Editing message:', messageId, 'new content:', newContent);
-
-        // Call edit API
-        await useChatStore.getState().updateMessage(messageId, newContent);
-
-        // Clear editing state
-        setEditingMessage(null);
-      } else {
-        // Send message through HTTP API with optional reply_to_id and file_ids
-        // Server will broadcast it to all WebSocket clients including sender
-        const fileIdsToSend = selectedFileIds.length > 0 ? selectedFileIds : undefined;
-        console.log('📤 Sending message with file_ids:', fileIdsToSend);
-
-        await sendMessage(chatIdNum, content.trim(), replyToId, fileIdsToSend);
-
-        // Clear selected files after sending
-        console.log('🗑️ Clearing selected files');
-        setSelectedFileIds([]);
-      }
-    } catch (error: any) {
-      console.error('Failed to send/edit message:', error);
-      setError({ error: error.message || 'Failed to send/edit message' });
-    }
-  };
 
   const handleTyping = (isTyping: boolean) => {
     if (websocketService.isConnected() && getChatById(chatIdNum)) {
@@ -484,479 +252,125 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  // Подгружаем старые сообщения при скролле ВНИЗ (в inverted списке)
-  const handleLoadMore = async () => {
-    console.log(`\n🔄 === handleLoadMore called ===`);
-
-    // НЕ загружаем пока не произошел первый скролл
-    if (!initialScrolled) {
-      console.log(`⏸️ Waiting for initial scroll before loading more`);
-      return;
-    }
-
-    // Проверяем условия для загрузки
-    if (isLoadingMore || messages.length === 0 || !hasMoreMessages) {
-      console.log(`⏸️ Skipping load more: isLoading=${isLoadingMore}, hasMore=${hasMoreMessages}, count=${messages.length}`);
-      return;
-    }
-
-    // Массив инвертирован: [новые ... старые]
-    // Последнее сообщение в массиве - самое старое
-    const oldestMessage = messages[messages.length - 1];
-    if (!oldestMessage) {
-      console.log(`❌ No oldest message found`);
-      return;
-    }
-
-    // Проверяем, что ID самого старого сообщения изменился с последней загрузки
-    if (lastOldestMessageId.current === oldestMessage.id) {
-      console.log(`⏸️ Already loading messages before ID ${oldestMessage.id}, skipping duplicate request`);
-      return;
-    }
-
-    console.log(`📜 Loading more messages before ID ${oldestMessage.id} (total messages: ${messages.length})`);
-    lastOldestMessageId.current = oldestMessage.id;
-    setIsLoadingMore(true);
-
-    try {
-      const addedCount = await loadMoreMessages(chatIdNum, oldestMessage.id);
-      console.log(`✅ Added ${addedCount} NEW older messages to the list`);
-
-      // Если не добавлено новых сообщений, значит все дубликаты или конец достигнут
-      if (addedCount === 0) {
-        console.log(`🏁 No new messages added (all duplicates or end reached)`);
-        setHasMoreMessages(false);
-      } else {
-        console.log(`➕ Added ${addedCount} messages, can continue loading`);
-      }
-    } catch (error) {
-      console.error('❌ Failed to load more messages:', error);
-    } finally {
-      setIsLoadingMore(false);
-      console.log(`🔄 === handleLoadMore finished ===\n`);
-    }
-  };
-
-  // Message action handlers
-  const handleReply = (message: any) => {
-    console.log('Reply to message:', message.id);
-    setReplyingToMessage(message);
-  };
-
-  const handleEdit = (message: any) => {
-    console.log('Edit message:', message.id);
-    setEditingMessage(message);
-  };
-
-  const deleteMessageForUser = useChatStore((state) => state.deleteMessageForUser);
-  const restoreMessage = useChatStore((state) => state.restoreMessage);
-  const deletePermanentMessage = useChatStore((state) => state.deletePermanentMessage);
-  const pinMessage = useChatStore((state) => state.pinMessage);
-  const unpinMessage = useChatStore((state) => state.unpinMessage);
-  const getPinnedMessages = useChatStore((state) => state.getPinnedMessages);
-
-  // Получаем закрепленные сообщения для текущего чата
-  const pinnedMessages = useMemo(() => {
-    return getPinnedMessages(chatIdNum);
-  }, [chatIdNum, messages, getPinnedMessages]);
-
-  const handleDelete = async (messageId: number, deleteFor: 'everyone' | 'me') => {
-    console.log('Delete message:', messageId, 'for:', deleteFor);
-    try {
-      await deleteMessageForUser(messageId, deleteFor);
-    } catch (error: any) {
-      console.error('Failed to delete message:', error);
-      setError({ error: error.message || 'Failed to delete message' });
-    }
-  };
-
-  const handleRestore = async (messageId: number) => {
-    console.log('Restore message:', messageId);
-    try {
-      await restoreMessage(messageId);
-    } catch (error: any) {
-      console.error('Failed to restore message:', error);
-      setError({ error: error.message || 'Failed to restore message' });
-    }
-  };
-
-  const handleDeletePermanent = async (messageId: number) => {
-    console.log('Delete message permanently:', messageId);
-    try {
-      await deletePermanentMessage(messageId);
-    } catch (error: any) {
-      console.error('Failed to permanently delete message:', error);
-      setError({ error: error.message || 'Failed to permanently delete message' });
-    }
-  };
-
-  const handlePin = async (messageId: number) => {
-    console.log('Pin message:', messageId);
-    try {
-      await pinMessage(messageId);
-    } catch (error: any) {
-      console.error('Failed to pin message:', error);
-      setError({ error: error.message || 'Failed to pin message' });
-    }
-  };
-
-  const handleUnpin = async (messageId: number) => {
-    console.log('Unpin message:', messageId);
-    try {
-      await unpinMessage(messageId);
-    } catch (error: any) {
-      console.error('Failed to unpin message:', error);
-      setError({ error: error.message || 'Failed to unpin message' });
-    }
-  };
-
-  const handlePinnedMessagePress = (messageId: number) => {
-    console.log('Scroll to pinned message:', messageId);
-    handleReplyPress(messageId); // Используем ту же логику скролла, что и для ответов
-  };
-
-  const handleForward = (message: any) => {
-    console.log('Forward message:', message.id);
-    setForwardingMessage(message);
-  };
-
-  const handleForwardToChat = async (targetChatId: number) => {
-    if (!forwardingMessage) return;
-
-    try {
-      console.log('Forwarding message', forwardingMessage.id, 'to chat', targetChatId);
-
-      // Если это опрос - пересылаем как опрос
-      if (forwardingMessage.message_type === 'poll' && forwardingMessage.poll_data) {
-        console.log('📊 Forwarding poll message:', forwardingMessage.poll_data);
-
-        // Получаем имя отправителя оригинального сообщения
-        const senderName = forwardingMessage.sender?.name ||
-                          forwardingMessage.sender?.email?.split('@')[0] ||
-                          `User ${forwardingMessage.sender_id}`;
-
-        // Получаем название чата, откуда пересылается опрос
-        const sourceChat = getChatById(chatIdNum);
-        let sourceChatName = '';
-
-        // Добавляем название чата только для групповых чатов
-        if (sourceChat && sourceChat.type === 'group') {
-          const fullName = getChatDisplayName(sourceChat, currentUser?.id);
-          sourceChatName = fullName.length > 25 ? fullName.substring(0, 25) + '...' : fullName;
-        }
-
-        // Форматируем контент с информацией о пересылке
-        const forwardPrefix = `📩 Переслано от ${senderName}${sourceChatName ? ` (${sourceChatName})` : ''}`;
-        const separator = '\n─────────────\n';
-        const forwardedContent = `${forwardPrefix}${separator}${forwardingMessage.content}`;
-
-        await sendMessage(targetChatId, forwardedContent, undefined, undefined, {
-          type: 'poll',
-          poll_data: forwardingMessage.poll_data,
-        });
-
-        // Пытаемся удалить сообщение из текущего чата только для себя
-        try {
-          await deleteMessageForUser(forwardingMessage.id, 'me');
-          console.log('Poll forwarded successfully and deleted from current chat');
-        } catch (deleteError) {
-          console.warn('Poll forwarded successfully, but failed to delete from current chat:', deleteError);
-          // Не пробрасываем ошибку - пересылка успешна, удаление необязательно
-        }
-        return;
-      }
-
-      // Получаем имя отправителя оригинального сообщения
-      const senderName = forwardingMessage.sender?.name ||
-                        forwardingMessage.sender?.email?.split('@')[0] ||
-                        `User ${forwardingMessage.sender_id}`;
-
-      // Получаем название чата, откуда пересылается сообщение
-      const sourceChat = getChatById(chatIdNum);
-      let sourceChatName = '';
-
-      // Добавляем название чата только для групповых чатов
-      if (sourceChat && sourceChat.type === 'group') {
-        const fullName = getChatDisplayName(sourceChat, currentUser?.id);
-        // Сокращаем длинные названия (максимум 25 символов)
-        sourceChatName = fullName.length > 25 ? fullName.substring(0, 25) + '...' : fullName;
-      }
-
-      // Форматируем пересланное сообщение с префиксом
-      // Префикс будет парситься в MessageItem для отображения в шапке
-      const forwardPrefix = `📩 Переслано от ${senderName}${sourceChatName ? ` (${sourceChatName})` : ''}`;
-      const separator = '\n─────────────\n';
-      const forwardedContent = `${forwardPrefix}${separator}${forwardingMessage.content}`;
-
-      // Отправляем сообщение в целевой чат
-      await sendMessage(targetChatId, forwardedContent);
-
-      // Удаляем сообщение из текущего чата только для себя (сохраняя в оригинале)
-      await deleteMessageForUser(forwardingMessage.id, 'me');
-
-      console.log('Message forwarded successfully and deleted from current chat');
-    } catch (error: any) {
-      console.error('Failed to forward message:', error);
-      setError({ error: error.message || 'Failed to forward message' });
-      throw error; // Пробрасываем ошибку для обработки в модальном окне
-    }
-  };
-
   const handlePollPress = (pollId: number) => {
-    console.log('📊 Opening poll:', pollId);
-    // Переходим на экран опроса на корневом уровне навигации
-    // @ts-ignore - navigation.getParent() дает доступ к root navigator
     const rootNavigation = navigation.getParent();
     if (rootNavigation) {
       rootNavigation.navigate('PollDetail', { pollId, fromChat: true });
-    } else {
-      console.error('❌ Root navigation not found');
     }
   };
 
-  const handleReplyPress = (messageId: number) => {
-    console.log('Scroll to message:', messageId);
-
-    // Находим индекс сообщения в инвертированном массиве
-    const messageIndex = messages.findIndex(m => m.id === messageId);
-
-    if (messageIndex !== -1) {
-      // Прокручиваем к сообщению
-      listRef.current?.scrollToIndex({
-        index: messageIndex,
-        animated: true,
-        viewPosition: 0.5, // Центрируем сообщение на экране
-      });
-
-      // Подсвечиваем сообщение
-      setHighlightedMessageId(messageId);
-
-      // Убираем подсветку через 2 секунды
-      setTimeout(() => {
-        setHighlightedMessageId(null);
-      }, 2000);
-    } else {
-      console.log('Message not found in current list, may need to load older messages');
-      // TODO: Можно добавить загрузку старых сообщений до нужного ID
+  const handleTaskPress = (taskId: number) => {
+    const rootNavigation = navigation.getParent();
+    if (rootNavigation) {
+      rootNavigation.navigate('TaskDetail', { taskId, fromChat: true });
     }
   };
 
-  const handleScrollToBottom = () => {
-    // В inverted списке scrollToOffset(0) = самые новые сообщения (внизу визуально)
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  const handleReplyPressWithHighlight = (messageId: number) => {
+    scrollToMessage(messageId, setHighlightedMessageId);
   };
 
-  // Отслеживаем видимые элементы для определения текущей даты
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50, // Элемент считается видимым если видно 50%
-  });
-
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      // Берём последний видимый элемент сообщения (который сверху экрана в inverted списке)
-      const visibleMessages = viewableItems.filter((item: any) => item.item.type === 'message');
-      const topVisibleItem = visibleMessages[visibleMessages.length - 1];
-
-      if (topVisibleItem && topVisibleItem.item.data) {
-        const message = topVisibleItem.item.data;
-        const dateLabel = getDateLabel(message.created_at);
-        setCurrentDateLabel(dateLabel);
-      }
-    }
-  }).current;
+  const handlePinnedMessagePress = (messageId: number) => {
+    handleReplyPressWithHighlight(messageId);
+  };
 
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.background,
     },
-    loadingContainer: {
-      backgroundColor: theme.background,
-    },
-    emptyText: {
-      color: theme.textSecondary,
-    },
   });
 
-  // Показываем skeleton'ы если сообщения еще не загружены
-  const showSkeletons = isLoading && messages.length === 0;
+  // Не показываем UI пока layout не готов (избегаем прыжков)
+  if (!isLayoutReady) {
+    return <View style={[styles.container, dynamicStyles.container]} />;
+  }
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       {/* Floating sticky date header */}
-      {showDateHeader && currentDateLabel && (
-        <View style={[
-          styles.stickyDateHeader,
-          { backgroundColor: theme.backgroundSecondary }
-        ]}>
-          <Text style={[styles.stickyDateText, { color: theme.text }]}>
-            {currentDateLabel}
-          </Text>
-        </View>
-      )}
+      <FloatingDateHeader dateLabel={currentDateLabel} visible={showDateHeader} />
 
-      <KeyboardAvoidingView
-        style={styles.flex1}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 114 : 0}
-      >
-  <View style={styles.inner}>
-    {/* Индикатор печатающих пользователей */}
-    <TypingIndicator userNames={typingUserNames} />
-
-    {/* Баннер закрепленных сообщений */}
-    {pinnedMessages.length > 0 && (
-      <PinnedMessageBanner
-        pinnedMessages={pinnedMessages}
-        onPress={handlePinnedMessagePress}
-        onUnpin={handleUnpin}
-      />
-    )}
-
-    {/* Показываем skeleton'ы пока грузятся сообщения */}
-    {showSkeletons ? (
-      <View style={styles.skeletonsContainer}>
-        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <MessageSkeleton key={i} isOwn={i % 3 === 0} />
-        ))}
-      </View>
-    ) : (
-      <FlatList
-        ref={listRef}
-        data={messageListItems}
-        extraData={messagesKey}
-        renderItem={({ item, index }) => {
-          // Рендер разделителя даты
-          if (item.type === 'date') {
-            return <DateSeparator date={item.data} />;
-          }
-
-          // Рендер сообщения
-          const message = item.data;
-
-        // Показываем баннер только при первом входе в чат (showUnreadBanner=true)
-        // После автоматической отметки сообщений как прочитанных баннер скрывается
-        const shouldShowBanner = index === firstUnreadIndex && unreadCount > 0 && showUnreadBanner;
-
-        // Получаем роль пользователя в этом чате
-        const currentChat = getChatById(chatIdNum);
-        const currentMember = currentChat?.members?.find(m => m.user_id === currentUser?.id);
-        const userRole = currentMember?.role || 'member';
-
-        // Логирование для первого сообщения
-        if (index === 0) {
-          console.log('🔐 User role in chat:', {
-            chatId: chatIdNum,
-            userId: currentUser?.id,
-            role: userRole,
-            membersCount: currentChat?.members?.length,
-            currentMember,
-          });
-        }
-
-        return (
+      <View style={styles.flex1}>
+        {contentReady ? (
           <>
-            <MessageItem
-              message={message}
-              onReply={handleReply}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onRestore={handleRestore}
-              onDeletePermanent={handleDeletePermanent}
-              onPin={handlePin}
-              onUnpin={handleUnpin}
-              onForward={handleForward}
-              onReplyPress={handleReplyPress}
-              onPollPress={handlePollPress}
-              isHighlighted={message.id === highlightedMessageId}
-              userRole={userRole}
-            />
-            {shouldShowBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
+            {/* Индикатор печатающих */}
+            <TypingIndicator userNames={typingUserNames} />
+
+            {/* Баннер закрепленных сообщений */}
+            {pinnedMessages.length > 0 && (
+              <PinnedMessageBanner
+                pinnedMessages={pinnedMessages}
+                onPress={handlePinnedMessagePress}
+                onUnpin={handleUnpin}
+              />
+            )}
+
+            {/* Список сообщений - flex: 1 чтобы занимал все оставшееся место */}
+            <View style={{ flex: 1 }}>
+              <MessageListComponent
+            chatId={chatIdNum}
+            messageListItems={messageListItems}
+            messagesKey={messagesKey}
+            firstUnreadIndex={firstUnreadIndex}
+            unreadCount={unreadCount}
+            showUnreadBanner={showUnreadBanner}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            inputHeight={inputHeight}
+            insetsBottom={insets.bottom}
+            listRef={listRef}
+            highlightedMessageId={highlightedMessageId}
+            onContentSizeChange={handleContentSizeChange}
+            onScroll={handleScroll}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig.current}
+            onReply={handleReply}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onRestore={handleRestore}
+            onDeletePermanent={handleDeletePermanent}
+            onPin={handlePin}
+            onUnpin={handleUnpin}
+            onForward={handleForward}
+            onReplyPress={handleReplyPressWithHighlight}
+            onPollPress={handlePollPress}
+            onTaskPress={handleTaskPress}
+          />
+
+              {/* Кнопка scroll to bottom - абсолютное позиционирование */}
+              <ScrollToBottomButton visible={showScrollToBottom} onPress={handleScrollToBottom} />
+            </View>
+
+            {/* Панель ввода - обычный layout внизу */}
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  marginBottom: keyboardHeight,
+                  // Убираем paddingBottom так как tab bar теперь absolute
+                  backgroundColor: theme.backgroundSecondary,
+                }
+              ]}
+            >
+              <MessageInput
+                onSend={handleSendMessage}
+                onTyping={handleTyping}
+                editingMessage={editingMessage}
+                onCancelEdit={() => setEditingMessage(null)}
+                replyingToMessage={replyingToMessage}
+                onCancelReply={() => setReplyingToMessage(null)}
+                onFilesSelected={(fileIds) => setSelectedFileIds(prev => [...prev, ...fileIds])}
+                selectedFileIds={selectedFileIds}
+              />
+            </View>
           </>
-        );
-      }}
-      keyExtractor={(item, index) =>
-        item.type === 'date' ? `date-${index}` : `message-${item.data.id}`
-      }
-      contentContainerStyle={[
-        styles.messagesList,
-        { paddingTop: inputHeight + insets.bottom },
-      ]}
-      inverted={true}
-      keyboardShouldPersistTaps="handled"
-      removeClippedSubviews={false}
-      // Скролл к самым новым при первой загрузке
-      onContentSizeChange={handleContentSizeChange}
-      // Используем onScroll вместо onEndReached для надежности
-      onScroll={handleScroll}
-      scrollEventThrottle={16}
-      // Отслеживаем видимые элементы для sticky date header
-      onViewableItemsChanged={onViewableItemsChanged}
-      viewabilityConfig={viewabilityConfig.current}
-      // Обработчик ошибки прокрутки
-      onScrollToIndexFailed={(info) => {
-        console.log('Failed to scroll to index:', info);
-        // Попробуем прокрутить через небольшую задержку
-        setTimeout(() => {
-          if (info.index < messages.length) {
-            listRef.current?.scrollToIndex({
-              index: info.index,
-              animated: true,
-              viewPosition: 0.5,
-            });
-          }
-        }, 100);
-      }}
-      ListFooterComponent={
-        isLoadingMore ? (
-          <View style={{ padding: 20, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={theme.primary} />
-          </View>
-        ) : null
-      }
-    />
-    )}
+        ) : (
+          // Показываем пустой экран пока контент не готов
+          <View style={{ flex: 1, backgroundColor: theme.background }} />
+        )}
+      </View>
 
-    {/* Floating кнопка "scroll to bottom" */}
-    {showScrollToBottom && (
-      <TouchableOpacity
-        style={[styles.scrollToBottomButton, { backgroundColor: theme.primary }]}
-        onPress={handleScrollToBottom}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-    )}
-
-    {/* Оборачиваем панель, чтобы измерить её высоту */}
-    <View
-      onLayout={(e) => {
-        const h = e.nativeEvent.layout.height;
-        if (h !== inputHeight) setInputHeight(h);
-      }}
-    >
-
-
-      <MessageInput
-        onSend={handleSendMessage}
-        onTyping={handleTyping}
-        editingMessage={editingMessage}
-        onCancelEdit={() => setEditingMessage(null)}
-        replyingToMessage={replyingToMessage}
-        onCancelReply={() => setReplyingToMessage(null)}
-        onFilesSelected={(fileIds) => {
-          console.log('📎 onFilesSelected called with fileIds:', fileIds);
-          setSelectedFileIds(prev => {
-            const newFileIds = [...prev, ...fileIds];
-            console.log('📎 Updated selectedFileIds:', newFileIds);
-            return newFileIds;
-          });
-        }}
-        selectedFileIds={selectedFileIds}
-      />
-    </View>
-  </View>
-</KeyboardAvoidingView>
-
+      {/* Модалки */}
       <ChatMembersModal
         visible={membersModalVisible}
         chatId={chatIdNum}
@@ -975,66 +389,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { flex: 1 },
   flex1: { flex: 1 },
-  loadingContainer: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-  },
-  skeletonsContainer: {
-    flex: 1,
-    paddingVertical: 20,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 10000,
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  messagesList: { paddingVertical: 20 },
-  emptyContainer: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40,
-  },
-  emptyText: { fontSize: 16 },
-  scrollToBottomButton: {
-    position: 'absolute',
-    right: 16,
-    bottom: 80,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 999,
-  },
-  stickyDateHeader: {
-    position: 'absolute',
-    top: 80,
-    alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-    zIndex: 998,
-  },
-  stickyDateText: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  inputWrapper: {
+    // Явно задаем что этот view НЕ должен менять свою позицию
   },
 });
 

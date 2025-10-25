@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   RefreshControl,
   TextInput,
@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskItem } from '@components/task/TaskItem';
-import { Loading } from '@components/common/Loading';
+import { TaskSkeleton } from '@components/task/TaskSkeleton';
 import type { Task, TaskStatus } from '../../types/task.types';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
@@ -130,7 +130,14 @@ const TaskListScreen: React.FC = () => {
 
   const loadAllTasks = async () => {
     try {
-      setIsInitialLoading(true);
+      // Показываем skeleton только если нет задач в кеше
+      const hasTasksInCache = newTasks.length > 0 || inProgressTasks.length > 0 ||
+                              reviewTasks.length > 0 || doneTasks.length > 0;
+
+      if (!hasTasksInCache) {
+        setIsInitialLoading(true);
+      }
+
       await Promise.all([
         loadTasksByStatus('new', TASKS_PER_PAGE, 0),
         loadTasksByStatus('in_progress', TASKS_PER_PAGE, 0),
@@ -227,10 +234,6 @@ const TaskListScreen: React.FC = () => {
     { key: 'my', label: 'Мои' },
     { key: 'assigned', label: 'Назначенные' },
   ];
-
-  if (isInitialLoading) {
-    return <Loading text="Загрузка задач..." fullScreen />;
-  }
 
   const currentTasks = getCurrentTasks(activeTab);
   const currentTotal = getTotalForStatus(activeTab);
@@ -359,12 +362,10 @@ const TaskListScreen: React.FC = () => {
       minWidth: 22,
       textAlign: 'center',
     },
-    content: {
-      flex: 1,
-    },
     taskList: {
       paddingHorizontal: 16,
       paddingTop: 12,
+      paddingBottom: 120, // Для iOS с учетом tab bar
     },
     taskItem: {
       backgroundColor: theme.card,
@@ -397,6 +398,7 @@ const TaskListScreen: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 32,
+      backgroundColor: theme.background,
     },
     emptyIcon: {
       width: 80,
@@ -521,7 +523,13 @@ const TaskListScreen: React.FC = () => {
       </View>
 
       {/* Content */}
-      {totalTasks === 0 ? (
+      {isInitialLoading ? (
+        <View style={{ flex: 1, paddingTop: 12 }}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <TaskSkeleton key={i} />
+          ))}
+        </View>
+      ) : totalTasks === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIcon}>
             <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
@@ -546,41 +554,41 @@ const TaskListScreen: React.FC = () => {
           </Text>
         </View>
       ) : (
-        <ScrollView
-          style={styles.content}
+        <FlatList
+          data={currentTasks}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.taskItem}>
+              <TaskItem task={item} onPress={handleTaskPress} />
+            </View>
+          )}
           contentContainerStyle={styles.taskList}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
-        >
-          {currentTasks.map((task) => (
-            <View key={task.id} style={styles.taskItem}>
-              <TaskItem task={task} onPress={handleTaskPress} />
-            </View>
-          ))}
-
-          {/* Load More */}
-          {hasMore && (
-            <View style={styles.loadMoreContainer}>
-              <TouchableOpacity
-                style={styles.loadMoreButton}
-                onPress={() => handleLoadMore(activeTab)}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color={theme.text} />
-                ) : (
-                  <>
-                    <Ionicons name="chevron-down" size={18} color={theme.text} />
-                    <Text style={styles.loadMoreText}>
-                      Ещё {currentTotal - currentTasks.length}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-        </ScrollView>
+          ListFooterComponent={
+            hasMore ? (
+              <View style={styles.loadMoreContainer}>
+                <TouchableOpacity
+                  style={styles.loadMoreButton}
+                  onPress={() => handleLoadMore(activeTab)}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={theme.text} />
+                  ) : (
+                    <>
+                      <Ionicons name="chevron-down" size={18} color={theme.text} />
+                      <Text style={styles.loadMoreText}>
+                        Ещё {currentTotal - currentTasks.length}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
+        />
       )}
     </SafeAreaView>
   );

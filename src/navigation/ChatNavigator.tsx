@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { Platform } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '@hooks/useTheme';
 import { ChatStackParamList } from './types';
@@ -30,6 +31,17 @@ const ChatNavigator: React.FC = () => {
           color: theme.text,
         },
         headerShadowVisible: true,
+        contentStyle: {
+          backgroundColor: theme.background,
+        },
+        // Telegram-style slide transition (native only, web uses default)
+        animation: 'slide_from_right',
+        animationDuration: 300,
+        // На веб используем простую анимацию
+        presentation: 'card',
+        // Включаем gesture для более плавного свайпа назад
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
       }}
     >
       <Stack.Screen
@@ -53,6 +65,14 @@ const ChatNavigator: React.FC = () => {
           headerShown: true,
           headerBackTitleVisible: false,
           headerBackTitle: '',
+          // Красивая slide анимация справа
+          animation: 'slide_from_right',
+          // Более быстрая анимация для iOS чтобы navbar появлялся раньше
+          animationDuration: Platform.OS === 'ios' ? 250 : 300,
+          // Настройка анимации для iOS
+          ...(Platform.OS === 'ios' && {
+            animationTypeForReplace: 'pop',
+          }),
         }}
       />
       <Stack.Screen

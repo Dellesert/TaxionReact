@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,14 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useChatStore } from '@store/chatStore';
 import * as pollApi from '@api/poll.api';
 import { Poll, PollOption, PollType } from '@/types/poll.types';
+import SharePollModal from '@components/poll/SharePollModal';
 
 type PollStackParamList = {
   PollList: undefined;
-  PollDetail: { pollId: number };
+  PollDetail: { pollId: number; fromChat?: boolean };
   EditPoll: { pollId: number };
   PollVoters: { pollId: number };
 };
@@ -41,6 +43,12 @@ const PollDetailScreen: React.FC = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  const { sendMessage } = useChatStore();
+
+  // Проверяем, открыт ли опрос из чата по параметру fromChat
+  const isFromChat = route.params.fromChat === true;
 
   // Check if user is system administrator (only admin or super_admin, NOT manager)
   const isSystemAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
@@ -68,6 +76,50 @@ const PollDetailScreen: React.FC = () => {
   useEffect(() => {
     loadPollDetail();
   }, [route.params.pollId]);
+
+  // Устанавливаем заголовок навигации, когда опрос открыт из чата
+  useLayoutEffect(() => {
+    if (isFromChat && poll) {
+      console.log('📋 Setting poll title in navigation header:', poll.title);
+      navigation.setOptions({
+        title: poll.title,
+        headerRight: () => (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 8 }}>
+            {/* Кнопка поделиться - видна всем для активных опросов */}
+            {poll.status === 'active' && (
+              <TouchableOpacity
+                onPress={() => setShowShareModal(true)}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="share-outline" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+            {canEditPoll && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('EditPoll', { pollId: poll.id })}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="create-outline" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+            {canDeleteOrClosePoll && (
+              <TouchableOpacity
+                onPress={handleDelete}
+                style={{ padding: 4 }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#EF4444" />
+                ) : (
+                  <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        ),
+      });
+    }
+  }, [isFromChat, poll, navigation, canEditPoll, canDeleteOrClosePoll, isDeleting, theme.primary]);
 
   const loadPollDetail = async () => {
     try {
@@ -142,7 +194,17 @@ const PollDetailScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to load poll detail:', error);
-      setError(error.message || 'Failed to load poll');
+
+      // Специальная обработка для ошибки 404 - опрос удалён
+      if (error.status === 404 || (error.code === 'ERR_BAD_RESPONSE' && error.message.includes('404'))) {
+        setError('Этот опрос был удалён и больше недоступен.');
+      }
+      // Специальная обработка для ошибки 403 - нет доступа к опросу
+      else if (error.status === 403 || (error.code === 'ERR_BAD_RESPONSE' && error.message.includes('403'))) {
+        setError('Этот опрос приватный и недоступен для вас. Вы не включены в список участников.');
+      } else {
+        setError(error.message || 'Не удалось загрузить опрос');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -309,6 +371,39 @@ const PollDetailScreen: React.FC = () => {
           },
         ]
       );
+    }
+  };
+
+  const handleSharePoll = async (chatId: number) => {
+    if (!poll) return;
+
+    try {
+      const pollData = {
+        poll_id: poll.id,
+        poll_title: poll.title,
+        poll_question: poll.question || poll.description,
+        poll_type: poll.type,
+        total_votes: poll.total_votes || 0,
+        ends_at: poll.end_time,
+      };
+
+      console.log('📤 Sharing poll to chat:', chatId);
+      console.log('📊 Poll data:', JSON.stringify(pollData, null, 2));
+
+      // Отправляем сообщение с типом 'poll' и данными опроса
+      // ВАЖНО: бэкенд ожидает поле "type", а не "message_type"
+      const extraData = {
+        type: 'poll',
+        poll_data: pollData,
+      };
+      console.log('📦 Extra data being sent:', JSON.stringify(extraData, null, 2));
+
+      await sendMessage(chatId, poll.title, undefined, undefined, extraData);
+
+      console.log('✅ Poll shared to chat:', chatId);
+    } catch (error) {
+      console.error('❌ Failed to share poll:', error);
+      throw error;
     }
   };
 
@@ -652,13 +747,26 @@ const PollDetailScreen: React.FC = () => {
   }
 
   if (error) {
+    const isPrivateError = error.includes('приватный') || error.includes('недоступен');
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.centerContainer}>
-          <Ionicons name="alert-circle" size={48} color="#EF4444" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadPollDetail}>
-            <Text style={styles.retryButtonText}>Попробовать снова</Text>
+          <Ionicons
+            name={isPrivateError ? "lock-closed" : "alert-circle"}
+            size={64}
+            color={isPrivateError ? "#F59E0B" : "#EF4444"}
+          />
+          <Text style={[styles.errorText, isPrivateError && { color: '#F59E0B' }]}>{error}</Text>
+          {!isPrivateError && (
+            <TouchableOpacity style={styles.retryButton} onPress={loadPollDetail}>
+              <Text style={styles.retryButtonText}>Попробовать снова</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.backgroundSecondary, marginTop: 12 }]}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={[styles.retryButtonText, { color: theme.text }]}>Вернуться назад</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -678,31 +786,43 @@ const PollDetailScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <ScrollView style={styles.scrollContent}>
-      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: theme.text }]}>{poll.title}</Text>
-        <View style={styles.headerActions}>
-          {canEditPoll && (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('EditPoll', { pollId: poll.id })}
-              style={styles.editButton}
-            >
-              <Ionicons name="create-outline" size={24} color={theme.primary} />
-            </TouchableOpacity>
-          )}
-          {canDeleteOrClosePoll && (
-            <TouchableOpacity onPress={handleDelete} style={styles.deleteButton} disabled={isDeleting}>
-              {isDeleting ? (
-                <ActivityIndicator size="small" color="#EF4444" />
-              ) : (
-                <Ionicons name="trash-outline" size={24} color="#EF4444" />
-              )}
-            </TouchableOpacity>
-          )}
+      {/* Показываем header только если опрос открыт не из чата (т.е. из списка опросов) */}
+      {!isFromChat && (
+        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: theme.text }]}>{poll.title}</Text>
+          <View style={styles.headerActions}>
+            {/* Кнопка поделиться - видна всем для активных опросов */}
+            {poll.status === 'active' && (
+              <TouchableOpacity
+                onPress={() => setShowShareModal(true)}
+                style={styles.shareButton}
+              >
+                <Ionicons name="share-outline" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+            {canEditPoll && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('EditPoll', { pollId: poll.id })}
+                style={styles.editButton}
+              >
+                <Ionicons name="create-outline" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+            {canDeleteOrClosePoll && (
+              <TouchableOpacity onPress={handleDelete} style={styles.deleteButton} disabled={isDeleting}>
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#EF4444" />
+                ) : (
+                  <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </View>
+      )}
 
       {poll.description && (
         <View style={styles.descriptionContainer}>
@@ -865,6 +985,16 @@ const PollDetailScreen: React.FC = () => {
 
       {renderResults()}
       </ScrollView>
+
+      {/* Share Poll Modal */}
+      {poll && (
+        <SharePollModal
+          visible={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          poll={poll}
+          onShare={handleSharePoll}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -900,6 +1030,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  shareButton: {
+    padding: 4,
   },
   editButton: {
     padding: 4,

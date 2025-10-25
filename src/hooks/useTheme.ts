@@ -17,10 +17,14 @@ interface UseThemeReturn {
 export const useTheme = (): UseThemeReturn => {
   const { theme, mode, setTheme, toggleTheme } = useThemeStore();
 
+  // Определяем isDark по цвету фона темы, а не по mode
+  // Потому что mode может быть 'system', но тема при этом темная
+  const isDark = theme.background === '#111827'; // Цвет фона темной темы
+
   return {
     theme,
     mode,
-    isDark: mode === 'dark',
+    isDark,
     toggleTheme,
     setTheme,
   };

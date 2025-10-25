@@ -109,9 +109,15 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
           {/* Превью пересылаемого сообщения */}
           {message && (
             <View style={[styles.messagePreview, { backgroundColor: theme.backgroundSecondary, borderLeftColor: theme.primary }]}>
-              <Ionicons name="arrow-redo-outline" size={16} color={theme.primary} />
+              <Ionicons
+                name={message.message_type === 'poll' ? 'stats-chart' : 'arrow-redo-outline'}
+                size={16}
+                color={theme.primary}
+              />
               <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={2}>
-                {message.content}
+                {message.message_type === 'poll'
+                  ? `📊 Опрос: ${message.content}`
+                  : message.content}
               </Text>
             </View>
           )}

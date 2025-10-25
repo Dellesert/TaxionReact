@@ -1,103 +1,121 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { Avatar } from '@components/common/Avatar';
-import { Chat } from '../../types/chat.types';
+import { ConnectionStatus } from '@components/common/ConnectionStatus';
+import { useTheme } from '@hooks/useTheme';
 
 interface ChatHeaderProps {
-  chat: Chat;
-  typingUsers?: string[];
+  displayName: string;
+  displayAvatar?: string;
+  statusText?: string;
+  membersText?: string;
+  isPrivateChat: boolean;
+  isConnected: boolean;
+  onBackPress: () => void;
+  onHeaderPress: () => void;
 }
 
-export const ChatHeader: React.FC<ChatHeaderProps> = ({ chat, typingUsers = [] }) => {
-  const navigation = useNavigation();
-
-  const getChatName = () => {
-    if (chat.name) return chat.name;
-    if (chat.type === 'direct' && chat.participants.length > 0) {
-      return chat.participants[0].full_name || 'Unnamed User';
-    }
-    return 'Unnamed Chat';
-  };
-
-  const getChatAvatar = () => {
-    if (chat.avatar) return chat.avatar;
-    if (chat.type === 'direct' && chat.participants.length > 0) {
-      return chat.participants[0].avatar || undefined;
-    }
-    return undefined;
-  };
-
-  const getOnlineStatus = () => {
-    if (chat.type !== 'direct') return null;
-    const participant = chat.participants[0];
-    if (!participant) return null;
-    return participant.status || 'offline';
-  };
-
-  const renderSubtitle = () => {
-    if (typingUsers.length > 0) {
-      return (
-        <Text className="text-xs text-blue-500 italic">
-          {typingUsers.length === 1
-            ? `${typingUsers[0]} печатает...`
-            : `${typingUsers.length} человек печатают...`}
-        </Text>
-      );
-    }
-
-    if (chat.type === 'group' || chat.type === 'channel') {
-      return (
-        <Text className="text-xs text-gray-500">
-          {chat.participants.length} участников
-        </Text>
-      );
-    }
-
-    const status = getOnlineStatus();
-    if (status === 'online') {
-      return <Text className="text-xs text-green-500">В сети</Text>;
-    } else if (status === 'away') {
-      return <Text className="text-xs text-yellow-500">Отошёл</Text>;
-    } else if (status === 'busy') {
-      return <Text className="text-xs text-red-500">Не беспокоить</Text>;
-    }
-
-    return <Text className="text-xs text-gray-500">Не в сети</Text>;
-  };
-
-  return (
-    <View className="flex-row items-center bg-white px-4 py-3 border-b border-gray-200">
-      <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-        <Ionicons name="arrow-back" size={24} color="#000" />
+/**
+ * Компонент шапки чата для навигации
+ */
+export const ChatHeader = {
+  Left: ({ onBackPress }: { onBackPress: () => void }) => {
+    const { theme } = useTheme();
+    return (
+      <TouchableOpacity
+        onPress={onBackPress}
+        style={{ marginLeft: 4 }}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="chevron-back" size={28} color={theme.primary} />
       </TouchableOpacity>
+    );
+  },
 
-      <Avatar
-        source={getChatAvatar()}
-        name={getChatName()}
-        size={40}
-        status={chat.type === 'direct' ? getOnlineStatus() : undefined}
-      />
+  Title: ({
+    displayName,
+    statusText,
+    membersText,
+    isPrivateChat,
+    isConnected,
+    onHeaderPress,
+  }: Omit<ChatHeaderProps, 'displayAvatar' | 'onBackPress'>) => {
+    const { theme } = useTheme();
 
-      <View className="flex-1 ml-3">
-        <Text className="text-base font-semibold" numberOfLines={1}>
-          {getChatName()}
-        </Text>
-        {renderSubtitle()}
-      </View>
+    return (
+      <TouchableOpacity
+        onPress={onHeaderPress}
+        activeOpacity={0.7}
+        style={{ maxWidth: 220 }}
+      >
+        {isConnected ? (
+          <View style={{ alignItems: 'center', width: '100%' }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: theme.text,
+                maxWidth: '100%',
+              }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {displayName}
+            </Text>
+            {isPrivateChat && statusText && (
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: theme.textSecondary,
+                  marginTop: 2,
+                  maxWidth: '100%',
+                }}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {statusText}
+              </Text>
+            )}
+            {!isPrivateChat && membersText && (
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: theme.textSecondary,
+                  marginTop: 2,
+                  maxWidth: '100%',
+                }}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {membersText}
+              </Text>
+            )}
+          </View>
+        ) : (
+          <ConnectionStatus compact />
+        )}
+      </TouchableOpacity>
+    );
+  },
 
-      <View className="flex-row space-x-3">
-        <TouchableOpacity>
-          <Ionicons name="call-outline" size={24} color="#3B82F6" />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="videocam-outline" size={24} color="#3B82F6" />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={24} color="#3B82F6" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  Right: ({
+    displayAvatar,
+    displayName,
+    onHeaderPress,
+  }: Pick<ChatHeaderProps, 'displayAvatar' | 'displayName' | 'onHeaderPress'>) => {
+    return (
+      <TouchableOpacity
+        onPress={onHeaderPress}
+        activeOpacity={0.7}
+        style={{ marginRight: 0 }}
+      >
+        <Avatar
+          imageUrl={displayAvatar}
+          name={displayName}
+          size={36}
+        />
+      </TouchableOpacity>
+    );
+  },
 };

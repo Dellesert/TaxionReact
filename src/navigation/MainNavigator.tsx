@@ -16,6 +16,7 @@ import TaskNavigator from './TaskNavigator';
 import PollNavigator from './PollNavigator';
 import CalendarScreen from '@screens/calendar/CalendarScreen';
 import ProfileScreen from '@screens/profile/ProfileScreen';
+import { AnimatedTabBar } from '@components/navigation/AnimatedTabBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -31,6 +32,10 @@ const MainNavigator: React.FC = () => {
   return (
     <Tab.Navigator
       initialRouteName="Chats"
+      sceneContainerStyle={{
+        backgroundColor: theme.background,
+      }}
+      tabBar={(props) => <AnimatedTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
@@ -74,19 +79,6 @@ const MainNavigator: React.FC = () => {
         },
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textTertiary,
-        tabBarStyle: {
-          backgroundColor: theme.backgroundSecondary,
-          borderTopWidth: 1,
-          borderTopColor: theme.border,
-          height: 85,
-          paddingTop: 6,
-          paddingHorizontal: 12,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-          paddingTop: 2,
-        },
       })}
     >
 
@@ -121,25 +113,9 @@ const MainNavigator: React.FC = () => {
       <Tab.Screen
         name="Chats"
         component={ChatNavigator}
-        options={({ route }) => ({
+        options={{
           tabBarLabel: 'Чаты',
-          tabBarStyle: ((route) => {
-            const routeName = getFocusedRouteNameFromRoute(route) ?? 'ChatList';
-            if (routeName === 'Chat' || routeName === 'ChatSettings') {
-              // Скрываем табы на экране чата и настроек
-              return { display: 'none' };
-            }
-            // Показываем табы на остальных экранах
-            return {
-              backgroundColor: theme.backgroundSecondary,
-              borderTopWidth: 1,
-              borderTopColor: theme.border,
-              height: 85,
-              paddingTop: 6,
-              paddingHorizontal: 12,
-            };
-          })(route),
-        })}
+        }}
       />
        <Tab.Screen
         name="Calendar"
