@@ -1,26 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx expo install:*)",
-      "Bash(npm install:*)",
-      "Bash(netstat:*)",
-      "Bash(findstr:*)",
-      "Bash(taskkill:*)",
-      "Bash(del \"src\\screens\\profile\\ProfileScreen.tsx\")",
-      "Bash(move \"src\\screens\\profile\\ProfileScreen_new.tsx\" \"src\\screens\\profile\\ProfileScreen.tsx\")",
-      "Bash(ipconfig:*)",
-      "Bash(curl:*)",
+      "Bash(git checkout:*)",
       "Read(//d/Documents/GitHub/TaxionBack/**)",
-      "Bash(dir:*)",
-      "Bash(tasklist:*)",
-      "Bash(npx tsc:*)",
-      "Bash(docker-compose ps:*)",
-      "Bash(docker-compose restart:*)",
-      "Bash(docker-compose logs:*)",
-      "Bash(docker-compose up:*)",
-      "Bash(npx expo start)",
-      "Bash(docker-compose exec:*)",
-      "Bash(docker inspect:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(npm run:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
