@@ -12,7 +12,15 @@
       "Bash(docker-compose exec:*)",
       "Bash(docker-compose restart:*)",
       "Bash(docker-compose up:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Read(//d/Documents/GitHub/**)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(taskkill:*)",
+      "Bash(findstr:*)",
+      "Bash(copy /Y UsersPage_RU.tsx UsersPage.tsx)",
+      "Bash(docker-compose build:*)"
     ],
     "deny": [],
     "ask": []
