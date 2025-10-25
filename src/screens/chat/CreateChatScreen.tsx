@@ -92,8 +92,8 @@ const CreateChatScreen: React.FC = () => {
         console.log('🌐 API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
         console.log('🔧 Mock mode:', process.env.EXPO_PUBLIC_USE_MOCK_DATA);
 
-        // Request all users (increase limit if needed)
-        const response = await getUsers({}, { limit: 100, offset: 0 });
+        // Request all users (increase limit if needed), only active users
+        const response = await getUsers({ is_active: true }, { limit: 1000, offset: 0 });
         console.log('✅ Users API response:', response);
         console.log('✅ Response type:', typeof response);
         console.log('✅ Response keys:', response ? Object.keys(response) : 'null');
@@ -241,6 +241,13 @@ const CreateChatScreen: React.FC = () => {
       // Filter out current user
       if (currentUser && user.id === currentUser.id) {
         return false;
+      }
+
+      // Employees shouldn't see admins and super_admins
+      if (currentUser?.role === 'employee') {
+        if (user.role === 'admin' || user.role === 'super_admin') {
+          return false;
+        }
       }
 
       // For private chats, filter out users who already have a private chat with current user
@@ -497,6 +504,7 @@ const CreateChatScreen: React.FC = () => {
     },
     listContent: {
       paddingVertical: 8,
+      paddingBottom: 120,
     },
     userItem: {
       flexDirection: 'row',

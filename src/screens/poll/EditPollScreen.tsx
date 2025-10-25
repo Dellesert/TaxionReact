@@ -15,11 +15,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '@hooks/useTheme';
 import * as pollApi from '@api/poll.api';
 import { Poll, PollVisibility } from '@/types/poll.types';
 import { PollStackParamList } from '@navigation/types';
+import DatePickerModal from '@components/common/DatePickerModal';
 
 type EditPollScreenNavigationProp = StackNavigationProp<PollStackParamList, 'EditPoll'>;
 type EditPollScreenRouteProp = RouteProp<PollStackParamList, 'EditPoll'>;
@@ -185,7 +185,11 @@ const EditPollScreen: React.FC = () => {
         <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование опроса</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Title */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: theme.text }]}>Название *</Text>
@@ -467,19 +471,20 @@ const EditPollScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
 
-                {showStartDatePicker && (
-                  <DateTimePicker
-                    value={startDate || new Date()}
-                    mode="datetime"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedDate) => {
-                      setShowStartDatePicker(Platform.OS === 'ios');
-                      if (selectedDate) {
-                        setStartDate(selectedDate);
-                      }
-                    }}
-                  />
-                )}
+                <DatePickerModal
+                  visible={showStartDatePicker}
+                  value={startDate || new Date()}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS === 'android') {
+                      setShowStartDatePicker(false);
+                    }
+                    if (selectedDate) {
+                      setStartDate(selectedDate);
+                    }
+                  }}
+                  onClose={() => setShowStartDatePicker(false)}
+                  mode="datetime"
+                />
               </>
             )}
           </View>
@@ -551,20 +556,21 @@ const EditPollScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
 
-                {showEndDatePicker && (
-                  <DateTimePicker
-                    value={endDate || (startDate ? new Date(startDate.getTime() + 86400000) : new Date())}
-                    mode="datetime"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedDate) => {
-                      setShowEndDatePicker(Platform.OS === 'ios');
-                      if (selectedDate) {
-                        setEndDate(selectedDate);
-                      }
-                    }}
-                    minimumDate={startDate || undefined}
-                  />
-                )}
+                <DatePickerModal
+                  visible={showEndDatePicker}
+                  value={endDate || (startDate ? new Date(startDate.getTime() + 86400000) : new Date())}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS === 'android') {
+                      setShowEndDatePicker(false);
+                    }
+                    if (selectedDate) {
+                      setEndDate(selectedDate);
+                    }
+                  }}
+                  onClose={() => setShowEndDatePicker(false)}
+                  minimumDate={startDate || undefined}
+                  mode="datetime"
+                />
               </>
             )}
           </View>

@@ -132,16 +132,12 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     setIsLayoutReady(true);
   }, []);
 
-  // Показываем контент сразу без fade-in анимации
+  // Показываем контент сразу без задержки
   useFocusEffect(
     React.useCallback(() => {
-      // Небольшая задержка для завершения slide анимации навигации
-      const readyTimer = setTimeout(() => {
-        setContentReady(true);
-      }, Platform.OS === 'ios' ? 270 : 350);
+      setContentReady(true);
 
       return () => {
-        clearTimeout(readyTimer);
         setContentReady(false);
       };
     }, [])

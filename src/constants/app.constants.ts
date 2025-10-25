@@ -23,7 +23,7 @@ export const TOKEN_CONFIG = {
 // User Roles
 export const USER_ROLES = {
   EMPLOYEE: 'employee',
-  MANAGER: 'manager',
+  DEPARTMENT_HEAD: 'department_head',
   ADMIN: 'admin',
   SUPER_ADMIN: 'super_admin',
 } as const;

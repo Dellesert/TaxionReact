@@ -58,7 +58,15 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   const loadUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await getUsers({}, { limit: 100, offset: 0 });
+      const currentUser = useAuthStore.getState().user;
+
+      // Фильтр по отделу для руководителей отделов и только активные пользователи
+      let filters: any = { is_active: true };
+      if (currentUser?.role === 'department_head' && currentUser?.department_id) {
+        filters.department_id = currentUser.department_id;
+      }
+
+      const response = await getUsers(filters, { limit: 100, offset: 0 });
 
       let usersList: User[] = [];
       if (response && response.data && Array.isArray(response.data)) {
@@ -68,12 +76,21 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       }
 
       // Фильтруем исключенных пользователей
-      const currentUser = useAuthStore.getState().user;
-      const filteredUsers = usersList.filter(
-        (user) =>
-          user.id !== currentUser?.id && // Исключаем текущего пользователя
-          !excludeUserIds.includes(user.id) // Исключаем переданных пользователей
-      );
+      // Обычные сотрудники не должны видеть администраторов
+      const filteredUsers = usersList.filter((user) => {
+        // Исключаем текущего пользователя
+        if (user.id === currentUser?.id) return false;
+
+        // Исключаем переданных пользователей
+        if (excludeUserIds.includes(user.id)) return false;
+
+        // Если текущий пользователь - обычный сотрудник, исключаем администраторов
+        if (currentUser?.role === 'employee') {
+          if (user.role === 'admin' || user.role === 'super_admin') return false;
+        }
+
+        return true;
+      });
 
       setUsers(filteredUsers);
     } catch (error) {
@@ -207,8 +224,8 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         return 'Супер администратор';
       case 'admin':
         return 'Администратор';
-      case 'manager':
-        return 'Менеджер';
+      case 'department_head':
+        return 'Руководитель отдела';
       case 'employee':
         return 'Сотрудник';
       default:
@@ -327,6 +344,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     },
     listContent: {
       paddingVertical: 8,
+      paddingBottom: 120,
     },
     userItem: {
       flexDirection: 'row',

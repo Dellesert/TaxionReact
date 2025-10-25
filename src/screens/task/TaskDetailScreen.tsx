@@ -29,6 +29,7 @@ import { useChatStore } from '@store/chatStore';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import ShareTaskModal from '@components/task/ShareTaskModal';
+import UserSelector from '@components/common/UserSelector';
 
 type TaskDetailRouteParams = {
   taskId: string;
@@ -45,6 +46,7 @@ const TaskDetailScreen: React.FC = () => {
   const [task, setTask] = useState<Task | null>(null);
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [commentsOffset, setCommentsOffset] = useState(0);
@@ -58,6 +60,7 @@ const TaskDetailScreen: React.FC = () => {
   const [editDescription, setEditDescription] = useState('');
   const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
   const [editDueDate, setEditDueDate] = useState<Date | undefined>(undefined);
+  const [editAssigneeIds, setEditAssigneeIds] = useState<number[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -77,6 +80,7 @@ const TaskDetailScreen: React.FC = () => {
   const loadTask = async () => {
     try {
       setIsLoading(true);
+      setAccessDenied(false);
       const taskIdNum = Number(taskId);
       const response = await taskApi.getTask(taskIdNum);
       setTask(response);
@@ -85,9 +89,15 @@ const TaskDetailScreen: React.FC = () => {
       setEditDescription(response.description || '');
       setEditPriority(response.priority);
       setEditDueDate(response.due_date ? new Date(response.due_date) : undefined);
-    } catch (error) {
+      setEditAssigneeIds(response.assignees?.map(a => a.id) || []);
+    } catch (error: any) {
       console.error('Failed to load task:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить задачу');
+      // Check if it's a 403 error (access denied)
+      if (error.status === 403) {
+        setAccessDenied(true);
+      } else {
+        Alert.alert('Ошибка', 'Не удалось загрузить задачу');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -128,6 +138,7 @@ const TaskDetailScreen: React.FC = () => {
     setEditDescription(task.description || '');
     setEditPriority(task.priority);
     setEditDueDate(task.due_date ? new Date(task.due_date) : undefined);
+    setEditAssigneeIds(task.assignees?.map(a => a.id) || []);
     setIsEditMode(true);
   };
 
@@ -138,6 +149,7 @@ const TaskDetailScreen: React.FC = () => {
     setEditDescription(task.description || '');
     setEditPriority(task.priority);
     setEditDueDate(task.due_date ? new Date(task.due_date) : undefined);
+    setEditAssigneeIds(task.assignees?.map(a => a.id) || []);
   };
 
   const handleSaveEdit = async () => {
@@ -149,24 +161,32 @@ const TaskDetailScreen: React.FC = () => {
     try {
       setIsSaving(true);
       const taskIdNum = Number(taskId);
-      await taskApi.updateTask(taskIdNum, {
+
+      const updateData = {
         title: editTitle.trim(),
         description: editDescription.trim() || undefined,
         priority: editPriority,
-        due_date: editDueDate,
-      });
-
-      // Update local state
-      setTask({
-        ...task,
-        title: editTitle.trim(),
-        description: editDescription.trim(),
-        priority: editPriority,
         due_date: editDueDate?.toISOString(),
-      });
+        assignee_ids: editAssigneeIds.length > 0 ? editAssigneeIds : undefined,
+      };
+
+      console.log('📝 Updating task with data:', updateData);
+
+      const updatedTask = await taskApi.updateTask(taskIdNum, updateData);
+      console.log('✅ Server response after update:', updatedTask);
+      console.log('✅ Assignees in response:', updatedTask.assignees);
+
+      // Reload task to get updated assignees
+      await loadTask();
+      console.log('🔄 Task reloaded, current assignees:', task?.assignees);
 
       setIsEditMode(false);
-      Alert.alert('Успех', 'Задача обновлена');
+
+      if (Platform.OS === 'web') {
+        alert('Задача обновлена');
+      } else {
+        Alert.alert('Успех', 'Задача обновлена');
+      }
     } catch (error: any) {
       console.error('Failed to update task:', error);
       Alert.alert('Ошибка', error.message || 'Не удалось обновить задачу');
@@ -324,9 +344,18 @@ const TaskDetailScreen: React.FC = () => {
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
+    if (event.type === 'dismissed') {
+      setShowDatePicker(false);
+      return;
+    }
+
     if (selectedDate) {
       setEditDueDate(selectedDate);
+    }
+
+    // На Android закрываем сразу, на iOS оставляем открытым
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
     }
   };
 
@@ -377,7 +406,67 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
-  if (isLoading || !task) {
+  if (isLoading) {
+    return <Loading text="Загрузка задачи..." fullScreen />;
+  }
+
+  // Show access denied screen if 403 error
+  if (accessDenied) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.card }} edges={['top']}>
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
+          {/* Header */}
+          <View style={{
+            backgroundColor: theme.card,
+            paddingTop: 12,
+            paddingBottom: 16,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+          }}>
+            <TouchableOpacity
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: theme.backgroundTertiary,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="chevron-back" size={24} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Access Denied Content */}
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+            <Ionicons name="lock-closed" size={64} color={theme.textTertiary} />
+            <Text style={{ fontSize: 24, fontWeight: '700', color: theme.text, marginTop: 24, textAlign: 'center' }}>
+              Приватная задача
+            </Text>
+            <Text style={{ fontSize: 16, color: theme.textSecondary, marginTop: 12, textAlign: 'center', lineHeight: 24 }}>
+              Эта задача является приватной. Вы не имеете доступа к её просмотру.
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: theme.primary,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 12,
+                marginTop: 32
+              }}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Вернуться назад</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!task) {
     return <Loading text="Загрузка задачи..." fullScreen />;
   }
 
@@ -397,7 +486,7 @@ const TaskDetailScreen: React.FC = () => {
   const canCompleteTask =
     user?.role === 'admin' ||
     user?.role === 'super_admin' ||
-    user?.role === 'manager' ||
+    user?.role === 'department_head' ||
     task.created_by === user?.id;
 
   const styles = StyleSheet.create({
@@ -814,8 +903,7 @@ const TaskDetailScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.container}>
+        <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
         <View style={styles.headerRow}>
@@ -830,7 +918,7 @@ const TaskDetailScreen: React.FC = () => {
             >
               <Ionicons name="share-outline" size={20} color={theme.primary} />
             </TouchableOpacity>
-            {isCreator && !isEditMode && (
+            {(isCreator || user?.role === 'admin' || user?.role === 'super_admin') && !isEditMode && (
               <TouchableOpacity style={styles.headerButton} onPress={handleStartEdit}>
                 <Ionicons name="create-outline" size={20} color={theme.primary} />
               </TouchableOpacity>
@@ -843,8 +931,36 @@ const TaskDetailScreen: React.FC = () => {
           </View>
         </View>
 
-        {isEditMode ? (
+        {!isEditMode && (
           <>
+            <Text style={styles.title}>{task.title}</Text>
+
+            {task.description && (
+              <Text style={styles.description}>{task.description}</Text>
+            )}
+
+            <View style={styles.badges}>
+              <View style={[styles.badge, { backgroundColor: getStatusColor(task.status) }]}>
+                <Ionicons name="ellipse" size={8} color="#FFFFFF" />
+                <Text style={styles.badgeText}>{getStatusText(task.status)}</Text>
+              </View>
+              <View style={[styles.badge, { backgroundColor: getPriorityColor(task.priority) }]}>
+                <Ionicons name="flag" size={12} color="#FFFFFF" />
+                <Text style={styles.badgeText}>{getPriorityText(task.priority)}</Text>
+              </View>
+            </View>
+          </>
+        )}
+      </View>
+
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{ backgroundColor: theme.background, paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {isEditMode ? (
+          <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
             <TextInput
               style={styles.titleInput}
               value={editTitle}
@@ -896,35 +1012,113 @@ const TaskDetailScreen: React.FC = () => {
             {/* Due Date Selection */}
             <View style={styles.editSection}>
               <Text style={styles.editLabel}>Срок выполнения</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Ionicons name="calendar" size={20} color={theme.primary} />
-                <Text style={styles.dateButtonText}>
-                  {editDueDate
-                    ? format(editDueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
-                    : 'Выберите дату и время'}
-                </Text>
-                {editDueDate && (
-                  <TouchableOpacity
-                    onPress={() => setEditDueDate(undefined)}
-                    style={styles.clearButton}
-                  >
-                    <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
 
-              {showDatePicker && (
+              {Platform.OS === 'web' ? (
+                <View style={styles.dateButton}>
+                  <Ionicons name="calendar" size={20} color={theme.primary} />
+                  <input
+                    type="datetime-local"
+                    value={editDueDate ? editDueDate.toISOString().slice(0, 16) : ''}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setEditDueDate(new Date(e.target.value));
+                      }
+                    }}
+                    min={new Date().toISOString().slice(0, 16)}
+                    style={{
+                      flex: 1,
+                      border: 'none',
+                      padding: '8px',
+                      fontSize: '14px',
+                      color: theme.text,
+                      backgroundColor: 'transparent',
+                      fontFamily: 'system-ui, -apple-system, sans-serif',
+                      outline: 'none',
+                    }}
+                  />
+                  {editDueDate && (
+                    <TouchableOpacity
+                      onPress={() => setEditDueDate(undefined)}
+                      style={styles.clearButton}
+                    >
+                      <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Ionicons name="calendar" size={20} color={theme.primary} />
+                  <Text style={styles.dateButtonText}>
+                    {editDueDate
+                      ? format(editDueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
+                      : 'Выберите дату и время'}
+                  </Text>
+                  {editDueDate && (
+                    <TouchableOpacity
+                      onPress={() => setEditDueDate(undefined)}
+                      style={styles.clearButton}
+                    >
+                      <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {showDatePicker && Platform.OS === 'ios' && (
+                <Modal
+                  transparent
+                  animationType="none"
+                  visible={showDatePicker}
+                  onRequestClose={() => setShowDatePicker(false)}
+                >
+                  <TouchableWithoutFeedback onPress={() => setShowDatePicker(false)}>
+                    <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                      <TouchableWithoutFeedback>
+                        <View style={{ backgroundColor: theme.card, paddingBottom: 20 }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                              <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Готово</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <DateTimePicker
+                            value={editDueDate || new Date()}
+                            mode="datetime"
+                            display="spinner"
+                            onChange={handleDateChange}
+                            minimumDate={new Date()}
+                            textColor={theme.text}
+                          />
+                        </View>
+                      </TouchableWithoutFeedback>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </Modal>
+              )}
+
+              {showDatePicker && Platform.OS === 'android' && (
                 <DateTimePicker
                   value={editDueDate || new Date()}
                   mode="datetime"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display="default"
                   onChange={handleDateChange}
                   minimumDate={new Date()}
                 />
               )}
+            </View>
+
+            {/* Assignees Selection */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Исполнители</Text>
+              <UserSelector
+                selectedUserIds={editAssigneeIds}
+                onSelectionChange={setEditAssigneeIds}
+                multiSelect={true}
+                placeholder="Выберите исполнителей"
+                modalTitle="Выбрать исполнителей"
+              />
             </View>
 
             {/* Edit Actions */}
@@ -945,35 +1139,9 @@ const TaskDetailScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-          </>
+          </View>
         ) : (
           <>
-            <Text style={styles.title}>{task.title}</Text>
-
-            {task.description && (
-              <Text style={styles.description}>{task.description}</Text>
-            )}
-
-            <View style={styles.badges}>
-              <View style={[styles.badge, { backgroundColor: getStatusColor(task.status) }]}>
-                <Ionicons name="ellipse" size={8} color="#FFFFFF" />
-                <Text style={styles.badgeText}>{getStatusText(task.status)}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: getPriorityColor(task.priority) }]}>
-                <Ionicons name="flag" size={12} color="#FFFFFF" />
-                <Text style={styles.badgeText}>{getPriorityText(task.priority)}</Text>
-              </View>
-            </View>
-          </>
-        )}
-      </View>
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={{ backgroundColor: theme.background }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
         {/* Info Section - Collapsible */}
         <View style={styles.collapsibleSection}>
           <TouchableOpacity
@@ -1150,6 +1318,8 @@ const TaskDetailScreen: React.FC = () => {
             </View>
           )}
         </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Action Bar - Hide during editing */}
@@ -1283,8 +1453,7 @@ const TaskDetailScreen: React.FC = () => {
           onShare={handleShareTask}
         />
       )}
-          </View>
-        </TouchableWithoutFeedback>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

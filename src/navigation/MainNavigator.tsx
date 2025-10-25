@@ -14,6 +14,7 @@ import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
 import PollNavigator from './PollNavigator';
+import AdminNavigator from './AdminNavigator';
 import CalendarScreen from '@screens/calendar/CalendarScreen';
 import ProfileScreen from '@screens/profile/ProfileScreen';
 import { AnimatedTabBar } from '@components/navigation/AnimatedTabBar';
@@ -126,6 +127,13 @@ const MainNavigator: React.FC = () => {
         name="Profile"
         component={ProfileScreen}
         options={{ tabBarLabel: 'Настройки' }}
+      />
+      <Tab.Screen
+        name="Admin"
+        component={AdminNavigator}
+        options={{
+          tabBarButton: () => null, // Hide from tab bar
+        }}
       />
     </Tab.Navigator>
   );

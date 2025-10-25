@@ -62,6 +62,11 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
       ]}
     >
       {state.routes.map((route, index) => {
+        // Skip Admin route (hidden from tab bar)
+        if (route.name === 'Admin') {
+          return null;
+        }
+
         const { options } = descriptors[route.key];
         const label = options.tabBarLabel ?? options.title ?? route.name;
         const isFocused = state.index === index;
@@ -78,14 +83,19 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
           }
         };
 
-        // Получаем иконку
-        const iconName = options.tabBarIcon
-          ? (options.tabBarIcon as any)({
-              focused: isFocused,
-              color: isFocused ? theme.primary : theme.textTertiary,
-              size: 26,
-            }).props.name
-          : 'help-outline';
+        // Получаем имя иконки в зависимости от роута
+        let iconName = 'help-outline';
+        if (route.name === 'Chats') {
+          iconName = isFocused ? 'chatbubbles' : 'chatbubbles-outline';
+        } else if (route.name === 'Tasks') {
+          iconName = isFocused ? 'checkbox' : 'checkbox-outline';
+        } else if (route.name === 'Polls') {
+          iconName = isFocused ? 'bar-chart' : 'bar-chart-outline';
+        } else if (route.name === 'Calendar') {
+          iconName = isFocused ? 'calendar' : 'calendar-outline';
+        } else if (route.name === 'Profile') {
+          iconName = isFocused ? 'settings' : 'settings-outline';
+        }
 
         // Показываем бейдж для чатов
         const showBadge = route.name === 'Chats' && totalUnreadCount > 0;
@@ -100,14 +110,14 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
             onPress={onPress}
             style={styles.tab}
           >
-            <View>
+            <View style={styles.iconContainer}>
               <Ionicons
-                name={iconName}
+                name={iconName as any}
                 size={26}
                 color={isFocused ? theme.primary : theme.textTertiary}
               />
               {showBadge && (
-                <View style={[styles.badge, { backgroundColor: theme.primaryDark || '#FF3B30' }]}>
+                <View style={[styles.badge, { backgroundColor: theme.error || '#FF3B30' }]}>
                   <Text style={styles.badgeText}>
                     {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
                   </Text>
@@ -148,6 +158,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
   },
+  iconContainer: {
+    position: 'relative',
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   label: {
     fontSize: 12,
     fontWeight: '500',
@@ -155,8 +172,8 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: -4,
-    right: -8,
+    top: -6,
+    right: -10,
     minWidth: 18,
     height: 18,
     borderRadius: 9,

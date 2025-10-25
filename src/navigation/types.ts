@@ -48,6 +48,18 @@ export type PollStackParamList = {
   };
 };
 
+// Admin Stack
+export type AdminStackParamList = {
+  Departments: undefined;
+  EditDepartment: {
+    departmentId: number;
+  };
+  Users: undefined;
+  EditUser: {
+    userId: number;
+  };
+};
+
 // Main Tab Navigator
 export type MainTabParamList = {
   Chats: NavigatorScreenParams<ChatStackParamList>;
@@ -55,6 +67,7 @@ export type MainTabParamList = {
   Calendar: undefined;
   Polls: NavigatorScreenParams<PollStackParamList>;
   Profile: undefined;
+  Admin: NavigatorScreenParams<AdminStackParamList>;
 };
 
 // Auth Stack

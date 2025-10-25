@@ -15,13 +15,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import * as pollApi from '@api/poll.api';
 import { PollType, PollVisibility, CreatePollDto } from '@/types/poll.types';
 import { PollStackParamList } from '@navigation/types';
 import UserSelector from '@components/common/UserSelector';
+import DatePickerModal from '@components/common/DatePickerModal';
 
 type CreatePollScreenNavigationProp = StackNavigationProp<PollStackParamList, 'CreatePoll'>;
 
@@ -31,7 +31,7 @@ const CreatePollScreen: React.FC = () => {
   const currentUser = useAuthStore((state) => state.user);
 
   // Check if user has permission to create polls
-  const canCreatePoll = currentUser?.role === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+  const canCreatePoll = currentUser?.role === 'department_head' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -81,7 +81,7 @@ const CreatePollScreen: React.FC = () => {
           <Ionicons name="lock-closed" size={64} color="#EF4444" />
           <Text style={styles.noAccessTitle}>Нет доступа</Text>
           <Text style={styles.noAccessText}>
-            Создавать опросы могут только менеджеры и администраторы системы
+            Создавать опросы могут только руководители отделов и администраторы системы
           </Text>
         </View>
       </SafeAreaView>
@@ -246,7 +246,11 @@ const CreatePollScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Title */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: theme.text }]}>Название опроса *</Text>
@@ -540,20 +544,21 @@ const CreatePollScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
 
-                {showStartDatePicker && (
-                  <DateTimePicker
-                    value={startDate || new Date()}
-                    mode="datetime"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedDate) => {
-                      setShowStartDatePicker(Platform.OS === 'ios');
-                      if (selectedDate) {
-                        setStartDate(selectedDate);
-                      }
-                    }}
-                    minimumDate={new Date()}
-                  />
-                )}
+                <DatePickerModal
+                  visible={showStartDatePicker}
+                  value={startDate || new Date()}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS === 'android') {
+                      setShowStartDatePicker(false);
+                    }
+                    if (selectedDate) {
+                      setStartDate(selectedDate);
+                    }
+                  }}
+                  onClose={() => setShowStartDatePicker(false)}
+                  minimumDate={new Date()}
+                  mode="datetime"
+                />
               </>
             )}
           </View>
@@ -629,26 +634,25 @@ const CreatePollScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
 
-                {showEndDatePicker && (
-                  <DateTimePicker
-                    value={endDate || (startDate ? new Date(startDate.getTime() + 86400000) : new Date())}
-                    mode="datetime"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedDate) => {
-                      setShowEndDatePicker(Platform.OS === 'ios');
-                      if (selectedDate) {
-                        setEndDate(selectedDate);
-                      }
-                    }}
-                    minimumDate={startDate || new Date()}
-                  />
-                )}
+                <DatePickerModal
+                  visible={showEndDatePicker}
+                  value={endDate || (startDate ? new Date(startDate.getTime() + 86400000) : new Date())}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS === 'android') {
+                      setShowEndDatePicker(false);
+                    }
+                    if (selectedDate) {
+                      setEndDate(selectedDate);
+                    }
+                  }}
+                  onClose={() => setShowEndDatePicker(false)}
+                  minimumDate={startDate || new Date()}
+                  mode="datetime"
+                />
               </>
             )}
           </View>
         </View>
-
-        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );

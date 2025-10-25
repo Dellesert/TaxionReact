@@ -6,7 +6,7 @@
 import { ISODateString } from './common.types';
 
 // User Roles
-export type UserRole = 'employee' | 'manager' | 'admin' | 'super_admin';
+export type UserRole = 'employee' | 'department_head' | 'admin' | 'super_admin';
 
 // User Status
 export type UserStatus = 'online' | 'offline' | 'busy' | 'away';
@@ -19,6 +19,7 @@ export interface Department {
   head_id?: number;
   head?: User;
   members_count?: number;
+  user_count?: number; // Backend returns user_count
   created_at: ISODateString;
   updated_at: ISODateString;
 }
@@ -117,7 +118,7 @@ export interface UpdateUserDto {
   email?: string;
   role?: UserRole;
   position?: string;
-  department_id?: number;
+  department_id?: number | null;
   phone?: string;
   is_active?: boolean;
 }

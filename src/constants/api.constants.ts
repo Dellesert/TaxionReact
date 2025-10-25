@@ -38,16 +38,17 @@ export const API_ENDPOINTS = {
     CREATE: '/users/',
     UPDATE: (id: number) => `/users/${id}/`,
     DELETE: (id: number) => `/users/${id}/`,
+    UPDATE_ROLE: (id: number) => `/admin/users/${id}/role`,
   },
 
   // Department
   DEPARTMENT: {
-    LIST: '/departments',
-    CREATE: '/departments',
-    BY_ID: (id: number) => `/departments/${id}`,
-    UPDATE: (id: number) => `/departments/${id}`,
-    DELETE: (id: number) => `/departments/${id}`,
-    USERS: (id: number) => `/departments/${id}/users`,
+    LIST: '/departments/',
+    CREATE: '/departments/',
+    BY_ID: (id: number) => `/departments/${id}/`,
+    UPDATE: (id: number) => `/departments/${id}/`,
+    DELETE: (id: number) => `/departments/${id}/`,
+    USERS: (id: number) => `/departments/${id}/users/`,
   },
 
   // Chat

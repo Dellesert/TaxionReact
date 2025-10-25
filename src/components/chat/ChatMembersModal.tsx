@@ -72,12 +72,12 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
       // Загружаем информацию о пользователях
       if (chatMembers && chatMembers.length > 0) {
-        // Получаем список всех пользователей
+        // Получаем список всех пользователей (только активные)
         let allUsersList: User[] = [];
         if (isMockMode()) {
           allUsersList = await mockGetUsers();
         } else {
-          const response = await getUsers({}, { limit: 100, offset: 0 });
+          const response = await getUsers({ is_active: true }, { limit: 100, offset: 0 });
           allUsersList = response.data || [];
         }
 
@@ -109,13 +109,25 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       if (isMockMode()) {
         usersList = await mockGetUsers();
       } else {
-        const response = await getUsers({}, { limit: 100, offset: 0 });
+        const response = await getUsers({ is_active: true }, { limit: 100, offset: 0 });
         usersList = response.data || [];
       }
 
       // Фильтруем пользователей, которые уже в чате
+      // Обычные сотрудники не должны видеть администраторов
       const memberIds = (members || []).map((m) => m.user_id);
-      const availableUsers = (usersList || []).filter((u) => !memberIds.includes(u.id));
+      const currentUser = useAuthStore.getState().user;
+      const availableUsers = (usersList || []).filter((u) => {
+        // Исключаем пользователей уже в чате
+        if (memberIds.includes(u.id)) return false;
+
+        // Если текущий пользователь - обычный сотрудник, исключаем администраторов
+        if (currentUser?.role === 'employee') {
+          if (u.role === 'admin' || u.role === 'super_admin') return false;
+        }
+
+        return true;
+      });
       setAllUsers(availableUsers);
     } catch (error: any) {
       console.error('Failed to load users:', error);
@@ -675,6 +687,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: 8,
+    paddingBottom: 120,
   },
   memberItem: {
     flexDirection: 'row',

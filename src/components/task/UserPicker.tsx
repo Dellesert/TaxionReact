@@ -70,14 +70,14 @@ const UserPicker: React.FC<UserPickerProps> = ({
         return;
       }
 
-      // Fetch users based on role
-      let filters = {};
+      // Fetch users based on role (only active users)
+      let filters: any = { is_active: true };
 
-      // If manager, only show users from their department
-      if (currentUser.role === 'manager' && currentUser.department_id) {
-        filters = { department_id: currentUser.department_id };
+      // If department_head, only show users from their department
+      if (currentUser.role === 'department_head' && currentUser.department_id) {
+        filters.department_id = currentUser.department_id;
       }
-      // Admin and super_admin can see all users (no filters)
+      // Admin and super_admin can see all users (only active filter)
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
@@ -244,7 +244,7 @@ const UserPicker: React.FC<UserPickerProps> = ({
           </View>
 
           {/* Role Info */}
-          {currentUser && currentUser.role === 'manager' && (
+          {currentUser && currentUser.role === 'department_head' && (
             <View style={styles.roleInfoContainer}>
               <Ionicons name="information-circle" size={16} color="#6B7280" />
               <Text style={styles.roleInfoText}>

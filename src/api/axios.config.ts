@@ -103,6 +103,14 @@ api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
 
+    console.log('🔐 Request interceptor:', {
+      url: config.url,
+      method: config.method,
+      params: config.params,
+      hasToken: !!token,
+      tokenPreview: token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
+    });
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -124,7 +132,13 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    console.error('API Error:', error.response?.status, error.config?.url);
+    console.error('❌ API Error:', {
+      status: error.response?.status,
+      url: error.config?.url,
+      method: error.config?.method,
+      message: error.message,
+      responseData: error.response?.data,
+    });
 
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 

@@ -69,10 +69,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     switch (role) {
       case 'admin':
         return 'Администратор';
+      case 'super_admin':
+        return 'Супер Администратор';
+      case 'department_head':
+        return 'Руководитель отдела';
       case 'employee':
         return 'Сотрудник';
-      case 'manager':
-        return 'Менеджер';
       default:
         return role || 'Пользователь';
     }

@@ -19,19 +19,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { TaskStackParamList } from '@navigation/types';
 import { useTaskStore } from '@store/taskStore';
+import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
 import { TaskPriority, CreateTaskDto } from '../../types/task.types';
 import UserSelector from '@components/common/UserSelector';
+import DatePickerModal from '@components/common/DatePickerModal';
 
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'CreateTask'>;
 
 const CreateTaskScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { createTask } = useTaskStore();
+  const { user: currentUser } = useAuthStore();
   const { theme } = useTheme();
+
+  // Check if user is employee (can only create tasks for themselves)
+  const isEmployee = currentUser?.role === 'employee';
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -86,7 +91,9 @@ const CreateTaskScreen: React.FC = () => {
   ];
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
     if (selectedDate) {
       setDueDate(selectedDate);
     }
@@ -111,12 +118,19 @@ const CreateTaskScreen: React.FC = () => {
     try {
       setIsCreating(true);
 
+      // For employees, always assign task to themselves
+      const finalAssigneeIds = isEmployee && currentUser?.id
+        ? [currentUser.id]
+        : assigneeIds.length > 0
+          ? assigneeIds
+          : undefined;
+
       const taskData: CreateTaskDto = {
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
         due_date: dueDate?.toISOString(),
-        assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
+        assignee_ids: finalAssigneeIds,
       };
 
       await createTask(taskData);
@@ -144,6 +158,9 @@ const CreateTaskScreen: React.FC = () => {
   };
 
   const dynamicStyles = StyleSheet.create({
+    safeArea: {
+      backgroundColor: theme.card,
+    },
     container: {
       backgroundColor: theme.background,
     },
@@ -223,11 +240,12 @@ const CreateTaskScreen: React.FC = () => {
   const selectedPriority = priorities.find(p => p.value === priority);
 
   return (
-    <SafeAreaView style={[styles.container, dynamicStyles.container]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, dynamicStyles.safeArea]} edges={['top']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
+        <View style={[styles.container, dynamicStyles.container]}>
         {/* Header */}
         <View style={[styles.header, dynamicStyles.header]}>
           <TouchableOpacity
@@ -260,6 +278,7 @@ const CreateTaskScreen: React.FC = () => {
 
         <ScrollView
           style={styles.content}
+          contentContainerStyle={{ paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -279,7 +298,6 @@ const CreateTaskScreen: React.FC = () => {
               value={title}
               onChangeText={setTitle}
               maxLength={100}
-              autoFocus
             />
             <View style={styles.inputFooter}>
               <Text style={[styles.charCount, dynamicStyles.charCount]}>
@@ -453,54 +471,75 @@ const CreateTaskScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
 
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={dueDate || new Date()}
-                    mode="datetime"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={handleDateChange}
-                    minimumDate={new Date()}
-                  />
-                )}
+                <DatePickerModal
+                  visible={showDatePicker}
+                  value={dueDate || new Date()}
+                  onChange={handleDateChange}
+                  onClose={() => setShowDatePicker(false)}
+                  minimumDate={new Date()}
+                  mode="datetime"
+                />
               </>
             )}
           </View>
 
-          {/* Исполнители */}
-          <View style={[styles.card, dynamicStyles.card]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="people" size={20} color={theme.primary} />
-              <Text style={[styles.label, dynamicStyles.label]}>Исполнители</Text>
+          {/* Исполнители - только для department_head, admin, super_admin */}
+          {!isEmployee && (
+            <View style={[styles.card, dynamicStyles.card]}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="people" size={20} color={theme.primary} />
+                <Text style={[styles.label, dynamicStyles.label]}>Исполнители</Text>
+              </View>
+              <Text style={[styles.labelDescription, dynamicStyles.labelDescription]}>
+                Назначьте ответственных за выполнение
+              </Text>
+              <UserSelector
+                selectedUserIds={assigneeIds}
+                onSelectionChange={setAssigneeIds}
+                multiSelect={true}
+                placeholder="Выберите исполнителей"
+                modalTitle="Выбрать исполнителей"
+              />
+              {assigneeIds.length === 0 && (
+                <View style={[styles.infoBox, dynamicStyles.infoBox]}>
+                  <Ionicons name="information-circle" size={18} color={theme.isDark ? '#93C5FD' : '#3B82F6'} />
+                  <Text style={[styles.infoText, dynamicStyles.infoText]}>
+                    Если не выбрано, задача будет назначена вам
+                  </Text>
+                </View>
+              )}
             </View>
-            <Text style={[styles.labelDescription, dynamicStyles.labelDescription]}>
-              Назначьте ответственных за выполнение
-            </Text>
-            <UserSelector
-              selectedUserIds={assigneeIds}
-              onSelectionChange={setAssigneeIds}
-              multiSelect={true}
-              placeholder="Выберите исполнителей"
-              modalTitle="Выбрать исполнителей"
-            />
-            {assigneeIds.length === 0 && (
+          )}
+
+          {/* Информация для сотрудников */}
+          {isEmployee && (
+            <View style={[styles.card, dynamicStyles.card]}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="person" size={20} color={theme.primary} />
+                <Text style={[styles.label, dynamicStyles.label]}>Исполнитель</Text>
+              </View>
               <View style={[styles.infoBox, dynamicStyles.infoBox]}>
                 <Ionicons name="information-circle" size={18} color={theme.isDark ? '#93C5FD' : '#3B82F6'} />
                 <Text style={[styles.infoText, dynamicStyles.infoText]}>
-                  Если не выбрано, задача будет назначена вам
+                  Задача будет автоматически назначена вам. Сотрудники могут создавать задачи только для себя.
                 </Text>
               </View>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Нижний отступ для удобства прокрутки */}
           <View style={{ height: 40 }} />
         </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },

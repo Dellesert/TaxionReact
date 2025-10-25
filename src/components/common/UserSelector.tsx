@@ -8,6 +8,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useAuthStore } from '@store/authStore';
 import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import UserSelectorModal from './UserSelectorModal';
@@ -42,7 +43,15 @@ const UserSelector: React.FC<UserSelectorProps> = ({
 
   const loadUsers = async () => {
     try {
-      const response = await getUsers({}, { limit: 100, offset: 0 });
+      const currentUser = useAuthStore.getState().user;
+
+      // Фильтр по отделу для руководителей отделов и только активные пользователи
+      let filters: any = { is_active: true };
+      if (currentUser?.role === 'department_head' && currentUser?.department_id) {
+        filters.department_id = currentUser.department_id;
+      }
+
+      const response = await getUsers(filters, { limit: 100, offset: 0 });
       let usersList: User[] = [];
       if (response && response.data && Array.isArray(response.data)) {
         usersList = response.data;

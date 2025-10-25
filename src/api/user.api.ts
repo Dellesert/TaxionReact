@@ -4,7 +4,7 @@
  */
 
 import api from './axios.config';
-import { API_ENDPOINTS, PAGINATION } from '@constants/api.constants';
+import { API_ENDPOINTS, API_BASE_URL, PAGINATION } from '@constants/api.constants';
 import {
   User,
   UpdateProfileDto,
@@ -144,7 +144,35 @@ export const createUser = async (data: CreateUserDto): Promise<User> => {
  */
 export const updateUser = async (id: number, data: UpdateUserDto): Promise<User> => {
   const response = await api.put<ApiResponse<User>>(API_ENDPOINTS.USER.UPDATE(id), data);
-  return response.data.data;
+
+  // Try different response structures
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.user) {
+    return response.data.user;
+  } else if (response.data.id) {
+    return response.data as User;
+  } else {
+    return response.data as any;
+  }
+};
+
+/**
+ * Update user role (Admin only)
+ */
+export const updateUserRole = async (id: number, role: string): Promise<User> => {
+  const response = await api.put<ApiResponse<User>>(API_ENDPOINTS.USER.UPDATE_ROLE(id), { role });
+
+  // Try different response structures
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.user) {
+    return response.data.user;
+  } else if (response.data.id) {
+    return response.data as User;
+  } else {
+    return response.data as any;
+  }
 };
 
 /**
@@ -161,7 +189,17 @@ export const deleteUser = async (id: number): Promise<void> => {
  */
 export const getDepartments = async (): Promise<Department[]> => {
   const response = await api.get<ApiResponse<Department[]>>(API_ENDPOINTS.DEPARTMENT.LIST);
-  return response.data.data;
+
+  // Try different response structures
+  if (response.data.data) {
+    return response.data.data;
+  } else if (Array.isArray(response.data)) {
+    return response.data;
+  } else if (response.data.departments) {
+    return response.data.departments;
+  } else {
+    return response.data as any;
+  }
 };
 
 /**
@@ -219,7 +257,21 @@ export const deleteDepartment = async (id: number): Promise<void> => {
  */
 export const getDepartmentUsers = async (id: number): Promise<User[]> => {
   const response = await api.get<ApiResponse<User[]>>(API_ENDPOINTS.DEPARTMENT.USERS(id));
-  return response.data.data;
+
+  // Try different response structures
+  if (response.data.department?.users) {
+    // Backend returns {department: {users: [...]}}
+    return response.data.department.users;
+  } else if (response.data.data) {
+    return response.data.data;
+  } else if (Array.isArray(response.data)) {
+    return response.data;
+  } else if (response.data.users) {
+    return response.data.users;
+  } else {
+    console.warn('Unexpected response format from getDepartmentUsers:', response.data);
+    return [];
+  }
 };
 
 /**

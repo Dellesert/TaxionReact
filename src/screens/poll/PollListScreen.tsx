@@ -77,8 +77,8 @@ const PollListScreen: React.FC = () => {
     navigation.navigate('CreatePoll');
   };
 
-  // Check if user can create polls (manager or admin)
-  const canCreatePoll = currentUser?.role === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+  // Check if user can create polls (department_head or admin)
+  const canCreatePoll = currentUser?.role === 'department_head' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
   const filteredPolls = polls.filter((poll) => {
     // Filter by status

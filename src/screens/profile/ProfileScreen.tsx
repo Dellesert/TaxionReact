@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
@@ -21,6 +22,7 @@ import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 
 const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
   const { user, logout, setUser, refreshUser } = useAuthStore();
   const { theme, mode, isDark, setTheme } = useTheme();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -414,6 +416,31 @@ const ProfileScreen: React.FC = () => {
           />
         </View>
       </View>
+
+      {/* Admin Section - Only for admin and super_admin */}
+      {(user.role === 'admin' || user.role === 'super_admin') && (
+        <View style={dynamicStyles.section}>
+          <View style={dynamicStyles.sectionHeader}>
+            <Text style={dynamicStyles.sectionTitle}>АДМИНИСТРИРОВАНИЕ</Text>
+          </View>
+          <TouchableOpacity
+            style={dynamicStyles.menuItem}
+            onPress={() => navigation.navigate('Admin', { screen: 'Departments' })}
+          >
+            <Ionicons style={[styles.menuIcon, {backgroundColor: '#e944d6ff'}]} name="business-outline" size={20} color={theme.primary} />
+            <Text style={dynamicStyles.menuItemText}>Управление отделами</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}
+            onPress={() => navigation.navigate('Admin', { screen: 'Users' })}
+          >
+            <Ionicons style={[styles.menuIcon, {backgroundColor: '#e99444ff'}]} name="people-outline" size={20} color={theme.primary} />
+            <Text style={dynamicStyles.menuItemText}>Управление пользователями</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* App Settings */}
       <View style={dynamicStyles.section}>

@@ -1,0 +1,532 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  TextInput,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '@hooks/useTheme';
+import { useAuthStore } from '@store/authStore';
+import * as userApi from '@api/user.api';
+import { User, UserRole } from '@/types/user.types';
+import { Avatar } from '@components/common/Avatar';
+
+const UsersScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const { theme } = useTheme();
+  const { user: currentUser } = useAuthStore();
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole | 'all'>('all');
+
+  // Check admin access
+  if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+        <View style={styles.noAccessContainer}>
+          <Ionicons name="lock-closed" size={64} color="#EF4444" />
+          <Text style={styles.noAccessTitle}>Нет доступа</Text>
+          <Text style={styles.noAccessText}>
+            Только администраторы могут управлять пользователями
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await userApi.getUsers({}, { limit: 100, offset: 0 });
+      setUsers(response.data);
+    } catch (error: any) {
+      if (Platform.OS === 'web') {
+        alert('Не удалось загрузить список пользователей');
+      } else {
+        Alert.alert('Ошибка', 'Не удалось загрузить список пользователей');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getRoleLabel = (role: UserRole): string => {
+    switch (role) {
+      case 'super_admin':
+        return 'Супер Админ';
+      case 'admin':
+        return 'Админ';
+      case 'department_head':
+        return 'Руководитель отдела';
+      case 'employee':
+        return 'Сотрудник';
+      default:
+        return role;
+    }
+  };
+
+  const getRoleColor = (role: UserRole): string => {
+    switch (role) {
+      case 'super_admin':
+        return '#DC2626';
+      case 'admin':
+        return '#EA580C';
+      case 'department_head':
+        return '#2563EB';
+      case 'employee':
+        return '#059669';
+      default:
+        return '#6B7280';
+    }
+  };
+
+  const handleChangeRole = (user: User) => {
+    const roles: UserRole[] = ['employee', 'department_head', 'admin'];
+
+    // Super admin can change any role, including super_admin
+    if (currentUser?.role === 'super_admin') {
+      roles.push('super_admin');
+    }
+
+    const roleLabels = roles.map(role => getRoleLabel(role));
+
+    if (Platform.OS === 'web') {
+      // For web, show a simple dialog
+      const newRole = prompt(`Выберите новую роль для ${user.name}:\n${roleLabels.join(', ')}`, user.role);
+      if (newRole && roles.includes(newRole as UserRole)) {
+        updateUserRole(user, newRole as UserRole);
+      }
+    } else {
+      // For mobile, show alert with options
+      Alert.alert(
+        'Изменить роль',
+        `Выберите новую роль для ${user.name}`,
+        [
+          ...roles.map(role => ({
+            text: getRoleLabel(role),
+            onPress: () => updateUserRole(user, role),
+          })),
+          { text: 'Отмена', style: 'cancel' },
+        ]
+      );
+    }
+  };
+
+  const updateUserRole = async (user: User, newRole: UserRole) => {
+    try {
+      const result = await userApi.updateUserRole(user.id, newRole);
+
+      if (Platform.OS === 'web') {
+        alert(`Роль пользователя изменена на "${getRoleLabel(newRole)}"`);
+      } else {
+        Alert.alert('Успех', `Роль пользователя изменена на "${getRoleLabel(newRole)}"`);
+      }
+      loadUsers();
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.error || error?.message || 'Не удалось изменить роль пользователя';
+
+      if (Platform.OS === 'web') {
+        alert(errorMessage);
+      } else {
+        Alert.alert('Ошибка', errorMessage);
+      }
+    }
+  };
+
+  const handleToggleUserStatus = async (user: User) => {
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm(`Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`)
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            user.is_active ? 'Деактивировать пользователя' : 'Активировать пользователя',
+            `Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`,
+            [
+              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
+              {
+                text: user.is_active ? 'Деактивировать' : 'Активировать',
+                style: user.is_active ? 'destructive' : 'default',
+                onPress: () => resolve(true),
+              },
+            ]
+          );
+        });
+
+    if (!confirmed) return;
+
+    try {
+      await userApi.updateUser(user.id, { is_active: !user.is_active });
+      if (Platform.OS === 'web') {
+        alert(`Пользователь ${user.is_active ? 'деактивирован' : 'активирован'}`);
+      } else {
+        Alert.alert('Успех', `Пользователь ${user.is_active ? 'деактивирован' : 'активирован'}`);
+      }
+      loadUsers();
+    } catch (error: any) {
+      if (Platform.OS === 'web') {
+        alert('Не удалось изменить статус пользователя');
+      } else {
+        Alert.alert('Ошибка', 'Не удалось изменить статус пользователя');
+      }
+    }
+  };
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+
+    return matchesSearch && matchesRole;
+  });
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Profile' as any)}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Управление пользователями</Text>
+          <View style={{ width: 32 }} />
+        </View>
+
+        {/* Search and Filter */}
+        <View style={[styles.searchContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <View style={[styles.searchBox, { backgroundColor: theme.backgroundSecondary }]}>
+            <Ionicons name="search" size={20} color={theme.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder="Поиск пользователей..."
+              placeholderTextColor={theme.textTertiary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Role Filter */}
+        <ScrollView
+          horizontal
+          style={[styles.filterContainer, { backgroundColor: theme.card }]}
+          contentContainerStyle={styles.filterContent}
+          showsHorizontalScrollIndicator={false}
+        >
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { backgroundColor: selectedRole === 'all' ? theme.primary : theme.backgroundSecondary },
+            ]}
+            onPress={() => setSelectedRole('all')}
+          >
+            <Text style={[styles.filterChipText, { color: selectedRole === 'all' ? '#FFF' : theme.text }]}>
+              Все
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { backgroundColor: selectedRole === 'employee' ? theme.primary : theme.backgroundSecondary },
+            ]}
+            onPress={() => setSelectedRole('employee')}
+          >
+            <Text style={[styles.filterChipText, { color: selectedRole === 'employee' ? '#FFF' : theme.text }]}>
+              Сотрудники
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { backgroundColor: selectedRole === 'department_head' ? theme.primary : theme.backgroundSecondary },
+            ]}
+            onPress={() => setSelectedRole('department_head')}
+          >
+            <Text style={[styles.filterChipText, { color: selectedRole === 'department_head' ? '#FFF' : theme.text }]}>
+              Руководители
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { backgroundColor: selectedRole === 'admin' ? theme.primary : theme.backgroundSecondary },
+            ]}
+            onPress={() => setSelectedRole('admin')}
+          >
+            <Text style={[styles.filterChipText, { color: selectedRole === 'admin' ? '#FFF' : theme.text }]}>
+              Админы
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Content */}
+        {isLoading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+          </View>
+        ) : filteredUsers.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Ionicons name="people-outline" size={64} color={theme.textTertiary} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              {searchQuery ? 'Пользователи не найдены' : 'Нет пользователей'}
+            </Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={{ paddingBottom: 120 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {filteredUsers.map((user) => (
+              <View
+                key={user.id}
+                style={[
+                  styles.userCard,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                  !user.is_active && { opacity: 0.6 },
+                ]}
+              >
+                <View style={styles.userHeader}>
+                  <Avatar imageUrl={user.avatar} name={user.name} size={48} />
+                  <View style={styles.userInfo}>
+                    <View style={styles.userNameRow}>
+                      <Text style={[styles.userName, { color: theme.text }]}>{user.name}</Text>
+                      {!user.is_active && (
+                        <View style={styles.inactiveBadge}>
+                          <Text style={styles.inactiveBadgeText}>Неактивен</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{user.email}</Text>
+                    {user.position && (
+                      <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{user.position}</Text>
+                    )}
+                    {user.department && (
+                      <Text style={[styles.userDepartment, { color: theme.textTertiary }]}>
+                        {user.department.name}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.userFooter}>
+                  <View style={[styles.roleBadge, { backgroundColor: getRoleColor(user.role) + '20' }]}>
+                    <Text style={[styles.roleBadgeText, { color: getRoleColor(user.role) }]}>
+                      {getRoleLabel(user.role)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.userActions}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
+                      onPress={() => handleChangeRole(user)}
+                    >
+                      <Ionicons name="shield-outline" size={18} color={theme.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
+                      onPress={() => handleToggleUserStatus(user)}
+                    >
+                      <Ionicons
+                        name={user.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
+                        size={18}
+                        color={user.is_active ? '#EF4444' : '#10B981'}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 12,
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+  filterContainer: {
+    maxHeight: 60,
+  },
+  filterContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 16,
+  },
+  userCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  userHeader: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  userInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  inactiveBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  inactiveBadgeText: {
+    fontSize: 11,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  userEmail: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  userPosition: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  userDepartment: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  userFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  roleBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  userActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noAccessContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  noAccessTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginTop: 16,
+  },
+  noAccessText: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 22,
+  },
+});
+
+export default UsersScreen;

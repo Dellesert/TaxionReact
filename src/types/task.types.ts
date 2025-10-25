@@ -96,7 +96,9 @@ export interface UpdateTaskDto {
   description?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
-  assigned_to?: number;
+  assigned_to?: number; // Deprecated: use assignee_ids
+  assignee_ids?: number[]; // Multiple assignees
+  assigned_to_department?: string; // Department assignment
   project_id?: number;
   due_date?: ISODateString;
   tags?: string[];
