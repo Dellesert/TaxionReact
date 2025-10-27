@@ -9,7 +9,7 @@ import { useTheme } from '@hooks/useTheme';
 import { TaskStackParamList } from './types';
 import TaskListScreen from '@screens/task/TaskListScreen';
 import CreateTaskScreen from '@screens/task/CreateTaskScreen';
-import TaskDetailScreen from '@screens/task/TaskDetailScreen';
+import TaskDetailScreenEnhanced from '@screens/task/TaskDetailScreenEnhanced';
 
 const Stack = createNativeStackNavigator<TaskStackParamList>();
 
@@ -52,7 +52,7 @@ const TaskNavigator: React.FC = () => {
       />
       <Stack.Screen
         name="TaskDetail"
-        component={TaskDetailScreen}
+        component={TaskDetailScreenEnhanced}
         options={{
           headerShown: false,
         }}

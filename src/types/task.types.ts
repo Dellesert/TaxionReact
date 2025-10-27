@@ -7,10 +7,31 @@ import { ISODateString } from './common.types';
 import { User } from './user.types';
 
 // Task Status
-export type TaskStatus = 'new' | 'in_progress' | 'review' | 'done' | 'cancelled';
+export type TaskStatus = 'new' | 'viewed' | 'in_progress' | 'review' | 'done' | 'cancelled';
 
 // Task Priority
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+
+// Task Activity Action Types
+export type TaskActivityAction =
+  | 'task_created'
+  | 'task_updated_title'
+  | 'task_updated_description'
+  | 'task_updated_priority'
+  | 'task_updated_due_date'
+  | 'task_status_changed'
+  | 'task_assigned'
+  | 'task_delegated'
+  | 'task_viewed'
+  | 'comment_added'
+  | 'attachment_added'
+  | 'attachment_deleted'
+  | 'checklist_added'
+  | 'checklist_item_completed'
+  | 'checklist_item_uncompleted'
+  | 'subtask_created'
+  | 'progress_updated'
+  | 'task_deleted';
 
 // Task Comment Interface
 export interface TaskComment {
@@ -29,6 +50,55 @@ export interface TaskUserInfo {
   name: string;
   email: string;
   position?: string;
+}
+
+// Task Activity Interface
+export interface TaskActivity {
+  id: number;
+  task_id: number;
+  user_id: number;
+  user?: TaskUserInfo;
+  action_type: TaskActivityAction;
+  old_value?: string;
+  new_value?: string;
+  details?: string; // JSON string with additional details
+  created_at: ISODateString;
+}
+
+// Task Attachment Interface
+export interface TaskAttachment {
+  id: number;
+  task_id: number;
+  uploaded_by_user_id: number;
+  uploaded_by?: TaskUserInfo;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number;
+  created_at: ISODateString;
+}
+
+// Task Checklist Item Interface
+export interface TaskChecklistItem {
+  id: number;
+  checklist_id: number;
+  title: string;
+  is_completed: boolean;
+  position: number;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+// Task Checklist Interface
+export interface TaskChecklist {
+  id: number;
+  task_id: number;
+  title: string;
+  description?: string;
+  position: number;
+  items: TaskChecklistItem[];
+  created_at: ISODateString;
+  updated_at: ISODateString;
 }
 
 // Task Interface
@@ -53,6 +123,32 @@ export interface Task {
   last_status_changer?: TaskUserInfo; // User info for last status changer
   comments?: TaskComment[];
   comment_count: number; // Backend returns comment_count not comments_count
+
+  // NEW: Hierarchy fields
+  parent_task_id?: number;
+  parent_task?: Task;
+  subtasks?: Task[];
+
+  // NEW: Delegation fields
+  created_by_user_id?: number;
+  assigned_to_user_id?: number;
+  delegated_from_user_id?: number;
+  original_assignee_id?: number;
+  delegation_chain?: TaskUserInfo[];
+
+  // NEW: Progress tracking
+  progress_percentage?: number;
+
+  // NEW: First-view tracking
+  first_viewed_at?: ISODateString;
+  first_viewed_by_user_id?: number;
+  completed_at?: ISODateString;
+
+  // NEW: Associated data
+  activities?: TaskActivity[];
+  attachments?: TaskAttachment[];
+  checklists?: TaskChecklist[];
+
   created_at: ISODateString;
   updated_at: ISODateString;
 }
@@ -166,3 +262,51 @@ export interface TaskStats {
   completed_this_week: number;
   completed_this_month: number;
 }
+
+// NEW DTOs
+
+// Delegate Task DTO
+export interface DelegateTaskDto {
+  to_user_id: number;
+}
+
+// Update Task Progress DTO
+export interface UpdateTaskProgressDto {
+  progress: number; // 0-100
+}
+
+// Create Checklist DTO
+export interface CreateChecklistDto {
+  title: string;
+  description?: string;
+}
+
+// Update Checklist DTO
+export interface UpdateChecklistDto {
+  title?: string;
+  description?: string;
+}
+
+// Create Checklist Item DTO
+export interface CreateChecklistItemDto {
+  title: string;
+  position?: number;
+}
+
+// Update Checklist Item DTO
+export interface UpdateChecklistItemDto {
+  title?: string;
+  is_completed?: boolean;
+  position?: number;
+}
+
+// Activity List Response
+export interface ActivityListResponse {
+  activities: TaskActivity[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// Attachment Upload Response (multipart/form-data)
+// File will be sent as FormData with key 'file'

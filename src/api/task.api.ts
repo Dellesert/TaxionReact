@@ -18,6 +18,16 @@ import {
   UpdateProjectDto,
   TaskListFilters,
   TaskStats,
+  TaskActivity,
+  ActivityListResponse,
+  TaskAttachment,
+  TaskChecklist,
+  CreateChecklistDto,
+  UpdateChecklistDto,
+  CreateChecklistItemDto,
+  UpdateChecklistItemDto,
+  DelegateTaskDto,
+  UpdateTaskProgressDto,
 } from '../types/task.types';
 import { ApiResponse, PaginatedResponse, PaginationParams } from '../types/common.types';
 
@@ -272,6 +282,244 @@ export const updateComment = async (
  */
 export const deleteComment = async (commentId: number): Promise<void> => {
   await api.delete(API_ENDPOINTS.TASK.DELETE_COMMENT(commentId));
+};
+
+// ============= Task Hierarchy =============
+
+/**
+ * Create subtask
+ */
+export const createSubtask = async (
+  parentTaskId: number,
+  data: CreateTaskDto
+): Promise<Task> => {
+  const response = await api.post<ApiResponse<Task>>(
+    `/api/v1/tasks/${parentTaskId}/subtasks`,
+    data
+  );
+  return response.data.data || response.data.task || (response.data as any);
+};
+
+/**
+ * Get subtasks
+ */
+export const getSubtasks = async (parentTaskId: number): Promise<Task[]> => {
+  const response = await api.get<ApiResponse<Task[]>>(
+    `/api/v1/tasks/${parentTaskId}/subtasks`
+  );
+  return response.data.data || response.data as any || [];
+};
+
+/**
+ * Get task hierarchy (task with subtasks and parent)
+ */
+export const getTaskHierarchy = async (taskId: number): Promise<Task> => {
+  const response = await api.get<ApiResponse<Task>>(
+    `/api/v1/tasks/${taskId}/hierarchy`
+  );
+  return response.data.data || response.data.task || (response.data as any);
+};
+
+// ============= Task Delegation =============
+
+/**
+ * Delegate task to another user
+ */
+export const delegateTask = async (
+  taskId: number,
+  data: DelegateTaskDto
+): Promise<Task> => {
+  const response = await api.post<ApiResponse<Task>>(
+    `/api/v1/tasks/${taskId}/delegate`,
+    data
+  );
+  return response.data.data || response.data.task || (response.data as any);
+};
+
+/**
+ * Get delegation chain
+ */
+export const getDelegationChain = async (taskId: number): Promise<any> => {
+  const response = await api.get<ApiResponse<any>>(
+    `/api/v1/tasks/${taskId}/delegation-chain`
+  );
+  return response.data.delegation_chain || response.data.data || [];
+};
+
+// ============= Task Tracking =============
+
+/**
+ * Mark task as viewed
+ */
+export const markTaskAsViewed = async (taskId: number): Promise<Task> => {
+  const response = await api.post<ApiResponse<Task>>(
+    `/api/v1/tasks/${taskId}/view`
+  );
+  return response.data.data || response.data.task || (response.data as any);
+};
+
+/**
+ * Update task progress manually
+ */
+export const updateTaskProgress = async (
+  taskId: number,
+  data: UpdateTaskProgressDto
+): Promise<Task> => {
+  const response = await api.patch<ApiResponse<Task>>(
+    `/api/v1/tasks/${taskId}/progress`,
+    data
+  );
+  return response.data.data || response.data.task || (response.data as any);
+};
+
+// ============= Task Activities =============
+
+/**
+ * Get task activities (activity log)
+ */
+export const getTaskActivities = async (
+  taskId: number,
+  limit: number = 50,
+  offset: number = 0
+): Promise<ActivityListResponse> => {
+  const response = await api.get<ApiResponse<ActivityListResponse>>(
+    `/api/v1/tasks/${taskId}/activities`,
+    { params: { limit, offset } }
+  );
+  return response.data.data || response.data as any;
+};
+
+// ============= Task Attachments =============
+
+/**
+ * Upload attachment to task
+ */
+export const uploadAttachment = async (
+  taskId: number,
+  file: File | { uri: string; name: string; type: string }
+): Promise<TaskAttachment> => {
+  const formData = new FormData();
+  formData.append('file', file as any);
+
+  const response = await api.post<ApiResponse<TaskAttachment>>(
+    `/api/v1/tasks/${taskId}/attachments`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data.data || (response.data as any);
+};
+
+/**
+ * Get task attachments
+ */
+export const getTaskAttachments = async (taskId: number): Promise<TaskAttachment[]> => {
+  const response = await api.get<ApiResponse<TaskAttachment[]>>(
+    `/api/v1/tasks/${taskId}/attachments`
+  );
+  return response.data.data || response.data as any || [];
+};
+
+/**
+ * Delete attachment
+ */
+export const deleteAttachment = async (attachmentId: number): Promise<void> => {
+  await api.delete(`/api/v1/attachments/${attachmentId}`);
+};
+
+// ============= Task Checklists =============
+
+/**
+ * Create checklist for task
+ */
+export const createChecklist = async (
+  taskId: number,
+  data: CreateChecklistDto
+): Promise<TaskChecklist> => {
+  const response = await api.post<ApiResponse<TaskChecklist>>(
+    `/api/v1/tasks/${taskId}/checklists`,
+    data
+  );
+  return response.data.data || (response.data as any);
+};
+
+/**
+ * Get task checklists with items
+ */
+export const getTaskChecklists = async (taskId: number): Promise<TaskChecklist[]> => {
+  const response = await api.get<ApiResponse<TaskChecklist[]>>(
+    `/api/v1/tasks/${taskId}/checklists`
+  );
+  return response.data.data || response.data as any || [];
+};
+
+/**
+ * Update checklist
+ */
+export const updateChecklist = async (
+  checklistId: number,
+  data: UpdateChecklistDto
+): Promise<TaskChecklist> => {
+  const response = await api.put<ApiResponse<TaskChecklist>>(
+    `/api/v1/checklists/${checklistId}`,
+    data
+  );
+  return response.data.data || (response.data as any);
+};
+
+/**
+ * Delete checklist
+ */
+export const deleteChecklist = async (checklistId: number): Promise<void> => {
+  await api.delete(`/api/v1/checklists/${checklistId}`);
+};
+
+/**
+ * Create checklist item
+ */
+export const createChecklistItem = async (
+  checklistId: number,
+  data: CreateChecklistItemDto
+): Promise<any> => {
+  const response = await api.post<ApiResponse<any>>(
+    `/api/v1/checklists/${checklistId}/items`,
+    data
+  );
+  return response.data.data || (response.data as any);
+};
+
+/**
+ * Update checklist item
+ */
+export const updateChecklistItem = async (
+  itemId: number,
+  data: UpdateChecklistItemDto
+): Promise<any> => {
+  const response = await api.put<ApiResponse<any>>(
+    `/api/v1/checklist-items/${itemId}`,
+    data
+  );
+  return response.data.data || (response.data as any);
+};
+
+/**
+ * Toggle checklist item completion
+ */
+export const toggleChecklistItem = async (itemId: number): Promise<any> => {
+  const response = await api.patch<ApiResponse<any>>(
+    `/api/v1/checklist-items/${itemId}/toggle`
+  );
+  return response.data.data || (response.data as any);
+};
+
+/**
+ * Delete checklist item
+ */
+export const deleteChecklistItem = async (itemId: number): Promise<void> => {
+  await api.delete(`/api/v1/checklist-items/${itemId}`);
 };
 
 // ============= Project Operations =============
