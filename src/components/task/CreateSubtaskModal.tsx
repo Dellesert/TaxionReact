@@ -14,10 +14,13 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CreateTaskDto, TaskPriority } from '@/types/task.types';
-import { createSubtask } from '@/api/task.api';
+import { CreateTaskDto, TaskPriority } from '../../types/task.types';
+import { createSubtask } from '../../api/task.api';
+import UserSelector from '../common/UserSelector';
+import DatePickerModal from '../common/DatePickerModal';
 
 interface CreateSubtaskModalProps {
   visible: boolean;
@@ -42,12 +45,17 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleReset = () => {
     setTitle('');
     setDescription('');
     setPriority('medium');
+    setAssigneeIds([]);
+    setDueDate(undefined);
   };
 
   const handleClose = () => {
@@ -68,8 +76,8 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        assignee_ids: [], // Can be extended to allow assigning
-        due_date: undefined, // Can be extended to allow due date
+        assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
+        due_date: dueDate?.toISOString(),
       };
 
       await createSubtask(parentTaskId, subtaskData);
@@ -167,7 +175,63 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
                 ))}
               </View>
             </View>
+
+            {/* Assignee Selection */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Исполнитель</Text>
+              <UserSelector
+                selectedUserIds={assigneeIds}
+                onSelectionChange={setAssigneeIds}
+                multiSelect={false}
+                placeholder="Выберите исполнителя"
+                modalTitle="Выбрать исполнителя"
+              />
+            </View>
+
+            {/* Due Date Selection */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Срок выполнения</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowDatePicker(true)}
+                disabled={isLoading}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#6b7280" />
+                <Text style={styles.dateButtonText}>
+                  {dueDate
+                    ? dueDate.toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })
+                    : 'Выберите дату'}
+                </Text>
+                {dueDate && (
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setDueDate(undefined);
+                    }}
+                    style={styles.clearButton}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#ef4444" />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            </View>
           </ScrollView>
+
+          {/* Date Picker Modal */}
+          <DatePickerModal
+            visible={showDatePicker}
+            date={dueDate || new Date()}
+            onConfirm={(date) => {
+              setDueDate(date);
+              setShowDatePicker(false);
+            }}
+            onCancel={() => setShowDatePicker(false)}
+            minimumDate={new Date()}
+          />
 
           {/* Footer */}
           <View style={styles.footer}>
@@ -284,6 +348,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#6b7280',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  dateButtonText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#111827',
+  },
+  clearButton: {
+    padding: 4,
   },
   footer: {
     flexDirection: 'row',

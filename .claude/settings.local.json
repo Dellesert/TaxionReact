@@ -1,26 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git checkout:*)",
-      "Read(//d/Documents/GitHub/TaxionBack/**)",
-      "Bash(npm run type-check:*)",
-      "Bash(npm run:*)",
-      "Bash(cat:*)",
-      "Bash(docker-compose ps:*)",
-      "Bash(docker-compose logs:*)",
+      "Bash(npx tsc:*)",
+      "Read(//d/Documents/GitHub/TaxionBackend/**)",
+      "Bash(docker compose:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(find:*)",
       "Bash(curl:*)",
-      "Bash(docker-compose exec:*)",
-      "Bash(docker-compose restart:*)",
-      "Bash(docker-compose up:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(docker ps:*)",
+      "Bash(git checkout:*)",
       "Bash(go build:*)",
-      "Read(//d/Documents/GitHub/**)",
-      "Bash(npm install:*)",
-      "Bash(npx tailwindcss:*)",
-      "Bash(npm uninstall:*)",
-      "Bash(taskkill:*)",
-      "Bash(findstr:*)",
-      "Bash(copy /Y UsersPage_RU.tsx UsersPage.tsx)",
-      "Bash(docker-compose build:*)"
+      "Bash(npx react-native:*)",
+      "Read(//d/Documents/GitHub/**)"
     ],
     "deny": [],
     "ask": []

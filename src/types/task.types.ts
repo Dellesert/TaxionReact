@@ -30,6 +30,7 @@ export type TaskActivityAction =
   | 'checklist_item_completed'
   | 'checklist_item_uncompleted'
   | 'subtask_created'
+  | 'subtask_status_changed'
   | 'progress_updated'
   | 'task_deleted';
 
@@ -56,12 +57,14 @@ export interface TaskUserInfo {
 export interface TaskActivity {
   id: number;
   task_id: number;
+  task_title?: string;
   user_id: number;
   user?: TaskUserInfo;
   action_type: TaskActivityAction;
   old_value?: string;
   new_value?: string;
   details?: string; // JSON string with additional details
+  assignees?: TaskUserInfo[]; // For subtask_created activities
   created_at: ISODateString;
 }
 

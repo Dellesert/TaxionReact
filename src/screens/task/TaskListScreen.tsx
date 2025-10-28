@@ -44,6 +44,9 @@ const TaskListScreen: React.FC = () => {
   const [reviewTasks, setReviewTasks] = useState<Task[]>([]);
   const [doneTasks, setDoneTasks] = useState<Task[]>([]);
 
+  // Subtasks cache
+  const [subtasksCache, setSubtasksCache] = useState<Record<number, Task[]>>({});
+
   // Total counts for each status
   const [newTasksTotal, setNewTasksTotal] = useState(0);
   const [inProgressTotal, setInProgressTotal] = useState(0);
@@ -105,6 +108,15 @@ const TaskListScreen: React.FC = () => {
       const response = await taskApi.getTasksByStatus(status, limit, offset, filters);
       const tasks = response.data;
 
+      // Load subtasks for tasks that have them
+      const tasksWithSubtasks = tasks.filter(t => t.subtask_count && t.subtask_count > 0);
+      if (tasksWithSubtasks.length > 0) {
+        // Load subtasks in parallel
+        await Promise.all(
+          tasksWithSubtasks.map(task => loadSubtasksForTask(task.id))
+        );
+      }
+
       switch (status) {
         case 'new':
           setNewTasks(append ? [...newTasks, ...tasks] : tasks);
@@ -148,6 +160,17 @@ const TaskListScreen: React.FC = () => {
       console.error('Failed to load tasks:', error);
     } finally {
       setIsInitialLoading(false);
+    }
+  };
+
+  const loadSubtasksForTask = async (taskId: number) => {
+    try {
+      const subtasks = await taskApi.getSubtasks(taskId);
+      setSubtasksCache(prev => ({ ...prev, [taskId]: subtasks }));
+      return subtasks;
+    } catch (error) {
+      console.error(`Failed to load subtasks for task ${taskId}:`, error);
+      return [];
     }
   };
 
@@ -557,11 +580,21 @@ const TaskListScreen: React.FC = () => {
         <FlatList
           data={currentTasks}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.taskItem}>
-              <TaskItem task={item} onPress={handleTaskPress} />
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const hasSubtaskCount = item.subtask_count && item.subtask_count > 0;
+            const subtasks = subtasksCache[item.id];
+
+            return (
+              <View style={styles.taskItem}>
+                <TaskItem
+                  task={item}
+                  onPress={handleTaskPress}
+                  subtasks={subtasks}
+                  onSubtaskPress={handleTaskPress}
+                />
+              </View>
+            );
+          }}
           contentContainerStyle={styles.taskList}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />

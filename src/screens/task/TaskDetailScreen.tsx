@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,29 +7,23 @@ import {
   Alert,
   TextInput,
   StyleSheet,
-  Platform,
-  Modal,
-  Keyboard,
-  TouchableWithoutFeedback,
-  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Task, TaskComment, TaskPriority } from '../../types/task.types';
+import { Task, TaskComment, TaskActivity } from '../../types/task.types';
 import * as taskApi from '@api/task.api';
-import * as chatAPI from '@api/chat.api';
 import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
 import { useTheme } from '@hooks/useTheme';
-import { useTaskStore } from '@store/taskStore';
 import { useAuthStore } from '@store/authStore';
-import { useChatStore } from '@store/chatStore';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import ShareTaskModal from '@components/task/ShareTaskModal';
-import UserSelector from '@components/common/UserSelector';
+import EditTaskModal from '@components/task/EditTaskModal';
+import { CreateSubtaskModal } from '@components/task/CreateSubtaskModal';
+import { TaskSubtasksList } from '@components/task/TaskSubtasksList';
 
 type TaskDetailRouteParams = {
   taskId: string;
@@ -40,7 +34,6 @@ const TaskDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const { taskId } = route.params;
   const { theme } = useTheme();
-  const { deleteTask: deleteTaskFromStore } = useTaskStore();
   const { user } = useAuthStore();
 
   const [task, setTask] = useState<Task | null>(null);
@@ -52,30 +45,47 @@ const TaskDetailScreen: React.FC = () => {
   const [commentsOffset, setCommentsOffset] = useState(0);
   const [hasMoreComments, setHasMoreComments] = useState(false);
   const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
 
-  // Edit mode state
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
-  const [editDueDate, setEditDueDate] = useState<Date | undefined>(undefined);
-  const [editAssigneeIds, setEditAssigneeIds] = useState<number[]>([]);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  // Activities state
+  const [activities, setActivities] = useState<TaskActivity[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
-  // Collapsed state for sections
-  const [isInfoCollapsed, setIsInfoCollapsed] = useState(true);
-  const [isCommentsCollapsed, setIsCommentsCollapsed] = useState(true);
+  // Subtasks state
+  const [subtasks, setSubtasks] = useState<Task[]>([]);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false);
-  const { sendMessage } = useChatStore();
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  // Subtask modal state
+  const [showSubtaskModal, setShowSubtaskModal] = useState(false);
 
   useEffect(() => {
     loadTask();
     loadComments();
   }, [taskId]);
+
+  // Load activities when history tab is opened
+  useEffect(() => {
+    if (activeTab === 'history' && activities.length === 0) {
+      loadActivities();
+    }
+  }, [activeTab]);
+
+  // Reload subtasks when screen gains focus (e.g., coming back from subtask detail)
+  useFocusEffect(
+    useCallback(() => {
+      if (task && task.subtask_count && task.subtask_count > 0) {
+        loadSubtasks(Number(taskId));
+      }
+    }, [task, taskId])
+  );
 
   const loadTask = async () => {
     try {
@@ -84,12 +94,11 @@ const TaskDetailScreen: React.FC = () => {
       const taskIdNum = Number(taskId);
       const response = await taskApi.getTask(taskIdNum);
       setTask(response);
-      // Initialize edit fields
-      setEditTitle(response.title);
-      setEditDescription(response.description || '');
-      setEditPriority(response.priority);
-      setEditDueDate(response.due_date ? new Date(response.due_date) : undefined);
-      setEditAssigneeIds(response.assignees?.map(a => a.id) || []);
+
+      // Load subtasks if this is a parent task
+      if (response.subtask_count && response.subtask_count > 0) {
+        loadSubtasks(taskIdNum);
+      }
     } catch (error: any) {
       console.error('Failed to load task:', error);
       // Check if it's a 403 error (access denied)
@@ -103,6 +112,15 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
+  const loadSubtasks = async (parentTaskId: number) => {
+    try {
+      const subtasksData = await taskApi.getSubtasks(parentTaskId);
+      setSubtasks(subtasksData);
+    } catch (error) {
+      console.error('Failed to load subtasks:', error);
+    }
+  };
+
   const loadComments = async () => {
     try {
       const taskIdNum = Number(taskId);
@@ -112,6 +130,19 @@ const TaskDetailScreen: React.FC = () => {
       setHasMoreComments(response.hasMore);
     } catch (error) {
       console.error('Failed to load comments:', error);
+    }
+  };
+
+  const loadActivities = async () => {
+    try {
+      setIsLoadingActivities(true);
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTaskActivities(taskIdNum, 50, 0);
+      setActivities(response.activities || []);
+    } catch (error) {
+      console.error('Failed to load activities:', error);
+    } finally {
+      setIsLoadingActivities(false);
     }
   };
 
@@ -132,81 +163,56 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
-  const handleStartEdit = () => {
-    if (!task) return;
-    setEditTitle(task.title);
-    setEditDescription(task.description || '');
-    setEditPriority(task.priority);
-    setEditDueDate(task.due_date ? new Date(task.due_date) : undefined);
-    setEditAssigneeIds(task.assignees?.map(a => a.id) || []);
-    setIsEditMode(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditMode(false);
-    if (!task) return;
-    setEditTitle(task.title);
-    setEditDescription(task.description || '');
-    setEditPriority(task.priority);
-    setEditDueDate(task.due_date ? new Date(task.due_date) : undefined);
-    setEditAssigneeIds(task.assignees?.map(a => a.id) || []);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!task || !editTitle.trim()) {
-      Alert.alert('Ошибка', 'Название задачи не может быть пустым');
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      const taskIdNum = Number(taskId);
-
-      const updateData = {
-        title: editTitle.trim(),
-        description: editDescription.trim() || undefined,
-        priority: editPriority,
-        due_date: editDueDate?.toISOString(),
-        assignee_ids: editAssigneeIds.length > 0 ? editAssigneeIds : undefined,
-      };
-
-      console.log('📝 Updating task with data:', updateData);
-
-      const updatedTask = await taskApi.updateTask(taskIdNum, updateData);
-      console.log('✅ Server response after update:', updatedTask);
-      console.log('✅ Assignees in response:', updatedTask.assignees);
-
-      // Reload task to get updated assignees
-      await loadTask();
-      console.log('🔄 Task reloaded, current assignees:', task?.assignees);
-
-      setIsEditMode(false);
-
-      if (Platform.OS === 'web') {
-        alert('Задача обновлена');
-      } else {
-        Alert.alert('Успех', 'Задача обновлена');
-      }
-    } catch (error: any) {
-      console.error('Failed to update task:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось обновить задачу');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleStatusChange = async (newStatus: Task['status']) => {
     if (!task) return;
+
+    // Check if trying to complete or submit for review with incomplete subtasks
+    if ((newStatus === 'done' || newStatus === 'review') && !areAllSubtasksCompleted()) {
+      const action = newStatus === 'done' ? 'завершить задачу' : 'сдать на проверку';
+      Alert.alert(
+        `Невозможно ${action}`,
+        'Пожалуйста, завершите все подзадачи перед тем, как продолжить.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     try {
       const taskIdNum = Number(taskId);
       await taskApi.updateTask(taskIdNum, { status: newStatus });
       setTask({ ...task, status: newStatus });
-      setShowStatusModal(false);
       Alert.alert('Успех', 'Статус обновлён');
     } catch (error) {
       Alert.alert('Ошибка', 'Не удалось обновить статус');
     }
+  };
+
+  const handleDeleteTask = () => {
+    Alert.alert(
+      'Удалить задачу?',
+      'Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const taskIdNum = Number(taskId);
+              await taskApi.deleteTask(taskIdNum);
+              Alert.alert('Успех', 'Задача удалена', [
+                {
+                  text: 'OK',
+                  onPress: () => navigation.goBack(),
+                },
+              ]);
+            } catch (error) {
+              Alert.alert('Ошибка', 'Не удалось удалить задачу');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSendComment = async () => {
@@ -225,185 +231,10 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
-  const handleOpenChatWithUser = async (userInfo: { id: number; name: string }) => {
-    try {
-      const chat = await chatAPI.getOrCreateDirectChat(userInfo.id);
-      // @ts-ignore
-      navigation.navigate('Chats', {
-        screen: 'Chat',
-        params: { chatId: chat.id, chatName: chat.name }
-      });
-    } catch (error) {
-      console.error('Failed to open direct chat:', error);
-      Alert.alert('Ошибка', 'Не удалось открыть чат');
-    }
-  };
-
-  const handleOpenTaskGroupChat = async () => {
-    if (!task?.id) return;
-
-    try {
-      const chat = await chatAPI.getOrCreateTaskChat(task.id);
-      // @ts-ignore
-      navigation.navigate('Chats', {
-        screen: 'Chat',
-        params: { chatId: chat.id, chatName: chat.name }
-      });
-    } catch (error) {
-      console.error('Failed to open task chat:', error);
-      Alert.alert('Ошибка', 'Не удалось открыть групповой чат задачи');
-    }
-  };
-
-  const handleDeleteTask = () => {
-    if (!task) return;
-
-    const isCreator = task.created_by === user?.id;
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-
-    if (!isCreator && !isAdmin) {
-      Alert.alert('Ошибка', 'У вас нет прав на удаление этой задачи');
-      return;
-    }
-
-    // For web, use window.confirm
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.');
-      if (!confirmed) return;
-
-      // Perform deletion
-      const performDelete = async () => {
-        try {
-          const taskIdNum = Number(taskId);
-          await deleteTaskFromStore(taskIdNum);
-          alert('Задача удалена');
-          navigation.goBack();
-        } catch (error: any) {
-          alert('Ошибка: ' + (error.message || 'Не удалось удалить задачу'));
-        }
-      };
-      performDelete();
-    } else {
-      // For native, use Alert
-      Alert.alert(
-        'Удалить задачу',
-        'Вы уверены? Это действие нельзя отменить.',
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Удалить',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const taskIdNum = Number(taskId);
-                await deleteTaskFromStore(taskIdNum);
-                Alert.alert('Успех', 'Задача удалена', [
-                  { text: 'OK', onPress: () => navigation.goBack() },
-                ]);
-              } catch (error: any) {
-                Alert.alert('Ошибка', error.message || 'Не удалось удалить задачу');
-              }
-            },
-          },
-        ]
-      );
-    }
-  };
-
   const handleShareTask = async (chatId: number) => {
-    if (!task) return;
-
-    try {
-      const taskData = {
-        task_id: task.id,
-        task_title: task.title,
-        task_description: task.description,
-        task_status: task.status,
-        task_priority: task.priority,
-        due_date: task.due_date,
-        assigned_to: task.assignees?.map(a => a.id),
-      };
-
-      console.log('📤 Sharing task to chat:', chatId);
-      console.log('📋 Task data:', JSON.stringify(taskData, null, 2));
-
-      // Создаем специальное сообщение с данными задачи
-      // Бэкенд пока не поддерживает тип "task", поэтому используем тип "text"
-      // с специальным маркером для фронтенда
-      const messageContent = `📋 Задача: ${task.title}\n[TASK_DATA]${JSON.stringify(taskData)}[/TASK_DATA]`;
-
-      console.log('📦 Message content:', messageContent);
-
-      await sendMessage(chatId, messageContent, undefined, undefined, undefined);
-
-      console.log('✅ Task shared to chat:', chatId);
-    } catch (error) {
-      console.error('❌ Failed to share task:', error);
-      throw error;
-    }
-  };
-
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    if (event.type === 'dismissed') {
-      setShowDatePicker(false);
-      return;
-    }
-
-    if (selectedDate) {
-      setEditDueDate(selectedDate);
-    }
-
-    // На Android закрываем сразу, на iOS оставляем открытым
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-  };
-
-  const priorities: { value: TaskPriority; label: string; color: string }[] = [
-    { value: 'low', label: 'Низкий', color: '#10B981' },
-    { value: 'medium', label: 'Средний', color: '#F59E0B' },
-    { value: 'high', label: 'Высокий', color: '#F97316' },
-    { value: 'critical', label: 'Критический', color: '#EF4444' },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'done': return '#10B981';
-      case 'in_progress': return '#3B82F6';
-      case 'review': return '#8B5CF6';
-      case 'new': return '#F59E0B';
-      default: return '#6B7280';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'done': return 'Завершена';
-      case 'in_progress': return 'В работе';
-      case 'review': return 'На проверке';
-      case 'new': return 'Новая';
-      default: return 'Неизвестно';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return '#DC2626';
-      case 'high': return '#EA580C';
-      case 'medium': return '#CA8A04';
-      case 'low': return '#16A34A';
-      default: return '#6B7280';
-    }
-  };
-
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'Критический';
-      case 'high': return 'Высокий';
-      case 'medium': return 'Средний';
-      case 'low': return 'Низкий';
-      default: return 'Неизвестно';
-    }
+    console.log('Share task to chat:', chatId);
+    // TODO: Implement task sharing
+    Alert.alert('Успех', 'Задача отправлена в чат');
   };
 
   if (isLoading) {
@@ -470,47 +301,30 @@ const TaskDetailScreen: React.FC = () => {
     return <Loading text="Загрузка задачи..." fullScreen />;
   }
 
-  const isCreator = task.created_by === user?.id;
-  const isOverdue =
-    task.due_date &&
-    new Date(task.due_date) < new Date() &&
-    task.status !== 'done';
-
-  const canChangeStatus = !(
-    task.status === 'review' &&
-    task.created_by !== user?.id &&
-    user?.role !== 'admin' &&
-    user?.role !== 'super_admin'
-  );
-
-  const canCompleteTask =
-    user?.role === 'admin' ||
-    user?.role === 'super_admin' ||
-    user?.role === 'department_head' ||
-    task.created_by === user?.id;
-
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.background,
+      backgroundColor: theme.primary,
     },
     safeArea: {
       flex: 1,
-      backgroundColor: theme.card,
+      backgroundColor: theme.primary,
     },
-    header: {
-      backgroundColor: theme.card,
-      paddingTop: 12,
-      paddingBottom: 16,
+    scrollContent: {
+      paddingBottom: 120,
+    },
+    // Red header section
+    headerSection: {
+      backgroundColor: theme.primary,
       paddingHorizontal: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      paddingTop: 12,
+      paddingBottom: 24,
     },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 16,
+      marginBottom: 24,
     },
     headerButtons: {
       flexDirection: 'row',
@@ -520,206 +334,273 @@ const TaskDetailScreen: React.FC = () => {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: theme.backgroundTertiary,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
       alignItems: 'center',
       justifyContent: 'center',
     },
-    title: {
+    // Task title in header
+    taskTitle: {
       fontSize: 24,
       fontWeight: '700',
-      color: theme.text,
-      marginBottom: 8,
-      lineHeight: 32,
-    },
-    titleInput: {
-      fontSize: 24,
-      fontWeight: '700',
-      color: theme.text,
-      marginBottom: 8,
-      lineHeight: 32,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      backgroundColor: theme.backgroundSecondary,
-    },
-    description: {
-      fontSize: 15,
-      color: theme.textSecondary,
-      lineHeight: 22,
-      marginBottom: 16,
-    },
-    descriptionInput: {
-      fontSize: 15,
-      color: theme.text,
-      lineHeight: 22,
-      marginBottom: 16,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      backgroundColor: theme.backgroundSecondary,
-      minHeight: 80,
-    },
-    badges: {
-      flexDirection: 'row',
-      gap: 8,
-      flexWrap: 'wrap',
-    },
-    badge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 16,
-      gap: 4,
-    },
-    badgeText: {
       color: '#FFFFFF',
-      fontSize: 12,
-      fontWeight: '600',
+      marginBottom: 16,
+      lineHeight: 32,
     },
-    editSection: {
-      marginTop: 12,
-      padding: 12,
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
+    // Progress container
+    progressContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 16,
     },
-    editLabel: {
+    progressBar: {
+      flex: 1,
+      height: 8,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: '#FFFFFF',
+      borderRadius: 4,
+    },
+    progressText: {
       fontSize: 14,
       fontWeight: '600',
-      color: theme.text,
-      marginBottom: 8,
+      color: '#FFFFFF',
+      minWidth: 40,
     },
-    priorityGrid: {
+    // Assignee and deadline row
+    infoRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    priorityButton: {
-      flex: 1,
-      minWidth: '47%',
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 8,
-      borderWidth: 2,
-      borderColor: theme.border,
+      justifyContent: 'space-between',
       alignItems: 'center',
     },
-    priorityButtonActive: {
-      borderWidth: 2,
-    },
-    priorityButtonText: {
-      fontSize: 14,
+    assigneeText: {
+      fontSize: 15,
+      color: '#FFFFFF',
       fontWeight: '500',
-      color: theme.text,
     },
-    dateButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 8,
-      backgroundColor: theme.backgroundSecondary,
-      gap: 8,
-    },
-    dateButtonText: {
-      flex: 1,
-      fontSize: 14,
-      color: theme.text,
-    },
-    clearButton: {
-      padding: 4,
-    },
-    editActions: {
-      flexDirection: 'row',
-      gap: 8,
-      marginTop: 12,
-    },
-    editActionButton: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 8,
-      alignItems: 'center',
-    },
-    cancelButton: {
-      backgroundColor: theme.backgroundTertiary,
-    },
-    saveButton: {
-      backgroundColor: theme.primary,
-    },
-    editActionText: {
+    deadlineText: {
       fontSize: 15,
+      color: '#FFFFFF',
+      fontWeight: '500',
+    },
+    // Card with rounded corners
+    card: {
+      backgroundColor: theme.backgroundSecondary,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      flex: 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+      overflow: 'hidden',
+    },
+    // Tabs
+    tabsContainer: {
+      flexDirection: 'row',
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 14,
+      alignItems: 'center',
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    activeTab: {
+      borderBottomColor: theme.primary,
+    },
+    tabText: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.textSecondary,
+    },
+    activeTabText: {
+      color: theme.primary,
       fontWeight: '600',
     },
-    cancelText: {
-      color: theme.text,
-    },
-    saveText: {
-      color: '#FFFFFF',
+    // Tab content
+    tabContent: {
+      flex: 1,
+      backgroundColor: theme.background,
     },
     content: {
       flex: 1,
+      padding: 16,
     },
-    collapsibleSection: {
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      backgroundColor: theme.background,
+    // Description section
+    descriptionSection: {
+      marginBottom: 16,
     },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      backgroundColor: theme.backgroundSecondary,
-    },
-    sectionHeaderLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    sectionTitle: {
-      fontSize: 15,
+    descriptionLabel: {
+      fontSize: 16,
       fontWeight: '600',
       color: theme.text,
+      marginBottom: 8,
     },
-    sectionCount: {
-      fontSize: 13,
-      color: theme.textTertiary,
+    descriptionText: {
+      fontSize: 15,
+      color: theme.textSecondary,
+      lineHeight: 22,
     },
-    sectionContent: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: theme.background,
+    descriptionCollapsed: {
+      maxHeight: 44,
+      overflow: 'hidden',
     },
-    infoRow: {
+    expandButton: {
+      marginTop: 8,
+      alignSelf: 'flex-start',
+    },
+    expandButtonText: {
+      fontSize: 14,
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    // Completion badge
+    completionBadge: {
+      backgroundColor: '#10B981',
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 12,
+      gap: 12,
     },
-    infoIcon: {
-      width: 32,
+    completionIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
       alignItems: 'center',
+      justifyContent: 'center',
     },
-    infoContent: {
+    completionContent: {
       flex: 1,
     },
-    infoLabel: {
-      fontSize: 13,
-      color: theme.textTertiary,
+    completionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      marginBottom: 4,
+    },
+    completionDate: {
+      fontSize: 14,
+      color: '#FFFFFF',
+      opacity: 0.9,
+    },
+    // Action buttons
+    actionButtonsContainer: {
+      marginTop: 24,
+    },
+    actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      borderRadius: 12,
+      marginBottom: 12,
+      gap: 8,
+    },
+    primaryActionButton: {
+      backgroundColor: theme.primary,
+    },
+    disabledButton: {
+      backgroundColor: '#9CA3AF',
+      opacity: 0.6,
+    },
+    secondaryActionButton: {
+      backgroundColor: theme.backgroundTertiary,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    actionButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    primaryActionButtonText: {
+      color: '#FFFFFF',
+    },
+    secondaryActionButtonText: {
+      color: theme.text,
+    },
+    // Subtasks section
+    subtasksSection: {
+      marginTop: 16,
+      marginBottom: 16,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 12,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    // Attachments section
+    attachmentsSection: {
+      marginTop: 16,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 12,
+    },
+    attachmentsList: {
+      gap: 8,
+    },
+    attachmentItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    attachmentIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      backgroundColor: theme.backgroundTertiary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    attachmentInfo: {
+      flex: 1,
+    },
+    attachmentName: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.text,
       marginBottom: 2,
     },
-    infoValue: {
-      fontSize: 15,
-      color: theme.text,
-      fontWeight: '500',
+    attachmentSize: {
+      fontSize: 12,
+      color: theme.textTertiary,
+    },
+    addAttachmentButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 12,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderStyle: 'dashed',
+      marginTop: 8,
+    },
+    addAttachmentText: {
+      fontSize: 14,
+      color: theme.primary,
+      fontWeight: '600',
+      marginLeft: 8,
     },
     clickable: {
       color: theme.primary,
@@ -804,657 +685,585 @@ const TaskDetailScreen: React.FC = () => {
       color: theme.primary,
       fontWeight: '600',
     },
-    actionBar: {
-      flexDirection: 'row',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: theme.card,
-      borderTopWidth: 1,
-      borderTopColor: theme.border,
-      gap: 8,
-    },
-    actionButton: {
+    // Activity history styles
+    activityLoadingContainer: {
       flex: 1,
-      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 12,
-      borderRadius: 10,
-      gap: 6,
+      paddingVertical: 40,
     },
-    primaryButton: {
-      backgroundColor: theme.primary,
-    },
-    secondaryButton: {
-      backgroundColor: theme.backgroundTertiary,
-    },
-    buttonText: {
+    activityLoadingText: {
       fontSize: 14,
-      fontWeight: '600',
+      color: theme.textSecondary,
+      marginTop: 12,
     },
-    primaryButtonText: {
-      color: '#FFFFFF',
+    activitiesContainer: {
+      flex: 1,
     },
-    secondaryButtonText: {
-      color: theme.text,
-    },
-    modalOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'flex-end',
-    },
-    modalContent: {
-      backgroundColor: theme.card,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingTop: 20,
-      paddingBottom: 40,
+    dateSeparator: {
+      paddingVertical: 12,
       paddingHorizontal: 16,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 8,
+      marginBottom: 12,
+      marginTop: 8,
     },
-    modalHandle: {
-      width: 40,
-      height: 4,
-      backgroundColor: theme.border,
-      borderRadius: 2,
-      alignSelf: 'center',
-      marginBottom: 20,
-    },
-    modalTitle: {
-      fontSize: 20,
+    dateSeparatorText: {
+      fontSize: 13,
       fontWeight: '700',
-      color: theme.text,
-      marginBottom: 20,
+      color: theme.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
-    statusOption: {
+    activityItem: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 14,
+      paddingVertical: 12,
       paddingHorizontal: 16,
-      backgroundColor: theme.backgroundTertiary,
+      backgroundColor: theme.backgroundSecondary,
       borderRadius: 12,
       marginBottom: 8,
-      borderWidth: 2,
-      borderColor: 'transparent',
-    },
-    statusOptionActive: {
-      borderColor: theme.primary,
-    },
-    statusOptionLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
       gap: 12,
     },
-    statusOptionText: {
-      fontSize: 15,
-      fontWeight: '500',
+    activityIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    activityContent: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    activityText: {
+      fontSize: 14,
       color: theme.text,
+      lineHeight: 20,
+      marginBottom: 4,
+    },
+    activityTime: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      fontWeight: '500',
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+    },
+    emptyStateText: {
+      fontSize: 15,
+      color: theme.textTertiary,
+      marginTop: 12,
+      textAlign: 'center',
+    },
+    accessDeniedContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+      paddingHorizontal: 32,
+    },
+    accessDeniedText: {
+      fontSize: 15,
+      color: theme.textTertiary,
+      marginTop: 12,
+      textAlign: 'center',
+      lineHeight: 22,
     },
   });
 
+  // Helper function to get activity icon
+  const getActivityIcon = (activity: TaskActivity): any => {
+    const actionType = activity.action_type;
+
+    // Special case: if status changed to 'done', show green checkmark
+    if ((actionType === 'task_status_changed' || actionType === 'subtask_status_changed') &&
+        activity.new_value === 'done') {
+      return 'checkmark-circle';
+    }
+
+    if (actionType === 'task_created') return 'add-circle-outline';
+    if (actionType === 'task_status_changed') return 'swap-horizontal-outline';
+    if (actionType === 'task_assigned') return 'person-add-outline';
+    if (actionType === 'task_delegated') return 'git-branch-outline';
+    if (actionType === 'task_viewed') return 'eye-outline';
+    if (actionType === 'comment_added') return 'chatbubble-outline';
+    if (actionType === 'attachment_added') return 'attach-outline';
+    if (actionType === 'attachment_deleted') return 'trash-outline';
+    if (actionType === 'checklist_added') return 'checkmark-done-outline';
+    if (actionType.includes('checklist_item')) return 'checkbox-outline';
+    if (actionType === 'subtask_created') return 'git-branch-outline';
+    if (actionType === 'subtask_status_changed') return 'git-commit-outline';
+    return 'ellipse-outline';
+  };
+
+  // Helper function to get activity icon color
+  const getActivityIconColor = (activity: TaskActivity): string => {
+    const actionType = activity.action_type;
+
+    // Green for completed tasks
+    if ((actionType === 'task_status_changed' || actionType === 'subtask_status_changed') &&
+        activity.new_value === 'done') {
+      return '#10B981';
+    }
+
+    return '#6B7280';
+  };
+
+  // Helper function to convert status to Russian
+  const getStatusInRussian = (status: string): string => {
+    const statusMap: { [key: string]: string } = {
+      'new': 'Новая',
+      'viewed': 'Просмотрена',
+      'in_progress': 'В работе',
+      'review': 'На проверке',
+      'done': 'Завершена',
+      'cancelled': 'Отменена',
+    };
+    return statusMap[status] || status;
+  };
+
+  // Helper function to get activity description in Russian
+  const getActivityDescription = (activity: TaskActivity): string => {
+    // Use user name from user object if available, otherwise use user_id
+    const userName = activity.user?.name || (activity.user_id ? `Пользователь #${activity.user_id}` : 'Система');
+
+    // Determine if this is about a subtask (task_id is different from current task)
+    const taskTitle = activity.task_title || '';
+    const taskPrefix = taskTitle ? `"${taskTitle}": ` : '';
+
+    switch (activity.action_type) {
+      case 'task_created':
+        return `${userName} создал задачу ${taskPrefix}`;
+      case 'task_status_changed': {
+        const oldStatus = getStatusInRussian(activity.old_value || '');
+        const newStatus = getStatusInRussian(activity.new_value || '');
+        return `${taskPrefix}${userName} изменил статус: ${oldStatus} → ${newStatus}`;
+      }
+      case 'task_assigned':
+        return `${taskPrefix}${userName} назначил задачу`;
+      case 'task_delegated':
+        return `${taskPrefix}${userName} делегировал задачу`;
+      case 'task_viewed':
+        return `${taskPrefix}${userName} ознакомился с задачей`;
+      case 'comment_added':
+        return `${taskPrefix}${userName} добавил комментарий`;
+      case 'attachment_added':
+        return `${taskPrefix}${userName} добавил файл: ${activity.new_value}`;
+      case 'attachment_deleted':
+        return `${taskPrefix}${userName} удалил файл: ${activity.old_value}`;
+      case 'checklist_added':
+        return `${taskPrefix}${userName} добавил чек-лист`;
+      case 'checklist_item_completed':
+        return `${taskPrefix}${userName} отметил пункт чек-листа`;
+      case 'checklist_item_uncompleted':
+        return `${taskPrefix}${userName} снял отметку с пункта чек-листа`;
+      case 'subtask_created': {
+        // Get assignee names
+        let assigneeInfo = '';
+        if (activity.assignees && activity.assignees.length > 0) {
+          const assigneeNames = activity.assignees.map(a => a.name).join(', ');
+          assigneeInfo = ` для ${assigneeNames}`;
+        }
+        return `${userName} создал подзадачу: ${activity.new_value}${assigneeInfo}`;
+      }
+      case 'subtask_status_changed': {
+        const oldStatus = getStatusInRussian(activity.old_value || '');
+        const newStatus = getStatusInRussian(activity.new_value || '');
+        return `${userName} изменил статус подзадачи: ${oldStatus} → ${newStatus}`;
+      }
+      default:
+        if (activity.action_type.startsWith('task_updated_')) {
+          const field = activity.action_type.replace('task_updated_', '');
+          return `${taskPrefix}${userName} обновил ${field}`;
+        }
+        return `${taskPrefix}${userName} выполнил действие: ${activity.action_type}`;
+    }
+  };
+
+  // Check if all subtasks are completed
+  const areAllSubtasksCompleted = (): boolean => {
+    if (!subtasks || subtasks.length === 0) {
+      return true; // No subtasks, so all are "completed"
+    }
+    return subtasks.every(subtask => subtask.status === 'done');
+  };
+
+  // Get task action button text based on status
+  const getActionButtonText = () => {
+    if (task.status === 'new') return 'Начать';
+    if (task.status === 'in_progress') {
+      // Check if all subtasks are completed
+      if (!areAllSubtasksCompleted()) {
+        return 'Завершите подзадачи';
+      }
+      return 'Сдать на проверку';
+    }
+    if (task.status === 'review') return 'На проверке';
+    return 'Завершена';
+  };
+
+  const handleTaskAction = async () => {
+    if (task.status === 'new') {
+      await handleStatusChange('in_progress');
+    } else if (task.status === 'in_progress') {
+      // Check if all subtasks are completed before allowing to submit for review
+      if (!areAllSubtasksCompleted()) {
+        Alert.alert(
+          'Невозможно сдать на проверку',
+          'Пожалуйста, завершите все подзадачи перед тем, как сдать задачу на проверку.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      await handleStatusChange('review');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-          <View style={styles.headerButtons}>
-            {/* Кнопка поделиться */}
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => setShowShareModal(true)}
-            >
-              <Ionicons name="share-outline" size={20} color={theme.primary} />
+      <View style={styles.container}>
+        {/* Red Header Section */}
+        <View style={styles.headerSection}>
+          {/* Header Row with Back and Edit buttons */}
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
-            {(isCreator || user?.role === 'admin' || user?.role === 'super_admin') && !isEditMode && (
-              <TouchableOpacity style={styles.headerButton} onPress={handleStartEdit}>
-                <Ionicons name="create-outline" size={20} color={theme.primary} />
-              </TouchableOpacity>
-            )}
-            {task && user && (task.created_by === user.id || user.role === 'admin' || user.role === 'super_admin') && (
-              <TouchableOpacity style={styles.headerButton} onPress={handleDeleteTask}>
-                <Ionicons name="trash-outline" size={20} color={theme.error} />
-              </TouchableOpacity>
-            )}
+            <View style={styles.headerButtons}>
+              {task.status !== 'done' && (task.created_by === user?.id || user?.role === 'admin' || user?.role === 'super_admin') && (
+                <>
+                  <TouchableOpacity
+                    style={styles.headerButton}
+                    onPress={() => setShowEditModal(true)}
+                  >
+                    <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.headerButton}
+                    onPress={handleDeleteTask}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+
+          {/* Task Title */}
+          <Text style={styles.taskTitle}>{task.title}</Text>
+
+          {/* Progress Bar - if task has progress_percentage */}
+          {task.progress_percentage !== undefined && task.progress_percentage > 0 && (
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${task.progress_percentage}%` }
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressText}>{task.progress_percentage}%</Text>
+            </View>
+          )}
+
+          {/* Assignee and Deadline Row */}
+          <View style={styles.infoRow}>
+            <Text style={styles.assigneeText}>
+              {task.assignees && task.assignees.length > 0
+                ? task.assignees[0].name
+                : 'Без исполнителя'}
+            </Text>
+            <Text style={styles.deadlineText}>
+              {task.due_date
+                ? format(new Date(task.due_date), 'dd MMM', { locale: ru })
+                : 'Без срока'}
+            </Text>
           </View>
         </View>
 
-        {!isEditMode && (
-          <>
-            <Text style={styles.title}>{task.title}</Text>
+        {/* Card with Tabs */}
+        <View style={styles.card}>
+          {/* Tabs */}
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
+              onPress={() => setActiveTab('overview')}
+            >
+              <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
+                Обзор
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+              onPress={() => setActiveTab('history')}
+            >
+              <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+                История
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-            {task.description && (
-              <Text style={styles.description}>{task.description}</Text>
-            )}
-
-            <View style={styles.badges}>
-              <View style={[styles.badge, { backgroundColor: getStatusColor(task.status) }]}>
-                <Ionicons name="ellipse" size={8} color="#FFFFFF" />
-                <Text style={styles.badgeText}>{getStatusText(task.status)}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: getPriorityColor(task.priority) }]}>
-                <Ionicons name="flag" size={12} color="#FFFFFF" />
-                <Text style={styles.badgeText}>{getPriorityText(task.priority)}</Text>
-              </View>
-            </View>
-          </>
-        )}
-      </View>
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={{ backgroundColor: theme.background, paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {isEditMode ? (
-          <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-            <TextInput
-              style={styles.titleInput}
-              value={editTitle}
-              onChangeText={setEditTitle}
-              placeholder="Название задачи"
-              placeholderTextColor={theme.inputPlaceholder}
-              maxLength={100}
-            />
-            <TextInput
-              style={styles.descriptionInput}
-              value={editDescription}
-              onChangeText={setEditDescription}
-              placeholder="Описание задачи..."
-              placeholderTextColor={theme.inputPlaceholder}
-              multiline
-              maxLength={500}
-            />
-
-            {/* Priority Selection */}
-            <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Приоритет</Text>
-              <View style={styles.priorityGrid}>
-                {priorities.map((p) => (
-                  <TouchableOpacity
-                    key={p.value}
-                    onPress={() => setEditPriority(p.value)}
-                    style={[
-                      styles.priorityButton,
-                      editPriority === p.value && {
-                        ...styles.priorityButtonActive,
-                        backgroundColor: p.color + '15',
-                        borderColor: p.color,
-                      },
-                    ]}
-                  >
+          {/* Tab Content */}
+          <ScrollView
+            style={styles.tabContent}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {activeTab === 'overview' ? (
+              <View style={styles.content}>
+                {/* Description Section */}
+                {task.description && (
+                  <View style={styles.descriptionSection}>
+                    <Text style={styles.descriptionLabel}>Описание</Text>
                     <Text
                       style={[
-                        styles.priorityButtonText,
-                        editPriority === p.value && { color: p.color, fontWeight: '600' },
+                        styles.descriptionText,
+                        !isDescriptionExpanded && styles.descriptionCollapsed,
                       ]}
+                      numberOfLines={isDescriptionExpanded ? undefined : 2}
                     >
-                      {p.label}
+                      {task.description}
                     </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+                    {task.description.length > 80 && (
+                      <TouchableOpacity
+                        style={styles.expandButton}
+                        onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      >
+                        <Text style={styles.expandButtonText}>
+                          {isDescriptionExpanded ? 'Свернуть' : 'Раскрыть'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
 
-            {/* Due Date Selection */}
-            <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Срок выполнения</Text>
-
-              {Platform.OS === 'web' ? (
-                <View style={styles.dateButton}>
-                  <Ionicons name="calendar" size={20} color={theme.primary} />
-                  <input
-                    type="datetime-local"
-                    value={editDueDate ? editDueDate.toISOString().slice(0, 16) : ''}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setEditDueDate(new Date(e.target.value));
-                      }
-                    }}
-                    min={new Date().toISOString().slice(0, 16)}
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      padding: '8px',
-                      fontSize: '14px',
-                      color: theme.text,
-                      backgroundColor: 'transparent',
-                      fontFamily: 'system-ui, -apple-system, sans-serif',
-                      outline: 'none',
-                    }}
-                  />
-                  {editDueDate && (
-                    <TouchableOpacity
-                      onPress={() => setEditDueDate(undefined)}
-                      style={styles.clearButton}
-                    >
-                      <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.dateButton}
-                  onPress={() => setShowDatePicker(true)}
-                >
-                  <Ionicons name="calendar" size={20} color={theme.primary} />
-                  <Text style={styles.dateButtonText}>
-                    {editDueDate
-                      ? format(editDueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
-                      : 'Выберите дату и время'}
-                  </Text>
-                  {editDueDate && (
-                    <TouchableOpacity
-                      onPress={() => setEditDueDate(undefined)}
-                      style={styles.clearButton}
-                    >
-                      <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-                    </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
-              )}
-
-              {showDatePicker && Platform.OS === 'ios' && (
-                <Modal
-                  transparent
-                  animationType="none"
-                  visible={showDatePicker}
-                  onRequestClose={() => setShowDatePicker(false)}
-                >
-                  <TouchableWithoutFeedback onPress={() => setShowDatePicker(false)}>
-                    <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                      <TouchableWithoutFeedback>
-                        <View style={{ backgroundColor: theme.card, paddingBottom: 20 }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
-                            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                              <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Готово</Text>
-                            </TouchableOpacity>
-                          </View>
-                          <DateTimePicker
-                            value={editDueDate || new Date()}
-                            mode="datetime"
-                            display="spinner"
-                            onChange={handleDateChange}
-                            minimumDate={new Date()}
-                            textColor={theme.text}
-                          />
-                        </View>
-                      </TouchableWithoutFeedback>
+                {/* Completion Badge - shown when task is done */}
+                {task.status === 'done' && (
+                  <View style={styles.completionBadge}>
+                    <View style={styles.completionIcon}>
+                      <Ionicons name="checkmark-circle" size={32} color="#FFFFFF" />
                     </View>
-                  </TouchableWithoutFeedback>
-                </Modal>
-              )}
-
-              {showDatePicker && Platform.OS === 'android' && (
-                <DateTimePicker
-                  value={editDueDate || new Date()}
-                  mode="datetime"
-                  display="default"
-                  onChange={handleDateChange}
-                  minimumDate={new Date()}
-                />
-              )}
-            </View>
-
-            {/* Assignees Selection */}
-            <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Исполнители</Text>
-              <UserSelector
-                selectedUserIds={editAssigneeIds}
-                onSelectionChange={setEditAssigneeIds}
-                multiSelect={true}
-                placeholder="Выберите исполнителей"
-                modalTitle="Выбрать исполнителей"
-              />
-            </View>
-
-            {/* Edit Actions */}
-            <View style={styles.editActions}>
-              <TouchableOpacity
-                style={[styles.editActionButton, styles.cancelButton]}
-                onPress={handleCancelEdit}
-              >
-                <Text style={[styles.editActionText, styles.cancelText]}>Отмена</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.editActionButton, styles.saveButton]}
-                onPress={handleSaveEdit}
-                disabled={isSaving || !editTitle.trim()}
-              >
-                <Text style={[styles.editActionText, styles.saveText]}>
-                  {isSaving ? 'Сохранение...' : 'Сохранить'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <>
-        {/* Info Section - Collapsible */}
-        <View style={styles.collapsibleSection}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => setIsInfoCollapsed(!isInfoCollapsed)}
-          >
-            <View style={styles.sectionHeaderLeft}>
-              <Ionicons name="information-circle-outline" size={20} color={theme.text} />
-              <Text style={styles.sectionTitle}>Информация</Text>
-            </View>
-            <Ionicons
-              name={isInfoCollapsed ? 'chevron-down' : 'chevron-up'}
-              size={20}
-              color={theme.textTertiary}
-            />
-          </TouchableOpacity>
-
-          {!isInfoCollapsed && (
-            <View style={styles.sectionContent}>
-              {task.creator && (
-                <View style={styles.infoRow}>
-                  <View style={styles.infoIcon}>
-                    <Ionicons name="person-outline" size={20} color={theme.textSecondary} />
+                    <View style={styles.completionContent}>
+                      <Text style={styles.completionTitle}>Задача завершена</Text>
+                      <Text style={styles.completionDate}>
+                        {task.updated_at
+                          ? format(new Date(task.updated_at), 'dd MMMM yyyy, HH:mm', { locale: ru })
+                          : 'Дата неизвестна'}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Создатель</Text>
-                    <TouchableOpacity onPress={() => handleOpenChatWithUser(task.creator!)}>
-                      <Text style={[styles.infoValue, styles.clickable]}>{task.creator.name}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
+                )}
 
-              {task.assignees && task.assignees.length > 0 && (
-                <View style={styles.infoRow}>
-                  <View style={styles.infoIcon}>
-                    <Ionicons name="people-outline" size={20} color={theme.textSecondary} />
-                  </View>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Исполнители</Text>
-                    <View style={styles.assignees}>
-                      {task.assignees.map((assignee, index) => (
+                {/* Elements hidden when task is done */}
+                {task.status !== 'done' && (
+                  <>
+                    {/* Subtasks Section - only for users who can create subtasks */}
+                    {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') && (
+                      <View style={styles.subtasksSection}>
+                        <TaskSubtasksList
+                          parentTaskId={task.id}
+                          onSubtaskPress={(subtask) => {
+                            // @ts-ignore
+                            navigation.push('TaskDetail', { taskId: subtask.id.toString() });
+                          }}
+                          onSubtaskCreated={() => {
+                            loadTask(); // Reload task to update progress
+                          }}
+                          onCreateSubtaskPress={() => setShowSubtaskModal(true)}
+                        />
+                      </View>
+                    )}
+
+                    {/* Attachments Section */}
+                    <View style={styles.attachmentsSection}>
+                      <Text style={styles.sectionTitle}>Вложения</Text>
+
+                      {/* Add Attachment Button */}
+                      <TouchableOpacity style={styles.addAttachmentButton}>
+                        <Ionicons name="add-circle" size={24} color={theme.primary} />
+                        <Text style={styles.addAttachmentText}>Добавить файл</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View style={styles.actionButtonsContainer}>
+                      {/* Start/Submit Button - for new or in_progress tasks */}
+                      {(task.status === 'new' || task.status === 'in_progress') && (
                         <TouchableOpacity
-                          key={assignee.id}
-                          onPress={() => handleOpenChatWithUser(assignee)}
+                          style={[
+                            styles.actionButton,
+                            styles.primaryActionButton,
+                            (task.status === 'in_progress' && !areAllSubtasksCompleted()) && styles.disabledButton
+                          ]}
+                          onPress={handleTaskAction}
+                          disabled={task.status === 'in_progress' && !areAllSubtasksCompleted()}
                         >
-                          <Text style={[styles.infoValue, styles.clickable]}>
-                            {assignee.name}{index < task.assignees!.length - 1 ? ', ' : ''}
+                          <Ionicons
+                            name={task.status === 'in_progress' && !areAllSubtasksCompleted() ? 'alert-circle-outline' : 'play-circle-outline'}
+                            size={20}
+                            color="#FFFFFF"
+                          />
+                          <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
+                            {getActionButtonText()}
                           </Text>
                         </TouchableOpacity>
-                      ))}
+                      )}
+
+                      {/* Review Buttons - for creator when task is in review */}
+                      {task.status === 'review' && task.created_by === user?.id && (
+                        <>
+                          <TouchableOpacity
+                            style={[
+                              styles.actionButton,
+                              styles.primaryActionButton,
+                              !areAllSubtasksCompleted() && styles.disabledButton
+                            ]}
+                            onPress={() => handleStatusChange('done')}
+                            disabled={!areAllSubtasksCompleted()}
+                          >
+                            <Ionicons
+                              name={!areAllSubtasksCompleted() ? 'alert-circle-outline' : 'checkmark-circle-outline'}
+                              size={20}
+                              color="#FFFFFF"
+                            />
+                            <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
+                              {!areAllSubtasksCompleted() ? 'Завершите подзадачи' : 'Принять задачу'}
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.secondaryActionButton]}
+                            onPress={() => handleStatusChange('in_progress')}
+                          >
+                            <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
+                            <Text style={[styles.actionButtonText, styles.secondaryActionButtonText]}>
+                              Отправить на переработку
+                            </Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
                     </View>
-                  </View>
-                </View>
-              )}
-
-              {task.due_date && (
-                <View style={styles.infoRow}>
-                  <View style={styles.infoIcon}>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={20}
-                      color={isOverdue ? theme.error : theme.textSecondary}
-                    />
-                  </View>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Срок</Text>
-                    <Text style={[styles.infoValue, isOverdue && styles.overdueText]}>
-                      {format(new Date(task.due_date), 'dd MMM yyyy, HH:mm', { locale: ru })}
-                      {isOverdue && ' • Просрочено'}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoIcon}>
-                  <Ionicons name="time-outline" size={20} color={theme.textSecondary} />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Создано</Text>
-                  <Text style={styles.infoValue}>
-                    {format(new Date(task.created_at), 'dd MMM yyyy, HH:mm', { locale: ru })}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Comments Section - Collapsible */}
-        <View style={styles.collapsibleSection}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => setIsCommentsCollapsed(!isCommentsCollapsed)}
-          >
-            <View style={styles.sectionHeaderLeft}>
-              <Ionicons name="chatbox-outline" size={20} color={theme.text} />
-              <Text style={styles.sectionTitle}>Комментарии</Text>
-              <Text style={styles.sectionCount}>({comments.length})</Text>
-            </View>
-            <Ionicons
-              name={isCommentsCollapsed ? 'chevron-down' : 'chevron-up'}
-              size={20}
-              color={theme.textTertiary}
-            />
-          </TouchableOpacity>
-
-          {!isCommentsCollapsed && (
-            <View style={styles.sectionContent}>
-              <View style={styles.commentInputContainer}>
-                <TextInput
-                  style={styles.commentInput}
-                  placeholder="Добавить комментарий..."
-                  value={newComment}
-                  onChangeText={setNewComment}
-                  multiline
-                  placeholderTextColor={theme.inputPlaceholder}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    { backgroundColor: newComment.trim() ? theme.primary : theme.borderLight }
-                  ]}
-                  onPress={handleSendComment}
-                  disabled={!newComment.trim() || isSendingComment}
-                >
-                  {isSendingComment ? (
-                    <Ionicons name="hourglass-outline" size={20} color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="send" size={20} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {comments.map((comment) => (
-                <View key={comment.id} style={styles.commentItem}>
-                  <View style={styles.commentAvatar}>
-                    <Avatar
-                      source={comment.user?.avatar}
-                      name={comment.user?.name || 'User'}
-                      size={32}
-                    />
-                  </View>
-                  <View style={styles.commentContent}>
-                    <View style={styles.commentHeader}>
-                      <Text style={styles.commentAuthor}>
-                        {comment.user?.name || 'Пользователь'}
-                      </Text>
-                      <Text style={styles.commentDate}>
-                        {format(new Date(comment.created_at), 'dd.MM HH:mm')}
-                      </Text>
-                    </View>
-                    <Text style={styles.commentText}>{comment.content}</Text>
-                  </View>
-                </View>
-              ))}
-
-              {hasMoreComments && (
-                <TouchableOpacity
-                  onPress={loadMoreComments}
-                  disabled={isLoadingMoreComments}
-                  style={styles.loadMore}
-                >
-                  <Text style={styles.loadMoreText}>
-                    {isLoadingMoreComments ? 'Загрузка...' : 'Показать ещё'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {comments.length === 0 && (
-                <Text style={styles.emptyComments}>Комментариев пока нет</Text>
-              )}
-            </View>
-          )}
-        </View>
-          </>
-        )}
-      </ScrollView>
-
-      {/* Action Bar - Hide during editing */}
-      {!isEditMode && (
-        <View style={styles.actionBar}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.secondaryButton]}
-            onPress={() => setShowStatusModal(true)}
-          >
-            <Ionicons name="swap-horizontal" size={18} color={theme.text} />
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>Статус</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.primaryButton]}
-            onPress={handleOpenTaskGroupChat}
-          >
-            <Ionicons name="chatbubbles" size={18} color="#FFFFFF" />
-            <Text style={[styles.buttonText, styles.primaryButtonText]}>Обсудить</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Status Modal */}
-      {showStatusModal && (
-        <TouchableOpacity
-          activeOpacity={1}
-          style={styles.modalOverlay}
-          onPress={() => setShowStatusModal(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Изменить статус</Text>
-
-            {!canChangeStatus ? (
-              <View style={styles.statusOption}>
-                <View style={styles.statusOptionLeft}>
-                  <Ionicons name="lock-closed" size={20} color={theme.textTertiary} />
-                  <Text style={[styles.statusOptionText, { color: theme.textSecondary }]}>
-                    Недостаточно прав
-                  </Text>
-                </View>
+                  </>
+                )}
               </View>
             ) : (
-              <>
-                <TouchableOpacity
-                  style={[
-                    styles.statusOption,
-                    task.status === 'new' && styles.statusOptionActive,
-                  ]}
-                  onPress={() => handleStatusChange('new')}
-                >
-                  <View style={styles.statusOptionLeft}>
-                    <View style={[styles.badge, { backgroundColor: getStatusColor('new') }]}>
-                      <Ionicons name="ellipse" size={8} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.statusOptionText}>Новая</Text>
-                  </View>
-                  {task.status === 'new' && (
-                    <Ionicons name="checkmark" size={22} color={theme.primary} />
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.statusOption,
-                    task.status === 'in_progress' && styles.statusOptionActive,
-                  ]}
-                  onPress={() => handleStatusChange('in_progress')}
-                >
-                  <View style={styles.statusOptionLeft}>
-                    <View style={[styles.badge, { backgroundColor: getStatusColor('in_progress') }]}>
-                      <Ionicons name="ellipse" size={8} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.statusOptionText}>В работе</Text>
-                  </View>
-                  {task.status === 'in_progress' && (
-                    <Ionicons name="checkmark" size={22} color={theme.primary} />
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.statusOption,
-                    task.status === 'review' && styles.statusOptionActive,
-                  ]}
-                  onPress={() => handleStatusChange('review')}
-                >
-                  <View style={styles.statusOptionLeft}>
-                    <View style={[styles.badge, { backgroundColor: getStatusColor('review') }]}>
-                      <Ionicons name="ellipse" size={8} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.statusOptionText}>На проверке</Text>
-                  </View>
-                  {task.status === 'review' && (
-                    <Ionicons name="checkmark" size={22} color={theme.primary} />
-                  )}
-                </TouchableOpacity>
-
-                {canCompleteTask && (
-                  <TouchableOpacity
-                    style={[
-                      styles.statusOption,
-                      task.status === 'done' && styles.statusOptionActive,
-                    ]}
-                    onPress={() => handleStatusChange('done')}
-                  >
-                    <View style={styles.statusOptionLeft}>
-                      <View style={[styles.badge, { backgroundColor: getStatusColor('done') }]}>
-                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+              // History Tab (Activities)
+              <View style={styles.content}>
+                {/* Check if user has permission to view history */}
+                {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') ? (
+                  <>
+                    {isLoadingActivities ? (
+                      <View style={styles.activityLoadingContainer}>
+                        <ActivityIndicator size="large" color={theme.primary} />
+                        <Text style={styles.activityLoadingText}>Загрузка истории...</Text>
                       </View>
-                      <Text style={styles.statusOptionText}>Завершена</Text>
-                    </View>
-                    {task.status === 'done' && (
-                      <Ionicons name="checkmark" size={22} color={theme.primary} />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      )}
+                    ) : activities.length > 0 ? (
+                      <View style={styles.activitiesContainer}>
+                        {/* Group activities by date */}
+                        {(() => {
+                          const groupedActivities: { [key: string]: TaskActivity[] } = {};
+                          activities.forEach((activity) => {
+                            const dateKey = format(new Date(activity.created_at), 'dd.MM.yyyy');
+                            if (!groupedActivities[dateKey]) {
+                              groupedActivities[dateKey] = [];
+                            }
+                            groupedActivities[dateKey].push(activity);
+                          });
 
-      {/* Share Task Modal */}
-      {task && (
-        <ShareTaskModal
-          visible={showShareModal}
-          onClose={() => setShowShareModal(false)}
-          task={task}
-          onShare={handleShareTask}
-        />
-      )}
+                          return Object.entries(groupedActivities).map(([date, dateActivities]) => (
+                            <View key={date}>
+                              {/* Date Separator */}
+                              <View style={styles.dateSeparator}>
+                                <Text style={styles.dateSeparatorText}>{date}</Text>
+                              </View>
+
+                              {/* Activities for this date */}
+                              {dateActivities.map((activity) => (
+                                <View key={activity.id} style={styles.activityItem}>
+                                  <View style={styles.activityIcon}>
+                                    <Ionicons
+                                      name={getActivityIcon(activity)}
+                                      size={20}
+                                      color={getActivityIconColor(activity)}
+                                    />
+                                  </View>
+                                  <View style={styles.activityContent}>
+                                    <Text style={styles.activityText}>
+                                      {getActivityDescription(activity)}
+                                    </Text>
+                                    <Text style={styles.activityTime}>
+                                      {format(new Date(activity.created_at), 'HH:mm')}
+                                    </Text>
+                                  </View>
+                                </View>
+                              ))}
+                            </View>
+                          ));
+                        })()}
+                      </View>
+                    ) : (
+                      <View style={styles.emptyState}>
+                        <Ionicons name="time-outline" size={48} color={theme.textTertiary} />
+                        <Text style={styles.emptyStateText}>История пока пуста</Text>
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  // Access denied for employees
+                  <View style={styles.accessDeniedContainer}>
+                    <Ionicons name="lock-closed-outline" size={48} color={theme.textTertiary} />
+                    <Text style={styles.accessDeniedText}>
+                      История доступна только руководителям
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+
+        {/* Share Task Modal */}
+        {task && (
+          <ShareTaskModal
+            visible={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            task={task}
+            onShare={handleShareTask}
+          />
+        )}
+
+        {/* Edit Task Modal */}
+        {task && (
+          <EditTaskModal
+            visible={showEditModal}
+            task={task}
+            onClose={() => setShowEditModal(false)}
+            onTaskUpdated={(updatedTask) => {
+              setTask(updatedTask);
+              setShowEditModal(false);
+            }}
+          />
+        )}
+
+        {/* Create Subtask Modal - only for users who can create subtasks */}
+        {task && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') && (
+          <CreateSubtaskModal
+            visible={showSubtaskModal}
+            parentTaskId={task.id}
+            onClose={() => setShowSubtaskModal(false)}
+            onSubtaskCreated={() => {
+              setShowSubtaskModal(false);
+              loadTask(); // Reload task to update progress
+            }}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 };

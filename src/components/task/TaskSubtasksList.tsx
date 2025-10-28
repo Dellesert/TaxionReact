@@ -13,10 +13,13 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
+  Platform,
 } from 'react-native';
-import { Task, TaskStatus, CreateTaskDto } from '@/types/task.types';
-import { getSubtasks, createSubtask, updateTaskStatus } from '@/api/task.api';
+import { Task, TaskStatus, CreateTaskDto } from '../../types/task.types';
+import { getSubtasks, createSubtask, updateTaskStatus, deleteTask } from '../../api/task.api';
 import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
 interface TaskSubtasksListProps {
   parentTaskId: number;
@@ -97,15 +100,54 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     }
   };
 
+  const handleDeleteSubtask = async (subtask: Task) => {
+    const confirmDelete = async () => {
+      try {
+        await deleteTask(subtask.id);
+
+        // Update local state
+        setSubtasks(prev => prev.filter(s => s.id !== subtask.id));
+
+        // Notify parent about change (to recalculate progress)
+        if (onSubtaskCreated) {
+          onSubtaskCreated();
+        }
+      } catch (error) {
+        console.error('Error deleting subtask:', error);
+        if (Platform.OS === 'web') {
+          alert('Ошибка: Не удалось удалить подзадачу');
+        } else {
+          Alert.alert('Ошибка', 'Не удалось удалить подзадачу');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Вы уверены, что хотите удалить подзадачу "${subtask.title}"?`)) {
+        await confirmDelete();
+      }
+    } else {
+      Alert.alert(
+        'Удалить подзадачу?',
+        `Вы уверены, что хотите удалить подзадачу "${subtask.title}"?`,
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            onPress: confirmDelete,
+          },
+        ]
+      );
+    }
+  };
+
   const renderSubtaskItem = ({ item }: { item: Task }) => {
     const isDone = item.status === 'done';
     const statusColor = STATUS_COLORS[item.status];
 
     return (
-      <TouchableOpacity
-        style={styles.subtaskItem}
-        onPress={() => onSubtaskPress?.(item)}
-      >
+      <View style={styles.subtaskItem}>
         <TouchableOpacity
           style={styles.checkboxContainer}
           onPress={() => handleStatusToggle(item)}
@@ -117,7 +159,10 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
           </View>
         </TouchableOpacity>
 
-        <View style={styles.subtaskContent}>
+        <TouchableOpacity
+          style={styles.subtaskContent}
+          onPress={() => onSubtaskPress?.(item)}
+        >
           <Text
             style={[
               styles.subtaskTitle,
@@ -135,6 +180,24 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
               </Text>
             </View>
 
+            {item.assignees && item.assignees.length > 0 && (
+              <View style={styles.assigneeInfo}>
+                <Ionicons name="person" size={12} color="#6b7280" />
+                <Text style={styles.assigneeName} numberOfLines={1}>
+                  {item.assignees[0].name}
+                </Text>
+              </View>
+            )}
+
+            {item.due_date && (
+              <View style={styles.dueDateInfo}>
+                <Ionicons name="calendar-outline" size={12} color="#6b7280" />
+                <Text style={styles.dueDateText}>
+                  {format(new Date(item.due_date), 'dd MMM', { locale: ru })}
+                </Text>
+              </View>
+            )}
+
             {item.progress_percentage !== undefined && item.progress_percentage > 0 && (
               <View style={styles.progressContainer}>
                 <Ionicons name="stats-chart" size={12} color="#6b7280" />
@@ -142,10 +205,18 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
               </View>
             )}
           </View>
-        </View>
+        </TouchableOpacity>
 
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => {
+            console.log('Delete button pressed for subtask:', item.id);
+            handleDeleteSubtask(item);
+          }}
+        >
+          <Ionicons name="trash-outline" size={20} color="#ef4444" />
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -272,12 +343,13 @@ const styles = StyleSheet.create({
   subtaskItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
     backgroundColor: '#fff',
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    overflow: 'hidden',
+    padding: 12,
   },
   checkboxContainer: {
     padding: 4,
@@ -330,5 +402,32 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 12,
     color: '#6b7280',
+  },
+  assigneeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: 100,
+  },
+  assigneeName: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  dueDateInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dueDateText: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  deleteButton: {
+    padding: 12,
+    marginLeft: 8,
+    backgroundColor: '#fef2f2',
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

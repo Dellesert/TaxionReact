@@ -293,21 +293,21 @@ export const createSubtask = async (
   parentTaskId: number,
   data: CreateTaskDto
 ): Promise<Task> => {
-  const response = await api.post<ApiResponse<Task>>(
-    `/api/v1/tasks/${parentTaskId}/subtasks`,
+  const response = await api.post<Task>(
+    `/tasks/${parentTaskId}/subtasks`,
     data
   );
-  return response.data.data || response.data.task || (response.data as any);
+  return response.data;
 };
 
 /**
  * Get subtasks
  */
 export const getSubtasks = async (parentTaskId: number): Promise<Task[]> => {
-  const response = await api.get<ApiResponse<Task[]>>(
-    `/api/v1/tasks/${parentTaskId}/subtasks`
+  const response = await api.get<Task[]>(
+    `/tasks/${parentTaskId}/subtasks`
   );
-  return response.data.data || response.data as any || [];
+  return response.data;
 };
 
 /**
@@ -315,7 +315,7 @@ export const getSubtasks = async (parentTaskId: number): Promise<Task[]> => {
  */
 export const getTaskHierarchy = async (taskId: number): Promise<Task> => {
   const response = await api.get<ApiResponse<Task>>(
-    `/api/v1/tasks/${taskId}/hierarchy`
+    `/tasks/${taskId}/hierarchy`
   );
   return response.data.data || response.data.task || (response.data as any);
 };
@@ -383,7 +383,7 @@ export const getTaskActivities = async (
   offset: number = 0
 ): Promise<ActivityListResponse> => {
   const response = await api.get<ApiResponse<ActivityListResponse>>(
-    `/api/v1/tasks/${taskId}/activities`,
+    `/tasks/${taskId}/activities`,
     { params: { limit, offset } }
   );
   return response.data.data || response.data as any;

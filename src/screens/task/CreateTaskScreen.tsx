@@ -90,7 +90,7 @@ const CreateTaskScreen: React.FC = () => {
     { label: 'Через неделю', hours: 168 },
   ];
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
@@ -159,36 +159,36 @@ const CreateTaskScreen: React.FC = () => {
 
   const dynamicStyles = StyleSheet.create({
     safeArea: {
-      backgroundColor: theme.card,
-    },
-    container: {
-      backgroundColor: theme.background,
-    },
-    header: {
-      backgroundColor: theme.card,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      color: theme.text,
-    },
-    backButton: {
-      color: theme.primary,
-    },
-    createButton: {
       backgroundColor: theme.primary,
     },
+    container: {
+      backgroundColor: theme.primary,
+    },
+    header: {
+      backgroundColor: theme.primary,
+      borderBottomColor: 'transparent',
+    },
+    headerTitle: {
+      color: '#FFFFFF',
+    },
+    backButton: {
+      color: '#FFFFFF',
+    },
+    createButton: {
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
     createButtonDisabled: {
-      backgroundColor: theme.borderLight,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
     createButtonText: {
       color: '#FFFFFF',
     },
     createButtonTextDisabled: {
-      color: theme.textTertiary,
+      color: 'rgba(255, 255, 255, 0.5)',
     },
     card: {
-      backgroundColor: theme.card,
-      borderColor: theme.border,
+      backgroundColor: '#FFFFFF',
+      borderColor: '#E5E7EB',
     },
     label: {
       color: theme.text,
@@ -229,11 +229,11 @@ const CreateTaskScreen: React.FC = () => {
       color: theme.textSecondary,
     },
     infoBox: {
-      backgroundColor: theme.isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF',
-      borderColor: theme.isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE',
+      backgroundColor: '#EFF6FF',
+      borderColor: '#BFDBFE',
     },
     infoText: {
-      color: theme.isDark ? '#93C5FD' : '#1E40AF',
+      color: '#1E40AF',
     },
   });
 
@@ -252,7 +252,7 @@ const CreateTaskScreen: React.FC = () => {
             onPress={() => navigation.goBack()}
             style={styles.headerButton}
           >
-            <Ionicons name="chevron-back" size={28} color={theme.primary} />
+            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>
             Новая задача
@@ -502,7 +502,7 @@ const CreateTaskScreen: React.FC = () => {
               />
               {assigneeIds.length === 0 && (
                 <View style={[styles.infoBox, dynamicStyles.infoBox]}>
-                  <Ionicons name="information-circle" size={18} color={theme.isDark ? '#93C5FD' : '#3B82F6'} />
+                  <Ionicons name="information-circle" size={18} color="#3B82F6" />
                   <Text style={[styles.infoText, dynamicStyles.infoText]}>
                     Если не выбрано, задача будет назначена вам
                   </Text>
@@ -519,7 +519,7 @@ const CreateTaskScreen: React.FC = () => {
                 <Text style={[styles.label, dynamicStyles.label]}>Исполнитель</Text>
               </View>
               <View style={[styles.infoBox, dynamicStyles.infoBox]}>
-                <Ionicons name="information-circle" size={18} color={theme.isDark ? '#93C5FD' : '#3B82F6'} />
+                <Ionicons name="information-circle" size={18} color="#3B82F6" />
                 <Text style={[styles.infoText, dynamicStyles.infoText]}>
                   Задача будет автоматически назначена вам. Сотрудники могут создавать задачи только для себя.
                 </Text>
@@ -547,9 +547,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 24,
   },
   headerButton: {
     width: 40,
@@ -576,13 +576,24 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: 'hidden',
   },
   card: {
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: 0,
+    marginTop: 0,
     padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
+    paddingHorizontal: 20,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderBottomWidth: 1,
   },
   cardHeader: {
     flexDirection: 'row',
