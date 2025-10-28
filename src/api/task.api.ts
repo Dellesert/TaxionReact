@@ -4,7 +4,9 @@
  */
 
 import api from './axios.config';
-import { API_ENDPOINTS, PAGINATION } from '@constants/api.constants';
+import { API_ENDPOINTS, PAGINATION, API_BASE_URL } from '@constants/api.constants';
+import * as secureStorage from '@utils/secureStorage';
+import { STORAGE_KEYS } from '@constants/app.constants';
 import {
   Task,
   Project,
@@ -51,10 +53,12 @@ export const getTasks = async (
     { params }
   );
 
+  let result: PaginatedResponse<Task>;
+
   if (response.data.data) {
-    return response.data.data;
+    result = response.data.data;
   } else if (Array.isArray(response.data)) {
-    return {
+    result = {
       data: response.data,
       total: response.data.length,
       limit: params.limit,
@@ -62,22 +66,47 @@ export const getTasks = async (
       hasMore: false,
     };
   } else if (response.data.tasks) {
-    return {
+    result = {
       data: response.data.tasks,
       total: response.data.total || response.data.tasks.length,
       limit: params.limit,
       offset: params.offset,
       hasMore: (params.offset + response.data.tasks.length) < (response.data.total || response.data.tasks.length),
     };
+  } else {
+    result = {
+      data: [],
+      total: 0,
+      limit: params.limit,
+      offset: params.offset,
+      hasMore: false,
+    };
   }
 
-  return {
-    data: [],
-    total: 0,
-    limit: params.limit,
-    offset: params.offset,
-    hasMore: false,
-  };
+  // Load delegation chains for delegated tasks
+  if (result.data && result.data.length > 0) {
+    const delegatedTasks = result.data.filter(
+      (task) => task.delegated_from_user_id || task.original_assignee_id
+    );
+
+    if (delegatedTasks.length > 0) {
+      console.log(`📋 Loading delegation chains for ${delegatedTasks.length} delegated tasks...`);
+
+      // Load delegation chains in parallel
+      await Promise.all(
+        delegatedTasks.map(async (task) => {
+          try {
+            const delegationChain = await getDelegationChain(task.id);
+            task.delegation_chain = delegationChain;
+          } catch (error) {
+            console.error(`Failed to load delegation chain for task ${task.id}:`, error);
+          }
+        })
+      );
+    }
+  }
+
+  return result;
 };
 
 /**
@@ -113,13 +142,27 @@ export const createTask = async (data: CreateTaskDto): Promise<Task> => {
 export const getTask = async (id: number): Promise<Task> => {
   const response = await api.get<ApiResponse<Task>>(API_ENDPOINTS.TASK.BY_ID(id));
 
+  let task: Task;
   if (response.data.data) {
-    return response.data.data;
+    task = response.data.data;
   } else if (response.data.task) {
-    return response.data.task;
+    task = response.data.task;
+  } else {
+    task = response.data as any;
   }
 
-  return response.data as any;
+  // Load delegation chain if task has delegation info
+  if (task.delegated_from_user_id || task.original_assignee_id) {
+    try {
+      const delegationChain = await getDelegationChain(id);
+      task.delegation_chain = delegationChain;
+      console.log('📋 Loaded delegation chain:', delegationChain);
+    } catch (error) {
+      console.error('Failed to load delegation chain:', error);
+    }
+  }
+
+  return task;
 };
 
 /**
@@ -329,10 +372,12 @@ export const delegateTask = async (
   taskId: number,
   data: DelegateTaskDto
 ): Promise<Task> => {
+  console.log('📤 API: Delegating task:', { taskId, data });
   const response = await api.post<ApiResponse<Task>>(
-    `/api/v1/tasks/${taskId}/delegate`,
+    `/tasks/${taskId}/delegate`,
     data
   );
+  console.log('📥 API: Delegation response:', response.data);
   return response.data.data || response.data.task || (response.data as any);
 };
 
@@ -341,7 +386,7 @@ export const delegateTask = async (
  */
 export const getDelegationChain = async (taskId: number): Promise<any> => {
   const response = await api.get<ApiResponse<any>>(
-    `/api/v1/tasks/${taskId}/delegation-chain`
+    `/tasks/${taskId}/delegation-chain`
   );
   return response.data.delegation_chain || response.data.data || [];
 };
@@ -353,7 +398,7 @@ export const getDelegationChain = async (taskId: number): Promise<any> => {
  */
 export const markTaskAsViewed = async (taskId: number): Promise<Task> => {
   const response = await api.post<ApiResponse<Task>>(
-    `/api/v1/tasks/${taskId}/view`
+    `/tasks/${taskId}/view`
   );
   return response.data.data || response.data.task || (response.data as any);
 };
@@ -366,7 +411,7 @@ export const updateTaskProgress = async (
   data: UpdateTaskProgressDto
 ): Promise<Task> => {
   const response = await api.patch<ApiResponse<Task>>(
-    `/api/v1/tasks/${taskId}/progress`,
+    `/tasks/${taskId}/progress`,
     data
   );
   return response.data.data || response.data.task || (response.data as any);
@@ -398,19 +443,77 @@ export const uploadAttachment = async (
   taskId: number,
   file: File | { uri: string; name: string; type: string }
 ): Promise<TaskAttachment> => {
-  const formData = new FormData();
-  formData.append('file', file as any);
+  console.log('📤 Uploading to:', `/tasks/${taskId}/attachments`);
+  console.log('📎 File data:', file);
 
-  const response = await api.post<ApiResponse<TaskAttachment>>(
-    `/api/v1/tasks/${taskId}/attachments`,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
-  );
-  return response.data.data || (response.data as any);
+  const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const formData = new FormData();
+
+  // Format file for FormData
+  if (file instanceof File) {
+    formData.append('file', file, file.name);
+  } else {
+    formData.append('file', {
+      uri: file.uri,
+      name: file.name,
+      type: file.type,
+    } as any);
+  }
+
+  // Use XMLHttpRequest like in fileApi - it handles React Native FormData correctly
+  const xhr = new XMLHttpRequest();
+
+  return new Promise<TaskAttachment>((resolve, reject) => {
+    xhr.addEventListener('load', () => {
+      console.log('📥 Response status:', xhr.status);
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          console.log('✅ Upload success:', response);
+          resolve(response);
+        } catch (error) {
+          console.error('❌ Failed to parse response:', error);
+          reject(new Error('Failed to parse response'));
+        }
+      } else {
+        console.error('❌ Upload failed:', {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          response: xhr.responseText
+        });
+        let errorMessage = `Upload failed with status ${xhr.status}`;
+        try {
+          const errorResponse = JSON.parse(xhr.responseText);
+          if (errorResponse.error) {
+            errorMessage += `: ${errorResponse.error}`;
+          }
+        } catch (e) {
+          // Unable to parse error response
+        }
+        reject(new Error(errorMessage));
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      console.error('❌ Network error during upload');
+      reject(new Error('Network error during upload'));
+    });
+
+    xhr.addEventListener('abort', () => {
+      console.error('❌ Upload aborted');
+      reject(new Error('Upload aborted'));
+    });
+
+    xhr.open('POST', `${API_BASE_URL}/tasks/${taskId}/attachments`);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    // Don't set Content-Type - XMLHttpRequest will set it automatically with boundary
+    xhr.send(formData);
+  });
 };
 
 /**
@@ -418,16 +521,27 @@ export const uploadAttachment = async (
  */
 export const getTaskAttachments = async (taskId: number): Promise<TaskAttachment[]> => {
   const response = await api.get<ApiResponse<TaskAttachment[]>>(
-    `/api/v1/tasks/${taskId}/attachments`
+    `/tasks/${taskId}/attachments`
   );
   return response.data.data || response.data as any || [];
+};
+
+/**
+ * Attach uploaded file to task
+ */
+export const attachFileToTask = async (taskId: number, fileId: number): Promise<TaskAttachment> => {
+  const response = await api.post<ApiResponse<TaskAttachment>>(
+    `/tasks/${taskId}/attachments`,
+    { file_id: fileId }
+  );
+  return response.data.data || response.data as any;
 };
 
 /**
  * Delete attachment
  */
 export const deleteAttachment = async (attachmentId: number): Promise<void> => {
-  await api.delete(`/api/v1/attachments/${attachmentId}`);
+  await api.delete(`/attachments/${attachmentId}`);
 };
 
 // ============= Task Checklists =============
@@ -440,7 +554,7 @@ export const createChecklist = async (
   data: CreateChecklistDto
 ): Promise<TaskChecklist> => {
   const response = await api.post<ApiResponse<TaskChecklist>>(
-    `/api/v1/tasks/${taskId}/checklists`,
+    `/tasks/${taskId}/checklists`,
     data
   );
   return response.data.data || (response.data as any);
@@ -451,7 +565,7 @@ export const createChecklist = async (
  */
 export const getTaskChecklists = async (taskId: number): Promise<TaskChecklist[]> => {
   const response = await api.get<ApiResponse<TaskChecklist[]>>(
-    `/api/v1/tasks/${taskId}/checklists`
+    `/tasks/${taskId}/checklists`
   );
   return response.data.data || response.data as any || [];
 };

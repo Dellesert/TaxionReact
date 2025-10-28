@@ -53,27 +53,63 @@ class FileApi {
       throw new Error('Not authenticated');
     }
 
-    const formData = new FormData();
-
     // Determine MIME type
     let mimeType = '';
     if (file instanceof File) {
-      formData.append('file', file, file.name);
       mimeType = file.type;
     } else {
-      formData.append('file', {
-        uri: file.uri,
-        name: file.name,
-        type: file.type,
-      } as any);
       mimeType = file.type;
     }
 
     // Auto-detect file type if not provided
     const finalFileType = fileType || determineFileType(mimeType);
-    formData.append('file_type', finalFileType);
 
-    // Add is_public parameter if provided
+    // For React Native, use fetch API which properly handles file uploads
+    if ('uri' in file && !file.uri.startsWith('blob:')) {
+      const formData = new FormData();
+
+      // React Native needs the file in this exact format
+      formData.append('file', {
+        uri: file.uri,
+        name: file.name,
+        type: file.type,
+      } as any);
+
+      formData.append('file_type', finalFileType);
+      if (isPublic !== undefined) {
+        formData.append('is_public', String(isPublic));
+      }
+
+      const response = await fetch(`${this.baseUrl}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type - let fetch set it with boundary
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+      }
+
+      return await response.json();
+    }
+
+    // For web (File object or blob: URIs), use XMLHttpRequest
+    const formData = new FormData();
+
+    if (file instanceof File) {
+      formData.append('file', file, file.name);
+    } else {
+      // blob: URI - convert to File
+      const response = await fetch(file.uri);
+      const blob = await response.blob();
+      formData.append('file', blob, file.name);
+    }
+
+    formData.append('file_type', finalFileType);
     if (isPublic !== undefined) {
       formData.append('is_public', String(isPublic));
     }

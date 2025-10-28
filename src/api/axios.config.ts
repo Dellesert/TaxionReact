@@ -44,15 +44,29 @@ const onTokenRefreshed = (token: string): void => {
  */
 const refreshAccessToken = async (): Promise<string> => {
   try {
-    console.log('🔄 Attempting to refresh access token...');
+    console.log('🔄 [Axios Interceptor] Attempting to refresh access token...');
+
     const refreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+    const accessToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+
+    console.log('🔍 [Axios Interceptor] Current token state:', {
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      accessTokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'NULL',
+      refreshTokenPreview: refreshToken ? refreshToken.substring(0, 20) + '...' : 'NULL',
+    });
 
     if (!refreshToken) {
-      console.error('❌ No refresh token available');
+      console.error('❌ [Axios Interceptor] No refresh token available in storage');
+      console.error('❌ This usually means:');
+      console.error('   1. User was never logged in');
+      console.error('   2. Tokens were cleared by logout');
+      console.error('   3. Storage was cleared by browser/system');
+      console.error('   4. Refresh token expired (7 days TTL)');
       throw new Error('No refresh token available');
     }
 
-    console.log('📤 Sending refresh token request to backend...');
+    console.log('📤 [Axios Interceptor] Sending refresh token request to backend...');
     const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
       `${API_BASE_URL}/api/v1/auth/refresh`,
       { refresh_token: refreshToken },
@@ -63,7 +77,7 @@ const refreshAccessToken = async (): Promise<string> => {
       }
     );
 
-    console.log('📥 Refresh token response received:', response.status);
+    console.log('📥 [Axios Interceptor] Refresh token response received:', response.status);
     console.log('📦 Response data structure:', {
       hasTokens: !!response.data.tokens,
       hasData: !!response.data.data,
@@ -71,7 +85,7 @@ const refreshAccessToken = async (): Promise<string> => {
     });
 
     const tokens = response.data.tokens || response.data.data || response.data;
-    console.log('🔑 Extracted tokens:', {
+    console.log('🔑 [Axios Interceptor] Extracted tokens:', {
       hasAccessToken: !!tokens.access_token,
       hasRefreshToken: !!tokens.refresh_token,
     });
@@ -82,11 +96,18 @@ const refreshAccessToken = async (): Promise<string> => {
     await secureStorage.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, access_token);
     await secureStorage.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, new_refresh_token);
 
-    console.log('✅ Access token refreshed successfully!');
+    console.log('✅ [Axios Interceptor] Access token refreshed successfully!');
     return access_token;
-  } catch (error) {
-    console.error('❌ Failed to refresh access token:', error);
+  } catch (error: any) {
+    console.error('❌ [Axios Interceptor] Failed to refresh access token:', error);
+    console.error('Error details:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
     // Clear tokens and redirect to login
+    console.log('🗑️ [Axios Interceptor] Clearing all auth data...');
     await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
     await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
     await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);

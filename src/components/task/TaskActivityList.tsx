@@ -51,6 +51,7 @@ const ACTION_COLORS: Partial<Record<TaskActivityAction, string>> = {
   task_delegated: '#f59e0b',
   comment_added: '#06b6d4',
   attachment_added: '#ec4899',
+  attachment_deleted: '#ef4444',
   subtask_created: '#10b981',
   task_deleted: '#ef4444',
 };
@@ -88,6 +89,17 @@ export const TaskActivityList: React.FC<TaskActivityListProps> = ({ taskId }) =>
       addSuffix: true,
       locale: ru,
     });
+
+    // Debug logging for attachment activities
+    if (item.action_type === 'attachment_added' || item.action_type === 'attachment_deleted') {
+      console.log('Activity item:', {
+        id: item.id,
+        action_type: item.action_type,
+        old_value: item.old_value,
+        new_value: item.new_value,
+        details: item.details,
+      });
+    }
 
     return (
       <View style={styles.activityItem}>

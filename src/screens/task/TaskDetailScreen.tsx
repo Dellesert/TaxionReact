@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Task, TaskComment, TaskActivity } from '../../types/task.types';
+import { Task, TaskComment, TaskActivity, TaskAttachment } from '../../types/task.types';
 import * as taskApi from '@api/task.api';
 import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
@@ -24,6 +24,14 @@ import ShareTaskModal from '@components/task/ShareTaskModal';
 import EditTaskModal from '@components/task/EditTaskModal';
 import { CreateSubtaskModal } from '@components/task/CreateSubtaskModal';
 import { TaskSubtasksList } from '@components/task/TaskSubtasksList';
+import { DelegateTaskModal } from '@components/task/DelegateTaskModal';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
+import * as secureStorage from '@utils/secureStorage';
+import { STORAGE_KEYS } from '@constants/app.constants';
+import { fileApi } from '@api/fileApi';
 
 type TaskDetailRouteParams = {
   taskId: string;
@@ -66,9 +74,18 @@ const TaskDetailScreen: React.FC = () => {
   // Subtask modal state
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
 
+  // Delegate modal state
+  const [showDelegateModal, setShowDelegateModal] = useState(false);
+
+  // Attachments state
+  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
   useEffect(() => {
     loadTask();
     loadComments();
+    loadAttachments();
   }, [taskId]);
 
   // Load activities when history tab is opened
@@ -89,10 +106,17 @@ const TaskDetailScreen: React.FC = () => {
 
   const loadTask = async () => {
     try {
+      console.log('🔄 Loading task:', taskId);
       setIsLoading(true);
       setAccessDenied(false);
       const taskIdNum = Number(taskId);
       const response = await taskApi.getTask(taskIdNum);
+      console.log('📥 Task loaded:', {
+        id: response.id,
+        title: response.title,
+        delegation_chain: response.delegation_chain,
+        assigned_to: response.assigned_to,
+      });
       setTask(response);
 
       // Load subtasks if this is a parent task
@@ -237,6 +261,200 @@ const TaskDetailScreen: React.FC = () => {
     Alert.alert('Успех', 'Задача отправлена в чат');
   };
 
+  // Load attachments
+  const loadAttachments = async () => {
+    try {
+      setIsLoadingAttachments(true);
+      const taskIdNum = Number(taskId);
+      const data = await taskApi.getTaskAttachments(taskIdNum);
+      setAttachments(data);
+    } catch (error) {
+      console.error('Error loading attachments:', error);
+    } finally {
+      setIsLoadingAttachments(false);
+    }
+  };
+
+  // Handle file picker
+  const handlePickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const file = result.assets[0];
+      await handleUploadFile(file);
+    } catch (error) {
+      console.error('Error picking file:', error);
+      Alert.alert('Ошибка', 'Не удалось выбрать файл');
+    }
+  };
+
+  // Upload file
+  const handleUploadFile = async (file: any) => {
+    try {
+      setIsUploadingAttachment(true);
+      const taskIdNum = Number(taskId);
+
+      console.log('📎 Uploading file:', {
+        name: file.name,
+        uri: file.uri,
+        mimeType: file.mimeType,
+        size: file.size,
+      });
+
+      // Step 1: Upload file to file-service (like in chats)
+      const fileToUpload = {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType || 'application/octet-stream',
+      };
+
+      console.log('📤 Step 1: Uploading to file-service...');
+      const uploadedFile = await fileApi.uploadFile(fileToUpload, 'attachment', undefined, false);
+      console.log('✅ File uploaded to file-service:', uploadedFile);
+
+      // Step 2: Attach file to task using file_id
+      console.log('📤 Step 2: Attaching to task...');
+      const result = await taskApi.attachFileToTask(taskIdNum, uploadedFile.id);
+      console.log('✅ File attached to task:', result);
+
+      Alert.alert('Успех', 'Файл загружен');
+      await loadAttachments();
+      await loadTask();
+    } catch (error: any) {
+      console.error('❌ Error uploading file:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      Alert.alert('Ошибка', error.message || 'Не удалось загрузить файл');
+    } finally {
+      setIsUploadingAttachment(false);
+    }
+  };
+
+  // Delete attachment
+  // Open/download attachment
+  const handleOpenAttachment = async (attachment: TaskAttachment) => {
+    try {
+      // Extract file ID from file_path (e.g., "/files/11" -> "11")
+      const fileId = attachment.file_path.split('/').pop();
+      if (!fileId) {
+        Alert.alert('Ошибка', 'Неверный путь к файлу');
+        return;
+      }
+
+      console.log('📥 Opening file:', {
+        fileName: attachment.file_name,
+        fileId,
+      });
+
+      // Get token
+      const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      if (!token) {
+        Alert.alert('Ошибка', 'Не авторизован');
+        return;
+      }
+
+      // Use fileApi to get file info first
+      const file = await fileApi.getFileById(Number(fileId));
+
+      // For web: create download link with token in Authorization header using fetch + blob
+      if (Platform.OS === 'web') {
+        const downloadUrl = fileApi.getDownloadUrl(file.file_name);
+        const response = await fetch(downloadUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ошибка загрузки: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = attachment.file_name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        // For mobile: download file using FileSystem
+        const downloadUrl = fileApi.getDownloadUrl(file.file_name);
+        const fileUri = `${FileSystem.documentDirectory}${attachment.file_name}`;
+
+        console.log('📥 Downloading to:', fileUri);
+
+        const downloadResult = await FileSystem.downloadAsync(
+          downloadUrl,
+          fileUri,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        console.log('✅ Downloaded:', downloadResult.uri);
+
+        // Open the file
+        await Linking.openURL(downloadResult.uri);
+      }
+    } catch (error: any) {
+      console.error('❌ Error opening file:', error);
+      Alert.alert('Ошибка', error.message || 'Не удалось открыть файл');
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: number) => {
+    // Use window.confirm for web, Alert.alert for mobile
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm('Вы уверены, что хотите удалить этот файл?')
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Удалить файл?',
+            'Вы уверены, что хотите удалить этот файл?',
+            [
+              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
+              {
+                text: 'Удалить',
+                style: 'destructive',
+                onPress: () => resolve(true),
+              },
+            ]
+          );
+        });
+
+    if (!confirmed) return;
+
+    try {
+      await taskApi.deleteAttachment(attachmentId);
+
+      if (Platform.OS === 'web') {
+        alert('Файл удалён');
+      } else {
+        Alert.alert('Успех', 'Файл удалён');
+      }
+
+      await loadAttachments();
+      await loadTask();
+    } catch (error) {
+      console.error('Error deleting attachment:', error);
+
+      if (Platform.OS === 'web') {
+        alert('Не удалось удалить файл');
+      } else {
+        Alert.alert('Ошибка', 'Не удалось удалить файл');
+      }
+    }
+  };
+
   if (isLoading) {
     return <Loading text="Загрузка задачи..." fullScreen />;
   }
@@ -300,6 +518,11 @@ const TaskDetailScreen: React.FC = () => {
   if (!task) {
     return <Loading text="Загрузка задачи..." fullScreen />;
   }
+
+  // Check if task is delegated BY current user (user delegated it to someone else)
+  // Show "only view" badge and hide action buttons if user delegated the task
+  const isDelegatedByMe = user &&
+    task.delegated_from_user_id === user.id;
 
   const styles = StyleSheet.create({
     container: {
@@ -371,16 +594,47 @@ const TaskDetailScreen: React.FC = () => {
       color: '#FFFFFF',
       minWidth: 40,
     },
+    delegatedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: '#f3e8ff',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      alignSelf: 'flex-start',
+      marginBottom: 12,
+    },
+    delegatedBadgeText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#8b5cf6',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
     // Assignee and deadline row
     infoRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
+    assigneeContainer: {
+      flex: 1,
+      marginRight: 12,
+    },
+    delegationChainContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    delegationIcon: {
+      marginRight: 2,
+    },
     assigneeText: {
       fontSize: 15,
       color: '#FFFFFF',
       fontWeight: '500',
+      flexShrink: 1,
     },
     deadlineText: {
       fontSize: 15,
@@ -530,6 +784,13 @@ const TaskDetailScreen: React.FC = () => {
     secondaryActionButtonText: {
       color: theme.text,
     },
+    delegateActionButton: {
+      backgroundColor: '#f5f3ff',
+      borderColor: '#8b5cf6',
+    },
+    delegateActionButtonText: {
+      color: '#8b5cf6',
+    },
     // Subtasks section
     subtasksSection: {
       marginTop: 16,
@@ -550,48 +811,59 @@ const TaskDetailScreen: React.FC = () => {
       color: theme.text,
       marginBottom: 12,
     },
+    loadingAttachments: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 12,
+    },
+    loadingAttachmentsText: {
+      fontSize: 14,
+      color: '#6b7280',
+    },
     attachmentsList: {
       gap: 8,
+      marginBottom: 12,
     },
     attachmentItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 12,
+      justifyContent: 'space-between',
       backgroundColor: theme.backgroundSecondary,
       borderRadius: 8,
+      padding: 12,
       borderWidth: 1,
       borderColor: theme.border,
     },
-    attachmentIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 8,
-      backgroundColor: theme.backgroundTertiary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
     attachmentInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 12,
+    },
+    attachmentDetails: {
       flex: 1,
     },
     attachmentName: {
       fontSize: 14,
-      fontWeight: '500',
+      fontWeight: '600',
       color: theme.text,
-      marginBottom: 2,
+      marginBottom: 4,
     },
-    attachmentSize: {
+    attachmentMeta: {
       fontSize: 12,
-      color: theme.textTertiary,
+      color: '#6b7280',
+    },
+    deleteAttachmentButton: {
+      padding: 4,
     },
     addAttachmentButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       padding: 12,
-      backgroundColor: theme.backgroundSecondary,
       borderRadius: 8,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.border,
       borderStyle: 'dashed',
       marginTop: 8,
@@ -601,6 +873,13 @@ const TaskDetailScreen: React.FC = () => {
       color: theme.primary,
       fontWeight: '600',
       marginLeft: 8,
+    },
+    noAttachmentsText: {
+      fontSize: 14,
+      color: '#9ca3af',
+      fontStyle: 'italic',
+      textAlign: 'center',
+      paddingVertical: 16,
     },
     clickable: {
       color: theme.primary,
@@ -865,7 +1144,9 @@ const TaskDetailScreen: React.FC = () => {
         // Get assignee names
         let assigneeInfo = '';
         if (activity.assignees && activity.assignees.length > 0) {
-          const assigneeNames = activity.assignees.map(a => a.name).join(', ');
+          const assigneeNames = activity.assignees
+            .map(a => (user && a.id === user.id ? 'Я' : a.name))
+            .join(', ');
           assigneeInfo = ` для ${assigneeNames}`;
         }
         return `${userName} создал подзадачу: ${activity.new_value}${assigneeInfo}`;
@@ -956,6 +1237,14 @@ const TaskDetailScreen: React.FC = () => {
           {/* Task Title */}
           <Text style={styles.taskTitle}>{task.title}</Text>
 
+          {/* Delegated Badge */}
+          {isDelegatedByMe && (
+            <View style={styles.delegatedBadge}>
+              <Ionicons name="eye-outline" size={16} color="#8b5cf6" />
+              <Text style={styles.delegatedBadgeText}>Только просмотр</Text>
+            </View>
+          )}
+
           {/* Progress Bar - if task has progress_percentage */}
           {task.progress_percentage !== undefined && task.progress_percentage > 0 && (
             <View style={styles.progressContainer}>
@@ -973,11 +1262,24 @@ const TaskDetailScreen: React.FC = () => {
 
           {/* Assignee and Deadline Row */}
           <View style={styles.infoRow}>
-            <Text style={styles.assigneeText}>
-              {task.assignees && task.assignees.length > 0
-                ? task.assignees[0].name
-                : 'Без исполнителя'}
-            </Text>
+            <View style={styles.assigneeContainer}>
+              {task.delegation_chain && task.delegation_chain.length > 0 ? (
+                <View style={styles.delegationChainContainer}>
+                  <Ionicons name="git-branch-outline" size={16} color="#FFFFFF" style={styles.delegationIcon} />
+                  <Text style={styles.assigneeText} numberOfLines={1}>
+                    {task.delegation_chain
+                      .map((chainUser) => (user && chainUser.id === user.id ? 'Я' : chainUser.name))
+                      .join(' → ')}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.assigneeText}>
+                  {task.assignees && task.assignees.length > 0
+                    ? (user && task.assignees[0].id === user.id ? 'Я' : task.assignees[0].name)
+                    : 'Без исполнителя'}
+                </Text>
+              )}
+            </View>
             <Text style={styles.deadlineText}>
               {task.due_date
                 ? format(new Date(task.due_date), 'dd MMM', { locale: ru })
@@ -1060,39 +1362,112 @@ const TaskDetailScreen: React.FC = () => {
                   </View>
                 )}
 
-                {/* Elements hidden when task is done */}
+                {/* Subtasks Section - show for all, but readonly if delegated */}
+                {task.status !== 'done' && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') && (
+                  <View style={styles.subtasksSection}>
+                    <TaskSubtasksList
+                      parentTaskId={task.id}
+                      onSubtaskPress={(subtask) => {
+                        // @ts-ignore
+                        navigation.push('TaskDetail', { taskId: subtask.id.toString() });
+                      }}
+                      onSubtaskCreated={() => {
+                        loadTask(); // Reload task to update progress
+                      }}
+                      // Hide create button if task is delegated
+                      onCreateSubtaskPress={!isDelegatedByMe ? () => setShowSubtaskModal(true) : undefined}
+                      // Make readonly if delegated (hide checkboxes and delete buttons)
+                      readOnly={isDelegatedByMe}
+                    />
+                  </View>
+                )}
+
+                {/* Attachments Section - show for all, but hide add button if delegated */}
                 {task.status !== 'done' && (
-                  <>
-                    {/* Subtasks Section - only for users who can create subtasks */}
-                    {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') && (
-                      <View style={styles.subtasksSection}>
-                        <TaskSubtasksList
-                          parentTaskId={task.id}
-                          onSubtaskPress={(subtask) => {
-                            // @ts-ignore
-                            navigation.push('TaskDetail', { taskId: subtask.id.toString() });
-                          }}
-                          onSubtaskCreated={() => {
-                            loadTask(); // Reload task to update progress
-                          }}
-                          onCreateSubtaskPress={() => setShowSubtaskModal(true)}
-                        />
+                  <View style={styles.attachmentsSection}>
+                    <Text style={styles.sectionTitle}>Вложения</Text>
+
+                    {/* Display existing attachments or "no attachments" message */}
+                    {isLoadingAttachments ? (
+                      <View style={styles.loadingAttachments}>
+                        <ActivityIndicator size="small" color={theme.primary} />
+                        <Text style={styles.loadingAttachmentsText}>Загрузка вложений...</Text>
                       </View>
-                    )}
+                    ) : attachments.length > 0 ? (
+                      <View style={styles.attachmentsList}>
+                        {attachments.map((attachment) => (
+                          <View key={attachment.id} style={styles.attachmentItem}>
+                            <TouchableOpacity
+                              style={styles.attachmentInfo}
+                              onPress={() => handleOpenAttachment(attachment)}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="document-attach" size={20} color={theme.primary} />
+                              <View style={styles.attachmentDetails}>
+                                <Text style={styles.attachmentName} numberOfLines={1}>
+                                  {attachment.file_name}
+                                </Text>
+                                <Text style={styles.attachmentMeta}>
+                                  {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                            {!isDelegatedByMe && (
+                              <TouchableOpacity
+                                style={styles.deleteAttachmentButton}
+                                onPress={() => handleDeleteAttachment(attachment.id)}
+                              >
+                                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        ))}
+                      </View>
+                    ) : isDelegatedByMe ? (
+                      <Text style={styles.noAttachmentsText}>Нет вложений</Text>
+                    ) : null}
 
-                    {/* Attachments Section */}
-                    <View style={styles.attachmentsSection}>
-                      <Text style={styles.sectionTitle}>Вложения</Text>
-
-                      {/* Add Attachment Button */}
-                      <TouchableOpacity style={styles.addAttachmentButton}>
-                        <Ionicons name="add-circle" size={24} color={theme.primary} />
-                        <Text style={styles.addAttachmentText}>Добавить файл</Text>
+                    {/* Add Attachment Button - only if not delegated */}
+                    {!isDelegatedByMe && (
+                      <TouchableOpacity
+                        style={styles.addAttachmentButton}
+                        onPress={handlePickFile}
+                        disabled={isUploadingAttachment}
+                      >
+                        {isUploadingAttachment ? (
+                          <>
+                            <ActivityIndicator size="small" color={theme.primary} />
+                            <Text style={styles.addAttachmentText}>Загрузка...</Text>
+                          </>
+                        ) : (
+                          <>
+                            <Ionicons name="add-circle" size={24} color={theme.primary} />
+                            <Text style={styles.addAttachmentText}>Добавить файл</Text>
+                          </>
+                        )}
                       </TouchableOpacity>
-                    </View>
+                    )}
+                  </View>
+                )}
 
-                    {/* Action Buttons */}
+                {/* Action Buttons - hidden when task is done or delegated */}
+                {task.status !== 'done' && !isDelegatedByMe && (
+                  <>
                     <View style={styles.actionButtonsContainer}>
+                      {/* Delegate Button - for department heads, admins */}
+                      {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+                       task.status !== 'done' && task.status !== 'cancelled' && (
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.delegateActionButton]}
+                          onPress={() => setShowDelegateModal(true)}
+                        >
+                          <Ionicons name="git-branch-outline" size={20} color="#8b5cf6" />
+                          <Text style={[styles.actionButtonText, styles.delegateActionButtonText]}>
+                            Делегировать задачу
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
                       {/* Start/Submit Button - for new or in_progress tasks */}
                       {(task.status === 'new' || task.status === 'in_progress') && (
                         <TouchableOpacity
@@ -1260,6 +1635,21 @@ const TaskDetailScreen: React.FC = () => {
             onSubtaskCreated={() => {
               setShowSubtaskModal(false);
               loadTask(); // Reload task to update progress
+            }}
+          />
+        )}
+
+        {/* Delegate Task Modal - only for department heads and admins */}
+        {task && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') && (
+          <DelegateTaskModal
+            visible={showDelegateModal}
+            taskId={task.id}
+            onClose={() => setShowDelegateModal(false)}
+            onDelegated={() => {
+              console.log('✅ onDelegated called, reloading task...');
+              setShowDelegateModal(false);
+              loadTask(); // Reload task to update delegation chain
+              Alert.alert('Успех', 'Задача успешно делегирована');
             }}
           />
         )}

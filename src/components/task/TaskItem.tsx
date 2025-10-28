@@ -8,6 +8,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task, TaskPriority } from '@/types/task.types';
 import { useTheme } from '@hooks/useTheme';
+import { useAuthStore } from '@store/authStore';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -37,6 +38,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   onSubtaskPress,
 }) => {
   const { theme } = useTheme();
+  const { user: currentUser } = useAuthStore();
   const [expanded, setExpanded] = useState(false);
 
   const hasSubtasks = subtasks && subtasks.length > 0;
@@ -67,15 +69,36 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   // Get priority config
   const priorityConfig = PRIORITY_CONFIG[task.priority];
 
+  // Helper function to format user name (replace current user with "Я")
+  const formatUserName = (userName: string, userId?: number): string => {
+    if (currentUser && userId === currentUser.id) {
+      return 'Я';
+    }
+    return userName;
+  };
+
   // Build delegation chain display
   const renderDelegationChain = () => {
+    // Debug: log task delegation info
+    if (task.delegated_from_user_id || task.original_assignee_id) {
+      console.log('📋 Task delegation info:', {
+        id: task.id,
+        title: task.title,
+        delegation_chain: task.delegation_chain,
+        delegated_from_user_id: task.delegated_from_user_id,
+        original_assignee_id: task.original_assignee_id,
+        assigned_to_user_id: task.assigned_to_user_id,
+      });
+    }
+
     // Priority: use delegation_chain if available
     if (task.delegation_chain && task.delegation_chain.length > 0) {
+      console.log('✅ Showing delegation chain:', task.delegation_chain);
       return (
         <View style={styles.delegationChain}>
           <Ionicons name="git-branch-outline" size={14} color="#6b7280" />
           <Text style={styles.delegationText} numberOfLines={1}>
-            {task.delegation_chain.map((user) => user.name).join(' → ')}
+            {task.delegation_chain.map((user) => formatUserName(user.name, user.id)).join(' → ')}
           </Text>
         </View>
       );
@@ -83,29 +106,34 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
     // Fallback: show creator -> assignees if available
     const chain: string[] = [];
+    const chainUserIds: (number | undefined)[] = [];
 
     if (task.creator) {
       chain.push(task.creator.name);
+      chainUserIds.push(task.creator.id);
     }
 
     if (task.assignees && task.assignees.length > 0) {
       task.assignees.forEach((assignee) => {
         if (!chain.includes(assignee.name)) {
           chain.push(assignee.name);
+          chainUserIds.push(assignee.id);
         }
       });
     } else if (task.assignee) {
       if (!chain.includes(task.assignee.name)) {
         chain.push(task.assignee.name);
+        chainUserIds.push(task.assignee.id);
       }
     }
 
     if (chain.length > 1) {
+      const formattedChain = chain.map((name, index) => formatUserName(name, chainUserIds[index]));
       return (
         <View style={styles.delegationChain}>
           <Ionicons name="people-outline" size={14} color="#6b7280" />
           <Text style={styles.delegationText} numberOfLines={1}>
-            {chain.join(' → ')}
+            {formattedChain.join(' → ')}
           </Text>
         </View>
       );
@@ -117,7 +145,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         <View style={styles.delegationChain}>
           <Ionicons name="person-outline" size={14} color="#6b7280" />
           <Text style={styles.delegationText} numberOfLines={1}>
-            {task.creator.name}
+            {formatUserName(task.creator.name, task.creator.id)}
           </Text>
         </View>
       );
@@ -130,6 +158,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const attachmentCount = task.attachments?.length || 0;
 
   const isCompleted = task.status === 'done';
+
+  // Check if task is delegated BY current user (user delegated it to someone else)
+  // Show badge if user delegated the task (delegated_from_user_id = current user)
+  const isDelegatedByMe = currentUser &&
+    task.delegated_from_user_id === currentUser.id;
 
   return (
     <View style={styles.container}>
@@ -155,25 +188,34 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           onPress={() => onPress(task)}
           activeOpacity={0.7}
         >
-          {/* Header Row: Priority Badge + Share Button */}
+          {/* Header Row: Priority Badge + Delegated Badge + Share Button */}
           <View style={styles.header}>
-          <View
-            style={[
-              styles.priorityBadge,
-              { backgroundColor: priorityConfig.bg },
-              isSubtask && styles.subtaskPriorityBadge,
-              isCompleted && styles.completedBadge,
-            ]}
-          >
-            <Text style={[
-              styles.priorityText,
-              { color: priorityConfig.color },
-              isSubtask && styles.subtaskPriorityText,
-              isCompleted && styles.completedText,
-            ]}>
-              {priorityConfig.label}
-            </Text>
-          </View>
+            <View style={styles.badges}>
+              <View
+                style={[
+                  styles.priorityBadge,
+                  { backgroundColor: priorityConfig.bg },
+                  isSubtask && styles.subtaskPriorityBadge,
+                  isCompleted && styles.completedBadge,
+                ]}
+              >
+                <Text style={[
+                  styles.priorityText,
+                  { color: priorityConfig.color },
+                  isSubtask && styles.subtaskPriorityText,
+                  isCompleted && styles.completedText,
+                ]}>
+                  {priorityConfig.label}
+                </Text>
+              </View>
+
+              {isDelegatedByMe && (
+                <View style={styles.delegatedBadge}>
+                  <Ionicons name="eye-outline" size={12} color="#8b5cf6" />
+                  <Text style={styles.delegatedText}>Делегировано</Text>
+                </View>
+              )}
+            </View>
 
           {onShare && !isSubtask && (
             <TouchableOpacity
@@ -400,6 +442,27 @@ const styles = StyleSheet.create({
   },
   subtaskPriorityText: {
     fontSize: 11,
+  },
+  badges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  delegatedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#f3e8ff',
+    borderRadius: 6,
+  },
+  delegatedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8b5cf6',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   shareButton: {
     padding: 4,

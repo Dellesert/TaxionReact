@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Task, TaskStatus, CreateTaskDto } from '../../types/task.types';
 import { getSubtasks, createSubtask, updateTaskStatus, deleteTask } from '../../api/task.api';
+import { useAuthStore } from '@store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -26,6 +27,7 @@ interface TaskSubtasksListProps {
   onSubtaskPress?: (subtask: Task) => void;
   onSubtaskCreated?: () => void;
   onCreateSubtaskPress?: () => void;
+  readOnly?: boolean; // If true, hide edit/delete buttons
 }
 
 // Status colors
@@ -53,7 +55,9 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   onSubtaskPress,
   onSubtaskCreated,
   onCreateSubtaskPress,
+  readOnly = false,
 }) => {
+  const { user: currentUser } = useAuthStore();
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -148,19 +152,21 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
 
     return (
       <View style={styles.subtaskItem}>
-        <TouchableOpacity
-          style={styles.checkboxContainer}
-          onPress={() => handleStatusToggle(item)}
-        >
-          <View style={[styles.checkbox, isDone && styles.checkboxChecked]}>
-            {isDone && (
-              <Ionicons name="checkmark" size={16} color="#fff" />
-            )}
-          </View>
-        </TouchableOpacity>
+        {!readOnly && (
+          <TouchableOpacity
+            style={styles.checkboxContainer}
+            onPress={() => handleStatusToggle(item)}
+          >
+            <View style={[styles.checkbox, isDone && styles.checkboxChecked]}>
+              {isDone && (
+                <Ionicons name="checkmark" size={16} color="#fff" />
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
-          style={styles.subtaskContent}
+          style={[styles.subtaskContent, readOnly && styles.subtaskContentReadOnly]}
           onPress={() => onSubtaskPress?.(item)}
         >
           <Text
@@ -184,7 +190,9 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
               <View style={styles.assigneeInfo}>
                 <Ionicons name="person" size={12} color="#6b7280" />
                 <Text style={styles.assigneeName} numberOfLines={1}>
-                  {item.assignees[0].name}
+                  {currentUser && item.assignees[0].id === currentUser.id
+                    ? 'Я'
+                    : item.assignees[0].name}
                 </Text>
               </View>
             )}
@@ -207,28 +215,20 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => {
-            console.log('Delete button pressed for subtask:', item.id);
-            handleDeleteSubtask(item);
-          }}
-        >
-          <Ionicons name="trash-outline" size={20} color="#ef4444" />
-        </TouchableOpacity>
+        {!readOnly && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => {
+              console.log('Delete button pressed for subtask:', item.id);
+              handleDeleteSubtask(item);
+            }}
+          >
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="list-outline" size={48} color="#d1d5db" />
-      <Text style={styles.emptyText}>Подзадач пока нет</Text>
-      <Text style={styles.emptySubtext}>
-        Разбейте задачу на подзадачи для лучшего контроля
-      </Text>
-    </View>
-  );
 
   if (loading) {
     return (
@@ -238,6 +238,24 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     );
   }
 
+  // If no subtasks, show button to create first subtask
+  if (subtasks.length === 0) {
+    return (
+      <View style={styles.container}>
+        {onCreateSubtaskPress && (
+          <TouchableOpacity
+            style={styles.createFirstSubtaskButton}
+            onPress={onCreateSubtaskPress}
+          >
+            <Ionicons name="git-branch-outline" size={20} color="#3b82f6" />
+            <Text style={styles.createFirstSubtaskText}>Разбить на подзадачи</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }
+
+  // If there are subtasks, show list with add button at the end
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -245,36 +263,33 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
           Подзадачи ({subtasks.length})
         </Text>
         <View style={styles.headerRight}>
-          {subtasks.length > 0 && (
-            <Text style={styles.headerProgress}>
-              {subtasks.filter(s => s.status === 'done').length} из {subtasks.length} выполнено
-            </Text>
-          )}
-          {onCreateSubtaskPress && (
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={onCreateSubtaskPress}
-            >
-              <Ionicons name="add-circle" size={24} color="#3b82f6" />
-            </TouchableOpacity>
-          )}
+          <Text style={styles.headerProgress}>
+            {subtasks.filter(s => s.status === 'done').length} из {subtasks.length} выполнено
+          </Text>
         </View>
       </View>
 
-      {subtasks.length === 0 ? (
-        renderEmptyState()
-      ) : (
-        <FlatList
-          data={subtasks}
-          renderItem={renderSubtaskItem}
-          keyExtractor={(item) => item.id.toString()}
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        />
-      )}
+      <FlatList
+        data={subtasks}
+        renderItem={renderSubtaskItem}
+        keyExtractor={(item) => item.id.toString()}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListFooterComponent={
+          onCreateSubtaskPress ? (
+            <TouchableOpacity
+              style={styles.addSubtaskButton}
+              onPress={onCreateSubtaskPress}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
+              <Text style={styles.addSubtaskButtonText}>Добавить подзадачу</Text>
+            </TouchableOpacity>
+          ) : null
+        }
+      />
     </View>
   );
 };
@@ -307,9 +322,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
-  addButton: {
-    padding: 2,
-  },
   list: {
     flex: 1,
   },
@@ -322,23 +334,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  createFirstSubtaskButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 32,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    borderStyle: 'dashed',
   },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 12,
+  createFirstSubtaskText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3b82f6',
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
+  addSubtaskButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     marginTop: 8,
+    marginBottom: 8,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  addSubtaskButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3b82f6',
   },
   subtaskItem: {
     flexDirection: 'row',
@@ -370,6 +403,9 @@ const styles = StyleSheet.create({
   },
   subtaskContent: {
     flex: 1,
+  },
+  subtaskContentReadOnly: {
+    marginLeft: 0, // No checkbox, so no left margin needed
   },
   subtaskTitle: {
     fontSize: 15,

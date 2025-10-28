@@ -53,9 +53,20 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   const loadUsers = async () => {
     try {
       setIsLoadingUsers(true);
-      const response = await getUsers({ role: 'employee' }, { limit: 100, offset: 0 });
-      setUsers(response.data);
-      setFilteredUsers(response.data);
+      // Load all users and filter for department heads and admins
+      const response = await getUsers({}, { limit: 100, offset: 0 });
+
+      // Filter only department heads, admins, and super admins
+      const departmentHeads = response.data.filter(
+        (user) =>
+          user.role === 'department_head' ||
+          user.role === 'admin' ||
+          user.role === 'super_admin'
+      );
+
+      console.log('👥 Loaded department heads:', departmentHeads);
+      setUsers(departmentHeads);
+      setFilteredUsers(departmentHeads);
     } catch (error) {
       console.error('Error loading users:', error);
       Alert.alert('Ошибка', 'Не удалось загрузить список пользователей');
@@ -98,13 +109,15 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
 
     try {
       setIsLoading(true);
-      await delegateTask(taskId, selectedUserId);
+      console.log('🔄 Delegating task:', { taskId, to_user_id: selectedUserId });
+      const result = await delegateTask(taskId, { to_user_id: selectedUserId });
+      console.log('✅ Delegation successful:', result);
       Alert.alert('Успешно', 'Задача успешно делегирована');
       handleReset();
       onDelegated?.();
       onClose();
     } catch (error) {
-      console.error('Error delegating task:', error);
+      console.error('❌ Error delegating task:', error);
       Alert.alert('Ошибка', 'Не удалось делегировать задачу');
     } finally {
       setIsLoading(false);

@@ -121,12 +121,34 @@ class TokenRefreshService {
       const refreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
 
       if (!refreshToken) {
-        console.error('❌ No refresh token available');
+        console.error('❌ No refresh token available in storage');
+        console.log('🔍 Checking all storage keys...');
+        const accessToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+        const userData = await secureStorage.getItemAsync(STORAGE_KEYS.USER_DATA);
+        console.log('📦 Storage state:', {
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
+          hasUserData: !!userData,
+        });
+
+        // Clear all auth data if refresh token is missing
+        await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+        await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+        await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+
+        console.error('❌ Session expired. Please login again.');
         return;
       }
 
       // Call refresh API
+      console.log('📤 Calling refresh API with refresh token...');
       const response = await authApi.refreshToken({ refresh_token: refreshToken });
+
+      console.log('📥 Refresh API response received:', {
+        hasTokens: !!response.tokens,
+        hasAccessToken: !!response.tokens?.access_token,
+        hasRefreshToken: !!response.tokens?.refresh_token,
+      });
 
       // Store new tokens
       await secureStorage.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, response.tokens.access_token);
@@ -136,10 +158,24 @@ class TokenRefreshService {
 
       // Schedule next refresh
       await this.scheduleNextRefresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Automatic token refresh failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+      });
 
-      // Try again in 1 minute
+      // If refresh token is invalid or expired, clear all auth data
+      if (error.status === 401 || error.message?.includes('invalid') || error.message?.includes('expired')) {
+        console.error('❌ Refresh token is invalid or expired. Clearing session...');
+        await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+        await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+        await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+        return;
+      }
+
+      // Try again in 1 minute for other errors (network issues, etc.)
       console.log('🔄 Retrying token refresh in 1 minute...');
       this.refreshTimer = setTimeout(async () => {
         await this.performRefresh();

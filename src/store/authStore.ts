@@ -50,6 +50,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.log('🔄 Initializing auth from storage...');
       set({ isInitializing: true });
 
+      // Migrate from SecureStore to AsyncStorage (for Expo Go compatibility)
+      await secureStorage.migrateToAsyncStorage();
+
       // Load tokens from secure storage
       const accessToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
       const refreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
@@ -81,6 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           });
 
           // Start automatic token refresh
+          // This will check if token is expired and refresh it immediately if needed
           await tokenRefreshService.start();
         } else{
           console.log('⚠️ No user data in storage');
