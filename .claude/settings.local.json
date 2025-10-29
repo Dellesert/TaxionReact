@@ -21,7 +21,13 @@
       "Bash(docker-compose logs:*)",
       "Bash(docker-compose ps:*)",
       "Bash(docker-compose up:*)",
-      "Bash(docker-compose exec:*)"
+      "Bash(docker-compose exec:*)",
+      "Read(//Users/dellesert/Documents/GitHub/TaxionBackend/**)",
+      "Bash(node -c:*)",
+      "Bash(docker cp:*)",
+      "Bash(docker run:*)",
+      "Bash(docker-compose:*)",
+      "Bash(GOOS=linux GOARCH=amd64 go build:*)"
     ],
     "deny": [],
     "ask": []

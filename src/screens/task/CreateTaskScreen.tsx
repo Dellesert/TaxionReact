@@ -159,36 +159,36 @@ const CreateTaskScreen: React.FC = () => {
 
   const dynamicStyles = StyleSheet.create({
     safeArea: {
-      backgroundColor: theme.primary,
+      backgroundColor: theme.background,
     },
     container: {
-      backgroundColor: theme.primary,
+      backgroundColor: theme.background,
     },
     header: {
-      backgroundColor: theme.primary,
-      borderBottomColor: 'transparent',
+      backgroundColor: theme.background,
+      borderBottomColor: theme.border,
     },
     headerTitle: {
-      color: '#FFFFFF',
+      color: theme.text,
     },
     backButton: {
-      color: '#FFFFFF',
+      color: theme.error,
     },
     createButton: {
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      backgroundColor: theme.error,
     },
     createButtonDisabled: {
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      backgroundColor: theme.backgroundTertiary,
     },
     createButtonText: {
       color: '#FFFFFF',
     },
     createButtonTextDisabled: {
-      color: 'rgba(255, 255, 255, 0.5)',
+      color: theme.textTertiary,
     },
-    card: {
-      backgroundColor: '#FFFFFF',
-      borderColor: '#E5E7EB',
+    section: {
+      backgroundColor: theme.background,
+      borderBottomColor: theme.border,
     },
     label: {
       color: theme.text,
@@ -252,7 +252,7 @@ const CreateTaskScreen: React.FC = () => {
             onPress={() => navigation.goBack()}
             style={styles.headerButton}
           >
-            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+            <Ionicons name="close" size={28} color={theme.error} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>
             Новая задача
@@ -271,7 +271,7 @@ const CreateTaskScreen: React.FC = () => {
               dynamicStyles.createButtonText,
               (!title.trim() || isCreating) && dynamicStyles.createButtonTextDisabled
             ]}>
-              {isCreating ? 'Создание...' : 'Создать'}
+              {isCreating ? '...' : 'Создать'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -283,41 +283,24 @@ const CreateTaskScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Название задачи */}
-          <View style={[styles.card, dynamicStyles.card]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="document-text" size={20} color={theme.primary} />
-              <Text style={[styles.label, dynamicStyles.label]}>Название задачи</Text>
-              <View style={styles.requiredBadge}>
-                <Text style={styles.requiredBadgeText}>*</Text>
-              </View>
-            </View>
+          <View style={[styles.section, dynamicStyles.section]}>
+            <Text style={[styles.sectionLabel, dynamicStyles.label]}>Название *</Text>
             <TextInput
               style={[styles.titleInput, dynamicStyles.input]}
-              placeholder="Введите название задачи"
+              placeholder="Что нужно сделать?"
               placeholderTextColor={theme.inputPlaceholder}
               value={title}
               onChangeText={setTitle}
               maxLength={100}
             />
-            <View style={styles.inputFooter}>
-              <Text style={[styles.charCount, dynamicStyles.charCount]}>
-                {title.length}/100
-              </Text>
-            </View>
           </View>
 
           {/* Описание */}
-          <View style={[styles.card, dynamicStyles.card]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="create-outline" size={20} color={theme.primary} />
-              <Text style={[styles.label, dynamicStyles.label]}>Описание</Text>
-            </View>
-            <Text style={[styles.labelDescription, dynamicStyles.labelDescription]}>
-              Добавьте детали и контекст задачи
-            </Text>
+          <View style={[styles.section, dynamicStyles.section]}>
+            <Text style={[styles.sectionLabel, dynamicStyles.label]}>Описание</Text>
             <TextInput
               style={[styles.descriptionInput, dynamicStyles.input]}
-              placeholder="Опишите задачу подробнее..."
+              placeholder="Добавьте детали..."
               placeholderTextColor={theme.inputPlaceholder}
               value={description}
               onChangeText={setDescription}
@@ -326,48 +309,30 @@ const CreateTaskScreen: React.FC = () => {
               textAlignVertical="top"
               maxLength={500}
             />
-            <View style={styles.inputFooter}>
-              <Text style={[styles.charCount, dynamicStyles.charCount]}>
-                {description.length}/500
-              </Text>
-            </View>
           </View>
 
           {/* Приоритет */}
-          <View style={[styles.card, dynamicStyles.card]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="flag" size={20} color={selectedPriority?.color} />
-              <Text style={[styles.label, dynamicStyles.label]}>Приоритет</Text>
-            </View>
-            <Text style={[styles.labelDescription, dynamicStyles.labelDescription]}>
-              {selectedPriority?.description}
-            </Text>
-            <View style={styles.priorityGrid}>
+          <View style={[styles.section, dynamicStyles.section]}>
+            <Text style={[styles.sectionLabel, dynamicStyles.label]}>Приоритет</Text>
+            <View style={styles.priorityRow}>
               {priorities.map((p) => (
                 <TouchableOpacity
                   key={p.value}
                   onPress={() => setPriority(p.value)}
                   style={[
-                    styles.priorityCard,
+                    styles.priorityChip,
                     dynamicStyles.priorityButton,
                     priority === p.value && {
-                      backgroundColor: p.color + '15',
-                      borderColor: p.color,
-                      borderWidth: 2,
+                      backgroundColor: p.color,
                     },
                   ]}
                 >
-                  <Ionicons
-                    name={p.icon as any}
-                    size={24}
-                    color={p.color}
-                  />
                   <Text
                     style={[
-                      styles.priorityLabel,
+                      styles.priorityChipText,
                       dynamicStyles.priorityButtonText,
                       priority === p.value && {
-                        color: p.color,
+                        color: '#FFFFFF',
                         fontWeight: '600'
                       },
                     ]}
@@ -380,14 +345,8 @@ const CreateTaskScreen: React.FC = () => {
           </View>
 
           {/* Срок выполнения */}
-          <View style={[styles.card, dynamicStyles.card]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="time" size={20} color={theme.primary} />
-              <Text style={[styles.label, dynamicStyles.label]}>Срок выполнения</Text>
-            </View>
-            <Text style={[styles.labelDescription, dynamicStyles.labelDescription]}>
-              Установите дедлайн для задачи
-            </Text>
+          <View style={[styles.section, dynamicStyles.section]}>
+            <Text style={[styles.sectionLabel, dynamicStyles.label]}>Срок выполнения</Text>
 
             {/* Быстрые действия */}
             <View style={styles.quickActions}>
@@ -395,9 +354,9 @@ const CreateTaskScreen: React.FC = () => {
                 <TouchableOpacity
                   key={action.label}
                   onPress={() => setQuickDate(action.hours)}
-                  style={[styles.quickDateButton, dynamicStyles.quickDateButton]}
+                  style={[styles.quickDateChip, dynamicStyles.quickDateButton]}
                 >
-                  <Text style={[styles.quickDateButtonText, dynamicStyles.quickDateButtonText]}>
+                  <Text style={[styles.quickDateChipText, dynamicStyles.quickDateButtonText]}>
                     {action.label}
                   </Text>
                 </TouchableOpacity>
@@ -485,14 +444,8 @@ const CreateTaskScreen: React.FC = () => {
 
           {/* Исполнители - только для department_head, admin, super_admin */}
           {!isEmployee && (
-            <View style={[styles.card, dynamicStyles.card]}>
-              <View style={styles.cardHeader}>
-                <Ionicons name="people" size={20} color={theme.primary} />
-                <Text style={[styles.label, dynamicStyles.label]}>Исполнители</Text>
-              </View>
-              <Text style={[styles.labelDescription, dynamicStyles.labelDescription]}>
-                Назначьте ответственных за выполнение
-              </Text>
+            <View style={[styles.section, dynamicStyles.section]}>
+              <Text style={[styles.sectionLabel, dynamicStyles.label]}>Исполнители</Text>
               <UserSelector
                 selectedUserIds={assigneeIds}
                 onSelectionChange={setAssigneeIds}
@@ -500,30 +453,6 @@ const CreateTaskScreen: React.FC = () => {
                 placeholder="Выберите исполнителей"
                 modalTitle="Выбрать исполнителей"
               />
-              {assigneeIds.length === 0 && (
-                <View style={[styles.infoBox, dynamicStyles.infoBox]}>
-                  <Ionicons name="information-circle" size={18} color="#3B82F6" />
-                  <Text style={[styles.infoText, dynamicStyles.infoText]}>
-                    Если не выбрано, задача будет назначена вам
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Информация для сотрудников */}
-          {isEmployee && (
-            <View style={[styles.card, dynamicStyles.card]}>
-              <View style={styles.cardHeader}>
-                <Ionicons name="person" size={20} color={theme.primary} />
-                <Text style={[styles.label, dynamicStyles.label]}>Исполнитель</Text>
-              </View>
-              <View style={[styles.infoBox, dynamicStyles.infoBox]}>
-                <Ionicons name="information-circle" size={18} color="#3B82F6" />
-                <Text style={[styles.infoText, dynamicStyles.infoText]}>
-                  Задача будет автоматически назначена вам. Сотрудники могут создавать задачи только для себя.
-                </Text>
-              </View>
             </View>
           )}
 
@@ -549,7 +478,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingBottom: 24,
+    borderBottomWidth: 1,
   },
   headerButton: {
     width: 40,
@@ -558,16 +487,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     flex: 1,
-    marginLeft: 8,
+    textAlign: 'center',
   },
   createButton: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    minWidth: 90,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 80,
     alignItems: 'center',
   },
   createButtonText: {
@@ -576,125 +505,72 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    overflow: 'hidden',
   },
-  card: {
-    marginHorizontal: 0,
-    marginTop: 0,
-    padding: 16,
+  section: {
     paddingHorizontal: 20,
-    borderRadius: 0,
-    borderWidth: 0,
+    paddingVertical: 20,
     borderBottomWidth: 1,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-  },
-  labelDescription: {
+  sectionLabel: {
     fontSize: 13,
+    fontWeight: '600',
     marginBottom: 12,
-    marginLeft: 28,
-  },
-  requiredBadge: {
-    backgroundColor: '#EF4444',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  requiredBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   titleInput: {
     fontSize: 16,
-    borderRadius: 10,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    marginTop: 8,
   },
   descriptionInput: {
     fontSize: 15,
-    borderRadius: 10,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    minHeight: 120,
+    minHeight: 100,
     borderWidth: 1,
-    marginTop: 8,
   },
-  inputFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 8,
-  },
-  charCount: {
-    fontSize: 12,
-  },
-  priorityGrid: {
+  priorityRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 8,
-  },
-  priorityCard: {
-    flex: 1,
-    minWidth: '47%',
-    flexDirection: 'column',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
     gap: 8,
   },
-  priorityLabel: {
+  priorityChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  priorityChipText: {
     fontSize: 14,
     fontWeight: '500',
   },
   quickActions: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 8,
     marginBottom: 12,
   },
-  quickDateButton: {
+  quickDateChip: {
     flex: 1,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 20,
     borderWidth: 1,
     alignItems: 'center',
   },
-  quickDateButtonText: {
+  quickDateChipText: {
     fontSize: 13,
     fontWeight: '500',
   },
   dateInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     paddingLeft: 12,
-    marginTop: 8,
   },
   dateIconWrapper: {
     marginRight: 8,
@@ -703,10 +579,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderRadius: 10,
-    marginTop: 8,
+    borderRadius: 8,
     gap: 12,
   },
   dateButtonText: {
@@ -715,20 +590,6 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 8,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 8,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
   },
 });
 

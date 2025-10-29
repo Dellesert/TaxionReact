@@ -25,26 +25,30 @@ import { ApiResponse } from '../types/common.types';
  * Get list of events with filters
  */
 export const getEvents = async (filters?: EventListFilters): Promise<Event[]> => {
-  const response = await api.get<ApiResponse<Event[]>>(API_ENDPOINTS.EVENT.LIST, {
+  const response = await api.get<any>(API_ENDPOINTS.EVENT.LIST, {
     params: filters,
   });
-  return response.data.data;
+  // Backend returns { events: [...], total, limit, offset, filters }
+  // Not wrapped in ApiResponse structure
+  return response.data.events || [];
 };
 
 /**
  * Create new event
  */
 export const createEvent = async (data: CreateEventDto): Promise<Event> => {
-  const response = await api.post<ApiResponse<Event>>(API_ENDPOINTS.EVENT.CREATE, data);
-  return response.data.data;
+  const response = await api.post<any>(API_ENDPOINTS.EVENT.CREATE, data);
+  // Backend returns { message, event, request_id }
+  return response.data.event;
 };
 
 /**
  * Get event by ID
  */
 export const getEvent = async (id: number): Promise<Event> => {
-  const response = await api.get<ApiResponse<Event>>(API_ENDPOINTS.EVENT.BY_ID(id));
-  return response.data.data;
+  const response = await api.get<any>(API_ENDPOINTS.EVENT.BY_ID(id));
+  // Backend returns { event, request_id }
+  return response.data.event;
 };
 
 /**

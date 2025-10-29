@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -81,6 +82,51 @@ const TaskDetailScreen: React.FC = () => {
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
+  // Scroll animation
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Interpolate header animations
+  const headerPaddingBottom = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [20, 8],
+    extrapolate: 'clamp',
+  });
+
+  const titleFontSize = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [20, 16],
+    extrapolate: 'clamp',
+  });
+
+  const chipsOpacity = scrollY.interpolate({
+    inputRange: [0, 30],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const chipsHeight = scrollY.interpolate({
+    inputRange: [0, 30],
+    outputRange: [40, 0],
+    extrapolate: 'clamp',
+  });
+
+  const metaOpacity = scrollY.interpolate({
+    inputRange: [0, 40],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const metaHeight = scrollY.interpolate({
+    inputRange: [0, 40],
+    outputRange: [24, 0],
+    extrapolate: 'clamp',
+  });
+
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: false }
+  );
 
   useEffect(() => {
     loadTask();
@@ -524,30 +570,50 @@ const TaskDetailScreen: React.FC = () => {
   const isDelegatedByMe = user &&
     task.delegated_from_user_id === user.id;
 
+  // Priority config
+  const priorityConfig = {
+    low: { label: 'Низкий', color: '#10B981' },
+    medium: { label: 'Средний', color: '#F59E0B' },
+    high: { label: 'Высокий', color: '#F97316' },
+    critical: { label: 'Критичный', color: '#EF4444' },
+  }[task.priority];
+
+  // Status config
+  const statusConfig = {
+    new: { label: 'Новая', color: '#F59E0B' },
+    viewed: { label: 'Просмотрена', color: '#6B7280' },
+    in_progress: { label: 'В работе', color: '#3B82F6' },
+    review: { label: 'На проверке', color: '#8B5CF6' },
+    done: { label: 'Выполнена', color: '#10B981' },
+    cancelled: { label: 'Отменена', color: '#EF4444' },
+  }[task.status];
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.primary,
+      backgroundColor: theme.background,
     },
     safeArea: {
       flex: 1,
-      backgroundColor: theme.primary,
+      backgroundColor: theme.background,
     },
     scrollContent: {
       paddingBottom: 120,
     },
-    // Red header section
+    // Header section
     headerSection: {
-      backgroundColor: theme.primary,
+      backgroundColor: theme.background,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 24,
+      paddingBottom: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
     },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 24,
+      marginBottom: 6,
     },
     headerButtons: {
       flexDirection: 'row',
@@ -557,17 +623,15 @@ const TaskDetailScreen: React.FC = () => {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
       alignItems: 'center',
       justifyContent: 'center',
     },
     // Task title in header
     taskTitle: {
-      fontSize: 24,
+      fontSize: 20,
       fontWeight: '700',
-      color: '#FFFFFF',
-      marginBottom: 16,
-      lineHeight: 32,
+      color: theme.text,
+      lineHeight: 28,
     },
     // Progress container
     progressContainer: {
@@ -631,45 +695,37 @@ const TaskDetailScreen: React.FC = () => {
       marginRight: 2,
     },
     assigneeText: {
-      fontSize: 15,
-      color: '#FFFFFF',
+      fontSize: 14,
       fontWeight: '500',
       flexShrink: 1,
     },
     deadlineText: {
-      fontSize: 15,
-      color: '#FFFFFF',
+      fontSize: 14,
       fontWeight: '500',
     },
     // Card with rounded corners
     card: {
-      backgroundColor: theme.backgroundSecondary,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
+      backgroundColor: theme.background,
       flex: 1,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
       overflow: 'hidden',
     },
     // Tabs
     tabsContainer: {
       flexDirection: 'row',
-      backgroundColor: theme.backgroundSecondary,
+      backgroundColor: theme.background,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
+      paddingHorizontal: 16,
     },
     tab: {
       flex: 1,
-      paddingVertical: 14,
+      paddingVertical: 12,
       alignItems: 'center',
-      borderBottomWidth: 2,
+      borderBottomWidth: 3,
       borderBottomColor: 'transparent',
     },
     activeTab: {
-      borderBottomColor: theme.primary,
+      borderBottomColor: theme.error,
     },
     tabText: {
       fontSize: 15,
@@ -677,8 +733,8 @@ const TaskDetailScreen: React.FC = () => {
       color: theme.textSecondary,
     },
     activeTabText: {
-      color: theme.primary,
-      fontWeight: '600',
+      color: theme.text,
+      fontWeight: '700',
     },
     // Tab content
     tabContent: {
@@ -785,7 +841,7 @@ const TaskDetailScreen: React.FC = () => {
       color: theme.text,
     },
     delegateActionButton: {
-      backgroundColor: '#f5f3ff',
+      backgroundColor: theme.backgroundSecondary,
       borderColor: '#8b5cf6',
     },
     delegateActionButtonText: {
@@ -1207,12 +1263,12 @@ const TaskDetailScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
-        {/* Red Header Section */}
-        <View style={styles.headerSection}>
+        {/* Header Section - Animated */}
+        <Animated.View style={[styles.headerSection, { paddingBottom: headerPaddingBottom }]}>
           {/* Header Row with Back and Edit buttons */}
           <View style={styles.headerRow}>
             <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+              <Ionicons name="close" size={28} color={theme.error} />
             </TouchableOpacity>
             <View style={styles.headerButtons}>
               {task.status !== 'done' && (task.created_by === user?.id || user?.role === 'admin' || user?.role === 'super_admin') && (
@@ -1221,33 +1277,67 @@ const TaskDetailScreen: React.FC = () => {
                     style={styles.headerButton}
                     onPress={() => setShowEditModal(true)}
                   >
-                    <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+                    <Ionicons name="create-outline" size={24} color={theme.error} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.headerButton}
                     onPress={handleDeleteTask}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+                    <Ionicons name="trash-outline" size={24} color={theme.error} />
                   </TouchableOpacity>
                 </>
               )}
             </View>
           </View>
 
-          {/* Task Title */}
-          <Text style={styles.taskTitle}>{task.title}</Text>
+          {/* Task Title - Animated */}
+          <Animated.Text style={[styles.taskTitle, { fontSize: titleFontSize }]}>
+            {task.title}
+          </Animated.Text>
 
-          {/* Delegated Badge */}
+          {/* Priority and Status Row - Animated */}
+          <Animated.View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 12,
+            opacity: chipsOpacity,
+            height: chipsHeight,
+            overflow: 'hidden',
+          }}>
+            <View style={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 16,
+              backgroundColor: priorityConfig.color,
+            }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
+                {priorityConfig.label}
+              </Text>
+            </View>
+            <View style={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 16,
+              backgroundColor: statusConfig.color,
+            }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
+                {statusConfig.label}
+              </Text>
+            </View>
+          </Animated.View>
+
+          {/* Delegated Badge - Animated */}
           {isDelegatedByMe && (
-            <View style={styles.delegatedBadge}>
+            <Animated.View style={[styles.delegatedBadge, { opacity: metaOpacity }]}>
               <Ionicons name="eye-outline" size={16} color="#8b5cf6" />
               <Text style={styles.delegatedBadgeText}>Только просмотр</Text>
-            </View>
+            </Animated.View>
           )}
 
-          {/* Progress Bar - if task has progress_percentage */}
+          {/* Progress Bar - Animated - if task has progress_percentage */}
           {task.progress_percentage !== undefined && task.progress_percentage > 0 && (
-            <View style={styles.progressContainer}>
+            <Animated.View style={[styles.progressContainer, { opacity: metaOpacity }]}>
               <View style={styles.progressBar}>
                 <View
                   style={[
@@ -1257,36 +1347,39 @@ const TaskDetailScreen: React.FC = () => {
                 />
               </View>
               <Text style={styles.progressText}>{task.progress_percentage}%</Text>
-            </View>
+            </Animated.View>
           )}
 
-          {/* Assignee and Deadline Row */}
-          <View style={styles.infoRow}>
+          {/* Assignee and Deadline Row - Animated */}
+          <Animated.View style={[styles.infoRow, { opacity: metaOpacity, height: metaHeight }]}>
             <View style={styles.assigneeContainer}>
               {task.delegation_chain && task.delegation_chain.length > 0 ? (
                 <View style={styles.delegationChainContainer}>
-                  <Ionicons name="git-branch-outline" size={16} color="#FFFFFF" style={styles.delegationIcon} />
-                  <Text style={styles.assigneeText} numberOfLines={1}>
+                  <Ionicons name="git-branch-outline" size={16} color={theme.textSecondary} style={styles.delegationIcon} />
+                  <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
                     {task.delegation_chain
                       .map((chainUser) => (user && chainUser.id === user.id ? 'Я' : chainUser.name))
                       .join(' → ')}
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.assigneeText}>
+                <Text style={[styles.assigneeText, { color: theme.textSecondary }]}>
                   {task.assignees && task.assignees.length > 0
                     ? (user && task.assignees[0].id === user.id ? 'Я' : task.assignees[0].name)
                     : 'Без исполнителя'}
                 </Text>
               )}
             </View>
-            <Text style={styles.deadlineText}>
-              {task.due_date
-                ? format(new Date(task.due_date), 'dd MMM', { locale: ru })
-                : 'Без срока'}
-            </Text>
-          </View>
-        </View>
+            {task.due_date && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+                <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
+                  {format(new Date(task.due_date), 'dd MMM', { locale: ru })}
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </Animated.View>
 
         {/* Card with Tabs */}
         <View style={styles.card}>
@@ -1316,6 +1409,8 @@ const TaskDetailScreen: React.FC = () => {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           >
             {activeTab === 'overview' ? (
               <View style={styles.content}>

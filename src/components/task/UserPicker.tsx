@@ -82,7 +82,7 @@ const UserPicker: React.FC<UserPickerProps> = ({
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
       // Filter out the current user from the list (can't assign to self via picker)
-      const filteredData = response.data.filter(user => user.id !== currentUser.id);
+      const filteredData = (response.data || []).filter(user => user.id !== currentUser.id);
 
       setUsers(filteredData);
       setFilteredUsers(filteredData);

@@ -18,6 +18,7 @@ import {
 import { Task, TaskStatus, CreateTaskDto } from '../../types/task.types';
 import { getSubtasks, createSubtask, updateTaskStatus, deleteTask } from '../../api/task.api';
 import { useAuthStore } from '@store/authStore';
+import { useTheme } from '@hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -58,9 +59,213 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   readOnly = false,
 }) => {
   const { user: currentUser } = useAuthStore();
+  const { theme } = useTheme();
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Styles
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: theme.backgroundSecondary,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    headerProgress: {
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
+    list: {
+      flex: 1,
+    },
+    listContent: {
+      padding: 16,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    createFirstSubtaskButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      marginHorizontal: 16,
+      marginVertical: 12,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.primary,
+      borderStyle: 'dashed',
+    },
+    createFirstSubtaskText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.primary,
+    },
+    addSubtaskButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      marginTop: 8,
+      marginBottom: 8,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    addSubtaskButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.primary,
+    },
+    subtaskItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.background,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    checkboxContainer: {
+      padding: 4,
+      marginRight: 12,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxChecked: {
+      backgroundColor: '#10b981',
+      borderColor: '#10b981',
+    },
+    subtaskContent: {
+      flex: 1,
+    },
+    subtaskContentReadOnly: {
+      marginLeft: 0,
+    },
+    subtaskTitle: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    subtaskTitleCompleted: {
+      textDecorationLine: 'line-through',
+      color: theme.textTertiary,
+    },
+    subtaskMeta: {
+      flexDirection: 'column',
+      gap: 8,
+      marginTop: 4,
+    },
+    statusBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      alignSelf: 'flex-start',
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    assigneeInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    assigneeName: {
+      fontSize: 13,
+      color: theme.text,
+      fontWeight: '500',
+    },
+    dueDateInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    dueDateText: {
+      fontSize: 12,
+      color: theme.textSecondary,
+    },
+    progressContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    progressText: {
+      fontSize: 12,
+      color: theme.textSecondary,
+    },
+    deleteButton: {
+      padding: 8,
+    },
+    subtaskActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    emptyText: {
+      fontSize: 15,
+      color: theme.textTertiary,
+      marginTop: 12,
+      textAlign: 'center',
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+      backgroundColor: theme.backgroundSecondary,
+      margin: 16,
+      borderRadius: 12,
+    },
+    errorText: {
+      fontSize: 15,
+      color: theme.error,
+      marginTop: 12,
+      textAlign: 'center',
+      fontWeight: '500',
+    },
+  });
 
   const loadSubtasks = async () => {
     try {
@@ -172,7 +377,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
           <Text
             style={[
               styles.subtaskTitle,
-              isDone && styles.subtaskTitleDone,
+              isDone && styles.subtaskTitleCompleted,
             ]}
             numberOfLines={2}
           >
@@ -180,38 +385,42 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
           </Text>
 
           <View style={styles.subtaskMeta}>
+            {/* Status Badge */}
             <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
               <Text style={[styles.statusText, { color: statusColor }]}>
                 {STATUS_LABELS[item.status]}
               </Text>
             </View>
 
-            {item.assignees && item.assignees.length > 0 && (
-              <View style={styles.assigneeInfo}>
-                <Ionicons name="person" size={12} color="#6b7280" />
-                <Text style={styles.assigneeName} numberOfLines={1}>
-                  {currentUser && item.assignees[0].id === currentUser.id
-                    ? 'Я'
-                    : item.assignees[0].name}
-                </Text>
-              </View>
-            )}
+            {/* Row with assignee, date, progress */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {item.assignees && item.assignees.length > 0 && (
+                <View style={styles.assigneeInfo}>
+                  <Ionicons name="person" size={14} color={theme.textSecondary} />
+                  <Text style={styles.assigneeName} numberOfLines={1}>
+                    {currentUser && item.assignees[0].id === currentUser.id
+                      ? 'Я'
+                      : item.assignees[0].name}
+                  </Text>
+                </View>
+              )}
 
-            {item.due_date && (
-              <View style={styles.dueDateInfo}>
-                <Ionicons name="calendar-outline" size={12} color="#6b7280" />
-                <Text style={styles.dueDateText}>
-                  {format(new Date(item.due_date), 'dd MMM', { locale: ru })}
-                </Text>
-              </View>
-            )}
+              {item.due_date && (
+                <View style={styles.dueDateInfo}>
+                  <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
+                  <Text style={styles.dueDateText}>
+                    {format(new Date(item.due_date), 'dd MMM', { locale: ru })}
+                  </Text>
+                </View>
+              )}
 
-            {item.progress_percentage !== undefined && item.progress_percentage > 0 && (
-              <View style={styles.progressContainer}>
-                <Ionicons name="stats-chart" size={12} color="#6b7280" />
-                <Text style={styles.progressText}>{item.progress_percentage}%</Text>
-              </View>
-            )}
+              {item.progress_percentage !== undefined && item.progress_percentage > 0 && (
+                <View style={styles.progressContainer}>
+                  <Ionicons name="stats-chart" size={14} color={theme.textSecondary} />
+                  <Text style={styles.progressText}>{item.progress_percentage}%</Text>
+                </View>
+              )}
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -293,177 +502,3 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f9fafb',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerProgress: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  createFirstSubtaskButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginHorizontal: 16,
-    marginVertical: 12,
-    backgroundColor: '#eff6ff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#3b82f6',
-    borderStyle: 'dashed',
-  },
-  createFirstSubtaskText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#3b82f6',
-  },
-  addSubtaskButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 8,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  addSubtaskButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3b82f6',
-  },
-  subtaskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    overflow: 'hidden',
-    padding: 12,
-  },
-  checkboxContainer: {
-    padding: 4,
-    marginRight: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#d1d5db',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
-  subtaskContent: {
-    flex: 1,
-  },
-  subtaskContentReadOnly: {
-    marginLeft: 0, // No checkbox, so no left margin needed
-  },
-  subtaskTitle: {
-    fontSize: 15,
-    color: '#111827',
-    marginBottom: 6,
-  },
-  subtaskTitleDone: {
-    color: '#9ca3af',
-    textDecorationLine: 'line-through',
-  },
-  subtaskMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  assigneeInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    maxWidth: 100,
-  },
-  assigneeName: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  dueDateInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dueDateText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  deleteButton: {
-    padding: 12,
-    marginLeft: 8,
-    backgroundColor: '#fef2f2',
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});

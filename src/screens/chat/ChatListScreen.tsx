@@ -334,12 +334,6 @@ const ChatListScreen: React.FC = () => {
       fontWeight: '400',
       color: theme.error,
     },
-    addButtonText: {
-      fontSize: 38,
-      fontWeight: '200',
-      color: theme.primary,
-      lineHeight: 38,
-    },
   });
 
   return (
@@ -367,7 +361,7 @@ const ChatListScreen: React.FC = () => {
           {/* Правая кнопка - Добавить / пусто */}
           {!isEditMode ? (
             <TouchableOpacity onPress={handleNewChat} style={styles.newChatButton}>
-              <Text style={dynamicStyles.addButtonText}>+</Text>
+              <Ionicons name="add" size={30} color={theme.primary} />
             </TouchableOpacity>
           ) : (
             <View style={styles.newChatButton} />
@@ -582,7 +576,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   newChatButton: {
-    paddingHorizontal: 4,
+    padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },

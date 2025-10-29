@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Poll } from '../../types/poll.types';
 import { useTheme } from '@hooks/useTheme';
+import { Avatar } from '@components/common/Avatar';
 
 interface PollItemProps {
   poll: Poll;
@@ -228,10 +229,17 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
               </View>
             )}
 
-            {/* Creator name in bottom right corner */}
-            <Text style={[styles.creatorName, { color: theme.textTertiary }]} numberOfLines={1}>
-              {getCreatorName()}
-            </Text>
+            {/* Creator name with avatar in bottom right corner */}
+            <View style={styles.creatorContainer}>
+              <Avatar
+                name={getCreatorName()}
+                imageUrl={poll.creator?.avatar}
+                size={20}
+              />
+              <Text style={[styles.creatorName, { color: theme.textTertiary }]} numberOfLines={1}>
+                {getCreatorName()}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -241,15 +249,15 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 12,
     marginHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
     position: 'relative',
   },
   accentBorder: {
@@ -257,16 +265,16 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 5,
+    width: 4,
   },
   content: {
-    paddingLeft: 20,
+    paddingLeft: 18,
     paddingRight: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
   },
   header: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
   titleRow: {
     flexDirection: 'row',
@@ -276,19 +284,19 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 26,
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
     letterSpacing: 0.3,
   },
   votedIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: '#3B82F6' + '12',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#3B82F6' + '15',
     alignSelf: 'flex-start',
   },
   votedText: {
@@ -299,83 +307,83 @@ const styles = StyleSheet.create({
   metaBadgesRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 10,
     flexWrap: 'wrap',
   },
   visibilityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
   },
   visibilityText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   categoryTag: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
     borderWidth: 1,
   },
   categoryTagText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
   },
   featuresPills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
+    gap: 6,
+    marginBottom: 10,
   },
   featurePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
   },
   featurePillText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    paddingTop: 14,
-    borderTopWidth: 1.5,
+    paddingTop: 12,
+    borderTopWidth: 1,
     gap: 12,
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
     flexWrap: 'wrap',
   },
   statBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   statIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statValue: {
-    fontSize: 17,
-    fontWeight: '800',
-    lineHeight: 20,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 18,
   },
   footerRight: {
     alignItems: 'flex-end',
@@ -392,12 +400,16 @@ const styles = StyleSheet.create({
   },
   deadlineText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  creatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   creatorName: {
-    fontSize: 11,
-    fontWeight: '300',
-    fontStyle: 'italic',
+    fontSize: 13,
+    fontWeight: '400',
   },
 });
 

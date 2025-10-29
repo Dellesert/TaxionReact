@@ -110,57 +110,57 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       transparent={false}
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: theme.primary }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-            <Ionicons name="close" size={28} color="#FFFFFF" />
+            <Ionicons name="close" size={28} color={theme.error} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Редактировать задачу</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Редактировать</Text>
           <TouchableOpacity
             onPress={handleSave}
             disabled={isSaving || !title.trim()}
             style={[
               styles.saveButton,
-              (!title.trim() || isSaving) && styles.saveButtonDisabled
+              { backgroundColor: theme.error },
+              (!title.trim() || isSaving) && { backgroundColor: theme.backgroundTertiary }
             ]}
           >
             <Text style={[
               styles.saveButtonText,
-              (!title.trim() || isSaving) && styles.saveButtonTextDisabled
+              (!title.trim() || isSaving) && { color: theme.textTertiary }
             ]}>
-              {isSaving ? 'Сохранение...' : 'Сохранить'}
+              {isSaving ? '...' : 'Сохранить'}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Content */}
         <ScrollView
-          style={styles.content}
+          style={[styles.content, { backgroundColor: theme.background }]}
           contentContainerStyle={{ paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Название */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Название задачи *</Text>
+          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text }]}>Название *</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Введите название задачи"
+              style={[styles.input, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+              placeholder="Что нужно сделать?"
               placeholderTextColor={theme.inputPlaceholder}
               value={title}
               onChangeText={setTitle}
               maxLength={100}
             />
-            <Text style={styles.charCount}>{title.length}/100</Text>
           </View>
 
           {/* Описание */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Описание</Text>
+          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text }]}>Описание</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Опишите задачу подробнее..."
+              style={[styles.textArea, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+              placeholder="Добавьте детали..."
               placeholderTextColor={theme.inputPlaceholder}
               value={description}
               onChangeText={setDescription}
@@ -169,30 +169,29 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
               textAlignVertical="top"
               maxLength={500}
             />
-            <Text style={styles.charCount}>{description.length}/500</Text>
           </View>
 
           {/* Приоритет */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Приоритет</Text>
-            <View style={styles.priorityGrid}>
+          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text }]}>Приоритет</Text>
+            <View style={styles.priorityRow}>
               {priorities.map((p) => (
                 <TouchableOpacity
                   key={p.value}
                   onPress={() => setPriority(p.value)}
                   style={[
-                    styles.priorityButton,
+                    styles.priorityChip,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
                     priority === p.value && {
-                      backgroundColor: p.color + '15',
-                      borderColor: p.color,
-                      borderWidth: 2,
+                      backgroundColor: p.color,
                     },
                   ]}
                 >
                   <Text
                     style={[
-                      styles.priorityButtonText,
-                      priority === p.value && { color: p.color, fontWeight: '600' },
+                      styles.priorityChipText,
+                      { color: theme.text },
+                      priority === p.value && { color: '#FFFFFF', fontWeight: '600' },
                     ]}
                   >
                     {p.label}
@@ -203,14 +202,14 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
           </View>
 
           {/* Дата */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Срок выполнения</Text>
+          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text }]}>Срок выполнения</Text>
             <TouchableOpacity
-              style={styles.dateButton}
+              style={[styles.dateButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
               onPress={() => setShowDatePicker(true)}
             >
               <Ionicons name="calendar" size={20} color={theme.primary} />
-              <Text style={styles.dateButtonText}>
+              <Text style={[styles.dateButtonText, { color: theme.text }]}>
                 {dueDate
                   ? format(dueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
                   : 'Выберите дату и время'}
@@ -227,8 +226,8 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
           </View>
 
           {/* Исполнители */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Исполнители</Text>
+          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text }]}>Исполнители</Text>
             <UserSelector
               selectedUserIds={assigneeIds}
               onSelectionChange={setAssigneeIds}
@@ -265,7 +264,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingBottom: 24,
+    borderBottomWidth: 1,
   },
   headerButton: {
     width: 40,
@@ -274,105 +273,84 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
     flex: 1,
-    marginLeft: 8,
+    textAlign: 'center',
   },
   saveButton: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  saveButtonDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 80,
+    alignItems: 'center',
   },
   saveButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  saveButtonTextDisabled: {
-    color: 'rgba(255, 255, 255, 0.5)',
-  },
   content: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
   },
-  field: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
+  section: {
     paddingHorizontal: 20,
+    paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
-  label: {
-    fontSize: 16,
+  sectionLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
-    fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    fontSize: 16,
     borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
   },
   textArea: {
+    fontSize: 15,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     minHeight: 100,
+    borderWidth: 1,
     textAlignVertical: 'top',
   },
-  charCount: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
-    textAlign: 'right',
-  },
-  priorityGrid: {
+  priorityRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  priorityButton: {
-    flex: 1,
-    minWidth: '47%',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+  priorityChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    alignItems: 'center',
   },
-  priorityButtonText: {
+  priorityChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 8,
-    backgroundColor: '#F9FAFB',
-    gap: 8,
+    gap: 12,
   },
   dateButtonText: {
     flex: 1,
-    fontSize: 14,
-    color: '#111827',
+    fontSize: 15,
   },
   clearButton: {
-    padding: 4,
+    padding: 8,
   },
 });
 

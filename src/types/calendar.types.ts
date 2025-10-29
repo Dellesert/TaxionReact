@@ -64,9 +64,11 @@ export interface Event {
   recurrence_rule?: RecurrenceRule;
   created_by: number;
   creator?: User;
-  participants: EventParticipant[];
-  participants_count: number;
-  reminders: EventReminder[];
+  participants?: EventParticipant[]; // Only loaded when fetching single event
+  participant_count?: number; // From backend (snake_case)
+  participants_count?: number; // Alias for compatibility
+  user_status?: EventParticipantStatus; // Current user's status
+  reminders?: EventReminder[];
   created_at: ISODateString;
   updated_at: ISODateString;
 }

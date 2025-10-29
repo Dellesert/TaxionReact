@@ -19,15 +19,36 @@ interface TaskItemProps {
   isSubtask?: boolean;
   subtasks?: Task[];
   onSubtaskPress?: (subtask: Task) => void;
+  forceExpanded?: boolean;
 }
 
 // Priority labels and colors
-const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bg: string }> = {
-  low: { label: 'Низкий', color: '#10b981', bg: '#d1fae5' },
-  medium: { label: 'Средний', color: '#3b82f6', bg: '#dbeafe' },
-  high: { label: 'Высокий', color: '#f59e0b', bg: '#fef3c7' },
-  critical: { label: 'Критичный', color: '#ef4444', bg: '#fee2e2' },
-};
+const getPriorityConfig = (isDark: boolean): Record<TaskPriority, { label: string; color: string; bg: string; badgeColor: string }> => ({
+  low: {
+    label: 'Низкий',
+    color: isDark ? '#34d399' : '#10b981',
+    bg: isDark ? '#064e3b' : '#d1fae5',
+    badgeColor: isDark ? '#059669' : '#10b981'
+  },
+  medium: {
+    label: 'Средний',
+    color: isDark ? '#60a5fa' : '#3b82f6',
+    bg: isDark ? '#1e3a8a' : '#dbeafe',
+    badgeColor: isDark ? '#2563eb' : '#3b82f6'
+  },
+  high: {
+    label: 'Высокий',
+    color: isDark ? '#fbbf24' : '#f59e0b',
+    bg: isDark ? '#78350f' : '#fef3c7',
+    badgeColor: isDark ? '#d97706' : '#f59e0b'
+  },
+  critical: {
+    label: 'Критичный',
+    color: isDark ? '#f87171' : '#ef4444',
+    bg: isDark ? '#7f1d1d' : '#fee2e2',
+    badgeColor: isDark ? '#dc2626' : '#ef4444'
+  },
+});
 
 export const TaskItem: React.FC<TaskItemProps> = ({
   task,
@@ -36,13 +57,63 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   isSubtask = false,
   subtasks = [],
   onSubtaskPress,
+  forceExpanded = false,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user: currentUser } = useAuthStore();
   const [expanded, setExpanded] = useState(false);
 
+  // Use forceExpanded if provided, otherwise use local state
+  const isExpanded = forceExpanded || expanded;
+
   const hasSubtasks = subtasks && subtasks.length > 0;
   const completedSubtasks = subtasks.filter(st => st.status === 'done').length;
+
+  // Get priority config based on theme
+  const PRIORITY_CONFIG = getPriorityConfig(isDark);
+
+  // Helper function to get status badge info for subtasks
+  const getSubtaskStatusBadge = (status: string) => {
+    switch (status) {
+      case 'done':
+        return {
+          icon: 'checkmark-circle' as const,
+          color: '#10b981',
+          bgColor: '#d1fae5',
+          label: 'Выполнено',
+        };
+      case 'in_progress':
+        return {
+          icon: 'time' as const,
+          color: '#3b82f6',
+          bgColor: '#dbeafe',
+          label: 'В работе',
+        };
+      case 'review':
+        return {
+          icon: 'eye' as const,
+          color: '#8b5cf6',
+          bgColor: '#f3e8ff',
+          label: 'На проверке',
+        };
+      case 'new':
+        return {
+          icon: 'radio-button-on' as const,
+          color: '#f59e0b',
+          bgColor: '#fef3c7',
+          label: 'Новая',
+        };
+      case 'viewed':
+        return {
+          icon: 'eye-outline' as const,
+          color: '#6b7280',
+          bgColor: '#f3f4f6',
+          label: 'Просмотрено',
+        };
+      default:
+        return null;
+    }
+  };
 
   // Format date for deadline
   const formatDeadline = (dateString: string) => {
@@ -170,11 +241,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         {/* Subtask Connector Icon */}
         {isSubtask && (
           <View style={styles.subtaskConnector}>
-            {isCompleted ? (
-              <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-            ) : (
-              <Text style={styles.subtaskConnectorIcon}>└─</Text>
-            )}
+            {(() => {
+              const statusBadge = getSubtaskStatusBadge(task.status);
+              if (statusBadge) {
+                return <Ionicons name={statusBadge.icon} size={18} color={statusBadge.color} />;
+              }
+              return <Text style={styles.subtaskConnectorIcon}>└─</Text>;
+            })()}
           </View>
         )}
 
@@ -183,40 +256,33 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             styles.card,
             { backgroundColor: theme.backgroundSecondary },
             isSubtask && styles.subtaskCard,
-            isSubtask && isCompleted && styles.subtaskCardCompleted,
+            isSubtask && (() => {
+              const statusBadge = getSubtaskStatusBadge(task.status);
+              if (statusBadge) {
+                return { borderLeftColor: statusBadge.color };
+              }
+              return {};
+            })(),
           ]}
           onPress={() => onPress(task)}
           activeOpacity={0.7}
         >
-          {/* Header Row: Priority Badge + Delegated Badge + Share Button */}
-          <View style={styles.header}>
-            <View style={styles.badges}>
-              <View
-                style={[
-                  styles.priorityBadge,
-                  { backgroundColor: priorityConfig.bg },
-                  isSubtask && styles.subtaskPriorityBadge,
-                  isCompleted && styles.completedBadge,
-                ]}
-              >
-                <Text style={[
-                  styles.priorityText,
-                  { color: priorityConfig.color },
-                  isSubtask && styles.subtaskPriorityText,
-                  isCompleted && styles.completedText,
-                ]}>
-                  {priorityConfig.label}
-                </Text>
-              </View>
-
-              {isDelegatedByMe && (
-                <View style={styles.delegatedBadge}>
-                  <Ionicons name="eye-outline" size={12} color="#8b5cf6" />
-                  <Text style={styles.delegatedText}>Делегировано</Text>
-                </View>
-              )}
+          {/* Priority Badge - горизонтальная лента в правом верхнем углу */}
+          {!isSubtask && (
+            <View
+              style={[
+                styles.priorityBadgeCorner,
+                { backgroundColor: priorityConfig.badgeColor },
+                isCompleted && styles.priorityBadgeCornerCompleted,
+              ]}
+            >
+              <Text style={styles.priorityTextCorner}>
+                {priorityConfig.label}
+              </Text>
             </View>
+          )}
 
+          {/* Share Button */}
           {onShare && !isSubtask && (
             <TouchableOpacity
               style={styles.shareButton}
@@ -227,14 +293,28 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             </TouchableOpacity>
           )}
 
-          {/* Completed Check Icon for Subtasks */}
-          {isSubtask && isCompleted && (
-            <View style={styles.completedCheckBadge}>
-              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-              <Text style={styles.completedCheckText}>Выполнено</Text>
+          {/* Priority badge для подзадач - оставляем слева */}
+          {isSubtask && (
+            <View style={styles.subtaskHeader}>
+              <View
+                style={[
+                  styles.priorityBadge,
+                  styles.subtaskPriorityBadge,
+                  { backgroundColor: priorityConfig.bg },
+                  isCompleted && styles.completedBadge,
+                ]}
+              >
+                <Text style={[
+                  styles.priorityText,
+                  styles.subtaskPriorityText,
+                  { color: priorityConfig.color },
+                  isCompleted && styles.completedText,
+                ]}>
+                  {priorityConfig.label}
+                </Text>
+              </View>
             </View>
           )}
-        </View>
 
         {/* Title */}
         <Text style={[
@@ -245,6 +325,17 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         ]} numberOfLines={2}>
           {task.title}
         </Text>
+
+        {/* Delegated Badge - под заголовком для основных задач */}
+        {isDelegatedByMe && !isSubtask && (
+          <View style={[
+            styles.delegatedBadgeInline,
+            { backgroundColor: isDark ? '#4c1d95' : '#f3e8ff' }
+          ]}>
+            <Ionicons name="eye" size={14} color={isDark ? '#a78bfa' : '#8b5cf6'} />
+            <Text style={[styles.delegatedTextInline, { color: isDark ? '#a78bfa' : '#8b5cf6' }]}>Делегировано</Text>
+          </View>
+        )}
 
         {/* Deadline */}
         {task.due_date && !isCompleted && (
@@ -286,52 +377,55 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             )}
           </View>
         </View>
+
+        {/* Subtasks Toggle Button - теперь внутри карточки */}
+        {hasSubtasks && !isSubtask && (
+          <>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            <TouchableOpacity
+              style={styles.subtasksToggle}
+              onPress={() => setExpanded(!expanded)}
+              activeOpacity={0.6}
+            >
+              <View style={styles.subtasksToggleContent}>
+                <View style={styles.subtasksToggleLeft}>
+                  <Ionicons
+                    name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+                    size={18}
+                    color="#9ca3af"
+                  />
+                  <Text style={styles.subtasksToggleText}>
+                    {subtasks.length} {subtasks.length === 1 ? 'подзадача' : subtasks.length < 5 ? 'подзадачи' : 'подзадач'}
+                  </Text>
+                </View>
+                <View style={styles.subtasksProgress}>
+                  <View style={[
+                    styles.progressBar,
+                    { backgroundColor: theme.backgroundTertiary }
+                  ]}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${subtasks.length > 0 ? (completedSubtasks / subtasks.length) * 100 : 0}%`,
+                          backgroundColor: completedSubtasks === subtasks.length ? '#10b981' : '#3b82f6',
+                        }
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.subtasksCount}>
+                    {completedSubtasks}/{subtasks.length}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </>
+        )}
       </TouchableOpacity>
       </View>
 
-    {/* Subtasks Toggle Button */}
-    {hasSubtasks && !isSubtask && (
-      <TouchableOpacity
-        style={[styles.subtasksToggle, { backgroundColor: theme.background }]}
-        onPress={() => setExpanded(!expanded)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.subtasksToggleContent}>
-          <View style={styles.subtasksToggleLeft}>
-            <Ionicons
-              name={expanded ? 'chevron-down-circle' : 'chevron-forward-circle'}
-              size={20}
-              color="#3b82f6"
-            />
-            <Text style={styles.subtasksToggleText}>
-              {expanded ? 'Скрыть подзадачи' : 'Показать подзадачи'}
-            </Text>
-          </View>
-          <View style={styles.subtasksProgress}>
-            <View style={[
-              styles.progressBar,
-              { backgroundColor: theme.backgroundSecondary }
-            ]}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  {
-                    width: `${subtasks.length > 0 ? (completedSubtasks / subtasks.length) * 100 : 0}%`,
-                    backgroundColor: completedSubtasks === subtasks.length ? '#10b981' : '#3b82f6',
-                  }
-                ]}
-              />
-            </View>
-            <Text style={styles.subtasksCount}>
-              {completedSubtasks}/{subtasks.length}
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    )}
-
     {/* Expanded Subtasks */}
-    {hasSubtasks && expanded && !isSubtask && (
+    {hasSubtasks && isExpanded && !isSubtask && (
       <View style={styles.subtasksContainer}>
         {subtasks.map((subtask) => (
           <TaskItem
@@ -349,33 +443,41 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 8,
+    marginBottom: 0,
+    paddingTop: 6,
+    paddingRight: 6,
   },
   cardWrapper: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    overflow: 'visible',
   },
   card: {
     flex: 1,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     marginHorizontal: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    overflow: 'visible',
   },
   subtaskCard: {
-    marginLeft: 24,
+    marginLeft: 44,
     marginRight: 16,
-    marginTop: 8,
-    padding: 12,
-    borderRadius: 10,
-    borderLeftWidth: 2,
-    borderLeftColor: '#3b82f6',
-    shadowOpacity: 0.02,
-    opacity: 0.97,
+    marginTop: 6,
+    marginBottom: 4,
+    padding: 14,
+    borderRadius: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: '#d1d5db',
+    shadowOpacity: 0,
+    elevation: 0,
+    opacity: 0.96,
   },
   subtaskCardCompleted: {
     borderLeftColor: '#10b981',
@@ -383,7 +485,7 @@ const styles = StyleSheet.create({
   },
   subtaskConnector: {
     position: 'absolute',
-    left: 20,
+    left: 16,
     top: 20,
     zIndex: 1,
   },
@@ -426,22 +528,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   priorityBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   subtaskPriorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   priorityText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   subtaskPriorityText: {
-    fontSize: 11,
+    fontSize: 10,
+    letterSpacing: 0.6,
   },
   badges: {
     flexDirection: 'row',
@@ -451,21 +554,68 @@ const styles = StyleSheet.create({
   delegatedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     backgroundColor: '#f3e8ff',
-    borderRadius: 6,
+    borderRadius: 8,
   },
   delegatedText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: '#8b5cf6',
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: 0.6,
+  },
+  delegatedBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  delegatedTextInline: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   shareButton: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
     padding: 4,
+    zIndex: 2,
+  },
+  priorityBadgeCorner: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 10,
+  },
+  priorityBadgeCornerCompleted: {
+    opacity: 0.6,
+  },
+  priorityTextCorner: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  subtaskHeader: {
+    marginBottom: 8,
   },
   title: {
     fontSize: 16,
@@ -508,14 +658,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  divider: {
+    height: 1,
+    opacity: 0.3,
+    marginTop: 16,
+    marginHorizontal: 0,
+  },
   subtasksToggle: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    backgroundColor: 'transparent',
   },
   subtasksToggleContent: {
     flexDirection: 'row',
@@ -525,37 +677,38 @@ const styles = StyleSheet.create({
   subtasksToggleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   subtasksToggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3b82f6',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6b7280',
   },
   subtasksProgress: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   progressBar: {
-    width: 60,
-    height: 6,
-    borderRadius: 3,
+    width: 80,
+    height: 4,
+    borderRadius: 2,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 2,
   },
   subtasksCount: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6b7280',
-    minWidth: 35,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9ca3af',
+    minWidth: 32,
     textAlign: 'right',
   },
   subtasksContainer: {
-    marginTop: 0,
+    marginTop: 4,
+    paddingTop: 4,
     position: 'relative',
   },
   delegationChain: {
@@ -594,6 +747,20 @@ const styles = StyleSheet.create({
   },
   completedAttachmentText: {
     color: '#9ca3af',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
 });
 

@@ -8,6 +8,8 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  Modal,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -15,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskItem } from '@components/task/TaskItem';
 import { TaskSkeleton } from '@components/task/TaskSkeleton';
+import { ScreenHeader } from '@components/common/ScreenHeader';
 import type { Task, TaskStatus } from '../../types/task.types';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
@@ -47,6 +50,18 @@ const TaskListScreen: React.FC = () => {
   // Subtasks cache
   const [subtasksCache, setSubtasksCache] = useState<Record<number, Task[]>>({});
 
+  // Expand all subtasks state
+  const [expandAllSubtasks, setExpandAllSubtasks] = useState(false);
+
+  // Search modal state
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+
+  // Filter menu state
+  const [isFilterMenuVisible, setIsFilterMenuVisible] = useState(false);
+
+  // Animation for search
+  const searchAnimation = useRef(new Animated.Value(0)).current;
+
   // Total counts for each status
   const [newTasksTotal, setNewTasksTotal] = useState(0);
   const [inProgressTotal, setInProgressTotal] = useState(0);
@@ -62,6 +77,14 @@ const TaskListScreen: React.FC = () => {
   useEffect(() => {
     loadAllTasks();
   }, [filter]);
+
+  useEffect(() => {
+    Animated.timing(searchAnimation, {
+      toValue: isSearchVisible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isSearchVisible]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -269,89 +292,46 @@ const TaskListScreen: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      backgroundColor: theme.background,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 0,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 16,
+      marginBottom: 8,
     },
     headerLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    editButton: {
-      paddingHorizontal: 4,
-    },
-    editButtonText: {
-      fontSize: 16,
-      fontWeight: '400',
-      color: theme.error,
+      width: 100,
     },
     title: {
-      fontSize: 28,
-      fontWeight: '700',
-      color: theme.text,
       flex: 1,
+      fontSize: 20,
+      fontWeight: '600',
+      color: theme.text,
       textAlign: 'center',
+    },
+    headerRight: {
+      width: 100,
+      justifyContent: 'flex-end',
     },
     addButton: {
       paddingHorizontal: 4,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     addButtonText: {
       fontSize: 38,
       fontWeight: '200',
       color: theme.primary,
-      lineHeight: 38,
-    },
-    searchContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.backgroundTertiary,
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      marginBottom: 12,
+      lineHeight: 32,
     },
     searchInput: {
       flex: 1,
-      marginLeft: 8,
       fontSize: 15,
-      color: theme.text,
-    },
-    filtersRow: {
-      flexDirection: 'row',
-      gap: 8,
-      marginBottom: 12,
-    },
-    filterChip: {
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderRadius: 20,
-      backgroundColor: theme.backgroundTertiary,
-    },
-    filterChipActive: {
-      backgroundColor: theme.primary + '15',
-    },
-    filterChipText: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: theme.textSecondary,
-    },
-    filterChipTextActive: {
-      color: theme.primary,
-      fontWeight: '600',
     },
     tabsContainer: {
       flexDirection: 'row',
+      marginTop: 12,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
     },
     tab: {
       flex: 1,
@@ -386,17 +366,11 @@ const TaskListScreen: React.FC = () => {
       textAlign: 'center',
     },
     taskList: {
-      paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 120, // Для iOS с учетом tab bar
     },
     taskItem: {
-      backgroundColor: theme.card,
-      borderRadius: 12,
-      marginBottom: 10,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: theme.border,
+      marginBottom: 12,
     },
     loadMoreContainer: {
       paddingVertical: 12,
@@ -444,106 +418,223 @@ const TaskListScreen: React.FC = () => {
       textAlign: 'center',
       lineHeight: 20,
     },
+    expandAllButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      gap: 8,
+      backgroundColor: 'transparent',
+    },
+    expandAllText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: '#6b7280',
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    iconButton: {
+      padding: 4,
+      position: 'relative',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    filterIndicator: {
+      position: 'absolute',
+      top: 2,
+      right: 2,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.primary,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    searchContainer: {
+      overflow: 'hidden',
+    },
+    searchInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.backgroundTertiary,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 8,
+      marginTop: 12,
+      marginBottom: 8,
+    },
+    filterMenu: {
+      position: 'absolute',
+      top: 60,
+      left: 16,
+      minWidth: 180,
+      borderRadius: 12,
+      padding: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      elevation: 10,
+    },
+    filterMenuItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+      borderRadius: 8,
+    },
+    filterMenuItemActive: {
+      backgroundColor: theme.backgroundSecondary,
+    },
+    filterMenuItemText: {
+      fontSize: 15,
+      fontWeight: '500',
+    },
   });
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity style={styles.editButton}>
-              <Text style={styles.editButtonText}>Изм.</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.title}>Задачи</Text>
-          <TouchableOpacity onPress={handleNewTask} style={styles.addButton}>
-            <Text style={styles.addButtonText}>+</Text>
-          </TouchableOpacity>
-        </View>
+      <ScreenHeader
+        title="Задачи"
+        customContent={
+          <>
+            {/* Header Row */}
+            <View style={styles.headerRow}>
+              <View style={[styles.headerLeft, styles.headerActions]}>
+                {/* Filter Button with indicator */}
+                <TouchableOpacity
+                  onPress={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="filter" size={24} color={theme.error} />
+                  {filter !== 'all' && <View style={styles.filterIndicator} />}
+                </TouchableOpacity>
+              </View>
 
-        {/* Search */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={theme.textTertiary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Поиск..."
-            placeholderTextColor={theme.inputPlaceholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
+              <Text style={styles.title}>Задачи</Text>
 
-        {/* Filter Chips */}
-        <View style={styles.filtersRow}>
-          {filterChips.map((chip) => (
-            <TouchableOpacity
-              key={chip.key}
-              onPress={() => setFilter(chip.key)}
+              <View style={[styles.headerRight, styles.headerActions]}>
+                {/* Search Button */}
+                <TouchableOpacity
+                  onPress={() => setIsSearchVisible(!isSearchVisible)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color={theme.error} />
+                </TouchableOpacity>
+
+                {/* Add Button */}
+                <TouchableOpacity onPress={handleNewTask} style={styles.iconButton}>
+                  <Ionicons name="add" size={30} color={theme.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Animated Search Input */}
+            <Animated.View
               style={[
-                styles.filterChip,
-                filter === chip.key && styles.filterChipActive,
+                styles.searchContainer,
+                {
+                  maxHeight: searchAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 60],
+                  }),
+                  opacity: searchAnimation,
+                },
               ]}
             >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  filter === chip.key && styles.filterChipTextActive,
-                ]}
-              >
-                {chip.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+              <View style={styles.searchInputContainer}>
+                <Ionicons name="search" size={20} color={theme.textTertiary} />
+                <TextInput
+                  style={[styles.searchInput, { color: theme.text }]}
+                  placeholder="Поиск..."
+                  placeholderTextColor={theme.inputPlaceholder}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoFocus={isSearchVisible}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </Animated.View>
 
-        {/* Status Tabs */}
-        <View style={styles.tabsContainer}>
-          {statusTabs.map((tab) => {
-            const count = getTotalForStatus(tab.key);
-            const isActive = activeTab === tab.key;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[
-                  styles.tab,
-                  isActive && { ...styles.tabActive, borderBottomColor: tab.color },
-                ]}
-                onPress={() => setActiveTab(tab.key)}
-              >
-                <View style={styles.tabContent}>
-                  <Text
+            {/* Status Tabs */}
+            <View style={styles.tabsContainer}>
+              {statusTabs.map((tab) => {
+                const count = getTotalForStatus(tab.key);
+                const isActive = activeTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
                     style={[
-                      styles.tabLabel,
-                      isActive && { ...styles.tabLabelActive, color: tab.color },
+                      styles.tab,
+                      isActive && { ...styles.tabActive, borderBottomColor: tab.color },
                     ]}
+                    onPress={() => setActiveTab(tab.key)}
                   >
-                    {tab.label}
-                  </Text>
-                  {count > 0 && (
-                    <Text
-                      style={[
-                        styles.tabCount,
-                        {
-                          backgroundColor: isActive ? tab.color : theme.backgroundTertiary,
-                          color: isActive ? '#FFFFFF' : theme.textTertiary,
-                        },
-                      ]}
-                    >
-                      {count}
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+                    <View style={styles.tabContent}>
+                      <Text
+                        style={[
+                          styles.tabLabel,
+                          isActive && { ...styles.tabLabelActive, color: tab.color },
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                      {count > 0 && (
+                        <Text
+                          style={[
+                            styles.tabCount,
+                            {
+                              backgroundColor: isActive ? tab.color : theme.backgroundTertiary,
+                              color: isActive ? '#FFFFFF' : theme.textTertiary,
+                            },
+                          ]}
+                        >
+                          {count}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        }
+      />
+
+      {/* Expand All Subtasks Button */}
+      {!isInitialLoading && currentTotal > 0 && (() => {
+        const tasksWithSubtasks = currentTasks.filter(t => t.subtask_count && t.subtask_count > 0);
+        if (tasksWithSubtasks.length === 0) return null;
+
+        return (
+          <TouchableOpacity
+            style={styles.expandAllButton}
+            onPress={() => setExpandAllSubtasks(!expandAllSubtasks)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={expandAllSubtasks ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color="#6b7280"
+            />
+            <Text style={styles.expandAllText}>
+              {expandAllSubtasks ? 'Свернуть все подзадачи' : 'Развернуть все подзадачи'} ({tasksWithSubtasks.length})
+            </Text>
+          </TouchableOpacity>
+        );
+      })()}
 
       {/* Content */}
       {isInitialLoading ? (
@@ -591,6 +682,7 @@ const TaskListScreen: React.FC = () => {
                   onPress={handleTaskPress}
                   subtasks={subtasks}
                   onSubtaskPress={handleTaskPress}
+                  forceExpanded={expandAllSubtasks}
                 />
               </View>
             );
@@ -622,6 +714,51 @@ const TaskListScreen: React.FC = () => {
             ) : null
           }
         />
+      )}
+
+      {/* Filter Menu Dropdown */}
+      {isFilterMenuVisible && (
+        <Modal
+          visible={isFilterMenuVisible}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setIsFilterMenuVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setIsFilterMenuVisible(false)}
+          >
+            <View style={[styles.filterMenu, { backgroundColor: theme.card }]}>
+              {filterChips.map((chip) => (
+                <TouchableOpacity
+                  key={chip.key}
+                  style={[
+                    styles.filterMenuItem,
+                    filter === chip.key && styles.filterMenuItemActive,
+                  ]}
+                  onPress={() => {
+                    setFilter(chip.key);
+                    setIsFilterMenuVisible(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.filterMenuItemText,
+                      { color: theme.text },
+                      filter === chip.key && { color: theme.primary, fontWeight: '600' },
+                    ]}
+                  >
+                    {chip.label}
+                  </Text>
+                  {filter === chip.key && (
+                    <Ionicons name="checkmark" size={20} color={theme.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
       )}
     </SafeAreaView>
   );

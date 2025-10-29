@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   TextInput,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { Poll, PollStatus } from '../../types/poll.types';
 import { PollItem } from '@components/poll/PollItem';
 import { PollSkeleton } from '@components/poll/PollSkeleton';
+import { ScreenHeader } from '@components/common/ScreenHeader';
 import * as pollApi from '@api/poll.api';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
@@ -34,10 +36,22 @@ const PollListScreen: React.FC = () => {
   const [filter, setFilter] = useState<PollFilter>('all');
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+
+  // Animation for search
+  const searchAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadPolls();
   }, [filter]); // Reload when filter changes
+
+  useEffect(() => {
+    Animated.timing(searchAnimation, {
+      toValue: isSearchVisible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isSearchVisible]);
 
   // Reload polls when screen is focused (e.g., after creating a new poll)
   useFocusEffect(
@@ -107,80 +121,111 @@ const PollListScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft} />
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Опросы</Text>
-          {canCreatePoll ? (
-            <TouchableOpacity onPress={handleCreatePoll} style={styles.createButton}>
-              <Text style={[styles.addButtonText, { color: theme.primary }]}>+</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.headerLeft} />
-          )}
-        </View>
+      <ScreenHeader
+        title="Опросы"
+        customContent={
+          <>
+            <View style={styles.headerRow}>
+              <View style={styles.headerLeft} />
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Опросы</Text>
+              <View style={[styles.headerRight, styles.headerActions]}>
+                {/* Search Button */}
+                <TouchableOpacity
+                  onPress={() => setIsSearchVisible(!isSearchVisible)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color={theme.error} />
+                </TouchableOpacity>
 
-        {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: theme.backgroundTertiary }]}>
-          <Ionicons name="search" size={20} color={theme.textTertiary} />
-          <TextInput
-            style={[styles.searchInput, { color: theme.text }]}
-            placeholder="Поиск..."
-            placeholderTextColor={theme.inputPlaceholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
+                {/* Add Button */}
+                {canCreatePoll && (
+                  <TouchableOpacity onPress={handleCreatePoll} style={styles.iconButton}>
+                    <Ionicons name="add" size={30} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
 
-        {/* Status Tabs */}
-        <View style={styles.tabsContainer}>
-          {filterButtons.map((tab) => {
-            const count = tab.key === 'all' ? polls.length : tab.key === 'active' ? activeCount : polls.filter(p => p.status === 'closed').length;
-            const isActive = filter === tab.key;
-            const tabColor = tab.key === 'all' ? '#E94444' : tab.key === 'active' ? '#10B981' : '#6B7280';
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[
-                  styles.tab,
-                  isActive && { ...styles.tabActive, borderBottomColor: tabColor },
-                ]}
-                onPress={() => setFilter(tab.key)}
-              >
-                <View style={styles.tabContent}>
-                  <Text
+            {/* Animated Search Input */}
+            <Animated.View
+              style={[
+                styles.animatedSearchContainer,
+                {
+                  height: searchAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 48],
+                  }),
+                  opacity: searchAnimation,
+                  marginBottom: searchAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 12],
+                  }),
+                },
+              ]}
+            >
+              <View style={[styles.searchContainer, { backgroundColor: theme.backgroundTertiary }]}>
+                <Ionicons name="search" size={20} color={theme.textTertiary} />
+                <TextInput
+                  style={[styles.searchInput, { color: theme.text }]}
+                  placeholder="Поиск..."
+                  placeholderTextColor={theme.inputPlaceholder}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </Animated.View>
+
+            {/* Status Tabs */}
+            <View style={[styles.tabsContainer, { borderTopColor: theme.border }]}>
+              {filterButtons.map((tab) => {
+                const count = tab.key === 'all' ? polls.length : tab.key === 'active' ? activeCount : polls.filter(p => p.status === 'closed').length;
+                const isActive = filter === tab.key;
+                const tabColor = tab.key === 'all' ? '#E94444' : tab.key === 'active' ? '#10B981' : '#6B7280';
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
                     style={[
-                      styles.tabLabel,
-                      { color: theme.textSecondary },
-                      isActive && { ...styles.tabLabelActive, color: tabColor },
+                      styles.tab,
+                      isActive && { ...styles.tabActive, borderBottomColor: tabColor },
                     ]}
+                    onPress={() => setFilter(tab.key)}
                   >
-                    {tab.label}
-                  </Text>
-                  {count > 0 && (
-                    <Text
-                      style={[
-                        styles.tabCount,
-                        {
-                          backgroundColor: isActive ? tabColor : theme.backgroundTertiary,
-                          color: isActive ? '#FFFFFF' : theme.textTertiary,
-                        },
-                      ]}
-                    >
-                      {count}
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+                    <View style={styles.tabContent}>
+                      <Text
+                        style={[
+                          styles.tabLabel,
+                          { color: theme.textSecondary },
+                          isActive && { ...styles.tabLabelActive, color: tabColor },
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                      {count > 0 && (
+                        <Text
+                          style={[
+                            styles.tabCount,
+                            {
+                              backgroundColor: isActive ? tabColor : theme.backgroundTertiary,
+                              color: isActive ? '#FFFFFF' : theme.textTertiary,
+                            },
+                          ]}
+                        >
+                          {count}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        }
+      />
 
       {/* Error */}
       {error && (
@@ -232,34 +277,37 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 0,
-    borderBottomWidth: 1,
-  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   headerLeft: {
-    width: 40,
+    width: 100,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
     flex: 1,
     textAlign: 'center',
   },
-  createButton: {
-    paddingHorizontal: 4,
+  headerRight: {
+    width: 100,
+    justifyContent: 'flex-end',
   },
-  addButtonText: {
-    fontSize: 38,
-    fontWeight: '200',
-    lineHeight: 38,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconButton: {
+    padding: 4,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  animatedSearchContainer: {
+    overflow: 'hidden',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -267,7 +315,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 12,
     gap: 8,
   },
   searchInput: {
@@ -277,6 +324,9 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
   },
   tab: {
     flex: 1,
