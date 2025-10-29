@@ -328,14 +328,15 @@ const TaskListScreen: React.FC = () => {
     },
     tabsContainer: {
       flexDirection: 'row',
-      marginTop: 12,
-      paddingTop: 8,
+      marginTop: 0,
+      paddingTop: 4,
       borderTopWidth: 1,
       borderTopColor: theme.border,
+      borderBottomWidth: 0,
     },
     tab: {
       flex: 1,
-      paddingVertical: 12,
+      paddingVertical: 8,
       alignItems: 'center',
       borderBottomWidth: 3,
       borderBottomColor: 'transparent',
@@ -350,7 +351,7 @@ const TaskListScreen: React.FC = () => {
     },
     tabLabel: {
       fontSize: 14,
-      fontWeight: '500',
+      fontWeight: '600',
       color: theme.textSecondary,
     },
     tabLabelActive: {

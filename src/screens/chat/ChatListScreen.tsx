@@ -3,8 +3,8 @@
  * Экран списка чатов
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Alert, Modal, Platform } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Alert, Modal, Platform, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -15,6 +15,7 @@ import { useAuthStore } from '@store/authStore';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
+import { ScreenHeader } from '@components/common/ScreenHeader';
 import { useTheme } from '@hooks/useTheme';
 import { Chat, ChatType } from '../../types/chat.types';
 import { websocketService } from '@services/websocket.service';
@@ -71,10 +72,22 @@ const ChatListScreen: React.FC = () => {
   const [isConnected, setIsConnected] = useState(websocketService.isConnected());
   const [chatFilter, setChatFilter] = useState<ChatFilter>('all');
   const [isCreateMenuVisible, setIsCreateMenuVisible] = useState(false);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+
+  // Animation for search
+  const searchAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadChats();
   }, []);
+
+  useEffect(() => {
+    Animated.timing(searchAnimation, {
+      toValue: isSearchVisible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isSearchVisible]);
 
   // Логируем изменения в чатах для отладки статусов
   useEffect(() => {
@@ -311,82 +324,94 @@ const ChatListScreen: React.FC = () => {
       backgroundColor: theme.background,
       borderBottomColor: theme.border,
     },
-    title: {
-      color: theme.text,
-    },
-    searchContainer: {
-      backgroundColor: theme.input,
-    },
-    searchInput: {
-      color: theme.text,
-    },
     emptyTitle: {
       color: theme.textSecondary,
     },
     emptySubtitle: {
       color: theme.textTertiary,
     },
-    editButton: {
-      paddingHorizontal: 4,
-    },
-    editButtonText: {
-      fontSize: 16,
-      fontWeight: '400',
-      color: theme.error,
-    },
   });
 
   return (
     <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
 
-      <View style={[styles.header, dynamicStyles.header]}>
-        <View style={styles.headerTop}>
-          {/* Левая кнопка - Изменить / Готово */}
-          <TouchableOpacity
-            onPress={() => setIsEditMode(!isEditMode)}
-            style={dynamicStyles.editButton}
-          >
-            <Text style={dynamicStyles.editButtonText}>{isEditMode ? "Готово" : "Изм."}</Text>
-          </TouchableOpacity>
+      <ScreenHeader
+        title="Чаты"
+        customContent={
+          <>
+            {/* Header Row */}
+            <View style={styles.headerRow}>
+              {/* Левая кнопка - Изменить / Готово */}
+              <TouchableOpacity
+                onPress={() => setIsEditMode(!isEditMode)}
+                style={styles.editButton}
+              >
+                <Text style={[styles.editButtonText, { color: theme.error }]}>{isEditMode ? "Готово" : "Изм."}</Text>
+              </TouchableOpacity>
 
-          {/* Центр - Заголовок или статус подключения */}
-          <View style={styles.centerContent}>
-            {isConnected ? (
-              <Text style={[styles.title, dynamicStyles.title]}>Чаты</Text>
-            ) : (
-              <ConnectionStatus />
-            )}
-          </View>
+              {/* Центр - Заголовок или статус подключения */}
+              {isConnected ? (
+                <Text style={[styles.headerTitle, { color: theme.text }]}>Чаты</Text>
+              ) : (
+                <ConnectionStatus />
+              )}
 
-          {/* Правая кнопка - Добавить / пусто */}
-          {!isEditMode ? (
-            <TouchableOpacity onPress={handleNewChat} style={styles.newChatButton}>
-              <Ionicons name="add" size={30} color={theme.primary} />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.newChatButton} />
-          )}
-        </View>
+              {/* Правые кнопки - Поиск + Добавить */}
+              <View style={[styles.headerRight, styles.headerActions]}>
+                {!isEditMode && (
+                  <TouchableOpacity
+                    onPress={() => setIsSearchVisible(!isSearchVisible)}
+                    style={styles.iconButton}
+                  >
+                    <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color={theme.error} />
+                  </TouchableOpacity>
+                )}
+                {!isEditMode ? (
+                  <TouchableOpacity onPress={handleNewChat} style={styles.addButton}>
+                    <Ionicons name="add" size={30} color={theme.primary} />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.addButton} />
+                )}
+              </View>
+            </View>
 
-        <View style={[styles.searchContainer, dynamicStyles.searchContainer]}>
-          <Ionicons name="search" size={20} color={theme.textTertiary} />
-          <TextInput
-            style={[styles.searchInput, dynamicStyles.searchInput]}
-            placeholder="Поиск чатов..."
-            placeholderTextColor={theme.inputPlaceholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+            {/* Animated Search Bar */}
+            <Animated.View
+              style={[
+                styles.animatedSearchContainer,
+                {
+                  height: searchAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 48],
+                  }),
+                  opacity: searchAnimation,
+                  marginBottom: searchAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 12],
+                  }),
+                },
+              ]}
+            >
+              <View style={[styles.searchContainer, { backgroundColor: theme.backgroundTertiary }]}>
+                <Ionicons name="search" size={20} color={theme.textTertiary} />
+                <TextInput
+                  style={[styles.searchInput, { color: theme.text }]}
+                  placeholder="Поиск чатов..."
+                  placeholderTextColor={theme.inputPlaceholder}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </Animated.View>
 
-      {/* Фильтры типов чатов */}
-      <View style={[styles.filterContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+            {/* Фильтры типов чатов */}
+            <View style={[styles.filterContainer, { borderTopColor: theme.border, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={[
             styles.filterTab,
@@ -446,7 +471,10 @@ const ChatListScreen: React.FC = () => {
             Избранное
           </Text>
         </TouchableOpacity>
-      </View>
+            </View>
+          </>
+        }
+      />
 
       {/* Кнопки действий в режиме редактирования */}
       {isEditMode && selectedChats.length > 0 && (
@@ -551,34 +579,47 @@ const ChatListScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-  },
-  headerTop: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
-    minHeight: 32,
   },
-  centerContent: {
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    textAlign: 'center',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
+  editButton: {
+    paddingHorizontal: 4,
   },
-  newChatButton: {
+  editButtonText: {
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  addButton: {
     padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerRight: {
+    width: 100,
+    justifyContent: 'flex-end',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconButton: {
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  animatedSearchContainer: {
+    overflow: 'hidden',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -586,24 +627,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
     fontSize: 15,
+    padding: 0,
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
+    marginTop: 12,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderBottomWidth: 0,
   },
   filterTab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 8,
     alignItems: 'center',
   },
   filterText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   actionBar: {

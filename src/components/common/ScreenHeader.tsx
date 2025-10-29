@@ -146,9 +146,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 14,
+    paddingTop: 6,
+    paddingBottom: 0,
     zIndex: 10,
   },
   compact: {

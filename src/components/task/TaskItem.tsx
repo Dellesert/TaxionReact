@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
   priorityBadgeCorner: {
     position: 'absolute',
     top: -8,
-    right: -8,
+    right: -12,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
