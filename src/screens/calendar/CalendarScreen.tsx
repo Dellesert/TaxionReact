@@ -8,7 +8,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,10 +79,10 @@ const CalendarScreen: React.FC = () => {
           end: endDate,
         });
 
-        const fetchedEvents = await calendarApi.getEvents(filters);
-        console.log('📅 Fetched events count:', fetchedEvents?.length || 0);
-        console.log('📅 Fetched events:', fetchedEvents);
-        setEvents(fetchedEvents);
+        const response = await calendarApi.getEvents(filters, 100, 0);
+        console.log('📅 Fetched events count:', response.events?.length || 0);
+        console.log('📅 Total events in period:', response.total);
+        setEvents(response.events);
       }
     } catch (error) {
       console.error('Failed to load events:', error);
@@ -165,7 +164,11 @@ const CalendarScreen: React.FC = () => {
 
     events.forEach((event) => {
       const date = new Date(event.start_time);
-      const dateKey = date.toISOString().split('T')[0];
+      // Get local date string (YYYY-MM-DD) without timezone conversion
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
 
       if (!sections[dateKey]) {
         sections[dateKey] = [];
@@ -173,21 +176,30 @@ const CalendarScreen: React.FC = () => {
       sections[dateKey].push(event);
     });
 
+    // Get today's date in local timezone
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const todayDay = String(today.getDate()).padStart(2, '0');
+    const todayKey = `${todayYear}-${todayMonth}-${todayDay}`;
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowYear = tomorrow.getFullYear();
+    const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0');
+    const tomorrowKey = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
+
     // Sort sections by date
     const sortedSections = Object.keys(sections)
       .sort()
       .map((dateKey) => {
-        const date = new Date(dateKey);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        const date = new Date(dateKey + 'T00:00:00');
 
         let title = '';
-        if (dateKey === today.toISOString().split('T')[0]) {
+        if (dateKey === todayKey) {
           title = 'Сегодня';
-        } else if (dateKey === tomorrow.toISOString().split('T')[0]) {
+        } else if (dateKey === tomorrowKey) {
           title = 'Завтра';
         } else {
           title = date.toLocaleDateString('ru-RU', {
@@ -212,67 +224,73 @@ const CalendarScreen: React.FC = () => {
   const sections = groupEventsByDate();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
       {/* Header */}
       <ScreenHeader
         title="Календарь"
         showDivider={true}
         customContent={
           <>
-            {/* Title Row */}
+            {/* Title Row with Add Button */}
             <View style={styles.headerTop}>
               <View style={styles.headerLeft} />
               <Text style={[styles.headerTitle, { color: theme.text }]}>Календарь</Text>
 
-              {/* View Selector Pills */}
-              <View style={styles.viewPills}>
-                {(['day', 'week', 'month'] as CalendarView[]).map((view) => (
-                  <TouchableOpacity
-                    key={view}
-                    style={[
-                      styles.viewPill,
-                      { backgroundColor: theme.backgroundSecondary },
-                      selectedView === view && [styles.viewPillActive, { backgroundColor: theme.primary }],
-                    ]}
-                    onPress={() => setSelectedView(view)}
-                  >
-                    <Text
-                      style={[
-                        styles.viewPillText,
-                        { color: theme.textSecondary },
-                        selectedView === view && styles.viewPillTextActive,
-                      ]}
-                    >
-                      {view === 'day' ? 'Д' : view === 'week' ? 'Н' : 'М'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            {/* Date Navigation */}
-            <View style={styles.dateNav}>
-              <TouchableOpacity onPress={handlePrevious} style={styles.navButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={handleToday} style={styles.todayButton}>
-                <Text style={[styles.dateText, { color: theme.text }]}>{getDateRangeText()}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={handleNext} style={styles.navButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+              {/* Add Button */}
+              <TouchableOpacity onPress={handleAddEvent} style={styles.addButton}>
+                <Ionicons name="add" size={30} color={theme.primary} />
               </TouchableOpacity>
             </View>
           </>
         }
       />
 
-      {/* Events List */}
-      {isLoading ? (
+      {/* Content container with background */}
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {/* Date Navigation */}
+        <View style={[styles.dateNav, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={handlePrevious} style={styles.navButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleToday} style={styles.todayButton}>
+            <Text style={[styles.dateText, { color: theme.text }]}>{getDateRangeText()}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleNext} style={styles.navButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* View Selector Pills */}
+        <View style={styles.viewSelectorContainer}>
+          <View style={styles.viewPills}>
+            {(['day', 'week', 'month'] as CalendarView[]).map((view) => (
+              <TouchableOpacity
+                key={view}
+                style={[
+                  styles.viewPill,
+                  { backgroundColor: theme.backgroundSecondary },
+                  selectedView === view && [styles.viewPillActive, { backgroundColor: theme.primary }],
+                ]}
+                onPress={() => setSelectedView(view)}
+              >
+                <Text
+                  style={[
+                    styles.viewPillText,
+                    { color: theme.textSecondary },
+                    selectedView === view && styles.viewPillTextActive,
+                  ]}
+                >
+                  {view === 'day' ? 'День' : view === 'week' ? 'Неделя' : 'Месяц'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Events List */}
+        {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -294,7 +312,7 @@ const CalendarScreen: React.FC = () => {
             <EventItem event={item} onPress={handleEventPress} />
           )}
           renderSectionHeader={({ section: { title } }) => (
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
               <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
             </View>
           )}
@@ -306,15 +324,6 @@ const CalendarScreen: React.FC = () => {
           }
         />
       )}
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        onPress={handleAddEvent}
-        style={[styles.fab, { backgroundColor: theme.primary }]}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
 
       {/* Create Event Modal */}
       {console.log('📅 Rendering CreateEventModal, showCreateModal:', showCreateModal)}
@@ -341,6 +350,7 @@ const CalendarScreen: React.FC = () => {
           loadEvents();
         }}
       />
+      </View>
     </SafeAreaView>
   );
 };
@@ -356,7 +366,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerLeft: {
-    width: 102, // Same width as viewPills (32*3 + 6*2)
+    width: 40,
   },
   headerTitle: {
     fontSize: 20,
@@ -364,19 +374,24 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
+  addButton: {
+    width: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewSelectorContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
   viewPills: {
     flexDirection: 'row',
-    gap: 6,
-  },
-  divider: {
-    height: 1,
-    marginVertical: 6,
-    opacity: 0.5,
+    gap: 8,
   },
   viewPill: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -384,7 +399,7 @@ const styles = StyleSheet.create({
     // backgroundColor set dynamically
   },
   viewPillText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   viewPillTextActive: {
@@ -394,6 +409,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
   navButton: {
     width: 32,
@@ -458,21 +476,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 22,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 90,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
 });
 

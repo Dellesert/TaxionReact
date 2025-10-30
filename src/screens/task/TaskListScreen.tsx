@@ -9,12 +9,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   Modal,
-  Animated,
+  Platform,
+  Animated as RNAnimated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { TaskItem } from '@components/task/TaskItem';
 import { TaskSkeleton } from '@components/task/TaskSkeleton';
 import { ScreenHeader } from '@components/common/ScreenHeader';
@@ -23,12 +27,14 @@ import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
 import { TaskStackParamList } from '@navigation/types';
 import * as taskApi from '@api/task.api';
+import CreateTaskModal from '@components/task/CreateTaskModal';
 
 type TaskFilter = 'all' | 'my' | 'assigned';
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
 type StatusTab = 'new' | 'in_progress' | 'review' | 'done';
 
 const TASKS_PER_PAGE = 10;
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const TaskListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -40,6 +46,11 @@ const TaskListScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<StatusTab>('new');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const isFirstRender = useRef(true);
+
+  // Animation for tab transitions (slide with Reanimated)
+  const translateX = useSharedValue(0);
+  const isSwipingHorizontally = useSharedValue(false);
+  const currentTabIndex = useSharedValue(0); // Track current tab index
 
   // Tasks by status
   const [newTasks, setNewTasks] = useState<Task[]>([]);
@@ -59,8 +70,11 @@ const TaskListScreen: React.FC = () => {
   // Filter menu state
   const [isFilterMenuVisible, setIsFilterMenuVisible] = useState(false);
 
+  // Create task modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   // Animation for search
-  const searchAnimation = useRef(new Animated.Value(0)).current;
+  const searchAnimation = useRef(new RNAnimated.Value(0)).current;
 
   // Total counts for each status
   const [newTasksTotal, setNewTasksTotal] = useState(0);
@@ -75,11 +89,7 @@ const TaskListScreen: React.FC = () => {
   const [loadingDone, setLoadingDone] = useState(false);
 
   useEffect(() => {
-    loadAllTasks();
-  }, [filter]);
-
-  useEffect(() => {
-    Animated.timing(searchAnimation, {
+    RNAnimated.timing(searchAnimation, {
       toValue: isSearchVisible ? 1 : 0,
       duration: 300,
       useNativeDriver: false,
@@ -88,12 +98,101 @@ const TaskListScreen: React.FC = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchQuery) {
-        loadAllTasks();
-      }
+      loadAllTasks();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, filter]);
+
+  // Swipe gesture to switch tabs (iOS only)
+  const statusTabsOrder: StatusTab[] = ['new', 'in_progress', 'review', 'done'];
+
+  const switchToTab = (newTab: StatusTab) => {
+    setActiveTab(newTab);
+    // Animate to the new tab position on iOS
+    if (Platform.OS === 'ios') {
+      const newIndex = statusTabsOrder.indexOf(newTab);
+      currentTabIndex.value = newIndex;
+      translateX.value = withTiming(-newIndex * SCREEN_WIDTH, { duration: 300 });
+    }
+  };
+
+  const resetSwipeFlag = () => {
+    setTimeout(() => {
+      isSwipingHorizontally.value = false;
+    }, 100);
+  };
+
+  // Initialize translateX based on active tab
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      const currentIndex = statusTabsOrder.indexOf(activeTab);
+      currentTabIndex.value = currentIndex;
+      translateX.value = -currentIndex * SCREEN_WIDTH;
+    }
+  }, []);
+
+  const swipeGesture = Gesture.Pan()
+    .enabled(Platform.OS === 'ios')
+    .maxPointers(1)
+    .onBegin(() => {
+      'worklet';
+      isSwipingHorizontally.value = false;
+    })
+    .onUpdate((event) => {
+      'worklet';
+      // Detect if this is a horizontal swipe
+      const absX = Math.abs(event.translationX);
+      const absY = Math.abs(event.translationY);
+
+      // If horizontal movement is dominant, follow it
+      if (absX > absY || absX > 3) {
+        isSwipingHorizontally.value = true;
+        // Calculate base position for current tab using shared value
+        const baseOffset = -currentTabIndex.value * SCREEN_WIDTH;
+        // Follow finger movement from base position
+        translateX.value = baseOffset + event.translationX;
+      }
+    })
+    .onEnd((event) => {
+      'worklet';
+      const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3; // 30% of screen width
+      const VELOCITY_THRESHOLD = 500;
+      const currentIndex = currentTabIndex.value;
+
+      const shouldSwitchTab = Math.abs(event.translationX) > SWIPE_THRESHOLD || Math.abs(event.velocityX) > VELOCITY_THRESHOLD;
+
+      let targetIndex = currentIndex;
+
+      if (shouldSwitchTab && event.translationX > 0 && currentIndex > 0) {
+        // Swipe right - go to previous tab
+        targetIndex = currentIndex - 1;
+      } else if (shouldSwitchTab && event.translationX < 0 && currentIndex < 3) {
+        // Swipe left - go to next tab (max index is 3)
+        targetIndex = currentIndex + 1;
+      }
+
+      // Animate to target tab
+      const targetOffset = -targetIndex * SCREEN_WIDTH;
+      translateX.value = withTiming(targetOffset, {
+        duration: 250,
+      }, () => {
+        // Update current tab index after animation completes
+        currentTabIndex.value = targetIndex;
+      });
+
+      // Update active tab if changed (just update state, animation already done above)
+      if (targetIndex !== currentIndex) {
+        runOnJS(setActiveTab)(statusTabsOrder[targetIndex]);
+      }
+
+      // Reset swipe flag
+      runOnJS(resetSwipeFlag)();
+    });
+
+  // Animated style for content - horizontal container with all tabs
+  const animatedContentStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -106,7 +205,7 @@ const TaskListScreen: React.FC = () => {
     return unsubscribe;
   }, [navigation]);
 
-  const buildFilters = useCallback(() => {
+  const buildFilters = () => {
     const filters: any = {};
     if (filter === 'my') {
       filters.created_by = user?.id;
@@ -117,7 +216,7 @@ const TaskListScreen: React.FC = () => {
       filters.search = searchQuery.trim();
     }
     return filters;
-  }, [filter, searchQuery, user?.id]);
+  };
 
   const loadTasksByStatus = async (
     status: StatusTab,
@@ -129,7 +228,7 @@ const TaskListScreen: React.FC = () => {
 
     try {
       const response = await taskApi.getTasksByStatus(status, limit, offset, filters);
-      const tasks = response.data;
+      const tasks = response.data || [];
 
       // Load subtasks for tasks that have them
       const tasksWithSubtasks = tasks.filter(t => t.subtask_count && t.subtask_count > 0);
@@ -261,11 +360,19 @@ const TaskListScreen: React.FC = () => {
   };
 
   const handleTaskPress = (task: Task) => {
+    // Block task press if currently swiping horizontally
+    if (isSwipingHorizontally.value) {
+      return;
+    }
     navigation.navigate('TaskDetail', { taskId: task.id });
   };
 
   const handleNewTask = () => {
-    navigation.navigate('CreateTask');
+    setShowCreateModal(true);
+  };
+
+  const handleTaskCreated = () => {
+    loadAllTasks();
   };
 
   const statusTabs: { key: StatusTab; label: string; color: string }[] = [
@@ -286,6 +393,118 @@ const TaskListScreen: React.FC = () => {
   const isLoading = getLoadingForStatus(activeTab);
   const hasMore = currentTasks.length < currentTotal;
   const totalTasks = newTasksTotal + inProgressTotal + reviewTotal + doneTotal;
+
+  // Render a single tab content
+  const renderTabContent = (tab: StatusTab) => {
+    const tabTasks = getCurrentTasks(tab);
+    const tabTotal = getTotalForStatus(tab);
+    const tabHasMore = tabTasks.length < tabTotal;
+
+    return (
+      <View key={tab} style={{ width: SCREEN_WIDTH, height: '100%' }}>
+        {/* Expand All Subtasks Button */}
+        {!isInitialLoading && tabTotal > 0 && (() => {
+          const tasksWithSubtasks = tabTasks.filter(t => t.subtask_count && t.subtask_count > 0);
+          if (tasksWithSubtasks.length === 0) return null;
+
+          return (
+            <TouchableOpacity
+              style={styles.expandAllButton}
+              onPress={() => setExpandAllSubtasks(!expandAllSubtasks)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={expandAllSubtasks ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color="#6b7280"
+              />
+              <Text style={styles.expandAllText}>
+                {expandAllSubtasks ? 'Свернуть все подзадачи' : 'Развернуть все подзадачи'} ({tasksWithSubtasks.length})
+              </Text>
+            </TouchableOpacity>
+          );
+        })()}
+
+        {isInitialLoading ? (
+          <View style={{ flex: 1, paddingTop: 12 }}>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <TaskSkeleton key={i} />
+            ))}
+          </View>
+        ) : totalTasks === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? 'Ничего не найдено' : 'Нет задач'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery
+                ? 'Попробуйте изменить фильтры или поисковый запрос'
+                : 'Нажмите + чтобы создать первую задачу'}
+            </Text>
+          </View>
+        ) : tabTotal === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
+            </View>
+            <Text style={styles.emptyTitle}>Нет задач</Text>
+            <Text style={styles.emptySubtitle}>
+              В этом статусе пока нет задач
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={tabTasks}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => {
+              const hasSubtaskCount = item.subtask_count && item.subtask_count > 0;
+              const subtasks = subtasksCache[item.id];
+
+              return (
+                <View style={styles.taskItem}>
+                  <TaskItem
+                    task={item}
+                    onPress={handleTaskPress}
+                    subtasks={subtasks}
+                    onSubtaskPress={handleTaskPress}
+                    forceExpanded={expandAllSubtasks}
+                  />
+                </View>
+              );
+            }}
+            contentContainerStyle={styles.taskList}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            }
+            ListFooterComponent={
+              tabHasMore ? (
+                <View style={styles.loadMoreContainer}>
+                  <TouchableOpacity
+                    style={styles.loadMoreButton}
+                    onPress={() => handleLoadMore(tab)}
+                  >
+                    {getLoadingForStatus(tab) ? (
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    ) : (
+                      <>
+                        <Ionicons name="chevron-down" size={20} color={theme.primary} />
+                        <Text style={[styles.loadMoreText, { color: theme.primary }]}>
+                          Ещё {tabTotal - tabTasks.length}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : null
+            }
+          />
+        )}
+      </View>
+    );
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -432,6 +651,11 @@ const TaskListScreen: React.FC = () => {
       fontWeight: '500',
       color: '#6b7280',
     },
+    horizontalTabsContainer: {
+      flexDirection: 'row',
+      width: SCREEN_WIDTH * 4, // 4 tabs
+      height: '100%',
+    },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -501,7 +725,7 @@ const TaskListScreen: React.FC = () => {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
       {/* Header */}
       <ScreenHeader
         title="Задачи"
@@ -539,7 +763,7 @@ const TaskListScreen: React.FC = () => {
             </View>
 
             {/* Animated Search Input */}
-            <Animated.View
+            <RNAnimated.View
               style={[
                 styles.searchContainer,
                 {
@@ -567,7 +791,7 @@ const TaskListScreen: React.FC = () => {
                   </TouchableOpacity>
                 )}
               </View>
-            </Animated.View>
+            </RNAnimated.View>
 
             {/* Status Tabs */}
             <View style={styles.tabsContainer}>
@@ -581,7 +805,7 @@ const TaskListScreen: React.FC = () => {
                       styles.tab,
                       isActive && { ...styles.tabActive, borderBottomColor: tab.color },
                     ]}
-                    onPress={() => setActiveTab(tab.key)}
+                    onPress={() => switchToTab(tab.key)}
                   >
                     <View style={styles.tabContent}>
                       <Text
@@ -614,108 +838,20 @@ const TaskListScreen: React.FC = () => {
         }
       />
 
-      {/* Expand All Subtasks Button */}
-      {!isInitialLoading && currentTotal > 0 && (() => {
-        const tasksWithSubtasks = currentTasks.filter(t => t.subtask_count && t.subtask_count > 0);
-        if (tasksWithSubtasks.length === 0) return null;
-
-        return (
-          <TouchableOpacity
-            style={styles.expandAllButton}
-            onPress={() => setExpandAllSubtasks(!expandAllSubtasks)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={expandAllSubtasks ? 'chevron-up' : 'chevron-down'}
-              size={18}
-              color="#6b7280"
-            />
-            <Text style={styles.expandAllText}>
-              {expandAllSubtasks ? 'Свернуть все подзадачи' : 'Развернуть все подзадачи'} ({tasksWithSubtasks.length})
-            </Text>
-          </TouchableOpacity>
-        );
-      })()}
-
-      {/* Content */}
-      {isInitialLoading ? (
-        <View style={{ flex: 1, paddingTop: 12 }}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <TaskSkeleton key={i} />
-          ))}
-        </View>
-      ) : totalTasks === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {searchQuery ? 'Ничего не найдено' : 'Нет задач'}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {searchQuery
-              ? 'Попробуйте изменить фильтры или поисковый запрос'
-              : 'Нажмите + чтобы создать первую задачу'}
-          </Text>
-        </View>
-      ) : currentTotal === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
-          </View>
-          <Text style={styles.emptyTitle}>Нет задач</Text>
-          <Text style={styles.emptySubtitle}>
-            В этом статусе пока нет задач
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={currentTasks}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => {
-            const hasSubtaskCount = item.subtask_count && item.subtask_count > 0;
-            const subtasks = subtasksCache[item.id];
-
-            return (
-              <View style={styles.taskItem}>
-                <TaskItem
-                  task={item}
-                  onPress={handleTaskPress}
-                  subtasks={subtasks}
-                  onSubtaskPress={handleTaskPress}
-                  forceExpanded={expandAllSubtasks}
-                />
-              </View>
-            );
-          }}
-          contentContainerStyle={styles.taskList}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-          ListFooterComponent={
-            hasMore ? (
-              <View style={styles.loadMoreContainer}>
-                <TouchableOpacity
-                  style={styles.loadMoreButton}
-                  onPress={() => handleLoadMore(activeTab)}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color={theme.text} />
-                  ) : (
-                    <>
-                      <Ionicons name="chevron-down" size={18} color={theme.text} />
-                      <Text style={styles.loadMoreText}>
-                        Ещё {currentTotal - currentTasks.length}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : null
-          }
-        />
-      )}
+      {/* Content container with horizontal tabs (iOS) or single tab (Android) */}
+      <View style={{ flex: 1, backgroundColor: theme.background, overflow: 'hidden' }}>
+      <GestureDetector gesture={swipeGesture}>
+        <Animated.View style={[styles.horizontalTabsContainer, animatedContentStyle]}>
+          {Platform.OS === 'ios' ? (
+            // Render all tabs side by side for iOS swipe
+            statusTabsOrder.map((tab) => renderTabContent(tab))
+          ) : (
+            // Render only active tab for Android
+            renderTabContent(activeTab)
+          )}
+        </Animated.View>
+      </GestureDetector>
+      </View>
 
       {/* Filter Menu Dropdown */}
       {isFilterMenuVisible && (
@@ -761,6 +897,13 @@ const TaskListScreen: React.FC = () => {
           </TouchableOpacity>
         </Modal>
       )}
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onTaskCreated={handleTaskCreated}
+      />
     </SafeAreaView>
   );
 };

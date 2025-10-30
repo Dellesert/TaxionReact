@@ -11,6 +11,7 @@ import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { Avatar } from '@components/common/Avatar';
 
 interface TaskItemProps {
   task: Task;
@@ -150,15 +151,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   // Build delegation chain display
   const renderDelegationChain = () => {
-    // Debug: log task delegation info
-    if (task.delegated_from_user_id || task.original_assignee_id) {
-      console.log('📋 Task delegation info:', {
+    // Debug: log task delegation info and avatar data
+    if (task.delegated_from_user_id || task.original_assignee_id || task.creator) {
+      console.log('📋 Task user info with avatars:', {
         id: task.id,
         title: task.title,
+        creator: task.creator,
+        assignees: task.assignees,
         delegation_chain: task.delegation_chain,
-        delegated_from_user_id: task.delegated_from_user_id,
-        original_assignee_id: task.original_assignee_id,
-        assigned_to_user_id: task.assigned_to_user_id,
       });
     }
 
@@ -167,45 +167,82 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       console.log('✅ Showing delegation chain:', task.delegation_chain);
       return (
         <View style={styles.delegationChain}>
-          <Ionicons name="git-branch-outline" size={14} color="#6b7280" />
-          <Text style={styles.delegationText} numberOfLines={1}>
-            {task.delegation_chain.map((user) => formatUserName(user.name, user.id)).join(' → ')}
-          </Text>
+          <View style={styles.avatarChain}>
+            {task.delegation_chain.map((user, index) => (
+              <React.Fragment key={user.id}>
+                <View style={styles.chainItem}>
+                  <Avatar
+                    name={user.name}
+                    imageUrl={user.avatar}
+                    size={16}
+                  />
+                  <Text style={styles.delegationText} numberOfLines={1}>
+                    {formatUserName(user.name, user.id)}
+                  </Text>
+                </View>
+                {index < task.delegation_chain!.length - 1 && (
+                  <Text style={styles.chainArrow}>→</Text>
+                )}
+              </React.Fragment>
+            ))}
+          </View>
         </View>
       );
     }
 
     // Fallback: show creator -> assignees if available
-    const chain: string[] = [];
-    const chainUserIds: (number | undefined)[] = [];
+    const chain: { name: string; id?: number; avatar?: string }[] = [];
 
     if (task.creator) {
-      chain.push(task.creator.name);
-      chainUserIds.push(task.creator.id);
+      chain.push({
+        name: task.creator.name,
+        id: task.creator.id,
+        avatar: task.creator.avatar,
+      });
     }
 
     if (task.assignees && task.assignees.length > 0) {
       task.assignees.forEach((assignee) => {
-        if (!chain.includes(assignee.name)) {
-          chain.push(assignee.name);
-          chainUserIds.push(assignee.id);
+        if (!chain.find(u => u.id === assignee.id)) {
+          chain.push({
+            name: assignee.name,
+            id: assignee.id,
+            avatar: assignee.avatar,
+          });
         }
       });
     } else if (task.assignee) {
-      if (!chain.includes(task.assignee.name)) {
-        chain.push(task.assignee.name);
-        chainUserIds.push(task.assignee.id);
+      if (!chain.find(u => u.id === task.assignee!.id)) {
+        chain.push({
+          name: task.assignee.name,
+          id: task.assignee.id,
+          avatar: task.assignee.avatar,
+        });
       }
     }
 
     if (chain.length > 1) {
-      const formattedChain = chain.map((name, index) => formatUserName(name, chainUserIds[index]));
       return (
         <View style={styles.delegationChain}>
-          <Ionicons name="people-outline" size={14} color="#6b7280" />
-          <Text style={styles.delegationText} numberOfLines={1}>
-            {formattedChain.join(' → ')}
-          </Text>
+          <View style={styles.avatarChain}>
+            {chain.map((user, index) => (
+              <React.Fragment key={user.id || index}>
+                <View style={styles.chainItem}>
+                  <Avatar
+                    name={user.name}
+                    imageUrl={user.avatar}
+                    size={16}
+                  />
+                  <Text style={styles.delegationText} numberOfLines={1}>
+                    {formatUserName(user.name, user.id)}
+                  </Text>
+                </View>
+                {index < chain.length - 1 && (
+                  <Text style={styles.chainArrow}>→</Text>
+                )}
+              </React.Fragment>
+            ))}
+          </View>
         </View>
       );
     }
@@ -214,10 +251,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     if (task.creator) {
       return (
         <View style={styles.delegationChain}>
-          <Ionicons name="person-outline" size={14} color="#6b7280" />
-          <Text style={styles.delegationText} numberOfLines={1}>
-            {formatUserName(task.creator.name, task.creator.id)}
-          </Text>
+          <View style={styles.chainItem}>
+            <Avatar
+              name={task.creator.name}
+              imageUrl={task.creator.avatar}
+              size={16}
+            />
+            <Text style={styles.delegationText} numberOfLines={1}>
+              {formatUserName(task.creator.name, task.creator.id)}
+            </Text>
+          </View>
         </View>
       );
     }
@@ -714,12 +757,28 @@ const styles = StyleSheet.create({
   delegationChain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    flex: 1,
+  },
+  avatarChain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  chainItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  chainArrow: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginHorizontal: 2,
   },
   delegationText: {
     fontSize: 13,
     color: '#6b7280',
-    flex: 1,
   },
   attachmentBadge: {
     flexDirection: 'row',

@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
@@ -33,10 +34,15 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   onClose,
   onEventUpdated,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showAllAccepted, setShowAllAccepted] = useState(false);
+  const [showAllMaybe, setShowAllMaybe] = useState(false);
+  const [showAllPending, setShowAllPending] = useState(false);
+  const [showAllDeclined, setShowAllDeclined] = useState(false);
 
   if (!event) return null;
 
@@ -148,43 +154,138 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const declinedParticipants = participants.filter(p => p.status === 'declined');
   const maybeParticipants = participants.filter(p => p.status === 'maybe');
 
+  const MAX_PREVIEW = 5;
+
+  const renderParticipantGroup = (
+    groupParticipants: typeof participants,
+    title: string,
+    color: string,
+    showAll: boolean,
+    setShowAll: (show: boolean) => void
+  ) => {
+    if (groupParticipants.length === 0) return null;
+
+    const displayParticipants = showAll ? groupParticipants : groupParticipants.slice(0, MAX_PREVIEW);
+    const hasMore = groupParticipants.length > MAX_PREVIEW;
+
+    return (
+      <View style={styles.participantGroup}>
+        <Text style={[styles.participantGroupTitle, { color }]}>
+          {title} ({groupParticipants.length})
+        </Text>
+        {displayParticipants.map((p) => (
+          <View key={p.id} style={styles.participantItem}>
+            <Avatar name={p.user?.name || 'User'} imageUrl={p.user?.avatar} size={32} />
+            <Text style={[styles.participantName, { color: theme.text }]}>
+              {p.user?.name || `User #${p.user_id}`}
+            </Text>
+          </View>
+        ))}
+        {hasMore && (
+          <TouchableOpacity
+            style={[styles.showMoreButton, { borderColor: theme.border }]}
+            onPress={() => setShowAll(!showAll)}
+          >
+            <Text style={[styles.showMoreText, { color: theme.primary }]}>
+              {showAll ? 'Скрыть' : `Показать ещё ${groupParticipants.length - MAX_PREVIEW}`}
+            </Text>
+            <Ionicons
+              name={showAll ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={theme.primary}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
       onRequestClose={onClose}
       transparent={false}
+      presentationStyle="fullScreen"
     >
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: event.color }]}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <View style={styles.iconContainer}>
-              <Ionicons name={getEventIcon() as any} size={32} color="#FFFFFF" />
-            </View>
-            <Text style={styles.headerTitle}>{event.title}</Text>
-            {statusBadge && (
-              <View style={[styles.statusBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                <Ionicons name={statusBadge.icon as any} size={16} color="#FFFFFF" />
-                <Text style={styles.statusBadgeText}>{statusBadge.label}</Text>
+      <StatusBar barStyle="light-content" backgroundColor={event.color} />
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        {/* Header with color extending to safe area */}
+        <View style={[styles.headerWrapper, { backgroundColor: event.color }]}>
+          <View style={{ height: insets.top }} />
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.headerContent}>
+              <View style={styles.iconContainer}>
+                <Ionicons name={getEventIcon() as any} size={32} color="#FFFFFF" />
               </View>
+              <Text style={styles.headerTitle}>{event.title}</Text>
+
+              {/* Response buttons for participants */}
+              {myParticipation && !isCreator && (
+                <View style={styles.headerResponseButtons}>
+                  <View style={styles.headerResponseButtonWrapper}>
+                    <TouchableOpacity
+                      style={[
+                        styles.headerResponseButton,
+                        myParticipation.status === 'accepted' && styles.headerResponseButtonActive,
+                      ]}
+                      onPress={() => handleUpdateStatus('accepted')}
+                      disabled={isUpdatingStatus}
+                    >
+                      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerResponseButtonLabel}>Приду</Text>
+                  </View>
+
+                  <View style={styles.headerResponseButtonWrapper}>
+                    <TouchableOpacity
+                      style={[
+                        styles.headerResponseButton,
+                        myParticipation.status === 'maybe' && styles.headerResponseButtonActive,
+                      ]}
+                      onPress={() => handleUpdateStatus('maybe')}
+                      disabled={isUpdatingStatus}
+                    >
+                      <Ionicons name="help-circle" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerResponseButtonLabel}>Возможно</Text>
+                  </View>
+
+                  <View style={styles.headerResponseButtonWrapper}>
+                    <TouchableOpacity
+                      style={[
+                        styles.headerResponseButton,
+                        myParticipation.status === 'declined' && styles.headerResponseButtonActive,
+                      ]}
+                      onPress={() => handleUpdateStatus('declined')}
+                      disabled={isUpdatingStatus}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerResponseButtonLabel}>Не приду</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+            {canManage && (
+              <TouchableOpacity onPress={handleDelete} style={styles.deleteButton} disabled={isDeleting}>
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
+                )}
+              </TouchableOpacity>
             )}
           </View>
-          {canManage && (
-            <TouchableOpacity onPress={handleDelete} style={styles.deleteButton} disabled={isDeleting}>
-              {isDeleting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
-              )}
-            </TouchableOpacity>
-          )}
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
+          showsVerticalScrollIndicator={false}>
           {/* Date & Time */}
           <View style={[styles.section, { borderBottomColor: theme.border }]}>
             <View style={styles.infoRow}>
@@ -253,153 +354,42 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             <View style={[styles.section, { borderBottomColor: theme.border }]}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Участники</Text>
 
-              {acceptedParticipants.length > 0 && (
-                <View style={styles.participantGroup}>
-                  <Text style={[styles.participantGroupTitle, { color: '#10B981' }]}>
-                    ✓ Принято ({acceptedParticipants.length})
-                  </Text>
-                  {acceptedParticipants.map((p) => (
-                    <View key={p.id} style={styles.participantItem}>
-                      <Avatar name={p.user?.name || 'User'} size={32} />
-                      <Text style={[styles.participantName, { color: theme.text }]}>
-                        {p.user?.name || `User #${p.user_id}`}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
+              {renderParticipantGroup(
+                acceptedParticipants,
+                '✓ Принято',
+                '#10B981',
+                showAllAccepted,
+                setShowAllAccepted
               )}
 
-              {maybeParticipants.length > 0 && (
-                <View style={styles.participantGroup}>
-                  <Text style={[styles.participantGroupTitle, { color: '#F59E0B' }]}>
-                    ? Возможно ({maybeParticipants.length})
-                  </Text>
-                  {maybeParticipants.map((p) => (
-                    <View key={p.id} style={styles.participantItem}>
-                      <Avatar name={p.user?.name || 'User'} size={32} />
-                      <Text style={[styles.participantName, { color: theme.text }]}>
-                        {p.user?.name || `User #${p.user_id}`}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
+              {renderParticipantGroup(
+                maybeParticipants,
+                '? Возможно',
+                '#F59E0B',
+                showAllMaybe,
+                setShowAllMaybe
               )}
 
-              {pendingParticipants.length > 0 && (
-                <View style={styles.participantGroup}>
-                  <Text style={[styles.participantGroupTitle, { color: '#6B7280' }]}>
-                    ⏱ Ожидание ({pendingParticipants.length})
-                  </Text>
-                  {pendingParticipants.map((p) => (
-                    <View key={p.id} style={styles.participantItem}>
-                      <Avatar name={p.user?.name || 'User'} size={32} />
-                      <Text style={[styles.participantName, { color: theme.text }]}>
-                        {p.user?.name || `User #${p.user_id}`}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
+              {renderParticipantGroup(
+                pendingParticipants,
+                '⏱ Ожидание',
+                '#6B7280',
+                showAllPending,
+                setShowAllPending
               )}
 
-              {declinedParticipants.length > 0 && (
-                <View style={styles.participantGroup}>
-                  <Text style={[styles.participantGroupTitle, { color: '#EF4444' }]}>
-                    ✕ Отклонено ({declinedParticipants.length})
-                  </Text>
-                  {declinedParticipants.map((p) => (
-                    <View key={p.id} style={styles.participantItem}>
-                      <Avatar name={p.user?.name || 'User'} size={32} />
-                      <Text style={[styles.participantName, { color: theme.text }]}>
-                        {p.user?.name || `User #${p.user_id}`}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
+              {renderParticipantGroup(
+                declinedParticipants,
+                '✕ Отклонено',
+                '#EF4444',
+                showAllDeclined,
+                setShowAllDeclined
               )}
             </View>
           )}
 
-          {/* Response Actions - if user is participant but not creator */}
-          {myParticipation && !isCreator && (
-            <View style={[styles.section, { borderBottomColor: 'transparent' }]}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Ваш ответ</Text>
-              <View style={styles.responseButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.responseButton,
-                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                    myParticipation.status === 'accepted' && { backgroundColor: '#10B981', borderColor: '#10B981' },
-                  ]}
-                  onPress={() => handleUpdateStatus('accepted')}
-                  disabled={isUpdatingStatus}
-                >
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={24}
-                    color={myParticipation.status === 'accepted' ? '#FFFFFF' : theme.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.responseButtonText,
-                      { color: myParticipation.status === 'accepted' ? '#FFFFFF' : theme.text },
-                    ]}
-                  >
-                    Принять
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.responseButton,
-                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                    myParticipation.status === 'maybe' && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
-                  ]}
-                  onPress={() => handleUpdateStatus('maybe')}
-                  disabled={isUpdatingStatus}
-                >
-                  <Ionicons
-                    name="help-circle"
-                    size={24}
-                    color={myParticipation.status === 'maybe' ? '#FFFFFF' : theme.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.responseButtonText,
-                      { color: myParticipation.status === 'maybe' ? '#FFFFFF' : theme.text },
-                    ]}
-                  >
-                    Возможно
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.responseButton,
-                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                    myParticipation.status === 'declined' && { backgroundColor: '#EF4444', borderColor: '#EF4444' },
-                  ]}
-                  onPress={() => handleUpdateStatus('declined')}
-                  disabled={isUpdatingStatus}
-                >
-                  <Ionicons
-                    name="close-circle"
-                    size={24}
-                    color={myParticipation.status === 'declined' ? '#FFFFFF' : theme.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.responseButtonText,
-                      { color: myParticipation.status === 'declined' ? '#FFFFFF' : theme.text },
-                    ]}
-                  >
-                    Отклонить
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 };
@@ -407,6 +397,9 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerWrapper: {
+    // Wrapper extends to safe area
   },
   header: {
     paddingHorizontal: 16,
@@ -446,7 +439,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  headerResponseButtons: {
+    flexDirection: 'row',
+    gap: 16,
+    justifyContent: 'center',
+  },
+  headerResponseButtonWrapper: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerResponseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerResponseButtonActive: {
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  headerResponseButtonLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -508,22 +526,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
   },
-  responseButtons: {
+  showMoreButton: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  responseButton: {
-    flex: 1,
-    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    gap: 8,
+    borderRadius: 8,
   },
-  responseButtonText: {
-    fontSize: 13,
+  showMoreText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });

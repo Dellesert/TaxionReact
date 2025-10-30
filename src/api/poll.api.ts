@@ -22,23 +22,49 @@ import { ApiResponse } from '../types/common.types';
 // ============= Poll Operations =============
 
 /**
- * Get list of polls with filters
+ * Get list of polls with filters and pagination
  */
-export const getPolls = async (filters?: PollListFilters): Promise<Poll[]> => {
-  const response = await api.get<ApiResponse<Poll[]>>(API_ENDPOINTS.POLL.LIST, {
-    params: filters,
+export const getPolls = async (
+  filters?: PollListFilters,
+  limit?: number,
+  offset?: number
+): Promise<{ polls: Poll[]; total: number; hasMore: boolean }> => {
+  const params = {
+    ...filters,
+    limit: limit || 20,
+    offset: offset || 0,
+  };
+
+  const response = await api.get<ApiResponse<any>>(API_ENDPOINTS.POLL.LIST, {
+    params,
   });
 
   // Handle different response formats
+  let polls: Poll[] = [];
+  let total: number = 0;
+
   if (response.data.data) {
-    return response.data.data;
+    polls = response.data.data;
+    total = response.data.total || polls.length;
   } else if (response.data.polls) {
-    return response.data.polls;
+    polls = response.data.polls;
+    total = response.data.total || polls.length;
   } else if (Array.isArray(response.data)) {
-    return response.data;
+    polls = response.data;
+    total = polls.length;
   }
 
-  return [];
+  const hasMore = (params.offset + polls.length) < total;
+
+  // Debug logging
+  console.log('📊 Polls API response:', {
+    count: polls.length,
+    total,
+    hasMore,
+    offset: params.offset,
+  });
+
+  return { polls, total, hasMore };
 };
 
 /**
@@ -178,10 +204,14 @@ export const getPollVoters = async (pollId: number): Promise<PollVotersList> => 
     API_ENDPOINTS.POLL.VOTERS(pollId)
   );
 
+  console.log('📊 Poll voters API response:', JSON.stringify(response.data, null, 2));
+
   if (response.data.data) {
+    console.log('📊 First voter data:', response.data.data.voters?.[0]);
     return response.data.data;
   }
 
+  console.log('📊 First voter data (direct):', (response.data as any).voters?.[0]);
   return response.data as any;
 };
 

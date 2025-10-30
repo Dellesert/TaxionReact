@@ -1,7 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
-import * as secureStorage from '@utils/secureStorage';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import { useMemo } from 'react';
 import { replaceLocalhostWithIP, isImageFile } from '@utils/message.utils';
 
 interface Attachment {
@@ -12,73 +9,28 @@ interface Attachment {
 }
 
 /**
- * Хук для загрузки изображений с авторизацией
+ * Хук для подготовки URL изображений
+ * Теперь использует expo-image с встроенным кешированием,
+ * поэтому не нужно загружать и конвертировать в base64
  */
 export const useImageLoader = (attachments?: Attachment[]) => {
-  const [imageUrls, setImageUrls] = useState<{ [key: number]: string }>({});
+  const imageUrls = useMemo(() => {
+    if (!attachments || attachments.length === 0) {
+      return {};
+    }
 
-  useEffect(() => {
-    const loadImages = async () => {
-      if (!attachments || attachments.length === 0) {
-        return;
+    const urls: { [key: number]: string } = {};
+
+    for (const attachment of attachments) {
+      const mimeType = attachment.mime_type || attachment.file_type || '';
+      if (isImageFile(mimeType)) {
+        // Просто заменяем localhost на реальный IP
+        // expo-image сам загрузит и закеширует изображение
+        urls[attachment.id] = replaceLocalhostWithIP(attachment.file_url);
       }
+    }
 
-      const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-      if (!token) {
-        return;
-      }
-
-      for (const attachment of attachments) {
-        const mimeType = attachment.mime_type || attachment.file_type || '';
-        if (isImageFile(mimeType) && !imageUrls[attachment.id]) {
-          try {
-            // Replace localhost with real IP on ALL platforms
-            const fileUrl = replaceLocalhostWithIP(attachment.file_url);
-
-            const response = await fetch(fileUrl, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-
-            if (response.ok) {
-              const blob = await response.blob();
-
-              if (Platform.OS === 'web') {
-                // На Web используем blob URL (быстрее и меньше памяти)
-                const imageUrl = URL.createObjectURL(blob);
-                setImageUrls(prev => ({ ...prev, [attachment.id]: imageUrl }));
-              } else {
-                // На React Native конвертируем blob в base64
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-
-                reader.onloadend = () => {
-                  const base64data = reader.result as string;
-                  setImageUrls(prev => ({ ...prev, [attachment.id]: base64data }));
-                };
-              }
-            }
-          } catch (error) {
-            // Silent error handling
-          }
-        }
-      }
-    };
-
-    loadImages();
-
-    // Cleanup blob URLs on unmount (только для веб)
-    return () => {
-      if (Platform.OS === 'web') {
-        Object.values(imageUrls).forEach(url => {
-          // Только blob URLs нужно освобождать (не base64)
-          if (url && url.startsWith('blob:')) {
-            URL.revokeObjectURL(url);
-          }
-        });
-      }
-    };
+    return urls;
   }, [attachments]);
 
   return imageUrls;

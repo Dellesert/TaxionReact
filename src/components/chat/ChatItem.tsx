@@ -157,7 +157,6 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
   const handleLongPress = () => {
     if (!isEditMode) {
       setShowContextMenu(true);
-      onLongPress?.(chat);
     }
   };
 

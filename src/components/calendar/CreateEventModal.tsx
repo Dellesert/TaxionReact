@@ -11,8 +11,9 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
@@ -20,13 +21,8 @@ import { CreateEventDto } from '../../types/calendar.types';
 import * as calendarApi from '@api/calendar.api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import UserPicker from '@components/task/UserPicker';
-
-// Conditional import for DateTimePicker (only for native platforms)
-let DateTimePicker: any = null;
-if (Platform.OS !== 'web') {
-  DateTimePicker = require('@react-native-community/datetimepicker').default;
-}
+import UserSelector from '@components/common/UserSelector';
+import DatePickerModal from '@components/common/DatePickerModal';
 
 interface CreateEventModalProps {
   visible: boolean;
@@ -49,8 +45,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onEventCreated,
 }) => {
   console.log('📅 CreateEventModal render - visible:', visible);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -64,7 +61,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [location, setLocation] = useState('');
   const [color, setColor] = useState('#3B82F6');
   const [isPrivate, setIsPrivate] = useState(false);
+
+  // Audience selection - like in polls
+  type AudienceType = 'all' | 'department' | 'selected_users';
+  const [audienceType, setAudienceType] = useState<AudienceType>('all');
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
@@ -85,8 +87,33 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       return;
     }
 
+    // Validate audience selection
+    if (audienceType === 'department' && !user?.department_id) {
+      Alert.alert('Ошибка', 'Вы не принадлежите ни к одному отделу');
+      return;
+    }
+
+    if (audienceType === 'selected_users' && selectedParticipants.length === 0) {
+      Alert.alert('Ошибка', 'Выберите хотя бы одного участника');
+      return;
+    }
+
     try {
       setIsLoading(true);
+
+      // Determine participant_ids based on audience type
+      let participantIds: number[] | undefined = undefined;
+
+      if (audienceType === 'selected_users') {
+        participantIds = selectedParticipants;
+      } else if (audienceType === 'department') {
+        // Backend will handle department members
+        // For now, we can leave it undefined or implement department member fetching
+        participantIds = undefined;
+      } else {
+        // 'all' - no specific participants
+        participantIds = undefined;
+      }
 
       const eventData: CreateEventDto = {
         title: title.trim(),
@@ -98,7 +125,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         type: 'meeting',
         color,
         is_private: isPrivate,
-        participant_ids: selectedParticipants.length > 0 ? selectedParticipants : undefined,
+        participant_ids: participantIds,
       };
 
       await calendarApi.createEvent(eventData);
@@ -132,6 +159,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setLocation('');
     setColor('#3B82F6');
     setIsPrivate(false);
+    setAudienceType('all');
     setSelectedParticipants([]);
     onClose();
   };
@@ -149,28 +177,45 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       animationType="slide"
       onRequestClose={handleClose}
       transparent={false}
+      presentationStyle="fullScreen"
     >
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color={theme.text} />
-          </TouchableOpacity>
+        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <Ionicons name="close" size={28} color={theme.error} />
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Новое событие</Text>
-          <TouchableOpacity
-            onPress={handleCreate}
-            disabled={isLoading}
-            style={styles.saveButton}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={theme.primary} />
-            ) : (
-              <Text style={[styles.saveButtonText, { color: theme.primary }]}>Создать</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={handleCreate}
+              disabled={isLoading || !title.trim()}
+              style={[
+                styles.saveButton,
+                { backgroundColor: theme.error },
+                (!title.trim() || isLoading) && { backgroundColor: theme.backgroundTertiary }
+              ]}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons
+                  name="checkmark"
+                  size={24}
+                  color={(!title.trim() || isLoading) ? theme.textTertiary : '#FFFFFF'}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={[styles.content, { backgroundColor: theme.background }]}
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
+          showsVerticalScrollIndicator={false}>
           {/* Title */}
           <View style={[styles.section, { borderBottomColor: theme.border }]}>
             <Text style={[styles.label, { color: theme.textSecondary }]}>НАЗВАНИЕ</Text>
@@ -356,11 +401,61 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {canAddParticipants && (
             <View style={[styles.section, { borderBottomColor: theme.border }]}>
               <Text style={[styles.label, { color: theme.textSecondary }]}>УЧАСТНИКИ</Text>
-              <UserPicker
-                selectedUserIds={selectedParticipants}
-                onSelectionChange={setSelectedParticipants}
-                multiSelect={true}
-              />
+
+              {/* Audience type selection */}
+              <View style={styles.typeRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeChip,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                    audienceType === 'all' && { backgroundColor: theme.primary, borderColor: theme.primary },
+                  ]}
+                  onPress={() => setAudienceType('all')}
+                >
+                  <Text style={[styles.typeChipText, { color: theme.text }, audienceType === 'all' && { color: '#FFFFFF' }]}>
+                    Все
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.typeChip,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                    audienceType === 'department' && { backgroundColor: theme.primary, borderColor: theme.primary },
+                  ]}
+                  onPress={() => setAudienceType('department')}
+                >
+                  <Text style={[styles.typeChipText, { color: theme.text }, audienceType === 'department' && { color: '#FFFFFF' }]}>
+                    Мой отдел
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.typeChip,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                    audienceType === 'selected_users' && { backgroundColor: theme.primary, borderColor: theme.primary },
+                  ]}
+                  onPress={() => setAudienceType('selected_users')}
+                >
+                  <Text style={[styles.typeChipText, { color: theme.text }, audienceType === 'selected_users' && { color: '#FFFFFF' }]}>
+                    Выбранные
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* User selector - only shown when selected_users is chosen */}
+              {audienceType === 'selected_users' && (
+                <View style={{ marginTop: 12 }}>
+                  <UserSelector
+                    selectedUserIds={selectedParticipants}
+                    onSelectionChange={setSelectedParticipants}
+                    multiSelect={true}
+                    placeholder="Выберите участников"
+                    modalTitle="Выбрать участников"
+                  />
+                </View>
+              )}
             </View>
           )}
 
@@ -383,56 +478,48 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </View>
         </ScrollView>
 
-        {/* Date/Time Pickers - Only on native platforms */}
-        {Platform.OS !== 'web' && DateTimePicker && (
-          <>
-            {showStartDatePicker && (
-              <DateTimePicker
-                value={startDate}
-                mode="date"
-                display="default"
-                onChange={(event, date) => {
-                  setShowStartDatePicker(false);
-                  if (date) setStartDate(date);
-                }}
-              />
-            )}
-            {showEndDatePicker && (
-              <DateTimePicker
-                value={endDate}
-                mode="date"
-                display="default"
-                onChange={(event, date) => {
-                  setShowEndDatePicker(false);
-                  if (date) setEndDate(date);
-                }}
-              />
-            )}
-            {showStartTimePicker && (
-              <DateTimePicker
-                value={startDate}
-                mode="time"
-                display="default"
-                onChange={(event, date) => {
-                  setShowStartTimePicker(false);
-                  if (date) setStartDate(date);
-                }}
-              />
-            )}
-            {showEndTimePicker && (
-              <DateTimePicker
-                value={endDate}
-                mode="time"
-                display="default"
-                onChange={(event, date) => {
-                  setShowEndTimePicker(false);
-                  if (date) setEndDate(date);
-                }}
-              />
-            )}
-          </>
-        )}
-      </SafeAreaView>
+        {/* Date/Time Pickers with animation */}
+        <DatePickerModal
+          visible={showStartDatePicker}
+          value={startDate}
+          mode="date"
+          onChange={(event, date) => {
+            if (date) setStartDate(date);
+          }}
+          onClose={() => setShowStartDatePicker(false)}
+        />
+
+        <DatePickerModal
+          visible={showEndDatePicker}
+          value={endDate}
+          mode="date"
+          onChange={(event, date) => {
+            if (date) setEndDate(date);
+          }}
+          onClose={() => setShowEndDatePicker(false)}
+          minimumDate={startDate}
+        />
+
+        <DatePickerModal
+          visible={showStartTimePicker}
+          value={startDate}
+          mode="time"
+          onChange={(event, date) => {
+            if (date) setStartDate(date);
+          }}
+          onClose={() => setShowStartTimePicker(false)}
+        />
+
+        <DatePickerModal
+          visible={showEndTimePicker}
+          value={endDate}
+          mode="time"
+          onChange={(event, date) => {
+            if (date) setEndDate(date);
+          }}
+          onClose={() => setShowEndTimePicker(false)}
+        />
+      </View>
     </Modal>
   );
 };
@@ -446,8 +533,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
+  },
+  headerLeft: {
+    width: 100,
+    alignItems: 'flex-start',
   },
   closeButton: {
     width: 40,
@@ -456,12 +547,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerRight: {
+    width: 100,
+    alignItems: 'flex-end',
   },
   saveButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonText: {
     fontSize: 16,
@@ -557,6 +657,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 8,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  typeChip: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  typeChipText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

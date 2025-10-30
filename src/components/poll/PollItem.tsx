@@ -95,7 +95,7 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
       case 'public':
         return 'Публичный';
       case 'department':
-        return 'Департамент';
+        return poll.department_name || 'Департамент';
       case 'invite_only':
         return 'Приглашенные';
       case 'private':
@@ -153,7 +153,7 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
           </View>
         </View>
 
-        {/* Visibility and Category in one row */}
+        {/* Visibility, Category and Deadline in one row */}
         <View style={styles.metaBadgesRow}>
           <View style={[styles.visibilityBadge, { backgroundColor: getVisibilityColor() + '12' }]}>
             <Ionicons name={getVisibilityIcon() as any} size={14} color={getVisibilityColor()} />
@@ -166,6 +166,18 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
             <View style={[styles.categoryTag, { backgroundColor: '#EC4899' + '10', borderColor: '#EC4899' + '40' }]}>
               <Ionicons name="pricetag" size={12} color="#EC4899" />
               <Text style={[styles.categoryTagText, { color: '#EC4899' }]}>{poll.category}</Text>
+            </View>
+          )}
+
+          {poll.end_time && poll.status === 'active' && (
+            <View style={styles.deadlineChip}>
+              <Ionicons name="time" size={11} color="#EF4444" />
+              <Text style={[styles.deadlineText, { color: '#EF4444' }]}>
+                до {new Date(poll.end_time).toLocaleDateString('ru-RU', {
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </Text>
             </View>
           )}
         </View>
@@ -199,13 +211,6 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
               <Text style={[styles.statValue, { color: theme.text }]}>{poll.total_voters || 0}</Text>
             </View>
 
-            <View style={styles.statBox}>
-              <View style={[styles.statIconCircle, { backgroundColor: '#3B82F6' + '15' }]}>
-                <Ionicons name="checkmark-done" size={16} color="#3B82F6" />
-              </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>{poll.total_votes || 0}</Text>
-            </View>
-
             {poll.comments_count && poll.comments_count > 0 && (
               <View style={styles.statBox}>
                 <View style={[styles.statIconCircle, { backgroundColor: '#F59E0B' + '15' }]}>
@@ -217,18 +222,6 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
           </View>
 
           <View style={styles.footerRight}>
-            {poll.end_time && poll.status === 'active' && (
-              <View style={styles.deadlineChip}>
-                <Ionicons name="time" size={11} color="#EF4444" />
-                <Text style={[styles.deadlineText, { color: '#EF4444' }]}>
-                  до {new Date(poll.end_time).toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
-                </Text>
-              </View>
-            )}
-
             {/* Creator name with avatar in bottom right corner */}
             <View style={styles.creatorContainer}>
               <Avatar
@@ -236,7 +229,7 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
                 imageUrl={poll.creator?.avatar}
                 size={20}
               />
-              <Text style={[styles.creatorName, { color: theme.textTertiary }]} numberOfLines={1}>
+              <Text style={[styles.creatorName, { color: theme.textSecondary }]} numberOfLines={1}>
                 {getCreatorName()}
               </Text>
             </View>

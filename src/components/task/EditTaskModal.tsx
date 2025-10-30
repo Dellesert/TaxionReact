@@ -14,7 +14,9 @@ import {
   Modal,
   Alert,
   Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { Task, TaskPriority } from '../../types/task.types';
@@ -37,7 +39,8 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   onClose,
   onTaskUpdated,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
@@ -45,8 +48,8 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [dueDate, setDueDate] = useState<Date | undefined>(
     task.due_date ? new Date(task.due_date) : undefined
   );
-  const [assigneeIds, setAssigneeIds] = useState<number[]>(
-    task.assignees?.map(a => a.id) || []
+  const [assigneeId, setAssigneeId] = useState<number | undefined>(
+    task.assignees && task.assignees.length > 0 ? task.assignees[0].id : undefined
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -76,7 +79,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         description: description.trim() || undefined,
         priority,
         due_date: dueDate?.toISOString(),
-        assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
+        assignee_ids: assigneeId ? [assigneeId] : undefined,
       };
 
       const updatedTask = await taskApi.updateTask(task.id, updateData);
@@ -109,36 +112,43 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       animationType="slide"
       transparent={false}
       onRequestClose={onClose}
+      presentationStyle="fullScreen"
     >
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-            <Ionicons name="close" size={28} color={theme.error} />
-          </TouchableOpacity>
+        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+              <Ionicons name="close" size={28} color={theme.error} />
+            </TouchableOpacity>
+          </View>
+
           <Text style={[styles.headerTitle, { color: theme.text }]}>Редактировать</Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={isSaving || !title.trim()}
-            style={[
-              styles.saveButton,
-              { backgroundColor: theme.error },
-              (!title.trim() || isSaving) && { backgroundColor: theme.backgroundTertiary }
-            ]}
-          >
-            <Text style={[
-              styles.saveButtonText,
-              (!title.trim() || isSaving) && { color: theme.textTertiary }
-            ]}>
-              {isSaving ? '...' : 'Сохранить'}
-            </Text>
-          </TouchableOpacity>
+
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isSaving || !title.trim()}
+              style={[
+                styles.saveButton,
+                { backgroundColor: theme.error },
+                (!title.trim() || isSaving) && { backgroundColor: theme.backgroundTertiary }
+              ]}
+            >
+              <Ionicons
+                name="checkmark"
+                size={24}
+                color={(!title.trim() || isSaving) ? theme.textTertiary : '#FFFFFF'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Content */}
         <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -225,15 +235,15 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Исполнители */}
+          {/* Исполнитель */}
           <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>Исполнители</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text }]}>Исполнитель</Text>
             <UserSelector
-              selectedUserIds={assigneeIds}
-              onSelectionChange={setAssigneeIds}
-              multiSelect={true}
-              placeholder="Выберите исполнителей"
-              modalTitle="Выбрать исполнителей"
+              selectedUserIds={assigneeId ? [assigneeId] : []}
+              onSelectionChange={(ids) => setAssigneeId(ids[0])}
+              multiSelect={false}
+              placeholder="Выберите исполнителя"
+              modalTitle="Выбрать исполнителя"
             />
           </View>
         </ScrollView>
@@ -266,6 +276,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
+  headerLeft: {
+    width: 100,
+    alignItems: 'flex-start',
+  },
   headerButton: {
     width: 40,
     height: 40,
@@ -278,17 +292,20 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
+  headerRight: {
+    width: 100,
+    alignItems: 'flex-end',
+  },
   saveButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    minWidth: 80,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
   content: {
     flex: 1,

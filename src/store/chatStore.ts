@@ -13,12 +13,16 @@ import { websocketService } from '@services/websocket.service';
 
 interface ChatState {
   chats: Chat[];
+  totalChats: number;
+  hasMoreChats: boolean;
   activeChat: Chat | null;
   messages: Record<number, Message[]>;
   isLoading: boolean;
+  isLoadingMore: boolean;
   error: string | null;
   typingUsers: Record<number, TypingIndicator[]>;
-  loadChats: () => Promise<void>;
+  loadChats: (append?: boolean) => Promise<void>;
+  loadMoreChats: () => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
   updateChat: (chatId: number, data: { name?: string; avatar?: string; description?: string }) => Promise<void>;
   deleteChat: (chatId: number) => Promise<void>;
@@ -89,29 +93,67 @@ const enrichChatWithUsers = async (chat: Chat): Promise<Chat> => {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   chats: [],
+  totalChats: 0,
+  hasMoreChats: false,
   activeChat: null,
   messages: {},
   isLoading: false,
+  isLoadingMore: false,
   error: null,
   typingUsers: {},
 
-  loadChats: async () => {
+  loadChats: async (append = false) => {
     try {
-      set({ isLoading: true, error: null });
+      if (!append) {
+        set({ isLoading: true, error: null });
+      }
+      const { chats: currentChats } = useChatStore.getState();
+      const offset = append ? currentChats.length : 0;
+
       let chats;
+      let total = 0;
+      let hasMore = false;
+
       if (isMockMode()) {
         console.log('🔧 Using mock chats');
         chats = await mockGetChats();
+        total = chats.length;
       } else {
-        chats = await chatApi.getChats();
+        const response = await chatApi.getChats(50, offset);
+        chats = response.chats;
+        total = response.total;
+        hasMore = response.hasMore;
         // Enrich chats with user data
         chats = await Promise.all(chats.map(enrichChatWithUsers));
       }
 
-      set({ chats, isLoading: false });
+      if (append) {
+        set({
+          chats: [...currentChats, ...chats],
+          totalChats: total,
+          hasMoreChats: hasMore,
+          isLoading: false
+        });
+      } else {
+        set({
+          chats,
+          totalChats: total,
+          hasMoreChats: hasMore,
+          isLoading: false
+        });
+      }
     } catch (error: any) {
       set({ error: error.message || 'Failed to load chats', isLoading: false });
     }
+  },
+
+  loadMoreChats: async () => {
+    const { hasMoreChats, isLoadingMore } = useChatStore.getState();
+    if (!hasMoreChats || isLoadingMore) return;
+
+    set({ isLoadingMore: true });
+    await useChatStore.getState().loadChats(true);
+    set({ isLoadingMore: false });
   },
 
   createChat: async (name: string, memberIds: number[], type: 'private' | 'group' = 'group') => {

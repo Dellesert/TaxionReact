@@ -126,8 +126,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         isCardMessage && { backgroundColor: 'transparent', padding: 0 },
       ]}
     >
-      {!isOwnMessage && !isCardMessage && <View style={[styles.tail, { backgroundColor: theme.messageOther }]} />}
-      {isOwnMessage && !isCardMessage && <View style={[styles.tailOwn, { backgroundColor: theme.messageOwn }]} />}
+      {/* Уголок - просто используем ::before/::after эффект через позиционирование */}
 
       {/* Заголовок пересланного сообщения */}
       {forwardHeader && (
@@ -216,6 +215,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   attachments={message.attachments}
                   imageUrls={imageUrls}
                   onImagePress={onImagePress}
+                  onLongPress={onLongPress}
                 />
               )}
             </View>
@@ -259,12 +259,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: '70%',
-    borderRadius: 16,
-    borderBottomLeftRadius: 4,
+    minWidth: '35%',
+    borderRadius: 18,
+    borderBottomLeftRadius: 3,
     padding: 12,
   },
   ownMessageBubble: {
-    borderRadius: 16,
+    borderRadius: 18,
+    borderBottomRightRadius: 3,
+    borderBottomLeftRadius: 23,
+
   },
   senderName: {
     fontSize: 12,
@@ -306,26 +310,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: '#aaa',
     transform: [{ translateY: 3 }],
-  },
-  tail: {
-    position: 'absolute',
-    bottom: 0,
-    left: -6,
-    width: 12,
-    height: 12,
-    backgroundColor: '#fff',
-    borderBottomRightRadius: 10,
-    transform: [{ rotate: '45deg' }],
-  },
-  tailOwn: {
-    position: 'absolute',
-    bottom: 0,
-    right: -6,
-    width: 12,
-    height: 12,
-    backgroundColor: '#fff',
-    borderBottomLeftRadius: 10,
-    transform: [{ rotate: '-45deg' }],
   },
   replyContainer: {
     borderLeftWidth: 3,

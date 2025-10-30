@@ -3,8 +3,11 @@
  * Компонент аватара пользователя
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Image, Text, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, ViewStyle, Platform } from 'react-native';
+import { Image } from 'expo-image';
+import { useAuthStore } from '@store/authStore';
+import { API_BASE_URL } from '@constants/api.constants';
 
 interface AvatarProps {
   name?: string;
@@ -23,69 +26,38 @@ const Avatar: React.FC<AvatarProps> = ({
   showStatus = false,
   style,
 }) => {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const token = useAuthStore((state) => state.tokens?.accessToken);
 
-  // Load image - try public endpoint first, then with authorization
-  useEffect(() => {
-    const loadImage = async () => {
-      if (!imageUrl) {
-        setBlobUrl(null);
-        return;
-      }
+  // Prepare image source with headers if needed
+  const imageSource = useMemo(() => {
+    if (!imageUrl) return null;
 
-      // If it's already a blob URL, use it directly
-      if (imageUrl.startsWith('blob:')) {
-        setBlobUrl(imageUrl);
-        return;
-      }
+    let fixedUrl = imageUrl;
 
-      // If it's a public URL (contains '/public/'), use it directly without auth
-      if (imageUrl.includes('/public/')) {
-        setBlobUrl(imageUrl);
-        return;
-      }
+    // Replace localhost with configured API base URL for iOS/Android devices
+    // This is needed because avatar URLs might be saved in DB with localhost
+    // which doesn't work on mobile devices (localhost = device itself, not Mac)
+    // On production, this won't be needed as all URLs will use proper domain
+    if (fixedUrl.includes('localhost')) {
+      // Extract base URL without /api/v1 suffix
+      const baseUrl = API_BASE_URL.replace('/api/v1', '');
+      fixedUrl = fixedUrl.replace(/http:\/\/localhost:8080/, baseUrl);
+    }
 
-      setIsLoading(true);
-      try {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-          setBlobUrl(null);
-          setIsLoading(false);
-          return;
-        }
+    // If it's a public URL or already includes full path, use it directly
+    if (fixedUrl.startsWith('http://') || fixedUrl.startsWith('https://')) {
+      return {
+        uri: fixedUrl,
+        headers: token ? {
+          'Authorization': `Bearer ${token}`,
+        } : undefined,
+      };
+    }
 
-        const response = await fetch(imageUrl, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          setBlobUrl(url);
-        } else {
-          console.error('Failed to load avatar:', response.status);
-          setBlobUrl(null);
-        }
-      } catch (error) {
-        console.error('Error loading avatar:', error);
-        setBlobUrl(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadImage();
-
-    // Cleanup blob URL on unmount or when imageUrl changes
-    return () => {
-      if (blobUrl && blobUrl.startsWith('blob:')) {
-        window.URL.revokeObjectURL(blobUrl);
-      }
-    };
-  }, [imageUrl]);
+    // Otherwise, it might be a relative path - use as is
+    return { uri: fixedUrl };
+  }, [imageUrl, token]);
 
   const getInitials = (fullName: string): string => {
     const names = fullName.trim().split(' ');
@@ -119,14 +91,23 @@ const Avatar: React.FC<AvatarProps> = ({
     right: 0,
   };
 
+  // Check if we should show the image or fallback to initials
+  const shouldShowImage = imageSource && !imageError;
+
   return (
     <View style={[styles.container, style]}>
-      {imageUrl && blobUrl ? (
-        <Image source={{ uri: blobUrl }} style={[styles.avatar, avatarSize]} />
-      ) : isLoading ? (
-        <View style={[styles.avatar, avatarSize, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="small" color="#666" />
-        </View>
+      {shouldShowImage ? (
+        <Image
+          source={imageSource}
+          style={[styles.avatar, avatarSize]}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+          onError={(error) => {
+            console.log('❌ Avatar load error:', imageUrl, error);
+            setImageError(true);
+          }}
+        />
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder, avatarSize]}>
           <Text style={[styles.initials, { fontSize: size * 0.4 }]}>

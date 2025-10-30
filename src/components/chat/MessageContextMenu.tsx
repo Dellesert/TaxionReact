@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { Message } from '../../types/chat.types';
 import { formatTime } from '@utils/message.utils';
+import { getFileIcon, decodeFileName } from '@utils/file.utils';
 
 interface MessageContextMenuProps {
   visible: boolean;
@@ -43,6 +44,67 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   onRestore,
 }) => {
   const { theme } = useTheme();
+
+  // Получить превью сообщения (текст и/или информация о файле)
+  const getMessagePreview = (): { text: string; icon?: string; attachmentText?: string } => {
+    const hasText = message.content && message.content.trim().length > 0;
+    const hasAttachments = message.attachments && message.attachments.length > 0;
+
+    // Если есть и текст, и вложения
+    if (hasText && hasAttachments) {
+      const attachment = message.attachments[0];
+      const icon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
+
+      // Обрезаем длинное название файла
+      let fileName = decodeFileName(attachment.file_name);
+      if (fileName.length > 30) {
+        const ext = fileName.split('.').pop();
+        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+        fileName = nameWithoutExt.substring(0, 25) + '...' + (ext ? `.${ext}` : '');
+      }
+
+      const attachmentText = message.attachments.length === 1
+        ? fileName
+        : `${fileName} и ещё ${message.attachments.length - 1}`;
+
+      return {
+        text: message.content,
+        icon,
+        attachmentText,
+      };
+    }
+
+    // Если только текст
+    if (hasText) {
+      return { text: message.content };
+    }
+
+    // Если только вложения
+    if (hasAttachments) {
+      const attachment = message.attachments[0];
+      const icon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
+
+      // Обрезаем длинное название файла
+      let fileName = decodeFileName(attachment.file_name);
+      if (fileName.length > 40) {
+        const ext = fileName.split('.').pop();
+        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+        fileName = nameWithoutExt.substring(0, 35) + '...' + (ext ? `.${ext}` : '');
+      }
+
+      if (message.attachments.length === 1) {
+        return { text: fileName, icon };
+      } else {
+        return {
+          text: `${fileName} и ещё ${message.attachments.length - 1}`,
+          icon
+        };
+      }
+    }
+
+    // Если ни текста, ни вложений нет
+    return { text: 'Сообщение без содержимого' };
+  };
 
   const handleCopyMessage = async () => {
     try {
@@ -95,12 +157,53 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
           ]}>
             {/* Превью выбранного сообщения */}
             <View style={[styles.messagePreview, { backgroundColor: theme.background }]}>
-              <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={3}>
-                {message.content}
-              </Text>
-              <Text style={[styles.previewTime, { color: theme.textSecondary }]}>
-                {formatTime(message.created_at)}
-              </Text>
+              {(() => {
+                const preview = getMessagePreview();
+                return (
+                  <>
+                    {/* Если есть текст И вложение - показываем текст отдельно */}
+                    {preview.attachmentText ? (
+                      <>
+                        <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={2}>
+                          {preview.text}
+                        </Text>
+                        <View style={[styles.previewContent, { marginTop: 6 }]}>
+                          {preview.icon && (
+                            <Ionicons
+                              name={preview.icon as any}
+                              size={16}
+                              color={theme.primary}
+                              style={styles.previewIcon}
+                            />
+                          )}
+                          <Text style={[styles.attachmentText, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {preview.attachmentText}
+                          </Text>
+                        </View>
+                      </>
+                    ) : (
+                      /* Если только текст или только вложение - показываем с иконкой */
+                      <View style={styles.previewContent}>
+                        {preview.icon && (
+                          <Ionicons
+                            name={preview.icon as any}
+                            size={18}
+                            color={theme.primary}
+                            style={styles.previewIcon}
+                          />
+                        )}
+                        <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={3}>
+                          {preview.text}
+                        </Text>
+                      </View>
+                    )}
+
+                    <Text style={[styles.previewTime, { color: theme.textSecondary }]}>
+                      {formatTime(message.created_at)}
+                    </Text>
+                  </>
+                );
+              })()}
             </View>
 
             {/* Разделитель */}
@@ -251,10 +354,24 @@ const styles = StyleSheet.create({
     padding: 12,
     paddingBottom: 8,
   },
+  previewContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  previewIcon: {
+    marginRight: 8,
+    marginTop: 2,
+  },
   previewText: {
     fontSize: 15,
     lineHeight: 20,
-    marginBottom: 4,
+    flex: 1,
+  },
+  attachmentText: {
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
   },
   previewTime: {
     fontSize: 11,

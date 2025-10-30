@@ -8,6 +8,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { Message } from '../../types/chat.types';
+import { getFileIcon } from '@utils/file.utils';
 
 interface PinnedMessageBannerProps {
   pinnedMessages: Message[];
@@ -71,11 +72,43 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
     },
   });
 
-  const getMessagePreview = (message: Message): string => {
-    if (message.content.length > 50) {
-      return message.content.substring(0, 50) + '...';
+  const getMessagePreview = (message: Message): { text: string; icon?: string } => {
+    // Если есть текст, показываем его
+    if (message.content && message.content.trim().length > 0) {
+      const text = message.content.length > 50
+        ? message.content.substring(0, 50) + '...'
+        : message.content;
+      return { text };
     }
-    return message.content;
+
+    // Если текста нет, но есть вложения, показываем информацию о файле
+    if (message.attachments && message.attachments.length > 0) {
+      const attachment = message.attachments[0];
+      const icon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
+
+      // Обрезаем длинное название файла
+      let fileName = attachment.file_name;
+      if (fileName.length > 30) {
+        const ext = fileName.split('.').pop();
+        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+        fileName = nameWithoutExt.substring(0, 25) + '...' + (ext ? `.${ext}` : '');
+      }
+
+      if (message.attachments.length === 1) {
+        return {
+          text: fileName,
+          icon
+        };
+      } else {
+        return {
+          text: `${fileName} и ещё ${message.attachments.length - 1}`,
+          icon
+        };
+      }
+    }
+
+    // Если ни текста, ни вложений нет
+    return { text: 'Сообщение без содержимого' };
   };
 
   return (
@@ -102,9 +135,30 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
             )}
           </View>
 
-          <Text style={[styles.messageText, dynamicStyles.messageText]} numberOfLines={2}>
-            {currentMessage.sender?.name ? `${currentMessage.sender.name}: ` : ''}{getMessagePreview(currentMessage)}
-          </Text>
+          <View style={styles.messageRow}>
+            {(() => {
+              const preview = getMessagePreview(currentMessage);
+              return (
+                <>
+                  {preview.icon && (
+                    <Ionicons
+                      name={preview.icon as any}
+                      size={16}
+                      color={theme.primary}
+                      style={styles.fileIcon}
+                    />
+                  )}
+                  <Text
+                    style={[styles.messageText, dynamicStyles.messageText]}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {currentMessage.sender?.name ? `${currentMessage.sender.name}: ` : ''}{preview.text}
+                  </Text>
+                </>
+              );
+            })()}
+          </View>
         </View>
 
         <TouchableOpacity
@@ -122,15 +176,17 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
+    minHeight: 60,
   },
   content: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   icon: {
     marginRight: 12,
+    marginTop: 2,
   },
   textContainer: {
     flex: 1,
@@ -161,12 +217,24 @@ const styles = StyleSheet.create({
   chevronIcon: {
     marginLeft: 4,
   },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    minHeight: 44,
+  },
+  fileIcon: {
+    marginRight: 6,
+    marginTop: 2,
+  },
   messageText: {
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: 22,
+    flex: 1,
   },
   unpinButton: {
     marginLeft: 12,
     padding: 4,
+    marginTop: 2,
   },
 });

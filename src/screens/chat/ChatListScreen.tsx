@@ -4,11 +4,13 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Alert, Modal, Platform, Animated } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Alert, Modal, Platform, Animated as RNAnimated, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
@@ -23,6 +25,8 @@ import { websocketService } from '@services/websocket.service';
 type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'ChatList'>;
 
 type ChatFilter = 'all' | 'group' | 'private' | 'favorite';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
@@ -62,7 +66,7 @@ const ChatListScreen: React.FC = () => {
     }
   );
 
-  const { isLoading, loadChats: fetchChats, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
+  const { isLoading, isLoadingMore, totalChats, hasMoreChats, error, loadChats: fetchChats, loadMoreChats, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
@@ -75,14 +79,19 @@ const ChatListScreen: React.FC = () => {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
 
   // Animation for search
-  const searchAnimation = useRef(new Animated.Value(0)).current;
+  const searchAnimation = useRef(new RNAnimated.Value(0)).current;
+
+  // Animation for tab transitions (slide with Reanimated)
+  const translateX = useSharedValue(0);
+  const isSwipingHorizontally = useSharedValue(false);
+  const currentTabIndex = useSharedValue(0); // Track current tab index
 
   useEffect(() => {
     loadChats();
   }, []);
 
   useEffect(() => {
-    Animated.timing(searchAnimation, {
+    RNAnimated.timing(searchAnimation, {
       toValue: isSearchVisible ? 1 : 0,
       duration: 300,
       useNativeDriver: false,
@@ -103,22 +112,7 @@ const ChatListScreen: React.FC = () => {
 
   // Подписываемся на изменения статуса подключения WebSocket
   useEffect(() => {
-    // Устанавливаем начальный статус
-    setIsConnected(websocketService.isConnected());
-
-    // Подписываемся на события подключения/отключения
-    const handleConnect = () => {
-      console.log('✅ WebSocket подключен');
-      setIsConnected(true);
-    };
-
-    const handleDisconnect = () => {
-      console.log('❌ WebSocket отключен');
-      setIsConnected(false);
-    };
-
-    // Добавляем слушатели событий (если они доступны)
-    // Если websocketService не поддерживает события, используем опрос с большим интервалом
+    // Проверяем статус сразу и быстрее
     const checkInterval = setInterval(() => {
       const currentStatus = websocketService.isConnected();
       setIsConnected(prev => {
@@ -133,7 +127,7 @@ const ChatListScreen: React.FC = () => {
         }
         return prev;
       });
-    }, 5000); // Проверяем каждые 5 секунд вместо 1 секунды
+    }, 500); // Проверяем каждые 500ms для быстрой реакции
 
     return () => {
       clearInterval(checkInterval);
@@ -155,13 +149,104 @@ const ChatListScreen: React.FC = () => {
     }
   };
 
+  // Swipe gesture to switch tabs (iOS only)
+  const filterTabsOrder: ChatFilter[] = ['all', 'private', 'group', 'favorite'];
+
+  const switchToFilter = (newFilter: ChatFilter) => {
+    setChatFilter(newFilter);
+    // Animate to the new tab position on iOS
+    if (Platform.OS === 'ios') {
+      const newIndex = filterTabsOrder.indexOf(newFilter);
+      currentTabIndex.value = newIndex;
+      translateX.value = withTiming(-newIndex * SCREEN_WIDTH, { duration: 300 });
+    }
+  };
+
+  const resetSwipeFlag = () => {
+    setTimeout(() => {
+      isSwipingHorizontally.value = false;
+    }, 100);
+  };
+
+  // Initialize translateX based on active filter
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      const currentIndex = filterTabsOrder.indexOf(chatFilter);
+      currentTabIndex.value = currentIndex;
+      translateX.value = -currentIndex * SCREEN_WIDTH;
+    }
+  }, []);
+
+  const swipeGesture = Gesture.Pan()
+    .enabled(Platform.OS === 'ios')
+    .maxPointers(1)
+    .onBegin(() => {
+      'worklet';
+      isSwipingHorizontally.value = false;
+    })
+    .onUpdate((event) => {
+      'worklet';
+      const absX = Math.abs(event.translationX);
+      const absY = Math.abs(event.translationY);
+
+      if (absX > absY || absX > 3) {
+        isSwipingHorizontally.value = true;
+        const baseOffset = -currentTabIndex.value * SCREEN_WIDTH;
+        translateX.value = baseOffset + event.translationX;
+      }
+    })
+    .onEnd((event) => {
+      'worklet';
+      const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
+      const VELOCITY_THRESHOLD = 500;
+      const currentIndex = currentTabIndex.value;
+
+      const shouldSwitchTab = Math.abs(event.translationX) > SWIPE_THRESHOLD || Math.abs(event.velocityX) > VELOCITY_THRESHOLD;
+
+      let targetIndex = currentIndex;
+
+      if (shouldSwitchTab && event.translationX > 0 && currentIndex > 0) {
+        targetIndex = currentIndex - 1;
+      } else if (shouldSwitchTab && event.translationX < 0 && currentIndex < 3) {
+        targetIndex = currentIndex + 1;
+      }
+
+      const targetOffset = -targetIndex * SCREEN_WIDTH;
+      translateX.value = withTiming(targetOffset, {
+        duration: 250,
+      }, () => {
+        currentTabIndex.value = targetIndex;
+      });
+
+      if (targetIndex !== currentIndex) {
+        runOnJS(setChatFilter)(filterTabsOrder[targetIndex]);
+      }
+
+      runOnJS(resetSwipeFlag)();
+    });
+
+  const animatedContentStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
   const handleRefresh = async () => {
     setRefreshing(true);
+
+    // Если WebSocket отключен, пытаемся переподключить
+    if (!websocketService.isConnected()) {
+      console.log('🔄 Pull-to-refresh: reconnecting WebSocket...');
+      websocketService.reconnect();
+    }
+
     await loadChats();
     setRefreshing(false);
   };
 
   const handleChatPress = (chat: Chat) => {
+    // Block chat press if currently swiping horizontally
+    if (isSwipingHorizontally.value) {
+      return;
+    }
     if (isEditMode) {
       // В режиме редактирования - выбираем чат
       toggleChatSelection(chat.id);
@@ -180,6 +265,18 @@ const ChatListScreen: React.FC = () => {
         ? prev.filter(id => id !== chatId)
         : [...prev, chatId]
     );
+  };
+
+  const toggleEditMode = () => {
+    setIsEditMode(!isEditMode);
+    if (isEditMode) {
+      // При выходе из режима редактирования - очищаем выбранные чаты
+      setSelectedChats([]);
+    } else {
+      // При входе в режим редактирования - скрываем поиск и очищаем запрос
+      setIsSearchVisible(false);
+      setSearchQuery('');
+    }
   };
 
   const handleNewChat = () => {
@@ -287,6 +384,82 @@ const ChatListScreen: React.FC = () => {
     }
   };
 
+  // Render a single tab content
+  const renderFilterContent = (filterKey: ChatFilter) => {
+    const tabChats = chats
+      .filter((chat) => {
+        if (filterKey === 'group' && chat.type !== 'group') return false;
+        if (filterKey === 'private' && chat.type !== 'private') return false;
+        if (filterKey === 'favorite' && !chat.is_favorite) return false;
+
+        if (!searchQuery) return true;
+        const chatName = chat.name || '';
+        const searchText = chatName.toLowerCase();
+        return searchText.includes(searchQuery.toLowerCase());
+      })
+      .sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        const timeA = a.last_message?.created_at || a.created_at || '';
+        const timeB = b.last_message?.created_at || b.created_at || '';
+        return new Date(timeB).getTime() - new Date(timeA).getTime();
+      });
+
+    return (
+      <View key={filterKey} style={{ width: SCREEN_WIDTH, height: '100%' }}>
+        {tabChats.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="chatbubbles-outline" size={64} color="#D1D5DB" />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Нет чатов</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={tabChats}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <ChatItem
+                chat={item}
+                onPress={handleChatPress}
+                isSelected={selectedChats.includes(item.id)}
+                isEditMode={isEditMode}
+                onToggleFavorite={() => handleToggleFavorite(item.id)}
+                onTogglePinned={() => handleTogglePinned(item.id)}
+                onMarkAsRead={() => handleMarkAsRead(item.id)}
+                onDelete={() => handleDeleteChat(item.id)}
+              />
+            )}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            }
+            contentContainerStyle={{ paddingBottom: 80 }}
+            ListFooterComponent={
+              hasMoreChats && tabChats.length > 0 ? (
+                <View style={styles.loadMoreContainer}>
+                  <TouchableOpacity
+                    style={[styles.loadMoreButton, { backgroundColor: theme.backgroundTertiary }]}
+                    onPress={loadMoreChats}
+                    disabled={isLoadingMore}
+                  >
+                    {isLoadingMore ? (
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    ) : (
+                      <>
+                        <Ionicons name="chevron-down" size={20} color={theme.primary} />
+                        <Text style={[styles.loadMoreText, { color: theme.primary }]}>
+                          Ещё {totalChats - chats.length}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : null
+            }
+          />
+        )}
+      </View>
+    );
+  };
+
   const filteredChats = chats
     .filter((chat) => {
       // Фильтр по типу
@@ -311,6 +484,35 @@ const ChatListScreen: React.FC = () => {
       return new Date(timeB).getTime() - new Date(timeA).getTime();
     });
 
+  // Show error state if there's an error and no chats loaded
+  if (error && chats.length === 0 && !isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <ScreenHeader
+          title="Чаты"
+          showBackButton={false}
+        />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={64} color={theme.error} />
+          <Text style={[styles.errorText, { color: theme.textSecondary }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.error }]}
+            onPress={() => {
+              // Переподключаем WebSocket при повторной попытке
+              if (!websocketService.isConnected()) {
+                console.log('🔄 Retry button: reconnecting WebSocket...');
+                websocketService.reconnect();
+              }
+              loadChats();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Попробовать снова</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (isLoading && chats.length === 0) {
     return <Loading text="Загрузка чатов..." fullScreen />;
   }
@@ -333,38 +535,40 @@ const ChatListScreen: React.FC = () => {
   });
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[dynamicStyles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
 
       <ScreenHeader
         title="Чаты"
         customContent={
           <>
             {/* Header Row */}
-            <View style={styles.headerRow}>
+            <View style={[styles.headerRow, { marginTop: isEditMode ? 10 : 0 },{marginBottom: isEditMode ? 6 : -4 }]}>
               {/* Левая кнопка - Изменить / Готово */}
               <TouchableOpacity
-                onPress={() => setIsEditMode(!isEditMode)}
+                onPress={toggleEditMode}
                 style={styles.editButton}
               >
                 <Text style={[styles.editButtonText, { color: theme.error }]}>{isEditMode ? "Готово" : "Изм."}</Text>
               </TouchableOpacity>
 
               {/* Центр - Заголовок или статус подключения */}
-              {isConnected ? (
-                <Text style={[styles.headerTitle, { color: theme.text }]}>Чаты</Text>
+              {isConnected === false ? (
+                <ConnectionStatus compact />
               ) : (
-                <ConnectionStatus />
+                <Text style={[styles.headerTitle, { color: theme.text }]}>Чаты</Text>
               )}
 
               {/* Правые кнопки - Поиск + Добавить */}
               <View style={[styles.headerRight, styles.headerActions]}>
-                {!isEditMode && (
+                {!isEditMode ? (
                   <TouchableOpacity
                     onPress={() => setIsSearchVisible(!isSearchVisible)}
                     style={styles.iconButton}
                   >
                     <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color={theme.error} />
                   </TouchableOpacity>
+                ) : (
+                  <View style={styles.iconButton} />
                 )}
                 {!isEditMode ? (
                   <TouchableOpacity onPress={handleNewChat} style={styles.addButton}>
@@ -377,19 +581,15 @@ const ChatListScreen: React.FC = () => {
             </View>
 
             {/* Animated Search Bar */}
-            <Animated.View
+            <RNAnimated.View
               style={[
                 styles.animatedSearchContainer,
                 {
-                  height: searchAnimation.interpolate({
+                  maxHeight: searchAnimation.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0, 48],
+                    outputRange: [0, 60],
                   }),
                   opacity: searchAnimation,
-                  marginBottom: searchAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 12],
-                  }),
                 },
               ]}
             >
@@ -408,7 +608,7 @@ const ChatListScreen: React.FC = () => {
                   </TouchableOpacity>
                 )}
               </View>
-            </Animated.View>
+            </RNAnimated.View>
 
             {/* Фильтры типов чатов */}
             <View style={[styles.filterContainer, { borderTopColor: theme.border, borderBottomColor: theme.border }]}>
@@ -417,7 +617,7 @@ const ChatListScreen: React.FC = () => {
             styles.filterTab,
             chatFilter === 'all' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
           ]}
-          onPress={() => setChatFilter('all')}
+          onPress={() => switchToFilter('all')}
         >
           <Text style={[
             styles.filterText,
@@ -432,7 +632,7 @@ const ChatListScreen: React.FC = () => {
             styles.filterTab,
             chatFilter === 'private' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
           ]}
-          onPress={() => setChatFilter('private')}
+          onPress={() => switchToFilter('private')}
         >
           <Text style={[
             styles.filterText,
@@ -447,7 +647,7 @@ const ChatListScreen: React.FC = () => {
             styles.filterTab,
             chatFilter === 'group' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
           ]}
-          onPress={() => setChatFilter('group')}
+          onPress={() => switchToFilter('group')}
         >
           <Text style={[
             styles.filterText,
@@ -462,7 +662,7 @@ const ChatListScreen: React.FC = () => {
             styles.filterTab,
             chatFilter === 'favorite' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
           ]}
-          onPress={() => setChatFilter('favorite')}
+          onPress={() => switchToFilter('favorite')}
         >
           <Text style={[
             styles.filterText,
@@ -476,8 +676,10 @@ const ChatListScreen: React.FC = () => {
         }
       />
 
-      {/* Кнопки действий в режиме редактирования */}
-      {isEditMode && selectedChats.length > 0 && (
+      {/* Content container with background */}
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {/* Кнопки действий в режиме редактирования */}
+        {isEditMode && selectedChats.length > 0 && (
         <View style={[styles.actionBar, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
@@ -501,43 +703,20 @@ const ChatListScreen: React.FC = () => {
         </View>
       )}
 
-      {filteredChats.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubbles-outline" size={64} color={theme.borderLight} />
-          <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>
-            {searchQuery ? 'Чаты не найдены' : chatFilter === 'favorite' ? 'Нет избранных чатов' : 'Нет чатов'}
-          </Text>
-          <Text style={[styles.emptySubtitle, dynamicStyles.emptySubtitle]}>
-            {searchQuery
-              ? 'Попробуйте изменить поисковый запрос'
-              : chatFilter === 'favorite'
-              ? 'Добавьте чаты в избранное через контекстное меню'
-              : 'Начните новый разговор или присоединитесь к группе'}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredChats}
-          keyExtractor={(item) => `chat-${item.id}`}
-          renderItem={({ item }) => (
-            <ChatItem
-              chat={item}
-              onPress={handleChatPress}
-              onDelete={handleDeleteChat}
-              onLeave={handleLeaveChat}
-              onTogglePinned={handleTogglePinned}
-              onMarkAsRead={handleMarkAsRead}
-              onToggleFavorite={handleToggleFavorite}
-              isEditMode={isEditMode}
-              isSelected={selectedChats.includes(item.id)}
-            />
-          )}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-          contentContainerStyle={{ paddingBottom: 120 }}
-        />
-      )}
+      {/* Content container with horizontal tabs (iOS) or single tab (Android) */}
+      <View style={{ flex: 1, overflow: 'hidden' }}>
+        <GestureDetector gesture={swipeGesture}>
+          <Animated.View style={[styles.horizontalTabsContainer, animatedContentStyle]}>
+            {Platform.OS === 'ios' ? (
+              // Render all tabs side by side for iOS swipe
+              filterTabsOrder.map((filterKey) => renderFilterContent(filterKey))
+            ) : (
+              // Render only active tab for Android
+              renderFilterContent(chatFilter)
+            )}
+          </Animated.View>
+        </GestureDetector>
+      </View>
 
       {/* Модальное меню выбора типа чата */}
       <Modal
@@ -572,6 +751,7 @@ const ChatListScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 };
@@ -593,6 +773,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   editButton: {
+    width: 100,
     paddingHorizontal: 4,
   },
   editButtonText: {
@@ -676,6 +857,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -717,6 +920,27 @@ const styles = StyleSheet.create({
   menuDivider: {
     height: 1,
     marginHorizontal: 16,
+  },
+  horizontalTabsContainer: {
+    flexDirection: 'row',
+    width: SCREEN_WIDTH * 4, // 4 tabs: all, group, private, favorite
+    height: '100%',
+  },
+  loadMoreContainer: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  loadMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+    gap: 6,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

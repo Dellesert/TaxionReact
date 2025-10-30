@@ -89,16 +89,18 @@ const PollVotersScreen: React.FC = () => {
       <View style={styles.voterHeader}>
         <Avatar
           name={item.user_name}
-          imageUrl={undefined} // TODO: добавить avatar_url в API
+          imageUrl={item.avatar}
           size={48}
         />
         <View style={styles.voterInfo}>
           <Text style={[styles.voterName, { color: theme.text }]}>
             {item.user_name}
           </Text>
-          <Text style={[styles.voterEmail, { color: theme.textSecondary }]}>
-            {item.user_email}
-          </Text>
+          {item.position && (
+            <Text style={[styles.voterEmail, { color: theme.textSecondary }]}>
+              {item.position}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -140,7 +142,7 @@ const PollVotersScreen: React.FC = () => {
     <View key={voter.user_id} style={styles.compactVoterItem}>
       <Avatar
         name={voter.user_name}
-        imageUrl={undefined} // TODO: добавить avatar_url в API
+        imageUrl={voter.avatar}
         size={32}
       />
       <View style={styles.compactVoterInfo}>
@@ -202,14 +204,7 @@ const PollVotersScreen: React.FC = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={[styles.title, { color: theme.text }]}>Кто проголосовал</Text>
-          {votersData && (
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              {votersData.poll_title}
-            </Text>
-          )}
-        </View>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Кто проголосовал</Text>
       </View>
 
       {votersData && votersData.voters.length > 0 ? (
@@ -313,16 +308,11 @@ const styles = StyleSheet.create({
   backButton: {
     marginRight: 12,
   },
-  headerContent: {
+  headerTitle: {
     flex: 1,
-  },
-  title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 2,
+    marginLeft: 12,
   },
   controls: {
     padding: 16,

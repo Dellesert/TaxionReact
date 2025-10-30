@@ -7,10 +7,8 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
   StyleSheet,
   Alert,
   Platform,
@@ -62,7 +60,6 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   const { theme } = useTheme();
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Styles
   const styles = StyleSheet.create({
@@ -276,18 +273,12 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       Alert.alert('Ошибка', 'Не удалось загрузить подзадачи');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     loadSubtasks();
   }, [parentTaskId]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadSubtasks();
-  };
 
   const handleStatusToggle = async (subtask: Task) => {
     try {
@@ -478,27 +469,23 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
         </View>
       </View>
 
-      <FlatList
-        data={subtasks}
-        renderItem={renderSubtaskItem}
-        keyExtractor={(item) => item.id.toString()}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListFooterComponent={
-          onCreateSubtaskPress ? (
-            <TouchableOpacity
-              style={styles.addSubtaskButton}
-              onPress={onCreateSubtaskPress}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
-              <Text style={styles.addSubtaskButtonText}>Добавить подзадачу</Text>
-            </TouchableOpacity>
-          ) : null
-        }
-      />
+      <View style={styles.listContent}>
+        {subtasks.map((item) => (
+          <View key={item.id.toString()}>
+            {renderSubtaskItem({ item })}
+          </View>
+        ))}
+
+        {onCreateSubtaskPress && (
+          <TouchableOpacity
+            style={styles.addSubtaskButton}
+            onPress={onCreateSubtaskPress}
+          >
+            <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
+            <Text style={styles.addSubtaskButtonText}>Добавить подзадачу</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };

@@ -24,15 +24,18 @@ import { ApiResponse, PaginatedResponse } from '../types/common.types';
 // ============= Chat Operations =============
 
 /**
- * Get list of chats
+ * Get list of chats with pagination
  */
-export const getChats = async (filters?: ChatListFilters): Promise<Chat[]> => {
+export const getChats = async (
+  limit?: number,
+  offset?: number
+): Promise<{ chats: Chat[]; total: number; hasMore: boolean }> => {
   const params = {
-    limit: filters?.limit || 20,
-    offset: filters?.offset || 0,
+    limit: limit || 50,
+    offset: offset || 0,
   };
 
-  const response = await api.get<{ chats: Chat[] }>(API_ENDPOINTS.CHAT.LIST, {
+  const response = await api.get<{ chats: Chat[]; total?: number }>(API_ENDPOINTS.CHAT.LIST, {
     params,
   });
 
@@ -78,7 +81,10 @@ export const getChats = async (filters?: ChatListFilters): Promise<Chat[]> => {
     return chat;
   });
 
-  return normalizedChats;
+  const total = response.data.total || normalizedChats.length;
+  const hasMore = (params.offset + normalizedChats.length) < total;
+
+  return { chats: normalizedChats, total, hasMore };
 };
 
 /**

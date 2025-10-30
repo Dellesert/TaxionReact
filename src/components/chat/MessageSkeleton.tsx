@@ -52,6 +52,7 @@ export const MessageSkeleton: React.FC<MessageSkeletonProps> = ({ isOwn = false 
 
 const styles = StyleSheet.create({
   container: {
+    minWidth: '60%',
     maxWidth: '75%',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -66,13 +67,13 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   lineShort: {
-    width: '40%',
+    width: 100,
   },
   lineMedium: {
-    width: '60%',
+    width: 160,
   },
   lineLong: {
-    width: '90%',
+    width: 200,
   },
 });
 

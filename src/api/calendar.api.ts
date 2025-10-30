@@ -22,15 +22,29 @@ import { ApiResponse } from '../types/common.types';
 // ============= Event Operations =============
 
 /**
- * Get list of events with filters
+ * Get list of events with filters and pagination
  */
-export const getEvents = async (filters?: EventListFilters): Promise<Event[]> => {
+export const getEvents = async (
+  filters?: EventListFilters,
+  limit?: number,
+  offset?: number
+): Promise<{ events: Event[]; total: number; hasMore: boolean }> => {
+  const params = {
+    ...filters,
+    limit: limit || 100,
+    offset: offset || 0,
+  };
+
   const response = await api.get<any>(API_ENDPOINTS.EVENT.LIST, {
-    params: filters,
+    params,
   });
   // Backend returns { events: [...], total, limit, offset, filters }
   // Not wrapped in ApiResponse structure
-  return response.data.events || [];
+  const events = response.data.events || [];
+  const total = response.data.total || events.length;
+  const hasMore = (params.offset + events.length) < total;
+
+  return { events, total, hasMore };
 };
 
 /**

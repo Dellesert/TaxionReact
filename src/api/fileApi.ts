@@ -191,13 +191,27 @@ class FileApi {
       throw new Error('Not authenticated');
     }
 
+    console.log('🔐 getFileById request:', {
+      url: `${this.baseUrl}/${fileId}`,
+      hasToken: !!token,
+      tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
+    });
+
     const response = await fetch(`${this.baseUrl}/${fileId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
+    console.log('📥 getFileById response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+    });
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ getFileById error response:', errorText);
       throw new Error(`Failed to get file: ${response.statusText}`);
     }
 

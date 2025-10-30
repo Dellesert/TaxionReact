@@ -1,12 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import FileViewer from 'react-native-file-viewer';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import { isImageFile, replaceLocalhostWithIP } from '@utils/message.utils';
+import { getFileIcon, decodeFileName } from '@utils/file.utils';
 
 interface Attachment {
   id: number;
@@ -21,6 +24,7 @@ interface MessageAttachmentsProps {
   attachments: Attachment[];
   imageUrls: { [key: number]: string };
   onImagePress: (imageUrl: string) => void;
+  onLongPress?: () => void;
 }
 
 /**
@@ -30,8 +34,19 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
   imageUrls,
   onImagePress,
+  onLongPress,
 }) => {
   const { theme } = useTheme();
+  const [token, setToken] = React.useState<string | null>(null);
+
+  // Load token once
+  React.useEffect(() => {
+    const loadToken = async () => {
+      const authToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      setToken(authToken);
+    };
+    loadToken();
+  }, []);
 
   const images = attachments.filter(a => isImageFile(a.mime_type || a.file_type || ''));
   const files = attachments.filter(a => !isImageFile(a.mime_type || a.file_type || ''));
@@ -98,7 +113,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       } else {
-        // Mobile: Download and open with sharing
+        // Mobile: Download and open with file viewer
         // Decode filename and create safe filename for iOS
         const originalFileName = decodeURIComponent(attachment.file_name);
 
@@ -125,16 +140,26 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
           throw new Error(`Download failed with status: ${downloadResult.status}`);
         }
 
-        // Share file for viewing
-        const isAvailable = await Sharing.isAvailableAsync();
-
-        if (isAvailable) {
-          await Sharing.shareAsync(downloadResult.uri, {
-            UTI: attachment.mime_type,
-            mimeType: attachment.mime_type,
+        // Open file with native viewer
+        try {
+          await FileViewer.open(downloadResult.uri, {
+            displayName: originalFileName,
+            showOpenWithDialog: true,
+            showAppsSuggestions: true,
           });
-        } else {
-          Alert.alert('Успех', `Файл скачан:\n${originalFileName}`);
+        } catch (viewerError: any) {
+          // If FileViewer fails, fallback to sharing
+          console.log('FileViewer failed, falling back to sharing:', viewerError);
+          const isAvailable = await Sharing.isAvailableAsync();
+
+          if (isAvailable) {
+            await Sharing.shareAsync(downloadResult.uri, {
+              UTI: attachment.mime_type,
+              mimeType: attachment.mime_type,
+            });
+          } else {
+            Alert.alert('Успех', `Файл скачан:\n${originalFileName}`);
+          }
         }
       }
     } catch (error) {
@@ -172,12 +197,21 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                   Alert.alert('Ошибка', 'Изображение еще загружается');
                 }
               }}
+              onLongPress={onLongPress}
+              delayLongPress={500}
             >
               {imageUrls[attachment.id] ? (
                 <Image
-                  source={{ uri: imageUrls[attachment.id] }}
+                  source={{
+                    uri: imageUrls[attachment.id],
+                    headers: token ? {
+                      'Authorization': `Bearer ${token}`,
+                    } : undefined,
+                  }}
                   style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height, maxWidth: '100%' }]}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
                 />
               ) : (
                 <View style={[
@@ -193,31 +227,37 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
       )}
 
       {/* Render file attachments */}
-      {files.map((attachment, index) => (
-        <TouchableOpacity
-          key={attachment.id || index}
-          style={[styles.attachmentItem, { width: '100%' }]}
-          onPress={() => handleFileDownload(attachment)}
-        >
-          <Ionicons name="document-outline" size={24} color={theme.primary} />
-          <View style={{ width: Dimensions.get('window').width * 0.7 - 70 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: theme.text,
-              }}
-              numberOfLines={2}
-              ellipsizeMode="tail"
-            >
-              {attachment.file_name}
-            </Text>
-            <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-              {(attachment.file_size / 1024).toFixed(2)} KB
-            </Text>
-          </View>
-        </TouchableOpacity>
-      ))}
+      {files.map((attachment, index) => {
+        const fileIcon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
+
+        return (
+          <TouchableOpacity
+            key={attachment.id || index}
+            style={[styles.attachmentItem, { width: '100%' }]}
+            onPress={() => handleFileDownload(attachment)}
+            onLongPress={onLongPress}
+            delayLongPress={500}
+          >
+            <Ionicons name={fileIcon as any} size={24} color={theme.primary} />
+            <View style={{ width: Dimensions.get('window').width * 0.7 - 70 }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: '500',
+                  color: theme.text,
+                }}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {decodeFileName(attachment.file_name)}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                {(attachment.file_size / 1024).toFixed(2)} KB
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };

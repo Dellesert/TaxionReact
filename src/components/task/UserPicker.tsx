@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { User } from '../../types/user.types';
 import { getUsers } from '../../api/user.api';
 import { useAuthStore } from '../../store/authStore';
+import { useTheme } from '@hooks/useTheme';
 
 interface UserPickerProps {
   selectedUserIds: number[];
@@ -26,6 +27,7 @@ const UserPicker: React.FC<UserPickerProps> = ({
   onSelectionChange,
   multiSelect = true,
 }) => {
+  const { theme } = useTheme();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);

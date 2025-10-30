@@ -191,6 +191,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           maxLength={4000}
           editable={!disabled}
           onSubmitEditing={handleSend}
+          autoCorrect={true}
+          autoCapitalize="sentences"
+          keyboardType="default"
+          returnKeyType="default"
         />
 
         <TouchableOpacity

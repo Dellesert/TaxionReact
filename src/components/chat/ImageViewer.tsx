@@ -1,8 +1,11 @@
-import React from 'react';
-import { Modal, Pressable, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, Pressable, View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import * as secureStorage from '@utils/secureStorage';
+import { STORAGE_KEYS } from '@constants/app.constants';
 
 interface ImageViewerProps {
   visible: boolean;
@@ -15,6 +18,15 @@ interface ImageViewerProps {
  */
 export const ImageViewer: React.FC<ImageViewerProps> = ({ visible, imageUrl, onClose }) => {
   const { theme } = useTheme();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadToken = async () => {
+      const authToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      setToken(authToken);
+    };
+    loadToken();
+  }, []);
 
   return (
     <Modal
@@ -37,9 +49,16 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ visible, imageUrl, onC
             </TouchableOpacity>
             {imageUrl && (
               <Image
-                source={{ uri: imageUrl }}
+                source={{
+                  uri: imageUrl,
+                  headers: token ? {
+                    'Authorization': `Bearer ${token}`,
+                  } : undefined,
+                }}
                 style={styles.fullscreenImage}
-                resizeMode="contain"
+                contentFit="contain"
+                transition={200}
+                cachePolicy="memory-disk"
               />
             )}
           </View>

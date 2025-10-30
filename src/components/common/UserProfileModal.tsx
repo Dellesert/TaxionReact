@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { Avatar } from '@components/common/Avatar';
@@ -14,14 +15,21 @@ interface UserProfileModalProps {
   visible: boolean;
   user: User | null;
   onClose: () => void;
+  onOpenChat?: (userId: number) => void;
+  onAddToFavorites?: (userId: number) => void;
+  onBlock?: (userId: number) => void;
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   visible,
   user,
   onClose,
+  onOpenChat,
+  onAddToFavorites,
+  onBlock,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   if (!user) return null;
 
@@ -113,21 +121,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   return (
     <Modal
       visible={visible}
-      transparent={true}
-      animationType="fade"
+      transparent={false}
+      animationType="slide"
       onRequestClose={onClose}
+      presentationStyle="fullScreen"
     >
-      <View style={[styles.overlay, dynamicStyles.overlay]}>
-        <View style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.safeArea, dynamicStyles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.container}>
           {/* Header */}
           <View style={[styles.header, dynamicStyles.header]}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={28} color={theme.error} />
+              </TouchableOpacity>
+            </View>
             <Text style={[styles.title, dynamicStyles.title]}>Профиль пользователя</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
+            <View style={styles.headerRight} />
           </View>
 
-          <ScrollView style={styles.content}>
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
             {/* Avatar and Name */}
             <View style={styles.avatarSection}>
               <Avatar
@@ -149,6 +161,46 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   {getStatusText(user.status)}
                 </Text>
               </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actionsSection}>
+              {onOpenChat && (
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: theme.primary }]}
+                  onPress={() => {
+                    onOpenChat(user.id);
+                    onClose();
+                  }}
+                >
+                  <Ionicons name="chatbubble-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.actionButtonText}>Написать</Text>
+                </TouchableOpacity>
+              )}
+
+              {onAddToFavorites && (
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary, borderWidth: 1, borderColor: theme.border }]}
+                  onPress={() => {
+                    onAddToFavorites(user.id);
+                  }}
+                >
+                  <Ionicons name="star-outline" size={20} color={theme.text} />
+                  <Text style={[styles.actionButtonTextSecondary, { color: theme.text }]}>В избранное</Text>
+                </TouchableOpacity>
+              )}
+
+              {onBlock && (
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary, borderWidth: 1, borderColor: theme.border }]}
+                  onPress={() => {
+                    onBlock(user.id);
+                  }}
+                >
+                  <Ionicons name="ban-outline" size={20} color={theme.error} />
+                  <Text style={[styles.actionButtonTextSecondary, { color: theme.error }]}>Заблокировать</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Main Info */}
@@ -219,35 +271,45 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 };
 
 const styles = StyleSheet.create({
-  overlay: {
+  safeArea: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   container: {
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '80%',
-    borderRadius: 16,
-    overflow: 'hidden',
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
     borderBottomWidth: 1,
+  },
+  headerLeft: {
+    width: 100,
+    alignItems: 'flex-start',
+  },
+  headerRight: {
+    width: 100,
   },
   title: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
   },
   closeButton: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   avatarSection: {
     alignItems: 'center',
@@ -271,6 +333,29 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 14,
+  },
+  actionsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  actionButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   section: {
     paddingHorizontal: 20,

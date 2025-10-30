@@ -21,6 +21,7 @@ import { CreateTaskDto, TaskPriority } from '../../types/task.types';
 import { createSubtask } from '../../api/task.api';
 import UserSelector from '../common/UserSelector';
 import DatePickerModal from '../common/DatePickerModal';
+import { useTheme } from '@hooks/useTheme';
 
 interface CreateSubtaskModalProps {
   visible: boolean;
@@ -42,6 +43,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   onClose,
   onSubtaskCreated,
 }) => {
+  const { theme } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
@@ -102,24 +104,25 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
       onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.card }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Новая подзадача</Text>
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Новая подзадача</Text>
             <TouchableOpacity onPress={handleClose} disabled={isLoading}>
-              <Ionicons name="close" size={24} color="#6b7280" />
+              <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {/* Title Input */}
             <View style={styles.section}>
-              <Text style={styles.label}>
+              <Text style={[styles.label, { color: theme.text }]}>
                 Название <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
                 placeholder="Введите название подзадачи..."
+                placeholderTextColor={theme.inputPlaceholder}
                 value={title}
                 onChangeText={setTitle}
                 editable={!isLoading}
@@ -129,10 +132,11 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 
             {/* Description Input */}
             <View style={styles.section}>
-              <Text style={styles.label}>Описание</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Описание</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textArea, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
                 placeholder="Введите описание (необязательно)..."
+                placeholderTextColor={theme.inputPlaceholder}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -144,15 +148,15 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 
             {/* Priority Selection */}
             <View style={styles.section}>
-              <Text style={styles.label}>Приоритет</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Приоритет</Text>
               <View style={styles.priorityGrid}>
                 {PRIORITY_OPTIONS.map((option) => (
                   <TouchableOpacity
                     key={option.value}
                     style={[
                       styles.priorityOption,
-                      priority === option.value && styles.priorityOptionActive,
-                      { borderColor: option.color },
+                      { backgroundColor: theme.card, borderColor: priority === option.value ? option.color : theme.border },
+                      priority === option.value && { backgroundColor: theme.backgroundSecondary },
                     ]}
                     onPress={() => setPriority(option.value)}
                     disabled={isLoading}
@@ -166,7 +170,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
                     <Text
                       style={[
                         styles.priorityText,
-                        priority === option.value && { color: option.color },
+                        { color: priority === option.value ? option.color : theme.textSecondary },
                       ]}
                     >
                       {option.label}
@@ -178,7 +182,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 
             {/* Assignee Selection */}
             <View style={styles.section}>
-              <Text style={styles.label}>Исполнитель</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Исполнитель</Text>
               <UserSelector
                 selectedUserIds={assigneeIds}
                 onSelectionChange={setAssigneeIds}
@@ -190,14 +194,14 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 
             {/* Due Date Selection */}
             <View style={styles.section}>
-              <Text style={styles.label}>Срок выполнения</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Срок выполнения</Text>
               <TouchableOpacity
-                style={styles.dateButton}
+                style={[styles.dateButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
                 onPress={() => setShowDatePicker(true)}
                 disabled={isLoading}
               >
-                <Ionicons name="calendar-outline" size={20} color="#6b7280" />
-                <Text style={styles.dateButtonText}>
+                <Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />
+                <Text style={[styles.dateButtonText, { color: theme.text }]}>
                   {dueDate
                     ? dueDate.toLocaleDateString('ru-RU', {
                         day: 'numeric',
@@ -224,30 +228,29 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
           {/* Date Picker Modal */}
           <DatePickerModal
             visible={showDatePicker}
-            date={dueDate || new Date()}
-            onConfirm={(date) => {
-              setDueDate(date);
-              setShowDatePicker(false);
+            value={dueDate || new Date()}
+            mode="date"
+            onChange={(event, date) => {
+              if (date) setDueDate(date);
             }}
-            onCancel={() => setShowDatePicker(false)}
+            onClose={() => setShowDatePicker(false)}
             minimumDate={new Date()}
           />
 
           {/* Footer */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: theme.border }]}>
             <TouchableOpacity
-              style={[styles.button, styles.buttonCancel]}
+              style={[styles.button, styles.buttonCancel, { backgroundColor: theme.backgroundSecondary }]}
               onPress={handleClose}
               disabled={isLoading}
             >
-              <Text style={styles.buttonCancelText}>Отмена</Text>
+              <Text style={[styles.buttonCancelText, { color: theme.textSecondary }]}>Отмена</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
                 styles.button,
-                styles.buttonCreate,
-                (isLoading || !title.trim()) && styles.buttonDisabled,
+                { backgroundColor: (isLoading || !title.trim()) ? theme.border : theme.primary },
               ]}
               onPress={handleCreate}
               disabled={isLoading || !title.trim()}
@@ -272,7 +275,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
@@ -284,12 +286,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
   },
   content: {
     padding: 20,
@@ -300,7 +300,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   required: {
@@ -309,11 +308,8 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 15,
     padding: 12,
-    backgroundColor: '#f9fafb',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    color: '#111827',
   },
   textArea: {
     minHeight: 100,
@@ -332,12 +328,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
     minWidth: '47%',
-  },
-  priorityOptionActive: {
-    backgroundColor: '#f9fafb',
   },
   priorityDot: {
     width: 10,
@@ -347,22 +338,18 @@ const styles = StyleSheet.create({
   priorityText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6b7280',
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     padding: 12,
-    backgroundColor: '#f9fafb',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   dateButtonText: {
     flex: 1,
     fontSize: 15,
-    color: '#111827',
   },
   clearButton: {
     padding: 4,
@@ -372,7 +359,6 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   button: {
     flex: 1,
@@ -382,22 +368,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonCancel: {
-    backgroundColor: '#f3f4f6',
+    // backgroundColor applied dynamically
   },
   buttonCancelText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6b7280',
-  },
-  buttonCreate: {
-    backgroundColor: '#3b82f6',
   },
   buttonCreateText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
-  },
-  buttonDisabled: {
-    backgroundColor: '#d1d5db',
   },
 });

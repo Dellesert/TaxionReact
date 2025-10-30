@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Animated,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -27,15 +28,55 @@ import { CreateSubtaskModal } from '@components/task/CreateSubtaskModal';
 import { TaskSubtasksList } from '@components/task/TaskSubtasksList';
 import { DelegateTaskModal } from '@components/task/DelegateTaskModal';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import FileViewer from 'react-native-file-viewer';
 import * as Linking from 'expo-linking';
-import { Platform } from 'react-native';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import { fileApi } from '@api/fileApi';
+import { getFileIcon, decodeFileName } from '@utils/file.utils';
 
 type TaskDetailRouteParams = {
   taskId: string;
+};
+
+/**
+ * Check if user can edit task
+ * Creator (delegator) always has edit rights even if task is delegated
+ */
+const canEditTask = (task: Task | null, userId: number | undefined, userRole: string | undefined): boolean => {
+  if (!task || !userId) return false;
+
+  // Admins and super admins can edit any task
+  if (userRole === 'admin' || userRole === 'super_admin') return true;
+
+  // Creator (who delegated) can always edit
+  if (task.created_by === userId) return true;
+
+  // Task is done - no one can edit except admins
+  if (task.status === 'done') return false;
+
+  return false;
+};
+
+/**
+ * Check if user has access to view task (includes assignees)
+ */
+const canViewTask = (task: Task | null, userId: number | undefined): boolean => {
+  if (!task || !userId) return false;
+
+  // Creator always has access
+  if (task.created_by === userId) return true;
+
+  // Assignees have access
+  if (task.assignees) {
+    for (const assignee of task.assignees) {
+      if (assignee.id === userId) return true;
+    }
+  }
+
+  return false;
 };
 
 const TaskDetailScreen: React.FC = () => {
@@ -83,50 +124,8 @@ const TaskDetailScreen: React.FC = () => {
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
 
-  // Scroll animation
+  // Scroll animation - disabled due to performance issues
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  // Interpolate header animations
-  const headerPaddingBottom = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [20, 8],
-    extrapolate: 'clamp',
-  });
-
-  const titleFontSize = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [20, 16],
-    extrapolate: 'clamp',
-  });
-
-  const chipsOpacity = scrollY.interpolate({
-    inputRange: [0, 30],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
-  const chipsHeight = scrollY.interpolate({
-    inputRange: [0, 30],
-    outputRange: [40, 0],
-    extrapolate: 'clamp',
-  });
-
-  const metaOpacity = scrollY.interpolate({
-    inputRange: [0, 40],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
-  const metaHeight = scrollY.interpolate({
-    inputRange: [0, 40],
-    outputRange: [24, 0],
-    extrapolate: 'clamp',
-  });
-
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false }
-  );
 
   useEffect(() => {
     loadTask();
@@ -362,7 +361,8 @@ const TaskDetailScreen: React.FC = () => {
       };
 
       console.log('📤 Step 1: Uploading to file-service...');
-      const uploadedFile = await fileApi.uploadFile(fileToUpload, 'attachment', undefined, false);
+      // Mark task files as public so all task participants can access them
+      const uploadedFile = await fileApi.uploadFile(fileToUpload, 'attachment', undefined, true);
       console.log('✅ File uploaded to file-service:', uploadedFile);
 
       // Step 2: Attach file to task using file_id
@@ -431,9 +431,14 @@ const TaskDetailScreen: React.FC = () => {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       } else {
-        // For mobile: download file using FileSystem
+        // For mobile: download file and open with FileViewer
         const downloadUrl = fileApi.getDownloadUrl(file.file_name);
-        const fileUri = `${FileSystem.documentDirectory}${attachment.file_name}`;
+
+        // Decode filename and create safe filename
+        const originalFileName = decodeURIComponent(attachment.file_name);
+        const fileExtension = originalFileName.split('.').pop() || '';
+        const safeFileName = `file_${Date.now()}.${fileExtension}`;
+        const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
 
         console.log('📥 Downloading to:', fileUri);
 
@@ -449,8 +454,27 @@ const TaskDetailScreen: React.FC = () => {
 
         console.log('✅ Downloaded:', downloadResult.uri);
 
-        // Open the file
-        await Linking.openURL(downloadResult.uri);
+        // Open file with native viewer
+        try {
+          await FileViewer.open(downloadResult.uri, {
+            displayName: originalFileName,
+            showOpenWithDialog: true,
+            showAppsSuggestions: true,
+          });
+        } catch (viewerError: any) {
+          // If FileViewer fails, fallback to sharing
+          console.log('FileViewer failed, falling back to sharing:', viewerError);
+          const isAvailable = await Sharing.isAvailableAsync();
+
+          if (isAvailable) {
+            await Sharing.shareAsync(downloadResult.uri, {
+              UTI: attachment.mime_type,
+              mimeType: attachment.mime_type,
+            });
+          } else {
+            Alert.alert('Успех', `Файл скачан:\n${originalFileName}`);
+          }
+        }
       }
     } catch (error: any) {
       console.error('❌ Error opening file:', error);
@@ -566,9 +590,11 @@ const TaskDetailScreen: React.FC = () => {
   }
 
   // Check if task is delegated BY current user (user delegated it to someone else)
-  // Show "only view" badge and hide action buttons if user delegated the task
+  // BUT creator (delegator) should still be able to edit
+  // Only show readonly mode if user delegated task BUT is not the original creator
   const isDelegatedByMe = user &&
-    task.delegated_from_user_id === user.id;
+    task.delegated_from_user_id === user.id &&
+    task.created_by !== user.id;
 
   // Priority config
   const priorityConfig = {
@@ -595,14 +621,14 @@ const TaskDetailScreen: React.FC = () => {
     },
     safeArea: {
       flex: 1,
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
     },
     scrollContent: {
       paddingBottom: 120,
     },
     // Header section
     headerSection: {
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 20,
@@ -1263,15 +1289,15 @@ const TaskDetailScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
-        {/* Header Section - Animated */}
-        <Animated.View style={[styles.headerSection, { paddingBottom: headerPaddingBottom }]}>
+        {/* Header Section */}
+        <View style={styles.headerSection}>
           {/* Header Row with Back and Edit buttons */}
           <View style={styles.headerRow}>
             <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
               <Ionicons name="close" size={28} color={theme.error} />
             </TouchableOpacity>
             <View style={styles.headerButtons}>
-              {task.status !== 'done' && (task.created_by === user?.id || user?.role === 'admin' || user?.role === 'super_admin') && (
+              {canEditTask(task, user?.id, user?.role) && (
                 <>
                   <TouchableOpacity
                     style={styles.headerButton}
@@ -1290,20 +1316,17 @@ const TaskDetailScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Task Title - Animated */}
-          <Animated.Text style={[styles.taskTitle, { fontSize: titleFontSize }]}>
+          {/* Task Title */}
+          <Text style={styles.taskTitle}>
             {task.title}
-          </Animated.Text>
+          </Text>
 
-          {/* Priority and Status Row - Animated */}
-          <Animated.View style={{
+          {/* Priority and Status Row */}
+          <View style={{
             flexDirection: 'row',
             alignItems: 'center',
             gap: 8,
             marginTop: 12,
-            opacity: chipsOpacity,
-            height: chipsHeight,
-            overflow: 'hidden',
           }}>
             <View style={{
               paddingHorizontal: 12,
@@ -1325,19 +1348,19 @@ const TaskDetailScreen: React.FC = () => {
                 {statusConfig.label}
               </Text>
             </View>
-          </Animated.View>
+          </View>
 
-          {/* Delegated Badge - Animated */}
+          {/* Delegated Badge */}
           {isDelegatedByMe && (
-            <Animated.View style={[styles.delegatedBadge, { opacity: metaOpacity }]}>
+            <View style={styles.delegatedBadge}>
               <Ionicons name="eye-outline" size={16} color="#8b5cf6" />
               <Text style={styles.delegatedBadgeText}>Только просмотр</Text>
-            </Animated.View>
+            </View>
           )}
 
-          {/* Progress Bar - Animated - if task has progress_percentage */}
+          {/* Progress Bar - if task has progress_percentage */}
           {task.progress_percentage !== undefined && task.progress_percentage > 0 && (
-            <Animated.View style={[styles.progressContainer, { opacity: metaOpacity }]}>
+            <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
                 <View
                   style={[
@@ -1347,11 +1370,11 @@ const TaskDetailScreen: React.FC = () => {
                 />
               </View>
               <Text style={styles.progressText}>{task.progress_percentage}%</Text>
-            </Animated.View>
+            </View>
           )}
 
-          {/* Assignee and Deadline Row - Animated */}
-          <Animated.View style={[styles.infoRow, { opacity: metaOpacity, height: metaHeight }]}>
+          {/* Assignee and Deadline Row */}
+          <View style={[styles.infoRow, { marginTop: 16 }]}>
             <View style={styles.assigneeContainer}>
               {task.delegation_chain && task.delegation_chain.length > 0 ? (
                 <View style={styles.delegationChainContainer}>
@@ -1378,8 +1401,8 @@ const TaskDetailScreen: React.FC = () => {
                 </Text>
               </View>
             )}
-          </Animated.View>
-        </Animated.View>
+          </View>
+        </View>
 
         {/* Card with Tabs */}
         <View style={styles.card}>
@@ -1409,8 +1432,6 @@ const TaskDetailScreen: React.FC = () => {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
           >
             {activeTab === 'overview' ? (
               <View style={styles.content}>
@@ -1457,8 +1478,8 @@ const TaskDetailScreen: React.FC = () => {
                   </View>
                 )}
 
-                {/* Subtasks Section - show for all, but readonly if delegated */}
-                {task.status !== 'done' && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') && (
+                {/* Subtasks Section - show for all who have access, readonly for assignees */}
+                {task.status !== 'done' && canViewTask(task, user?.id) && (
                   <View style={styles.subtasksSection}>
                     <TaskSubtasksList
                       parentTaskId={task.id}
@@ -1469,10 +1490,10 @@ const TaskDetailScreen: React.FC = () => {
                       onSubtaskCreated={() => {
                         loadTask(); // Reload task to update progress
                       }}
-                      // Hide create button if task is delegated
-                      onCreateSubtaskPress={!isDelegatedByMe ? () => setShowSubtaskModal(true) : undefined}
-                      // Make readonly if delegated (hide checkboxes and delete buttons)
-                      readOnly={isDelegatedByMe}
+                      // Show create button only for users who can edit
+                      onCreateSubtaskPress={canEditTask(task, user?.id, user?.role) ? () => setShowSubtaskModal(true) : undefined}
+                      // Readonly for users who can view but not edit
+                      readOnly={!canEditTask(task, user?.id, user?.role)}
                     />
                   </View>
                 )}
@@ -1490,33 +1511,36 @@ const TaskDetailScreen: React.FC = () => {
                       </View>
                     ) : attachments.length > 0 ? (
                       <View style={styles.attachmentsList}>
-                        {attachments.map((attachment) => (
-                          <View key={attachment.id} style={styles.attachmentItem}>
-                            <TouchableOpacity
-                              style={styles.attachmentInfo}
-                              onPress={() => handleOpenAttachment(attachment)}
-                              activeOpacity={0.7}
-                            >
-                              <Ionicons name="document-attach" size={20} color={theme.primary} />
-                              <View style={styles.attachmentDetails}>
-                                <Text style={styles.attachmentName} numberOfLines={1}>
-                                  {attachment.file_name}
-                                </Text>
-                                <Text style={styles.attachmentMeta}>
-                                  {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                            {!isDelegatedByMe && (
+                        {attachments.map((attachment) => {
+                          const fileIcon = getFileIcon(attachment.file_type || '', attachment.file_name);
+                          return (
+                            <View key={attachment.id} style={styles.attachmentItem}>
                               <TouchableOpacity
-                                style={styles.deleteAttachmentButton}
-                                onPress={() => handleDeleteAttachment(attachment.id)}
+                                style={styles.attachmentInfo}
+                                onPress={() => handleOpenAttachment(attachment)}
+                                activeOpacity={0.7}
                               >
-                                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                                <Ionicons name={fileIcon as any} size={20} color={theme.primary} />
+                                <View style={styles.attachmentDetails}>
+                                  <Text style={styles.attachmentName} numberOfLines={1}>
+                                    {decodeFileName(attachment.file_name)}
+                                  </Text>
+                                  <Text style={styles.attachmentMeta}>
+                                    {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
+                                  </Text>
+                                </View>
                               </TouchableOpacity>
-                            )}
-                          </View>
-                        ))}
+                              {!isDelegatedByMe && (
+                                <TouchableOpacity
+                                  style={styles.deleteAttachmentButton}
+                                  onPress={() => handleDeleteAttachment(attachment.id)}
+                                >
+                                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          );
+                        })}
                       </View>
                     ) : isDelegatedByMe ? (
                       <Text style={styles.noAttachmentsText}>Нет вложений</Text>
@@ -1721,8 +1745,8 @@ const TaskDetailScreen: React.FC = () => {
           />
         )}
 
-        {/* Create Subtask Modal - only for users who can create subtasks */}
-        {task && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') && (
+        {/* Create Subtask Modal - for creator, admins, and department heads */}
+        {task && canEditTask(task, user?.id, user?.role) && (
           <CreateSubtaskModal
             visible={showSubtaskModal}
             parentTaskId={task.id}

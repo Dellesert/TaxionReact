@@ -10,6 +10,7 @@ export interface Theme {
   background: string;
   backgroundSecondary: string;
   backgroundTertiary: string;
+  safeAreaBackground: string; // For Dynamic Island and status bar area
 
   // Text colors
   text: string;
@@ -58,6 +59,7 @@ export const lightTheme: Theme = {
   background: '#F9FAFB',
   backgroundSecondary: '#FFFFFF',
   backgroundTertiary: '#F3F4F6',
+  safeAreaBackground: '#E5E7EB', // Darker gray for iOS Dynamic Island area
 
   // Text colors
   text: '#111827',
@@ -105,6 +107,7 @@ export const darkTheme: Theme = {
   background: '#111827',
   backgroundSecondary: '#1F2937',
   backgroundTertiary: '#374151',
+  safeAreaBackground: '#0F172A', // Even darker for iOS Dynamic Island area
 
   // Text colors
   text: '#F9FAFB',

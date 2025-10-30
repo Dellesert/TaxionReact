@@ -24,10 +24,12 @@ interface WSMessage {
 class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 3000;
+  private maxReconnectAttempts = 10; // Увеличено до 10
+  private baseReconnectDelay = 1000; // Базовая задержка 1 секунда
+  private maxReconnectDelay = 30000; // Максимальная задержка 30 секунд
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private isIntentionalClose = false;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
 
   // Deduplicate user_presence events
   private lastPresenceUpdate: Map<number, number> = new Map(); // user_id -> timestamp
@@ -75,9 +77,37 @@ class WebSocketService {
       this.heartbeatInterval = null;
     }
 
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
+    }
+  }
+
+  /**
+   * Calculate exponential backoff delay
+   */
+  private getReconnectDelay(): number {
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max)
+    const delay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
+      this.maxReconnectDelay
+    );
+    return delay;
+  }
+
+  /**
+   * Reset reconnection attempts (called on successful connection)
+   */
+  private resetReconnectAttempts(): void {
+    this.reconnectAttempts = 0;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
   }
 
@@ -204,7 +234,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
    */
   private handleOpen(event: Event): void {
     console.log('✅ WebSocket connected successfully');
-    this.reconnectAttempts = 0;
+    this.resetReconnectAttempts();
     this.isIntentionalClose = false;
 
     // Start heartbeat
@@ -423,15 +453,24 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
     }
 
     // Auto-reconnect if not intentional close
-    if (!this.isIntentionalClose && this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+    if (!this.isIntentionalClose) {
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        const delay = this.getReconnectDelay();
+        this.reconnectAttempts++;
+        console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
 
-      setTimeout(() => {
-        this.connect();
-      }, this.reconnectDelay);
-    } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ Max reconnection attempts reached');
+        this.reconnectTimeout = setTimeout(() => {
+          this.connect();
+        }, delay);
+      } else {
+        console.warn('⚠️ Max reconnection attempts reached. Will retry when user interacts with app.');
+        // Don't give up completely - reset after a longer delay
+        this.reconnectTimeout = setTimeout(() => {
+          console.log('🔄 Resetting reconnection attempts after cooldown...');
+          this.reconnectAttempts = 0;
+          this.connect();
+        }, 60000); // Retry after 1 minute
+      }
     }
 
     this.isIntentionalClose = false;
@@ -474,6 +513,25 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
         }
       }
     }, 20000);
+  }
+
+  /**
+   * Manually trigger reconnection (e.g., from UI retry button)
+   */
+  reconnect(): void {
+    console.log('🔄 Manual reconnect triggered');
+    this.resetReconnectAttempts();
+    this.isIntentionalClose = false;
+
+    // Close existing connection if any
+    if (this.ws) {
+      this.isIntentionalClose = true; // Prevent auto-reconnect during manual reconnect
+      this.ws.close();
+      this.ws = null;
+    }
+
+    this.isIntentionalClose = false;
+    this.connect();
   }
 
   /**

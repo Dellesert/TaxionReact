@@ -20,6 +20,8 @@ import { useChatStore } from '@store/chatStore';
 import * as pollApi from '@api/poll.api';
 import { Poll, PollOption, PollType } from '@/types/poll.types';
 import SharePollModal from '@components/poll/SharePollModal';
+import EditPollModal from '@components/poll/EditPollModal';
+import { Avatar } from '@components/common/Avatar';
 
 type PollStackParamList = {
   PollList: undefined;
@@ -44,6 +46,8 @@ const PollDetailScreen: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [votersPreview, setVotersPreview] = useState<any[]>([]);
 
   const { sendMessage } = useChatStore();
 
@@ -96,7 +100,7 @@ const PollDetailScreen: React.FC = () => {
             )}
             {canEditPoll && (
               <TouchableOpacity
-                onPress={() => navigation.navigate('EditPoll', { pollId: poll.id })}
+                onPress={() => setShowEditModal(true)}
                 style={{ padding: 4 }}
               >
                 <Ionicons name="create-outline" size={24} color={theme.primary} />
@@ -173,6 +177,18 @@ const PollDetailScreen: React.FC = () => {
       });
 
       setPoll(loadedPoll);
+
+      // Load voters preview (first 5)
+      // Show for creator/admin OR if show_results is enabled
+      const isCreatorOrAdmin = loadedPoll.created_by === currentUser?.id || isSystemAdmin;
+      if (loadedPoll.total_voters > 0 && (isCreatorOrAdmin || loadedPoll.show_results)) {
+        try {
+          const votersData = await pollApi.getPollVoters(route.params.pollId);
+          setVotersPreview(votersData.voters.slice(0, 5));
+        } catch (error) {
+          console.warn('Failed to load voters preview:', error);
+        }
+      }
 
       // Reset revoting mode when reloading
       setIsRevoting(false);
@@ -717,18 +733,37 @@ const PollDetailScreen: React.FC = () => {
             <Text style={styles.totalVotesText}>
               Всего голосов: {poll.total_votes || 0}
             </Text>
-            {poll.show_results && (
-              <TouchableOpacity
-                style={[styles.viewVotersButton, { borderColor: theme.primary }]}
-                onPress={() => navigation.navigate('PollVoters', { pollId: poll.id })}
-              >
-                <Ionicons name="people-outline" size={18} color={theme.primary} />
-                <Text style={[styles.viewVotersButtonText, { color: theme.primary }]}>
-                  Кто проголосовал
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
+
+          {/* Voters Preview */}
+          {((poll.created_by === currentUser?.id || isSystemAdmin) || poll.show_results) && votersPreview.length > 0 && (
+            <View style={[styles.votersPreviewSection, { backgroundColor: theme.backgroundSecondary }]}>
+              <Text style={[styles.votersPreviewTitle, { color: theme.text }]}>
+                Проголосовали ({poll.total_voters}):
+              </Text>
+              <View style={styles.votersPreviewList}>
+                {votersPreview.map((voter) => (
+                  <View key={voter.user_id} style={styles.voterPreviewItem}>
+                    <Avatar name={voter.user_name} imageUrl={voter.avatar} size={32} />
+                    <Text style={[styles.voterPreviewName, { color: theme.text }]} numberOfLines={1}>
+                      {voter.user_name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              {poll.total_voters > 5 && (
+                <TouchableOpacity
+                  style={[styles.viewAllVotersButton, { borderColor: theme.primary }]}
+                  onPress={() => navigation.navigate('PollVoters', { pollId: poll.id })}
+                >
+                  <Text style={[styles.viewAllVotersText, { color: theme.primary }]}>
+                    Показать всех ({poll.total_voters})
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.primary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       );
     }
@@ -783,81 +818,151 @@ const PollDetailScreen: React.FC = () => {
     );
   }
 
+  // Status config
+  const statusConfig = {
+    active: { label: 'Активен', color: '#10B981' },
+    closed: { label: 'Завершен', color: '#6B7280' },
+    draft: { label: 'Черновик', color: '#F59E0B' },
+    cancelled: { label: 'Отменен', color: '#EF4444' },
+  }[poll.status] || { label: poll.status, color: '#9CA3AF' };
+
+  // Type config
+  const typeConfig = {
+    single_choice: { label: 'Один выбор', icon: 'radio-button-on', color: '#3B82F6' },
+    multiple_choice: { label: 'Множественный', icon: 'checkbox', color: '#8B5CF6' },
+    rating: { label: 'Оценка', icon: 'star', color: '#F59E0B' },
+    ranking: { label: 'Ранжирование', icon: 'list', color: '#10B981' },
+    open_text: { label: 'Текст', icon: 'text', color: '#EC4899' },
+  }[poll.type] || { label: poll.type, icon: 'help-circle', color: '#9CA3AF' };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-      <ScrollView style={styles.scrollContent}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Показываем header только если опрос открыт не из чата (т.е. из списка опросов) */}
       {!isFromChat && (
-        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: theme.text }]}>{poll.title}</Text>
-          <View style={styles.headerActions}>
-            {/* Кнопка поделиться - видна всем для активных опросов */}
-            {poll.status === 'active' && (
-              <TouchableOpacity
-                onPress={() => setShowShareModal(true)}
-                style={styles.shareButton}
-              >
-                <Ionicons name="share-outline" size={24} color={theme.primary} />
-              </TouchableOpacity>
-            )}
-            {canEditPoll && (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('EditPoll', { pollId: poll.id })}
-                style={styles.editButton}
-              >
-                <Ionicons name="create-outline" size={24} color={theme.primary} />
-              </TouchableOpacity>
-            )}
-            {canDeleteOrClosePoll && (
-              <TouchableOpacity onPress={handleDelete} style={styles.deleteButton} disabled={isDeleting}>
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color="#EF4444" />
-                ) : (
-                  <Ionicons name="trash-outline" size={24} color="#EF4444" />
-                )}
-              </TouchableOpacity>
+        <View style={[styles.headerSection, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          {/* Header Row with Back and Action buttons */}
+          <View style={styles.headerRow}>
+            <TouchableOpacity
+              style={[styles.headerButton, { backgroundColor: theme.backgroundTertiary }]}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="close" size={28} color={theme.error} />
+            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              {/* Кнопка поделиться - видна всем для активных опросов */}
+              {poll.status === 'active' && (
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={() => setShowShareModal(true)}
+                >
+                  <Ionicons name="share-outline" size={24} color={theme.error} />
+                </TouchableOpacity>
+              )}
+              {canEditPoll && (
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={() => setShowEditModal(true)}
+                >
+                  <Ionicons name="create-outline" size={24} color={theme.error} />
+                </TouchableOpacity>
+              )}
+              {canDeleteOrClosePoll && (
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color="#EF4444" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Poll Title */}
+          <Text style={[styles.pollTitle, { color: theme.text }]}>
+            {poll.title}
+          </Text>
+
+          {/* Status and Type Row */}
+          <View style={styles.badgesRow}>
+            <View style={[styles.badge, { backgroundColor: statusConfig.color }]}>
+              <Text style={styles.badgeText}>{statusConfig.label}</Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: typeConfig.color }]}>
+              <Ionicons name={typeConfig.icon as any} size={12} color="#FFFFFF" />
+              <Text style={styles.badgeText}>{typeConfig.label}</Text>
+            </View>
+          </View>
+
+          {/* Info Row: Creator and Deadline */}
+          <View style={styles.infoRow}>
+            <View style={styles.creatorInfo}>
+              <Avatar
+                name={poll.creator?.name || 'Unknown'}
+                imageUrl={poll.creator?.avatar}
+                size={20}
+              />
+              <Text style={[styles.creatorText, { color: theme.textSecondary }]} numberOfLines={1}>
+                {poll.creator?.name || 'Unknown'}
+              </Text>
+            </View>
+            {poll.end_time && poll.status === 'active' && (
+              <View style={styles.deadlineInfo}>
+                <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+                <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
+                  до {new Date(poll.end_time).toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                </Text>
+              </View>
             )}
           </View>
         </View>
       )}
 
-      {poll.description && (
-        <View style={styles.descriptionContainer}>
-          <Text style={[styles.description, { color: theme.textSecondary }]}>
-            {poll.description}
-          </Text>
-        </View>
-      )}
+      {/* Card with Content */}
+      <View style={[styles.card, { backgroundColor: theme.background }]}>
+        <ScrollView
+          style={styles.tabContent}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            {/* Description Section */}
+            {poll.description && (
+              <View style={styles.descriptionSection}>
+                <Text style={[styles.descriptionLabel, { color: theme.text }]}>Описание</Text>
+                <Text style={[styles.descriptionText, { color: theme.textSecondary }]}>
+                  {poll.description}
+                </Text>
+              </View>
+            )}
 
-      <View style={styles.infoContainer}>
-        <View style={styles.infoItem}>
-          <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-          <Text style={styles.infoText}>
-            Создан {new Date(poll.created_at).toLocaleDateString('ru-RU')}
-          </Text>
-        </View>
-        {poll.end_time && (
-          <View style={styles.infoItem}>
-            <Ionicons name="time-outline" size={16} color="#6B7280" />
-            <Text style={styles.infoText}>
-              До {new Date(poll.end_time).toLocaleDateString('ru-RU')}
-            </Text>
-          </View>
-        )}
-        <View style={styles.infoItem}>
-          <Ionicons name="people-outline" size={16} color="#6B7280" />
-          <Text style={styles.infoText}>
-            Проголосовало: {poll.total_voters || 0}
-          </Text>
-        </View>
-      </View>
+            {/* Stats Row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                <Text style={styles.statText}>
+                  Создан {new Date(poll.created_at).toLocaleDateString('ru-RU')}
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons name="people-outline" size={16} color="#6B7280" />
+                <Text style={styles.statText}>
+                  Проголосовало: {poll.total_voters || 0}
+                </Text>
+              </View>
+            </View>
 
-      {renderVotingUI()}
+            {renderVotingUI()}
 
-      {/* Draft warning and publish button */}
+            {/* Draft warning and publish button */}
       {poll.status === 'draft' && (
         <>
           <View style={styles.draftWarning}>
@@ -983,8 +1088,10 @@ const PollDetailScreen: React.FC = () => {
         </TouchableOpacity>
       )}
 
-      {renderResults()}
-      </ScrollView>
+            {renderResults()}
+          </View>
+        </ScrollView>
+      </View>
 
       {/* Share Poll Modal */}
       {poll && (
@@ -995,72 +1102,156 @@ const PollDetailScreen: React.FC = () => {
           onShare={handleSharePoll}
         />
       )}
+
+      {/* Edit Poll Modal */}
+      {poll && (
+        <EditPollModal
+          visible={showEditModal}
+          pollId={poll.id}
+          onClose={() => setShowEditModal(false)}
+          onPollUpdated={loadPollDetail}
+        />
+      )}
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
   scrollContent: {
+    paddingBottom: 120,
+  },
+  // Header section
+  headerSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Poll title in header
+  pollTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 28,
+    marginBottom: 12,
+  },
+  // Badges row
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // Info row
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  creatorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     flex: 1,
+    marginRight: 12,
+  },
+  creatorText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  deadlineInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  deadlineText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Card with rounded corners
+  card: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  // Tab content
+  tabContent: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  // Description section
+  descriptionSection: {
+    marginBottom: 16,
+  },
+  descriptionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  descriptionText: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  // Stats row
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statText: {
+    fontSize: 13,
+    color: '#6B7280',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    marginRight: 12,
-  },
-  title: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  shareButton: {
-    padding: 4,
-  },
-  editButton: {
-    padding: 4,
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  descriptionContainer: {
-    padding: 16,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  infoContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 16,
-    gap: 12,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#6B7280',
   },
   sectionTitle: {
     fontSize: 16,
@@ -1126,29 +1317,32 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   voteButton: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+    marginTop: 24,
   },
   voteButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   revoteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 14,
+    paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 2,
     gap: 8,
+    marginTop: 24,
   },
   revoteButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   cancelRevoteButton: {
@@ -1183,15 +1377,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    margin: 16,
-    marginTop: 0,
-    padding: 16,
+    paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
+    marginTop: 24,
   },
   publishButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   votedContainer: {
@@ -1303,6 +1496,45 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   viewVotersButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  votersPreviewSection: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
+  votersPreviewTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  votersPreviewList: {
+    gap: 12,
+  },
+  voterPreviewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  voterPreviewName: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  viewAllVotersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  viewAllVotersText: {
     fontSize: 14,
     fontWeight: '600',
   },

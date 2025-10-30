@@ -44,7 +44,7 @@ const CreateTaskScreen: React.FC = () => {
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
+  const [assigneeId, setAssigneeId] = useState<number | undefined>(undefined);
 
   const priorities: {
     value: TaskPriority;
@@ -119,10 +119,11 @@ const CreateTaskScreen: React.FC = () => {
       setIsCreating(true);
 
       // For employees, always assign task to themselves
+      // For others, use single selected assignee
       const finalAssigneeIds = isEmployee && currentUser?.id
         ? [currentUser.id]
-        : assigneeIds.length > 0
-          ? assigneeIds
+        : assigneeId
+          ? [assigneeId]
           : undefined;
 
       const taskData: CreateTaskDto = {
@@ -159,13 +160,13 @@ const CreateTaskScreen: React.FC = () => {
 
   const dynamicStyles = StyleSheet.create({
     safeArea: {
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
     },
     container: {
       backgroundColor: theme.background,
     },
     header: {
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
       borderBottomColor: theme.border,
     },
     headerTitle: {
@@ -240,7 +241,7 @@ const CreateTaskScreen: React.FC = () => {
   const selectedPriority = priorities.find(p => p.value === priority);
 
   return (
-    <SafeAreaView style={[styles.safeArea, dynamicStyles.safeArea]} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, dynamicStyles.safeArea]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -248,32 +249,36 @@ const CreateTaskScreen: React.FC = () => {
         <View style={[styles.container, dynamicStyles.container]}>
         {/* Header */}
         <View style={[styles.header, dynamicStyles.header]}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.headerButton}
-          >
-            <Ionicons name="close" size={28} color={theme.error} />
-          </TouchableOpacity>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.headerButton}
+            >
+              <Ionicons name="close" size={28} color={theme.error} />
+            </TouchableOpacity>
+          </View>
+
           <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>
             Новая задача
           </Text>
-          <TouchableOpacity
-            onPress={handleCreateTask}
-            disabled={isCreating || !title.trim()}
-            style={[
-              styles.createButton,
-              dynamicStyles.createButton,
-              (!title.trim() || isCreating) && dynamicStyles.createButtonDisabled
-            ]}
-          >
-            <Text style={[
-              styles.createButtonText,
-              dynamicStyles.createButtonText,
-              (!title.trim() || isCreating) && dynamicStyles.createButtonTextDisabled
-            ]}>
-              {isCreating ? '...' : 'Создать'}
-            </Text>
-          </TouchableOpacity>
+
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={handleCreateTask}
+              disabled={isCreating || !title.trim()}
+              style={[
+                styles.createButton,
+                dynamicStyles.createButton,
+                (!title.trim() || isCreating) && dynamicStyles.createButtonDisabled
+              ]}
+            >
+              <Ionicons
+                name="checkmark"
+                size={24}
+                color={(!title.trim() || isCreating) ? theme.textTertiary : '#FFFFFF'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
@@ -442,16 +447,16 @@ const CreateTaskScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Исполнители - только для department_head, admin, super_admin */}
+          {/* Исполнитель - только для department_head, admin, super_admin */}
           {!isEmployee && (
             <View style={[styles.section, dynamicStyles.section]}>
-              <Text style={[styles.sectionLabel, dynamicStyles.label]}>Исполнители</Text>
+              <Text style={[styles.sectionLabel, dynamicStyles.label]}>Исполнитель</Text>
               <UserSelector
-                selectedUserIds={assigneeIds}
-                onSelectionChange={setAssigneeIds}
-                multiSelect={true}
-                placeholder="Выберите исполнителей"
-                modalTitle="Выбрать исполнителей"
+                selectedUserIds={assigneeId ? [assigneeId] : []}
+                onSelectionChange={(ids) => setAssigneeId(ids[0])}
+                multiSelect={false}
+                placeholder="Выберите исполнителя"
+                modalTitle="Выбрать исполнителя"
               />
             </View>
           )}
@@ -477,8 +482,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 6,
+    paddingBottom: 16,
     borderBottomWidth: 1,
+  },
+  headerLeft: {
+    width: 100,
+    alignItems: 'flex-start',
   },
   headerButton: {
     width: 40,
@@ -492,12 +502,16 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
+  headerRight: {
+    width: 100,
+    alignItems: 'flex-end',
+  },
   createButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    minWidth: 80,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   createButtonText: {
     fontSize: 15,

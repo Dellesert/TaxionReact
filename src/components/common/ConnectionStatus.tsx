@@ -13,42 +13,58 @@ interface ConnectionStatusProps {
 }
 
 export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = false }) => {
-  const [status, setStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  // Проверяем начальный статус сразу
+  const initialConnected = websocketService.isConnected();
+  const [status, setStatus] = useState<'connected' | 'connecting' | 'disconnected'>(
+    initialConnected ? 'connected' : 'connecting'
+  );
+  const [shouldShow, setShouldShow] = useState(!initialConnected); // Если уже подключено - не показываем
   const fadeAnim = useState(new Animated.Value(0))[0];
   const { theme } = useTheme();
 
   useEffect(() => {
     const checkStatus = () => {
       try {
-        if (websocketService.isConnected()) {
-          setStatus('connected');
+        const isConnected = websocketService.isConnected();
+        if (isConnected) {
+          if (status !== 'connected') {
+            console.log('🟢 WebSocket just connected');
+            setStatus('connected');
+          }
         } else {
           setStatus('connecting'); // при желании тут можно детектить 'disconnected'
+          setShouldShow(true); // Показываем снова при потере связи
         }
       } catch {
         setStatus('disconnected');
+        setShouldShow(true);
       }
     };
-
-    // сразу проверяем
-    checkStatus();
 
     // периодическая проверка
     const interval = setInterval(checkStatus, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [status]);
 
   useEffect(() => {
-    // Плавное появление/исчезание
-    Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.delay(status === 'connected' ? 2000 : 0),
-      Animated.timing(fadeAnim, { toValue: status === 'connected' ? 0 : 1, duration: 300, useNativeDriver: true }),
-    ]).start();
+    if (status !== 'connected') {
+      // Плавное появление для статусов connecting/disconnected
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      return;
+    }
+
+    // Когда подключено - сразу скрываем без задержки
+    console.log('🟢 WebSocket connected, hiding status immediately');
+    setShouldShow(false);
   }, [status, fadeAnim]);
 
-  // В компактном режиме, когда подключено и баннер уже погас — ничего не показываем
-  if (status === 'connected' && compact) return null;
+  // В компактном режиме - показываем только если НЕ подключено И shouldShow = true
+  if (compact) {
+    if (status === 'connected' || !shouldShow) {
+      console.log('✅ Not showing status - connected or shouldShow=false');
+      return null;
+    }
+  }
 
   const getStatusConfig = () => {
     switch (status) {
@@ -56,9 +72,6 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
         return { text: 'Подключено', color: '#2ecc71' }; // зелёный
       case 'connecting':
         return { text: 'Подключение', color: '#434343ff' }; // желтовато-оранжевый
-      case 'disconnected':
-      default:
-        return { text: 'Нет подключения', color: '#e74c3c' }; // красный
     }
   };
 
@@ -95,7 +108,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
     return (
       <Animated.View style={[styles.compactContainer, { opacity: fadeAnim }]}>
         <Icon />
-        <Text style={dynamicStyles.compactText}>{config.text}</Text>
+        <Text style={[styles.compactText, dynamicStyles.compactText]}>{config.text }</Text>
       </Animated.View>
     );
   }
@@ -105,7 +118,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
     <Animated.View style={[styles.banner, { opacity: fadeAnim }]}>
       <View style={styles.bannerRow}>
         <Icon />
-        <Text style={dynamicStyles.bannerText}>{config.text}</Text>
+        <Text style={[dynamicStyles.bannerText, styles.bannerText]}>{config.text}</Text>
       </View>
     </Animated.View>
   );
@@ -127,9 +140,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bannerText: {
-    color: '#2c2c2cff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 20,
+    fontWeight: '600',
     marginLeft: 8,
   },
   spinner: {
@@ -143,9 +155,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   compactText: {
-    fontSize: 12,
-    color: '#323232ff',
-    fontWeight: '500',
+    fontSize: 20,
+    fontWeight: '600',
     marginLeft: 6,
   },
   dot: {

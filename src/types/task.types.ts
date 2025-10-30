@@ -51,6 +51,7 @@ export interface TaskUserInfo {
   name: string;
   email: string;
   position?: string;
+  avatar?: string;
 }
 
 // Task Activity Interface
@@ -245,6 +246,7 @@ export interface TaskListFilters {
   status?: TaskStatus;
   priority?: TaskPriority;
   assigned_to?: number;
+  created_by?: number;
   project_id?: number;
   tags?: string[];
   due_date_from?: ISODateString;

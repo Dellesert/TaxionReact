@@ -85,6 +85,7 @@ export interface Poll {
   comments?: PollComment[];
   comments_count?: number;
   department_id?: number;
+  department_name?: string; // Name of the department
   category?: string;
   participant_rate?: number;
   created_at: ISODateString;
@@ -194,6 +195,8 @@ export interface PollVoter {
   user_id: number;
   user_name: string;
   user_email: string;
+  avatar?: string; // Avatar URL
+  position?: string; // User position/title
   voted_at: ISODateString;
   is_anonymous: boolean;
   options?: string[]; // Names of selected options
