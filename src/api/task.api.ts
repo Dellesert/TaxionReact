@@ -446,8 +446,8 @@ export const uploadAttachment = async (
   console.log('📤 Uploading to:', `/tasks/${taskId}/attachments`);
   console.log('📎 File data:', file);
 
-  const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-  if (!token) {
+  const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+  if (!sessionId) {
     throw new Error('Not authenticated');
   }
 
@@ -510,7 +510,7 @@ export const uploadAttachment = async (
     });
 
     xhr.open('POST', `${API_BASE_URL}/tasks/${taskId}/attachments`);
-    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.setRequestHeader('X-Session-ID', sessionId);
     // Don't set Content-Type - XMLHttpRequest will set it automatically with boundary
     xhr.send(formData);
   });

@@ -398,6 +398,14 @@ const ProfileScreen: React.FC = () => {
           <Text style={dynamicStyles.menuItemText}>Профиль</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
+        <TouchableOpacity
+          style={dynamicStyles.menuItem}
+          onPress={() => navigation.navigate('ActiveSessions')}
+        >
+          <Ionicons style={[styles.menuIcon, {backgroundColor: '#44e9a2ff'}]} name="phone-portrait-outline" size={20} color={theme.primary} />
+          <Text style={[dynamicStyles.menuItemText]}>Активные устройства</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+        </TouchableOpacity>
         <TouchableOpacity style={dynamicStyles.menuItem}>
           <Ionicons style={[styles.menuIcon, {backgroundColor: '#a2a2a2ff'}]} name="lock-closed-outline" size={20} color={theme.primary} />
           <Text style={[dynamicStyles.menuItemText]}>Конфиденциальность</Text>

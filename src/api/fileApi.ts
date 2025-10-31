@@ -48,8 +48,8 @@ class FileApi {
     onProgress?: UploadProgressCallback,
     isPublic?: boolean
   ): Promise<FileUploadResponse> {
-    const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-    if (!token) {
+    const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+    if (!sessionId) {
       throw new Error('Not authenticated');
     }
 
@@ -83,7 +83,7 @@ class FileApi {
       const response = await fetch(`${this.baseUrl}/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'X-Session-ID': sessionId,
           // Don't set Content-Type - let fetch set it with boundary
         },
         body: formData,
@@ -164,7 +164,7 @@ class FileApi {
       });
 
       xhr.open('POST', `${this.baseUrl}/upload`);
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.setRequestHeader('X-Session-ID', sessionId);
       xhr.send(formData);
     });
   }
@@ -186,20 +186,20 @@ class FileApi {
   }
 
   async getFileById(fileId: number): Promise<FileUploadResponse> {
-    const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-    if (!token) {
+    const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+    if (!sessionId) {
       throw new Error('Not authenticated');
     }
 
     console.log('🔐 getFileById request:', {
       url: `${this.baseUrl}/${fileId}`,
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
+      hasSessionId: !!sessionId,
+      sessionIdPreview: sessionId ? `${sessionId.substring(0, 20)}...` : 'none',
     });
 
     const response = await fetch(`${this.baseUrl}/${fileId}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        'X-Session-ID': sessionId,
       },
     });
 
@@ -219,15 +219,15 @@ class FileApi {
   }
 
   async deleteFile(fileId: number): Promise<void> {
-    const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-    if (!token) {
+    const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+    if (!sessionId) {
       throw new Error('Not authenticated');
     }
 
     const response = await fetch(`${this.baseUrl}/${fileId}`, {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${token}`,
+        'X-Session-ID': sessionId,
       },
     });
 

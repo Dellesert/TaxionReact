@@ -37,15 +37,15 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   onLongPress,
 }) => {
   const { theme } = useTheme();
-  const [token, setToken] = React.useState<string | null>(null);
+  const [sessionId, setSessionId] = React.useState<string | null>(null);
 
-  // Load token once
+  // Load session ID once
   React.useEffect(() => {
-    const loadToken = async () => {
-      const authToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-      setToken(authToken);
+    const loadSessionId = async () => {
+      const authSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      setSessionId(authSessionId);
     };
-    loadToken();
+    loadSessionId();
   }, []);
 
   const images = attachments.filter(a => isImageFile(a.mime_type || a.file_type || ''));
@@ -79,9 +79,9 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
 
   const handleFileDownload = async (attachment: Attachment) => {
     try {
-      // Get auth token
-      const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-      if (!token) {
+      // Get auth session ID
+      const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      if (!sessionId) {
         Alert.alert('Ошибка', 'Необходима авторизация для скачивания файла');
         return;
       }
@@ -93,7 +93,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         // Web: Download using blob
         const response = await fetch(fileUrl, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'X-Session-ID': sessionId,
           },
         });
 
@@ -131,7 +131,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
           fileUri,
           {
             headers: {
-              'Authorization': `Bearer ${token}`,
+              'X-Session-ID': sessionId,
             },
           }
         );
@@ -204,8 +204,8 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 <Image
                   source={{
                     uri: imageUrls[attachment.id],
-                    headers: token ? {
-                      'Authorization': `Bearer ${token}`,
+                    headers: sessionId ? {
+                      'X-Session-ID': sessionId,
                     } : undefined,
                   }}
                   style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height, maxWidth: '100%' }]}

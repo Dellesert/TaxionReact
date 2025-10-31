@@ -40,19 +40,19 @@ class WebSocketService {
    */
   async connect(): Promise<void> {
     try {
-      // Get access token
-      const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      // Get session ID (session mode) or access token (JWT mode fallback)
+      const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
 
-      if (!token) {
-        console.error('❌ No access token found for WebSocket connection');
+      if (!sessionId) {
+        console.error('❌ No session ID found for WebSocket connection');
         return;
       }
 
       // WebSocket URL from env (chat service on port 8082)
       const wsBaseUrl = process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:8082';
-      const wsUrl = `${wsBaseUrl}/api/v1/ws?token=${encodeURIComponent(token)}`;
+      const wsUrl = `${wsBaseUrl}/api/v1/ws?session_id=${encodeURIComponent(sessionId)}`;
 
-      console.log('🔌 Connecting to WebSocket:', wsBaseUrl);
+      console.log('🔌 Connecting to WebSocket (session mode):', wsBaseUrl);
 
       this.ws = new WebSocket(wsUrl);
 

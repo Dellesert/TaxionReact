@@ -398,9 +398,9 @@ const TaskDetailScreen: React.FC = () => {
         fileId,
       });
 
-      // Get token
-      const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-      if (!token) {
+      // Get session ID
+      const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      if (!sessionId) {
         Alert.alert('Ошибка', 'Не авторизован');
         return;
       }
@@ -408,12 +408,12 @@ const TaskDetailScreen: React.FC = () => {
       // Use fileApi to get file info first
       const file = await fileApi.getFileById(Number(fileId));
 
-      // For web: create download link with token in Authorization header using fetch + blob
+      // For web: create download link with session ID in header using fetch + blob
       if (Platform.OS === 'web') {
         const downloadUrl = fileApi.getDownloadUrl(file.file_name);
         const response = await fetch(downloadUrl, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'X-Session-ID': sessionId,
           },
         });
 
@@ -447,7 +447,7 @@ const TaskDetailScreen: React.FC = () => {
           fileUri,
           {
             headers: {
-              'Authorization': `Bearer ${token}`,
+              'X-Session-ID': sessionId,
             },
           }
         );

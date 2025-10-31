@@ -5,19 +5,17 @@
 
 // Storage Keys
 export const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'access_token',
-  REFRESH_TOKEN: 'refresh_token',
+  SESSION_ID: 'session_id', // Session-based authentication
   USER_DATA: 'user_data',
   THEME: 'theme',
   LANGUAGE: 'language',
   NOTIFICATION_PREFERENCES: 'notification_preferences',
 } as const;
 
-// Token Configuration
-export const TOKEN_CONFIG = {
-  ACCESS_TOKEN_LIFETIME: 15 * 60 * 1000, // 15 minutes in milliseconds
-  REFRESH_TOKEN_LIFETIME: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
-  REFRESH_THRESHOLD: 5 * 60 * 1000, // Refresh 5 minutes before expiration
+// Session Configuration
+export const SESSION_CONFIG = {
+  SESSION_LIFETIME: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+  SESSION_WARNING_TIME: 5 * 60 * 1000, // Show warning 5 minutes before expiration
 } as const;
 
 // User Roles

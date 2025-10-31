@@ -1,23 +1,22 @@
 /**
- * Auth Store (Session Mode)
- * Zustand store для управления аутентификацией с использованием session-based auth
- *
- * ВНИМАНИЕ: Это обновленная версия auth store для session mode
- * Замените authStore.ts на этот файл (или скопируйте содержимое)
+ * Auth Store
+ * Zustand store для управления аутентификацией и пользователем
  */
 
 import { create } from 'zustand';
 import * as secureStorage from '@utils/secureStorage';
-import { User, LoginDto, RegisterDto } from '../types/user.types';
+import { User, TokenPair, LoginDto, RegisterDto } from '../types/user.types';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import * as authApi from '@api/auth.api';
 import * as userApi from '@api/user.api';
 import { isMockMode, mockLogin, mockRegister } from '@utils/mockData';
 import { websocketService } from '@services/websocket.service';
+import { tokenRefreshService } from '@services/tokenRefresh.service';
 
 interface AuthState {
   // State
   user: User | null;
+  tokens: TokenPair | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitializing: boolean;
@@ -30,12 +29,14 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   setUser: (user: User) => void;
+  setTokens: (tokens: TokenPair) => void;
   clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   // Initial state
   user: null,
+  tokens: null,
   isAuthenticated: false,
   isLoading: false,
   isInitializing: true,
@@ -46,49 +47,54 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    */
   initialize: async () => {
     try {
-      console.log('🔄 Initializing auth from storage (Session mode)...');
+      console.log('🔄 Initializing auth from storage...');
       set({ isInitializing: true });
 
       // Migrate from SecureStore to AsyncStorage (for Expo Go compatibility)
       await secureStorage.migrateToAsyncStorage();
 
-      // Load session ID from secure storage
-      const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      // Load tokens from secure storage
+      const accessToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      const refreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
 
-      console.log('🔑 Session loaded:', {
-        hasSessionId: !!sessionId,
-        sessionIdPreview: sessionId ? sessionId.substring(0, 20) + '...' : null,
+      console.log('🔑 Tokens loaded:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        accessTokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : null,
       });
 
-      if (sessionId) {
-        // Load user data from storage
+      if (accessToken && refreshToken) {
+        const tokens: TokenPair = {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        };
+
+        set({ tokens });
+
+        // Load user data from storage (NOT from API)
+        // This prevents 404 errors when token hasn't been set in axios yet
         const storedUser = await secureStorage.getItemAsync(STORAGE_KEYS.USER_DATA);
         if (storedUser) {
           const user = JSON.parse(storedUser);
           console.log('✅ Auth restored from storage:', user.email);
+          set({
+            user,
+            isAuthenticated: true,
+            isInitializing: false,
+          });
 
-          // Verify session is still valid by making an API call
-          try {
-            const currentUser = await userApi.getProfile();
-            set({
-              user: currentUser,
-              isAuthenticated: true,
-              isInitializing: false,
-            });
-          } catch (error) {
-            console.log('⚠️ Session expired, clearing storage');
-            await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
-            await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
-            set({ isInitializing: false });
-          }
-        } else {
+          // Start automatic token refresh
+          // This will check if token is expired and refresh it immediately if needed
+          await tokenRefreshService.start();
+        } else{
           console.log('⚠️ No user data in storage');
-          // Clear session ID if user data is missing
-          await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
-          set({ isInitializing: false });
+          // Clear tokens if user data is missing
+          await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+          await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+          set({ isInitializing: false, tokens: null });
         }
       } else {
-        console.log('⚠️ No session ID found in storage');
+        console.log('⚠️ No tokens found in storage');
         set({ isInitializing: false });
       }
     } catch (error) {
@@ -98,7 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   /**
-   * Login user (Session mode)
+   * Login user
    */
   login: async (credentials: LoginDto) => {
     try {
@@ -116,37 +122,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       console.log('📝 Login response received:', {
         hasUser: !!response.user,
-        authMode: response.auth_mode,
-        hasSession: !!response.session,
-        sessionIdPreview: response.session?.session_id ? response.session.session_id.substring(0, 20) + '...' : 'N/A',
+        hasTokens: !!response.tokens,
+        hasAccessToken: !!response.tokens?.access_token,
+        hasRefreshToken: !!response.tokens?.refresh_token,
       });
 
-      // Store session ID in secure storage
-      if (response.session?.session_id) {
-        console.log('💾 Saving session ID to storage...');
-        await secureStorage.setItemAsync(
-          STORAGE_KEYS.SESSION_ID,
-          response.session.session_id
-        );
-      }
+      // Store tokens in secure storage
+      console.log('💾 Saving tokens to storage...');
+      await secureStorage.setItemAsync(
+        STORAGE_KEYS.ACCESS_TOKEN,
+        response.tokens.access_token
+      );
+      await secureStorage.setItemAsync(
+        STORAGE_KEYS.REFRESH_TOKEN,
+        response.tokens.refresh_token
+      );
 
       // Store user data
       await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(response.user));
 
-      console.log('✅ Session data saved successfully!');
-      console.log('🔑 Verifying saved session...');
-      const savedSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      console.log('✅ Tokens saved successfully!');
+      console.log('🔑 Verifying saved tokens...');
+      const savedAccessToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      const savedRefreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
       console.log('✓ Verification:', {
-        sessionIdSaved: !!savedSessionId,
+        accessTokenSaved: !!savedAccessToken,
+        refreshTokenSaved: !!savedRefreshToken,
       });
 
       set({
         user: response.user,
+        tokens: response.tokens,
         isAuthenticated: true,
         isLoading: false,
       });
 
-      // No token refresh service needed for session mode!
+      // Start automatic token refresh after successful login
+      await tokenRefreshService.start();
     } catch (error: any) {
       console.error('❌ Login error:', error);
       set({
@@ -183,21 +195,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   /**
-   * Logout user (Session mode)
+   * Logout user
    */
   logout: async () => {
     try {
       set({ isLoading: true });
 
+      // Stop token refresh service
+      console.log('⏹️ Stopping token refresh service...');
+      tokenRefreshService.stop();
+
       // Disconnect WebSocket first to update status to offline
       console.log('🔌 Disconnecting WebSocket...');
       websocketService.disconnect();
 
-      // Call logout API to invalidate session on server
+      // Call logout API only if not in mock mode
       if (!isMockMode()) {
         try {
           await authApi.logout();
-          console.log('✅ Session invalidated on server');
         } catch (error) {
           console.error('Logout API call failed:', error);
         }
@@ -205,8 +220,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.log('🔧 Mock logout - skipping API call');
       }
 
-      // Clear session data from secure storage
-      await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
+      // Clear tokens from secure storage
+      await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+      await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
 
       console.log('✅ Logged out successfully');
@@ -214,6 +230,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Clear state
       set({
         user: null,
+        tokens: null,
         isAuthenticated: false,
         isLoading: false,
         error: null,
@@ -246,6 +263,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    */
   setUser: (user: User) => {
     set({ user, isAuthenticated: true });
+  },
+
+  /**
+   * Set tokens
+   */
+  setTokens: (tokens: TokenPair) => {
+    set({ tokens });
   },
 
   /**

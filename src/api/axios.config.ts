@@ -20,120 +20,27 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Flag to prevent multiple refresh token requests
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
-
-/**
- * Subscribe to token refresh
- */
-const subscribeTokenRefresh = (callback: (token: string) => void): void => {
-  refreshSubscribers.push(callback);
-};
-
-/**
- * Notify all subscribers when token is refreshed
- */
-const onTokenRefreshed = (token: string): void => {
-  refreshSubscribers.forEach((callback) => callback(token));
-  refreshSubscribers = [];
-};
-
-/**
- * Refresh access token
- */
-const refreshAccessToken = async (): Promise<string> => {
-  try {
-    console.log('🔄 [Axios Interceptor] Attempting to refresh access token...');
-
-    const refreshToken = await secureStorage.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-    const accessToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-
-    console.log('🔍 [Axios Interceptor] Current token state:', {
-      hasAccessToken: !!accessToken,
-      hasRefreshToken: !!refreshToken,
-      accessTokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'NULL',
-      refreshTokenPreview: refreshToken ? refreshToken.substring(0, 20) + '...' : 'NULL',
-    });
-
-    if (!refreshToken) {
-      console.error('❌ [Axios Interceptor] No refresh token available in storage');
-      console.error('❌ This usually means:');
-      console.error('   1. User was never logged in');
-      console.error('   2. Tokens were cleared by logout');
-      console.error('   3. Storage was cleared by browser/system');
-      console.error('   4. Refresh token expired (7 days TTL)');
-      throw new Error('No refresh token available');
-    }
-
-    console.log('📤 [Axios Interceptor] Sending refresh token request to backend...');
-    const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
-      `${API_BASE_URL}/api/v1/auth/refresh`,
-      { refresh_token: refreshToken },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    console.log('📥 [Axios Interceptor] Refresh token response received:', response.status);
-    console.log('📦 Response data structure:', {
-      hasTokens: !!response.data.tokens,
-      hasData: !!response.data.data,
-      responseKeys: Object.keys(response.data),
-    });
-
-    const tokens = response.data.tokens || response.data.data || response.data;
-    console.log('🔑 [Axios Interceptor] Extracted tokens:', {
-      hasAccessToken: !!tokens.access_token,
-      hasRefreshToken: !!tokens.refresh_token,
-    });
-
-    const { access_token, refresh_token: new_refresh_token } = tokens;
-
-    // Store new tokens
-    await secureStorage.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, access_token);
-    await secureStorage.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, new_refresh_token);
-
-    console.log('✅ [Axios Interceptor] Access token refreshed successfully!');
-    return access_token;
-  } catch (error: any) {
-    console.error('❌ [Axios Interceptor] Failed to refresh access token:', error);
-    console.error('Error details:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-
-    // Clear tokens and redirect to login
-    console.log('🗑️ [Axios Interceptor] Clearing all auth data...');
-    await secureStorage.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-    await secureStorage.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-    await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
-
-    throw error;
-  }
-};
+// Session-based authentication - no token refresh needed!
 
 /**
  * Request Interceptor
- * Adds authorization token to all requests
+ * Adds session ID to all requests (session-based auth)
  */
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+    // Try to get session ID from storage
+    const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
 
     console.log('🔐 Request interceptor:', {
       url: config.url,
       method: config.method,
       params: config.params,
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
+      hasSessionId: !!sessionId,
+      sessionIdPreview: sessionId ? `${sessionId.substring(0, 20)}...` : 'NO SESSION',
     });
 
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (sessionId && config.headers) {
+      config.headers['X-Session-ID'] = sessionId;
     }
 
     return config;
@@ -146,7 +53,7 @@ api.interceptors.request.use(
 
 /**
  * Response Interceptor
- * Handles token refresh and error responses
+ * Handles session expiration and error responses
  */
 api.interceptors.response.use(
   (response: AxiosResponse) => {
@@ -161,48 +68,15 @@ api.interceptors.response.use(
       responseData: error.response?.data,
     });
 
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    // Handle 401 Unauthorized errors (session expired)
+    if (error.response?.status === HTTP_STATUS.UNAUTHORIZED) {
+      console.log('🔐 Session expired (401), clearing session data...');
 
-    // Handle 401 Unauthorized errors
-    if (error.response?.status === HTTP_STATUS.UNAUTHORIZED && !originalRequest._retry) {
-      console.log('🔐 Received 401 Unauthorized, attempting token refresh...');
+      // Clear session data from storage
+      await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
+      await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
 
-      if (isRefreshing) {
-        console.log('⏳ Token refresh already in progress, waiting...');
-        // Wait for token refresh
-        return new Promise((resolve) => {
-          subscribeTokenRefresh(async (token: string) => {
-            console.log('✅ Received refreshed token from queue');
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            resolve(api(originalRequest));
-          });
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const newToken = await refreshAccessToken();
-        isRefreshing = false;
-        onTokenRefreshed(newToken);
-
-        console.log('🔄 Retrying original request with new token...');
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        }
-
-        return api(originalRequest);
-      } catch (refreshError) {
-        console.error('❌ Token refresh failed, clearing session...');
-        isRefreshing = false;
-        refreshSubscribers = [];
-
-        // Redirect to login screen will be handled by auth store
-        return Promise.reject(refreshError);
-      }
+      // Auth store will handle redirect to login
     }
 
     // Transform error to ApiError format

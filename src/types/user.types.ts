@@ -73,10 +73,40 @@ export interface LoginDto {
   password: string;
 }
 
+// Session Authentication Types
+export interface SessionInfo {
+  session_id: string;
+  expires_at: number;
+}
+
+export type AuthMode = 'jwt' | 'session';
+
+// Active Session Management
+export interface ActiveSession {
+  session_id: string;
+  user_id: number;
+  email: string;
+  role: UserRole;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+  expires_at: string;
+  last_active_at: string;
+}
+
+export interface GetSessionsResponse {
+  sessions: ActiveSession[];
+  total: number;
+}
+
 export interface LoginResponse {
   message: string;
   user: User;
-  tokens: TokenPair;
+  tokens?: TokenPair; // Optional for JWT mode
+  session?: SessionInfo; // Optional for Session mode
+  auth_mode: AuthMode;
+  must_change_password?: boolean;
+  request_id?: string;
 }
 
 export interface RegisterDto {

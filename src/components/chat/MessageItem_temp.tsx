@@ -79,8 +79,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
       
 
-      const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-      if (!token) {
+      const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      if (!sessionId) {
         console.error('❌ No access token for loading images');
         return;
       }
@@ -105,7 +105,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
             const response = await fetch(fileUrl, {
               headers: {
-                'Authorization': `Bearer ${token}`,
+                'X-Session-ID': sessionId,
               },
             });
 
@@ -639,8 +639,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                       
                       try {
                         // Get auth token
-                        const token = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-                        if (!token) {
+                        const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+                        if (!sessionId) {
                           Alert.alert('Ошибка', 'Необходима авторизация для скачивания файла');
                           return;
                         }
@@ -652,7 +652,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                           // Web: Download using blob
                           const response = await fetch(fileUrl, {
                             headers: {
-                              'Authorization': `Bearer ${token}`,
+                              'X-Session-ID': sessionId,
                             },
                           });
 
@@ -698,7 +698,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                             fileUri,
                             {
                               headers: {
-                                'Authorization': `Bearer ${token}`,
+                                'X-Session-ID': sessionId,
                               },
                             }
                           );

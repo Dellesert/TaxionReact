@@ -27,7 +27,7 @@ const Avatar: React.FC<AvatarProps> = ({
   style,
 }) => {
   const [imageError, setImageError] = useState(false);
-  const token = useAuthStore((state) => state.tokens?.accessToken);
+  const sessionId = useAuthStore((state) => state.sessionId);
 
   // Prepare image source with headers if needed
   const imageSource = useMemo(() => {
@@ -49,15 +49,15 @@ const Avatar: React.FC<AvatarProps> = ({
     if (fixedUrl.startsWith('http://') || fixedUrl.startsWith('https://')) {
       return {
         uri: fixedUrl,
-        headers: token ? {
-          'Authorization': `Bearer ${token}`,
+        headers: sessionId ? {
+          'X-Session-ID': sessionId,
         } : undefined,
       };
     }
 
     // Otherwise, it might be a relative path - use as is
     return { uri: fixedUrl };
-  }, [imageUrl, token]);
+  }, [imageUrl, sessionId]);
 
   const getInitials = (fullName: string): string => {
     const names = fullName.trim().split(' ');

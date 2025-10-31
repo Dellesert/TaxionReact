@@ -11,7 +11,6 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
 import { useThemeStore } from './src/store/themeStore';
 import { websocketService } from './src/services/websocket.service';
-import { tokenRefreshService } from './src/services/tokenRefresh.service';
 
 // Ignore specific warnings
 LogBox.ignoreLogs([
@@ -58,9 +57,9 @@ export default function App() {
       console.log('📱 App state changed to:', nextAppState);
 
       if (nextAppState === 'active' && isAuthenticated) {
-        console.log('📱 App became active, checking token validity...');
-        // When app comes to foreground, check and refresh token if needed
-        await tokenRefreshService.start();
+        console.log('📱 App became active - session mode (no token refresh needed)');
+        // Session mode: no token refresh needed
+        // Session is validated on each request via X-Session-ID header
       }
     };
 

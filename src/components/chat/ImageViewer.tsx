@@ -18,14 +18,14 @@ interface ImageViewerProps {
  */
 export const ImageViewer: React.FC<ImageViewerProps> = ({ visible, imageUrl, onClose }) => {
   const { theme } = useTheme();
-  const [token, setToken] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadToken = async () => {
-      const authToken = await secureStorage.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-      setToken(authToken);
+    const loadSessionId = async () => {
+      const authSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      setSessionId(authSessionId);
     };
-    loadToken();
+    loadSessionId();
   }, []);
 
   return (
@@ -51,8 +51,8 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ visible, imageUrl, onC
               <Image
                 source={{
                   uri: imageUrl,
-                  headers: token ? {
-                    'Authorization': `Bearer ${token}`,
+                  headers: sessionId ? {
+                    'X-Session-ID': sessionId,
                   } : undefined,
                 }}
                 style={styles.fullscreenImage}

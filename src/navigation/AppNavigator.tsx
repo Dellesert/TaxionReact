@@ -16,6 +16,7 @@ import TaskDetailScreen from '@screens/task/TaskDetailScreen';
 import EventDetailScreen from '@screens/calendar/EventDetailScreen';
 import PollDetailScreen from '@screens/poll/PollDetailScreen';
 import NotificationListScreen from '@screens/notification/NotificationListScreen';
+import ActiveSessionsScreen from '@screens/ActiveSessionsScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -25,6 +26,7 @@ export type RootStackParamList = {
   EventDetail: { eventId: number };
   PollDetail: { pollId: number };
   NotificationList: undefined;
+  ActiveSessions: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -117,6 +119,14 @@ const AppNavigator: React.FC = () => {
                 headerShown: true,
                 headerTitle: 'Уведомления',
                 headerBackTitle: 'Назад',
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="ActiveSessions"
+              component={ActiveSessionsScreen}
+              options={{
+                headerShown: false,
                 animation: 'slide_from_right',
               }}
             />
