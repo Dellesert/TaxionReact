@@ -88,9 +88,15 @@ const LoginScreen: React.FC = () => {
           responseData: twoFAError?.details?.error,
         });
 
+        // Проверяем на блокировку super admin (403 Forbidden)
+        const errorMessage = (twoFAError?.message?.toLowerCase() || '') + ' ' + (twoFAError?.details?.error?.toLowerCase() || '');
+        if (twoFAError?.status === 403 || errorMessage.includes('super admin') || errorMessage.includes('restricted to web')) {
+          console.log('🚫 Super admin access blocked');
+          throw new Error('Super admin должен использовать веб-панель администратора');
+        }
+
         // Проверяем что это именно ошибка "2FA not enabled"
         // Либо по тексту ошибки, либо по статус коду 400
-        const errorMessage = (twoFAError?.message?.toLowerCase() || '') + ' ' + (twoFAError?.details?.error?.toLowerCase() || '');
         const is2FANotEnabled =
           twoFAError?.status === 400 ||
           errorMessage.includes('two factor') ||

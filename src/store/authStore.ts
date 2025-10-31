@@ -116,10 +116,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       console.log('📝 Login response received:', {
         hasUser: !!response.user,
+        userRole: response.user.role,
         authMode: response.auth_mode,
         hasSession: !!response.session,
         sessionIdPreview: response.session?.session_id ? response.session.session_id.substring(0, 20) + '...' : 'N/A',
       });
+
+      // Блокируем доступ для super_admin - они должны использовать веб-панель
+      if (response.user.role === 'super_admin') {
+        console.log('🚫 Super admin access blocked - use web dashboard instead');
+        set({ isLoading: false, error: 'Super admin access is restricted to web dashboard' });
+        throw new Error('Super admin access is restricted to web dashboard. Please use the admin panel.');
+      }
 
       // Store session ID in secure storage
       if (response.session?.session_id) {

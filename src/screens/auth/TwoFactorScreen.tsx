@@ -125,6 +125,16 @@ const TwoFactorScreen: React.FC = () => {
         code: fullCode,
       });
 
+      // Блокируем доступ для super_admin - они должны использовать веб-панель
+      if (response.user.role === 'super_admin') {
+        Alert.alert(
+          'Доступ запрещен',
+          'Super admin должен использовать веб-панель администратора'
+        );
+        setIsLoading(false);
+        return;
+      }
+
       // Сохраняем сессию
       if (response.session?.session_id) {
         await secureStorage.setItemAsync(
