@@ -12,6 +12,10 @@ import {
   RegisterResponse,
   RefreshTokenDto,
   RefreshTokenResponse,
+  Send2FADto,
+  Send2FAResponse,
+  Verify2FADto,
+  Verify2FAResponse,
 } from '../types/user.types';
 import { ApiResponse } from '../types/common.types';
 
@@ -53,4 +57,26 @@ export const refreshToken = async (data: RefreshTokenDto): Promise<RefreshTokenR
  */
 export const logout = async (): Promise<void> => {
   await api.post(API_ENDPOINTS.AUTH.LOGOUT);
+};
+
+/**
+ * Send 2FA code to email
+ */
+export const send2FACode = async (data: Send2FADto): Promise<Send2FAResponse> => {
+  const response = await api.post<Send2FAResponse>(
+    API_ENDPOINTS.AUTH.SEND_2FA,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Verify 2FA code and complete login
+ */
+export const verify2FACode = async (data: Verify2FADto): Promise<Verify2FAResponse> => {
+  const response = await api.post<Verify2FAResponse>(
+    API_ENDPOINTS.AUTH.VERIFY_2FA,
+    data
+  );
+  return response.data;
 };

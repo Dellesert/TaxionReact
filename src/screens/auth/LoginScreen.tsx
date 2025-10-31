@@ -67,8 +67,47 @@ const LoginScreen: React.FC = () => {
 
     try {
       console.log('Calling login...');
-      await login({ email, password });
-      console.log('Login successful!');
+
+      // Используем send2FACode чтобы проверить нужна ли 2FA
+      // Если у пользователя включена 2FA, код будет отправлен
+      // Если нет - получим ошибку и сделаем обычный логин
+      const authApi = await import('@api/auth.api');
+
+      try {
+        const response = await authApi.send2FACode({ email, password });
+        // Если успешно - значит 2FA включена, переходим на экран ввода кода
+        console.log('✅ 2FA code sent successfully:', response);
+        console.log('📧 Navigating to TwoFactor screen for email:', email);
+        navigation.navigate('TwoFactor', { email });
+        return; // ВАЖНО: Останавливаем выполнение, не продолжаем логин
+      } catch (twoFAError: any) {
+        // Если ошибка - значит 2FA не включена, делаем обычный логин
+        console.log('⚠️ 2FA error (expected if 2FA not enabled):', {
+          message: twoFAError?.message,
+          status: twoFAError?.status,
+          responseData: twoFAError?.details?.error,
+        });
+
+        // Проверяем что это именно ошибка "2FA not enabled"
+        // Либо по тексту ошибки, либо по статус коду 400
+        const errorMessage = (twoFAError?.message?.toLowerCase() || '') + ' ' + (twoFAError?.details?.error?.toLowerCase() || '');
+        const is2FANotEnabled =
+          twoFAError?.status === 400 ||
+          errorMessage.includes('two factor') ||
+          errorMessage.includes('2fa') ||
+          errorMessage.includes('not enabled');
+
+        if (is2FANotEnabled) {
+          console.log('🔓 2FA not enabled for this user, doing regular login...');
+          // Пробуем обычный логин
+          await login({ email, password });
+          console.log('✅ Regular login successful!');
+        } else {
+          // Это другая ошибка (например, неправильный пароль)
+          console.error('❌ Not a 2FA error, throwing:', twoFAError);
+          throw twoFAError;
+        }
+      }
     } catch (err: any) {
       console.error('Login error:', err);
       Alert.alert('Ошибка входа', err.message || 'Не удалось войти в систему');

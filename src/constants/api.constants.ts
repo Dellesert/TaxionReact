@@ -25,6 +25,8 @@ export const API_ENDPOINTS = {
     LOGIN: '/auth/login',
     REFRESH: '/auth/refresh',
     LOGOUT: '/auth/logout',
+    SEND_2FA: '/auth/2fa/send',
+    VERIFY_2FA: '/auth/2fa/verify',
   },
 
   // User

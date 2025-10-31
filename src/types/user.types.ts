@@ -38,6 +38,7 @@ export interface User {
   phone?: string;
   bio?: string;
   is_active: boolean;
+  two_factor_enabled: boolean;
   last_seen_at?: ISODateString;
   created_at: ISODateString;
   updated_at: ISODateString;
@@ -106,6 +107,7 @@ export interface LoginResponse {
   session?: SessionInfo; // Optional for Session mode
   auth_mode: AuthMode;
   must_change_password?: boolean;
+  requires_2fa?: boolean;
   request_id?: string;
 }
 
@@ -173,4 +175,29 @@ export interface UserListFilters {
   status?: UserStatus;
   is_active?: boolean;
   search?: string;
+}
+
+// Two-Factor Authentication Types
+export interface Send2FADto {
+  email: string;
+  password: string;
+}
+
+export interface Send2FAResponse {
+  message: string;
+  request_id?: string;
+}
+
+export interface Verify2FADto {
+  email: string;
+  code: string;
+}
+
+export interface Verify2FAResponse {
+  message: string;
+  user: User;
+  tokens?: TokenPair;
+  session?: SessionInfo;
+  auth_mode: AuthMode;
+  request_id?: string;
 }
