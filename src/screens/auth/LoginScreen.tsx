@@ -134,11 +134,6 @@ const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleRegister = () => {
-    console.log('Register button clicked!');
-    navigation.navigate('Register');
-  };
-
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
@@ -218,12 +213,20 @@ const LoginScreen: React.FC = () => {
                 )}
               </TouchableOpacity>
 
-              <View style={styles.registerContainer}>
-                <Text style={styles.registerText}>Нет аккаунта? </Text>
-                <TouchableOpacity onPress={handleRegister} disabled={isLoading} activeOpacity={0.7}>
-                  <Text style={styles.registerLink}>Зарегистрируйся</Text>
-                </TouchableOpacity>
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>или</Text>
+                <View style={styles.dividerLine} />
               </View>
+
+              <TouchableOpacity
+                style={styles.invitationButton}
+                onPress={() => navigation.navigate('AcceptInvitation', {})}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.invitationButtonText}>✉️ У меня есть приглашение</Text>
+              </TouchableOpacity>
             </View>
           </Animated.View>
         </ScrollView>
@@ -320,21 +323,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  registerText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  registerLink: {
-    fontSize: 14,
-    color: '#E94444',
-    fontWeight: '600',
-  },
   errorContainer: {
     backgroundColor: '#FEE2E2',
     padding: 12,
@@ -345,6 +333,36 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 14,
     textAlign: 'center',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D1D5DB',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  invitationButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E94444',
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  invitationButtonText: {
+    color: '#E94444',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
