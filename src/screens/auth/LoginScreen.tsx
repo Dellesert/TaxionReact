@@ -88,9 +88,23 @@ const LoginScreen: React.FC = () => {
           responseData: twoFAError?.details?.error,
         });
 
-        // Проверяем на блокировку super admin (403 Forbidden)
         const errorMessage = (twoFAError?.message?.toLowerCase() || '') + ' ' + (twoFAError?.details?.error?.toLowerCase() || '');
-        if (twoFAError?.status === 403 || errorMessage.includes('super admin') || errorMessage.includes('restricted to web')) {
+
+        // Проверяем если это ошибка "2FA is required" - переходим на экран ввода кода
+        if (twoFAError?.status === 403 && errorMessage.includes('2fa is required')) {
+          console.log('🔐 2FA is globally required, navigating to TwoFactor screen...');
+          // Сначала отправляем код
+          try {
+            await authApi.send2FACode({ email, password });
+          } catch (sendError) {
+            console.log('⚠️ Code already sent or error sending:', sendError);
+          }
+          navigation.navigate('TwoFactor', { email });
+          return;
+        }
+
+        // Проверяем на блокировку super admin (403 Forbidden)
+        if (twoFAError?.status === 403 && (errorMessage.includes('super admin') || errorMessage.includes('restricted to web'))) {
           console.log('🚫 Super admin access blocked');
           throw new Error('Super admin должен использовать веб-панель администратора');
         }
