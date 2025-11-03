@@ -15,7 +15,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.tachyon-messenger"
+      "bundleIdentifier": "com.anonymous.tachyon-messenger",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
+        "NSCameraUsageDescription": "Tachyon нужен доступ к камере для съемки и отправки фотографий",
+        "NSPhotoLibraryAddUsageDescription": "Tachyon нужен доступ для сохранения изображений в вашу галерею"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,13 +28,27 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.tachyonmessenger"
+      "package": "com.anonymous.tachyonmessenger",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": []
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
+          "cameraPermission": "Tachyon нужен доступ к камере для съемки и отправки фотографий"
+        }
+      ]
+    ]
   }
 }
