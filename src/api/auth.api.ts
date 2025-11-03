@@ -16,6 +16,15 @@ import {
   Send2FAResponse,
   Verify2FADto,
   Verify2FAResponse,
+  PasskeyLoginBeginDto,
+  PasskeyLoginBeginResponse,
+  PasskeyLoginFinishResponse,
+  PasskeyRegisterBeginResponse,
+  PasskeyRegisterFinishDto,
+  PasskeyRegisterFinishResponse,
+  PasskeyListResponse,
+  UpdatePasskeyDto,
+  Passkey,
 } from '../types/user.types';
 import { ApiResponse } from '../types/common.types';
 
@@ -76,6 +85,77 @@ export const send2FACode = async (data: Send2FADto): Promise<Send2FAResponse> =>
 export const verify2FACode = async (data: Verify2FADto): Promise<Verify2FAResponse> => {
   const response = await api.post<Verify2FAResponse>(
     API_ENDPOINTS.AUTH.VERIFY_2FA,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Begin passkey login (get challenge)
+ */
+export const beginPasskeyLogin = async (data: PasskeyLoginBeginDto): Promise<PasskeyLoginBeginResponse> => {
+  const response = await api.post<PasskeyLoginBeginResponse>(
+    API_ENDPOINTS.AUTH.PASSKEY_LOGIN_BEGIN,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Finish passkey login (verify credential)
+ */
+export const finishPasskeyLogin = async (credential: any): Promise<PasskeyLoginFinishResponse> => {
+  const response = await api.post<PasskeyLoginFinishResponse>(
+    API_ENDPOINTS.AUTH.PASSKEY_LOGIN_FINISH,
+    credential
+  );
+  return response.data;
+};
+
+/**
+ * Begin passkey registration (get creation options)
+ */
+export const beginPasskeyRegister = async (): Promise<PasskeyRegisterBeginResponse> => {
+  const response = await api.post<PasskeyRegisterBeginResponse>(
+    API_ENDPOINTS.AUTH.PASSKEY_REGISTER_BEGIN
+  );
+  return response.data;
+};
+
+/**
+ * Finish passkey registration (register credential)
+ */
+export const finishPasskeyRegister = async (data: PasskeyRegisterFinishDto): Promise<PasskeyRegisterFinishResponse> => {
+  const response = await api.post<PasskeyRegisterFinishResponse>(
+    API_ENDPOINTS.AUTH.PASSKEY_REGISTER_FINISH,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * List user's passkeys
+ */
+export const listPasskeys = async (): Promise<PasskeyListResponse> => {
+  const response = await api.get<PasskeyListResponse>(
+    API_ENDPOINTS.AUTH.PASSKEY_LIST
+  );
+  return response.data;
+};
+
+/**
+ * Delete passkey
+ */
+export const deletePasskey = async (id: number): Promise<void> => {
+  await api.delete(API_ENDPOINTS.AUTH.PASSKEY_DELETE(id));
+};
+
+/**
+ * Update passkey name
+ */
+export const updatePasskey = async (id: number, data: UpdatePasskeyDto): Promise<Passkey> => {
+  const response = await api.patch<Passkey>(
+    API_ENDPOINTS.AUTH.PASSKEY_UPDATE(id),
     data
   );
   return response.data;

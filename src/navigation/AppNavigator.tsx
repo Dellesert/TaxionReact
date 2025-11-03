@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '@hooks/useAuth';
@@ -17,6 +17,8 @@ import EventDetailScreen from '@screens/calendar/EventDetailScreen';
 import PollDetailScreen from '@screens/poll/PollDetailScreen';
 import NotificationListScreen from '@screens/notification/NotificationListScreen';
 import ActiveSessionsScreen from '@screens/ActiveSessionsScreen';
+import PasskeyManagementScreen from '@screens/PasskeyManagementScreen';
+import * as Linking from 'expo-linking';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -27,9 +29,48 @@ export type RootStackParamList = {
   PollDetail: { pollId: number };
   NotificationList: undefined;
   ActiveSessions: undefined;
+  PasskeyManagement: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Deep linking configuration
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [
+    Linking.createURL('/'),
+    'tachyon://',
+  ],
+  config: {
+    screens: {
+      Auth: {
+        screens: {
+          Login: 'login',
+          TwoFactor: 'two-factor',
+          AcceptInvitation: 'accept-invitation/:token?',
+          ResetPassword: 'reset-password/:token',
+          ForgotPassword: 'forgot-password',
+        },
+      },
+      Main: {
+        screens: {
+          Home: 'home',
+          Chats: 'chats',
+          Tasks: 'tasks',
+          Calendar: 'calendar',
+          Polls: 'polls',
+          Profile: 'profile',
+        },
+      },
+      ChatDetail: 'chat/:chatId',
+      TaskDetail: 'task/:taskId',
+      EventDetail: 'event/:eventId',
+      PollDetail: 'poll/:pollId',
+      NotificationList: 'notifications',
+      ActiveSessions: 'sessions',
+      PasskeyManagement: 'passkeys',
+    },
+  },
+};
 
 const AppNavigator: React.FC = () => {
   const { isAuthenticated, isInitializing } = useAuth();
@@ -58,7 +99,7 @@ const AppNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer theme={navigationTheme} linking={linking}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -125,6 +166,14 @@ const AppNavigator: React.FC = () => {
             <Stack.Screen
               name="ActiveSessions"
               component={ActiveSessionsScreen}
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="PasskeyManagement"
+              component={PasskeyManagementScreen}
               options={{
                 headerShown: false,
                 animation: 'slide_from_right',

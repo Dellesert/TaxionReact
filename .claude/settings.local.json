@@ -47,7 +47,8 @@
       "Bash(xcodebuild:*)",
       "Bash(pod install:*)",
       "Bash(lsof:*)",
-      "Bash(xargs ps:*)"
+      "Bash(xargs ps:*)",
+      "Bash(xargs cat:*)"
     ],
     "deny": [],
     "ask": []

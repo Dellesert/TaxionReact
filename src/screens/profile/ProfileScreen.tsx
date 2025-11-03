@@ -406,6 +406,14 @@ const ProfileScreen: React.FC = () => {
           <Text style={[dynamicStyles.menuItemText]}>Активные устройства</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
+        <TouchableOpacity
+          style={dynamicStyles.menuItem}
+          onPress={() => navigation.navigate('PasskeyManagement')}
+        >
+          <Ionicons style={[styles.menuIcon, {backgroundColor: '#6366F1'}]} name="key-outline" size={20} color="#FFFFFF" />
+          <Text style={[dynamicStyles.menuItemText]}>Управление Passkey</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+        </TouchableOpacity>
         <TouchableOpacity style={dynamicStyles.menuItem}>
           <Ionicons style={[styles.menuIcon, {backgroundColor: '#a2a2a2ff'}]} name="lock-closed-outline" size={20} color={theme.primary} />
           <Text style={[dynamicStyles.menuItemText]}>Конфиденциальность</Text>

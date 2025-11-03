@@ -22,15 +22,18 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { useAuth } from '@hooks/useAuth';
+import { isPasskeySupported, authenticateWithPasskey, formatPasskeyError } from '@utils/passkeyUtils';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, setUser } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
+  const [passkeySupported, setPasskeySupported] = useState(false);
 
   // Анимация для логотипа (fade in)
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -55,7 +58,93 @@ const LoginScreen: React.FC = () => {
         useNativeDriver: true,
       }).start();
     }, 1000);
+
+    // Проверяем поддержку passkey
+    checkPasskeySupport();
   }, []);
+
+  const checkPasskeySupport = async () => {
+    try {
+      const supported = await isPasskeySupported();
+      setPasskeySupported(supported);
+      console.log('Passkey supported:', supported);
+    } catch (error) {
+      console.error('Error checking passkey support:', error);
+      setPasskeySupported(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    console.log('👆 Passkey button clicked!');
+    console.log('📧 Email:', email);
+    console.log('🔒 isPasskeyLoading:', isPasskeyLoading);
+    console.log('🔒 isLoading:', isLoading);
+
+    if (!email) {
+      Alert.alert('Ошибка', 'Введите email для входа с помощью Passkey');
+      return;
+    }
+
+    setIsPasskeyLoading(true);
+    try {
+      console.log('🔐 Starting passkey login for:', email);
+
+      const authApi = await import('@api/auth.api');
+
+      // 1. Начинаем процесс входа - получаем challenge от сервера
+      const beginResponse = await authApi.beginPasskeyLogin({ email });
+      console.log('✅ Got passkey challenge:', beginResponse);
+
+      // 2. Показываем системный диалог для аутентификации (кросс-платформенно)
+      const credential = await authenticateWithPasskey(
+        beginResponse.publicKey.challenge,
+        { publicKey: beginResponse.publicKey }
+      );
+      console.log('✅ Got credential from device:', credential);
+
+      // 3. Отправляем credential на сервер для верификации
+      const loginResponse = await authApi.finishPasskeyLogin(credential);
+      console.log('✅ Passkey login successful:', loginResponse);
+
+      // 4. Блокируем доступ для super_admin
+      if (loginResponse.user.role === 'super_admin') {
+        console.log('🚫 Super admin access blocked - use web dashboard instead');
+        Alert.alert('Ошибка', 'Super admin доступ ограничен веб-панелью. Используйте админ-панель.');
+        return;
+      }
+
+      // 5. Сохраняем сессию в storage
+      const secureStorage = await import('@utils/secureStorage');
+      const { STORAGE_KEYS } = await import('@constants/app.constants');
+
+      if (loginResponse.session?.session_id) {
+        console.log('💾 Saving session ID to storage...');
+        await secureStorage.setItemAsync(
+          STORAGE_KEYS.SESSION_ID,
+          loginResponse.session.session_id
+        );
+      }
+
+      // Сохраняем данные пользователя
+      await secureStorage.setItemAsync(
+        STORAGE_KEYS.USER_DATA,
+        JSON.stringify(loginResponse.user)
+      );
+
+      console.log('✅ Session data saved successfully!');
+
+      // 6. Обновляем состояние авторизации
+      setUser(loginResponse.user);
+
+      Alert.alert('Успех', 'Вход выполнен успешно!');
+    } catch (error: any) {
+      console.error('❌ Passkey login error:', error);
+      const errorMessage = formatPasskeyError(error);
+      Alert.alert('Ошибка входа', errorMessage);
+    } finally {
+      setIsPasskeyLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     console.log('Login button clicked!', { email, password });
@@ -190,7 +279,10 @@ const LoginScreen: React.FC = () => {
                 editable={!isLoading}
               />
 
-              <TouchableOpacity style={styles.forgotPassword}>
+              <TouchableOpacity
+                style={styles.forgotPassword}
+                onPress={() => navigation.navigate('ForgotPassword')}
+              >
                 <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
               </TouchableOpacity>
 
@@ -212,6 +304,32 @@ const LoginScreen: React.FC = () => {
                   <Text style={styles.buttonText}>Вход</Text>
                 )}
               </TouchableOpacity>
+
+              {passkeySupported && (
+                <>
+                  <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>или</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.passkeyButton, isPasskeyLoading && styles.buttonDisabled]}
+                    onPress={handlePasskeyLogin}
+                    disabled={isPasskeyLoading || isLoading}
+                    activeOpacity={0.8}
+                  >
+                    {isPasskeyLoading ? (
+                      <ActivityIndicator color="#E94444" size="small" />
+                    ) : (
+                      <>
+                        <Text style={styles.passkeyButtonIcon}>🔑</Text>
+                        <Text style={styles.passkeyButtonText}>Вход с помощью Passkey</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
 
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
@@ -361,6 +479,30 @@ const styles = StyleSheet.create({
   },
   invitationButtonText: {
     color: '#E94444',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  passkeyButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#6366F1',
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  passkeyButtonIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  passkeyButtonText: {
+    color: '#6366F1',
     fontSize: 16,
     fontWeight: '600',
   },

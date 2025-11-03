@@ -201,3 +201,56 @@ export interface Verify2FAResponse {
   auth_mode: AuthMode;
   request_id?: string;
 }
+
+// Passkey Types
+export interface Passkey {
+  id: number;
+  user_id: number;
+  credential_id: string;
+  public_key: string;
+  attestation_type: string;
+  aaguid: string;
+  sign_count: number;
+  device_name?: string;
+  last_used_at?: ISODateString;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+export interface PasskeyLoginBeginDto {
+  email: string;
+}
+
+export interface PasskeyLoginBeginResponse {
+  publicKey: any; // PublicKeyCredentialRequestOptions
+}
+
+export interface PasskeyLoginFinishResponse {
+  message: string;
+  user: User;
+  tokens?: TokenPair;
+  session?: SessionInfo;
+  auth_mode: AuthMode;
+}
+
+export interface PasskeyRegisterBeginResponse {
+  publicKey: any; // PublicKeyCredentialCreationOptions
+}
+
+export interface PasskeyRegisterFinishDto {
+  credential: any; // PublicKeyCredential response
+  name: string;
+}
+
+export interface PasskeyRegisterFinishResponse {
+  message: string;
+  passkey: Passkey;
+}
+
+export interface PasskeyListResponse {
+  passkeys: Passkey[];
+}
+
+export interface UpdatePasskeyDto {
+  device_name: string;
+}
