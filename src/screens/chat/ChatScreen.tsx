@@ -12,6 +12,7 @@ import { FloatingDateHeader } from '@components/chat/FloatingDateHeader';
 import { ScrollToBottomButton } from '@components/chat/ScrollToBottomButton';
 import { MessageListComponent } from '@components/chat/MessageListComponent';
 import { ChatHeader } from '@components/chat/ChatHeader';
+import PollDetailModal from '@components/poll/PollDetailModal';
 import { useTheme } from '@hooks/useTheme';
 import { useChatMessages } from '@hooks/useChatMessages';
 import { useChatActions } from '@hooks/useChatActions';
@@ -41,6 +42,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isLayoutReady, setIsLayoutReady] = useState(false);
   const [contentReady, setContentReady] = useState(false);
+  const [pollModalVisible, setPollModalVisible] = useState(false);
+  const [selectedPollId, setSelectedPollId] = useState<number | null>(null);
 
 
   // Хуки
@@ -267,10 +270,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handlePollPress = (pollId: number) => {
-    const rootNavigation = navigation.getParent();
-    if (rootNavigation) {
-      rootNavigation.navigate('PollDetail', { pollId, fromChat: true });
-    }
+    setSelectedPollId(pollId);
+    setPollModalVisible(true);
   };
 
   const handleTaskPress = (taskId: number) => {
@@ -394,6 +395,17 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onClose={() => setForwardingMessage(null)}
         onForward={handleForwardToChat}
       />
+
+      {selectedPollId && (
+        <PollDetailModal
+          visible={pollModalVisible}
+          pollId={selectedPollId}
+          onClose={() => {
+            setPollModalVisible(false);
+            setSelectedPollId(null);
+          }}
+        />
+      )}
     </View>
   );
 };

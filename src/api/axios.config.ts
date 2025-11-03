@@ -31,14 +31,6 @@ api.interceptors.request.use(
     // Try to get session ID from storage
     const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
 
-    console.log('🔐 Request interceptor:', {
-      url: config.url,
-      method: config.method,
-      params: config.params,
-      hasSessionId: !!sessionId,
-      sessionIdPreview: sessionId ? `${sessionId.substring(0, 20)}...` : 'NO SESSION',
-    });
-
     if (sessionId && config.headers) {
       config.headers['X-Session-ID'] = sessionId;
     }
