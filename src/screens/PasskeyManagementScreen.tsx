@@ -230,22 +230,26 @@ const PasskeyManagementScreen: React.FC = () => {
     header: {
       backgroundColor: theme.backgroundSecondary,
       paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 12,
+      paddingTop: Platform.OS === 'ios' ? 0 : 20,
+      paddingBottom: 16,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
     },
     backButton: {
-      marginRight: 12,
       padding: 8,
     },
     headerTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
+      fontSize: 18,
+      fontWeight: '600',
       color: theme.text,
       flex: 1,
+      textAlign: 'center',
+    },
+    headerRight: {
+      width: 40,
     },
     content: {
       flex: 1,
@@ -420,16 +424,19 @@ const PasskeyManagementScreen: React.FC = () => {
 
   if (!passkeySupported) {
     return (
-      <SafeAreaView style={dynamicStyles.container} edges={['top']}>
-        <View style={dynamicStyles.header}>
-          <TouchableOpacity
-            style={dynamicStyles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-          <Text style={dynamicStyles.headerTitle}>Управление Passkey</Text>
-        </View>
+      <View style={dynamicStyles.container}>
+        <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity
+              style={dynamicStyles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color={theme.primary} />
+            </TouchableOpacity>
+            <Text style={dynamicStyles.headerTitle}>Управление Passkey</Text>
+            <View style={dynamicStyles.headerRight} />
+          </View>
+        </SafeAreaView>
         <View style={dynamicStyles.emptyState}>
           <Ionicons name="lock-closed-outline" size={64} color={theme.textTertiary} style={dynamicStyles.emptyIcon} />
           <Text style={dynamicStyles.emptyTitle}>Не поддерживается</Text>
@@ -437,21 +444,24 @@ const PasskeyManagementScreen: React.FC = () => {
             Passkey не поддерживается на этом устройстве. Для использования Passkey требуется iOS 16+, Android 9+, или современный веб-браузер с поддержкой WebAuthn.
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
-      <View style={dynamicStyles.header}>
-        <TouchableOpacity
-          style={dynamicStyles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>Управление Passkey</Text>
-      </View>
+    <View style={dynamicStyles.container}>
+      <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity
+            style={dynamicStyles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.primary} />
+          </TouchableOpacity>
+          <Text style={dynamicStyles.headerTitle}>Управление Passkey</Text>
+          <View style={dynamicStyles.headerRight} />
+        </View>
+      </SafeAreaView>
 
       <ScrollView style={dynamicStyles.content}>
         <View style={dynamicStyles.infoCard}>
@@ -597,7 +607,7 @@ const PasskeyManagementScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

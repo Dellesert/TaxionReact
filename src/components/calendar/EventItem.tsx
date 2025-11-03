@@ -36,6 +36,10 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
     });
   };
 
+  const formatTimeRange = () => {
+    return `${formatTime(event.start_time)} - ${formatTime(event.end_time)}`;
+  };
+
   // Get current user's participation status
   const myParticipation = user && event.participants ? event.participants.find(p => p.user_id === user.id) : null;
 
@@ -56,73 +60,87 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: theme.card }]}
+      style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}
       onPress={() => onPress(event)}
-      activeOpacity={0.6}
+      activeOpacity={0.7}
     >
       {/* Color indicator */}
       <View style={[styles.colorIndicator, { backgroundColor: event.color }]} />
 
       <View style={styles.content}>
-        {/* Time badge for non-all-day events */}
-        {!event.all_day && (
-          <View style={[styles.timeBadge, { backgroundColor: event.color + '15' }]}>
-            <Text style={[styles.timeBadgeText, { color: event.color }]}>
-              {formatTime(event.start_time)}
-            </Text>
-          </View>
-        )}
-
-        {/* Title and status */}
+        {/* Title with status badge */}
         <View style={styles.titleRow}>
           <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
             {event.title}
           </Text>
           {statusBadge && (
-            <View style={[styles.statusBadge, { backgroundColor: statusBadge.color + '15' }]}>
-              <Ionicons name={statusBadge.icon as any} size={14} color={statusBadge.color} />
+            <View style={[styles.statusBadge, { backgroundColor: statusBadge.color + '20' }]}>
+              <Ionicons name={statusBadge.icon as any} size={16} color={statusBadge.color} />
             </View>
           )}
         </View>
 
-        {/* Description */}
+        {/* Description - limited to 100 characters */}
         {event.description && (
           <Text style={[styles.description, { color: theme.textSecondary }]} numberOfLines={2}>
-            {event.description}
+            {event.description.length > 100
+              ? `${event.description.substring(0, 100)}...`
+              : event.description}
           </Text>
         )}
 
-        {/* Metadata */}
-        <View style={styles.metadata}>
-          {event.location && (
-            <View style={styles.metaItem}>
-              <Ionicons name="location" size={12} color={theme.textTertiary} />
-              <Text style={[styles.metaText, { color: theme.textSecondary }]} numberOfLines={1}>
-                {event.location}
-              </Text>
-            </View>
-          )}
+        {/* Metadata section - single row with creator avatar */}
+        <View style={styles.metadataRow}>
+          {/* Metadata items */}
+          <View style={styles.metadataItems}>
+            {/* Time */}
+            {!event.all_day && (
+              <View style={styles.metaItem}>
+                <Ionicons name="time-outline" size={14} color={theme.primary} />
+                <Text style={[styles.metaText, { color: theme.text }]}>
+                  {formatTimeRange()}
+                </Text>
+              </View>
+            )}
 
+            {event.all_day && (
+              <View style={styles.metaItem}>
+                <Ionicons name="calendar-outline" size={14} color={theme.primary} />
+                <Text style={[styles.metaText, { color: theme.text }]}>
+                  Весь день
+                </Text>
+              </View>
+            )}
+
+            {/* Location */}
+            {event.location && (
+              <View style={styles.metaItem}>
+                <Ionicons name="location-outline" size={14} color={theme.primary} />
+                <Text style={[styles.metaText, { color: theme.text }]} numberOfLines={1}>
+                  {event.location}
+                </Text>
+              </View>
+            )}
+
+            {/* Participants count */}
+            {(event.participant_count || event.participants_count || 0) > 0 && (
+              <View style={styles.metaItem}>
+                <Ionicons name="people-outline" size={14} color={theme.primary} />
+                <Text style={[styles.metaText, { color: theme.text }]}>
+                  {event.participant_count || event.participants_count || 0}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Creator Avatar - on the right */}
           {event.creator && (
-            <View style={styles.metaItem}>
-              <Avatar
-                name={event.creator.name}
-                imageUrl={event.creator.avatar}
-                size={16}
-              />
-              <Text style={[styles.metaText, { color: theme.textSecondary }]} numberOfLines={1}>
-                {event.creator.name}
-              </Text>
-            </View>
-          )}
-
-          {(event.participant_count || event.participants_count || 0) > 0 && (
-            <View style={styles.metaItem}>
-              <Ionicons name="people" size={12} color={theme.textTertiary} />
-              <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                {event.participant_count || event.participants_count || 0}
-              </Text>
-            </View>
+            <Avatar
+              name={event.creator.name || event.creator.email}
+              imageUrl={event.creator.avatar}
+              size={24}
+              style={styles.creatorAvatar}
+            />
           )}
         </View>
       </View>
@@ -132,15 +150,16 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginBottom: 12,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
   },
   colorIndicator: {
     position: 'absolute',
@@ -153,34 +172,23 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingLeft: 20,
   },
-  timeBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  timeBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   title: {
     flex: 1,
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     lineHeight: 24,
     marginRight: 8,
   },
   statusBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -189,9 +197,20 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
   },
-  metadata: {
+  metadataRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  creatorAvatar: {
+    marginLeft: 8,
+  },
+  metadataItems: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
+    flex: 1,
     gap: 12,
   },
   metaItem: {
@@ -201,6 +220,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 13,
+    fontWeight: '500',
     lineHeight: 18,
   },
 });

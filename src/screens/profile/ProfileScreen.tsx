@@ -334,7 +334,8 @@ const ProfileScreen: React.FC = () => {
     userInfoSection: {
       backgroundColor: theme.primary,
       padding: 16,
-      marginBottom: 12,
+      paddingBottom: 24,
+      marginBottom: 0,
       alignItems: 'center',
     },
     userAvatar: {
@@ -377,40 +378,54 @@ const ProfileScreen: React.FC = () => {
       marginTop: 8,
     },
     card: {
-    backgroundColor: theme.backgroundSecondary, // «поверхность»
-    borderTopLeftRadius: 16,
-    paddingVertical: 8,
+    backgroundColor: isDark ? theme.background : '#F3F4F6',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 12,
+    paddingBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
-    borderWidth: isDark ? 1 : 0,
-    borderColor: isDark ? theme.border : 'transparent',
-    overflow: 'hidden',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: isDark ? 0.3 : 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+    flex: 1,
   },
     section: {
       backgroundColor: theme.backgroundSecondary,
-      marginBottom: 12,
+      marginBottom: 16,
+      borderRadius: 12,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.2 : 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+      borderWidth: isDark ? 0 : 1,
+      borderColor: isDark ? 'transparent' : '#E5E7EB',
+    },
+    sectionFirst: {
+      marginTop: 0,
     },
     sectionHeader: {
       paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
+      paddingVertical: 10,
+      backgroundColor: theme.backgroundSecondary,
     },
     sectionTitle: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 12,
+      fontWeight: '700',
       color: theme.textSecondary,
+      letterSpacing: 0.5,
     },
     menuItem: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingVertical: 14,
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
+      backgroundColor: theme.backgroundSecondary,
     },
     menuItemLast: {
       borderBottomWidth: 0,
@@ -432,182 +447,203 @@ const ProfileScreen: React.FC = () => {
       marginRight: 8,
     },
     logoutContainer: {
-      paddingHorizontal: 16,
-      marginBottom: 32,
+      paddingHorizontal: 4,
+      marginTop: 8,
+      marginBottom: 24,
     },
     logoutButton: {
       backgroundColor: theme.primary,
       borderRadius: 12,
-      paddingVertical: 14,
+      paddingVertical: 16,
       alignItems: 'center',
       justifyContent: 'center',
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
     },
     logoutButtonDisabled: {
       opacity: 0.6,
     },
     logoutButtonText: {
       fontSize: 16,
-      fontWeight: '600',
+      fontWeight: '700',
       color: '#FFFFFF',
     },
     versionInfo: {
       alignItems: 'center',
-      paddingBottom: 24,
+      paddingBottom: 32,
+      paddingTop: 8,
     },
     versionText: {
-      fontSize: 12,
+      fontSize: 11,
       color: theme.textTertiary,
-      marginTop: 4,
+      marginTop: 2,
+      opacity: 0.7,
     },
   });
 
   return (
     <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-      <ScrollView style={{ flex: 1 }}>
-      {/* User Info */}
-      <View style={dynamicStyles.userInfoSection}>
-        <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar} name={user.name || user.email} size={100} />
-        <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>
-        <Text style={dynamicStyles.userEmail}>{user.email}</Text>
-        {user.department && (
-          <View style={dynamicStyles.departmentBadge}>
-            <Text style={dynamicStyles.departmentText}>{user.department.name}</Text>
-          </View>
-        )}
-        {user.position && <Text style={dynamicStyles.userPosition}>{user.position}</Text>}
-      </View>
-    <View style={[styles.card, dynamicStyles.card]}>
-      <View style={dynamicStyles.section}>
-        <TouchableOpacity style={dynamicStyles.menuItem}>
-          <Ionicons name="pencil-outline" size={22} color={theme.primary} />
-          <Text style={dynamicStyles.menuItemText}>Изменить статус</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={dynamicStyles.menuItem}
-          onPress={handleChangeAvatar}
-          disabled={isUploadingAvatar}
-        >
-          <Ionicons name="camera-outline" size={24} color={theme.primary} />
-          <Text style={dynamicStyles.menuItemText}>Изменить фотографию</Text>
-          {isUploadingAvatar ? (
-            <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 8 }} />
-          ) : (
-            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        {/* User Info */}
+        <View style={dynamicStyles.userInfoSection}>
+          <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar} name={user.name || user.email} size={100} />
+          <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>
+          <Text style={dynamicStyles.userEmail}>{user.email}</Text>
+          {user.department && (
+            <View style={dynamicStyles.departmentBadge}>
+              <Text style={dynamicStyles.departmentText}>{user.department.name}</Text>
+            </View>
           )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Account Settings */}
-      <View style={dynamicStyles.section}>
-        <TouchableOpacity style={dynamicStyles.menuItem}>
-          <Ionicons style={[styles.menuIcon, {backgroundColor: '#e9af44ff'}]}  name="person-outline" size={20} color={theme.primary} />
-          <Text style={dynamicStyles.menuItemText}>Профиль</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={dynamicStyles.menuItem}
-          onPress={() => navigation.navigate('ActiveSessions')}
-        >
-          <Ionicons style={[styles.menuIcon, {backgroundColor: '#44e9a2ff'}]} name="phone-portrait-outline" size={20} color={theme.primary} />
-          <Text style={[dynamicStyles.menuItemText]}>Активные устройства</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={dynamicStyles.menuItem}
-          onPress={() => navigation.navigate('PasskeyManagement')}
-        >
-          <Ionicons style={[styles.menuIcon, {backgroundColor: '#6366F1'}]} name="key-outline" size={20} color="#FFFFFF" />
-          <Text style={[dynamicStyles.menuItemText]}>Управление Passkey</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={dynamicStyles.menuItem}>
-          <Ionicons style={[styles.menuIcon, {backgroundColor: '#a2a2a2ff'}]} name="lock-closed-outline" size={20} color={theme.primary} />
-          <Text style={[dynamicStyles.menuItemText]}>Конфиденциальность</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-        </TouchableOpacity>
-        <View style={dynamicStyles.menuItem}>
-          <View style={dynamicStyles.menuItemLeft}>
-            <Ionicons style={[styles.menuIcon, {backgroundColor: '#E94444'}]} name="notifications-outline" size={20} color={theme.primary} />
-            <Text style={dynamicStyles.menuItemText}>Push-уведомления</Text>
-          </View>
-          <Switch
-            value={notifications.push}
-            onValueChange={(value) => handleToggleNotification('push', value)}
-            trackColor={{ false: '#D1D5DB', true: theme.primaryLight }}
-            thumbColor={notifications.push ? theme.primary : '#F3F4F6'}
-          />
+          {user.position && <Text style={dynamicStyles.userPosition}>{user.position}</Text>}
         </View>
-      </View>
 
-      {/* Admin Section - Only for admin and super_admin */}
-      {(user.role === 'admin' || user.role === 'super_admin') && (
-        <View style={dynamicStyles.section}>
-          <View style={dynamicStyles.sectionHeader}>
-            <Text style={dynamicStyles.sectionTitle}>АДМИНИСТРИРОВАНИЕ</Text>
+        <View style={dynamicStyles.card}>
+          {/* Profile Actions */}
+          <View style={dynamicStyles.section}>
+            <View style={dynamicStyles.sectionHeader}>
+              <Text style={dynamicStyles.sectionTitle}>ПРОФИЛЬ</Text>
+            </View>
+            <TouchableOpacity style={dynamicStyles.menuItem}>
+              <Ionicons name="pencil-outline" size={22} color={theme.primary} />
+              <Text style={dynamicStyles.menuItemText}>Изменить статус</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}
+              onPress={handleChangeAvatar}
+              disabled={isUploadingAvatar}
+            >
+              <Ionicons name="camera-outline" size={24} color={theme.primary} />
+              <Text style={dynamicStyles.menuItemText}>Изменить фотографию</Text>
+              {isUploadingAvatar ? (
+                <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 8 }} />
+              ) : (
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              )}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={dynamicStyles.menuItem}
-            onPress={() => navigation.navigate('Admin', { screen: 'Departments' })}
-          >
-            <Ionicons style={[styles.menuIcon, {backgroundColor: '#e944d6ff'}]} name="business-outline" size={20} color={theme.primary} />
-            <Text style={dynamicStyles.menuItemText}>Управление отделами</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}
-            onPress={() => navigation.navigate('Admin', { screen: 'Users' })}
-          >
-            <Ionicons style={[styles.menuIcon, {backgroundColor: '#e99444ff'}]} name="people-outline" size={20} color={theme.primary} />
-            <Text style={dynamicStyles.menuItemText}>Управление пользователями</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-          </TouchableOpacity>
+
+          {/* Security Settings */}
+          <View style={dynamicStyles.section}>
+            <View style={dynamicStyles.sectionHeader}>
+              <Text style={dynamicStyles.sectionTitle}>БЕЗОПАСНОСТЬ</Text>
+            </View>
+            <TouchableOpacity
+              style={dynamicStyles.menuItem}
+              onPress={() => navigation.navigate('ActiveSessions')}
+            >
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#44e9a2ff'}]} name="phone-portrait-outline" size={20} color="#FFFFFF" />
+              <Text style={[dynamicStyles.menuItemText]}>Активные устройства</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={dynamicStyles.menuItem}
+              onPress={() => navigation.navigate('PasskeyManagement')}
+            >
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#6366F1'}]} name="key-outline" size={20} color="#FFFFFF" />
+              <Text style={[dynamicStyles.menuItemText]}>Управление Passkey</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#a2a2a2ff'}]} name="lock-closed-outline" size={20} color="#FFFFFF" />
+              <Text style={[dynamicStyles.menuItemText]}>Конфиденциальность</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Notifications */}
+          <View style={dynamicStyles.section}>
+            <View style={dynamicStyles.sectionHeader}>
+              <Text style={dynamicStyles.sectionTitle}>УВЕДОМЛЕНИЯ</Text>
+            </View>
+            <View style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
+              <View style={dynamicStyles.menuItemLeft}>
+                <Ionicons style={[styles.menuIcon, {backgroundColor: '#E94444'}]} name="notifications-outline" size={20} color="#FFFFFF" />
+                <Text style={dynamicStyles.menuItemText}>Push-уведомления</Text>
+              </View>
+              <Switch
+                value={notifications.push}
+                onValueChange={(value) => handleToggleNotification('push', value)}
+                trackColor={{ false: '#D1D5DB', true: theme.primaryLight }}
+                thumbColor={notifications.push ? theme.primary : '#F3F4F6'}
+              />
+            </View>
+          </View>
+
+          {/* Admin Section - Only for admin and super_admin */}
+          {(user.role === 'admin' || user.role === 'super_admin') && (
+            <View style={dynamicStyles.section}>
+              <View style={dynamicStyles.sectionHeader}>
+                <Text style={dynamicStyles.sectionTitle}>АДМИНИСТРИРОВАНИЕ</Text>
+              </View>
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => navigation.navigate('Admin', { screen: 'Departments' })}
+              >
+                <Ionicons style={[styles.menuIcon, {backgroundColor: '#e944d6ff'}]} name="business-outline" size={20} color="#FFFFFF" />
+                <Text style={dynamicStyles.menuItemText}>Управление отделами</Text>
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}
+                onPress={() => navigation.navigate('Admin', { screen: 'Users' })}
+              >
+                <Ionicons style={[styles.menuIcon, {backgroundColor: '#e99444ff'}]} name="people-outline" size={20} color="#FFFFFF" />
+                <Text style={dynamicStyles.menuItemText}>Управление пользователями</Text>
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* App Settings */}
+          <View style={dynamicStyles.section}>
+            <View style={dynamicStyles.sectionHeader}>
+              <Text style={dynamicStyles.sectionTitle}>НАСТРОЙКИ</Text>
+            </View>
+            <TouchableOpacity style={dynamicStyles.menuItem} onPress={handleThemePress}>
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#44aae9ff'}]} name="color-palette-outline" size={20} color="#FFFFFF" />
+              <Text style={dynamicStyles.menuItemText}>Тема оформления</Text>
+              <Text style={dynamicStyles.menuItemValue}>{getThemeLabel(mode)}</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={dynamicStyles.menuItem}>
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#9444e9ff'}]} name="language-outline" size={20} color="#FFFFFF" />
+              <Text style={dynamicStyles.menuItemText}>Язык</Text>
+              <Text style={dynamicStyles.menuItemValue}>Русский</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#3ed6ccff'}]} name="information-circle-outline" size={20} color="#FFFFFF" />
+              <Text style={dynamicStyles.menuItemText}>О приложении</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Logout Button */}
+          <View style={dynamicStyles.logoutContainer}>
+            <TouchableOpacity
+              style={[dynamicStyles.logoutButton, isLoggingOut && dynamicStyles.logoutButtonDisabled]}
+              onPress={handleLogout}
+              disabled={isLoggingOut}
+            >
+              <Text style={dynamicStyles.logoutButtonText}>
+                {isLoggingOut ? 'Выход...' : 'Выйти из аккаунта'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Version Info */}
+          <View style={dynamicStyles.versionInfo}>
+            <Text style={dynamicStyles.versionText}>Версия 1.0.0</Text>
+            <Text style={dynamicStyles.versionText}>© 2025 Tachyon Messenger</Text>
+          </View>
         </View>
-      )}
-
-      {/* App Settings */}
-      <View style={dynamicStyles.section}>
-        <TouchableOpacity style={dynamicStyles.menuItem} onPress={handleThemePress}>
-          <Ionicons style={[styles.menuIcon, {backgroundColor: '#44aae9ff'}]} name="color-palette-outline" size={20} color={theme.primary} />
-          <Text style={dynamicStyles.menuItemText}>Тема оформления</Text>
-          <Text style={dynamicStyles.menuItemValue}>{getThemeLabel(mode)}</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={dynamicStyles.menuItem}>
-          <Ionicons style={[styles.menuIcon, {backgroundColor: '#9444e9ff'}]} name="language-outline" size={20} color={theme.primary} />
-          <Text style={dynamicStyles.menuItemText}>Язык</Text>
-          <Text style={dynamicStyles.menuItemValue}>Русский</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
-          <Ionicons style={[styles.menuIcon, {backgroundColor: '#3ed6ccff'}]} name="information-circle-outline" size={20} color={theme.primary} />
-          <Text style={dynamicStyles.menuItemText}>О приложении</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Logout Button */}
-      <View style={dynamicStyles.logoutContainer}>
-        <TouchableOpacity
-          style={[dynamicStyles.logoutButton, isLoggingOut && dynamicStyles.logoutButtonDisabled]}
-          onPress={handleLogout}
-          disabled={isLoggingOut}
-        >
-          <Text style={dynamicStyles.logoutButtonText}>
-            {isLoggingOut ? 'Выход...' : 'Выйти из аккаунта'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Version Info */}
-      <View style={dynamicStyles.versionInfo}>
-        <Text style={dynamicStyles.versionText}>Версия 1.0.0</Text>
-        <Text style={dynamicStyles.versionText}>© 2025 Tachyon Messenger</Text>
-      </View>
-      </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -666,9 +702,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   card: {
-    borderTopRightRadius: 12,
-    borderTopLeftRadius: 12,
-    height: '100%',
+    // Стили перенесены в dynamicStyles для правильной темизации
   },
   section: {
     backgroundColor: '#FFFFFF',

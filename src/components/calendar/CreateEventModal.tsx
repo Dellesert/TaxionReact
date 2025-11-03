@@ -256,6 +256,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       const newDate = new Date(e.target.value);
                       if (!isNaN(newDate.getTime())) {
                         setStartDate(newDate);
+                        // Автоматически обновляем дату окончания, если она раньше новой даты начала
+                        if (endDate <= newDate) {
+                          const newEndDate = new Date(newDate.getTime() + 60 * 60 * 1000); // +1 час
+                          setEndDate(newEndDate);
+                        }
                       }
                     }}
                     style={{
@@ -484,7 +489,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           value={startDate}
           mode="date"
           onChange={(event, date) => {
-            if (date) setStartDate(date);
+            if (date) {
+              setStartDate(date);
+              // Автоматически обновляем дату окончания, если она раньше новой даты начала
+              if (endDate <= date) {
+                const newEndDate = new Date(date.getTime() + 60 * 60 * 1000); // +1 час
+                setEndDate(newEndDate);
+              }
+            }
           }}
           onClose={() => setShowStartDatePicker(false)}
         />
@@ -505,7 +517,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           value={startDate}
           mode="time"
           onChange={(event, date) => {
-            if (date) setStartDate(date);
+            if (date) {
+              setStartDate(date);
+              // Автоматически обновляем время окончания, если оно раньше нового времени начала
+              if (endDate <= date) {
+                const newEndDate = new Date(date.getTime() + 60 * 60 * 1000); // +1 час
+                setEndDate(newEndDate);
+              }
+            }
           }}
           onClose={() => setShowStartTimePicker(false)}
         />

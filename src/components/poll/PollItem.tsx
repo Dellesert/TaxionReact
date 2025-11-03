@@ -129,7 +129,7 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: theme.card }]}
+      style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}
       onPress={() => onPress(poll)}
       activeOpacity={0.7}
     >
@@ -146,8 +146,7 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
 
             {poll.user_has_voted && (
               <View style={styles.votedIndicator}>
-                <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
-                <Text style={styles.votedText}>Проголосовал</Text>
+                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
               </View>
             )}
           </View>
@@ -242,16 +241,17 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    marginBottom: 16,
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
     position: 'relative',
+    borderWidth: 1,
   },
   accentBorder: {
     position: 'absolute',
@@ -261,13 +261,13 @@ const styles = StyleSheet.create({
     width: 4,
   },
   content: {
-    paddingLeft: 18,
-    paddingRight: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingLeft: 20,
+    paddingRight: 18,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   header: {
-    marginBottom: 12,
+    marginBottom: 14,
   },
   titleRow: {
     flexDirection: 'row',
@@ -277,106 +277,99 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
-    letterSpacing: 0.3,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    letterSpacing: 0.2,
   },
   votedIndicator: {
-    flexDirection: 'row',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#10B981' + '15',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#3B82F6' + '15',
-    alignSelf: 'flex-start',
-  },
-  votedText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#3B82F6',
+    justifyContent: 'center',
   },
   metaBadgesRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 12,
     flexWrap: 'wrap',
   },
   visibilityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
   },
   visibilityText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   categoryTag: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
     borderWidth: 1,
   },
   categoryTagText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   featuresPills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 12,
   },
   featurePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
   },
   featurePillText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingTop: 12,
+    alignItems: 'center',
+    paddingTop: 14,
     borderTopWidth: 1,
     gap: 12,
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
     flexWrap: 'wrap',
   },
   statBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   statIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 18,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   footerRight: {
     alignItems: 'flex-end',
@@ -385,24 +378,26 @@ const styles = StyleSheet.create({
   deadlineChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     backgroundColor: '#EF4444' + '12',
-    borderRadius: 6,
+    borderRadius: 8,
   },
   deadlineText: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   creatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   creatorName: {
     fontSize: 13,
-    fontWeight: '400',
+    fontWeight: '500',
   },
 });
 

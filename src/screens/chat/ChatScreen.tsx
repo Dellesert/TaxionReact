@@ -7,7 +7,6 @@ import { ChatStackParamList } from '@navigation/types';
 import { MessageInput } from '@components/chat/MessageInput';
 import { ChatMembersModal } from '@components/chat/ChatMembersModal';
 import { ForwardMessageModal } from '@components/chat/ForwardMessageModal';
-import { TypingIndicator } from '@components/chat/TypingIndicator';
 import { PinnedMessageBanner } from '@components/chat/PinnedMessageBanner';
 import { FloatingDateHeader } from '@components/chat/FloatingDateHeader';
 import { ScrollToBottomButton } from '@components/chat/ScrollToBottomButton';
@@ -162,6 +161,25 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       ? `${chat.members.length} участников`
       : '';
 
+    // Формируем текст печати для заголовка
+    let typingText = '';
+    if (typingUserNames.length > 0) {
+      if (isPrivateChat) {
+        // В личном чате просто "печатает..." без имени
+        typingText = 'печатает...';
+      } else {
+        // В групповом чате показываем имя
+        if (typingUserNames.length === 1) {
+          typingText = `${typingUserNames[0]} печатает...`;
+        } else {
+          typingText = `${typingUserNames[0]} и ещё ${typingUserNames.length - 1} печатают...`;
+        }
+      }
+    }
+
+    // Финальный текст статуса: приоритет у typing
+    const finalStatusText = typingText || (isPrivateChat ? statusText : membersText);
+
     const handleHeaderPress = () => {
       navigation.navigate('ChatSettings', {
         chatId: chatIdNum,
@@ -174,9 +192,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       headerTitle: () => (
         <ChatHeader.Title
           displayName={displayName}
-          statusText={statusText}
-          membersText={membersText}
-          isPrivateChat={isPrivateChat}
+          statusText={finalStatusText}
+          membersText={''}
+          isPrivateChat={true}
           isConnected={isConnected}
           onHeaderPress={handleHeaderPress}
         />
@@ -190,7 +208,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         />
       ),
     });
-  }, [chatName, navigation, isConnected, chatIdNum, chat, currentUser]);
+  }, [chatName, navigation, isConnected, chatIdNum, chat, currentUser, typingUserNames]);
 
   // Инициализация чата
   useEffect(() => {
@@ -289,9 +307,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       <View style={styles.flex1}>
         {contentReady ? (
           <>
-            {/* Индикатор печатающих */}
-            <TypingIndicator userNames={typingUserNames} />
-
             {/* Баннер закрепленных сообщений */}
             {pinnedMessages.length > 0 && (
               <PinnedMessageBanner

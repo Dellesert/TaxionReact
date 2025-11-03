@@ -14,10 +14,12 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useTheme } from '@hooks/useTheme';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import * as sessionApi from '@api/session.api';
@@ -25,20 +27,23 @@ import type { ActiveSession } from '../types/user.types';
 
 export default function ActiveSessionsScreen() {
   const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load current session ID
+  // Load current session ID on mount
   useEffect(() => {
     loadCurrentSessionId();
   }, []);
 
-  // Load sessions on mount
-  useEffect(() => {
-    loadSessions();
-  }, []);
+  // Load sessions when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadSessions();
+    }, [])
+  );
 
   const loadCurrentSessionId = async () => {
     try {
@@ -168,29 +173,35 @@ export default function ActiveSessionsScreen() {
     const deviceIcon = getDeviceIcon(item.user_agent);
 
     return (
-      <View style={[styles.sessionCard, isCurrentSession && styles.currentSessionCard]}>
+      <View style={[
+        styles.sessionCard,
+        { backgroundColor: theme.card, borderColor: theme.border },
+        isCurrentSession && { borderColor: theme.primary, borderWidth: 2 }
+      ]}>
         <View style={styles.sessionHeader}>
           <View style={styles.sessionInfo}>
-            <Ionicons name={deviceIcon} size={24} color={isCurrentSession ? '#007AFF' : '#666'} />
+            <View style={[styles.iconCircle, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name={deviceIcon} size={24} color={theme.primary} />
+            </View>
             <View style={styles.sessionDetails}>
               <View style={styles.sessionTitleRow}>
-                <Text style={styles.deviceName}>{deviceInfo}</Text>
+                <Text style={[styles.deviceName, { color: theme.text }]}>{deviceInfo}</Text>
                 {isCurrentSession && (
-                  <View style={styles.currentBadge}>
+                  <View style={[styles.currentBadge, { backgroundColor: theme.primary }]}>
                     <Text style={styles.currentBadgeText}>Текущее</Text>
                   </View>
                 )}
               </View>
-              <Text style={styles.sessionMeta}>IP: {item.ip_address}</Text>
-              <Text style={styles.sessionMeta}>Последняя активность: {formatDate(item.last_active_at)}</Text>
-              <Text style={styles.sessionMeta}>Создана: {formatDate(item.created_at)}</Text>
+              <Text style={[styles.sessionMeta, { color: theme.textSecondary }]}>IP: {item.ip_address}</Text>
+              <Text style={[styles.sessionMeta, { color: theme.textSecondary }]}>Активность: {formatDate(item.last_active_at)}</Text>
+              <Text style={[styles.sessionMeta, { color: theme.textTertiary }]}>Создана: {formatDate(item.created_at)}</Text>
             </View>
           </View>
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => handleDeleteSession(item)}
           >
-            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+            <Ionicons name="trash-outline" size={22} color={theme.error} />
           </TouchableOpacity>
         </View>
       </View>
@@ -198,23 +209,25 @@ export default function ActiveSessionsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Активные сессии</Text>
-        <View style={styles.headerRight} />
-      </View>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={{ backgroundColor: theme.card }} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={theme.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Активные сессии</Text>
+          <View style={styles.headerRight} />
+        </View>
+      </SafeAreaView>
 
       {!loading && sessions.length > 1 && (
-        <View style={styles.actionBar}>
+        <View style={[styles.actionBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
           <TouchableOpacity
-            style={styles.logoutAllButton}
+            style={[styles.logoutAllButton, { backgroundColor: theme.card, borderColor: theme.error }]}
             onPress={handleDeleteAllOther}
           >
-            <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-            <Text style={styles.logoutAllText}>Выйти со всех других устройств</Text>
+            <Ionicons name="log-out-outline" size={20} color={theme.error} />
+            <Text style={[styles.logoutAllText, { color: theme.error }]}>Выйти со всех других устройств</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -230,8 +243,8 @@ export default function ActiveSessionsScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="phone-portrait-outline" size={64} color="#999" />
-              <Text style={styles.emptyText}>Нет активных сессий</Text>
+              <Ionicons name="phone-portrait-outline" size={64} color={theme.textTertiary} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Нет активных сессий</Text>
             </View>
           ) : null
         }
@@ -243,18 +256,15 @@ export default function ActiveSessionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === 'ios' ? 0 : 20,
     paddingBottom: 16,
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   backButton: {
     padding: 8,
@@ -262,38 +272,31 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
   },
   headerRight: {
     width: 40,
   },
   actionBar: {
     padding: 16,
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   logoutAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
-    backgroundColor: '#FFF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FF3B30',
   },
   logoutAllText: {
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '600',
-    color: '#FF3B30',
   },
   listContent: {
     padding: 16,
   },
   sessionCard: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -302,53 +305,62 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-  },
-  currentSessionCard: {
-    borderWidth: 2,
-    borderColor: '#007AFF',
+    borderWidth: 1,
   },
   sessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 8,
   },
   sessionInfo: {
     flexDirection: 'row',
     flex: 1,
+    minWidth: 0,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sessionDetails: {
     marginLeft: 12,
     flex: 1,
+    minWidth: 0,
   },
   sessionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   deviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
-    marginRight: 8,
+    flexShrink: 1,
   },
   currentBadge: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
+    flexShrink: 0,
   },
   currentBadgeText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#FFF',
+    flexShrink: 0,
   },
   sessionMeta: {
     fontSize: 13,
-    color: '#666',
     marginTop: 2,
   },
   deleteButton: {
     padding: 8,
+    flexShrink: 0,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -358,6 +370,5 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#999',
   },
 });

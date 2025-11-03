@@ -194,6 +194,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       paddingVertical: 4,
       borderRadius: 12,
       alignSelf: 'flex-start',
+      maxWidth: 120,
     },
     statusText: {
       fontSize: 12,

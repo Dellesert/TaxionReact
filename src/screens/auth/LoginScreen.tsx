@@ -301,50 +301,40 @@ const LoginScreen: React.FC = () => {
                 {isLoading ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.buttonText}>Вход</Text>
+                  <Text style={styles.buttonText}>Войти</Text>
                 )}
               </TouchableOpacity>
 
-              {passkeySupported && (
-                <>
-                  <View style={styles.divider}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>или</Text>
-                    <View style={styles.dividerLine} />
-                  </View>
-
+              {/* Alternative login methods - compact links */}
+              <View style={styles.altMethodsContainer}>
+                {passkeySupported && (
                   <TouchableOpacity
-                    style={[styles.passkeyButton, isPasskeyLoading && styles.buttonDisabled]}
+                    style={styles.altMethodLink}
                     onPress={handlePasskeyLogin}
                     disabled={isPasskeyLoading || isLoading}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
                     {isPasskeyLoading ? (
-                      <ActivityIndicator color="#E94444" size="small" />
+                      <ActivityIndicator color="#6366F1" size="small" />
                     ) : (
-                      <>
-                        <Text style={styles.passkeyButtonIcon}>🔑</Text>
-                        <Text style={styles.passkeyButtonText}>Вход с помощью Passkey</Text>
-                      </>
+                      <Text style={styles.altMethodText}>
+                        🔑 Passkey
+                      </Text>
                     )}
                   </TouchableOpacity>
-                </>
-              )}
+                )}
 
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>или</Text>
-                <View style={styles.dividerLine} />
+                <TouchableOpacity
+                  style={styles.altMethodLink}
+                  onPress={() => navigation.navigate('AcceptInvitation', {})}
+                  disabled={isLoading}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.altMethodText}>
+                    ✉️ Приглашение
+                  </Text>
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={styles.invitationButton}
-                onPress={() => navigation.navigate('AcceptInvitation', {})}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.invitationButtonText}>✉️ У меня есть приглашение</Text>
-              </TouchableOpacity>
             </View>
           </Animated.View>
         </ScrollView>
@@ -414,15 +404,17 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginBottom: 24,
+    marginBottom: 32,
+    marginTop: -8,
   },
   forgotPasswordText: {
     fontSize: 14,
     color: '#6B7280',
+    fontWeight: '500',
   },
   button: {
     backgroundColor: '#E94444',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
@@ -439,7 +431,8 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   errorContainer: {
     backgroundColor: '#FEE2E2',
@@ -452,59 +445,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  divider: {
+  altMethodsContainer: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 20,
+    marginTop: 24,
+    gap: 24,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#D1D5DB',
+  altMethodLink: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    color: '#9CA3AF',
+  altMethodText: {
+    fontSize: 15,
+    color: '#6B7280',
     fontWeight: '500',
-  },
-  invitationButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E94444',
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  invitationButtonText: {
-    color: '#E94444',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  passkeyButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#6366F1',
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  passkeyButtonIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  passkeyButtonText: {
-    color: '#6366F1',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 
