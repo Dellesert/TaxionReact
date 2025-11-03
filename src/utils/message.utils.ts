@@ -51,7 +51,26 @@ export const parseForwardedMessage = (content: string): { header: string | null;
 
 /**
  * Заменяет localhost на реальный IP адрес для кросс-платформенности
+ * Использует IP из переменных окружения
  */
 export const replaceLocalhostWithIP = (url: string): string => {
-  return url.replace('http://localhost:8080', 'http://192.168.1.160:8080');
+  if (!url) return url;
+
+  // Получаем базовый URL из переменных окружения
+  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
+  // Извлекаем только протокол и хост (без /api/v1)
+  const baseHost = apiBaseUrl.replace(/\/api\/v1$/, '');
+
+  // Заменяем различные варианты localhost
+  const replacedUrl = url
+    .replace(/http:\/\/localhost:8080/g, baseHost)
+    .replace(/http:\/\/127\.0\.0\.1:8080/g, baseHost)
+    .replace(/http:\/\/0\.0\.0\.0:8080/g, baseHost);
+
+  // Логирование для отладки (только если произошла замена)
+  if (replacedUrl !== url) {
+    console.log('🔄 URL replaced:', url, '->', replacedUrl);
+  }
+
+  return replacedUrl;
 };
