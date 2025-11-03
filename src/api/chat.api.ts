@@ -346,7 +346,43 @@ export const sendMessage = async (chatId: number, data: SendMessageDto): Promise
 
   console.log('📥 sendMessage API response:', JSON.stringify(response.data.message, null, 2));
 
-  return response.data.message;
+  // Normalize: convert 'type' to 'message_type' and parse poll_data
+  const message: any = {
+    ...response.data.message,
+    message_type: (response.data.message as any).type || response.data.message.message_type || 'text',
+  };
+
+  // Parse poll_data if it's a JSON string
+  if ((response.data.message as any).poll_data && typeof (response.data.message as any).poll_data === 'string') {
+    try {
+      message.poll_data = JSON.parse((response.data.message as any).poll_data);
+      console.log('📊 Parsed poll_data in sendMessage:', message.poll_data);
+    } catch (e) {
+      console.error('❌ Failed to parse poll_data in sendMessage:', e);
+    }
+  } else if ((response.data.message as any).poll_data) {
+    message.poll_data = (response.data.message as any).poll_data;
+  }
+
+  // Parse task_data if it's a JSON string
+  if ((response.data.message as any).task_data && typeof (response.data.message as any).task_data === 'string') {
+    try {
+      message.task_data = JSON.parse((response.data.message as any).task_data);
+    } catch (e) {
+      console.error('❌ Failed to parse task_data in sendMessage:', e);
+    }
+  } else if ((response.data.message as any).task_data) {
+    message.task_data = (response.data.message as any).task_data;
+  }
+
+  console.log('💾 sendMessage returning:', {
+    id: message.id,
+    message_type: message.message_type,
+    has_poll_data: !!message.poll_data,
+    has_task_data: !!message.task_data
+  });
+
+  return message;
 };
 
 /**

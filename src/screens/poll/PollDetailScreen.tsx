@@ -16,9 +16,10 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
-import { useChatStore } from '@store/chatStore';
 import * as pollApi from '@api/poll.api';
+import * as chatApi from '@api/chat.api';
 import { Poll, PollOption, PollType } from '@/types/poll.types';
+import { SendMessageDto } from '@/types/chat.types';
 import SharePollModal from '@components/poll/SharePollModal';
 import EditPollModal from '@components/poll/EditPollModal';
 import { Avatar } from '@components/common/Avatar';
@@ -48,8 +49,6 @@ const PollDetailScreen: React.FC = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [votersPreview, setVotersPreview] = useState<any[]>([]);
-
-  const { sendMessage } = useChatStore();
 
   // Проверяем, открыт ли опрос из чата по параметру fromChat
   const isFromChat = route.params.fromChat === true;
@@ -394,29 +393,38 @@ const PollDetailScreen: React.FC = () => {
     if (!poll) return;
 
     try {
-      const pollData = {
+      console.log('📤 Sharing poll to chat:', chatId);
+      console.log('📊 Poll ID:', poll.id, 'Title:', poll.title);
+
+      // Формируем данные опроса для отправки
+      const pollData: any = {
         poll_id: poll.id,
         poll_title: poll.title,
         poll_question: poll.question || poll.description,
         poll_type: poll.type,
+        poll_status: poll.status, // Используем статус из опроса
         total_votes: poll.total_votes || 0,
-        ends_at: poll.end_time,
+        ends_at: poll.end_time, // Всегда отправляем дату, статус укажет, завершен ли опрос
       };
 
-      console.log('📤 Sharing poll to chat:', chatId);
-      console.log('📊 Poll data:', JSON.stringify(pollData, null, 2));
-
-      // Отправляем сообщение с типом 'poll' и данными опроса
-      // ВАЖНО: бэкенд ожидает поле "type", а не "message_type"
-      const extraData = {
-        type: 'poll',
-        poll_data: pollData,
+      // Отправляем сообщение с типом 'poll' и передаем poll_data напрямую
+      // Backend expects 'type' field, not 'message_type'
+      const messageData: any = {
+        content: poll.title,
+        type: 'poll', // Backend expects 'type', not 'message_type'
+        poll_id: poll.id,
+        poll_data: pollData, // Передаем данные опроса явно
       };
-      console.log('📦 Extra data being sent:', JSON.stringify(extraData, null, 2));
+      console.log('📦 Message data being sent:', JSON.stringify(messageData, null, 2));
 
-      await sendMessage(chatId, poll.title, undefined, undefined, extraData);
+      const sentMessage = await chatApi.sendMessage(chatId, messageData);
 
       console.log('✅ Poll shared to chat:', chatId);
+      console.log('📨 Sent message:', {
+        id: sentMessage.id,
+        message_type: sentMessage.message_type,
+        has_poll_data: !!(sentMessage as any).poll_data
+      });
     } catch (error) {
       console.error('❌ Failed to share poll:', error);
       throw error;

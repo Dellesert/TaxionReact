@@ -81,9 +81,13 @@ const UserSelector: React.FC<UserSelectorProps> = ({
       );
     }
 
+    const MAX_DISPLAY = 5;
+    const displayUsers = selectedUsers.slice(0, MAX_DISPLAY);
+    const remainingCount = selectedUsers.length - MAX_DISPLAY;
+
     return (
       <View style={styles.selectedUsersContainer}>
-        {selectedUsers.map((user) => (
+        {displayUsers.map((user) => (
           <View key={user.id} style={[styles.selectedUserChip, { backgroundColor: theme.primary }]}>
             <Text style={styles.selectedUserText} numberOfLines={1}>
               {user.name}
@@ -96,6 +100,13 @@ const UserSelector: React.FC<UserSelectorProps> = ({
             </TouchableOpacity>
           </View>
         ))}
+        {remainingCount > 0 && (
+          <View style={[styles.selectedUserChip, { backgroundColor: theme.primary }]}>
+            <Text style={styles.selectedUserText}>
+              +{remainingCount}
+            </Text>
+          </View>
+        )}
       </View>
     );
   };

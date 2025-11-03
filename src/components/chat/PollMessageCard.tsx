@@ -34,25 +34,28 @@ const PollMessageCard: React.FC<PollMessageCardProps> = ({ pollData, onPress }) 
     }
   };
 
-  // Форматируем дату окончания
-  const formatEndDate = (dateString?: string) => {
-    if (!dateString) return null;
-
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = date.getTime() - now.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-    if (diffMs < 0) return 'Завершен';
-    if (diffDays > 7) return `До ${date.toLocaleDateString('ru-RU')}`;
-    if (diffDays > 0) return `Осталось ${diffDays} ${diffDays === 1 ? 'день' : 'дня'}`;
-    if (diffHours > 0) return `Осталось ${diffHours} ${diffHours === 1 ? 'час' : 'часов'}`;
-    return 'Заканчивается сегодня';
+  // Определяем иконку статуса
+  const getStatusIcon = () => {
+    if (pollData.poll_status) {
+      switch (pollData.poll_status) {
+        case 'active':
+          return 'checkmark-circle';
+        case 'closed':
+          return 'close-circle';
+        case 'archived':
+          return 'archive';
+        case 'cancelled':
+          return 'ban';
+        case 'draft':
+          return 'create';
+        default:
+          return 'checkmark-circle';
+      }
+    }
+    return 'checkmark-circle';
   };
 
-  const endDateText = formatEndDate(pollData.ends_at);
-  const isEnded = pollData.ends_at && new Date(pollData.ends_at) < new Date();
+  const isEnded = pollData.poll_status === 'closed' || pollData.poll_status === 'archived' || pollData.poll_status === 'cancelled';
 
   const styles = StyleSheet.create({
     container: {
@@ -109,18 +112,15 @@ const PollMessageCard: React.FC<PollMessageCardProps> = ({ pollData, onPress }) 
     footer: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       paddingTop: 10,
       borderTopWidth: 1,
       borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-      gap: 8,
     },
-    footerLeft: {
+    footerRight: {
       flexDirection: 'row',
       alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 10,
-      flex: 1,
+      gap: 12,
     },
     footerItem: {
       flexDirection: 'row',
@@ -128,7 +128,8 @@ const PollMessageCard: React.FC<PollMessageCardProps> = ({ pollData, onPress }) 
       gap: 4,
     },
     footerText: {
-      fontSize: 12,
+      fontSize: 13,
+      fontWeight: '500',
       color: theme.textSecondary,
     },
   });
@@ -154,19 +155,17 @@ const PollMessageCard: React.FC<PollMessageCardProps> = ({ pollData, onPress }) 
       )}
 
       <View style={styles.footer}>
-        <View style={styles.footerLeft}>
+        <View style={styles.footerRight}>
+          {/* Иконка статуса */}
+          <View style={styles.footerItem}>
+            <Ionicons name={getStatusIcon()} size={16} color={theme.textSecondary} />
+          </View>
+
+          {/* Количество голосов */}
           {pollData.total_votes !== undefined && (
             <View style={styles.footerItem}>
-              <Ionicons name="people" size={14} color={theme.textSecondary} />
-              <Text style={styles.footerText}>
-                {pollData.total_votes} {pollData.total_votes === 1 ? 'голос' : 'голосов'}
-              </Text>
-            </View>
-          )}
-          {endDateText && (
-            <View style={styles.footerItem}>
-              <Ionicons name="time" size={14} color={theme.textSecondary} />
-              <Text style={styles.footerText}>{endDateText}</Text>
+              <Ionicons name="people" size={16} color={theme.textSecondary} />
+              <Text style={styles.footerText}>{pollData.total_votes}</Text>
             </View>
           )}
         </View>

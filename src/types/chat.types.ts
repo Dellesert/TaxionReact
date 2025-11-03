@@ -49,6 +49,7 @@ export interface MessagePollData {
   poll_title: string;
   poll_question?: string;
   poll_type?: string;
+  poll_status?: 'draft' | 'active' | 'closed' | 'archived' | 'cancelled';
   total_votes?: number;
   ends_at?: ISODateString;
 }
@@ -147,7 +148,8 @@ export interface UpdateChatDto {
 // Send Message DTO
 export interface SendMessageDto {
   content: string;
-  message_type?: MessageType;
+  message_type?: MessageType; // Frontend uses message_type
+  type?: MessageType;         // Backend expects 'type', not 'message_type'
   reply_to_id?: number;
   file_ids?: number[]; // IDs of uploaded files from file-service
   attachments?: {
@@ -156,6 +158,9 @@ export interface SendMessageDto {
     file_type: string;
     file_size: number;
   }[];
+  poll_id?: number; // ID of poll to share
+  task_id?: number; // ID of task to share
+  poll_data?: any;  // Poll data object for backend
 }
 
 // Update Message DTO

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,8 +17,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
-import { CreateEventDto } from '../../types/calendar.types';
+import { CreateEventDto, Event } from '../../types/calendar.types';
 import * as calendarApi from '@api/calendar.api';
+import * as userApi from '@api/user.api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import UserSelector from '@components/common/UserSelector';
@@ -28,6 +29,7 @@ interface CreateEventModalProps {
   visible: boolean;
   onClose: () => void;
   onEventCreated: () => void;
+  editEvent?: Event | null;
 }
 
 const EVENT_COLORS = [
@@ -43,11 +45,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   visible,
   onClose,
   onEventCreated,
+  editEvent = null,
 }) => {
-  console.log('📅 CreateEventModal render - visible:', visible);
+  console.log('📅 CreateEventModal render - visible:', visible, 'editEvent:', editEvent);
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+
+  const isEditMode = !!editEvent;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -75,6 +80,39 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // Check if user can add participants
   const canAddParticipants = user && (user.role === 'admin' || user.role === 'super_admin' || user.role === 'department_head');
+
+  // Load event data when editing
+  useEffect(() => {
+    if (editEvent) {
+      setTitle(editEvent.title);
+      setDescription(editEvent.description || '');
+      setStartDate(new Date(editEvent.start_time));
+      setEndDate(new Date(editEvent.end_time));
+      setAllDay(editEvent.all_day);
+      setLocation(editEvent.location || '');
+      setColor(editEvent.color);
+      setIsPrivate(editEvent.is_private);
+
+      // Set participants if available
+      if (editEvent.participants && editEvent.participants.length > 0) {
+        const participantIds = editEvent.participants.map(p => p.user_id);
+        setSelectedParticipants(participantIds);
+        setAudienceType('selected_users');
+      }
+    } else {
+      // Reset to defaults when not editing
+      setTitle('');
+      setDescription('');
+      setStartDate(getDefaultStartDate());
+      setEndDate(getDefaultEndDate());
+      setAllDay(false);
+      setLocation('');
+      setColor('#3B82F6');
+      setIsPrivate(false);
+      setAudienceType('all');
+      setSelectedParticipants([]);
+    }
+  }, [editEvent, visible]);
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -107,12 +145,35 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       if (audienceType === 'selected_users') {
         participantIds = selectedParticipants;
       } else if (audienceType === 'department') {
-        // Backend will handle department members
-        // For now, we can leave it undefined or implement department member fetching
-        participantIds = undefined;
-      } else {
-        // 'all' - no specific participants
-        participantIds = undefined;
+        // Fetch all users in current user's department
+        if (user?.department_id) {
+          try {
+            const usersResponse = await userApi.getUsers(
+              { department_id: user.department_id },
+              { limit: 1000 }
+            );
+            participantIds = usersResponse.data.map(u => u.id);
+            console.log('📅 Department users fetched:', participantIds.length);
+          } catch (error) {
+            console.error('Failed to fetch department users:', error);
+            Alert.alert('Ошибка', 'Не удалось загрузить пользователей отдела');
+            return;
+          }
+        }
+      } else if (audienceType === 'all') {
+        // Fetch all users in the organization
+        try {
+          const usersResponse = await userApi.getUsers(
+            {},
+            { limit: 1000 }
+          );
+          participantIds = usersResponse.data.map(u => u.id);
+          console.log('📅 All users fetched:', participantIds.length);
+        } catch (error) {
+          console.error('Failed to fetch all users:', error);
+          Alert.alert('Ошибка', 'Не удалось загрузить список пользователей');
+          return;
+        }
       }
 
       const eventData: CreateEventDto = {
@@ -128,15 +189,52 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         participant_ids: participantIds,
       };
 
-      await calendarApi.createEvent(eventData);
-      Alert.alert('Успех', 'Событие создано');
+      if (isEditMode && editEvent) {
+        // UpdateEventDto doesn't have participant_ids, so we create a separate object
+        const { participant_ids, ...updateData } = eventData;
+        await calendarApi.updateEvent(editEvent.id, updateData);
+
+        // Update participants if needed
+        if (participantIds && participantIds.length > 0) {
+          try {
+            // Get current participants
+            const currentParticipantIds = editEvent.participants?.map(p => p.user_id) || [];
+
+            // Find participants to remove (in current but not in new)
+            const toRemove = currentParticipantIds.filter(id => !participantIds.includes(id));
+
+            // Find participants to add (in new but not in current)
+            const toAdd = participantIds.filter(id => !currentParticipantIds.includes(id));
+
+            console.log('📅 Updating participants:', { toAdd, toRemove });
+
+            // Remove old participants
+            for (const userId of toRemove) {
+              await calendarApi.removeEventParticipant(editEvent.id, userId);
+            }
+
+            // Add new participants
+            if (toAdd.length > 0) {
+              await calendarApi.addEventParticipants(editEvent.id, { user_ids: toAdd });
+            }
+          } catch (error) {
+            console.error('Failed to update participants:', error);
+            // Don't fail the whole operation, just log the error
+          }
+        }
+
+        Alert.alert('Успех', 'Событие обновлено');
+      } else {
+        await calendarApi.createEvent(eventData);
+        Alert.alert('Успех', 'Событие создано');
+      }
       onEventCreated();
       handleClose();
     } catch (error: any) {
       console.error('Failed to create event:', error);
 
       // Handle specific error cases
-      let errorMessage = 'Не удалось создать событие';
+      let errorMessage = isEditMode ? 'Не удалось обновить событие' : 'Не удалось создать событие';
 
       if (error.details?.error) {
         errorMessage = error.details.error;
@@ -188,7 +286,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               <Ionicons name="close" size={28} color={theme.error} />
             </TouchableOpacity>
           </View>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Новое событие</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            {isEditMode ? 'Редактировать' : 'Новое событие'}
+          </Text>
           <View style={styles.headerRight}>
             <TouchableOpacity
               onPress={handleCreate}
@@ -461,6 +561,25 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   />
                 </View>
               )}
+
+              {/* Info message for 'all' and 'department' */}
+              {audienceType === 'all' && (
+                <View style={[styles.infoBox, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                  <Ionicons name="information-circle-outline" size={20} color={theme.primary} />
+                  <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                    Событие будет видно всем пользователям организации
+                  </Text>
+                </View>
+              )}
+
+              {audienceType === 'department' && (
+                <View style={[styles.infoBox, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                  <Ionicons name="information-circle-outline" size={20} color={theme.primary} />
+                  <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                    Событие будет видно всем участникам вашего отдела
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -693,6 +812,20 @@ const styles = StyleSheet.create({
   typeChipText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

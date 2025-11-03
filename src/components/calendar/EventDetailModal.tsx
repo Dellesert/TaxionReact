@@ -20,6 +20,7 @@ import * as calendarApi from '@api/calendar.api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@components/common/Avatar';
+import { CreateEventModal } from './CreateEventModal';
 
 interface EventDetailModalProps {
   visible: boolean;
@@ -43,6 +44,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const [showAllMaybe, setShowAllMaybe] = useState(false);
   const [showAllPending, setShowAllPending] = useState(false);
   const [showAllDeclined, setShowAllDeclined] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   if (!event) return null;
 
@@ -214,9 +216,25 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         <View style={[styles.headerWrapper, { backgroundColor: event.color }]}>
           <View style={{ height: insets.top }} />
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
+            <View style={styles.headerTopBar}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+              {canManage && (
+                <View style={styles.headerActions}>
+                  <TouchableOpacity onPress={() => setShowEditModal(true)} style={styles.editButton}>
+                    <Ionicons name="create-outline" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleDelete} style={styles.deleteButton} disabled={isDeleting}>
+                    {isDeleting ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
             <View style={styles.headerContent}>
               <View style={styles.iconContainer}>
                 <Ionicons name={getEventIcon() as any} size={32} color="#FFFFFF" />
@@ -270,15 +288,6 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 </View>
               )}
             </View>
-            {canManage && (
-              <TouchableOpacity onPress={handleDelete} style={styles.deleteButton} disabled={isDeleting}>
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
-                )}
-              </TouchableOpacity>
-            )}
           </View>
         </View>
 
@@ -390,6 +399,19 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
 
         </ScrollView>
       </View>
+
+      {/* Edit Event Modal */}
+      {showEditModal && (
+        <CreateEventModal
+          visible={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onEventCreated={() => {
+            setShowEditModal(false);
+            onEventUpdated();
+          }}
+          editEvent={event}
+        />
+      )}
     </Modal>
   );
 };
@@ -406,20 +428,33 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 24,
   },
+  headerTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   closeButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-start',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   deleteButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-end',
-    marginTop: -40,
   },
   headerContent: {
     alignItems: 'center',

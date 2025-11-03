@@ -243,11 +243,11 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     position: 'relative',
@@ -261,8 +261,8 @@ const styles = StyleSheet.create({
     width: 4,
   },
   content: {
-    paddingLeft: 20,
-    paddingRight: 18,
+    paddingLeft: 16,
+    paddingRight: 16,
     paddingTop: 16,
     paddingBottom: 16,
   },
@@ -277,9 +277,9 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
     letterSpacing: 0.2,
   },
   votedIndicator: {
