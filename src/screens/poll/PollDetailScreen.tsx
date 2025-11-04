@@ -23,6 +23,10 @@ import { SendMessageDto } from '@/types/chat.types';
 import SharePollModal from '@components/poll/SharePollModal';
 import EditPollModal from '@components/poll/EditPollModal';
 import { Avatar } from '@components/common/Avatar';
+import { User } from '../../types/user.types';
+import { UserProfileModal } from '@components/common/UserProfileModal';
+import { getUser } from '@api/user.api';
+import { getOrCreateDirectChat } from '@api/chat.api';
 
 type PollStackParamList = {
   PollList: undefined;
@@ -49,6 +53,8 @@ const PollDetailScreen: React.FC = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [votersPreview, setVotersPreview] = useState<any[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Проверяем, открыт ли опрос из чата по параметру fromChat
   const isFromChat = route.params.fromChat === true;
@@ -76,6 +82,16 @@ const PollDetailScreen: React.FC = () => {
   const [showResults, setShowResults] = useState(false);
   const [isRevoting, setIsRevoting] = useState(false);
 
+  const handleUserPress = async (userId: number) => {
+    try {
+      const userData = await getUser(userId);
+      setSelectedUser(userData);
+      setShowProfileModal(true);
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
+
   useEffect(() => {
     loadPollDetail();
   }, [route.params.pollId]);
@@ -83,7 +99,6 @@ const PollDetailScreen: React.FC = () => {
   // Устанавливаем заголовок навигации, когда опрос открыт из чата
   useLayoutEffect(() => {
     if (isFromChat && poll) {
-      console.log('📋 Setting poll title in navigation header:', poll.title);
       navigation.setOptions({
         title: poll.title,
         headerRight: () => (
@@ -129,16 +144,9 @@ const PollDetailScreen: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const loadedPoll = await pollApi.getPoll(route.params.pollId);
-      console.log('📋 Poll loaded from getPoll:', {
-        id: loadedPoll.id,
-        total_votes: loadedPoll.total_votes,
-        total_voters: loadedPoll.total_voters,
-      });
-
       // Load poll results separately
       try {
         const results = await pollApi.getPollResults(route.params.pollId);
-        console.log('📊 Poll results loaded:', JSON.stringify(results, null, 2));
 
         // Merge results into poll options
         if (results.options && loadedPoll.options) {
@@ -163,17 +171,6 @@ const PollDetailScreen: React.FC = () => {
       } catch (resultsError) {
         console.warn('Failed to load poll results:', resultsError);
       }
-
-      console.log('📊 Final poll data:', {
-        total_votes: loadedPoll.total_votes,
-        total_voters: loadedPoll.total_voters,
-        options: loadedPoll.options?.map(opt => ({
-          id: opt.id,
-          text: opt.text,
-          vote_count: opt.vote_count,
-          vote_percent: opt.vote_percent,
-        })),
-      });
 
       setPoll(loadedPoll);
 
@@ -274,7 +271,6 @@ const PollDetailScreen: React.FC = () => {
     const confirmClose = async () => {
       try {
         setIsPublishing(true); // Reuse publishing state for closing too
-        console.log('🔒 Closing poll:', poll.id);
         await pollApi.updatePollStatus(poll.id, { status: 'closed' });
 
         if (Platform.OS === 'web') {
@@ -327,18 +323,10 @@ const PollDetailScreen: React.FC = () => {
   const handleDelete = async () => {
     if (!poll) return;
 
-    console.log('🗑️ Attempting to delete poll:', poll.id);
-    console.log('👤 Current user:', currentUser?.id, 'Role:', currentUser?.role);
-    console.log('📝 Poll creator:', poll.created_by);
-    console.log('✅ Can delete:', canDeleteOrClosePoll);
-
     const confirmDelete = async () => {
-      console.log('🔴 DELETE BUTTON PRESSED!!!');
       try {
         setIsDeleting(true);
-        console.log('🗑️ Calling deletePoll API for poll ID:', poll.id);
         const result = await pollApi.deletePoll(poll.id);
-        console.log('✅ Poll deleted successfully, result:', result);
 
         if (Platform.OS === 'web') {
           alert('Опрос удален!');
@@ -393,8 +381,6 @@ const PollDetailScreen: React.FC = () => {
     if (!poll) return;
 
     try {
-      console.log('📤 Sharing poll to chat:', chatId);
-      console.log('📊 Poll ID:', poll.id, 'Title:', poll.title);
 
       // Формируем данные опроса для отправки
       const pollData: any = {
@@ -415,16 +401,9 @@ const PollDetailScreen: React.FC = () => {
         poll_id: poll.id,
         poll_data: pollData, // Передаем данные опроса явно
       };
-      console.log('📦 Message data being sent:', JSON.stringify(messageData, null, 2));
 
       const sentMessage = await chatApi.sendMessage(chatId, messageData);
 
-      console.log('✅ Poll shared to chat:', chatId);
-      console.log('📨 Sent message:', {
-        id: sentMessage.id,
-        message_type: sentMessage.message_type,
-        has_poll_data: !!(sentMessage as any).poll_data
-      });
     } catch (error) {
       console.error('❌ Failed to share poll:', error);
       throw error;
@@ -499,9 +478,7 @@ const PollDetailScreen: React.FC = () => {
         voteData.comment = comment;
       }
 
-      console.log('📤 Voting with data:', JSON.stringify(voteData, null, 2));
       await pollApi.vote(poll.id, voteData);
-      console.log('✅ Vote successful');
 
       // Save revoting state before reset
       const wasRevoting = isRevoting;
@@ -918,8 +895,12 @@ const PollDetailScreen: React.FC = () => {
             </View>
 
             {/* Info Row: Creator and Deadline */}
-            <View style={styles.infoRow}>
-              <View style={styles.creatorInfo}>
+            <View style={[styles.infoRow, { marginBottom: 16 }]}>
+              <TouchableOpacity
+                style={styles.creatorInfo}
+                onPress={() => poll.created_by && handleUserPress(poll.created_by)}
+                activeOpacity={0.7}
+              >
                 <Avatar
                   name={poll.creator?.name || 'Unknown'}
                   imageUrl={poll.creator?.avatar}
@@ -928,7 +909,7 @@ const PollDetailScreen: React.FC = () => {
                 <Text style={[styles.creatorText, { color: theme.textSecondary }]} numberOfLines={1}>
                   {poll.creator?.name || 'Unknown'}
                 </Text>
-              </View>
+              </TouchableOpacity>
               {poll.end_time && poll.status === 'active' && (
                 <View style={styles.deadlineInfo}>
                   <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
@@ -1120,6 +1101,28 @@ const PollDetailScreen: React.FC = () => {
           onPollUpdated={loadPollDetail}
         />
       )}
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        visible={showProfileModal}
+        user={selectedUser}
+        onClose={() => setShowProfileModal(false)}
+        onOpenChat={async (userId) => {
+          try {
+            const chat = await getOrCreateDirectChat(userId);
+            setShowProfileModal(false);
+            const rootNavigation = navigation.getParent();
+            if (rootNavigation) {
+              rootNavigation.navigate('Chats', {
+                screen: 'Chat',
+                params: { chatId: chat.id },
+              });
+            }
+          } catch (error: any) {
+            Alert.alert('Ошибка', error.message || 'Не удалось открыть чат');
+          }
+        }}
+      />
       </View>
     </SafeAreaView>
   );

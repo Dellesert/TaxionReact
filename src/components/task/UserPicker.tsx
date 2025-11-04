@@ -21,12 +21,14 @@ interface UserPickerProps {
   selectedUserIds: number[];
   onSelectionChange: (userIds: number[]) => void;
   multiSelect?: boolean;
+  forChat?: boolean; // If true, show all users (for chat creation). If false/undefined, show filtered users (for task assignment)
 }
 
 const UserPicker: React.FC<UserPickerProps> = ({
   selectedUserIds,
   onSelectionChange,
   multiSelect = true,
+  forChat = false,
 }) => {
   const { theme } = useTheme();
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -76,8 +78,12 @@ const UserPicker: React.FC<UserPickerProps> = ({
       // Fetch users based on role (only active users)
       let filters: any = {
         is_active: true,
-        for_task_assignment: true // Request all users for task assignment
       };
+
+      // For chats, show all users. For tasks/polls, use filtered assignment logic
+      if (!forChat) {
+        filters.for_task_assignment = true;
+      }
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 

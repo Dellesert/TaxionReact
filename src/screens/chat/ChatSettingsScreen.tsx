@@ -3,8 +3,8 @@
  * Экран настроек чата
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,13 +13,14 @@ import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
-import { ChatMembersModal } from '@components/chat/ChatMembersModal';
 import { ConfirmDialog } from '@components/common/ConfirmDialog';
 import { InputDialog } from '@components/common/InputDialog';
 import { fileApi } from '@api/fileApi';
 import { Avatar } from '@components/common/Avatar';
-import { User } from '@/types/user.types';
+import { User, ChatMember } from '@/types/user.types';
 import * as userApi from '@api/user.api';
+import * as chatApi from '@api/chat.api';
+import { UserSelectorModal } from '@components/common/UserSelectorModal';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ChatSettings'>;
 
@@ -32,13 +33,25 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const leaveChat = useChatStore((state) => state.leaveChat);
   const updateChat = useChatStore((state) => state.updateChat);
 
-  const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [otherUser, setOtherUser] = useState<User | null>(null);
   const [departmentName, setDepartmentName] = useState<string>('');
+
+  // Members management
+  const [members, setMembers] = useState<ChatMember[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [isAddingMembers, setIsAddingMembers] = useState(false);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<{ id: number; name: string } | null>(null);
+  const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
+  const [roleChangeData, setRoleChangeData] = useState<{ userId: number; userName: string; currentRole: string; newRole: string } | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<{ userId: number; userName: string; role: string } | null>(null);
 
   const chat = getChatById(chatId);
   const creatorId = chat?.created_by || chat?.creator_id;

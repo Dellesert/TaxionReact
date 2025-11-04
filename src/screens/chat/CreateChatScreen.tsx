@@ -93,8 +93,9 @@ const CreateChatScreen: React.FC = () => {
         console.log('🌐 API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
         console.log('🔧 Mock mode:', process.env.EXPO_PUBLIC_USE_MOCK_DATA);
 
-        // Request all users (increase limit if needed), only active users, with task assignment filter
-        const response = await getUsers({ is_active: true, for_task_assignment: true }, { limit: 1000, offset: 0 });
+        // Request all users (increase limit if needed), only active users
+        // For chats, we show all users (not using for_task_assignment filter)
+        const response = await getUsers({ is_active: true }, { limit: 1000, offset: 0 });
         console.log('✅ Users API response:', response);
         console.log('✅ Response type:', typeof response);
         console.log('✅ Response keys:', response ? Object.keys(response) : 'null');
@@ -174,6 +175,28 @@ const CreateChatScreen: React.FC = () => {
     }
   };
 
+  const toggleDepartmentSelection = (departmentUsers: User[]) => {
+    if (chatType === 'private') return; // Для личного чата не применимо
+
+    const departmentUserIds = departmentUsers.map(u => u.id);
+    // Проверяем, все ли пользователи отдела уже выбраны
+    const allSelected = departmentUserIds.every(id => selectedUsers.includes(id));
+
+    if (allSelected) {
+      // Снимаем выбор со всех пользователей отдела
+      setSelectedUsers(selectedUsers.filter(id => !departmentUserIds.includes(id)));
+    } else {
+      // Добавляем всех пользователей отдела (избегая дублирования)
+      const newSelectedUsers = [...selectedUsers];
+      departmentUserIds.forEach(id => {
+        if (!newSelectedUsers.includes(id)) {
+          newSelectedUsers.push(id);
+        }
+      });
+      setSelectedUsers(newSelectedUsers);
+    }
+  };
+
   const handleCreateChat = async () => {
     // Валидация для группового чата
     if (chatType === 'group') {
@@ -244,11 +267,9 @@ const CreateChatScreen: React.FC = () => {
         return false;
       }
 
-      // Employees shouldn't see admins and super_admins
-      if (currentUser?.role === 'employee') {
-        if (user.role === 'admin' || user.role === 'super_admin') {
-          return false;
-        }
+      // Hide admins and super_admins from all users (including other admins)
+      if (user.role === 'admin' || user.role === 'super_admin') {
+        return false;
       }
 
       // For private chats, filter out users who already have a private chat with current user
@@ -627,7 +648,7 @@ const CreateChatScreen: React.FC = () => {
       alignItems: 'center',
       backgroundColor: theme.backgroundSecondary,
       paddingHorizontal: 16,
-      paddingVertical: 8,
+      paddingVertical: 10,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
@@ -640,6 +661,25 @@ const CreateChatScreen: React.FC = () => {
     sectionHeaderCount: {
       fontSize: 12,
       color: theme.textTertiary,
+    },
+    sectionHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    sectionCheckbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    partialCheckmark: {
+      width: 10,
+      height: 2,
+      backgroundColor: 'white',
+      borderRadius: 1,
     },
   });
 
@@ -721,14 +761,48 @@ const CreateChatScreen: React.FC = () => {
           sections={userSections}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderUserItem}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeaderText}>{section.title}</Text>
-              <Text style={styles.sectionHeaderCount}>
-                {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
-              </Text>
-            </View>
-          )}
+          renderSectionHeader={({ section }) => {
+            // Для группового чата показываем чекбокс выбора отдела
+            if (chatType === 'group') {
+              const departmentUserIds = section.data.map(u => u.id);
+              const allSelected = departmentUserIds.every(id => selectedUsers.includes(id));
+              const someSelected = departmentUserIds.some(id => selectedUsers.includes(id)) && !allSelected;
+
+              return (
+                <TouchableOpacity
+                  style={styles.sectionHeaderContainer}
+                  onPress={() => toggleDepartmentSelection(section.data)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.sectionHeaderLeft}>
+                    <View style={[
+                      styles.sectionCheckbox,
+                      { borderColor: theme.border },
+                      allSelected && { backgroundColor: theme.primary, borderColor: theme.primary },
+                      someSelected && { backgroundColor: theme.primaryLight, borderColor: theme.primary }
+                    ]}>
+                      {allSelected && <Ionicons name="checkmark" size={14} color="white" />}
+                      {someSelected && <View style={styles.partialCheckmark} />}
+                    </View>
+                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                  </View>
+                  <Text style={styles.sectionHeaderCount}>
+                    {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }
+
+            // Для личного чата - обычный заголовок без чекбокса
+            return (
+              <View style={styles.sectionHeaderContainer}>
+                <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                <Text style={styles.sectionHeaderCount}>
+                  {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                </Text>
+              </View>
+            );
+          }}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={true}
           ListEmptyComponent={

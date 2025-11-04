@@ -387,6 +387,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         visible={membersModalVisible}
         chatId={chatIdNum}
         onClose={() => setMembersModalVisible(false)}
+        isCreator={currentUser?.id === chat?.creator_id}
+        creatorId={chat?.creator_id}
       />
 
       <ForwardMessageModal

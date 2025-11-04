@@ -244,6 +244,19 @@ export const removeChatMember = async (chatId: number, userId: number): Promise<
   await api.delete(API_ENDPOINTS.CHAT.REMOVE_MEMBER(chatId, userId));
 };
 
+/**
+ * Update member role in chat (promote to admin or demote to member)
+ */
+export const updateChatMemberRole = async (
+  chatId: number,
+  userId: number,
+  role: 'admin' | 'member'
+): Promise<void> => {
+  console.log(`👤 Updating member role in chat ${chatId} for user ${userId} to ${role}`);
+  await api.put(`/chats/${chatId}/members/${userId}`, { role });
+  console.log(`✅ Member role updated successfully`);
+};
+
 // ============= Message Operations =============
 
 /**

@@ -61,10 +61,9 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       setIsLoading(true);
       const currentUser = useAuthStore.getState().user;
 
-      // Фильтр - только активные пользователи, все отделы для задач
+      // Фильтр - только активные пользователи
       let filters: any = {
         is_active: true,
-        for_task_assignment: true // Request all users for task assignment
       };
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
@@ -196,6 +195,27 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     } else {
       onSelectionChange([userId]);
       onClose();
+    }
+  };
+
+  const toggleDepartmentSelection = (departmentUsers: User[]) => {
+    if (!multiSelect) return; // Only for multi-select mode
+
+    const departmentUserIds = departmentUsers.map(u => u.id);
+    const allSelected = departmentUserIds.every(id => selectedUserIds.includes(id));
+
+    if (allSelected) {
+      // Deselect all users in this department
+      onSelectionChange(selectedUserIds.filter(id => !departmentUserIds.includes(id)));
+    } else {
+      // Select all users in this department
+      const newSelectedUsers = [...selectedUserIds];
+      departmentUserIds.forEach(id => {
+        if (!newSelectedUsers.includes(id)) {
+          newSelectedUsers.push(id);
+        }
+      });
+      onSelectionChange(newSelectedUsers);
     }
   };
 
@@ -452,6 +472,24 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
+    sectionHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    sectionCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    partialCheckmark: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
     sectionHeaderText: {
       fontSize: 14,
       fontWeight: '600',
@@ -528,14 +566,46 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
             sections={userSections}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderUserItem}
-            renderSectionHeader={({ section }) => (
-              <View style={styles.sectionHeaderContainer}>
-                <Text style={styles.sectionHeaderText}>{section.title}</Text>
-                <Text style={styles.sectionHeaderCount}>
-                  {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
-                </Text>
-              </View>
-            )}
+            renderSectionHeader={({ section }) => {
+              if (!multiSelect) {
+                // Radio mode - non-clickable headers
+                return (
+                  <View style={styles.sectionHeaderContainer}>
+                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                    <Text style={styles.sectionHeaderCount}>
+                      {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                    </Text>
+                  </View>
+                );
+              }
+
+              // Multi-select mode - clickable headers with checkboxes
+              const departmentUserIds = section.data.map(u => u.id);
+              const selectedCount = departmentUserIds.filter(id => selectedUserIds.includes(id)).length;
+              const allSelected = selectedCount === departmentUserIds.length;
+              const someSelected = selectedCount > 0 && selectedCount < departmentUserIds.length;
+
+              return (
+                <TouchableOpacity
+                  style={styles.sectionHeaderContainer}
+                  onPress={() => toggleDepartmentSelection(section.data)}
+                >
+                  <View style={styles.sectionHeaderLeft}>
+                    <View style={[styles.sectionCheckbox, { borderColor: theme.border }, (allSelected || someSelected) && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                      {allSelected ? (
+                        <Ionicons name="checkmark" size={18} color="white" />
+                      ) : someSelected ? (
+                        <View style={[styles.partialCheckmark, { backgroundColor: 'white' }]} />
+                      ) : null}
+                    </View>
+                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                  </View>
+                  <Text style={styles.sectionHeaderCount}>
+                    {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
             contentContainerStyle={styles.listContent}
             stickySectionHeadersEnabled={true}
             ListEmptyComponent={
