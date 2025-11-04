@@ -46,7 +46,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    */
   initialize: async () => {
     try {
-      console.log('🔄 Initializing auth from storage (Session mode)...');
       set({ isInitializing: true });
 
       // Migrate from SecureStore to AsyncStorage (for Expo Go compatibility)
@@ -55,17 +54,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Load session ID from secure storage
       const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
 
-      console.log('🔑 Session loaded:', {
-        hasSessionId: !!sessionId,
-        sessionIdPreview: sessionId ? sessionId.substring(0, 20) + '...' : null,
-      });
-
       if (sessionId) {
         // Load user data from storage
         const storedUser = await secureStorage.getItemAsync(STORAGE_KEYS.USER_DATA);
         if (storedUser) {
           const user = JSON.parse(storedUser);
-          console.log('✅ Auth restored from storage:', user.email);
 
           // Verify session is still valid by making an API call
           try {

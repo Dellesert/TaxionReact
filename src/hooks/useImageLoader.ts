@@ -26,14 +26,7 @@ export const useImageLoader = (attachments?: Attachment[]) => {
       if (isImageFile(mimeType)) {
         // Просто заменяем localhost на реальный IP
         // expo-image сам загрузит и закеширует изображение
-        const originalUrl = attachment.file_url;
-        const processedUrl = replaceLocalhostWithIP(originalUrl);
-        console.log('🖼️ Image URL processing:', {
-          attachmentId: attachment.id,
-          original: originalUrl,
-          processed: processedUrl
-        });
-        urls[attachment.id] = processedUrl;
+        urls[attachment.id] = replaceLocalhostWithIP(attachment.file_url);
       }
     }
 

@@ -196,8 +196,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         ) : (
           <>
             <View style={styles.messageContent}>
-              {/* Render text first */}
-              {messageContent && (
+              {messageContent && messageContent.length > 0 && (
                 <Text
                   style={[
                     styles.messageText,
@@ -210,7 +209,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               )}
 
               {/* Render attachments below text */}
-              {message.attachments && message.attachments.length > 0 && (
+              {!!(message.attachments && message.attachments.length > 0) && (
                 <MessageAttachments
                   attachments={message.attachments}
                   imageUrls={imageUrls}
@@ -233,7 +232,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         >
           {formatTime(message.created_at)}
         </Text>
-        {message.is_edited && !message.is_deleted && (
+        {!!(message.is_edited && !message.is_deleted) && (
           <Text
             style={[
               styles.edited,

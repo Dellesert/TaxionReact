@@ -54,12 +54,8 @@ export default function App() {
   // Handle app state changes (foreground/background)
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      console.log('📱 App state changed to:', nextAppState);
 
       if (nextAppState === 'active' && isAuthenticated) {
-        console.log('📱 App became active - session mode (no token refresh needed)');
-        // Session mode: no token refresh needed
-        // Session is validated on each request via X-Session-ID header
       }
     };
 

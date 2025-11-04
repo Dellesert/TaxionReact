@@ -100,12 +100,10 @@ const ChatListScreen: React.FC = () => {
 
   // Логируем изменения в чатах для отладки статусов
   useEffect(() => {
-    console.log('📋 ChatList: chats updated, total:', chats.length);
     const privateChats = chats.filter(c => c.type === 'private');
     privateChats.forEach(chat => {
       const companion = chat.members?.find(m => m.user_id !== currentUser?.id);
       if (companion?.user) {
-        console.log(`  - Chat ${chat.id}: companion ${companion.user.name || companion.user.email} status = ${companion.user.status}`);
       }
     });
   }, [chats]);

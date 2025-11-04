@@ -153,17 +153,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   // Build delegation chain display
   const renderDelegationChain = () => {
-    // Debug: log task delegation info and avatar data
-    if (task.delegated_from_user_id || task.original_assignee_id || task.creator) {
-      console.log('📋 Task user info with avatars:', {
-        id: task.id,
-        title: task.title,
-        creator: task.creator,
-        assignees: task.assignees,
-        delegation_chain: task.delegation_chain,
-      });
-    }
-
     // Priority: use delegation_chain if available
     if (task.delegation_chain && task.delegation_chain.length > 0) {
       console.log('✅ Showing delegation chain:', task.delegation_chain);

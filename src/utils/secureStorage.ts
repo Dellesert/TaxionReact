@@ -87,11 +87,6 @@ export const getItemAsync = async (key: string): Promise<string | null> => {
 
     if (isWeb) {
       value = localStorage.getItem(key);
-      console.log(`🔍 [SecureStorage] Retrieved from localStorage: ${key}`, {
-        found: !!value,
-        valueLength: value?.length,
-        preview: value ? value.substring(0, 20) + '...' : 'NULL',
-      });
     } else {
       // Use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
       if (PERSISTENT_KEYS.includes(key)) {
