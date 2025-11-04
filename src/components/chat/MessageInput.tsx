@@ -20,6 +20,7 @@ interface MessageInputProps {
   onCancelReply?: () => void;
   onFilesSelected?: (fileIds: number[]) => void;
   selectedFileIds?: number[];
+  onRemoveFile?: (fileId: number) => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -32,6 +33,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onCancelReply,
   onFilesSelected,
   selectedFileIds = [],
+  onRemoveFile,
 }) => {
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
@@ -165,6 +167,17 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               {selectedFileIds.length} {selectedFileIds.length === 1 ? 'файл' : 'файлов'}
             </Text>
           </View>
+          <TouchableOpacity
+            onPress={() => {
+              // Удаляем все файлы
+              selectedFileIds.forEach(fileId => {
+                onRemoveFile?.(fileId);
+              });
+            }}
+            style={styles.removeAllButton}
+          >
+            <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -310,6 +323,9 @@ const styles = StyleSheet.create({
   },
   selectedFilesText: {
     fontSize: 14,
+  },
+  removeAllButton: {
+    padding: 4,
   },
 });
 

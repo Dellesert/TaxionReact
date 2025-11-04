@@ -372,6 +372,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
                 onCancelReply={() => setReplyingToMessage(null)}
                 onFilesSelected={(fileIds) => setSelectedFileIds(prev => [...prev, ...fileIds])}
                 selectedFileIds={selectedFileIds}
+                onRemoveFile={(fileId) => setSelectedFileIds(prev => prev.filter(id => id !== fileId))}
               />
             </View>
           </>
