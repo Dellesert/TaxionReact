@@ -23,7 +23,7 @@ import { TaskStackParamList } from '@navigation/types';
 import { useTaskStore } from '@store/taskStore';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
-import { TaskPriority, CreateTaskDto } from '../../types/task.types';
+import { TaskPriority, CreateTaskDto, CreateTaskChecklistDto } from '../../types/task.types';
 import UserSelector from '@components/common/UserSelector';
 import DatePickerModal from '@components/common/DatePickerModal';
 
@@ -45,6 +45,10 @@ const CreateTaskScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [assigneeId, setAssigneeId] = useState<number | undefined>(undefined);
+
+  // Checklist state - single checklist with items only
+  const [checklistItems, setChecklistItems] = useState<string[]>([]);
+  const [newItemText, setNewItemText] = useState('');
 
   const priorities: {
     value: TaskPriority;
@@ -105,6 +109,17 @@ const CreateTaskScreen: React.FC = () => {
     setDueDate(date);
   };
 
+  // Checklist handlers
+  const handleAddItem = () => {
+    if (!newItemText.trim()) return;
+    setChecklistItems([...checklistItems, newItemText.trim()]);
+    setNewItemText('');
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setChecklistItems(checklistItems.filter((_, i) => i !== index));
+  };
+
   const handleCreateTask = async () => {
     if (!title.trim()) {
       if (Platform.OS === 'web') {
@@ -132,6 +147,7 @@ const CreateTaskScreen: React.FC = () => {
         priority,
         due_date: dueDate?.toISOString(),
         assignee_ids: finalAssigneeIds,
+        checklists: checklistItems.length > 0 ? [{ title: 'Checklist', items: checklistItems }] : undefined,
       };
 
       await createTask(taskData);
@@ -447,6 +463,47 @@ const CreateTaskScreen: React.FC = () => {
             )}
           </View>
 
+          {/* Чек-лист */}
+          <View style={[styles.section, dynamicStyles.section]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="checkbox-outline" size={18} color={theme.text} style={{ marginRight: 8 }} />
+              <Text style={[styles.sectionLabel, dynamicStyles.label, { marginBottom: 0 }]}>Чек-лист</Text>
+            </View>
+
+            {/* Add new item */}
+            <View style={styles.addChecklistContainer}>
+              <TextInput
+                style={[styles.titleInput, dynamicStyles.input, { flex: 1 }]}
+                placeholder="Добавить пункт..."
+                placeholderTextColor={theme.inputPlaceholder}
+                value={newItemText}
+                onChangeText={setNewItemText}
+                onSubmitEditing={handleAddItem}
+                returnKeyType="done"
+              />
+              {newItemText.trim() && (
+                <TouchableOpacity onPress={handleAddItem} style={styles.addButton}>
+                  <Ionicons name="add-circle" size={28} color={theme.primary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Render checklist items */}
+            {checklistItems.length > 0 && (
+              <View style={[styles.checklistCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                {checklistItems.map((item, index) => (
+                  <View key={index} style={styles.checklistItem}>
+                    <View style={[styles.checkbox, { borderColor: theme.border }]} />
+                    <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={2}>{item}</Text>
+                    <TouchableOpacity onPress={() => handleRemoveItem(index)}>
+                      <Ionicons name="close-circle" size={18} color={theme.textTertiary} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
           {/* Исполнитель - только для department_head, admin, super_admin */}
           {!isEmployee && (
             <View style={[styles.section, dynamicStyles.section]}>
@@ -604,6 +661,66 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 8,
+  },
+  // Checklist styles
+  addChecklistContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  addButton: {
+    padding: 4,
+  },
+  checklistCard: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  checklistHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  checklistTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+  },
+  itemText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  addItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  addItemInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
   },
 });
 

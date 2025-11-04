@@ -578,7 +578,7 @@ export const updateChecklist = async (
   data: UpdateChecklistDto
 ): Promise<TaskChecklist> => {
   const response = await api.put<ApiResponse<TaskChecklist>>(
-    `/api/v1/checklists/${checklistId}`,
+    `/checklists/${checklistId}`,
     data
   );
   return response.data.data || (response.data as any);
@@ -588,7 +588,7 @@ export const updateChecklist = async (
  * Delete checklist
  */
 export const deleteChecklist = async (checklistId: number): Promise<void> => {
-  await api.delete(`/api/v1/checklists/${checklistId}`);
+  await api.delete(`/checklists/${checklistId}`);
 };
 
 /**
@@ -599,7 +599,7 @@ export const createChecklistItem = async (
   data: CreateChecklistItemDto
 ): Promise<any> => {
   const response = await api.post<ApiResponse<any>>(
-    `/api/v1/checklists/${checklistId}/items`,
+    `/checklists/${checklistId}/items`,
     data
   );
   return response.data.data || (response.data as any);
@@ -613,7 +613,7 @@ export const updateChecklistItem = async (
   data: UpdateChecklistItemDto
 ): Promise<any> => {
   const response = await api.put<ApiResponse<any>>(
-    `/api/v1/checklist-items/${itemId}`,
+    `/checklist-items/${itemId}`,
     data
   );
   return response.data.data || (response.data as any);
@@ -624,7 +624,7 @@ export const updateChecklistItem = async (
  */
 export const toggleChecklistItem = async (itemId: number): Promise<any> => {
   const response = await api.patch<ApiResponse<any>>(
-    `/api/v1/checklist-items/${itemId}/toggle`
+    `/checklist-items/${itemId}/toggle`
   );
   return response.data.data || (response.data as any);
 };
@@ -633,7 +633,7 @@ export const toggleChecklistItem = async (itemId: number): Promise<any> => {
  * Delete checklist item
  */
 export const deleteChecklistItem = async (itemId: number): Promise<void> => {
-  await api.delete(`/api/v1/checklist-items/${itemId}`);
+  await api.delete(`/checklist-items/${itemId}`);
 };
 
 // ============= Project Operations =============

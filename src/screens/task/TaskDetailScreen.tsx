@@ -109,7 +109,7 @@ const TaskDetailScreen: React.FC = () => {
   const [subtasks, setSubtasks] = useState<Task[]>([]);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'attachments' | 'comments' | 'history'>('overview');
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // Share modal state
@@ -171,6 +171,17 @@ const TaskDetailScreen: React.FC = () => {
         delegation_chain: response.delegation_chain,
         assigned_to: response.assigned_to,
       });
+
+      // Load checklists for the task
+      try {
+        const checklists = await taskApi.getTaskChecklists(taskIdNum);
+        response.checklists = checklists;
+        console.log('📋 Loaded checklists:', checklists.length);
+      } catch (error) {
+        console.error('Failed to load checklists:', error);
+        // Don't fail the whole task load if checklists fail
+      }
+
       setTask(response);
 
       // Load subtasks if this is a parent task
@@ -250,6 +261,17 @@ const TaskDetailScreen: React.FC = () => {
       Alert.alert(
         `Невозможно ${action}`,
         'Пожалуйста, завершите все подзадачи перед тем, как продолжить.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Check if trying to complete or submit for review with incomplete checklist items
+    if ((newStatus === 'done' || newStatus === 'review') && !areAllChecklistItemsCompleted()) {
+      const action = newStatus === 'done' ? 'завершить задачу' : 'сдать на проверку';
+      Alert.alert(
+        `Невозможно ${action}`,
+        'Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.',
         [{ text: 'OK' }]
       );
       return;
@@ -748,14 +770,15 @@ const TaskDetailScreen: React.FC = () => {
     // Tabs
     tabsContainer: {
       flexDirection: 'row',
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
-      paddingHorizontal: 16,
+      paddingHorizontal: 4,
     },
     tab: {
       flex: 1,
       paddingVertical: 12,
+      paddingHorizontal: 4,
       alignItems: 'center',
       borderBottomWidth: 3,
       borderBottomColor: 'transparent',
@@ -764,7 +787,7 @@ const TaskDetailScreen: React.FC = () => {
       borderBottomColor: theme.error,
     },
     tabText: {
-      fontSize: 15,
+      fontSize: 13,
       fontWeight: '500',
       color: theme.textSecondary,
     },
@@ -899,15 +922,32 @@ const TaskDetailScreen: React.FC = () => {
     delegateFixedButtonText: {
       color: '#8b5cf6',
     },
+    // Checklists section
+    checklistProgressIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.backgroundSecondary,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+      marginTop: 16,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    checklistProgressText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    checklistsSection: {
+      marginBottom: 16,
+    },
     // Subtasks section
     subtasksSection: {
       marginTop: 16,
       marginBottom: 16,
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: theme.border,
     },
     // Attachments section
     attachmentsSection: {
@@ -986,6 +1026,18 @@ const TaskDetailScreen: React.FC = () => {
       fontSize: 14,
       color: '#9ca3af',
       fontStyle: 'italic',
+      textAlign: 'center',
+    },
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+    },
+    emptyStateText: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      marginTop: 12,
       textAlign: 'center',
       paddingVertical: 16,
     },
@@ -1281,6 +1333,38 @@ const TaskDetailScreen: React.FC = () => {
     return subtasks.every(subtask => subtask.status === 'done');
   };
 
+  // Check if all checklist items are completed
+  const areAllChecklistItemsCompleted = (): boolean => {
+    if (!task?.checklists || task.checklists.length === 0) {
+      return true; // No checklists, so all are "completed"
+    }
+
+    // Get all items from all checklists
+    const allItems = task.checklists.flatMap(checklist => checklist.items);
+
+    if (allItems.length === 0) {
+      return true; // No items, so all are "completed"
+    }
+
+    return allItems.every(item => item.is_completed);
+  };
+
+  // Calculate overall task progress based on checklists
+  const calculateChecklistProgress = (): number => {
+    if (!task?.checklists || task.checklists.length === 0) {
+      return 0;
+    }
+
+    const allItems = task.checklists.flatMap(checklist => checklist.items);
+
+    if (allItems.length === 0) {
+      return 0;
+    }
+
+    const completedItems = allItems.filter(item => item.is_completed).length;
+    return Math.round((completedItems / allItems.length) * 100);
+  };
+
   // Get task action button text based on status
   const getActionButtonText = () => {
     if (task.status === 'new') return 'Начать';
@@ -1288,6 +1372,10 @@ const TaskDetailScreen: React.FC = () => {
       // Check if all subtasks are completed
       if (!areAllSubtasksCompleted()) {
         return 'Завершите подзадачи';
+      }
+      // Check if all checklist items are completed
+      if (!areAllChecklistItemsCompleted()) {
+        return 'Завершите чек-листы';
       }
       return 'Сдать на проверку';
     }
@@ -1304,6 +1392,15 @@ const TaskDetailScreen: React.FC = () => {
         Alert.alert(
           'Невозможно сдать на проверку',
           'Пожалуйста, завершите все подзадачи перед тем, как сдать задачу на проверку.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      // Check if all checklist items are completed before allowing to submit for review
+      if (!areAllChecklistItemsCompleted()) {
+        Alert.alert(
+          'Невозможно сдать на проверку',
+          'Пожалуйста, завершите все пункты чек-листов перед тем, как сдать задачу на проверку.',
           [{ text: 'OK' }]
         );
         return;
@@ -1367,6 +1464,22 @@ const TaskDetailScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
+              style={[styles.tab, activeTab === 'attachments' && styles.activeTab]}
+              onPress={() => setActiveTab('attachments')}
+            >
+              <Text style={[styles.tabText, activeTab === 'attachments' && styles.activeTabText]}>
+                Вложения
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'comments' && styles.activeTab]}
+              onPress={() => setActiveTab('comments')}
+            >
+              <Text style={[styles.tabText, activeTab === 'comments' && styles.activeTabText]}>
+                Комментарии
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.tab, activeTab === 'history' && styles.activeTab]}
               onPress={() => setActiveTab('history')}
             >
@@ -1427,20 +1540,25 @@ const TaskDetailScreen: React.FC = () => {
                   </View>
                 )}
 
-                {/* Progress Bar - if task has progress_percentage */}
-                {task.progress_percentage !== undefined && task.progress_percentage > 0 && (
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          { width: `${task.progress_percentage}%` }
-                        ]}
-                      />
+                {/* Progress Bar - based on checklists or manual progress_percentage */}
+                {(() => {
+                  const checklistProgress = calculateChecklistProgress();
+                  const displayProgress = checklistProgress > 0 ? checklistProgress : (task.progress_percentage || 0);
+
+                  return displayProgress > 0 ? (
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            { width: `${displayProgress}%`, backgroundColor: checklistProgress > 0 ? '#10B981' : '#FFFFFF' }
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.progressText}>{displayProgress}%</Text>
                     </View>
-                    <Text style={styles.progressText}>{task.progress_percentage}%</Text>
-                  </View>
-                )}
+                  ) : null;
+                })()}
 
                 {/* Assignee and Deadline Row */}
                 <View style={[styles.infoRow, { marginBottom: 16 }]}>
@@ -1528,6 +1646,21 @@ const TaskDetailScreen: React.FC = () => {
                   </View>
                 )}
 
+                {/* Checklists Section - show for all who have access */}
+                {task.status !== 'done' && canViewTask(task, user?.id) && (
+                  <View style={styles.checklistsSection}>
+                    <TaskChecklistsView
+                      taskId={task.id}
+                      onChecklistChanged={() => {
+                        loadTask(); // Reload task to update progress
+                      }}
+                      canEdit={canEditTask(task, user?.id, user?.role)}
+                      canToggleOnly={!canEditTask(task, user?.id, user?.role) && canViewTask(task, user?.id)}
+                      readOnly={isDelegatedByMe}
+                    />
+                  </View>
+                )}
+
                 {/* Subtasks Section - show for all who have access, readonly for assignees */}
                 {task.status !== 'done' && canViewTask(task, user?.id) && (
                   <View style={styles.subtasksSection}>
@@ -1540,85 +1673,99 @@ const TaskDetailScreen: React.FC = () => {
                       onSubtaskCreated={() => {
                         loadTask(); // Reload task to update progress
                       }}
-                      // Show create button only for users who can edit
-                      onCreateSubtaskPress={canEditTask(task, user?.id, user?.role) ? () => setShowSubtaskModal(true) : undefined}
+                      // Show create button only for managers who received delegated tasks (not creators, not employees)
+                      onCreateSubtaskPress={
+                        task.created_by !== user?.id &&
+                        (user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+                        (canEditTask(task, user?.id, user?.role) || task.assignees?.some(a => a.id === user?.id))
+                          ? () => setShowSubtaskModal(true)
+                          : undefined
+                      }
                       // Readonly for users who can view but not edit
                       readOnly={!canEditTask(task, user?.id, user?.role)}
                     />
                   </View>
                 )}
 
-                {/* Attachments Section - show for all, but hide add button if delegated */}
-                {task.status !== 'done' && (
-                  <View style={styles.attachmentsSection}>
-                    <Text style={styles.sectionTitle}>Вложения</Text>
 
-                    {/* Display existing attachments or "no attachments" message */}
-                    {isLoadingAttachments ? (
-                      <View style={styles.loadingAttachments}>
-                        <ActivityIndicator size="small" color={theme.primary} />
-                        <Text style={styles.loadingAttachmentsText}>Загрузка вложений...</Text>
-                      </View>
-                    ) : attachments.length > 0 ? (
-                      <View style={styles.attachmentsList}>
-                        {attachments.map((attachment) => {
-                          const fileIcon = getFileIcon(attachment.file_type || '', attachment.file_name);
-                          return (
-                            <View key={attachment.id} style={styles.attachmentItem}>
-                              <TouchableOpacity
-                                style={styles.attachmentInfo}
-                                onPress={() => handleOpenAttachment(attachment)}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name={fileIcon as any} size={20} color={theme.primary} />
-                                <View style={styles.attachmentDetails}>
-                                  <Text style={styles.attachmentName} numberOfLines={1}>
-                                    {decodeFileName(attachment.file_name)}
-                                  </Text>
-                                  <Text style={styles.attachmentMeta}>
-                                    {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
-                                  </Text>
-                                </View>
-                              </TouchableOpacity>
-                              {!isDelegatedByMe && (
-                                <TouchableOpacity
-                                  style={styles.deleteAttachmentButton}
-                                  onPress={() => handleDeleteAttachment(attachment.id)}
-                                >
-                                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                                </TouchableOpacity>
-                              )}
+              </View>
+            ) : activeTab === 'attachments' ? (
+              // Attachments Tab
+              <View style={styles.content}>
+                {/* Display existing attachments or "no attachments" message */}
+                {isLoadingAttachments ? (
+                  <View style={styles.loadingAttachments}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                    <Text style={styles.loadingAttachmentsText}>Загрузка вложений...</Text>
+                  </View>
+                ) : attachments.length > 0 ? (
+                  <View style={styles.attachmentsList}>
+                    {attachments.map((attachment) => {
+                      const fileIcon = getFileIcon(attachment.file_type || '', attachment.file_name);
+                      return (
+                        <View key={attachment.id} style={styles.attachmentItem}>
+                          <TouchableOpacity
+                            style={styles.attachmentInfo}
+                            onPress={() => handleOpenAttachment(attachment)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name={fileIcon as any} size={20} color={theme.primary} />
+                            <View style={styles.attachmentDetails}>
+                              <Text style={styles.attachmentName} numberOfLines={1}>
+                                {decodeFileName(attachment.file_name)}
+                              </Text>
+                              <Text style={styles.attachmentMeta}>
+                                {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
+                              </Text>
                             </View>
-                          );
-                        })}
-                      </View>
-                    ) : isDelegatedByMe ? (
-                      <Text style={styles.noAttachmentsText}>Нет вложений</Text>
-                    ) : null}
-
-                    {/* Add Attachment Button - only if not delegated */}
-                    {!isDelegatedByMe && (
-                      <TouchableOpacity
-                        style={styles.addAttachmentButton}
-                        onPress={handlePickFile}
-                        disabled={isUploadingAttachment}
-                      >
-                        {isUploadingAttachment ? (
-                          <>
-                            <ActivityIndicator size="small" color={theme.primary} />
-                            <Text style={styles.addAttachmentText}>Загрузка...</Text>
-                          </>
-                        ) : (
-                          <>
-                            <Ionicons name="add-circle" size={24} color={theme.primary} />
-                            <Text style={styles.addAttachmentText}>Добавить файл</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    )}
+                          </TouchableOpacity>
+                          {!isDelegatedByMe && task.status !== 'done' && (
+                            <TouchableOpacity
+                              style={styles.deleteAttachmentButton}
+                              onPress={() => handleDeleteAttachment(attachment.id)}
+                            >
+                              <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={styles.emptyStateContainer}>
+                    <Ionicons name="document-outline" size={48} color={theme.textTertiary} />
+                    <Text style={styles.emptyStateText}>Нет вложений</Text>
                   </View>
                 )}
 
+                {/* Add Attachment Button - only if not delegated and task not done */}
+                {!isDelegatedByMe && task.status !== 'done' && (
+                  <TouchableOpacity
+                    style={styles.addAttachmentButton}
+                    onPress={handlePickFile}
+                    disabled={isUploadingAttachment}
+                  >
+                    {isUploadingAttachment ? (
+                      <>
+                        <ActivityIndicator size="small" color={theme.primary} />
+                        <Text style={styles.addAttachmentText}>Загрузка...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="add-circle" size={24} color={theme.primary} />
+                        <Text style={styles.addAttachmentText}>Добавить файл</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : activeTab === 'comments' ? (
+              // Comments Tab (Placeholder)
+              <View style={styles.content}>
+                <View style={styles.emptyStateContainer}>
+                  <Ionicons name="chatbubbles-outline" size={48} color={theme.textTertiary} />
+                  <Text style={styles.emptyStateText}>Комментарии скоро появятся</Text>
+                </View>
               </View>
             ) : (
               // History Tab (Activities)
@@ -1718,13 +1865,13 @@ const TaskDetailScreen: React.FC = () => {
                 style={[
                   styles.fixedActionButton,
                   styles.primaryFixedButton,
-                  (task.status === 'in_progress' && !areAllSubtasksCompleted()) && styles.disabledButton
+                  (task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted())) && styles.disabledButton
                 ]}
                 onPress={handleTaskAction}
-                disabled={task.status === 'in_progress' && !areAllSubtasksCompleted()}
+                disabled={task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted())}
               >
                 <Ionicons
-                  name={task.status === 'in_progress' && !areAllSubtasksCompleted() ? 'alert-circle-outline' : 'play-circle-outline'}
+                  name={task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) ? 'alert-circle-outline' : 'play-circle-outline'}
                   size={20}
                   color="#FFFFFF"
                 />
@@ -1754,18 +1901,18 @@ const TaskDetailScreen: React.FC = () => {
                   style={[
                     styles.fixedActionButton,
                     styles.primaryFixedButton,
-                    !areAllSubtasksCompleted() && styles.disabledButton
+                    (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) && styles.disabledButton
                   ]}
                   onPress={() => handleStatusChange('done')}
-                  disabled={!areAllSubtasksCompleted()}
+                  disabled={!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()}
                 >
                   <Ionicons
-                    name={!areAllSubtasksCompleted() ? 'alert-circle-outline' : 'checkmark-circle-outline'}
+                    name={(!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) ? 'alert-circle-outline' : 'checkmark-circle-outline'}
                     size={20}
                     color="#FFFFFF"
                   />
                   <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
-                    {!areAllSubtasksCompleted() ? 'Завершите подзадачи' : 'Принять'}
+                    {!areAllSubtasksCompleted() ? 'Завершите подзадачи' : !areAllChecklistItemsCompleted() ? 'Завершите чек-листы' : 'Принять'}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -1790,14 +1937,16 @@ const TaskDetailScreen: React.FC = () => {
             task={task}
             onClose={() => setShowEditModal(false)}
             onTaskUpdated={(updatedTask) => {
-              setTask(updatedTask);
+              loadTask(); // Reload task to get updated checklists
               setShowEditModal(false);
             }}
           />
         )}
 
-        {/* Create Subtask Modal - for creator, admins, and department heads */}
-        {task && canEditTask(task, user?.id, user?.role) && (
+        {/* Create Subtask Modal - only for managers who received delegated tasks (not creators, not employees) */}
+        {task && task.created_by !== user?.id &&
+         (user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+         (canEditTask(task, user?.id, user?.role) || task.assignees?.some(a => a.id === user?.id)) && (
           <CreateSubtaskModal
             visible={showSubtaskModal}
             parentTaskId={task.id}

@@ -3,7 +3,7 @@
  * Модальное окно для редактирования задачи
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,12 @@ import {
   Alert,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
-import { Task, TaskPriority } from '../../types/task.types';
+import { Task, TaskPriority, TaskChecklist, TaskChecklistItem, CreateChecklistDto, CreateChecklistItemDto } from '../../types/task.types';
 import * as taskApi from '@api/task.api';
 import UserSelector from '@components/common/UserSelector';
 import DatePickerModal from '@components/common/DatePickerModal';
@@ -54,6 +55,61 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Checklist state
+  const [checklists, setChecklists] = useState<TaskChecklist[]>([]);
+  const [checklistItems, setChecklistItems] = useState<{ id?: number; title: string; is_completed: boolean; _deleted?: boolean }[]>([]);
+  const [newItemText, setNewItemText] = useState('');
+  const [loadingChecklists, setLoadingChecklists] = useState(false);
+
+  // Load checklists when modal opens
+  useEffect(() => {
+    if (visible && task.id) {
+      loadChecklists();
+    }
+  }, [visible, task.id]);
+
+  const loadChecklists = async () => {
+    try {
+      setLoadingChecklists(true);
+      const data = await taskApi.getTaskChecklists(task.id);
+      setChecklists(data);
+
+      // Flatten all checklist items into a single array for editing
+      const allItems = data.flatMap(checklist =>
+        checklist.items.map(item => ({
+          id: item.id,
+          title: item.title,
+          is_completed: item.is_completed,
+        }))
+      );
+      setChecklistItems(allItems);
+    } catch (error) {
+      console.error('Error loading checklists:', error);
+    } finally {
+      setLoadingChecklists(false);
+    }
+  };
+
+  // Checklist handlers
+  const handleAddItem = () => {
+    if (!newItemText.trim()) return;
+    setChecklistItems([...checklistItems, { title: newItemText.trim(), is_completed: false }]);
+    setNewItemText('');
+  };
+
+  const handleRemoveItem = (index: number) => {
+    const item = checklistItems[index];
+    if (item.id) {
+      // Mark existing item as deleted
+      setChecklistItems(checklistItems.map((itm, i) =>
+        i === index ? { ...itm, _deleted: true } : itm
+      ));
+    } else {
+      // Remove new item completely
+      setChecklistItems(checklistItems.filter((_, i) => i !== index));
+    }
+  };
+
   const priorities: {
     value: TaskPriority;
     label: string;
@@ -83,6 +139,42 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       };
 
       const updatedTask = await taskApi.updateTask(task.id, updateData);
+
+      // Handle checklist changes
+      // 1. Delete marked items
+      const itemsToDelete = checklistItems.filter(item => item._deleted && item.id);
+      for (const item of itemsToDelete) {
+        try {
+          await taskApi.deleteChecklistItem(item.id!);
+        } catch (error) {
+          console.error('Error deleting checklist item:', error);
+        }
+      }
+
+      // 2. Add new items (items without id)
+      const newItems = checklistItems.filter(item => !item.id && !item._deleted);
+      if (newItems.length > 0 && checklists.length > 0) {
+        // Add to existing checklist
+        const checklistId = checklists[0].id;
+        for (const item of newItems) {
+          try {
+            await taskApi.createChecklistItem(checklistId, { title: item.title });
+          } catch (error) {
+            console.error('Error creating checklist item:', error);
+          }
+        }
+      } else if (newItems.length > 0 && checklists.length === 0) {
+        // Create new checklist if none exists
+        try {
+          const newChecklist = await taskApi.createChecklist(task.id, { title: 'Checklist' });
+          for (const item of newItems) {
+            await taskApi.createChecklistItem(newChecklist.id, { title: item.title });
+          }
+        } catch (error) {
+          console.error('Error creating checklist:', error);
+        }
+      }
+
       onTaskUpdated(updatedTask);
       onClose();
 
@@ -246,6 +338,58 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
               modalTitle="Выбрать исполнителя"
             />
           </View>
+
+          {/* Чек-лист */}
+          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="checkbox-outline" size={18} color={theme.text} style={{ marginRight: 8 }} />
+              <Text style={[styles.sectionLabel, { color: theme.text, marginBottom: 0 }]}>Чек-лист</Text>
+            </View>
+
+            {loadingChecklists ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <>
+                {/* Add item input */}
+                <View style={styles.addChecklistContainer}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Добавить пункт..."
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={newItemText}
+                    onChangeText={setNewItemText}
+                    onSubmitEditing={handleAddItem}
+                    returnKeyType="done"
+                  />
+                  {newItemText.trim() && (
+                    <TouchableOpacity onPress={handleAddItem} style={styles.addButton}>
+                      <Ionicons name="add-circle" size={28} color={theme.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Render checklist items */}
+                {checklistItems.filter(item => !item._deleted).length > 0 && (
+                  <View style={[styles.checklistCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                    {checklistItems.filter(item => !item._deleted).map((item, index) => {
+                      const actualIndex = checklistItems.indexOf(item);
+                      return (
+                        <View key={actualIndex} style={styles.checklistItem}>
+                          <View style={[styles.checkbox, { borderColor: theme.border }]} />
+                          <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={2}>
+                            {item.title}
+                          </Text>
+                          <TouchableOpacity onPress={() => handleRemoveItem(actualIndex)}>
+                            <Ionicons name="close-circle" size={18} color={theme.textTertiary} />
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </>
+            )}
+          </View>
         </ScrollView>
 
         {/* Date Picker Modal */}
@@ -368,6 +512,38 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 8,
+  },
+  // Checklist styles
+  addChecklistContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  addButton: {
+    padding: 4,
+  },
+  checklistCard: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+  },
+  itemText: {
+    flex: 1,
+    fontSize: 14,
   },
 });
 
