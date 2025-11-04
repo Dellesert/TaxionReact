@@ -238,6 +238,16 @@ export const addChatMembers = async (
 };
 
 /**
+ * Add single member to chat
+ */
+export const addChatMember = async (
+  chatId: number,
+  userId: number
+): Promise<void> => {
+  await api.post(API_ENDPOINTS.CHAT.ADD_MEMBERS(chatId), { user_id: userId });
+};
+
+/**
  * Remove member from chat
  */
 export const removeChatMember = async (chatId: number, userId: number): Promise<void> => {

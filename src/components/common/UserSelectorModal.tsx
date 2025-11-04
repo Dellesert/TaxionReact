@@ -33,6 +33,7 @@ interface UserSelectorModalProps {
   title?: string;
   excludeUserIds?: number[]; // Исключить определенных пользователей из списка
   mode?: 'checkbox' | 'radio'; // Стиль отображения выбора
+  onDone?: () => void; // Callback when Done button is pressed
 }
 
 const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
@@ -44,6 +45,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   title = 'Выбрать участников',
   excludeUserIds = [],
   mode = 'checkbox',
+  onDone,
 }) => {
   const { theme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
@@ -224,7 +226,11 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   };
 
   const handleDone = () => {
-    onClose();
+    if (onDone) {
+      onDone();
+    } else {
+      onClose();
+    }
   };
 
   // Get initials for avatar
@@ -272,7 +278,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
 
     return (
       <TouchableOpacity
-        style={[styles.userItem, { backgroundColor: theme.card, borderBottomColor: theme.border }, isSelected && { backgroundColor: theme.backgroundSecondary }]}
+        style={[styles.userItem, {  borderBottomColor: theme.border }, isSelected && { backgroundColor: theme.backgroundSecondary }]}
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.userInfo}>
