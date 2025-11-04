@@ -122,7 +122,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         !isCardMessage && dynamicStyles.messageBubble,
         isOwnMessage && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
         isHighlighted && [styles.highlightedBubble, { backgroundColor: theme.primary + '40' }],
-        isForwarded && [styles.forwardedBubble, { borderLeftColor: theme.primary }],
         isCardMessage && { backgroundColor: 'transparent', padding: 0 },
       ]}
     >
@@ -333,9 +332,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 6,
-  },
-  forwardedBubble: {
-    borderLeftWidth: 4,
   },
   forwardHeader: {
     flexDirection: 'row',

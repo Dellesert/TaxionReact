@@ -311,6 +311,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             {pinnedMessages.length > 0 && (
               <PinnedMessageBanner
                 pinnedMessages={pinnedMessages}
+                chatType={chat?.type}
+                currentUserRole={chat?.members?.find(m => m.user_id === currentUser?.id)?.role}
                 onPress={handlePinnedMessagePress}
                 onUnpin={handleUnpin}
               />

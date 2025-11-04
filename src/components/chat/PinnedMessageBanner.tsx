@@ -12,17 +12,35 @@ import { getFileIcon } from '@utils/file.utils';
 
 interface PinnedMessageBannerProps {
   pinnedMessages: Message[];
+  chatType?: 'private' | 'group' | 'channel';
+  currentUserRole?: 'owner' | 'admin' | 'member';
   onPress: (messageId: number) => void;
   onUnpin: (messageId: number) => void;
 }
 
 export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
   pinnedMessages,
+  chatType,
+  currentUserRole,
   onPress,
   onUnpin,
 }) => {
   const { theme } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Check if user can unpin messages
+  const canUnpin = React.useMemo(() => {
+    // In private chats, anyone can unpin
+    if (chatType === 'private') {
+      return true;
+    }
+    // In group chats, only owner and admin can unpin
+    if (chatType === 'group') {
+      return currentUserRole === 'owner' || currentUserRole === 'admin';
+    }
+    // Default to false if chat type is unknown
+    return false;
+  }, [chatType, currentUserRole]);
 
   // Не показываем баннер если нет закрепленных сообщений
   if (pinnedMessages.length === 0) {
@@ -161,13 +179,16 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={handleUnpin}
-          style={styles.unpinButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="close" size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
+        {/* Кнопка открепления (только для пользователей с правами) */}
+        {canUnpin && (
+          <TouchableOpacity
+            onPress={handleUnpin}
+            style={styles.unpinButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );

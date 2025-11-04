@@ -31,6 +31,7 @@ import EditTaskModal from '@components/task/EditTaskModal';
 import { CreateSubtaskModal } from '@components/task/CreateSubtaskModal';
 import { TaskSubtasksList } from '@components/task/TaskSubtasksList';
 import { DelegateTaskModal } from '@components/task/DelegateTaskModal';
+import { TaskChecklistsView } from '@components/task/TaskChecklistsView';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
