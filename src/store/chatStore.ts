@@ -676,8 +676,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // Если сообщение уже существует
       if (messageExists) {
         if (isOwnMessage) {
-          console.log('⚠️ Duplicate own message detected, skipping:', message.id);
-          return state;
+          console.log('⚠️ Duplicate own message detected, updating with fresh data:', message.id);
+          if (message.attachments && message.attachments.length > 0) {
+            console.log('📎 New attachments data:', message.attachments.map(a => ({ id: a.id, file_url: a.file_url })));
+          }
+          // Обновляем существующее сообщение свежими данными (например, attachments с правильными URLs)
+          const updatedMessages = {
+            ...state.messages,
+            [message.chat_id]: existingMessages.map(msg =>
+              msg.id === message.id ? { ...msg, ...message } : msg
+            ),
+          };
+          return { ...state, messages: updatedMessages };
         }
         // Для чужих сообщений - обновляем delivered_to (добавляем текущего пользователя)
         const updatedMessages = {
