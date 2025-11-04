@@ -15,11 +15,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task, TaskComment, TaskActivity, TaskAttachment } from '../../types/task.types';
+import { User } from '../../types/user.types';
 import * as taskApi from '@api/task.api';
 import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
+import { UserProfileModal } from '@components/common/UserProfileModal';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { getUser } from '@api/user.api';
+import { getOrCreateDirectChat } from '@api/chat.api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import ShareTaskModal from '@components/task/ShareTaskModal';
@@ -123,6 +127,10 @@ const TaskDetailScreen: React.FC = () => {
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
+  // User profile modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Scroll animation - disabled due to performance issues
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -1303,6 +1311,17 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
+  // Handle user profile press
+  const handleUserPress = async (userId: number) => {
+    try {
+      const userData = await getUser(userId);
+      setSelectedUser(userData);
+      setShowProfileModal(true);
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
@@ -1435,7 +1454,11 @@ const TaskDetailScreen: React.FC = () => {
                         </Text>
                       </View>
                     ) : task.assignees && task.assignees.length > 0 ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                        onPress={() => handleUserPress(task.assignees![0].id)}
+                        activeOpacity={0.7}
+                      >
                         <Avatar
                           name={task.assignees[0].name}
                           imageUrl={task.assignees[0].avatar}
@@ -1444,7 +1467,7 @@ const TaskDetailScreen: React.FC = () => {
                         <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
                           {user && task.assignees[0].id === user.id ? 'Я' : task.assignees[0].name}
                         </Text>
-                      </View>
+                      </TouchableOpacity>
                     ) : (
                       <Text style={[styles.assigneeText, { color: theme.textSecondary }]}>
                         Без исполнителя
@@ -1799,6 +1822,33 @@ const TaskDetailScreen: React.FC = () => {
             }}
           />
         )}
+
+        {/* User Profile Modal */}
+        <UserProfileModal
+          visible={showProfileModal}
+          user={selectedUser}
+          onClose={() => setShowProfileModal(false)}
+          onOpenChat={async (userId) => {
+            try {
+              console.log('💬 Opening chat with user:', userId);
+              const chat = await getOrCreateDirectChat(userId);
+              console.log('✅ Got chat:', chat.id);
+              setShowProfileModal(false);
+              // Navigate to chat - need to get root navigation
+              const rootNavigation = navigation.getParent();
+              if (rootNavigation) {
+                // @ts-ignore
+                rootNavigation.navigate('Chats', {
+                  screen: 'Chat',
+                  params: { chatId: chat.id },
+                });
+              }
+            } catch (error: any) {
+              console.error('❌ Error opening chat:', error);
+              Alert.alert('Ошибка', error.message || 'Не удалось открыть чат');
+            }
+          }}
+        />
       </View>
     </SafeAreaView>
   );
