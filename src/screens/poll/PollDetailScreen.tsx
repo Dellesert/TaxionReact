@@ -890,47 +890,6 @@ const PollDetailScreen: React.FC = () => {
               )}
             </View>
           </View>
-
-          {/* Poll Title */}
-          <Text style={[styles.pollTitle, { color: theme.text }]}>
-            {poll.title}
-          </Text>
-
-          {/* Status and Type Row */}
-          <View style={styles.badgesRow}>
-            <View style={[styles.badge, { backgroundColor: statusConfig.color }]}>
-              <Text style={styles.badgeText}>{statusConfig.label}</Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: typeConfig.color }]}>
-              <Ionicons name={typeConfig.icon as any} size={12} color="#FFFFFF" />
-              <Text style={styles.badgeText}>{typeConfig.label}</Text>
-            </View>
-          </View>
-
-          {/* Info Row: Creator and Deadline */}
-          <View style={styles.infoRow}>
-            <View style={styles.creatorInfo}>
-              <Avatar
-                name={poll.creator?.name || 'Unknown'}
-                imageUrl={poll.creator?.avatar}
-                size={20}
-              />
-              <Text style={[styles.creatorText, { color: theme.textSecondary }]} numberOfLines={1}>
-                {poll.creator?.name || 'Unknown'}
-              </Text>
-            </View>
-            {poll.end_time && poll.status === 'active' && (
-              <View style={styles.deadlineInfo}>
-                <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
-                <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
-                  до {new Date(poll.end_time).toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
-                </Text>
-              </View>
-            )}
-          </View>
         </View>
       )}
 
@@ -942,6 +901,47 @@ const PollDetailScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
+            {/* Poll Title */}
+            <Text style={[styles.pollTitle, { color: theme.text }]}>
+              {poll.title}
+            </Text>
+
+            {/* Status and Type Row */}
+            <View style={styles.badgesRow}>
+              <View style={[styles.badge, { backgroundColor: statusConfig.color }]}>
+                <Text style={styles.badgeText}>{statusConfig.label}</Text>
+              </View>
+              <View style={[styles.badge, { backgroundColor: typeConfig.color }]}>
+                <Ionicons name={typeConfig.icon as any} size={12} color="#FFFFFF" />
+                <Text style={styles.badgeText}>{typeConfig.label}</Text>
+              </View>
+            </View>
+
+            {/* Info Row: Creator and Deadline */}
+            <View style={styles.infoRow}>
+              <View style={styles.creatorInfo}>
+                <Avatar
+                  name={poll.creator?.name || 'Unknown'}
+                  imageUrl={poll.creator?.avatar}
+                  size={20}
+                />
+                <Text style={[styles.creatorText, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {poll.creator?.name || 'Unknown'}
+                </Text>
+              </View>
+              {poll.end_time && poll.status === 'active' && (
+                <View style={styles.deadlineInfo}>
+                  <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+                  <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
+                    до {new Date(poll.end_time).toLocaleDateString('ru-RU', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </Text>
+                </View>
+              )}
+            </View>
+
             {/* Description Section */}
             {poll.description && (
               <View style={styles.descriptionSection}>
@@ -1139,14 +1139,13 @@ const styles = StyleSheet.create({
   headerSection: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 20,
+    paddingBottom: 12,
     borderBottomWidth: 1,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -1159,14 +1158,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Poll title in header
+  // Poll title (now in content)
   pollTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    lineHeight: 28,
-    marginBottom: 12,
+    lineHeight: 30,
+    marginBottom: 16,
   },
-  // Badges row
+  // Badges row (now in content)
   badgesRow: {
     flexDirection: 'row',
     alignItems: 'center',

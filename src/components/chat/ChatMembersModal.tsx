@@ -28,6 +28,7 @@ import { isMockMode, mockGetUsers } from '@utils/mockData';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import { ConfirmDialog } from '@components/common/ConfirmDialog';
+import Avatar from '@components/common/Avatar';
 
 interface ChatMembersModalProps {
   visible: boolean;
@@ -109,7 +110,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       if (isMockMode()) {
         usersList = await mockGetUsers();
       } else {
-        const response = await getUsers({ is_active: true }, { limit: 100, offset: 0 });
+        const response = await getUsers({ is_active: true, for_task_assignment: true }, { limit: 100, offset: 0 });
         usersList = response.data || [];
       }
 
@@ -128,6 +129,19 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
         return true;
       });
+
+      // Sort users: department heads first, then others
+      availableUsers.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // If both are dept heads or both are not, sort by name
+        return a.name.localeCompare(b.name);
+      });
+
       setAllUsers(availableUsers);
     } catch (error: any) {
       console.error('Failed to load users:', error);
@@ -410,14 +424,20 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     return (
       <View style={[styles.memberItem, dynamicStyles.memberItem]}>
         <View style={styles.memberInfo}>
-          <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, dynamicStyles.avatar]}>
-              <Text style={[styles.avatarText, dynamicStyles.avatarText]}>{getInitials(user.name)}</Text>
-            </View>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor(user.status) }]} />
-          </View>
+          <Avatar
+            name={user.name}
+            imageUrl={user.avatar}
+            size={48}
+            status={user.status}
+            showStatus={true}
+          />
           <View style={styles.memberDetails}>
-            <Text style={[styles.memberName, dynamicStyles.memberName]}>{user.name}</Text>
+            <View style={styles.memberNameRow}>
+              <Text style={[styles.memberName, dynamicStyles.memberName]}>{user.name}</Text>
+              {user.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 4 }} />
+              )}
+            </View>
             <Text style={[styles.memberEmail, dynamicStyles.memberEmail]}>{user.email}</Text>
             {user.position && <Text style={[styles.memberPosition, dynamicStyles.memberPosition]}>{user.position}</Text>}
           </View>
@@ -455,14 +475,20 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.memberInfo}>
-          <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, dynamicStyles.avatar]}>
-              <Text style={[styles.avatarText, dynamicStyles.avatarText]}>{getInitials(item.name)}</Text>
-            </View>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
-          </View>
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatar}
+            size={48}
+            status={item.status}
+            showStatus={true}
+          />
           <View style={styles.memberDetails}>
-            <Text style={[styles.memberName, dynamicStyles.memberName]}>{item.name}</Text>
+            <View style={styles.memberNameRow}>
+              <Text style={[styles.memberName, dynamicStyles.memberName]}>{item.name}</Text>
+              {item.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 4 }} />
+              )}
+            </View>
             <Text style={[styles.memberEmail, dynamicStyles.memberEmail]}>{item.email}</Text>
             {item.position && <Text style={[styles.memberPosition, dynamicStyles.memberPosition]}>{item.position}</Text>}
           </View>
@@ -709,39 +735,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  statusDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    gap: 12,
   },
   memberDetails: {
     flex: 1,
-    marginLeft: 12,
+  },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 2,
   },
   memberEmail: {
     fontSize: 14,

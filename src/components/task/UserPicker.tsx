@@ -15,6 +15,7 @@ import { User } from '../../types/user.types';
 import { getUsers } from '../../api/user.api';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '@hooks/useTheme';
+import Avatar from '@components/common/Avatar';
 
 interface UserPickerProps {
   selectedUserIds: number[];
@@ -73,18 +74,27 @@ const UserPicker: React.FC<UserPickerProps> = ({
       }
 
       // Fetch users based on role (only active users)
-      let filters: any = { is_active: true };
-
-      // If department_head, only show users from their department
-      if (currentUser.role === 'department_head' && currentUser.department_id) {
-        filters.department_id = currentUser.department_id;
-      }
-      // Admin and super_admin can see all users (only active filter)
+      let filters: any = {
+        is_active: true,
+        for_task_assignment: true // Request all users for task assignment
+      };
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
       // Filter out the current user from the list (can't assign to self via picker)
-      const filteredData = (response.data || []).filter(user => user.id !== currentUser.id);
+      let filteredData = (response.data || []).filter(user => user.id !== currentUser.id);
+
+      // Sort users: department heads first, then others
+      filteredData.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // If both are dept heads or both are not, sort by name
+        return a.name.localeCompare(b.name);
+      });
 
       setUsers(filteredData);
       setFilteredUsers(filteredData);
@@ -154,11 +164,20 @@ const UserPicker: React.FC<UserPickerProps> = ({
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.userInfo}>
-          <View style={styles.userAvatar}>
-            <Ionicons name="person" size={20} color="#6B7280" />
-          </View>
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatar}
+            size={40}
+            status={item.status}
+            showStatus={true}
+          />
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>{item.name}</Text>
+            <View style={styles.userNameContainer}>
+              <Text style={styles.userName}>{item.name}</Text>
+              {item.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 4 }} />
+              )}
+            </View>
             {item.position && (
               <Text style={styles.userPosition}>{item.position}</Text>
             )}
@@ -244,16 +263,6 @@ const UserPicker: React.FC<UserPickerProps> = ({
               </TouchableOpacity>
             )}
           </View>
-
-          {/* Role Info */}
-          {currentUser && currentUser.role === 'department_head' && (
-            <View style={styles.roleInfoContainer}>
-              <Ionicons name="information-circle" size={16} color="#6B7280" />
-              <Text style={styles.roleInfoText}>
-                Вы можете назначать задачи только сотрудникам вашего подразделения
-              </Text>
-            </View>
-          )}
 
           {/* User List */}
           {isLoading ? (
@@ -436,16 +445,12 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 12,
   },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   userDetails: {
     flex: 1,
+  },
+  userNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   userName: {
     fontSize: 15,
@@ -516,22 +521,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '600',
-  },
-  roleInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 10,
-    borderRadius: 8,
-    gap: 8,
-  },
-  roleInfoText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#1E40AF',
-    lineHeight: 16,
   },
 });
 

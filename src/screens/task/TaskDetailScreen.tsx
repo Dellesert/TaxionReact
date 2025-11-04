@@ -618,20 +618,21 @@ const TaskDetailScreen: React.FC = () => {
     container: {
       flex: 1,
       backgroundColor: theme.background,
+      position: 'relative',
     },
     safeArea: {
       flex: 1,
       backgroundColor: theme.card,
     },
     scrollContent: {
-      paddingBottom: 120,
+      paddingBottom: Platform.OS === 'ios' ? 180 : 140,
     },
     // Header section
     headerSection: {
       backgroundColor: theme.card,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 20,
+      paddingBottom: 12,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
@@ -639,7 +640,6 @@ const TaskDetailScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 6,
     },
     headerButtons: {
       flexDirection: 'row',
@@ -652,12 +652,13 @@ const TaskDetailScreen: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    // Task title in header
+    // Task title (now in content)
     taskTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '700',
       color: theme.text,
-      lineHeight: 28,
+      lineHeight: 30,
+      marginBottom: 16,
     },
     // Progress container
     progressContainer: {
@@ -831,46 +832,62 @@ const TaskDetailScreen: React.FC = () => {
       color: '#FFFFFF',
       opacity: 0.9,
     },
-    // Action buttons
-    actionButtonsContainer: {
-      marginTop: 24,
+    // Fixed Action Buttons at Bottom
+    fixedActionsContainer: {
+      position: 'absolute',
+      bottom: Platform.OS === 'ios' ? 95 : 70,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.card,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 5,
     },
-    actionButton: {
+    fixedActionButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 14,
       borderRadius: 12,
-      marginBottom: 12,
-      gap: 8,
+      gap: 6,
     },
-    primaryActionButton: {
+    primaryFixedButton: {
       backgroundColor: theme.primary,
+    },
+    secondaryFixedButton: {
+      backgroundColor: theme.backgroundSecondary,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    delegateFixedButton: {
+      backgroundColor: theme.backgroundSecondary,
+      borderWidth: 1.5,
+      borderColor: '#8b5cf6',
     },
     disabledButton: {
       backgroundColor: '#9CA3AF',
       opacity: 0.6,
     },
-    secondaryActionButton: {
-      backgroundColor: theme.backgroundTertiary,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    actionButtonText: {
+    fixedActionButtonText: {
       fontSize: 15,
       fontWeight: '600',
     },
-    primaryActionButtonText: {
+    primaryFixedButtonText: {
       color: '#FFFFFF',
     },
-    secondaryActionButtonText: {
+    secondaryFixedButtonText: {
       color: theme.text,
     },
-    delegateActionButton: {
-      backgroundColor: theme.backgroundSecondary,
-      borderColor: '#8b5cf6',
-    },
-    delegateActionButtonText: {
+    delegateFixedButtonText: {
       color: '#8b5cf6',
     },
     // Subtasks section
@@ -1315,93 +1332,6 @@ const TaskDetailScreen: React.FC = () => {
               )}
             </View>
           </View>
-
-          {/* Task Title */}
-          <Text style={styles.taskTitle}>
-            {task.title}
-          </Text>
-
-          {/* Priority and Status Row */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            marginTop: 12,
-          }}>
-            <View style={{
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16,
-              backgroundColor: priorityConfig.color,
-            }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
-                {priorityConfig.label}
-              </Text>
-            </View>
-            <View style={{
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16,
-              backgroundColor: statusConfig.color,
-            }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
-                {statusConfig.label}
-              </Text>
-            </View>
-          </View>
-
-          {/* Delegated Badge */}
-          {isDelegatedByMe && (
-            <View style={styles.delegatedBadge}>
-              <Ionicons name="eye-outline" size={16} color="#8b5cf6" />
-              <Text style={styles.delegatedBadgeText}>Только просмотр</Text>
-            </View>
-          )}
-
-          {/* Progress Bar - if task has progress_percentage */}
-          {task.progress_percentage !== undefined && task.progress_percentage > 0 && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${task.progress_percentage}%` }
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressText}>{task.progress_percentage}%</Text>
-            </View>
-          )}
-
-          {/* Assignee and Deadline Row */}
-          <View style={[styles.infoRow, { marginTop: 16 }]}>
-            <View style={styles.assigneeContainer}>
-              {task.delegation_chain && task.delegation_chain.length > 0 ? (
-                <View style={styles.delegationChainContainer}>
-                  <Ionicons name="git-branch-outline" size={16} color={theme.textSecondary} style={styles.delegationIcon} />
-                  <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
-                    {task.delegation_chain
-                      .map((chainUser) => (user && chainUser.id === user.id ? 'Я' : chainUser.name))
-                      .join(' → ')}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={[styles.assigneeText, { color: theme.textSecondary }]}>
-                  {task.assignees && task.assignees.length > 0
-                    ? (user && task.assignees[0].id === user.id ? 'Я' : task.assignees[0].name)
-                    : 'Без исполнителя'}
-                </Text>
-              )}
-            </View>
-            {task.due_date && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
-                <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
-                  {format(new Date(task.due_date), 'dd MMM', { locale: ru })}
-                </Text>
-              </View>
-            )}
-          </View>
         </View>
 
         {/* Card with Tabs */}
@@ -1435,6 +1365,102 @@ const TaskDetailScreen: React.FC = () => {
           >
             {activeTab === 'overview' ? (
               <View style={styles.content}>
+                {/* Task Title */}
+                <Text style={styles.taskTitle}>
+                  {task.title}
+                </Text>
+
+                {/* Priority and Status Row */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: 16,
+                }}>
+                  <View style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
+                    backgroundColor: priorityConfig.color,
+                  }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
+                      {priorityConfig.label}
+                    </Text>
+                  </View>
+                  <View style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
+                    backgroundColor: statusConfig.color,
+                  }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
+                      {statusConfig.label}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Delegated Badge */}
+                {isDelegatedByMe && (
+                  <View style={styles.delegatedBadge}>
+                    <Ionicons name="eye-outline" size={16} color="#8b5cf6" />
+                    <Text style={styles.delegatedBadgeText}>Только просмотр</Text>
+                  </View>
+                )}
+
+                {/* Progress Bar - if task has progress_percentage */}
+                {task.progress_percentage !== undefined && task.progress_percentage > 0 && (
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${task.progress_percentage}%` }
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressText}>{task.progress_percentage}%</Text>
+                  </View>
+                )}
+
+                {/* Assignee and Deadline Row */}
+                <View style={[styles.infoRow, { marginBottom: 16 }]}>
+                  <View style={styles.assigneeContainer}>
+                    {task.delegation_chain && task.delegation_chain.length > 0 ? (
+                      <View style={styles.delegationChainContainer}>
+                        <Ionicons name="git-branch-outline" size={16} color={theme.textSecondary} style={styles.delegationIcon} />
+                        <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
+                          {task.delegation_chain
+                            .map((chainUser) => (user && chainUser.id === user.id ? 'Я' : chainUser.name))
+                            .join(' → ')}
+                        </Text>
+                      </View>
+                    ) : task.assignees && task.assignees.length > 0 ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Avatar
+                          name={task.assignees[0].name}
+                          imageUrl={task.assignees[0].avatar}
+                          size={20}
+                        />
+                        <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
+                          {user && task.assignees[0].id === user.id ? 'Я' : task.assignees[0].name}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={[styles.assigneeText, { color: theme.textSecondary }]}>
+                        Без исполнителя
+                      </Text>
+                    )}
+                  </View>
+                  {task.due_date && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+                      <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
+                        {format(new Date(task.due_date), 'dd MMM', { locale: ru })}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
                 {/* Description Section */}
                 {task.description && (
                   <View style={styles.descriptionSection}>
@@ -1569,82 +1595,6 @@ const TaskDetailScreen: React.FC = () => {
                   </View>
                 )}
 
-                {/* Action Buttons - hidden when task is done or delegated */}
-                {task.status !== 'done' && !isDelegatedByMe && (
-                  <>
-                    <View style={styles.actionButtonsContainer}>
-                      {/* Delegate Button - for department heads, admins */}
-                      {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-                       task.status !== 'done' && task.status !== 'cancelled' && (
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.delegateActionButton]}
-                          onPress={() => setShowDelegateModal(true)}
-                        >
-                          <Ionicons name="git-branch-outline" size={20} color="#8b5cf6" />
-                          <Text style={[styles.actionButtonText, styles.delegateActionButtonText]}>
-                            Делегировать задачу
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Start/Submit Button - for new or in_progress tasks */}
-                      {(task.status === 'new' || task.status === 'in_progress') && (
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            styles.primaryActionButton,
-                            (task.status === 'in_progress' && !areAllSubtasksCompleted()) && styles.disabledButton
-                          ]}
-                          onPress={handleTaskAction}
-                          disabled={task.status === 'in_progress' && !areAllSubtasksCompleted()}
-                        >
-                          <Ionicons
-                            name={task.status === 'in_progress' && !areAllSubtasksCompleted() ? 'alert-circle-outline' : 'play-circle-outline'}
-                            size={20}
-                            color="#FFFFFF"
-                          />
-                          <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
-                            {getActionButtonText()}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Review Buttons - for creator when task is in review */}
-                      {task.status === 'review' && task.created_by === user?.id && (
-                        <>
-                          <TouchableOpacity
-                            style={[
-                              styles.actionButton,
-                              styles.primaryActionButton,
-                              !areAllSubtasksCompleted() && styles.disabledButton
-                            ]}
-                            onPress={() => handleStatusChange('done')}
-                            disabled={!areAllSubtasksCompleted()}
-                          >
-                            <Ionicons
-                              name={!areAllSubtasksCompleted() ? 'alert-circle-outline' : 'checkmark-circle-outline'}
-                              size={20}
-                              color="#FFFFFF"
-                            />
-                            <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
-                              {!areAllSubtasksCompleted() ? 'Завершите подзадачи' : 'Принять задачу'}
-                            </Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[styles.actionButton, styles.secondaryActionButton]}
-                            onPress={() => handleStatusChange('in_progress')}
-                          >
-                            <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
-                            <Text style={[styles.actionButtonText, styles.secondaryActionButtonText]}>
-                              Отправить на переработку
-                            </Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                    </View>
-                  </>
-                )}
               </View>
             ) : (
               // History Tab (Activities)
@@ -1721,6 +1671,83 @@ const TaskDetailScreen: React.FC = () => {
             )}
           </ScrollView>
         </View>
+
+        {/* Fixed Action Buttons at Bottom */}
+        {task.status !== 'done' && !isDelegatedByMe && activeTab === 'overview' && (
+          <View style={styles.fixedActionsContainer}>
+            {/* Delegate Button - for department heads, admins */}
+            {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+             task.status !== 'done' && task.status !== 'cancelled' && (
+              <TouchableOpacity
+                style={[styles.fixedActionButton, styles.delegateFixedButton]}
+                onPress={() => setShowDelegateModal(true)}
+              >
+                <Text style={[styles.fixedActionButtonText, styles.delegateFixedButtonText]}>
+                  Делегировать
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Start/Submit Button - for new or in_progress tasks */}
+            {(task.status === 'new' || task.status === 'in_progress') && (
+              <TouchableOpacity
+                style={[
+                  styles.fixedActionButton,
+                  styles.primaryFixedButton,
+                  (task.status === 'in_progress' && !areAllSubtasksCompleted()) && styles.disabledButton
+                ]}
+                onPress={handleTaskAction}
+                disabled={task.status === 'in_progress' && !areAllSubtasksCompleted()}
+              >
+                <Ionicons
+                  name={task.status === 'in_progress' && !areAllSubtasksCompleted() ? 'alert-circle-outline' : 'play-circle-outline'}
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
+                  {getActionButtonText()}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Review Buttons - for creator when task is in review */}
+            {task.status === 'review' && task.created_by === user?.id && (
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.fixedActionButton,
+                    styles.secondaryFixedButton,
+                  ]}
+                  onPress={() => handleStatusChange('in_progress')}
+                >
+                  <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
+                  <Text style={[styles.fixedActionButtonText, styles.secondaryFixedButtonText]}>
+                    Вернуть
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.fixedActionButton,
+                    styles.primaryFixedButton,
+                    !areAllSubtasksCompleted() && styles.disabledButton
+                  ]}
+                  onPress={() => handleStatusChange('done')}
+                  disabled={!areAllSubtasksCompleted()}
+                >
+                  <Ionicons
+                    name={!areAllSubtasksCompleted() ? 'alert-circle-outline' : 'checkmark-circle-outline'}
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                  <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
+                    {!areAllSubtasksCompleted() ? 'Завершите подзадачи' : 'Принять'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
 
         {/* Share Task Modal */}
         {task && (

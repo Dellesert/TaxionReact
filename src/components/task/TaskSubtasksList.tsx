@@ -20,6 +20,7 @@ import { useTheme } from '@hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { Avatar } from '@components/common/Avatar';
 
 interface TaskSubtasksListProps {
   parentTaskId: number;
@@ -388,7 +389,11 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               {item.assignees && item.assignees.length > 0 && (
                 <View style={styles.assigneeInfo}>
-                  <Ionicons name="person" size={14} color={theme.textSecondary} />
+                  <Avatar
+                    name={item.assignees[0].name}
+                    imageUrl={item.assignees[0].avatar}
+                    size={16}
+                  />
                   <Text style={styles.assigneeName} numberOfLines={1}>
                     {currentUser && item.assignees[0].id === currentUser.id
                       ? 'Я'

@@ -22,6 +22,7 @@ import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
+import Avatar from '@components/common/Avatar';
 
 interface UserSelectorModalProps {
   visible: boolean;
@@ -60,11 +61,11 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       setIsLoading(true);
       const currentUser = useAuthStore.getState().user;
 
-      // Фильтр по отделу для руководителей отделов и только активные пользователи
-      let filters: any = { is_active: true };
-      if (currentUser?.role === 'department_head' && currentUser?.department_id) {
-        filters.department_id = currentUser.department_id;
-      }
+      // Фильтр - только активные пользователи, все отделы для задач
+      let filters: any = {
+        is_active: true,
+        for_task_assignment: true // Request all users for task assignment
+      };
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
@@ -90,6 +91,18 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         }
 
         return true;
+      });
+
+      // Sort users: department heads first, then others
+      filteredUsers.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // If both are dept heads or both are not, sort by name
+        return a.name.localeCompare(b.name);
       });
 
       setUsers(filteredUsers);
@@ -243,16 +256,20 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.userInfo}>
-          <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: theme.backgroundTertiary }]}>
-              <Text style={[styles.avatarText, { color: theme.textSecondary }]}>
-                {getInitials(item.name)}
-              </Text>
-            </View>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status), borderColor: theme.card }]} />
-          </View>
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatar}
+            size={48}
+            status={item.status}
+            showStatus={true}
+          />
           <View style={styles.userDetails}>
-            <Text style={[styles.userName, { color: theme.text }]}>{item.name}</Text>
+            <View style={styles.userNameContainer}>
+              <Text style={[styles.userName, { color: theme.text }]}>{item.name}</Text>
+              {item.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={styles.deptHeadIcon} />
+              )}
+            </View>
             <Text style={[styles.userRole, { color: theme.textSecondary }]}>{getRoleText(item.role)}</Text>
             {item.position && (
               <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{item.position}</Text>
@@ -358,38 +375,23 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       flexDirection: 'row',
       alignItems: 'center',
       flex: 1,
-    },
-    avatarContainer: {
-      position: 'relative',
-    },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarText: {
-      fontSize: 18,
-      fontWeight: '600',
-    },
-    statusDot: {
-      position: 'absolute',
-      bottom: 2,
-      right: 2,
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      borderWidth: 2,
+      gap: 12,
     },
     userDetails: {
       flex: 1,
-      marginLeft: 12,
+    },
+    userNameContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
     userName: {
       fontSize: 16,
       fontWeight: '600',
       marginBottom: 2,
+    },
+    deptHeadIcon: {
+      marginLeft: 4,
     },
     userRole: {
       fontSize: 14,

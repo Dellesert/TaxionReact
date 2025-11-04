@@ -26,6 +26,7 @@ import { ChatType } from '../../types/chat.types';
 import { getUsers, getDepartments } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@utils/mockData';
 import { useTheme } from '@hooks/useTheme';
+import Avatar from '@components/common/Avatar';
 
 type CreateChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'CreateChat'>;
 
@@ -92,8 +93,8 @@ const CreateChatScreen: React.FC = () => {
         console.log('🌐 API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
         console.log('🔧 Mock mode:', process.env.EXPO_PUBLIC_USE_MOCK_DATA);
 
-        // Request all users (increase limit if needed), only active users
-        const response = await getUsers({ is_active: true }, { limit: 1000, offset: 0 });
+        // Request all users (increase limit if needed), only active users, with task assignment filter
+        const response = await getUsers({ is_active: true, for_task_assignment: true }, { limit: 1000, offset: 0 });
         console.log('✅ Users API response:', response);
         console.log('✅ Response type:', typeof response);
         console.log('✅ Response keys:', response ? Object.keys(response) : 'null');
@@ -281,6 +282,20 @@ const CreateChatScreen: React.FC = () => {
       byDepartment.get(deptId)!.push(user);
     });
 
+    // Sort users within each department: department heads first, then others
+    byDepartment.forEach((users) => {
+      users.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // If both are dept heads or both are not, sort by name
+        return a.name.localeCompare(b.name);
+      });
+    });
+
     const sections: Array<{ title: string; data: User[]; departmentId: number | null }> = [];
 
     // Сначала добавляем подразделение текущего пользователя
@@ -376,14 +391,20 @@ const CreateChatScreen: React.FC = () => {
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.userInfo}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
-            </View>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-          </View>
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatar}
+            size={48}
+            status={item.status}
+            showStatus={true}
+          />
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>{item.name}</Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>{item.name}</Text>
+              {item.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 4 }} />
+              )}
+            </View>
             <Text style={styles.userEmail}>{getRoleText()}</Text>
             {item.position && <Text style={styles.userPosition}>{item.position}</Text>}
           </View>
@@ -523,42 +544,20 @@ const CreateChatScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       flex: 1,
-    },
-    avatarContainer: {
-      position: 'relative',
-    },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: theme.backgroundTertiary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarText: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
-    statusDot: {
-      position: 'absolute',
-      bottom: 2,
-      right: 2,
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      borderWidth: 2,
-      borderColor: theme.card,
+      gap: 12,
     },
     userDetails: {
       flex: 1,
-      marginLeft: 12,
+    },
+    userNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 2,
     },
     userName: {
       fontSize: 16,
       fontWeight: '600',
       color: theme.text,
-      marginBottom: 2,
     },
     userEmail: {
       fontSize: 14,
