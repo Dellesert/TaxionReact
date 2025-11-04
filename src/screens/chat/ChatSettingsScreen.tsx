@@ -33,10 +33,13 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const deleteChat = useChatStore((state) => state.deleteChat);
   const leaveChat = useChatStore((state) => state.leaveChat);
   const updateChat = useChatStore((state) => state.updateChat);
+  const clearChatHistory = useChatStore((state) => state.clearChatHistory);
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
+  const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [otherUser, setOtherUser] = useState<User | null>(null);
   const [departmentName, setDepartmentName] = useState<string>('');
@@ -331,9 +334,9 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  const handleDeleteChat = async () => {
+  const handleDeleteChat = async (clearHistory: boolean = false) => {
     try {
-      await deleteChat(chatId);
+      await deleteChat(chatId, clearHistory);
       setShowDeleteDialog(false);
       // Возвращаемся к списку чатов
       navigation.navigate('ChatList');
@@ -342,7 +345,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  const handleLeaveChat = async () => {
+  const handleLeaveChat = async (clearHistory: boolean = false) => {
     try {
       await leaveChat(chatId);
       setShowLeaveDialog(false);
@@ -364,9 +367,72 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  // Create delete/leave action options based on chat type and user role
+  const deleteActionOptions = useMemo((): ActionSheetOption[] => {
+    if (chat?.type === 'private') {
+      // For private chats: delete with or without clearing history
+      return [
+        {
+          label: 'Удалить',
+          onPress: () => handleDeleteChat(false),
+        },
+        {
+          label: 'Удалить и очистить историю',
+          onPress: () => handleDeleteChat(true),
+          destructive: true,
+        },
+      ];
+    } else if (chat?.type === 'group') {
+      if (isOwner) {
+        // Owner can delete for all
+        return [
+          {
+            label: 'Удалить для всех',
+            onPress: () => handleDeleteChat(false),
+            destructive: true,
+          },
+          {
+            label: 'Удалить для всех и очистить историю',
+            onPress: () => handleDeleteChat(true),
+            destructive: true,
+          },
+        ];
+      } else {
+        // Non-owner members can leave
+        return [
+          {
+            label: 'Покинуть чат',
+            onPress: () => handleLeaveChat(false),
+          },
+          {
+            label: 'Покинуть и очистить историю',
+            onPress: () => handleLeaveChat(true),
+            destructive: true,
+          },
+        ];
+      }
+    }
+    return [];
+  }, [chat?.type, isOwner]);
+
   const handleSearchMessages = () => {
     // TODO: Реализовать поиск по сообщениям
     Alert.alert('Поиск', 'Функция поиска по сообщениям в разработке');
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      await clearChatHistory(chatId);
+
+      Alert.alert('Успех', 'История сообщений очищена');
+      setShowClearHistoryDialog(false);
+
+      // Navigate back to chat to show empty state
+      navigation.goBack();
+    } catch (error) {
+      console.error('Failed to clear history:', error);
+      Alert.alert('Ошибка', 'Не удалось очистить историю');
+    }
   };
 
   const handleChangeAvatar = async () => {
@@ -570,6 +636,48 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={[styles.userLastSeen, { color: otherUser.status === 'online' ? theme.success || '#34C759' : theme.textTertiary }]}>
               {getLastSeenText(otherUser.status, otherUser.last_active_at)}
             </Text>
+
+            {/* Быстрые действия для личного чата */}
+            <View style={styles.quickActionsContainer}>
+              {/* Поиск */}
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={handleSearchMessages}
+              >
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="search-outline" size={24} color={theme.primary} />
+                </View>
+                <Text style={[styles.quickActionText, { color: theme.text }]}>
+                  Поиск
+                </Text>
+              </TouchableOpacity>
+
+              {/* Очистить историю */}
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => setShowClearHistoryDialog(true)}
+              >
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="trash-bin-outline" size={24} color={theme.primary} />
+                </View>
+                <Text style={[styles.quickActionText, { color: theme.text }]}>
+                  Очистить
+                </Text>
+              </TouchableOpacity>
+
+              {/* Удалить чат */}
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => setShowDeleteActionSheet(true)}
+              >
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="trash-outline" size={24} color={theme.error || '#FF3B30'} />
+                </View>
+                <Text style={[styles.quickActionText, { color: theme.error || '#FF3B30' }]}>
+                  Удалить
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -640,7 +748,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
               {!isCreator ? (
                 <TouchableOpacity
                   style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => setShowLeaveDialog(true)}
+                  onPress={() => setShowDeleteActionSheet(true)}
                 >
                   <View style={styles.quickActionIcon}>
                     <Ionicons name="exit-outline" size={24} color={theme.error || '#FF3B30'} />
@@ -652,7 +760,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
               ) : (
                 <TouchableOpacity
                   style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => setShowDeleteDialog(true)}
+                  onPress={() => setShowDeleteActionSheet(true)}
                 >
                   <View style={styles.quickActionIcon}>
                     <Ionicons name="trash-outline" size={24} color={theme.error || '#FF3B30'} />
@@ -666,28 +774,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Быстрые действия для личных чатов */}
-        {chat?.type === 'private' && (
-          <>
-            {/* Разделитель */}
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <View style={[styles.privateActionsSection, { backgroundColor: theme.background }]}>
-              {/* Поиск */}
-              <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={handleSearchMessages}
-              >
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="search-outline" size={24} color={theme.primary} />
-                </View>
-                <Text style={[styles.quickActionText, { color: theme.text }]}>
-                  Поиск
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
 
         {/* Участники (только для групповых чатов) */}
         {chat?.type === 'group' && (
@@ -891,6 +977,26 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         onConfirm={confirmRoleChange}
         onCancel={cancelRoleChange}
         destructive={false}
+      />
+
+      {/* Диалог очистки истории */}
+      <ConfirmDialog
+        visible={showClearHistoryDialog}
+        title="Очистить историю"
+        message="Вы уверены, что хотите очистить всю историю сообщений? Это действие нельзя отменить."
+        confirmText="Очистить"
+        cancelText="Отмена"
+        onConfirm={handleClearHistory}
+        onCancel={() => setShowClearHistoryDialog(false)}
+        destructive
+      />
+
+      {/* Delete/Leave ActionSheet */}
+      <ActionSheet
+        visible={showDeleteActionSheet}
+        title={chat?.type === 'private' ? 'Удалить чат' : isOwner ? 'Удалить чат' : 'Покинуть чат'}
+        options={deleteActionOptions}
+        onCancel={() => setShowDeleteActionSheet(false)}
       />
     </SafeAreaView>
   );

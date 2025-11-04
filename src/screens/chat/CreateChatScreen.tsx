@@ -44,39 +44,9 @@ const CreateChatScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [existingPrivateChatUserIds, setExistingPrivateChatUserIds] = useState<Set<number>>(new Set());
-
   useEffect(() => {
     loadUsers();
-    loadExistingPrivateChats();
   }, []);
-
-  const loadExistingPrivateChats = async () => {
-    try {
-      const currentUser = useAuthStore.getState().user;
-      if (!currentUser) return;
-
-      // Get chats from store
-      const { chats } = useChatStore.getState();
-
-      // Find all private chats and extract the other user's ID
-      const privateChatUserIds = new Set<number>();
-      chats.forEach(chat => {
-        if (chat.type === 'private' && chat.members) {
-          // Find the other user (not the current user)
-          const otherMember = chat.members.find(member => member.user_id !== currentUser.id);
-          if (otherMember) {
-            privateChatUserIds.add(otherMember.user_id);
-          }
-        }
-      });
-
-      console.log('🔍 Found existing private chats with users:', Array.from(privateChatUserIds));
-      setExistingPrivateChatUserIds(privateChatUserIds);
-    } catch (error) {
-      console.error('❌ Failed to load existing private chats:', error);
-    }
-  };
 
   const loadUsers = async () => {
     try {
@@ -272,11 +242,6 @@ const CreateChatScreen: React.FC = () => {
         return false;
       }
 
-      // For private chats, filter out users who already have a private chat with current user
-      if (chatType === 'private' && existingPrivateChatUserIds.has(user.id)) {
-        return false;
-      }
-
       // Apply search query
       if (searchQuery) {
         const searchText = `${user.name} ${user.email}`.toLowerCase();
@@ -285,7 +250,7 @@ const CreateChatScreen: React.FC = () => {
 
       return true;
     });
-  }, [users, searchQuery, chatType, existingPrivateChatUserIds]);
+  }, [users, searchQuery, chatType]);
 
   // Группируем пользователей по подразделениям
   const userSections = useMemo(() => {

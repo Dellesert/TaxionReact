@@ -287,10 +287,11 @@ const ChatListScreen: React.FC = () => {
     navigation.navigate('CreateChat', { initialChatType: chatType });
   };
 
-  const handleDeleteChat = async (chatId: number) => {
+  const handleDeleteChat = async (chatId: number, clearHistory?: boolean) => {
     try {
-      await deleteChat(chatId);
-      console.log(`✅ Chat ${chatId} deleted`);
+      console.log(`📋 ChatListScreen.handleDeleteChat called with chatId=${chatId}, clearHistory=${clearHistory}`);
+      await deleteChat(chatId, clearHistory);
+      console.log(`✅ Chat ${chatId} deleted (clearHistory: ${clearHistory})`);
     } catch (error) {
       console.error('Failed to delete chat:', error);
     }
@@ -423,7 +424,7 @@ const ChatListScreen: React.FC = () => {
                 onToggleFavorite={() => handleToggleFavorite(item.id)}
                 onTogglePinned={() => handleTogglePinned(item.id)}
                 onMarkAsRead={() => handleMarkAsRead(item.id)}
-                onDelete={() => handleDeleteChat(item.id)}
+                onDelete={handleDeleteChat}
               />
             )}
             refreshControl={

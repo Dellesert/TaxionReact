@@ -176,9 +176,15 @@ export const updateChat = async (id: number, data: UpdateChatDto): Promise<Chat>
 
 /**
  * Delete chat
+ * @param id - Chat ID
+ * @param clearHistory - Whether to clear chat history for the user
  */
-export const deleteChat = async (id: number): Promise<void> => {
-  await api.delete(API_ENDPOINTS.CHAT.DELETE(id));
+export const deleteChat = async (id: number, clearHistory?: boolean): Promise<void> => {
+  console.log(`🗑️ API: Deleting chat ${id} (clearHistory: ${clearHistory})`);
+  const params = clearHistory ? { clear_history: 'true' } : undefined;
+  console.log(`📡 API: DELETE ${API_ENDPOINTS.CHAT.DELETE(id)} with params:`, params);
+  await api.delete(API_ENDPOINTS.CHAT.DELETE(id), { params });
+  console.log(`✅ API: Chat ${id} deleted successfully`);
 };
 
 /**
@@ -517,7 +523,10 @@ export const deleteMessageForUser = async (
  * @param chatId - ID of chat to clear
  */
 export const clearChatHistory = async (chatId: number): Promise<void> => {
+  console.log(`📡 API: Clearing chat history for chat ${chatId}`);
+  console.log(`📡 Endpoint: POST ${API_ENDPOINTS.CHAT.CLEAR_HISTORY(chatId)}`);
   await api.post(API_ENDPOINTS.CHAT.CLEAR_HISTORY(chatId));
+  console.log(`✅ API: Chat history cleared successfully for chat ${chatId}`);
 };
 
 /**

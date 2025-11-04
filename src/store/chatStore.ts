@@ -25,7 +25,7 @@ interface ChatState {
   loadMoreChats: () => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
   updateChat: (chatId: number, data: { name?: string; avatar?: string; description?: string }) => Promise<void>;
-  deleteChat: (chatId: number) => Promise<void>;
+  deleteChat: (chatId: number, clearHistory?: boolean) => Promise<void>;
   leaveChat: (chatId: number) => Promise<void>;
   removeChatMember: (chatId: number, userId: number) => Promise<void>;
   loadMessages: (chatId: number) => Promise<void>;
@@ -159,17 +159,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
   createChat: async (name: string, memberIds: number[], type: 'private' | 'group' = 'group') => {
     try {
       set({ isLoading: true, error: null });
-      let newChat = await chatApi.createChat({
-        type,
-        name,
-        member_ids: memberIds,
-      });
+
+      let newChat: Chat;
+
+      // For private chats, use getOrCreateDirectChat to handle hidden chats
+      if (type === 'private') {
+        if (memberIds.length !== 1) {
+          throw new Error('Private chat must have exactly one member');
+        }
+        newChat = await chatApi.getOrCreateDirectChat(memberIds[0]);
+      } else {
+        // For group chats, use regular createChat
+        newChat = await chatApi.createChat({
+          type,
+          name,
+          member_ids: memberIds,
+        });
+      }
 
       // Enrich chat with user data
       newChat = await enrichChatWithUsers(newChat);
 
       set((state) => ({
-        chats: [newChat, ...state.chats],
+        // Check if chat already exists in the list (for reopened hidden chats)
+        chats: state.chats.some(c => c.id === newChat.id)
+          ? state.chats.map(c => c.id === newChat.id ? newChat : c)
+          : [newChat, ...state.chats],
         isLoading: false,
       }));
       return newChat;
@@ -197,9 +212,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  deleteChat: async (chatId: number) => {
+  deleteChat: async (chatId: number, clearHistory?: boolean) => {
     try {
-      await chatApi.deleteChat(chatId);
+      console.log(`🗑️ Deleting chat ${chatId} (clearHistory: ${clearHistory})...`);
+      await chatApi.deleteChat(chatId, clearHistory);
+      console.log(`✅ Chat ${chatId} deleted on server`);
+
+      // Remove chat from list and clear messages
       set((state) => ({
         chats: state.chats.filter((chat) => chat.id !== chatId),
         messages: Object.fromEntries(
@@ -207,8 +226,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
         activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
       }));
-      console.log(`🗑️ Chat ${chatId} deleted successfully`);
+
+      console.log(`🗑️ Chat ${chatId} deleted successfully (clearHistory: ${clearHistory})`);
     } catch (error: any) {
+      console.error(`❌ Failed to delete chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to delete chat' });
       throw error;
     }
@@ -445,7 +466,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearChatHistory: async (chatId: number) => {
     try {
+      console.log(`🧹 Clearing chat history for chat ${chatId}...`);
       await chatApi.clearChatHistory(chatId);
+      console.log(`✅ Chat history cleared on server for chat ${chatId}`);
 
       // Очищаем сообщения локально
       set((state) => ({
@@ -454,7 +477,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           [chatId]: [],
         },
       }));
+      console.log(`✅ Local messages cleared for chat ${chatId}`);
     } catch (error: any) {
+      console.error(`❌ Failed to clear chat history for chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to clear chat history' });
       throw error;
     }
