@@ -18,8 +18,6 @@ import { getSubtasks, createSubtask, updateTaskStatus, deleteTask } from '../../
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import { Avatar } from '@components/common/Avatar';
 
 // Simple Progress Indicator Component (no SVG)
@@ -186,6 +184,25 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   review: 'На проверке',
   done: 'Готово',
   cancelled: 'Отменена',
+};
+
+// Format date for deadline
+const formatDeadline = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = date.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Сегодня';
+  if (diffDays === 1) return 'Завтра';
+  if (diffDays === -1) return 'Вчера';
+  if (diffDays > 1 && diffDays <= 7) return `Через ${diffDays} дн.`;
+  if (diffDays < 0) return `Просрочено на ${Math.abs(diffDays)} дн.`;
+
+  // For dates more than 7 days away
+  const day = date.getDate();
+  const month = date.toLocaleString('ru', { month: 'long' });
+  return `${day} ${month}`;
 };
 
 export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
@@ -543,7 +560,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
               <View style={styles.dueDateInfo}>
                 <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
                 <Text style={styles.dueDateText}>
-                  {format(new Date(item.due_date), 'dd MMM', { locale: ru })}
+                  {formatDeadline(item.due_date)}
                 </Text>
               </View>
             )}
