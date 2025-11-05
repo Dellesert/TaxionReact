@@ -88,7 +88,7 @@ const TaskDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: TaskDetailRouteParams }, 'params'>>();
   const navigation = useNavigation();
   const { taskId } = route.params;
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
 
   const [task, setTask] = useState<Task | null>(null);
@@ -685,11 +685,12 @@ const TaskDetailScreen: React.FC = () => {
     },
     // Task title (now in content)
     taskTitle: {
-      fontSize: 22,
-      fontWeight: '700',
+      fontSize: 24,
+      fontWeight: '800',
       color: theme.text,
-      lineHeight: 30,
+      lineHeight: 32,
       marginBottom: 16,
+      letterSpacing: -0.5,
     },
     // Progress container
     progressContainer: {
@@ -697,40 +698,50 @@ const TaskDetailScreen: React.FC = () => {
       alignItems: 'center',
       gap: 12,
       marginBottom: 16,
+      backgroundColor: theme.backgroundSecondary,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
     progressBar: {
       flex: 1,
-      height: 8,
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-      borderRadius: 4,
+      height: 10,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+      borderRadius: 5,
       overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
     },
     progressFill: {
       height: '100%',
-      backgroundColor: '#FFFFFF',
       borderRadius: 4,
     },
     progressText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#FFFFFF',
-      minWidth: 40,
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+      minWidth: 45,
+      textAlign: 'right',
     },
     delegatedBadge: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: '#f3e8ff',
+      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f3e8ff',
       paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingVertical: 8,
       borderRadius: 8,
       alignSelf: 'flex-start',
       marginBottom: 12,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : '#e9d5ff',
     },
     delegatedBadgeText: {
       fontSize: 13,
-      fontWeight: '600',
-      color: '#8b5cf6',
+      fontWeight: '700',
+      color: isDark ? '#c4b5fd' : '#8b5cf6',
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
@@ -774,25 +785,30 @@ const TaskDetailScreen: React.FC = () => {
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
       paddingHorizontal: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
     },
     tab: {
       flex: 1,
-      paddingVertical: 12,
+      paddingVertical: 14,
       paddingHorizontal: 4,
       alignItems: 'center',
       borderBottomWidth: 3,
       borderBottomColor: 'transparent',
     },
     activeTab: {
-      borderBottomColor: theme.error,
+      borderBottomColor: theme.primary,
     },
     tabText: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textTertiary,
     },
     activeTabText: {
-      color: theme.text,
+      color: theme.primary,
       fontWeight: '700',
     },
     // Tab content
@@ -807,16 +823,23 @@ const TaskDetailScreen: React.FC = () => {
     // Description section
     descriptionSection: {
       marginBottom: 16,
+      backgroundColor: theme.backgroundSecondary,
+      padding: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
     descriptionLabel: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: theme.text,
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.textSecondary,
       marginBottom: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
     descriptionText: {
       fontSize: 15,
-      color: theme.textSecondary,
+      color: theme.text,
       lineHeight: 22,
     },
     descriptionCollapsed: {
@@ -841,6 +864,11 @@ const TaskDetailScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
+      shadowColor: '#10B981',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
     },
     completionIcon: {
       width: 48,
@@ -891,17 +919,24 @@ const TaskDetailScreen: React.FC = () => {
       paddingVertical: 14,
       borderRadius: 12,
       gap: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 2,
     },
     primaryFixedButton: {
       backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      shadowOpacity: 0.3,
     },
     secondaryFixedButton: {
       backgroundColor: theme.backgroundSecondary,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: theme.border,
     },
     delegateFixedButton: {
-      backgroundColor: theme.backgroundSecondary,
+      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f5f3ff',
       borderWidth: 1.5,
       borderColor: '#8b5cf6',
     },
@@ -935,6 +970,11 @@ const TaskDetailScreen: React.FC = () => {
       marginBottom: 8,
       borderWidth: 1,
       borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     },
     checklistProgressText: {
       fontSize: 14,
@@ -954,10 +994,11 @@ const TaskDetailScreen: React.FC = () => {
       marginTop: 16,
     },
     sectionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
+      fontSize: 18,
+      fontWeight: '700',
       color: theme.text,
       marginBottom: 12,
+      letterSpacing: -0.3,
     },
     loadingAttachments: {
       flexDirection: 'row',
@@ -978,10 +1019,15 @@ const TaskDetailScreen: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 8,
+      borderRadius: 10,
       padding: 12,
       borderWidth: 1,
       borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     },
     attachmentInfo: {
       flexDirection: 'row',
@@ -1009,12 +1055,13 @@ const TaskDetailScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 12,
-      borderRadius: 8,
+      padding: 14,
+      borderRadius: 10,
       borderWidth: 2,
-      borderColor: theme.border,
+      borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)',
       borderStyle: 'dashed',
       marginTop: 8,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.03)',
     },
     addAttachmentText: {
       fontSize: 14,
@@ -1140,19 +1187,21 @@ const TaskDetailScreen: React.FC = () => {
       flex: 1,
     },
     dateSeparator: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      backgroundColor: theme.backgroundSecondary,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)',
       borderRadius: 8,
       marginBottom: 12,
       marginTop: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: theme.primary,
     },
     dateSeparatorText: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: '800',
+      color: theme.text,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.8,
     },
     activityItem: {
       flexDirection: 'row',
@@ -1162,6 +1211,13 @@ const TaskDetailScreen: React.FC = () => {
       borderRadius: 12,
       marginBottom: 8,
       gap: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.03,
+      shadowRadius: 1,
+      elevation: 1,
     },
     activityIcon: {
       width: 36,
@@ -1512,21 +1568,31 @@ const TaskDetailScreen: React.FC = () => {
                 }}>
                   <View style={{
                     paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 16,
+                    paddingVertical: 7,
+                    borderRadius: 8,
                     backgroundColor: priorityConfig.color,
+                    shadowColor: priorityConfig.color,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    elevation: 2,
                   }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 }}>
                       {priorityConfig.label}
                     </Text>
                   </View>
                   <View style={{
                     paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 16,
+                    paddingVertical: 7,
+                    borderRadius: 8,
                     backgroundColor: statusConfig.color,
+                    shadowColor: statusConfig.color,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    elevation: 2,
                   }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 }}>
                       {statusConfig.label}
                     </Text>
                   </View>
@@ -1551,7 +1617,10 @@ const TaskDetailScreen: React.FC = () => {
                         <View
                           style={[
                             styles.progressFill,
-                            { width: `${displayProgress}%`, backgroundColor: checklistProgress > 0 ? '#10B981' : '#FFFFFF' }
+                            {
+                              width: `${displayProgress}%`,
+                              backgroundColor: displayProgress === 100 ? '#10B981' : theme.primary
+                            }
                           ]}
                         />
                       </View>

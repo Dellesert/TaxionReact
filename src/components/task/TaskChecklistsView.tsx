@@ -40,6 +40,147 @@ interface TaskChecklistsViewProps {
   readOnly?: boolean; // Только просмотр, никаких изменений
 }
 
+// Simple Progress Indicator Component (no SVG)
+const ProgressIndicator: React.FC<{
+  progress: number;
+  size: number;
+  color: string;
+  backgroundColor: string;
+}> = ({ progress, size, color, backgroundColor }) => {
+  // Circular progress indicator using multiple layers
+  const borderWidth = 2.5;
+  const innerSize = size - borderWidth * 2;
+
+  // Calculate which parts of the border to show in color based on progress
+  // More granular thresholds for smoother progression
+  const showTop = progress >= 5;
+  const showTopRight = progress >= 15;
+  const showRight = progress >= 30;
+  const showBottomRight = progress >= 45;
+  const showBottom = progress >= 60;
+  const showBottomLeft = progress >= 75;
+  const showLeft = progress >= 90;
+  const showTopLeft = progress >= 95;
+
+  return (
+    <View style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: 'transparent',
+      position: 'relative',
+    }}>
+      {/* Base circle background */}
+      <View style={{
+        position: 'absolute',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: borderWidth,
+        borderColor: backgroundColor,
+      }} />
+
+      {/* Progress segments - overlay colored borders */}
+      {showTop && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderTopColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showTopRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderTopColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderRightColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showBottomRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderRightColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showBottom && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showBottomLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderLeftColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showTopLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderLeftColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+    </View>
+  );
+};
+
 export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   taskId,
   onChecklistChanged,
@@ -47,7 +188,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   canToggleOnly = false,
   readOnly = false,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const [checklists, setChecklists] = useState<TaskChecklist[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -210,18 +351,74 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   };
 
   const renderChecklistItem = ({ item: checklist }: { item: TaskChecklist }) => {
+    const progress = getChecklistProgress(checklist);
+    const completedItems = checklist.items.filter(i => i.is_completed).length;
+    const totalItems = checklist.items.length;
+    const isExpanded = expandedChecklists.has(checklist.id);
+
     return (
-      <View style={styles.checklistContainer}>
-        {checklist.items?.map(item => {
-          const isExpanded = expandedItems.has(item.id);
+      <View style={[styles.checklistContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+        {/* Checklist Header */}
+        <TouchableOpacity
+          style={styles.checklistHeader}
+          onPress={() => toggleChecklistExpanded(checklist.id)}
+          activeOpacity={0.7}
+        >
+          {/* Expand/Collapse Icon - Left */}
+          <Ionicons
+            name={isExpanded ? 'chevron-down-outline' : 'chevron-forward-outline'}
+            size={18}
+            color={theme.textSecondary}
+            style={{ marginRight: 8 }}
+          />
+
+          <View style={styles.checklistHeaderLeft}>
+            <Text style={[styles.checklistTitle, { color: theme.text }]}>
+              План
+            </Text>
+          </View>
+
+          <View style={styles.checklistHeaderRight}>
+            {/* Count - Left of Progress */}
+            <Text style={[styles.checklistCount, { color: theme.textSecondary }]}>
+              {completedItems}/{totalItems}
+            </Text>
+
+            {/* Progress Indicator */}
+            <ProgressIndicator
+              progress={progress}
+              size={18}
+              color={progress === 100 ? '#10B981' : theme.primary}
+              backgroundColor={isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {/* Items */}
+        {isExpanded && checklist.items?.map((item, index) => {
+          const isItemExpanded = expandedItems.has(item.id);
+          const isLastItem = index === checklist.items.length - 1;
+
           return (
-            <View key={item.id} style={[styles.itemRow, { borderBottomColor: theme.border }]}>
+            <View
+              key={item.id}
+              style={[
+                styles.itemRow,
+                { borderBottomColor: theme.border },
+                isLastItem && styles.itemRowLast
+              ]}
+            >
               <TouchableOpacity
                 style={styles.itemCheckbox}
                 onPress={() => handleToggleItem(item)}
                 disabled={readOnly}
+                activeOpacity={0.7}
               >
-                <View style={[styles.checkbox, { borderColor: theme.border }, item.is_completed && styles.checkboxChecked]}>
+                <View style={[
+                  styles.checkbox,
+                  { borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)' },
+                  item.is_completed && styles.checkboxChecked
+                ]}>
                   {item.is_completed && (
                     <Ionicons name="checkmark" size={16} color="#fff" />
                   )}
@@ -239,7 +436,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
                     { color: theme.text },
                     item.is_completed && [styles.itemTextCompleted, { color: theme.textTertiary }]
                   ]}
-                  numberOfLines={isExpanded ? undefined : 3}
+                  numberOfLines={isItemExpanded ? undefined : 3}
                 >
                   {item.title}
                 </Text>
@@ -324,22 +521,62 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   checklistContainer: {
-    paddingHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  checklistHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingVertical: 2,
+  },
+  checklistHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checklistHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checklistTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
+  },
+  checklistCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.1,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    paddingVertical: 12,
+    gap: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
   },
+  itemRowLast: {
+    borderBottomWidth: 0,
+  },
   itemCheckbox: {
-    paddingTop: 2,
+    paddingTop: 1,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
@@ -352,11 +589,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
   },
   itemTextCompleted: {
     textDecorationLine: 'line-through',
+    opacity: 0.6,
   },
   addItemContainer: {
     flexDirection: 'row',
