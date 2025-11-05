@@ -14,6 +14,7 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
+  Image,
 } from 'react-native';
 import {
   TaskChecklist,
@@ -34,6 +35,11 @@ import { useTheme } from '@hooks/useTheme';
 
 interface TaskChecklistsViewProps {
   taskId: number;
+  taskTitle?: string;
+  assigneeName?: string;
+  assigneeAvatar?: string;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  dueDate?: string; // Срок выполнения задачи
   onChecklistChanged?: () => void;
   canEdit?: boolean; // Создатель и делегировавший могут создавать/редактировать/удалять чек-листы
   canToggleOnly?: boolean; // Исполнители могут только чекать/анчекать пункты
@@ -181,8 +187,40 @@ const ProgressIndicator: React.FC<{
   );
 };
 
+// Priority configuration
+const PRIORITY_CONFIG = {
+  low: { color: '#6b7280', label: 'Низкий', bg: '#f3f4f6' },
+  medium: { color: '#3b82f6', label: 'Средний', bg: '#eff6ff' },
+  high: { color: '#f59e0b', label: 'Высокий', bg: '#fffbeb' },
+  critical: { color: '#ef4444', label: 'Критичный', bg: '#fef2f2' },
+};
+
+// Format date for deadline
+const formatDeadline = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = date.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Сегодня';
+  if (diffDays === 1) return 'Завтра';
+  if (diffDays === -1) return 'Вчера';
+  if (diffDays > 1 && diffDays <= 7) return `Через ${diffDays} дн.`;
+  if (diffDays < 0) return `Просрочено на ${Math.abs(diffDays)} дн.`;
+
+  // For dates more than 7 days away
+  const day = date.getDate();
+  const month = date.toLocaleString('ru', { month: 'long' });
+  return `${day} ${month}`;
+};
+
 export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   taskId,
+  taskTitle,
+  assigneeName,
+  assigneeAvatar,
+  priority,
+  dueDate,
   onChecklistChanged,
   canEdit = true,
   canToggleOnly = false,
@@ -360,7 +398,11 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       <View style={[styles.checklistContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
         {/* Checklist Header */}
         <TouchableOpacity
-          style={styles.checklistHeader}
+          style={[
+            styles.checklistHeader,
+            { borderBottomColor: theme.border },
+            isExpanded && styles.checklistHeaderExpanded
+          ]}
           onPress={() => toggleChecklistExpanded(checklist.id)}
           activeOpacity={0.7}
         >
@@ -374,7 +416,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 
           <View style={styles.checklistHeaderLeft}>
             <Text style={[styles.checklistTitle, { color: theme.text }]}>
-              План
+              {taskTitle || 'Задача'}
             </Text>
           </View>
 
@@ -389,23 +431,21 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
               progress={progress}
               size={18}
               color={progress === 100 ? '#10B981' : theme.primary}
-              backgroundColor={isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'}
+              backgroundColor={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.1)'}
             />
           </View>
         </TouchableOpacity>
 
         {/* Items */}
-        {isExpanded && checklist.items?.map((item, index) => {
+        {isExpanded && checklist.items?.map((item) => {
           const isItemExpanded = expandedItems.has(item.id);
-          const isLastItem = index === checklist.items.length - 1;
 
           return (
             <View
               key={item.id}
               style={[
                 styles.itemRow,
-                { borderBottomColor: theme.border },
-                isLastItem && styles.itemRowLast
+                { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }
               ]}
             >
               <TouchableOpacity
@@ -444,6 +484,51 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
             </View>
           );
         })}
+
+        {/* Footer with priority and assignee + due date */}
+        {isExpanded && (priority || assigneeName || dueDate) && (
+          <View style={[styles.checklistFooter, { borderTopColor: theme.border }]}>
+            {/* Priority Badge - Left */}
+            {priority && (
+              <View style={[styles.priorityBadge, { backgroundColor: PRIORITY_CONFIG[priority].color + (isDark ? '15' : '20') }]}>
+                <Text style={[styles.priorityText, { color: PRIORITY_CONFIG[priority].color }]}>
+                  {PRIORITY_CONFIG[priority].label}
+                </Text>
+              </View>
+            )}
+
+            {/* Right side: Due Date + Assignee */}
+            <View style={styles.footerRight}>
+              {/* Due Date */}
+              {dueDate && (
+                <View style={styles.dueDateContainer}>
+                  <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
+                  <Text style={[styles.dueDateText, { color: theme.textSecondary }]}>
+                    {formatDeadline(dueDate)}
+                  </Text>
+                </View>
+              )}
+
+              {/* Assignee Avatar */}
+              {assigneeName && (
+                <View style={styles.assigneeContainer}>
+                  {assigneeAvatar ? (
+                    <Image
+                      source={{ uri: assigneeAvatar }}
+                      style={styles.assigneeAvatar}
+                    />
+                  ) : (
+                    <View style={[styles.assigneeAvatarPlaceholder, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.assigneeAvatarText}>
+                        {assigneeName.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
       </View>
     );
   };
@@ -521,7 +606,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   checklistContainer: {
-    marginBottom: 12,
+    marginBottom: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
@@ -536,8 +621,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
     paddingVertical: 2,
+    borderBottomWidth: 0,
+  },
+  checklistHeaderExpanded: {
+    paddingBottom: 10,
+    marginBottom: 10,
+    borderBottomWidth: 1,
   },
   checklistHeaderLeft: {
     flex: 1,
@@ -564,11 +654,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  itemRowLast: {
-    borderBottomWidth: 0,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   itemCheckbox: {
     paddingTop: 1,
@@ -615,5 +705,62 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+  },
+  checklistFooter: {
+    paddingTop: 12,
+    marginTop: 4,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dueDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dueDateText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  priorityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  priorityText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  assigneeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  assigneeAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  assigneeAvatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  assigneeAvatarText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  assigneeName: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

@@ -821,26 +821,39 @@ const TaskDetailScreen: React.FC = () => {
       padding: 16,
     },
     // Description section
-    descriptionSection: {
-      marginBottom: 16,
+    descriptionContainer: {
+      marginBottom: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
       backgroundColor: theme.backgroundSecondary,
-      padding: 14,
       borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    descriptionHeader: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
     },
     descriptionLabel: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: '700',
-      color: theme.textSecondary,
-      marginBottom: 8,
+      letterSpacing: -0.2,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+    },
+    descriptionContent: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
     },
     descriptionText: {
-      fontSize: 15,
-      color: theme.text,
-      lineHeight: 22,
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: '500',
     },
     descriptionCollapsed: {
       maxHeight: 44,
@@ -849,6 +862,34 @@ const TaskDetailScreen: React.FC = () => {
     expandButton: {
       marginTop: 8,
       alignSelf: 'flex-start',
+    },
+    descriptionFooter: {
+      paddingHorizontal: 12,
+      paddingTop: 12,
+      paddingBottom: 10,
+      marginTop: 4,
+      borderTopWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    priorityBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    priorityText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    descriptionAssigneeContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    assigneeName: {
+      fontSize: 14,
+      fontWeight: '500',
     },
     expandButtonText: {
       fontSize: 14,
@@ -982,11 +1023,10 @@ const TaskDetailScreen: React.FC = () => {
       color: theme.text,
     },
     checklistsSection: {
-      marginBottom: 16,
+      marginBottom: 8,
     },
     // Subtasks section
     subtasksSection: {
-      marginTop: 16,
       marginBottom: 16,
     },
     // Attachments section
@@ -1554,50 +1594,6 @@ const TaskDetailScreen: React.FC = () => {
           >
             {activeTab === 'overview' ? (
               <View style={styles.content}>
-                {/* Task Title */}
-                <Text style={styles.taskTitle}>
-                  {task.title}
-                </Text>
-
-                {/* Priority and Status Row */}
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginBottom: 16,
-                }}>
-                  <View style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 7,
-                    borderRadius: 8,
-                    backgroundColor: priorityConfig.color,
-                    shadowColor: priorityConfig.color,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 3,
-                    elevation: 2,
-                  }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 }}>
-                      {priorityConfig.label}
-                    </Text>
-                  </View>
-                  <View style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 7,
-                    borderRadius: 8,
-                    backgroundColor: statusConfig.color,
-                    shadowColor: statusConfig.color,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 3,
-                    elevation: 2,
-                  }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 }}>
-                      {statusConfig.label}
-                    </Text>
-                  </View>
-                </View>
-
                 {/* Delegated Badge */}
                 {isDelegatedByMe && (
                   <View style={styles.delegatedBadge}>
@@ -1606,94 +1602,65 @@ const TaskDetailScreen: React.FC = () => {
                   </View>
                 )}
 
-                {/* Progress Bar - based on checklists or manual progress_percentage */}
-                {(() => {
-                  const checklistProgress = calculateChecklistProgress();
-                  const displayProgress = checklistProgress > 0 ? checklistProgress : (task.progress_percentage || 0);
-
-                  return displayProgress > 0 ? (
-                    <View style={styles.progressContainer}>
-                      <View style={styles.progressBar}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            {
-                              width: `${displayProgress}%`,
-                              backgroundColor: displayProgress === 100 ? '#10B981' : theme.primary
-                            }
-                          ]}
-                        />
-                      </View>
-                      <Text style={styles.progressText}>{displayProgress}%</Text>
-                    </View>
-                  ) : null;
-                })()}
-
-                {/* Assignee and Deadline Row */}
-                <View style={[styles.infoRow, { marginBottom: 16 }]}>
-                  <View style={styles.assigneeContainer}>
-                    {task.delegation_chain && task.delegation_chain.length > 0 ? (
-                      <View style={styles.delegationChainContainer}>
-                        <Ionicons name="git-branch-outline" size={16} color={theme.textSecondary} style={styles.delegationIcon} />
-                        <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
-                          {task.delegation_chain
-                            .map((chainUser) => (user && chainUser.id === user.id ? 'Я' : chainUser.name))
-                            .join(' → ')}
-                        </Text>
-                      </View>
-                    ) : task.assignees && task.assignees.length > 0 ? (
-                      <TouchableOpacity
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                        onPress={() => handleUserPress(task.assignees![0].id)}
-                        activeOpacity={0.7}
-                      >
-                        <Avatar
-                          name={task.assignees[0].name}
-                          imageUrl={task.assignees[0].avatar}
-                          size={20}
-                        />
-                        <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
-                          {user && task.assignees[0].id === user.id ? 'Я' : task.assignees[0].name}
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={[styles.assigneeText, { color: theme.textSecondary }]}>
-                        Без исполнителя
-                      </Text>
-                    )}
-                  </View>
-                  {task.due_date && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
-                      <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
-                        {format(new Date(task.due_date), 'dd MMM', { locale: ru })}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
                 {/* Description Section */}
                 {task.description && (
-                  <View style={styles.descriptionSection}>
-                    <Text style={styles.descriptionLabel}>Описание</Text>
-                    <Text
-                      style={[
-                        styles.descriptionText,
-                        !isDescriptionExpanded && styles.descriptionCollapsed,
-                      ]}
-                      numberOfLines={isDescriptionExpanded ? undefined : 2}
-                    >
-                      {task.description}
-                    </Text>
-                    {task.description.length > 80 && (
-                      <TouchableOpacity
-                        style={styles.expandButton}
-                        onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                  <View style={styles.descriptionContainer}>
+                    {/* Header */}
+                    <View style={[styles.descriptionHeader, { borderBottomColor: theme.border }]}>
+                      <Text style={[styles.descriptionLabel, { color: theme.text }]}>{task.title}</Text>
+                    </View>
+
+                    {/* Content */}
+                    <View style={styles.descriptionContent}>
+                      <Text
+                        style={[
+                          styles.descriptionText,
+                          { color: theme.textSecondary },
+                          !isDescriptionExpanded && styles.descriptionCollapsed,
+                        ]}
+                        numberOfLines={isDescriptionExpanded ? undefined : 2}
                       >
-                        <Text style={styles.expandButtonText}>
-                          {isDescriptionExpanded ? 'Свернуть' : 'Раскрыть'}
-                        </Text>
-                      </TouchableOpacity>
+                        {task.description}
+                      </Text>
+                      {task.description.length > 80 && (
+                        <TouchableOpacity
+                          style={styles.expandButton}
+                          onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                        >
+                          <Text style={[styles.expandButtonText, { color: theme.primary }]}>
+                            {isDescriptionExpanded ? 'Свернуть' : 'Раскрыть'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Footer with priority and assignee */}
+                    {(task.priority || (task.assignees && task.assignees.length > 0)) && (
+                      <View style={[styles.descriptionFooter, { borderTopColor: theme.border }]}>
+                        {/* Priority Badge - Left */}
+                        {task.priority && (
+                          <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.color + '20' }]}>
+                            <Text style={[styles.priorityText, { color: priorityConfig.color }]}>
+                              {priorityConfig.label}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Assignee - Right */}
+                        {task.assignees && task.assignees.length > 0 && (
+                          <TouchableOpacity
+                            style={styles.descriptionAssigneeContainer}
+                            onPress={() => handleUserPress(task.assignees![0].id)}
+                            activeOpacity={0.7}
+                          >
+                            <Avatar
+                              name={task.assignees[0].name}
+                              imageUrl={task.assignees[0].avatar}
+                              size={22}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     )}
                   </View>
                 )}
@@ -1720,6 +1687,11 @@ const TaskDetailScreen: React.FC = () => {
                   <View style={styles.checklistsSection}>
                     <TaskChecklistsView
                       taskId={task.id}
+                      taskTitle={task.title}
+                      assigneeName={task.assignees && task.assignees.length > 0 ? task.assignees[0].name : undefined}
+                      assigneeAvatar={task.assignees && task.assignees.length > 0 ? task.assignees[0].avatar : undefined}
+                      priority={task.priority}
+                      dueDate={task.due_date}
                       onChecklistChanged={() => {
                         loadTask(); // Reload task to update progress
                       }}

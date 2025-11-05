@@ -22,6 +22,144 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@components/common/Avatar';
 
+// Simple Progress Indicator Component (no SVG)
+const ProgressIndicator: React.FC<{
+  progress: number;
+  size: number;
+  color: string;
+  backgroundColor: string;
+}> = ({ progress, size, color, backgroundColor }) => {
+  const borderWidth = 2.5;
+
+  // Calculate which parts of the border to show in color based on progress
+  const showTop = progress >= 5;
+  const showTopRight = progress >= 15;
+  const showRight = progress >= 30;
+  const showBottomRight = progress >= 45;
+  const showBottom = progress >= 60;
+  const showBottomLeft = progress >= 75;
+  const showLeft = progress >= 90;
+  const showTopLeft = progress >= 95;
+
+  return (
+    <View style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: 'transparent',
+      position: 'relative',
+    }}>
+      {/* Base circle background */}
+      <View style={{
+        position: 'absolute',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: borderWidth,
+        borderColor: backgroundColor,
+      }} />
+
+      {/* Progress segments */}
+      {showTop && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderTopColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showTopRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderTopColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderRightColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showBottomRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderRightColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showBottom && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showBottomLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderLeftColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showTopLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderLeftColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+    </View>
+  );
+};
+
 interface TaskSubtasksListProps {
   parentTaskId: number;
   onSubtaskPress?: (subtask: Task) => void;
@@ -58,44 +196,65 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   readOnly = false,
 }) => {
   const { user: currentUser } = useAuthStore();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   // Styles
   const styles = StyleSheet.create({
     container: {
-      flex: 1,
+      marginBottom: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      backgroundColor: theme.backgroundSecondary,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
     },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: theme.backgroundSecondary,
+      paddingVertical: 2,
+      borderBottomWidth: 0,
+    },
+    headerExpanded: {
+      paddingBottom: 10,
+      marginBottom: 10,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
     headerTitle: {
-      fontSize: 16,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+      textTransform: 'uppercase',
       color: theme.text,
     },
     headerRight: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 8,
     },
     headerProgress: {
-      fontSize: 14,
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: -0.1,
       color: theme.textSecondary,
     },
-    list: {
-      flex: 1,
-    },
     listContent: {
-      padding: 16,
+      gap: 8,
     },
     loadingContainer: {
       flex: 1,
@@ -144,24 +303,24 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     },
     subtaskItem: {
       flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.background,
-      borderRadius: 10,
-      padding: 12,
-      marginBottom: 8,
+      alignItems: 'flex-start',
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
       borderWidth: 1,
       borderColor: theme.border,
+      gap: 10,
     },
     checkboxContainer: {
-      padding: 4,
-      marginRight: 12,
+      paddingTop: 1,
     },
     checkbox: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
       borderWidth: 2,
-      borderColor: theme.border,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -172,65 +331,57 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     subtaskContent: {
       flex: 1,
     },
-    subtaskContentReadOnly: {
-      marginLeft: 0,
-    },
     subtaskTitle: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '500',
+      lineHeight: 20,
       color: theme.text,
-      marginBottom: 4,
+      marginBottom: 6,
     },
     subtaskTitleCompleted: {
       textDecorationLine: 'line-through',
       color: theme.textTertiary,
+      opacity: 0.6,
     },
     subtaskMeta: {
-      flexDirection: 'column',
-      gap: 8,
-      marginTop: 4,
-    },
-    statusBadge: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
-      alignSelf: 'flex-start',
-      maxWidth: 120,
-    },
-    statusText: {
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    assigneeInfo: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
+      flexWrap: 'wrap',
     },
-    assigneeName: {
-      fontSize: 13,
-      color: theme.text,
-      fontWeight: '500',
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 10,
+    },
+    statusText: {
+      fontSize: 11,
+      fontWeight: '600',
     },
     dueDateInfo: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 4,
     },
     dueDateText: {
-      fontSize: 12,
+      fontSize: 11,
       color: theme.textSecondary,
     },
     progressContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 4,
     },
     progressText: {
-      fontSize: 12,
+      fontSize: 11,
       color: theme.textSecondary,
     },
+    assigneeAvatarContainer: {
+      paddingTop: 1,
+    },
     deleteButton: {
-      padding: 8,
+      padding: 4,
+      paddingTop: 1,
     },
     subtaskActions: {
       flexDirection: 'row',
@@ -350,21 +501,22 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
 
     return (
       <View style={styles.subtaskItem}>
-        {!readOnly && (
-          <TouchableOpacity
-            style={styles.checkboxContainer}
-            onPress={() => handleStatusToggle(item)}
-          >
-            <View style={[styles.checkbox, isDone && styles.checkboxChecked]}>
-              {isDone && (
-                <Ionicons name="checkmark" size={16} color="#fff" />
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
-
+        {/* Checkbox */}
         <TouchableOpacity
-          style={[styles.subtaskContent, readOnly && styles.subtaskContentReadOnly]}
+          style={styles.checkboxContainer}
+          onPress={() => handleStatusToggle(item)}
+          disabled={readOnly}
+        >
+          <View style={[styles.checkbox, isDone && styles.checkboxChecked]}>
+            {isDone && (
+              <Ionicons name="checkmark" size={16} color="#fff" />
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {/* Content */}
+        <TouchableOpacity
+          style={styles.subtaskContent}
           onPress={() => onSubtaskPress?.(item)}
         >
           <Text
@@ -377,6 +529,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
             {item.title}
           </Text>
 
+          {/* Meta info row */}
           <View style={styles.subtaskMeta}>
             {/* Status Badge */}
             <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
@@ -385,42 +538,38 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
               </Text>
             </View>
 
-            {/* Row with assignee, date, progress */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              {item.assignees && item.assignees.length > 0 && (
-                <View style={styles.assigneeInfo}>
-                  <Avatar
-                    name={item.assignees[0].name}
-                    imageUrl={item.assignees[0].avatar}
-                    size={16}
-                  />
-                  <Text style={styles.assigneeName} numberOfLines={1}>
-                    {currentUser && item.assignees[0].id === currentUser.id
-                      ? 'Я'
-                      : item.assignees[0].name}
-                  </Text>
-                </View>
-              )}
+            {/* Date */}
+            {item.due_date && (
+              <View style={styles.dueDateInfo}>
+                <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
+                <Text style={styles.dueDateText}>
+                  {format(new Date(item.due_date), 'dd MMM', { locale: ru })}
+                </Text>
+              </View>
+            )}
 
-              {item.due_date && (
-                <View style={styles.dueDateInfo}>
-                  <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
-                  <Text style={styles.dueDateText}>
-                    {format(new Date(item.due_date), 'dd MMM', { locale: ru })}
-                  </Text>
-                </View>
-              )}
-
-              {item.progress_percentage !== undefined && item.progress_percentage > 0 && (
-                <View style={styles.progressContainer}>
-                  <Ionicons name="stats-chart" size={14} color={theme.textSecondary} />
-                  <Text style={styles.progressText}>{item.progress_percentage}%</Text>
-                </View>
-              )}
-            </View>
+            {/* Progress */}
+            {item.progress_percentage !== undefined && item.progress_percentage > 0 && (
+              <View style={styles.progressContainer}>
+                <Ionicons name="stats-chart" size={12} color={theme.textSecondary} />
+                <Text style={styles.progressText}>{item.progress_percentage}%</Text>
+              </View>
+            )}
           </View>
         </TouchableOpacity>
 
+        {/* Assignee Avatar - Right */}
+        {item.assignees && item.assignees.length > 0 && (
+          <View style={styles.assigneeAvatarContainer}>
+            <Avatar
+              name={item.assignees[0].name}
+              imageUrl={item.assignees[0].avatar}
+              size={32}
+            />
+          </View>
+        )}
+
+        {/* Delete Button */}
         {!readOnly && (
           <TouchableOpacity
             style={styles.deleteButton}
@@ -429,7 +578,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
               handleDeleteSubtask(item);
             }}
           >
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            <Ionicons name="trash-outline" size={18} color="#ef4444" />
           </TouchableOpacity>
         )}
       </View>
@@ -465,36 +614,66 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   }
 
   // If there are subtasks, show list with add button at the end
+  const completedCount = subtasks.filter(s => s.status === 'done').length;
+  const progress = subtasks.length > 0 ? Math.round((completedCount / subtasks.length) * 100) : 0;
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          Подзадачи ({subtasks.length})
-        </Text>
-        <View style={styles.headerRight}>
-          <Text style={styles.headerProgress}>
-            {subtasks.filter(s => s.status === 'done').length} из {subtasks.length} выполнено
+      {/* Header */}
+      <TouchableOpacity
+        style={[styles.header, isExpanded && styles.headerExpanded]}
+        onPress={() => setIsExpanded(!isExpanded)}
+        activeOpacity={0.7}
+      >
+        {/* Expand/Collapse Icon */}
+        <Ionicons
+          name={isExpanded ? 'chevron-down-outline' : 'chevron-forward-outline'}
+          size={18}
+          color={theme.textSecondary}
+          style={{ marginRight: 8 }}
+        />
+
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>
+            Подзадачи
           </Text>
         </View>
-      </View>
 
-      <View style={styles.listContent}>
-        {subtasks.map((item) => (
-          <View key={item.id.toString()}>
-            {renderSubtaskItem({ item })}
-          </View>
-        ))}
+        <View style={styles.headerRight}>
+          <Text style={styles.headerProgress}>
+            {completedCount}/{subtasks.length}
+          </Text>
 
-        {onCreateSubtaskPress && (
-          <TouchableOpacity
-            style={styles.addSubtaskButton}
-            onPress={onCreateSubtaskPress}
-          >
-            <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
-            <Text style={styles.addSubtaskButtonText}>Добавить подзадачу</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          {/* Progress Indicator */}
+          <ProgressIndicator
+            progress={progress}
+            size={18}
+            color={progress === 100 ? '#10B981' : theme.primary}
+            backgroundColor={isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'}
+          />
+        </View>
+      </TouchableOpacity>
+
+      {/* Subtasks List */}
+      {isExpanded && (
+        <View style={styles.listContent}>
+          {subtasks.map((item) => (
+            <View key={item.id.toString()}>
+              {renderSubtaskItem({ item })}
+            </View>
+          ))}
+
+          {onCreateSubtaskPress && (
+            <TouchableOpacity
+              style={styles.addSubtaskButton}
+              onPress={onCreateSubtaskPress}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
+              <Text style={styles.addSubtaskButtonText}>Добавить подзадачу</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 };

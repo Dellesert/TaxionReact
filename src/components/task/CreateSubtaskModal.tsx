@@ -1,26 +1,31 @@
 /**
- * Create Subtask Modal Component
- * Модальное окно для создания подзадачи
+ * Create Subtask Modal
+ * Модальное окно для создания подзадачи с пошаговым интерфейсом
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  Modal,
   TextInput,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
   Alert,
+  Modal,
+  StatusBar,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { CreateTaskDto, TaskPriority, CreateTaskChecklistDto } from '../../types/task.types';
+import { CreateTaskDto, TaskPriority } from '../../types/task.types';
 import { createSubtask } from '../../api/task.api';
 import UserSelector from '../common/UserSelector';
 import DatePickerModal from '../common/DatePickerModal';
 import { useTheme } from '@hooks/useTheme';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
 interface CreateSubtaskModalProps {
   visible: boolean;
@@ -29,12 +34,8 @@ interface CreateSubtaskModalProps {
   onSubtaskCreated?: () => void;
 }
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: 'low', label: 'Низкий', color: '#6b7280' },
-  { value: 'medium', label: 'Средний', color: '#3b82f6' },
-  { value: 'high', label: 'Высокий', color: '#f59e0b' },
-  { value: 'critical', label: 'Критичный', color: '#ef4444' },
-];
+type TaskContentType = 'checklist' | 'description' | 'none';
+type Step = 1 | 2 | 3 | 4;
 
 export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   visible,
@@ -42,31 +43,158 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   onClose,
   onSubtaskCreated,
 }) => {
-  const { theme } = useTheme();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<TaskPriority>('medium');
-  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
-  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  // Checklist state - single checklist with items only
+  // Multi-step state
+  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Step 1: Title
+  const [title, setTitle] = useState('');
+
+  // Step 2: Content type selection
+  const [contentType, setContentType] = useState<TaskContentType | null>(null);
+
+  // Step 3: Content (checklist or description)
+  const [description, setDescription] = useState('');
   const [checklistItems, setChecklistItems] = useState<string[]>([]);
   const [newItemText, setNewItemText] = useState('');
 
-  const handleReset = () => {
-    setTitle('');
-    setDescription('');
-    setPriority('medium');
-    setAssigneeIds([]);
-    setDueDate(undefined);
-    setChecklistItems([]);
-    setNewItemText('');
+  // Step 4: Priority, Date, Assignee
+  const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
+
+  const [isCreating, setIsCreating] = useState(false);
+
+  const priorities: {
+    value: TaskPriority;
+    label: string;
+    color: string;
+  }[] = [
+    { value: 'low', label: 'Низкий', color: '#10B981' },
+    { value: 'medium', label: 'Средний', color: '#F59E0B' },
+    { value: 'high', label: 'Высокий', color: '#F97316' },
+    { value: 'critical', label: 'Критический', color: '#EF4444' },
+  ];
+
+  // Animation when step changes
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 7,
+    }).start();
+  }, [currentStep]);
+
+  // Navigation handlers
+  const goToNextStep = () => {
+    if (currentStep === 1 && !title.trim()) {
+      Alert.alert('Внимание', 'Введите название подзадачи');
+      return;
+    }
+
+    if (currentStep === 2 && !contentType) {
+      Alert.alert('Внимание', 'Выберите тип содержимого');
+      return;
+    }
+
+    // Skip step 3 if content type is 'none'
+    if (currentStep === 2 && contentType === 'none') {
+      setCurrentStep(4);
+    } else if (currentStep < 4) {
+      setCurrentStep((currentStep + 1) as Step);
+    }
+  };
+
+  const goToPreviousStep = () => {
+    // Skip step 3 if going back and content type is 'none'
+    if (currentStep === 4 && contentType === 'none') {
+      setCurrentStep(2);
+    } else if (currentStep > 1) {
+      setCurrentStep((currentStep - 1) as Step);
+    }
+  };
+
+  const handleDateChange = (_event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDueDate(selectedDate);
+    }
+  };
+
+  const handleCreateSubtask = async () => {
+    if (!title.trim()) {
+      Alert.alert('Ошибка', 'Введите название подзадачи');
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+
+      const subtaskData: CreateTaskDto = {
+        title: title.trim(),
+        description: contentType === 'description' ? description.trim() || undefined : undefined,
+        priority,
+        due_date: dueDate?.toISOString(),
+        assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
+        checklists: contentType === 'checklist' && checklistItems.length > 0
+          ? [{ title: 'Checklist', items: checklistItems }]
+          : undefined,
+      };
+
+      const createdSubtask = await createSubtask(parentTaskId, subtaskData);
+
+      // If backend didn't create checklist, create it manually
+      if (contentType === 'checklist' && checklistItems.length > 0 && createdSubtask.id) {
+        try {
+          // Check if checklist was created by the backend
+          const { getTaskChecklists, createChecklist, createChecklistItem } = await import('../../api/task.api');
+          const existingChecklists = await getTaskChecklists(createdSubtask.id);
+
+          // Only create if no checklists exist
+          if (!existingChecklists || existingChecklists.length === 0) {
+            console.log('📋 Creating checklist manually for subtask:', createdSubtask.id);
+            const newChecklist = await createChecklist(createdSubtask.id, { title: 'Checklist' });
+
+            // Add all items to the checklist
+            for (const item of checklistItems) {
+              await createChecklistItem(newChecklist.id, { title: item });
+            }
+          } else {
+            console.log('✅ Checklist already created by backend');
+          }
+        } catch (checklistError) {
+          console.error('Error creating checklist:', checklistError);
+          // Don't fail the whole operation, just log the error
+        }
+      }
+
+      Alert.alert('Успех', 'Подзадача создана');
+      onSubtaskCreated?.();
+      handleClose();
+    } catch (error: any) {
+      console.error('Failed to create subtask:', error);
+      Alert.alert('Ошибка', error.message || 'Не удалось создать подзадачу');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleClose = () => {
-    handleReset();
+    setCurrentStep(1);
+    setTitle('');
+    setContentType(null);
+    setDescription('');
+    setPriority('medium');
+    setDueDate(undefined);
+    setAssigneeIds([]);
+    setChecklistItems([]);
+    setNewItemText('');
+    slideAnim.setValue(0);
     onClose();
   };
 
@@ -81,331 +209,563 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
     setChecklistItems(checklistItems.filter((_, i) => i !== index));
   };
 
-  const handleCreate = async () => {
-    if (!title.trim()) {
-      Alert.alert('Ошибка', 'Введите название подзадачи');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      const subtaskData: CreateTaskDto = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        priority,
-        assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
-        due_date: dueDate?.toISOString(),
-        checklists: checklistItems.length > 0 ? [{ title: 'Checklist', items: checklistItems }] : undefined,
-      };
-
-      await createSubtask(parentTaskId, subtaskData);
-
-      Alert.alert('Успешно', 'Подзадача создана');
-      handleReset();
-      onSubtaskCreated?.();
-      onClose();
-    } catch (error) {
-      console.error('Error creating subtask:', error);
-      Alert.alert('Ошибка', 'Не удалось создать подзадачу');
-    } finally {
-      setIsLoading(false);
+  // Get step info
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case 1: return 'Название подзадачи';
+      case 2: return 'Тип содержимого';
+      case 3: return contentType === 'checklist' ? 'Чек-лист' : 'Описание';
+      case 4: return 'Детали подзадачи';
+      default: return '';
     }
   };
+
+  const getTotalSteps = () => {
+    return contentType === 'none' ? 3 : 4;
+  };
+
+  const getDisplayStep = () => {
+    if (contentType === 'none' && currentStep === 4) return 3;
+    return currentStep;
+  };
+
+  const contentTypes = [
+    {
+      type: 'checklist' as TaskContentType,
+      icon: 'checkbox-outline',
+      title: 'С чек-листом',
+      description: 'Список пунктов для отметки',
+    },
+    {
+      type: 'description' as TaskContentType,
+      icon: 'document-text-outline',
+      title: 'С описанием',
+      description: 'Добавьте текстовое описание',
+    },
+    {
+      type: 'none' as TaskContentType,
+      icon: 'flash-outline',
+      title: 'Быстрая подзадача',
+      description: 'Без описания и чек-листа',
+    },
+  ];
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={true}
+      transparent={false}
       onRequestClose={handleClose}
+      presentationStyle="fullScreen"
     >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContainer, { backgroundColor: theme.card }]}>
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: theme.border }]}>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Новая подзадача</Text>
-            <TouchableOpacity onPress={handleClose} disabled={isLoading}>
-              <Ionicons name="close" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
+      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
+
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+            <Ionicons name="close" size={28} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Создание подзадачи</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+              Шаг {getDisplayStep()} из {getTotalSteps()}
+            </Text>
           </View>
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Title Input */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Название <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-                placeholder="Введите название подзадачи..."
-                placeholderTextColor={theme.inputPlaceholder}
-                value={title}
-                onChangeText={setTitle}
-                editable={!isLoading}
-                autoFocus
-              />
-            </View>
+          <View style={styles.headerButton} />
+        </View>
 
-            {/* Description Input */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.text }]}>Описание</Text>
-              <TextInput
-                style={[styles.input, styles.textArea, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-                placeholder="Введите описание (необязательно)..."
-                placeholderTextColor={theme.inputPlaceholder}
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                editable={!isLoading}
+        {/* Progress Indicator */}
+        <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
+          <View style={styles.progressBar}>
+            {[1, 2, 3, 4].slice(0, getTotalSteps()).map((step) => (
+              <View
+                key={step}
+                style={[
+                  styles.progressStep,
+                  { backgroundColor: theme.border },
+                  getDisplayStep() >= step && { backgroundColor: theme.primary },
+                ]}
               />
-            </View>
+            ))}
+          </View>
+        </View>
 
-            {/* Priority Selection */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.text }]}>Приоритет</Text>
-              <View style={styles.priorityGrid}>
-                {PRIORITY_OPTIONS.map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.priorityOption,
-                      { backgroundColor: theme.card, borderColor: priority === option.value ? option.color : theme.border },
-                      priority === option.value && { backgroundColor: theme.backgroundSecondary },
-                    ]}
-                    onPress={() => setPriority(option.value)}
-                    disabled={isLoading}
-                  >
-                    <View
+        {/* Content */}
+        <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
+          <ScrollView
+            style={[styles.content, { backgroundColor: theme.background }]}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.stepContainer}>
+              <Text style={[styles.stepTitle, { color: theme.text }]}>{getStepTitle()}</Text>
+
+              {/* Step 1: Title */}
+              {currentStep === 1 && (
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                    Введите краткое и понятное название для новой подзадачи
+                  </Text>
+                  <TextInput
+                    style={[styles.largeInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Например: Проверить документы..."
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={title}
+                    onChangeText={setTitle}
+                    maxLength={100}
+                    autoFocus
+                    multiline
+                  />
+                  <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+                    {title.length}/100
+                  </Text>
+                </View>
+              )}
+
+              {/* Step 2: Content Type Selection */}
+              {currentStep === 2 && (
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                    Выберите, как вы хотите структурировать подзадачу
+                  </Text>
+                  {contentTypes.map((item) => (
+                    <TouchableOpacity
+                      key={item.type}
+                      onPress={() => setContentType(item.type)}
                       style={[
-                        styles.priorityDot,
-                        { backgroundColor: option.color },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.priorityText,
-                        { color: priority === option.value ? option.color : theme.textSecondary },
+                        styles.contentTypeCard,
+                        { backgroundColor: theme.card, borderColor: theme.border },
+                        contentType === item.type && { borderColor: theme.primary, borderWidth: 2 },
                       ]}
                     >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Assignee Selection */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.text }]}>Исполнитель</Text>
-              <UserSelector
-                selectedUserIds={assigneeIds}
-                onSelectionChange={setAssigneeIds}
-                multiSelect={false}
-                placeholder="Выберите исполнителя"
-                modalTitle="Выбрать исполнителя"
-              />
-            </View>
-
-            {/* Checklist Section */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.text }]}>Чек-лист</Text>
-
-              {/* Add New Item */}
-              <View style={[styles.addChecklistContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                <TextInput
-                  style={[styles.addChecklistInput, { color: theme.text }]}
-                  placeholder="Добавить пункт..."
-                  placeholderTextColor={theme.inputPlaceholder}
-                  value={newItemText}
-                  onChangeText={setNewItemText}
-                  onSubmitEditing={handleAddItem}
-                  returnKeyType="done"
-                  editable={!isLoading}
-                />
-                {newItemText.trim() && (
-                  <TouchableOpacity onPress={handleAddItem}>
-                    <Ionicons name="add-circle" size={32} color={theme.primary} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Checklist Items */}
-              {checklistItems.length > 0 && (
-                <View
-                  style={[styles.checklistCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-                >
-                  {checklistItems.map((item, index) => (
-                    <View key={index} style={styles.checklistItemRow}>
-                      <View style={styles.checklistItemDot} />
-                      <Text style={[styles.checklistItemText, { color: theme.textSecondary }]} numberOfLines={2}>
-                        {item}
-                      </Text>
-                      <TouchableOpacity onPress={() => handleRemoveItem(index)}>
-                        <Ionicons name="close-circle" size={18} color="#9ca3af" />
-                      </TouchableOpacity>
-                    </View>
+                      <View style={[styles.contentTypeIcon, { backgroundColor: contentType === item.type ? theme.primary : theme.backgroundSecondary }]}>
+                        <Ionicons name={item.icon as any} size={28} color={contentType === item.type ? '#FFFFFF' : theme.primary} />
+                      </View>
+                      <View style={styles.contentTypeInfo}>
+                        <Text style={[styles.contentTypeTitle, { color: theme.text }]}>{item.title}</Text>
+                        <Text style={[styles.contentTypeDescription, { color: theme.textSecondary }]}>{item.description}</Text>
+                      </View>
+                      {contentType === item.type && (
+                        <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                      )}
+                    </TouchableOpacity>
                   ))}
                 </View>
               )}
-            </View>
 
-            {/* Due Date Selection */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.text }]}>Срок выполнения</Text>
-              <TouchableOpacity
-                style={[styles.dateButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-                onPress={() => setShowDatePicker(true)}
-                disabled={isLoading}
-              >
-                <Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />
-                <Text style={[styles.dateButtonText, { color: theme.text }]}>
-                  {dueDate
-                    ? dueDate.toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })
-                    : 'Выберите дату'}
-                </Text>
-                {dueDate && (
-                  <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      setDueDate(undefined);
-                    }}
-                    style={styles.clearButton}
-                  >
-                    <Ionicons name="close-circle" size={20} color="#ef4444" />
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
+              {/* Step 3: Content Input (Checklist or Description) */}
+              {currentStep === 3 && contentType === 'checklist' && (
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                    Добавьте пункты в чек-лист для отслеживания прогресса выполнения
+                  </Text>
+
+                  {/* Add item input */}
+                  <View style={styles.addChecklistContainer}>
+                    <TextInput
+                      style={[styles.checklistInput, { flex: 1, backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Добавить пункт..."
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={newItemText}
+                      onChangeText={setNewItemText}
+                      onSubmitEditing={handleAddItem}
+                      returnKeyType="done"
+                      multiline
+                      textAlignVertical="top"
+                      maxLength={200}
+                    />
+                    <TouchableOpacity
+                      onPress={handleAddItem}
+                      style={[styles.addButton, { backgroundColor: newItemText.trim() ? theme.primary : theme.backgroundSecondary }]}
+                      disabled={!newItemText.trim()}
+                    >
+                      <Ionicons name="add" size={24} color={newItemText.trim() ? '#FFFFFF' : theme.textTertiary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Render checklist items */}
+                  {checklistItems.length > 0 && (
+                    <View style={styles.checklistItemsContainer}>
+                      {checklistItems.map((item, index) => (
+                        <View key={index} style={[styles.checklistItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                          <View style={[styles.checkbox, { borderColor: theme.border }]} />
+                          <Text style={[styles.itemText, { color: theme.text }]} numberOfLines={2}>{item}</Text>
+                          <TouchableOpacity onPress={() => handleRemoveItem(index)} style={styles.removeButton}>
+                            <Ionicons name="close-circle" size={20} color={theme.error} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {checklistItems.length === 0 && (
+                    <View style={[styles.emptyState, { backgroundColor: theme.card }]}>
+                      <Ionicons name="list-outline" size={48} color={theme.textTertiary} />
+                      <Text style={[styles.emptyStateText, { color: theme.textTertiary }]}>
+                        Добавьте первый пункт в чек-лист
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {currentStep === 3 && contentType === 'description' && (
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                    Опишите детали подзадачи, требования или любую другую важную информацию
+                  </Text>
+                  <TextInput
+                    style={[styles.textArea, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Введите описание подзадачи..."
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    numberOfLines={8}
+                    textAlignVertical="top"
+                    maxLength={500}
+                  />
+                  <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+                    {description.length}/500
+                  </Text>
+                </View>
+              )}
+
+              {/* Step 4: Details (Priority, Date, Assignee) */}
+              {currentStep === 4 && (
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                    Укажите приоритет, срок выполнения и исполнителя
+                  </Text>
+
+                  {/* Priority */}
+                  <View style={styles.detailSection}>
+                    <Text style={[styles.detailLabel, { color: theme.text }]}>Приоритет</Text>
+                    <View style={styles.priorityRow}>
+                      {priorities.map((p) => (
+                        <TouchableOpacity
+                          key={p.value}
+                          onPress={() => setPriority(p.value)}
+                          style={[
+                            styles.priorityChip,
+                            { backgroundColor: theme.card, borderColor: theme.border },
+                            priority === p.value && {
+                              backgroundColor: p.color,
+                              borderColor: p.color,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.priorityChipText,
+                              { color: theme.text },
+                              priority === p.value && { color: '#FFFFFF', fontWeight: '600' },
+                            ]}
+                          >
+                            {p.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Due Date */}
+                  <View style={styles.detailSection}>
+                    <Text style={[styles.detailLabel, { color: theme.text }]}>Срок выполнения (необязательно)</Text>
+                    <TouchableOpacity
+                      style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                      <Text style={[styles.dateButtonText, { color: dueDate ? theme.text : theme.textTertiary }]}>
+                        {dueDate
+                          ? format(dueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
+                          : 'Выберите дату и время'}
+                      </Text>
+                      {dueDate && (
+                        <TouchableOpacity onPress={() => setDueDate(undefined)} style={styles.clearButton}>
+                          <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                        </TouchableOpacity>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Assignee */}
+                  <View style={styles.detailSection}>
+                    <Text style={[styles.detailLabel, { color: theme.text }]}>Исполнитель (необязательно)</Text>
+                    <UserSelector
+                      selectedUserIds={assigneeIds}
+                      onSelectionChange={setAssigneeIds}
+                      multiSelect={false}
+                      placeholder="Выберите исполнителя"
+                      modalTitle="Выбрать исполнителя"
+                    />
+                  </View>
+                </View>
+              )}
             </View>
           </ScrollView>
+        </Animated.View>
 
-          {/* Date Picker Modal */}
+        {/* Bottom Navigation */}
+        <View style={[styles.bottomNav, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: insets.bottom }]}>
+          {currentStep > 1 ? (
+            <TouchableOpacity
+              onPress={goToPreviousStep}
+              style={[styles.navButton, styles.backButton, { borderColor: theme.border }]}
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.text} />
+              <Text style={[styles.navButtonText, { color: theme.text }]}>Назад</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.navButton} />
+          )}
+
+          {currentStep < 4 ? (
+            <TouchableOpacity
+              onPress={goToNextStep}
+              style={[styles.navButton, styles.nextButton, { backgroundColor: theme.primary }]}
+            >
+              <Text style={[styles.navButtonText, { color: '#FFFFFF' }]}>Далее</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={handleCreateSubtask}
+              disabled={isCreating}
+              style={[styles.navButton, styles.createButton, { backgroundColor: theme.primary }]}
+            >
+              {isCreating ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  <Text style={[styles.navButtonText, { color: '#FFFFFF' }]}>Создать</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Date Picker Modal */}
+        {showDatePicker && (
           <DatePickerModal
             visible={showDatePicker}
             value={dueDate || new Date()}
-            mode="date"
-            onChange={(_event, date) => {
-              if (date) setDueDate(date);
-            }}
+            onChange={handleDateChange}
             onClose={() => setShowDatePicker(false)}
             minimumDate={new Date()}
+            mode="datetime"
           />
-
-          {/* Footer */}
-          <View style={[styles.footer, { borderTopColor: theme.border }]}>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonCancel, { backgroundColor: theme.backgroundSecondary }]}
-              onPress={handleClose}
-              disabled={isLoading}
-            >
-              <Text style={[styles.buttonCancelText, { color: theme.textSecondary }]}>Отмена</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.button,
-                { backgroundColor: (isLoading || !title.trim()) ? theme.border : theme.primary },
-              ]}
-              onPress={handleCreate}
-              disabled={isLoading || !title.trim()}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.buttonCreateText}>Создать</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  modalOverlay: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
+  headerButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  progressContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  progressBar: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  progressStep: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
   },
   content: {
+    flex: 1,
+  },
+  stepContainer: {
     padding: 20,
   },
-  section: {
-    marginBottom: 20,
+  stepTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 12,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  required: {
-    color: '#ef4444',
-  },
-  input: {
+  stepDescription: {
     fontSize: 15,
-    padding: 12,
-    borderRadius: 8,
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  stepContent: {
+    gap: 16,
+  },
+  largeInput: {
+    fontSize: 16,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  charCount: {
+    fontSize: 13,
+    textAlign: 'right',
+  },
+  contentTypeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 16,
+  },
+  contentTypeIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contentTypeInfo: {
+    flex: 1,
+  },
+  contentTypeTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  contentTypeDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  addChecklistContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  checklistInput: {
+    fontSize: 15,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    minHeight: 48,
+    maxHeight: 120,
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checklistItemsContainer: {
+    gap: 12,
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  textArea: {
-    minHeight: 100,
-    maxHeight: 150,
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
   },
-  priorityGrid: {
+  itemText: {
+    flex: 1,
+    fontSize: 15,
+  },
+  removeButton: {
+    padding: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    borderRadius: 12,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    marginTop: 12,
+  },
+  textArea: {
+    fontSize: 15,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 160,
+    borderWidth: 1,
+    textAlignVertical: 'top',
+  },
+  detailSection: {
+    marginBottom: 24,
+  },
+  detailLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  priorityRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  priorityOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+  priorityChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 20,
     borderWidth: 2,
-    minWidth: '47%',
   },
-  priorityDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  priorityText: {
+  priorityChipText: {
     fontSize: 14,
     fontWeight: '500',
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderWidth: 1,
+    borderRadius: 12,
+    gap: 12,
   },
   dateButtonText: {
     flex: 1,
@@ -414,91 +774,32 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: 4,
   },
-  footer: {
-    flexDirection: 'row',
-    gap: 12,
-    padding: 20,
-    borderTopWidth: 1,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonCancel: {
-    // backgroundColor applied dynamically
-  },
-  buttonCancelText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  buttonCreateText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  addChecklistContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  addChecklistInput: {
-    flex: 1,
-    fontSize: 15,
-  },
-  checklistCard: {
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  checklistHeader: {
+  bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    gap: 12,
   },
-  checklistTitle: {
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    flex: 1,
+  },
+  backButton: {
+    borderWidth: 1,
+  },
+  nextButton: {},
+  createButton: {},
+  navButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    flex: 1,
-  },
-  checklistItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-  },
-  checklistItemDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#9ca3af',
-  },
-  checklistItemText: {
-    flex: 1,
-    fontSize: 14,
-  },
-  addItemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  addItemInput: {
-    flex: 1,
-    fontSize: 14,
-    padding: 8,
-    borderRadius: 6,
-    borderWidth: 1,
   },
 });

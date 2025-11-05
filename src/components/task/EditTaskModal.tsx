@@ -17,10 +17,10 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
-import { Task, TaskPriority, TaskChecklist, TaskChecklistItem, CreateChecklistDto, CreateChecklistItemDto } from '../../types/task.types';
+import { Task, TaskPriority, TaskChecklist } from '../../types/task.types';
 import * as taskApi from '@api/task.api';
 import UserSelector from '@components/common/UserSelector';
 import DatePickerModal from '@components/common/DatePickerModal';
@@ -61,12 +61,29 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [newItemText, setNewItemText] = useState('');
   const [loadingChecklists, setLoadingChecklists] = useState(false);
 
+  // Track initial state to determine what can be added
+  const [hasInitialDescription, setHasInitialDescription] = useState(false);
+  const [hasInitialChecklists, setHasInitialChecklists] = useState(false);
+
+  // Track what user wants to add if nothing exists
+  const [selectedContentType, setSelectedContentType] = useState<'description' | 'checklist' | null>(null);
+
   // Load checklists when modal opens
   useEffect(() => {
     if (visible && task.id) {
+      setTitle(task.title);
+      setDescription(task.description || '');
+      setPriority(task.priority);
+      setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+      setAssigneeId(task.assignees && task.assignees.length > 0 ? task.assignees[0].id : undefined);
+
+      // Track initial state
+      setHasInitialDescription(!!task.description);
+      setSelectedContentType(null);
+
       loadChecklists();
     }
-  }, [visible, task.id]);
+  }, [visible, task]);
 
   const loadChecklists = async () => {
     try {
@@ -83,12 +100,20 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         }))
       );
       setChecklistItems(allItems);
+      setHasInitialChecklists(allItems.length > 0);
     } catch (error) {
       console.error('Error loading checklists:', error);
     } finally {
       setLoadingChecklists(false);
     }
   };
+
+  // Determine what content can be shown
+  const hasNoContent = !hasInitialDescription && !hasInitialChecklists;
+
+  const showDescription = hasInitialDescription || (hasNoContent && selectedContentType === 'description');
+  const showChecklists = hasInitialChecklists || (hasNoContent && selectedContentType === 'checklist');
+  const showContentChoice = hasNoContent && selectedContentType === null;
 
   // Checklist handlers
   const handleAddItem = () => {
@@ -208,187 +233,257 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
     >
       <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
+
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <Ionicons name="close" size={28} color={theme.error} />
-            </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+            <Ionicons name="close" size={28} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование</Text>
           </View>
 
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Редактировать</Text>
-
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isSaving || !title.trim()}
-              style={[
-                styles.saveButton,
-                { backgroundColor: theme.error },
-                (!title.trim() || isSaving) && { backgroundColor: theme.backgroundTertiary }
-              ]}
-            >
-              <Ionicons
-                name="checkmark"
-                size={24}
-                color={(!title.trim() || isSaving) ? theme.textTertiary : '#FFFFFF'}
-              />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={isSaving || !title.trim()}
+            style={styles.headerButton}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <Text style={[styles.saveButtonText, { color: !title.trim() ? theme.textTertiary : theme.primary }]}>
+                Готово
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Content */}
         <ScrollView
           style={[styles.content, { backgroundColor: theme.background }]}
-          contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}
+          contentContainerStyle={{ paddingBottom: 20 + insets.bottom }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Название */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>Название *</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-              placeholder="Что нужно сделать?"
-              placeholderTextColor={theme.inputPlaceholder}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
-            />
-          </View>
+          {/* Basic Info Card */}
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Основная информация</Text>
 
-          {/* Описание */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>Описание</Text>
-            <TextInput
-              style={[styles.textArea, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-              placeholder="Добавьте детали..."
-              placeholderTextColor={theme.inputPlaceholder}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              maxLength={500}
-            />
-          </View>
+            {/* Title */}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Название</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                placeholder="Введите название задачи..."
+                placeholderTextColor={theme.inputPlaceholder}
+                value={title}
+                onChangeText={setTitle}
+                maxLength={100}
+              />
+            </View>
 
-          {/* Приоритет */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>Приоритет</Text>
-            <View style={styles.priorityRow}>
-              {priorities.map((p) => (
-                <TouchableOpacity
-                  key={p.value}
-                  onPress={() => setPriority(p.value)}
-                  style={[
-                    styles.priorityChip,
-                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                    priority === p.value && {
-                      backgroundColor: p.color,
-                    },
-                  ]}
-                >
-                  <Text
+            {/* Priority */}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Приоритет</Text>
+              <View style={styles.priorityRow}>
+                {priorities.map((p) => (
+                  <TouchableOpacity
+                    key={p.value}
+                    onPress={() => setPriority(p.value)}
                     style={[
-                      styles.priorityChipText,
-                      { color: theme.text },
-                      priority === p.value && { color: '#FFFFFF', fontWeight: '600' },
+                      styles.priorityChip,
+                      { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                      priority === p.value && {
+                        backgroundColor: p.color,
+                        borderColor: p.color,
+                      },
                     ]}
                   >
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.priorityChipText,
+                        { color: theme.text },
+                        priority === p.value && { color: '#FFFFFF', fontWeight: '600' },
+                      ]}
+                    >
+                      {p.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </View>
 
-          {/* Дата */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>Срок выполнения</Text>
-            <TouchableOpacity
-              style={[styles.dateButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Ionicons name="calendar" size={20} color={theme.primary} />
-              <Text style={[styles.dateButtonText, { color: theme.text }]}>
-                {dueDate
-                  ? format(dueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
-                  : 'Выберите дату и время'}
-              </Text>
-              {dueDate && (
+          {/* Description or Checklist Card */}
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Содержимое</Text>
+
+            {/* Choice buttons when no content exists */}
+            {showContentChoice && (
+              <View style={styles.contentChoiceContainer}>
+                <Text style={[styles.choiceDescription, { color: theme.textSecondary }]}>
+                  Выберите тип содержимого для задачи
+                </Text>
+
                 <TouchableOpacity
-                  onPress={() => setDueDate(undefined)}
-                  style={styles.clearButton}
+                  onPress={() => setSelectedContentType('description')}
+                  style={[styles.choiceButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
                 >
-                  <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                  <View style={[styles.choiceIcon, { backgroundColor: theme.primary }]}>
+                    <Ionicons name="document-text-outline" size={24} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.choiceInfo}>
+                    <Text style={[styles.choiceTitle, { color: theme.text }]}>Описание</Text>
+                    <Text style={[styles.choiceSubtitle, { color: theme.textSecondary }]}>
+                      Добавьте текстовое описание
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
                 </TouchableOpacity>
-              )}
-            </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setSelectedContentType('checklist')}
+                  style={[styles.choiceButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                >
+                  <View style={[styles.choiceIcon, { backgroundColor: theme.primary }]}>
+                    <Ionicons name="checkbox-outline" size={24} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.choiceInfo}>
+                    <Text style={[styles.choiceTitle, { color: theme.text }]}>Чек-лист</Text>
+                    <Text style={[styles.choiceSubtitle, { color: theme.textSecondary }]}>
+                      Список пунктов для отметки
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Description Section */}
+            {showDescription && (
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>Описание</Text>
+                <TextInput
+                  style={[styles.textArea, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                  placeholder="Добавьте описание задачи..."
+                  placeholderTextColor={theme.inputPlaceholder}
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={6}
+                  textAlignVertical="top"
+                  maxLength={500}
+                />
+                <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+                  {description.length}/500
+                </Text>
+              </View>
+            )}
+
+            {/* Checklist Section */}
+            {showChecklists && (
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>Чек-лист</Text>
+
+                {loadingChecklists ? (
+                  <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
+                ) : (
+                  <>
+                    {/* Add item input */}
+                    <View style={styles.addChecklistContainer}>
+                      <TextInput
+                        style={[styles.checklistInput, { flex: 1, backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                        placeholder="Добавить пункт..."
+                        placeholderTextColor={theme.inputPlaceholder}
+                        value={newItemText}
+                        onChangeText={setNewItemText}
+                        onSubmitEditing={handleAddItem}
+                        returnKeyType="done"
+                        multiline
+                        textAlignVertical="top"
+                        maxLength={200}
+                      />
+                      <TouchableOpacity
+                        onPress={handleAddItem}
+                        style={[styles.addButton, { backgroundColor: newItemText.trim() ? theme.primary : theme.backgroundSecondary }]}
+                        disabled={!newItemText.trim()}
+                      >
+                        <Ionicons name="add" size={24} color={newItemText.trim() ? '#FFFFFF' : theme.textTertiary} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Render checklist items */}
+                    {checklistItems.filter(item => !item._deleted).length > 0 ? (
+                      <View style={styles.checklistItemsContainer}>
+                        {checklistItems.filter(item => !item._deleted).map((item) => {
+                          const actualIndex = checklistItems.indexOf(item);
+                          return (
+                            <View key={actualIndex} style={[styles.checklistItem, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                              <View style={[styles.checkbox, { borderColor: theme.border }]} />
+                              <Text style={[styles.itemText, { color: theme.text }]} numberOfLines={3}>
+                                {item.title}
+                              </Text>
+                              <TouchableOpacity onPress={() => handleRemoveItem(actualIndex)} style={styles.removeButton}>
+                                <Ionicons name="close-circle" size={20} color={theme.error} />
+                              </TouchableOpacity>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      <View style={[styles.emptyState, { backgroundColor: theme.backgroundSecondary }]}>
+                        <Ionicons name="list-outline" size={32} color={theme.textTertiary} />
+                        <Text style={[styles.emptyText, { color: theme.textTertiary }]}>
+                          Нет пунктов в чек-листе
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
           </View>
 
-          {/* Исполнитель */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>Исполнитель</Text>
-            <UserSelector
-              selectedUserIds={assigneeId ? [assigneeId] : []}
-              onSelectionChange={(ids) => setAssigneeId(ids[0])}
-              multiSelect={false}
-              placeholder="Выберите исполнителя"
-              modalTitle="Выбрать исполнителя"
-            />
-          </View>
+          {/* Details Card */}
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Детали</Text>
 
-          {/* Чек-лист */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Ionicons name="checkbox-outline" size={18} color={theme.text} style={{ marginRight: 8 }} />
-              <Text style={[styles.sectionLabel, { color: theme.text, marginBottom: 0 }]}>Чек-лист</Text>
+            {/* Due Date */}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Срок выполнения</Text>
+              <TouchableOpacity
+                style={[styles.dateButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                <Text style={[styles.dateButtonText, { color: dueDate ? theme.text : theme.textTertiary }]}>
+                  {dueDate
+                    ? format(dueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
+                    : 'Не указан'}
+                </Text>
+                {dueDate && (
+                  <TouchableOpacity
+                    onPress={() => setDueDate(undefined)}
+                    style={styles.clearButton}
+                  >
+                    <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
             </View>
 
-            {loadingChecklists ? (
-              <ActivityIndicator size="small" color={theme.primary} />
-            ) : (
-              <>
-                {/* Add item input */}
-                <View style={styles.addChecklistContainer}>
-                  <TextInput
-                    style={[styles.input, { flex: 1, backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Добавить пункт..."
-                    placeholderTextColor={theme.inputPlaceholder}
-                    value={newItemText}
-                    onChangeText={setNewItemText}
-                    onSubmitEditing={handleAddItem}
-                    returnKeyType="done"
-                  />
-                  {newItemText.trim() && (
-                    <TouchableOpacity onPress={handleAddItem} style={styles.addButton}>
-                      <Ionicons name="add-circle" size={28} color={theme.primary} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Render checklist items */}
-                {checklistItems.filter(item => !item._deleted).length > 0 && (
-                  <View style={[styles.checklistCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                    {checklistItems.filter(item => !item._deleted).map((item, index) => {
-                      const actualIndex = checklistItems.indexOf(item);
-                      return (
-                        <View key={actualIndex} style={styles.checklistItem}>
-                          <View style={[styles.checkbox, { borderColor: theme.border }]} />
-                          <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={2}>
-                            {item.title}
-                          </Text>
-                          <TouchableOpacity onPress={() => handleRemoveItem(actualIndex)}>
-                            <Ionicons name="close-circle" size={18} color={theme.textTertiary} />
-                          </TouchableOpacity>
-                        </View>
-                      );
-                    })}
-                  </View>
-                )}
-              </>
-            )}
+            {/* Assignee */}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Исполнитель</Text>
+              <UserSelector
+                selectedUserIds={assigneeId ? [assigneeId] : []}
+                onSelectionChange={(ids) => setAssigneeId(ids[0])}
+                multiSelect={false}
+                placeholder="Не назначен"
+                modalTitle="Выбрать исполнителя"
+              />
+            </View>
           </View>
         </ScrollView>
 
@@ -416,71 +511,70 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 6,
     borderBottomWidth: 1,
   },
-  headerLeft: {
-    width: 100,
-    alignItems: 'flex-start',
-  },
   headerButton: {
-    width: 40,
-    height: 40,
+    width: 80,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerRight: {
-    width: 100,
-    alignItems: 'flex-end',
-  },
-  saveButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   saveButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   content: {
     flex: 1,
   },
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
+  card: {
+    margin: 16,
+    marginBottom: 0,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
   },
-  sectionLabel: {
-    fontSize: 13,
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 20,
+  },
+  field: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginBottom: 8,
   },
   input: {
-    fontSize: 16,
-    borderRadius: 8,
+    fontSize: 15,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
   },
   textArea: {
     fontSize: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    minHeight: 100,
+    minHeight: 120,
     borderWidth: 1,
     textAlignVertical: 'top',
+  },
+  charCount: {
+    fontSize: 13,
+    textAlign: 'right',
+    marginTop: 4,
   },
   priorityRow: {
     flexDirection: 'row',
@@ -488,10 +582,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   priorityChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
     borderRadius: 20,
-    borderWidth: 1,
+    borderWidth: 2,
   },
   priorityChipText: {
     fontSize: 14,
@@ -501,9 +595,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 12,
   },
   dateButtonText: {
@@ -511,29 +605,42 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   clearButton: {
-    padding: 8,
-  },
-  // Checklist styles
-  addChecklistContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  addButton: {
     padding: 4,
   },
-  checklistCard: {
-    borderRadius: 12,
-    padding: 12,
+  addChecklistContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
     marginBottom: 12,
+  },
+  checklistInput: {
+    fontSize: 15,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
+    minHeight: 48,
+    maxHeight: 120,
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checklistItemsContainer: {
+    gap: 12,
   },
   checklistItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   checkbox: {
     width: 20,
@@ -543,7 +650,69 @@ const styles = StyleSheet.create({
   },
   itemText: {
     flex: 1,
+    fontSize: 15,
+  },
+  removeButton: {
+    padding: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  emptyText: {
     fontSize: 14,
+    marginTop: 8,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    marginBottom: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  contentChoiceContainer: {
+    gap: 12,
+  },
+  choiceDescription: {
+    fontSize: 14,
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  choiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  choiceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceInfo: {
+    flex: 1,
+  },
+  choiceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  choiceSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
 

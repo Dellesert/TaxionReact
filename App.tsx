@@ -12,10 +12,13 @@ import { useAuthStore } from './src/store/authStore';
 import { useThemeStore } from './src/store/themeStore';
 import { websocketService } from './src/services/websocket.service';
 
-// Ignore specific warnings
-LogBox.ignoreLogs([
-  'Non-serializable values were found in the navigation state',
-]);
+// Ignore all logs in the app UI (they will still appear in Metro console)
+LogBox.ignoreAllLogs();
+
+// Optionally, ignore specific warnings
+// LogBox.ignoreLogs([
+//   'Non-serializable values were found in the navigation state',
+// ]);
 
 export default function App() {
   const initialize = useAuthStore((state) => state.initialize);

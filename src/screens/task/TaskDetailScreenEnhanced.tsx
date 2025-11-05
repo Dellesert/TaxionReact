@@ -139,9 +139,11 @@ export const TaskDetailScreenEnhanced: React.FC = () => {
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         {/* Description */}
         {task.description && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Описание</Text>
-            <Text style={styles.descriptionText}>{task.description}</Text>
+          <View style={styles.descriptionSection}>
+            <Text style={styles.descriptionTitle}>{task.title}</Text>
+            <View style={styles.descriptionCard}>
+              <Text style={styles.descriptionText}>{task.description}</Text>
+            </View>
           </View>
         )}
 
@@ -327,6 +329,11 @@ export const TaskDetailScreenEnhanced: React.FC = () => {
       {activeTab === 'checklists' && (
         <TaskChecklistsView
           taskId={task.id}
+          taskTitle={task.title}
+          assigneeName={task.assignees && task.assignees.length > 0 ? task.assignees[0].name : undefined}
+          assigneeAvatar={task.assignees && task.assignees.length > 0 ? task.assignees[0].avatar : undefined}
+          priority={task.priority}
+          dueDate={task.due_date}
           onChecklistChanged={handleRefresh}
         />
       )}
@@ -433,10 +440,30 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  descriptionSection: {
+    padding: 16,
+  },
+  descriptionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
+    color: '#111827',
+    marginBottom: 10,
+  },
+  descriptionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
   descriptionText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     color: '#374151',
+    fontWeight: '500',
   },
   badgesRow: {
     flexDirection: 'row',
