@@ -6,6 +6,10 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  ActionSheetIOS,
+  Alert,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -25,41 +29,68 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   const { theme } = useTheme();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
+  const [showMenu, setShowMenu] = useState(false);
 
-  const handleImagePick = async () => {
-    console.log('🔥 handleImagePick called! Platform:', Platform.OS);
+  const handleCameraPick = async () => {
 
     try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permission.granted) {
+        onError?.('Нужно разрешение для доступа к камере');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const fileObjects = await Promise.all(
+          result.assets.map(async (asset) => {
+            if (asset.uri.startsWith('blob:')) {
+              const response = await fetch(asset.uri);
+              const blob = await response.blob();
+              const fileName = asset.fileName || `photo_${Date.now()}.jpg`;
+              const mimeType = asset.type === 'video' ? 'video/mp4' : 'image/jpeg';
+              return new File([blob], fileName, { type: mimeType });
+            } else {
+              return {
+                uri: asset.uri,
+                name: asset.fileName || `photo_${Date.now()}.jpg`,
+                type: asset.type === 'video' ? 'video/mp4' : 'image/jpeg',
+              };
+            }
+          })
+        );
+
+        await uploadFiles(fileObjects);
+      }
+    } catch (error) {
+      onError?.('Ошибка при съемке фото: ' + (error as Error).message);
+    }
+  };
+
+  const handleImagePick = async () => {
+    try {
       // Пробуем использовать ImagePicker на всех платформах
-      console.log('📸 Requesting media library permissions...');
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
-        console.error('❌ Media library permission denied');
         onError?.('Нужно разрешение для доступа к галерее');
         return;
       }
 
-      console.log('✅ Media library permission granted');
-      console.log('📸 Launching image library...');
-
-      // На iOS используем базовые параметры без allowsMultipleSelection
+      // Включаем множественный выбор на всех платформах
       const pickerOptions: any = {
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         quality: 0.8,
+        allowsMultipleSelection: true, // Разрешаем выбор нескольких файлов
       };
 
-      // На Android добавляем множественный выбор
-      if (Platform.OS === 'android') {
-        pickerOptions.allowsMultipleSelection = true;
-      }
-
-      console.log('📸 Picker options:', pickerOptions);
-
       const result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
-
-      console.log('📸 ImagePicker returned!');
-      console.log('📸 ImagePicker result:', JSON.stringify(result, null, 2));
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const fileObjects = await Promise.all(
@@ -83,106 +114,70 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         await uploadFiles(fileObjects);
       }
     } catch (error) {
-      console.error('❌ Error picking image:', error);
       onError?.('Ошибка при выборе изображения: ' + (error as Error).message);
     }
   };
 
-  const handleImagePickOld = async () => {
-    console.log('🔥 handleImagePick called! Platform:', Platform.OS);
-
-    try {
-      // СТАРЫЙ КОД - на случай если новый не сработает
-      if (Platform.OS === 'ios') {
-        console.log('📸 Using DocumentPicker for iOS (ImagePicker bug workaround)');
-
-        console.log('📸 About to call getDocumentAsync for images/videos...');
-
-        const result = await DocumentPicker.getDocumentAsync({
-          type: ['image/*', 'video/*'],  // Только изображения и видео
-          copyToCacheDirectory: false,
-        });
-
-        console.log('📸 DocumentPicker returned!');
-        console.log('📸 DocumentPicker result:', JSON.stringify(result, null, 2));
-
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-          const fileObjects = await Promise.all(
-            result.assets.map(async (asset) => {
-              if (asset.uri.startsWith('blob:')) {
-                const response = await fetch(asset.uri);
-                const blob = await response.blob();
-                return new File([blob], asset.name, { type: asset.mimeType || 'image/jpeg' });
-              } else {
-                return {
-                  uri: asset.uri,
-                  name: asset.name,
-                  type: asset.mimeType || 'image/jpeg',
-                };
-              }
-            })
-          );
-
-          await uploadFiles(fileObjects);
+  const showAttachmentMenu = () => {
+    if (Platform.OS === 'web') {
+      // На вебе показываем модальное меню
+      setShowMenu(true);
+    } else if (Platform.OS === 'ios') {
+      // На iOS используем нативный ActionSheet
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Отмена', 'Галерея', 'Камера', 'Документы'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleImagePick();
+          } else if (buttonIndex === 2) {
+            handleCameraPick();
+          } else if (buttonIndex === 3) {
+            handleDocumentPick();
+          }
         }
-      } else {
-        // На Android используем ImagePicker как обычно
-        console.log('📸 Requesting media library permissions...');
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-        if (!permission.granted) {
-          console.error('❌ Media library permission denied');
-          onError?.('Нужно разрешение для доступа к галерее');
-          return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.All,
-          allowsMultipleSelection: true,
-          quality: 0.8,
-        });
-
-        console.log('📸 ImagePicker result:', result);
-
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-          const fileObjects = await Promise.all(
-            result.assets.map(async (asset) => {
-              if (asset.uri.startsWith('blob:')) {
-                const response = await fetch(asset.uri);
-                const blob = await response.blob();
-                const fileName = asset.fileName || `image_${Date.now()}.jpg`;
-                const mimeType = asset.type === 'video' ? 'video/mp4' : 'image/jpeg';
-                return new File([blob], fileName, { type: mimeType });
-              } else {
-                return {
-                  uri: asset.uri,
-                  name: asset.fileName || `image_${Date.now()}.jpg`,
-                  type: asset.type === 'video' ? 'video/mp4' : 'image/jpeg',
-                };
-              }
-            })
-          );
-
-          await uploadFiles(fileObjects);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error picking image:', error);
-      onError?.('Ошибка при выборе изображения: ' + (error as Error).message);
+      );
+    } else {
+      // На Android используем простой Alert с кнопками
+      Alert.alert(
+        'Прикрепить файл',
+        'Выберите источник',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          { text: 'Галерея', onPress: handleImagePick },
+          { text: 'Камера', onPress: handleCameraPick },
+          { text: 'Документы', onPress: handleDocumentPick },
+        ],
+        { cancelable: true }
+      );
     }
+  };
+
+  const handleMenuOption = (option: 'gallery' | 'camera' | 'document') => {
+    setShowMenu(false);
+
+    // Небольшая задержка чтобы модалка успела закрыться
+    setTimeout(() => {
+      if (option === 'gallery') {
+        handleImagePick();
+      } else if (option === 'camera') {
+        handleCameraPick();
+      } else if (option === 'document') {
+        handleDocumentPick();
+      }
+    }, 100);
   };
 
   const handleDocumentPick = async () => {
-    console.log('📄 handleDocumentPick called! Platform:', Platform.OS);
     try {
-      console.log('📄 Launching document picker...');
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         multiple: true,
         copyToCacheDirectory: true,
       });
 
-      console.log('📄 Document picker result:', result);
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const files = result.assets;
@@ -212,7 +207,6 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         })));
       }
     } catch (error) {
-      console.error('Error picking document:', error);
       onError?.('Ошибка при выборе документа');
     }
   };
@@ -242,7 +236,6 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       const fileIds = uploadedFiles.map(f => f.id);
       onFilesSelected(fileIds);
     } catch (error) {
-      console.error('Error uploading files:', error);
       onError?.('Ошибка при загрузке файлов: ' + (error as Error).message);
     } finally {
       setUploading(false);
@@ -261,43 +254,65 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
     );
   }
 
-  // На iOS убираем modal - он блокирует нативные picker'ы
+  // Одна кнопка с меню вложений на всех платформах
   return (
-    <View style={styles.buttonContainer}>
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.backgroundTertiary }]}
-        onPress={() => {
-          console.log('📸 Photo/File button pressed!');
-          handleImagePick();
-        }}
-      >
-        <Ionicons name="image-outline" size={20} color={theme.primary} />
-      </TouchableOpacity>
+    <>
+      {/* Модальное меню для веба */}
+      {Platform.OS === 'web' && (
+        <Modal
+          visible={showMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowMenu(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowMenu(false)}>
+            <View style={[styles.menuContainer, { backgroundColor: theme.backgroundSecondary }]}>
+              <TouchableOpacity
+                style={[styles.menuItem, { borderBottomColor: theme.border }]}
+                onPress={() => handleMenuOption('gallery')}
+              >
+                <Ionicons name="image-outline" size={24} color={theme.primary} />
+                <Text style={[styles.menuText, { color: theme.text }]}>Галерея</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.menuItem, { borderBottomWidth: 0 }]}
+                onPress={() => handleMenuOption('document')}
+              >
+                <Ionicons name="document-attach-outline" size={24} color={theme.primary} />
+                <Text style={[styles.menuText, { color: theme.text }]}>Документы</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.cancelButton, { backgroundColor: theme.backgroundTertiary, marginTop: 8 }]}
+                onPress={() => setShowMenu(false)}
+              >
+                <Text style={[styles.cancelText, { color: theme.textSecondary }]}>Отмена</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+      )}
+
       <TouchableOpacity
         style={[styles.button, { backgroundColor: theme.backgroundTertiary, marginRight: 5 }]}
         onPress={() => {
-          console.log('📄 Document button pressed!');
-          handleDocumentPick();
+          showAttachmentMenu();
         }}
       >
-        <Ionicons name="document-attach-outline" size={20} color={theme.primary} />
+        <Ionicons name="attach" size={24} color={theme.primary} />
       </TouchableOpacity>
-    </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  buttonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   button: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 42,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    marginRight: 5,
   },
   uploadingContainer: {
     flexDirection: 'row',
@@ -308,5 +323,42 @@ const styles = StyleSheet.create({
   },
   uploadingText: {
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  menuContainer: {
+    width: '100%',
+    maxWidth: 300,
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  menuText: {
+    fontSize: 16,
+  },
+  cancelButton: {
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

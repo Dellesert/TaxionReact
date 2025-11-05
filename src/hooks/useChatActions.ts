@@ -128,19 +128,25 @@ export const useChatActions = (chatId: number) => {
       const forwardPrefix = `📩 Переслано от ${senderName}${sourceChatName ? ` (${sourceChatName})` : ''}`;
       const separator = '\n─────────────\n';
 
+      // Получаем file_ids из вложений сообщения
+      const fileIds = forwardingMessage.attachments?.length > 0
+        ? forwardingMessage.attachments.map((attachment: any) => attachment.file_id)
+        : undefined;
+
       // Если это опрос - пересылаем как опрос
       if (forwardingMessage.message_type === 'poll' && forwardingMessage.poll_data) {
         const forwardedContent = `${forwardPrefix}${separator}${forwardingMessage.content}`;
-        await sendMessage(targetChatId, forwardedContent, undefined, undefined, {
+        await sendMessage(targetChatId, forwardedContent, undefined, fileIds, {
           type: 'poll',
           poll_data: forwardingMessage.poll_data,
         });
       } else {
         const forwardedContent = `${forwardPrefix}${separator}${forwardingMessage.content}`;
-        await sendMessage(targetChatId, forwardedContent);
+        await sendMessage(targetChatId, forwardedContent, undefined, fileIds);
       }
 
-      await deleteMessageForUser(forwardingMessage.id, 'me');
+      // Не удаляем сообщение из исходного чата при пересылке
+      // await deleteMessageForUser(forwardingMessage.id, 'me');
     } catch (error: any) {
       console.error('Failed to forward message:', error);
       setError({ error: error.message || 'Failed to forward message' });

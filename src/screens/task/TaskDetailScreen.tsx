@@ -15,11 +15,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task, TaskComment, TaskActivity, TaskAttachment } from '../../types/task.types';
+import { User } from '../../types/user.types';
 import * as taskApi from '@api/task.api';
 import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
+import { UserProfileModal } from '@components/common/UserProfileModal';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { getUser } from '@api/user.api';
+import { getOrCreateDirectChat } from '@api/chat.api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import ShareTaskModal from '@components/task/ShareTaskModal';
@@ -27,6 +31,7 @@ import EditTaskModal from '@components/task/EditTaskModal';
 import { CreateSubtaskModal } from '@components/task/CreateSubtaskModal';
 import { TaskSubtasksList } from '@components/task/TaskSubtasksList';
 import { DelegateTaskModal } from '@components/task/DelegateTaskModal';
+import { TaskChecklistsView } from '@components/task/TaskChecklistsView';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -83,7 +88,7 @@ const TaskDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: TaskDetailRouteParams }, 'params'>>();
   const navigation = useNavigation();
   const { taskId } = route.params;
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
 
   const [task, setTask] = useState<Task | null>(null);
@@ -104,7 +109,7 @@ const TaskDetailScreen: React.FC = () => {
   const [subtasks, setSubtasks] = useState<Task[]>([]);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'attachments' | 'comments' | 'history'>('overview');
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // Share modal state
@@ -123,6 +128,10 @@ const TaskDetailScreen: React.FC = () => {
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
+  // User profile modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Scroll animation - disabled due to performance issues
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -162,6 +171,17 @@ const TaskDetailScreen: React.FC = () => {
         delegation_chain: response.delegation_chain,
         assigned_to: response.assigned_to,
       });
+
+      // Load checklists for the task
+      try {
+        const checklists = await taskApi.getTaskChecklists(taskIdNum);
+        response.checklists = checklists;
+        console.log('📋 Loaded checklists:', checklists.length);
+      } catch (error) {
+        console.error('Failed to load checklists:', error);
+        // Don't fail the whole task load if checklists fail
+      }
+
       setTask(response);
 
       // Load subtasks if this is a parent task
@@ -241,6 +261,17 @@ const TaskDetailScreen: React.FC = () => {
       Alert.alert(
         `Невозможно ${action}`,
         'Пожалуйста, завершите все подзадачи перед тем, как продолжить.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Check if trying to complete or submit for review with incomplete checklist items
+    if ((newStatus === 'done' || newStatus === 'review') && !areAllChecklistItemsCompleted()) {
+      const action = newStatus === 'done' ? 'завершить задачу' : 'сдать на проверку';
+      Alert.alert(
+        `Невозможно ${action}`,
+        'Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.',
         [{ text: 'OK' }]
       );
       return;
@@ -618,20 +649,21 @@ const TaskDetailScreen: React.FC = () => {
     container: {
       flex: 1,
       backgroundColor: theme.background,
+      position: 'relative',
     },
     safeArea: {
       flex: 1,
       backgroundColor: theme.card,
     },
     scrollContent: {
-      paddingBottom: 120,
+      paddingBottom: Platform.OS === 'ios' ? 180 : 140,
     },
     // Header section
     headerSection: {
       backgroundColor: theme.card,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 20,
+      paddingBottom: 12,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
@@ -639,7 +671,6 @@ const TaskDetailScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 6,
     },
     headerButtons: {
       flexDirection: 'row',
@@ -652,12 +683,14 @@ const TaskDetailScreen: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    // Task title in header
+    // Task title (now in content)
     taskTitle: {
-      fontSize: 20,
-      fontWeight: '700',
+      fontSize: 24,
+      fontWeight: '800',
       color: theme.text,
-      lineHeight: 28,
+      lineHeight: 32,
+      marginBottom: 16,
+      letterSpacing: -0.5,
     },
     // Progress container
     progressContainer: {
@@ -665,40 +698,50 @@ const TaskDetailScreen: React.FC = () => {
       alignItems: 'center',
       gap: 12,
       marginBottom: 16,
+      backgroundColor: theme.backgroundSecondary,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
     progressBar: {
       flex: 1,
-      height: 8,
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-      borderRadius: 4,
+      height: 10,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+      borderRadius: 5,
       overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
     },
     progressFill: {
       height: '100%',
-      backgroundColor: '#FFFFFF',
       borderRadius: 4,
     },
     progressText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#FFFFFF',
-      minWidth: 40,
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+      minWidth: 45,
+      textAlign: 'right',
     },
     delegatedBadge: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: '#f3e8ff',
+      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f3e8ff',
       paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingVertical: 8,
       borderRadius: 8,
       alignSelf: 'flex-start',
       marginBottom: 12,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : '#e9d5ff',
     },
     delegatedBadgeText: {
       fontSize: 13,
-      fontWeight: '600',
-      color: '#8b5cf6',
+      fontWeight: '700',
+      color: isDark ? '#c4b5fd' : '#8b5cf6',
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
@@ -738,28 +781,34 @@ const TaskDetailScreen: React.FC = () => {
     // Tabs
     tabsContainer: {
       flexDirection: 'row',
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
-      paddingHorizontal: 16,
+      paddingHorizontal: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
     },
     tab: {
       flex: 1,
-      paddingVertical: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 4,
       alignItems: 'center',
       borderBottomWidth: 3,
       borderBottomColor: 'transparent',
     },
     activeTab: {
-      borderBottomColor: theme.error,
+      borderBottomColor: theme.primary,
     },
     tabText: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textTertiary,
     },
     activeTabText: {
-      color: theme.text,
+      color: theme.primary,
       fontWeight: '700',
     },
     // Tab content
@@ -774,16 +823,23 @@ const TaskDetailScreen: React.FC = () => {
     // Description section
     descriptionSection: {
       marginBottom: 16,
+      backgroundColor: theme.backgroundSecondary,
+      padding: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
     descriptionLabel: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: theme.text,
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.textSecondary,
       marginBottom: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
     descriptionText: {
       fontSize: 15,
-      color: theme.textSecondary,
+      color: theme.text,
       lineHeight: 22,
     },
     descriptionCollapsed: {
@@ -808,6 +864,11 @@ const TaskDetailScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
+      shadowColor: '#10B981',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
     },
     completionIcon: {
       width: 48,
@@ -831,67 +892,113 @@ const TaskDetailScreen: React.FC = () => {
       color: '#FFFFFF',
       opacity: 0.9,
     },
-    // Action buttons
-    actionButtonsContainer: {
-      marginTop: 24,
+    // Fixed Action Buttons at Bottom
+    fixedActionsContainer: {
+      position: 'absolute',
+      bottom: Platform.OS === 'ios' ? 95 : 70,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.card,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 5,
     },
-    actionButton: {
+    fixedActionButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 14,
       borderRadius: 12,
-      marginBottom: 12,
-      gap: 8,
+      gap: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 2,
     },
-    primaryActionButton: {
+    primaryFixedButton: {
       backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      shadowOpacity: 0.3,
+    },
+    secondaryFixedButton: {
+      backgroundColor: theme.backgroundSecondary,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+    },
+    delegateFixedButton: {
+      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f5f3ff',
+      borderWidth: 1.5,
+      borderColor: '#8b5cf6',
     },
     disabledButton: {
       backgroundColor: '#9CA3AF',
       opacity: 0.6,
     },
-    secondaryActionButton: {
-      backgroundColor: theme.backgroundTertiary,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    actionButtonText: {
+    fixedActionButtonText: {
       fontSize: 15,
       fontWeight: '600',
     },
-    primaryActionButtonText: {
+    primaryFixedButtonText: {
       color: '#FFFFFF',
     },
-    secondaryActionButtonText: {
+    secondaryFixedButtonText: {
       color: theme.text,
     },
-    delegateActionButton: {
-      backgroundColor: theme.backgroundSecondary,
-      borderColor: '#8b5cf6',
-    },
-    delegateActionButtonText: {
+    delegateFixedButtonText: {
       color: '#8b5cf6',
+    },
+    // Checklists section
+    checklistProgressIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.backgroundSecondary,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+      marginTop: 16,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    checklistProgressText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    checklistsSection: {
+      marginBottom: 16,
     },
     // Subtasks section
     subtasksSection: {
       marginTop: 16,
       marginBottom: 16,
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: theme.border,
     },
     // Attachments section
     attachmentsSection: {
       marginTop: 16,
     },
     sectionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
+      fontSize: 18,
+      fontWeight: '700',
       color: theme.text,
       marginBottom: 12,
+      letterSpacing: -0.3,
     },
     loadingAttachments: {
       flexDirection: 'row',
@@ -912,10 +1019,15 @@ const TaskDetailScreen: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 8,
+      borderRadius: 10,
       padding: 12,
       borderWidth: 1,
       borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     },
     attachmentInfo: {
       flexDirection: 'row',
@@ -943,12 +1055,13 @@ const TaskDetailScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 12,
-      borderRadius: 8,
+      padding: 14,
+      borderRadius: 10,
       borderWidth: 2,
-      borderColor: theme.border,
+      borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)',
       borderStyle: 'dashed',
       marginTop: 8,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.03)',
     },
     addAttachmentText: {
       fontSize: 14,
@@ -960,6 +1073,18 @@ const TaskDetailScreen: React.FC = () => {
       fontSize: 14,
       color: '#9ca3af',
       fontStyle: 'italic',
+      textAlign: 'center',
+    },
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+    },
+    emptyStateText: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      marginTop: 12,
       textAlign: 'center',
       paddingVertical: 16,
     },
@@ -1062,19 +1187,21 @@ const TaskDetailScreen: React.FC = () => {
       flex: 1,
     },
     dateSeparator: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      backgroundColor: theme.backgroundSecondary,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)',
       borderRadius: 8,
       marginBottom: 12,
       marginTop: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: theme.primary,
     },
     dateSeparatorText: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: '800',
+      color: theme.text,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.8,
     },
     activityItem: {
       flexDirection: 'row',
@@ -1084,6 +1211,13 @@ const TaskDetailScreen: React.FC = () => {
       borderRadius: 12,
       marginBottom: 8,
       gap: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.03,
+      shadowRadius: 1,
+      elevation: 1,
     },
     activityIcon: {
       width: 36,
@@ -1255,6 +1389,38 @@ const TaskDetailScreen: React.FC = () => {
     return subtasks.every(subtask => subtask.status === 'done');
   };
 
+  // Check if all checklist items are completed
+  const areAllChecklistItemsCompleted = (): boolean => {
+    if (!task?.checklists || task.checklists.length === 0) {
+      return true; // No checklists, so all are "completed"
+    }
+
+    // Get all items from all checklists
+    const allItems = task.checklists.flatMap(checklist => checklist.items);
+
+    if (allItems.length === 0) {
+      return true; // No items, so all are "completed"
+    }
+
+    return allItems.every(item => item.is_completed);
+  };
+
+  // Calculate overall task progress based on checklists
+  const calculateChecklistProgress = (): number => {
+    if (!task?.checklists || task.checklists.length === 0) {
+      return 0;
+    }
+
+    const allItems = task.checklists.flatMap(checklist => checklist.items);
+
+    if (allItems.length === 0) {
+      return 0;
+    }
+
+    const completedItems = allItems.filter(item => item.is_completed).length;
+    return Math.round((completedItems / allItems.length) * 100);
+  };
+
   // Get task action button text based on status
   const getActionButtonText = () => {
     if (task.status === 'new') return 'Начать';
@@ -1262,6 +1428,10 @@ const TaskDetailScreen: React.FC = () => {
       // Check if all subtasks are completed
       if (!areAllSubtasksCompleted()) {
         return 'Завершите подзадачи';
+      }
+      // Check if all checklist items are completed
+      if (!areAllChecklistItemsCompleted()) {
+        return 'Завершите чек-листы';
       }
       return 'Сдать на проверку';
     }
@@ -1282,7 +1452,27 @@ const TaskDetailScreen: React.FC = () => {
         );
         return;
       }
+      // Check if all checklist items are completed before allowing to submit for review
+      if (!areAllChecklistItemsCompleted()) {
+        Alert.alert(
+          'Невозможно сдать на проверку',
+          'Пожалуйста, завершите все пункты чек-листов перед тем, как сдать задачу на проверку.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
       await handleStatusChange('review');
+    }
+  };
+
+  // Handle user profile press
+  const handleUserPress = async (userId: number) => {
+    try {
+      const userData = await getUser(userId);
+      setSelectedUser(userData);
+      setShowProfileModal(true);
+    } catch (error) {
+      console.error('Error loading user:', error);
     }
   };
 
@@ -1315,93 +1505,6 @@ const TaskDetailScreen: React.FC = () => {
               )}
             </View>
           </View>
-
-          {/* Task Title */}
-          <Text style={styles.taskTitle}>
-            {task.title}
-          </Text>
-
-          {/* Priority and Status Row */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            marginTop: 12,
-          }}>
-            <View style={{
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16,
-              backgroundColor: priorityConfig.color,
-            }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
-                {priorityConfig.label}
-              </Text>
-            </View>
-            <View style={{
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16,
-              backgroundColor: statusConfig.color,
-            }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>
-                {statusConfig.label}
-              </Text>
-            </View>
-          </View>
-
-          {/* Delegated Badge */}
-          {isDelegatedByMe && (
-            <View style={styles.delegatedBadge}>
-              <Ionicons name="eye-outline" size={16} color="#8b5cf6" />
-              <Text style={styles.delegatedBadgeText}>Только просмотр</Text>
-            </View>
-          )}
-
-          {/* Progress Bar - if task has progress_percentage */}
-          {task.progress_percentage !== undefined && task.progress_percentage > 0 && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${task.progress_percentage}%` }
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressText}>{task.progress_percentage}%</Text>
-            </View>
-          )}
-
-          {/* Assignee and Deadline Row */}
-          <View style={[styles.infoRow, { marginTop: 16 }]}>
-            <View style={styles.assigneeContainer}>
-              {task.delegation_chain && task.delegation_chain.length > 0 ? (
-                <View style={styles.delegationChainContainer}>
-                  <Ionicons name="git-branch-outline" size={16} color={theme.textSecondary} style={styles.delegationIcon} />
-                  <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
-                    {task.delegation_chain
-                      .map((chainUser) => (user && chainUser.id === user.id ? 'Я' : chainUser.name))
-                      .join(' → ')}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={[styles.assigneeText, { color: theme.textSecondary }]}>
-                  {task.assignees && task.assignees.length > 0
-                    ? (user && task.assignees[0].id === user.id ? 'Я' : task.assignees[0].name)
-                    : 'Без исполнителя'}
-                </Text>
-              )}
-            </View>
-            {task.due_date && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
-                <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
-                  {format(new Date(task.due_date), 'dd MMM', { locale: ru })}
-                </Text>
-              </View>
-            )}
-          </View>
         </View>
 
         {/* Card with Tabs */}
@@ -1414,6 +1517,22 @@ const TaskDetailScreen: React.FC = () => {
             >
               <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
                 Обзор
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'attachments' && styles.activeTab]}
+              onPress={() => setActiveTab('attachments')}
+            >
+              <Text style={[styles.tabText, activeTab === 'attachments' && styles.activeTabText]}>
+                Вложения
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'comments' && styles.activeTab]}
+              onPress={() => setActiveTab('comments')}
+            >
+              <Text style={[styles.tabText, activeTab === 'comments' && styles.activeTabText]}>
+                Комментарии
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1435,6 +1554,124 @@ const TaskDetailScreen: React.FC = () => {
           >
             {activeTab === 'overview' ? (
               <View style={styles.content}>
+                {/* Task Title */}
+                <Text style={styles.taskTitle}>
+                  {task.title}
+                </Text>
+
+                {/* Priority and Status Row */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: 16,
+                }}>
+                  <View style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 7,
+                    borderRadius: 8,
+                    backgroundColor: priorityConfig.color,
+                    shadowColor: priorityConfig.color,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    elevation: 2,
+                  }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 }}>
+                      {priorityConfig.label}
+                    </Text>
+                  </View>
+                  <View style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 7,
+                    borderRadius: 8,
+                    backgroundColor: statusConfig.color,
+                    shadowColor: statusConfig.color,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    elevation: 2,
+                  }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 }}>
+                      {statusConfig.label}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Delegated Badge */}
+                {isDelegatedByMe && (
+                  <View style={styles.delegatedBadge}>
+                    <Ionicons name="eye-outline" size={16} color="#8b5cf6" />
+                    <Text style={styles.delegatedBadgeText}>Только просмотр</Text>
+                  </View>
+                )}
+
+                {/* Progress Bar - based on checklists or manual progress_percentage */}
+                {(() => {
+                  const checklistProgress = calculateChecklistProgress();
+                  const displayProgress = checklistProgress > 0 ? checklistProgress : (task.progress_percentage || 0);
+
+                  return displayProgress > 0 ? (
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${displayProgress}%`,
+                              backgroundColor: displayProgress === 100 ? '#10B981' : theme.primary
+                            }
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.progressText}>{displayProgress}%</Text>
+                    </View>
+                  ) : null;
+                })()}
+
+                {/* Assignee and Deadline Row */}
+                <View style={[styles.infoRow, { marginBottom: 16 }]}>
+                  <View style={styles.assigneeContainer}>
+                    {task.delegation_chain && task.delegation_chain.length > 0 ? (
+                      <View style={styles.delegationChainContainer}>
+                        <Ionicons name="git-branch-outline" size={16} color={theme.textSecondary} style={styles.delegationIcon} />
+                        <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
+                          {task.delegation_chain
+                            .map((chainUser) => (user && chainUser.id === user.id ? 'Я' : chainUser.name))
+                            .join(' → ')}
+                        </Text>
+                      </View>
+                    ) : task.assignees && task.assignees.length > 0 ? (
+                      <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                        onPress={() => handleUserPress(task.assignees![0].id)}
+                        activeOpacity={0.7}
+                      >
+                        <Avatar
+                          name={task.assignees[0].name}
+                          imageUrl={task.assignees[0].avatar}
+                          size={20}
+                        />
+                        <Text style={[styles.assigneeText, { color: theme.textSecondary }]} numberOfLines={1}>
+                          {user && task.assignees[0].id === user.id ? 'Я' : task.assignees[0].name}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={[styles.assigneeText, { color: theme.textSecondary }]}>
+                        Без исполнителя
+                      </Text>
+                    )}
+                  </View>
+                  {task.due_date && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+                      <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
+                        {format(new Date(task.due_date), 'dd MMM', { locale: ru })}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
                 {/* Description Section */}
                 {task.description && (
                   <View style={styles.descriptionSection}>
@@ -1478,6 +1715,21 @@ const TaskDetailScreen: React.FC = () => {
                   </View>
                 )}
 
+                {/* Checklists Section - show for all who have access */}
+                {task.status !== 'done' && canViewTask(task, user?.id) && (
+                  <View style={styles.checklistsSection}>
+                    <TaskChecklistsView
+                      taskId={task.id}
+                      onChecklistChanged={() => {
+                        loadTask(); // Reload task to update progress
+                      }}
+                      canEdit={canEditTask(task, user?.id, user?.role)}
+                      canToggleOnly={!canEditTask(task, user?.id, user?.role) && canViewTask(task, user?.id)}
+                      readOnly={isDelegatedByMe}
+                    />
+                  </View>
+                )}
+
                 {/* Subtasks Section - show for all who have access, readonly for assignees */}
                 {task.status !== 'done' && canViewTask(task, user?.id) && (
                   <View style={styles.subtasksSection}>
@@ -1490,161 +1742,99 @@ const TaskDetailScreen: React.FC = () => {
                       onSubtaskCreated={() => {
                         loadTask(); // Reload task to update progress
                       }}
-                      // Show create button only for users who can edit
-                      onCreateSubtaskPress={canEditTask(task, user?.id, user?.role) ? () => setShowSubtaskModal(true) : undefined}
+                      // Show create button only for managers who received delegated tasks (not creators, not employees)
+                      onCreateSubtaskPress={
+                        task.created_by !== user?.id &&
+                        (user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+                        (canEditTask(task, user?.id, user?.role) || task.assignees?.some(a => a.id === user?.id))
+                          ? () => setShowSubtaskModal(true)
+                          : undefined
+                      }
                       // Readonly for users who can view but not edit
                       readOnly={!canEditTask(task, user?.id, user?.role)}
                     />
                   </View>
                 )}
 
-                {/* Attachments Section - show for all, but hide add button if delegated */}
-                {task.status !== 'done' && (
-                  <View style={styles.attachmentsSection}>
-                    <Text style={styles.sectionTitle}>Вложения</Text>
 
-                    {/* Display existing attachments or "no attachments" message */}
-                    {isLoadingAttachments ? (
-                      <View style={styles.loadingAttachments}>
-                        <ActivityIndicator size="small" color={theme.primary} />
-                        <Text style={styles.loadingAttachmentsText}>Загрузка вложений...</Text>
-                      </View>
-                    ) : attachments.length > 0 ? (
-                      <View style={styles.attachmentsList}>
-                        {attachments.map((attachment) => {
-                          const fileIcon = getFileIcon(attachment.file_type || '', attachment.file_name);
-                          return (
-                            <View key={attachment.id} style={styles.attachmentItem}>
-                              <TouchableOpacity
-                                style={styles.attachmentInfo}
-                                onPress={() => handleOpenAttachment(attachment)}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name={fileIcon as any} size={20} color={theme.primary} />
-                                <View style={styles.attachmentDetails}>
-                                  <Text style={styles.attachmentName} numberOfLines={1}>
-                                    {decodeFileName(attachment.file_name)}
-                                  </Text>
-                                  <Text style={styles.attachmentMeta}>
-                                    {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
-                                  </Text>
-                                </View>
-                              </TouchableOpacity>
-                              {!isDelegatedByMe && (
-                                <TouchableOpacity
-                                  style={styles.deleteAttachmentButton}
-                                  onPress={() => handleDeleteAttachment(attachment.id)}
-                                >
-                                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                                </TouchableOpacity>
-                              )}
+              </View>
+            ) : activeTab === 'attachments' ? (
+              // Attachments Tab
+              <View style={styles.content}>
+                {/* Display existing attachments or "no attachments" message */}
+                {isLoadingAttachments ? (
+                  <View style={styles.loadingAttachments}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                    <Text style={styles.loadingAttachmentsText}>Загрузка вложений...</Text>
+                  </View>
+                ) : attachments.length > 0 ? (
+                  <View style={styles.attachmentsList}>
+                    {attachments.map((attachment) => {
+                      const fileIcon = getFileIcon(attachment.file_type || '', attachment.file_name);
+                      return (
+                        <View key={attachment.id} style={styles.attachmentItem}>
+                          <TouchableOpacity
+                            style={styles.attachmentInfo}
+                            onPress={() => handleOpenAttachment(attachment)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name={fileIcon as any} size={20} color={theme.primary} />
+                            <View style={styles.attachmentDetails}>
+                              <Text style={styles.attachmentName} numberOfLines={1}>
+                                {decodeFileName(attachment.file_name)}
+                              </Text>
+                              <Text style={styles.attachmentMeta}>
+                                {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
+                              </Text>
                             </View>
-                          );
-                        })}
-                      </View>
-                    ) : isDelegatedByMe ? (
-                      <Text style={styles.noAttachmentsText}>Нет вложений</Text>
-                    ) : null}
-
-                    {/* Add Attachment Button - only if not delegated */}
-                    {!isDelegatedByMe && (
-                      <TouchableOpacity
-                        style={styles.addAttachmentButton}
-                        onPress={handlePickFile}
-                        disabled={isUploadingAttachment}
-                      >
-                        {isUploadingAttachment ? (
-                          <>
-                            <ActivityIndicator size="small" color={theme.primary} />
-                            <Text style={styles.addAttachmentText}>Загрузка...</Text>
-                          </>
-                        ) : (
-                          <>
-                            <Ionicons name="add-circle" size={24} color={theme.primary} />
-                            <Text style={styles.addAttachmentText}>Добавить файл</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    )}
+                          </TouchableOpacity>
+                          {!isDelegatedByMe && task.status !== 'done' && (
+                            <TouchableOpacity
+                              style={styles.deleteAttachmentButton}
+                              onPress={() => handleDeleteAttachment(attachment.id)}
+                            >
+                              <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={styles.emptyStateContainer}>
+                    <Ionicons name="document-outline" size={48} color={theme.textTertiary} />
+                    <Text style={styles.emptyStateText}>Нет вложений</Text>
                   </View>
                 )}
 
-                {/* Action Buttons - hidden when task is done or delegated */}
-                {task.status !== 'done' && !isDelegatedByMe && (
-                  <>
-                    <View style={styles.actionButtonsContainer}>
-                      {/* Delegate Button - for department heads, admins */}
-                      {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-                       task.status !== 'done' && task.status !== 'cancelled' && (
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.delegateActionButton]}
-                          onPress={() => setShowDelegateModal(true)}
-                        >
-                          <Ionicons name="git-branch-outline" size={20} color="#8b5cf6" />
-                          <Text style={[styles.actionButtonText, styles.delegateActionButtonText]}>
-                            Делегировать задачу
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Start/Submit Button - for new or in_progress tasks */}
-                      {(task.status === 'new' || task.status === 'in_progress') && (
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            styles.primaryActionButton,
-                            (task.status === 'in_progress' && !areAllSubtasksCompleted()) && styles.disabledButton
-                          ]}
-                          onPress={handleTaskAction}
-                          disabled={task.status === 'in_progress' && !areAllSubtasksCompleted()}
-                        >
-                          <Ionicons
-                            name={task.status === 'in_progress' && !areAllSubtasksCompleted() ? 'alert-circle-outline' : 'play-circle-outline'}
-                            size={20}
-                            color="#FFFFFF"
-                          />
-                          <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
-                            {getActionButtonText()}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Review Buttons - for creator when task is in review */}
-                      {task.status === 'review' && task.created_by === user?.id && (
-                        <>
-                          <TouchableOpacity
-                            style={[
-                              styles.actionButton,
-                              styles.primaryActionButton,
-                              !areAllSubtasksCompleted() && styles.disabledButton
-                            ]}
-                            onPress={() => handleStatusChange('done')}
-                            disabled={!areAllSubtasksCompleted()}
-                          >
-                            <Ionicons
-                              name={!areAllSubtasksCompleted() ? 'alert-circle-outline' : 'checkmark-circle-outline'}
-                              size={20}
-                              color="#FFFFFF"
-                            />
-                            <Text style={[styles.actionButtonText, styles.primaryActionButtonText]}>
-                              {!areAllSubtasksCompleted() ? 'Завершите подзадачи' : 'Принять задачу'}
-                            </Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[styles.actionButton, styles.secondaryActionButton]}
-                            onPress={() => handleStatusChange('in_progress')}
-                          >
-                            <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
-                            <Text style={[styles.actionButtonText, styles.secondaryActionButtonText]}>
-                              Отправить на переработку
-                            </Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                    </View>
-                  </>
+                {/* Add Attachment Button - only if not delegated and task not done */}
+                {!isDelegatedByMe && task.status !== 'done' && (
+                  <TouchableOpacity
+                    style={styles.addAttachmentButton}
+                    onPress={handlePickFile}
+                    disabled={isUploadingAttachment}
+                  >
+                    {isUploadingAttachment ? (
+                      <>
+                        <ActivityIndicator size="small" color={theme.primary} />
+                        <Text style={styles.addAttachmentText}>Загрузка...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="add-circle" size={24} color={theme.primary} />
+                        <Text style={styles.addAttachmentText}>Добавить файл</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 )}
+              </View>
+            ) : activeTab === 'comments' ? (
+              // Comments Tab (Placeholder)
+              <View style={styles.content}>
+                <View style={styles.emptyStateContainer}>
+                  <Ionicons name="chatbubbles-outline" size={48} color={theme.textTertiary} />
+                  <Text style={styles.emptyStateText}>Комментарии скоро появятся</Text>
+                </View>
               </View>
             ) : (
               // History Tab (Activities)
@@ -1722,6 +1912,83 @@ const TaskDetailScreen: React.FC = () => {
           </ScrollView>
         </View>
 
+        {/* Fixed Action Buttons at Bottom */}
+        {task.status !== 'done' && !isDelegatedByMe && activeTab === 'overview' && (
+          <View style={styles.fixedActionsContainer}>
+            {/* Delegate Button - for department heads, admins */}
+            {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+             task.status !== 'done' && task.status !== 'cancelled' && (
+              <TouchableOpacity
+                style={[styles.fixedActionButton, styles.delegateFixedButton]}
+                onPress={() => setShowDelegateModal(true)}
+              >
+                <Text style={[styles.fixedActionButtonText, styles.delegateFixedButtonText]}>
+                  Делегировать
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Start/Submit Button - for new or in_progress tasks */}
+            {(task.status === 'new' || task.status === 'in_progress') && (
+              <TouchableOpacity
+                style={[
+                  styles.fixedActionButton,
+                  styles.primaryFixedButton,
+                  (task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted())) && styles.disabledButton
+                ]}
+                onPress={handleTaskAction}
+                disabled={task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted())}
+              >
+                <Ionicons
+                  name={task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) ? 'alert-circle-outline' : 'play-circle-outline'}
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
+                  {getActionButtonText()}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Review Buttons - for creator when task is in review */}
+            {task.status === 'review' && task.created_by === user?.id && (
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.fixedActionButton,
+                    styles.secondaryFixedButton,
+                  ]}
+                  onPress={() => handleStatusChange('in_progress')}
+                >
+                  <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
+                  <Text style={[styles.fixedActionButtonText, styles.secondaryFixedButtonText]}>
+                    Вернуть
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.fixedActionButton,
+                    styles.primaryFixedButton,
+                    (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) && styles.disabledButton
+                  ]}
+                  onPress={() => handleStatusChange('done')}
+                  disabled={!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()}
+                >
+                  <Ionicons
+                    name={(!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) ? 'alert-circle-outline' : 'checkmark-circle-outline'}
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                  <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
+                    {!areAllSubtasksCompleted() ? 'Завершите подзадачи' : !areAllChecklistItemsCompleted() ? 'Завершите чек-листы' : 'Принять'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
         {/* Share Task Modal */}
         {task && (
           <ShareTaskModal
@@ -1739,14 +2006,16 @@ const TaskDetailScreen: React.FC = () => {
             task={task}
             onClose={() => setShowEditModal(false)}
             onTaskUpdated={(updatedTask) => {
-              setTask(updatedTask);
+              loadTask(); // Reload task to get updated checklists
               setShowEditModal(false);
             }}
           />
         )}
 
-        {/* Create Subtask Modal - for creator, admins, and department heads */}
-        {task && canEditTask(task, user?.id, user?.role) && (
+        {/* Create Subtask Modal - only for managers who received delegated tasks (not creators, not employees) */}
+        {task && task.created_by !== user?.id &&
+         (user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+         (canEditTask(task, user?.id, user?.role) || task.assignees?.some(a => a.id === user?.id)) && (
           <CreateSubtaskModal
             visible={showSubtaskModal}
             parentTaskId={task.id}
@@ -1772,6 +2041,33 @@ const TaskDetailScreen: React.FC = () => {
             }}
           />
         )}
+
+        {/* User Profile Modal */}
+        <UserProfileModal
+          visible={showProfileModal}
+          user={selectedUser}
+          onClose={() => setShowProfileModal(false)}
+          onOpenChat={async (userId) => {
+            try {
+              console.log('💬 Opening chat with user:', userId);
+              const chat = await getOrCreateDirectChat(userId);
+              console.log('✅ Got chat:', chat.id);
+              setShowProfileModal(false);
+              // Navigate to chat - need to get root navigation
+              const rootNavigation = navigation.getParent();
+              if (rootNavigation) {
+                // @ts-ignore
+                rootNavigation.navigate('Chats', {
+                  screen: 'Chat',
+                  params: { chatId: chat.id },
+                });
+              }
+            } catch (error: any) {
+              console.error('❌ Error opening chat:', error);
+              Alert.alert('Ошибка', error.message || 'Не удалось открыть чат');
+            }
+          }}
+        />
       </View>
     </SafeAreaView>
   );

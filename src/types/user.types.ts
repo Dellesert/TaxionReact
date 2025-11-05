@@ -175,6 +175,7 @@ export interface UserListFilters {
   status?: UserStatus;
   is_active?: boolean;
   search?: string;
+  for_task_assignment?: boolean; // Get all users regardless of current user's department
 }
 
 // Two-Factor Authentication Types

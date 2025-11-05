@@ -56,14 +56,6 @@ export const getPolls = async (
 
   const hasMore = (params.offset + polls.length) < total;
 
-  // Debug logging
-  console.log('📊 Polls API response:', {
-    count: polls.length,
-    total,
-    hasMore,
-    offset: params.offset,
-  });
-
   return { polls, total, hasMore };
 };
 
@@ -204,14 +196,11 @@ export const getPollVoters = async (pollId: number): Promise<PollVotersList> => 
     API_ENDPOINTS.POLL.VOTERS(pollId)
   );
 
-  console.log('📊 Poll voters API response:', JSON.stringify(response.data, null, 2));
 
   if (response.data.data) {
-    console.log('📊 First voter data:', response.data.data.voters?.[0]);
     return response.data.data;
   }
 
-  console.log('📊 First voter data (direct):', (response.data as any).voters?.[0]);
   return response.data as any;
 };
 

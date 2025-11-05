@@ -312,6 +312,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             {pinnedMessages.length > 0 && (
               <PinnedMessageBanner
                 pinnedMessages={pinnedMessages}
+                chatType={chat?.type}
+                currentUserRole={chat?.members?.find(m => m.user_id === currentUser?.id)?.role}
                 onPress={handlePinnedMessagePress}
                 onUnpin={handleUnpin}
               />
@@ -373,6 +375,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
                 onCancelReply={() => setReplyingToMessage(null)}
                 onFilesSelected={(fileIds) => setSelectedFileIds(prev => [...prev, ...fileIds])}
                 selectedFileIds={selectedFileIds}
+                onRemoveFile={(fileId) => setSelectedFileIds(prev => prev.filter(id => id !== fileId))}
               />
             </View>
           </>
@@ -387,6 +390,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         visible={membersModalVisible}
         chatId={chatIdNum}
         onClose={() => setMembersModalVisible(false)}
+        isCreator={currentUser?.id === chat?.creator_id}
+        creatorId={chat?.creator_id}
       />
 
       <ForwardMessageModal

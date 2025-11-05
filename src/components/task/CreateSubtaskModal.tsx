@@ -14,10 +14,9 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CreateTaskDto, TaskPriority } from '../../types/task.types';
+import { CreateTaskDto, TaskPriority, CreateTaskChecklistDto } from '../../types/task.types';
 import { createSubtask } from '../../api/task.api';
 import UserSelector from '../common/UserSelector';
 import DatePickerModal from '../common/DatePickerModal';
@@ -52,17 +51,34 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Checklist state - single checklist with items only
+  const [checklistItems, setChecklistItems] = useState<string[]>([]);
+  const [newItemText, setNewItemText] = useState('');
+
   const handleReset = () => {
     setTitle('');
     setDescription('');
     setPriority('medium');
     setAssigneeIds([]);
     setDueDate(undefined);
+    setChecklistItems([]);
+    setNewItemText('');
   };
 
   const handleClose = () => {
     handleReset();
     onClose();
+  };
+
+  // Checklist handlers
+  const handleAddItem = () => {
+    if (!newItemText.trim()) return;
+    setChecklistItems([...checklistItems, newItemText.trim()]);
+    setNewItemText('');
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setChecklistItems(checklistItems.filter((_, i) => i !== index));
   };
 
   const handleCreate = async () => {
@@ -80,6 +96,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
         priority,
         assignee_ids: assigneeIds.length > 0 ? assigneeIds : undefined,
         due_date: dueDate?.toISOString(),
+        checklists: checklistItems.length > 0 ? [{ title: 'Checklist', items: checklistItems }] : undefined,
       };
 
       await createSubtask(parentTaskId, subtaskData);
@@ -192,6 +209,49 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
               />
             </View>
 
+            {/* Checklist Section */}
+            <View style={styles.section}>
+              <Text style={[styles.label, { color: theme.text }]}>Чек-лист</Text>
+
+              {/* Add New Item */}
+              <View style={[styles.addChecklistContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                <TextInput
+                  style={[styles.addChecklistInput, { color: theme.text }]}
+                  placeholder="Добавить пункт..."
+                  placeholderTextColor={theme.inputPlaceholder}
+                  value={newItemText}
+                  onChangeText={setNewItemText}
+                  onSubmitEditing={handleAddItem}
+                  returnKeyType="done"
+                  editable={!isLoading}
+                />
+                {newItemText.trim() && (
+                  <TouchableOpacity onPress={handleAddItem}>
+                    <Ionicons name="add-circle" size={32} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Checklist Items */}
+              {checklistItems.length > 0 && (
+                <View
+                  style={[styles.checklistCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                >
+                  {checklistItems.map((item, index) => (
+                    <View key={index} style={styles.checklistItemRow}>
+                      <View style={styles.checklistItemDot} />
+                      <Text style={[styles.checklistItemText, { color: theme.textSecondary }]} numberOfLines={2}>
+                        {item}
+                      </Text>
+                      <TouchableOpacity onPress={() => handleRemoveItem(index)}>
+                        <Ionicons name="close-circle" size={18} color="#9ca3af" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
             {/* Due Date Selection */}
             <View style={styles.section}>
               <Text style={[styles.label, { color: theme.text }]}>Срок выполнения</Text>
@@ -230,7 +290,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
             visible={showDatePicker}
             value={dueDate || new Date()}
             mode="date"
-            onChange={(event, date) => {
+            onChange={(_event, date) => {
               if (date) setDueDate(date);
             }}
             onClose={() => setShowDatePicker(false)}
@@ -378,5 +438,67 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+  },
+  addChecklistContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  addChecklistInput: {
+    flex: 1,
+    fontSize: 15,
+  },
+  checklistCard: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  checklistHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  checklistTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  checklistItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+  },
+  checklistItemDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#9ca3af',
+  },
+  checklistItemText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  addItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  addItemInput: {
+    flex: 1,
+    fontSize: 14,
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
   },
 });

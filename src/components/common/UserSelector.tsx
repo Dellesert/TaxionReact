@@ -45,11 +45,11 @@ const UserSelector: React.FC<UserSelectorProps> = ({
     try {
       const currentUser = useAuthStore.getState().user;
 
-      // Фильтр по отделу для руководителей отделов и только активные пользователи
-      let filters: any = { is_active: true };
-      if (currentUser?.role === 'department_head' && currentUser?.department_id) {
-        filters.department_id = currentUser.department_id;
-      }
+      // Фильтр - только активные пользователи, все отделы для задач
+      let filters: any = {
+        is_active: true,
+        for_task_assignment: true // Request all users for task assignment
+      };
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
       let usersList: User[] = [];
@@ -58,6 +58,19 @@ const UserSelector: React.FC<UserSelectorProps> = ({
       } else if (response && Array.isArray(response)) {
         usersList = response;
       }
+
+      // Sort users: department heads first, then others
+      usersList.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // If both are dept heads or both are not, sort by name
+        return a.name.localeCompare(b.name);
+      });
+
       setUsers(usersList);
     } catch (error) {
       console.error('Failed to load users:', error);

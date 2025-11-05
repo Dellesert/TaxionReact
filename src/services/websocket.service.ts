@@ -56,10 +56,18 @@ class WebSocketService {
 
       this.ws = new WebSocket(wsUrl);
 
+      // Set up event handlers with error suppression
       this.ws.onopen = this.handleOpen.bind(this);
       this.ws.onmessage = this.handleMessage.bind(this);
       this.ws.onerror = this.handleError.bind(this);
       this.ws.onclose = this.handleClose.bind(this);
+
+      // Add error event listener to prevent unhandled promise rejections
+      if (this.ws.addEventListener) {
+        this.ws.addEventListener('error', (event) => {
+          event.preventDefault?.();
+        }, { once: true });
+      }
     } catch (error) {
       console.error('❌ Failed to connect WebSocket:', error);
     }
@@ -437,8 +445,20 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
   /**
    * Handle WebSocket error
    */
-  private handleError(error: Event): void {
-    console.error('❌ WebSocket error:', error);
+  private handleError(event: Event): void {
+    // Suppress default error logging to prevent user-visible errors
+    // These errors are normal during connection/reconnection attempts
+    if (event.type === 'error') {
+      // Prevent default error handling
+      event.preventDefault?.();
+
+      console.log('⚠️ WebSocket connection error (will retry if needed)');
+
+      // Only log detailed error in development
+      if (__DEV__) {
+        console.log('WebSocket error details:', event);
+      }
+    }
   }
 
   /**

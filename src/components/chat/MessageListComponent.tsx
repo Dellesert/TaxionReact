@@ -116,6 +116,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
           <>
             <MessageItem
               message={message}
+              chatType={currentChat?.type}
               onReply={onReply}
               onEdit={onEdit}
               onDelete={onDelete}

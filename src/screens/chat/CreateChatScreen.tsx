@@ -26,6 +26,7 @@ import { ChatType } from '../../types/chat.types';
 import { getUsers, getDepartments } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@utils/mockData';
 import { useTheme } from '@hooks/useTheme';
+import Avatar from '@components/common/Avatar';
 
 type CreateChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'CreateChat'>;
 
@@ -43,39 +44,9 @@ const CreateChatScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [existingPrivateChatUserIds, setExistingPrivateChatUserIds] = useState<Set<number>>(new Set());
-
   useEffect(() => {
     loadUsers();
-    loadExistingPrivateChats();
   }, []);
-
-  const loadExistingPrivateChats = async () => {
-    try {
-      const currentUser = useAuthStore.getState().user;
-      if (!currentUser) return;
-
-      // Get chats from store
-      const { chats } = useChatStore.getState();
-
-      // Find all private chats and extract the other user's ID
-      const privateChatUserIds = new Set<number>();
-      chats.forEach(chat => {
-        if (chat.type === 'private' && chat.members) {
-          // Find the other user (not the current user)
-          const otherMember = chat.members.find(member => member.user_id !== currentUser.id);
-          if (otherMember) {
-            privateChatUserIds.add(otherMember.user_id);
-          }
-        }
-      });
-
-      console.log('🔍 Found existing private chats with users:', Array.from(privateChatUserIds));
-      setExistingPrivateChatUserIds(privateChatUserIds);
-    } catch (error) {
-      console.error('❌ Failed to load existing private chats:', error);
-    }
-  };
 
   const loadUsers = async () => {
     try {
@@ -93,6 +64,7 @@ const CreateChatScreen: React.FC = () => {
         console.log('🔧 Mock mode:', process.env.EXPO_PUBLIC_USE_MOCK_DATA);
 
         // Request all users (increase limit if needed), only active users
+        // For chats, we show all users (not using for_task_assignment filter)
         const response = await getUsers({ is_active: true }, { limit: 1000, offset: 0 });
         console.log('✅ Users API response:', response);
         console.log('✅ Response type:', typeof response);
@@ -173,6 +145,28 @@ const CreateChatScreen: React.FC = () => {
     }
   };
 
+  const toggleDepartmentSelection = (departmentUsers: User[]) => {
+    if (chatType === 'private') return; // Для личного чата не применимо
+
+    const departmentUserIds = departmentUsers.map(u => u.id);
+    // Проверяем, все ли пользователи отдела уже выбраны
+    const allSelected = departmentUserIds.every(id => selectedUsers.includes(id));
+
+    if (allSelected) {
+      // Снимаем выбор со всех пользователей отдела
+      setSelectedUsers(selectedUsers.filter(id => !departmentUserIds.includes(id)));
+    } else {
+      // Добавляем всех пользователей отдела (избегая дублирования)
+      const newSelectedUsers = [...selectedUsers];
+      departmentUserIds.forEach(id => {
+        if (!newSelectedUsers.includes(id)) {
+          newSelectedUsers.push(id);
+        }
+      });
+      setSelectedUsers(newSelectedUsers);
+    }
+  };
+
   const handleCreateChat = async () => {
     // Валидация для группового чата
     if (chatType === 'group') {
@@ -243,15 +237,8 @@ const CreateChatScreen: React.FC = () => {
         return false;
       }
 
-      // Employees shouldn't see admins and super_admins
-      if (currentUser?.role === 'employee') {
-        if (user.role === 'admin' || user.role === 'super_admin') {
-          return false;
-        }
-      }
-
-      // For private chats, filter out users who already have a private chat with current user
-      if (chatType === 'private' && existingPrivateChatUserIds.has(user.id)) {
+      // Hide admins and super_admins from all users (including other admins)
+      if (user.role === 'admin' || user.role === 'super_admin') {
         return false;
       }
 
@@ -263,7 +250,7 @@ const CreateChatScreen: React.FC = () => {
 
       return true;
     });
-  }, [users, searchQuery, chatType, existingPrivateChatUserIds]);
+  }, [users, searchQuery, chatType]);
 
   // Группируем пользователей по подразделениям
   const userSections = useMemo(() => {
@@ -279,6 +266,20 @@ const CreateChatScreen: React.FC = () => {
         byDepartment.set(deptId, []);
       }
       byDepartment.get(deptId)!.push(user);
+    });
+
+    // Sort users within each department: department heads first, then others
+    byDepartment.forEach((users) => {
+      users.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // If both are dept heads or both are not, sort by name
+        return a.name.localeCompare(b.name);
+      });
     });
 
     const sections: Array<{ title: string; data: User[]; departmentId: number | null }> = [];
@@ -376,14 +377,20 @@ const CreateChatScreen: React.FC = () => {
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.userInfo}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
-            </View>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-          </View>
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatar}
+            size={48}
+            status={item.status}
+            showStatus={true}
+          />
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>{item.name}</Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>{item.name}</Text>
+              {item.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 4 }} />
+              )}
+            </View>
             <Text style={styles.userEmail}>{getRoleText()}</Text>
             {item.position && <Text style={styles.userPosition}>{item.position}</Text>}
           </View>
@@ -523,42 +530,20 @@ const CreateChatScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       flex: 1,
-    },
-    avatarContainer: {
-      position: 'relative',
-    },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: theme.backgroundTertiary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarText: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
-    statusDot: {
-      position: 'absolute',
-      bottom: 2,
-      right: 2,
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      borderWidth: 2,
-      borderColor: theme.card,
+      gap: 12,
     },
     userDetails: {
       flex: 1,
-      marginLeft: 12,
+    },
+    userNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 2,
     },
     userName: {
       fontSize: 16,
       fontWeight: '600',
       color: theme.text,
-      marginBottom: 2,
     },
     userEmail: {
       fontSize: 14,
@@ -628,7 +613,7 @@ const CreateChatScreen: React.FC = () => {
       alignItems: 'center',
       backgroundColor: theme.backgroundSecondary,
       paddingHorizontal: 16,
-      paddingVertical: 8,
+      paddingVertical: 10,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
@@ -641,6 +626,25 @@ const CreateChatScreen: React.FC = () => {
     sectionHeaderCount: {
       fontSize: 12,
       color: theme.textTertiary,
+    },
+    sectionHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    sectionCheckbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    partialCheckmark: {
+      width: 10,
+      height: 2,
+      backgroundColor: 'white',
+      borderRadius: 1,
     },
   });
 
@@ -722,14 +726,48 @@ const CreateChatScreen: React.FC = () => {
           sections={userSections}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderUserItem}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeaderText}>{section.title}</Text>
-              <Text style={styles.sectionHeaderCount}>
-                {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
-              </Text>
-            </View>
-          )}
+          renderSectionHeader={({ section }) => {
+            // Для группового чата показываем чекбокс выбора отдела
+            if (chatType === 'group') {
+              const departmentUserIds = section.data.map(u => u.id);
+              const allSelected = departmentUserIds.every(id => selectedUsers.includes(id));
+              const someSelected = departmentUserIds.some(id => selectedUsers.includes(id)) && !allSelected;
+
+              return (
+                <TouchableOpacity
+                  style={styles.sectionHeaderContainer}
+                  onPress={() => toggleDepartmentSelection(section.data)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.sectionHeaderLeft}>
+                    <View style={[
+                      styles.sectionCheckbox,
+                      { borderColor: theme.border },
+                      allSelected && { backgroundColor: theme.primary, borderColor: theme.primary },
+                      someSelected && { backgroundColor: theme.primaryLight, borderColor: theme.primary }
+                    ]}>
+                      {allSelected && <Ionicons name="checkmark" size={14} color="white" />}
+                      {someSelected && <View style={styles.partialCheckmark} />}
+                    </View>
+                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                  </View>
+                  <Text style={styles.sectionHeaderCount}>
+                    {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }
+
+            // Для личного чата - обычный заголовок без чекбокса
+            return (
+              <View style={styles.sectionHeaderContainer}>
+                <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                <Text style={styles.sectionHeaderCount}>
+                  {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                </Text>
+              </View>
+            );
+          }}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={true}
           ListEmptyComponent={

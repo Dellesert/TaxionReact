@@ -22,6 +22,7 @@ import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
+import Avatar from '@components/common/Avatar';
 
 interface UserSelectorModalProps {
   visible: boolean;
@@ -32,6 +33,7 @@ interface UserSelectorModalProps {
   title?: string;
   excludeUserIds?: number[]; // Исключить определенных пользователей из списка
   mode?: 'checkbox' | 'radio'; // Стиль отображения выбора
+  onDone?: () => void; // Callback when Done button is pressed
 }
 
 const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
@@ -43,6 +45,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   title = 'Выбрать участников',
   excludeUserIds = [],
   mode = 'checkbox',
+  onDone,
 }) => {
   const { theme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
@@ -60,11 +63,10 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       setIsLoading(true);
       const currentUser = useAuthStore.getState().user;
 
-      // Фильтр по отделу для руководителей отделов и только активные пользователи
-      let filters: any = { is_active: true };
-      if (currentUser?.role === 'department_head' && currentUser?.department_id) {
-        filters.department_id = currentUser.department_id;
-      }
+      // Фильтр - только активные пользователи
+      let filters: any = {
+        is_active: true,
+      };
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
@@ -90,6 +92,18 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         }
 
         return true;
+      });
+
+      // Sort users: department heads first, then others
+      filteredUsers.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // If both are dept heads or both are not, sort by name
+        return a.name.localeCompare(b.name);
       });
 
       setUsers(filteredUsers);
@@ -186,12 +200,37 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     }
   };
 
+  const toggleDepartmentSelection = (departmentUsers: User[]) => {
+    if (!multiSelect) return; // Only for multi-select mode
+
+    const departmentUserIds = departmentUsers.map(u => u.id);
+    const allSelected = departmentUserIds.every(id => selectedUserIds.includes(id));
+
+    if (allSelected) {
+      // Deselect all users in this department
+      onSelectionChange(selectedUserIds.filter(id => !departmentUserIds.includes(id)));
+    } else {
+      // Select all users in this department
+      const newSelectedUsers = [...selectedUserIds];
+      departmentUserIds.forEach(id => {
+        if (!newSelectedUsers.includes(id)) {
+          newSelectedUsers.push(id);
+        }
+      });
+      onSelectionChange(newSelectedUsers);
+    }
+  };
+
   const handleClearAll = () => {
     onSelectionChange([]);
   };
 
   const handleDone = () => {
-    onClose();
+    if (onDone) {
+      onDone();
+    } else {
+      onClose();
+    }
   };
 
   // Get initials for avatar
@@ -239,20 +278,24 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
 
     return (
       <TouchableOpacity
-        style={[styles.userItem, { backgroundColor: theme.card, borderBottomColor: theme.border }, isSelected && { backgroundColor: theme.backgroundSecondary }]}
+        style={[styles.userItem, {  borderBottomColor: theme.border }, isSelected && { backgroundColor: theme.backgroundSecondary }]}
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.userInfo}>
-          <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: theme.backgroundTertiary }]}>
-              <Text style={[styles.avatarText, { color: theme.textSecondary }]}>
-                {getInitials(item.name)}
-              </Text>
-            </View>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status), borderColor: theme.card }]} />
-          </View>
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatar}
+            size={48}
+            status={item.status}
+            showStatus={true}
+          />
           <View style={styles.userDetails}>
-            <Text style={[styles.userName, { color: theme.text }]}>{item.name}</Text>
+            <View style={styles.userNameContainer}>
+              <Text style={[styles.userName, { color: theme.text }]}>{item.name}</Text>
+              {item.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={styles.deptHeadIcon} />
+              )}
+            </View>
             <Text style={[styles.userRole, { color: theme.textSecondary }]}>{getRoleText(item.role)}</Text>
             {item.position && (
               <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{item.position}</Text>
@@ -358,38 +401,23 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       flexDirection: 'row',
       alignItems: 'center',
       flex: 1,
-    },
-    avatarContainer: {
-      position: 'relative',
-    },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarText: {
-      fontSize: 18,
-      fontWeight: '600',
-    },
-    statusDot: {
-      position: 'absolute',
-      bottom: 2,
-      right: 2,
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      borderWidth: 2,
+      gap: 12,
     },
     userDetails: {
       flex: 1,
-      marginLeft: 12,
+    },
+    userNameContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
     userName: {
       fontSize: 16,
       fontWeight: '600',
       marginBottom: 2,
+    },
+    deptHeadIcon: {
+      marginLeft: 4,
     },
     userRole: {
       fontSize: 14,
@@ -449,6 +477,24 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       paddingVertical: 8,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
+    },
+    sectionHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    sectionCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    partialCheckmark: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
     },
     sectionHeaderText: {
       fontSize: 14,
@@ -526,14 +572,46 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
             sections={userSections}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderUserItem}
-            renderSectionHeader={({ section }) => (
-              <View style={styles.sectionHeaderContainer}>
-                <Text style={styles.sectionHeaderText}>{section.title}</Text>
-                <Text style={styles.sectionHeaderCount}>
-                  {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
-                </Text>
-              </View>
-            )}
+            renderSectionHeader={({ section }) => {
+              if (!multiSelect) {
+                // Radio mode - non-clickable headers
+                return (
+                  <View style={styles.sectionHeaderContainer}>
+                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                    <Text style={styles.sectionHeaderCount}>
+                      {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                    </Text>
+                  </View>
+                );
+              }
+
+              // Multi-select mode - clickable headers with checkboxes
+              const departmentUserIds = section.data.map(u => u.id);
+              const selectedCount = departmentUserIds.filter(id => selectedUserIds.includes(id)).length;
+              const allSelected = selectedCount === departmentUserIds.length;
+              const someSelected = selectedCount > 0 && selectedCount < departmentUserIds.length;
+
+              return (
+                <TouchableOpacity
+                  style={styles.sectionHeaderContainer}
+                  onPress={() => toggleDepartmentSelection(section.data)}
+                >
+                  <View style={styles.sectionHeaderLeft}>
+                    <View style={[styles.sectionCheckbox, { borderColor: theme.border }, (allSelected || someSelected) && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                      {allSelected ? (
+                        <Ionicons name="checkmark" size={18} color="white" />
+                      ) : someSelected ? (
+                        <View style={[styles.partialCheckmark, { backgroundColor: 'white' }]} />
+                      ) : null}
+                    </View>
+                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                  </View>
+                  <Text style={styles.sectionHeaderCount}>
+                    {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
             contentContainerStyle={styles.listContent}
             stickySectionHeadersEnabled={true}
             ListEmptyComponent={

@@ -30,22 +30,172 @@ import {
   deleteChecklistItem,
 } from '@/api/task.api';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@hooks/useTheme';
 
 interface TaskChecklistsViewProps {
   taskId: number;
   onChecklistChanged?: () => void;
+  canEdit?: boolean; // Создатель и делегировавший могут создавать/редактировать/удалять чек-листы
+  canToggleOnly?: boolean; // Исполнители могут только чекать/анчекать пункты
+  readOnly?: boolean; // Только просмотр, никаких изменений
 }
+
+// Simple Progress Indicator Component (no SVG)
+const ProgressIndicator: React.FC<{
+  progress: number;
+  size: number;
+  color: string;
+  backgroundColor: string;
+}> = ({ progress, size, color, backgroundColor }) => {
+  // Circular progress indicator using multiple layers
+  const borderWidth = 2.5;
+  const innerSize = size - borderWidth * 2;
+
+  // Calculate which parts of the border to show in color based on progress
+  // More granular thresholds for smoother progression
+  const showTop = progress >= 5;
+  const showTopRight = progress >= 15;
+  const showRight = progress >= 30;
+  const showBottomRight = progress >= 45;
+  const showBottom = progress >= 60;
+  const showBottomLeft = progress >= 75;
+  const showLeft = progress >= 90;
+  const showTopLeft = progress >= 95;
+
+  return (
+    <View style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: 'transparent',
+      position: 'relative',
+    }}>
+      {/* Base circle background */}
+      <View style={{
+        position: 'absolute',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: borderWidth,
+        borderColor: backgroundColor,
+      }} />
+
+      {/* Progress segments - overlay colored borders */}
+      {showTop && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderTopColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showTopRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderTopColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderRightColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showBottomRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderRightColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showBottom && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showBottomLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderLeftColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showTopLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderLeftColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+    </View>
+  );
+};
 
 export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   taskId,
   onChecklistChanged,
+  canEdit = true,
+  canToggleOnly = false,
+  readOnly = false,
 }) => {
+  const { theme, isDark } = useTheme();
   const [checklists, setChecklists] = useState<TaskChecklist[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newChecklistTitle, setNewChecklistTitle] = useState('');
   const [newItemTexts, setNewItemTexts] = useState<Record<number, string>>({});
   const [expandedChecklists, setExpandedChecklists] = useState<Set<number>>(new Set());
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
   const loadChecklists = async () => {
     try {
@@ -72,7 +222,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   };
 
   const handleCreateChecklist = async () => {
-    if (!newChecklistTitle.trim()) return;
+    if (!newChecklistTitle.trim() || !canEdit) return;
 
     try {
       const data: CreateChecklistDto = {
@@ -114,7 +264,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 
   const handleAddItem = async (checklistId: number) => {
     const text = newItemTexts[checklistId];
-    if (!text?.trim()) return;
+    if (!text?.trim() || !canEdit) return;
 
     try {
       const data: CreateChecklistItemDto = {
@@ -131,6 +281,9 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   };
 
   const handleToggleItem = async (item: TaskChecklistItem) => {
+    // Allow toggle if: canEdit OR canToggleOnly (but not readOnly)
+    if (readOnly) return;
+
     try {
       await toggleChecklistItem(item.id);
       // Update local state optimistically
@@ -179,101 +332,118 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
     });
   };
 
+  const toggleItemExpanded = (itemId: number) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
   const getChecklistProgress = (checklist: TaskChecklist) => {
-    if (checklist.items.length === 0) return 0;
+    if (!checklist.items || checklist.items.length === 0) return 0;
     const completed = checklist.items.filter(i => i.is_completed).length;
     return Math.round((completed / checklist.items.length) * 100);
   };
 
   const renderChecklistItem = ({ item: checklist }: { item: TaskChecklist }) => {
-    const isExpanded = expandedChecklists.has(checklist.id);
     const progress = getChecklistProgress(checklist);
-    const completedCount = checklist.items.filter(i => i.is_completed).length;
+    const completedItems = checklist.items.filter(i => i.is_completed).length;
+    const totalItems = checklist.items.length;
+    const isExpanded = expandedChecklists.has(checklist.id);
 
     return (
-      <View style={styles.checklistContainer}>
+      <View style={[styles.checklistContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+        {/* Checklist Header */}
         <TouchableOpacity
           style={styles.checklistHeader}
           onPress={() => toggleChecklistExpanded(checklist.id)}
+          activeOpacity={0.7}
         >
+          {/* Expand/Collapse Icon - Left */}
+          <Ionicons
+            name={isExpanded ? 'chevron-down-outline' : 'chevron-forward-outline'}
+            size={18}
+            color={theme.textSecondary}
+            style={{ marginRight: 8 }}
+          />
+
           <View style={styles.checklistHeaderLeft}>
-            <Ionicons
-              name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-              size={20}
-              color="#6b7280"
-            />
-            <Text style={styles.checklistTitle}>{checklist.title}</Text>
+            <Text style={[styles.checklistTitle, { color: theme.text }]}>
+              План
+            </Text>
           </View>
 
           <View style={styles.checklistHeaderRight}>
-            <Text style={styles.checklistProgress}>
-              {completedCount}/{checklist.items.length}
+            {/* Count - Left of Progress */}
+            <Text style={[styles.checklistCount, { color: theme.textSecondary }]}>
+              {completedItems}/{totalItems}
             </Text>
-            <TouchableOpacity
-              onPress={() => handleDeleteChecklist(checklist)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="trash-outline" size={18} color="#ef4444" />
-            </TouchableOpacity>
+
+            {/* Progress Indicator */}
+            <ProgressIndicator
+              progress={progress}
+              size={18}
+              color={progress === 100 ? '#10B981' : theme.primary}
+              backgroundColor={isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'}
+            />
           </View>
         </TouchableOpacity>
 
-        {progress > 0 && (
-          <View style={styles.progressBarContainer}>
-            <View style={[styles.progressBar, { width: `${progress}%` }]} />
-          </View>
-        )}
+        {/* Items */}
+        {isExpanded && checklist.items?.map((item, index) => {
+          const isItemExpanded = expandedItems.has(item.id);
+          const isLastItem = index === checklist.items.length - 1;
 
-        {isExpanded && (
-          <View style={styles.itemsContainer}>
-            {checklist.items.map(item => (
-              <View key={item.id} style={styles.itemRow}>
-                <TouchableOpacity
-                  style={styles.itemCheckbox}
-                  onPress={() => handleToggleItem(item)}
-                >
-                  <View style={[styles.checkbox, item.is_completed && styles.checkboxChecked]}>
-                    {item.is_completed && (
-                      <Ionicons name="checkmark" size={14} color="#fff" />
-                    )}
-                  </View>
-                </TouchableOpacity>
+          return (
+            <View
+              key={item.id}
+              style={[
+                styles.itemRow,
+                { borderBottomColor: theme.border },
+                isLastItem && styles.itemRowLast
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.itemCheckbox}
+                onPress={() => handleToggleItem(item)}
+                disabled={readOnly}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.checkbox,
+                  { borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)' },
+                  item.is_completed && styles.checkboxChecked
+                ]}>
+                  {item.is_completed && (
+                    <Ionicons name="checkmark" size={16} color="#fff" />
+                  )}
+                </View>
+              </TouchableOpacity>
 
+              <TouchableOpacity
+                style={styles.itemTextContainer}
+                onPress={() => toggleItemExpanded(item.id)}
+                activeOpacity={0.7}
+              >
                 <Text
-                  style={[styles.itemText, item.is_completed && styles.itemTextCompleted]}
-                  numberOfLines={2}
+                  style={[
+                    styles.itemText,
+                    { color: theme.text },
+                    item.is_completed && [styles.itemTextCompleted, { color: theme.textTertiary }]
+                  ]}
+                  numberOfLines={isItemExpanded ? undefined : 3}
                 >
                   {item.title}
                 </Text>
-
-                <TouchableOpacity
-                  onPress={() => handleDeleteItem(item)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="close-circle" size={18} color="#d1d5db" />
-                </TouchableOpacity>
-              </View>
-            ))}
-
-            <View style={styles.addItemContainer}>
-              <TextInput
-                style={styles.addItemInput}
-                placeholder="Добавить пункт..."
-                value={newItemTexts[checklist.id] || ''}
-                onChangeText={text =>
-                  setNewItemTexts(prev => ({ ...prev, [checklist.id]: text }))
-                }
-                onSubmitEditing={() => handleAddItem(checklist.id)}
-                returnKeyType="done"
-              />
-              {newItemTexts[checklist.id]?.trim() && (
-                <TouchableOpacity onPress={() => handleAddItem(checklist.id)}>
-                  <Ionicons name="add-circle" size={24} color="#3b82f6" />
-                </TouchableOpacity>
-              )}
+              </TouchableOpacity>
             </View>
-          </View>
-        )}
+          );
+        })}
       </View>
     );
   };
@@ -281,33 +451,18 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
+  // Don't render anything if there are no checklists
+  if (checklists.length === 0) {
+    return null;
+  }
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Чеклисты ({checklists.length})</Text>
-      </View>
-
-      <View style={styles.addChecklistContainer}>
-        <TextInput
-          style={styles.addChecklistInput}
-          placeholder="Создать новый чеклист..."
-          value={newChecklistTitle}
-          onChangeText={setNewChecklistTitle}
-          onSubmitEditing={handleCreateChecklist}
-          returnKeyType="done"
-        />
-        {newChecklistTitle.trim() && (
-          <TouchableOpacity onPress={handleCreateChecklist}>
-            <Ionicons name="add-circle" size={28} color="#3b82f6" />
-          </TouchableOpacity>
-        )}
-      </View>
-
       <FlatList
         data={checklists}
         renderItem={renderChecklistItem}
@@ -317,12 +472,6 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="list-outline" size={48} color="#d1d5db" />
-            <Text style={styles.emptyText}>Чеклистов пока нет</Text>
-          </View>
-        }
       />
     </View>
   );
@@ -331,18 +480,6 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f9fafb',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
   },
   addChecklistContainer: {
     flexDirection: 'row',
@@ -367,7 +504,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    padding: 16,
+    paddingVertical: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -381,71 +518,66 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9ca3af',
     marginTop: 12,
   },
   checklistContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
     marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   checklistHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
+    marginBottom: 10,
+    paddingVertical: 2,
   },
   checklistHeaderLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  checklistTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    flex: 1,
   },
   checklistHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  checklistProgress: {
-    fontSize: 14,
-    color: '#6b7280',
+  checklistTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
   },
-  progressBarContainer: {
-    height: 3,
-    backgroundColor: '#e5e7eb',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#10b981',
-  },
-  itemsContainer: {
-    padding: 12,
-    paddingTop: 8,
+  checklistCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.1,
   },
   itemRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
     paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  itemRowLast: {
+    borderBottomWidth: 0,
   },
   itemCheckbox: {
-    padding: 2,
+    paddingTop: 1,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#d1d5db',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -453,14 +585,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#10b981',
     borderColor: '#10b981',
   },
-  itemText: {
+  itemTextContainer: {
     flex: 1,
+  },
+  itemText: {
     fontSize: 14,
-    color: '#374151',
+    lineHeight: 20,
+    fontWeight: '500',
   },
   itemTextCompleted: {
-    color: '#9ca3af',
     textDecorationLine: 'line-through',
+    opacity: 0.6,
   },
   addItemContainer: {
     flexDirection: 'row',

@@ -19,6 +19,7 @@ import { getOrCreateDirectChat } from '@api/chat.api';
 
 interface MessageItemProps {
   message: Message;
+  chatType?: 'private' | 'group' | 'channel';
   onReply?: (message: Message) => void;
   onEdit?: (message: Message) => void;
   onDelete?: (messageId: number, deleteFor: 'everyone' | 'me') => void;
@@ -41,6 +42,7 @@ interface MessageItemProps {
  */
 export const MessageItem: React.FC<MessageItemProps> = ({
   message,
+  chatType,
   onReply,
   onEdit,
   onDelete,
@@ -156,6 +158,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         isOwnMessage={isOwnMessage}
         isAdmin={isAdmin}
         isForwardedMessage={isForwarded}
+        chatType={chatType}
+        currentUserRole={userRole}
         onClose={() => setShowContextMenu(false)}
         onReply={onReply}
         onEdit={onEdit}

@@ -100,12 +100,10 @@ const ChatListScreen: React.FC = () => {
 
   // Логируем изменения в чатах для отладки статусов
   useEffect(() => {
-    console.log('📋 ChatList: chats updated, total:', chats.length);
     const privateChats = chats.filter(c => c.type === 'private');
     privateChats.forEach(chat => {
       const companion = chat.members?.find(m => m.user_id !== currentUser?.id);
       if (companion?.user) {
-        console.log(`  - Chat ${chat.id}: companion ${companion.user.name || companion.user.email} status = ${companion.user.status}`);
       }
     });
   }, [chats]);
@@ -289,10 +287,11 @@ const ChatListScreen: React.FC = () => {
     navigation.navigate('CreateChat', { initialChatType: chatType });
   };
 
-  const handleDeleteChat = async (chatId: number) => {
+  const handleDeleteChat = async (chatId: number, clearHistory?: boolean) => {
     try {
-      await deleteChat(chatId);
-      console.log(`✅ Chat ${chatId} deleted`);
+      console.log(`📋 ChatListScreen.handleDeleteChat called with chatId=${chatId}, clearHistory=${clearHistory}`);
+      await deleteChat(chatId, clearHistory);
+      console.log(`✅ Chat ${chatId} deleted (clearHistory: ${clearHistory})`);
     } catch (error) {
       console.error('Failed to delete chat:', error);
     }
@@ -425,7 +424,7 @@ const ChatListScreen: React.FC = () => {
                 onToggleFavorite={() => handleToggleFavorite(item.id)}
                 onTogglePinned={() => handleTogglePinned(item.id)}
                 onMarkAsRead={() => handleMarkAsRead(item.id)}
-                onDelete={() => handleDeleteChat(item.id)}
+                onDelete={handleDeleteChat}
               />
             )}
             refreshControl={

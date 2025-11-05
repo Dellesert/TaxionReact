@@ -14,6 +14,8 @@ interface MessageContextMenuProps {
   isOwnMessage: boolean;
   isAdmin: boolean;
   isForwardedMessage: boolean;
+  chatType?: 'private' | 'group' | 'channel';
+  currentUserRole?: 'owner' | 'admin' | 'member';
   onClose: () => void;
   onReply?: (message: Message) => void;
   onEdit?: (message: Message) => void;
@@ -34,6 +36,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   isOwnMessage,
   isAdmin,
   isForwardedMessage,
+  chatType,
+  currentUserRole,
   onClose,
   onReply,
   onEdit,
@@ -44,6 +48,20 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   onRestore,
 }) => {
   const { theme } = useTheme();
+
+  // Check if user can pin/unpin messages
+  const canPinUnpin = React.useMemo(() => {
+    // In private chats, anyone can pin/unpin
+    if (chatType === 'private') {
+      return true;
+    }
+    // In group chats, only owner and admin can pin/unpin
+    if (chatType === 'group') {
+      return currentUserRole === 'owner' || currentUserRole === 'admin';
+    }
+    // Default to false if chat type is unknown
+    return false;
+  }, [chatType, currentUserRole]);
 
   // Получить превью сообщения (текст и/или информация о файле)
   const getMessagePreview = (): { text: string; icon?: string; attachmentText?: string } => {
@@ -265,32 +283,34 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   </TouchableOpacity>
                 )}
 
-                {/* Закрепить / Открепить */}
-                {message.is_pinned ? (
-                  onUnpin && (
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => {
-                        onClose();
-                        onUnpin(message.id);
-                      }}
-                    >
-                      <Ionicons name="pin" size={20} color={theme.text} />
-                      <Text style={[styles.menuText, { color: theme.text }]}>Открепить</Text>
-                    </TouchableOpacity>
-                  )
-                ) : (
-                  onPin && (
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => {
-                        onClose();
-                        onPin(message.id);
-                      }}
-                    >
-                      <Ionicons name="pin-outline" size={20} color={theme.text} />
-                      <Text style={[styles.menuText, { color: theme.text }]}>Закрепить</Text>
-                    </TouchableOpacity>
+                {/* Закрепить / Открепить (только для пользователей с правами) */}
+                {canPinUnpin && (
+                  message.is_pinned ? (
+                    onUnpin && (
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                          onClose();
+                          onUnpin(message.id);
+                        }}
+                      >
+                        <Ionicons name="pin" size={20} color={theme.text} />
+                        <Text style={[styles.menuText, { color: theme.text }]}>Открепить</Text>
+                      </TouchableOpacity>
+                    )
+                  ) : (
+                    onPin && (
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                          onClose();
+                          onPin(message.id);
+                        }}
+                      >
+                        <Ionicons name="pin-outline" size={20} color={theme.text} />
+                        <Text style={[styles.menuText, { color: theme.text }]}>Закрепить</Text>
+                      </TouchableOpacity>
+                    )
                   )
                 )}
 

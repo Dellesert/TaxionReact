@@ -23,6 +23,8 @@ const PERSISTENT_KEYS = ['access_token', 'refresh_token', 'user_data'];
 export const migrateToAsyncStorage = async (): Promise<void> => {
   if (isWeb) return; // No need to migrate on web
 
+  console.log('🔄 [SecureStorage] Starting migration from SecureStore to AsyncStorage...');
+
   for (const key of PERSISTENT_KEYS) {
     try {
       // Try to get value from SecureStore
@@ -48,12 +50,17 @@ export const migrateToAsyncStorage = async (): Promise<void> => {
     }
   }
 
+  console.log('✅ [SecureStorage] Migration completed');
 };
 
 export const setItemAsync = async (key: string, value: string): Promise<void> => {
   try {
     if (isWeb) {
       localStorage.setItem(key, value);
+      console.log(`✅ [SecureStorage] Saved to localStorage: ${key}`, {
+        valueLength: value?.length,
+        preview: value?.substring(0, 20) + '...',
+      });
     } else {
       // Use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
       // SecureStore doesn't persist in Expo Go development mode
@@ -65,6 +72,7 @@ export const setItemAsync = async (key: string, value: string): Promise<void> =>
         });
       } else {
         await SecureStore.setItemAsync(key, value);
+        console.log(`✅ [SecureStorage] Saved to SecureStore: ${key}`);
       }
     }
   } catch (error) {
@@ -79,7 +87,7 @@ export const getItemAsync = async (key: string): Promise<string | null> => {
 
     if (isWeb) {
       value = localStorage.getItem(key);
-      } else {
+    } else {
       // Use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
       if (PERSISTENT_KEYS.includes(key)) {
         value = await AsyncStorage.getItem(key);
@@ -107,6 +115,7 @@ export const deleteItemAsync = async (key: string): Promise<void> => {
   try {
     if (isWeb) {
       localStorage.removeItem(key);
+      console.log(`🗑️ [SecureStorage] Deleted from localStorage: ${key}`);
     } else {
       // Use AsyncStorage for persistent keys (tokens)
       if (PERSISTENT_KEYS.includes(key)) {

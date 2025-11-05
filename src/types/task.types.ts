@@ -176,6 +176,12 @@ export interface Project {
   updated_at: ISODateString;
 }
 
+// Checklist data for task creation
+export interface CreateTaskChecklistDto {
+  title: string;
+  items: string[]; // Array of item titles
+}
+
 // Create Task DTO
 export interface CreateTaskDto {
   title: string;
@@ -188,6 +194,7 @@ export interface CreateTaskDto {
   project_id?: number;
   due_date?: ISODateString;
   tags?: string[];
+  checklists?: CreateTaskChecklistDto[]; // Checklists to create with task
 }
 
 // Update Task DTO

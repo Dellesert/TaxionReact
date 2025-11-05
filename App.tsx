@@ -53,14 +53,23 @@ export default function App() {
 
   // Handle app state changes (foreground/background)
   useEffect(() => {
-    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      console.log('📱 App state changed to:', nextAppState);
+    let appState = AppState.currentState;
 
-      if (nextAppState === 'active' && isAuthenticated) {
-        console.log('📱 App became active - session mode (no token refresh needed)');
-        // Session mode: no token refresh needed
-        // Session is validated on each request via X-Session-ID header
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      console.log('📱 AppState changed from', appState, 'to', nextAppState);
+
+      // When app comes to foreground, reconnect WebSocket if needed
+      if (appState.match(/inactive|background/) && nextAppState === 'active' && isAuthenticated) {
+        console.log('🔄 App became active - checking WebSocket connection...');
+
+        // Check if WebSocket is still connected
+        if (!websocketService.isConnected()) {
+          console.log('🔌 WebSocket disconnected - reconnecting...');
+          await websocketService.reconnect();
+        }
       }
+
+      appState = nextAppState;
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);

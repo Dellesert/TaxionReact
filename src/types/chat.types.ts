@@ -16,6 +16,7 @@ export type MessageType = 'text' | 'image' | 'file' | 'voice' | 'video' | 'syste
 export interface Attachment {
   id: number;
   message_id: number;
+  file_id: number; // Reference to file in file-service
   file_url: string;
   file_name: string;
   original_name?: string; // Original filename before server renamed it

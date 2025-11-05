@@ -61,16 +61,17 @@ export const replaceLocalhostWithIP = (url: string): string => {
   // Извлекаем только протокол и хост (без /api/v1)
   const baseHost = apiBaseUrl.replace(/\/api\/v1$/, '');
 
-  // Заменяем различные варианты localhost
+  // Если URL начинается с /, это относительный путь - добавляем baseHost
+  if (url.startsWith('/')) {
+    return baseHost + url;
+  }
+
+  // Заменяем различные варианты localhost и продакшн URL
   const replacedUrl = url
     .replace(/http:\/\/localhost:8080/g, baseHost)
     .replace(/http:\/\/127\.0\.0\.1:8080/g, baseHost)
-    .replace(/http:\/\/0\.0\.0\.0:8080/g, baseHost);
-
-  // Логирование для отладки (только если произошла замена)
-  if (replacedUrl !== url) {
-    console.log('🔄 URL replaced:', url, '->', replacedUrl);
-  }
+    .replace(/http:\/\/0\.0\.0\.0:8080/g, baseHost)
+    .replace(/https:\/\/taxion\.fusioninsight\.cloud/g, baseHost);
 
   return replacedUrl;
 };

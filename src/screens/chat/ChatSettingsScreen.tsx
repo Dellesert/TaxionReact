@@ -3,8 +3,8 @@
  * Экран настроек чата
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,13 +13,15 @@ import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
-import { ChatMembersModal } from '@components/chat/ChatMembersModal';
 import { ConfirmDialog } from '@components/common/ConfirmDialog';
 import { InputDialog } from '@components/common/InputDialog';
+import { ActionSheet, ActionSheetOption } from '@components/common/ActionSheet';
 import { fileApi } from '@api/fileApi';
 import { Avatar } from '@components/common/Avatar';
-import { User } from '@/types/user.types';
+import { User, ChatMember } from '@/types/user.types';
 import * as userApi from '@api/user.api';
+import * as chatApi from '@api/chat.api';
+import UserSelectorModal from '@components/common/UserSelectorModal';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ChatSettings'>;
 
@@ -31,21 +33,42 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const deleteChat = useChatStore((state) => state.deleteChat);
   const leaveChat = useChatStore((state) => state.leaveChat);
   const updateChat = useChatStore((state) => state.updateChat);
+  const clearChatHistory = useChatStore((state) => state.clearChatHistory);
 
-  const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
+  const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [otherUser, setOtherUser] = useState<User | null>(null);
   const [departmentName, setDepartmentName] = useState<string>('');
+
+  // Members management
+  const [members, setMembers] = useState<ChatMember[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [isAddingMembers, setIsAddingMembers] = useState(false);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<{ id: number; name: string } | null>(null);
+  const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
+  const [roleChangeData, setRoleChangeData] = useState<{ userId: number; userName: string; currentRole: string; newRole: string } | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<{ userId: number; userName: string; role: string } | null>(null);
 
   const chat = getChatById(chatId);
   const creatorId = chat?.created_by || chat?.creator_id;
   const isCreator = currentUser && creatorId === currentUser.id;
 
-  // Функция для перевода роли на русский
-  const getRoleLabel = (role: string): string => {
+  // Определяем роль текущего пользователя в чате
+  const currentUserRole = members.find(m => m.user_id === currentUser?.id)?.role;
+  const isAdmin = currentUserRole === 'admin';
+  const isOwner = currentUserRole === 'owner';
+  const canManageMembers = isOwner || isAdmin;
+
+  // Функция для перевода системной роли на русский
+  const getSystemRoleLabel = (role: string): string => {
     switch (role) {
       case 'admin':
         return 'Администратор';
@@ -55,6 +78,30 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         return 'Сотрудник';
       default:
         return role;
+    }
+  };
+
+  // Функция для перевода роли в чате на русский
+  const getChatRoleLabel = (role: string) => {
+    switch (role) {
+      case 'owner':
+        return 'Владелец';
+      case 'admin':
+        return 'Администратор';
+      default:
+        return ''; // Don't show label for regular members
+    }
+  };
+
+  // Цвет роли в чате
+  const getChatRoleColor = (role: string) => {
+    switch (role) {
+      case 'owner':
+        return '#E94444';
+      case 'admin':
+        return theme.primary;
+      default:
+        return theme.textSecondary;
     }
   };
 
@@ -145,9 +192,151 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     loadOtherUser();
   }, [chat, currentUser]);
 
-  const handleDeleteChat = async () => {
+  // Загрузка участников для групповых чатов
+  useEffect(() => {
+    if (chat?.type === 'group') {
+      loadMembers();
+    }
+  }, [chat?.type, chatId]);
+
+  const loadMembers = async () => {
     try {
-      await deleteChat(chatId);
+      setIsLoadingMembers(true);
+      const chatMembers = await chatApi.getChatMembers(chatId);
+      console.log('👥 Loaded chat members:', chatMembers);
+
+      // Загружаем информацию о пользователях
+      if (chatMembers && chatMembers.length > 0) {
+        const userIds = chatMembers.map((m) => m.user_id);
+        const usersData = await userApi.getUsers({ ids: userIds }, { limit: 100, offset: 0 });
+        const users = usersData.data || [];
+
+        // Объединяем данные участников с данными пользователей
+        const membersWithUsers = chatMembers.map((member) => ({
+          ...member,
+          user: users.find((u) => u.id === member.user_id),
+        }));
+
+        setMembers(membersWithUsers);
+      } else {
+        setMembers([]);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load members:', error);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const handleAddMembers = async () => {
+    if (selectedUserIds.length === 0) {
+      Alert.alert('Ошибка', 'Выберите хотя бы одного участника');
+      return;
+    }
+
+    try {
+      setIsAddingMembers(true);
+
+      // Добавляем участников по одному
+      for (const userId of selectedUserIds) {
+        await chatApi.addChatMember(chatId, userId);
+      }
+
+      Alert.alert('Успех', 'Участники добавлены');
+      setShowAddMembersModal(false);
+      setSelectedUserIds([]);
+
+      // Перезагружаем список участников
+      await loadMembers();
+    } catch (error: any) {
+      console.error('❌ Failed to add members:', error);
+      Alert.alert('Ошибка', error.message || 'Не удалось добавить участников');
+    } finally {
+      setIsAddingMembers(false);
+    }
+  };
+
+  const handleRemoveMember = async (userId: number, userName: string) => {
+    setUserToRemove({ id: userId, name: userName });
+    setShowRemoveDialog(true);
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!userToRemove) return;
+
+    try {
+      await chatApi.removeChatMember(chatId, userToRemove.id);
+      Alert.alert('Успех', `${userToRemove.name} удален из чата`);
+      setShowRemoveDialog(false);
+      setUserToRemove(null);
+
+      // Перезагружаем список участников
+      await loadMembers();
+    } catch (error: any) {
+      console.error('❌ Failed to remove member:', error);
+      Alert.alert('Ошибка', error.message || 'Не удалось удалить участника');
+    }
+  };
+
+  const handleToggleAdmin = async (userId: number, userName: string, currentRole: string) => {
+    const newRole = currentRole === 'admin' ? 'member' : 'admin';
+    setRoleChangeData({
+      userId,
+      userName,
+      currentRole,
+      newRole,
+    });
+    setShowRoleChangeDialog(true);
+  };
+
+  const confirmRoleChange = async () => {
+    if (!roleChangeData) return;
+
+    try {
+      await chatApi.updateChatMemberRole(chatId, roleChangeData.userId, roleChangeData.newRole as 'admin' | 'member');
+      const action = roleChangeData.newRole === 'admin' ? 'назначен администратором' : 'снят с должности администратора';
+      Alert.alert('Успех', `${roleChangeData.userName} ${action}`);
+      setShowRoleChangeDialog(false);
+      setRoleChangeData(null);
+
+      // Перезагружаем список участников
+      await loadMembers();
+    } catch (error: any) {
+      console.error('❌ Failed to update member role:', error);
+      Alert.alert('Ошибка', error.message || 'Не удалось изменить роль участника');
+    }
+  };
+
+  const cancelRoleChange = () => {
+    setShowRoleChangeDialog(false);
+    setRoleChangeData(null);
+  };
+
+  const handleOpenActionMenu = (userId: number, userName: string, role: string) => {
+    setSelectedMember({ userId, userName, role });
+    setShowActionMenu(true);
+  };
+
+  const handleCloseActionMenu = () => {
+    setShowActionMenu(false);
+    setSelectedMember(null);
+  };
+
+  const handleMenuAction = (action: 'changeRole' | 'remove') => {
+    if (!selectedMember) return;
+
+    handleCloseActionMenu();
+
+    if (action === 'changeRole') {
+      handleToggleAdmin(selectedMember.userId, selectedMember.userName, selectedMember.role);
+    } else if (action === 'remove') {
+      handleRemoveMember(selectedMember.userId, selectedMember.userName);
+    }
+  };
+
+  const handleDeleteChat = async (clearHistory: boolean = false) => {
+    try {
+      await deleteChat(chatId, clearHistory);
       setShowDeleteDialog(false);
       // Возвращаемся к списку чатов
       navigation.navigate('ChatList');
@@ -156,7 +345,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  const handleLeaveChat = async () => {
+  const handleLeaveChat = async (clearHistory: boolean = false) => {
     try {
       await leaveChat(chatId);
       setShowLeaveDialog(false);
@@ -178,9 +367,72 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  // Create delete/leave action options based on chat type and user role
+  const deleteActionOptions = useMemo((): ActionSheetOption[] => {
+    if (chat?.type === 'private') {
+      // For private chats: delete with or without clearing history
+      return [
+        {
+          label: 'Удалить',
+          onPress: () => handleDeleteChat(false),
+        },
+        {
+          label: 'Удалить и очистить историю',
+          onPress: () => handleDeleteChat(true),
+          destructive: true,
+        },
+      ];
+    } else if (chat?.type === 'group') {
+      if (isOwner) {
+        // Owner can delete for all
+        return [
+          {
+            label: 'Удалить для всех',
+            onPress: () => handleDeleteChat(false),
+            destructive: true,
+          },
+          {
+            label: 'Удалить для всех и очистить историю',
+            onPress: () => handleDeleteChat(true),
+            destructive: true,
+          },
+        ];
+      } else {
+        // Non-owner members can leave
+        return [
+          {
+            label: 'Покинуть чат',
+            onPress: () => handleLeaveChat(false),
+          },
+          {
+            label: 'Покинуть и очистить историю',
+            onPress: () => handleLeaveChat(true),
+            destructive: true,
+          },
+        ];
+      }
+    }
+    return [];
+  }, [chat?.type, isOwner]);
+
   const handleSearchMessages = () => {
     // TODO: Реализовать поиск по сообщениям
     Alert.alert('Поиск', 'Функция поиска по сообщениям в разработке');
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      await clearChatHistory(chatId);
+
+      Alert.alert('Успех', 'История сообщений очищена');
+      setShowClearHistoryDialog(false);
+
+      // Navigate back to chat to show empty state
+      navigation.goBack();
+    } catch (error) {
+      console.error('Failed to clear history:', error);
+      Alert.alert('Ошибка', 'Не удалось очистить историю');
+    }
   };
 
   const handleChangeAvatar = async () => {
@@ -347,7 +599,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.backButton} />
       </View>
 
-      <ScrollView>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Аватар и имя для личного чата (только просмотр) */}
         {chat?.type === 'private' && otherUser && (
           <View style={[styles.avatarSection, dynamicStyles.section]}>
@@ -374,7 +626,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
             {otherUser.role && (
               <View style={[styles.userRoleBadge, { backgroundColor: theme.primary + '20' }]}>
                 <Text style={[styles.userRole, { color: theme.primary }]}>
-                  {getRoleLabel(otherUser.role)}
+                  {getSystemRoleLabel(otherUser.role)}
                 </Text>
               </View>
             )}
@@ -384,12 +636,54 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={[styles.userLastSeen, { color: otherUser.status === 'online' ? theme.success || '#34C759' : theme.textTertiary }]}>
               {getLastSeenText(otherUser.status, otherUser.last_active_at)}
             </Text>
+
+            {/* Быстрые действия для личного чата */}
+            <View style={styles.quickActionsContainer}>
+              {/* Поиск */}
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={handleSearchMessages}
+              >
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="search-outline" size={24} color={theme.primary} />
+                </View>
+                <Text style={[styles.quickActionText, { color: theme.text }]}>
+                  Поиск
+                </Text>
+              </TouchableOpacity>
+
+              {/* Очистить историю */}
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => setShowClearHistoryDialog(true)}
+              >
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="trash-bin-outline" size={24} color={theme.primary} />
+                </View>
+                <Text style={[styles.quickActionText, { color: theme.text }]}>
+                  Очистить
+                </Text>
+              </TouchableOpacity>
+
+              {/* Удалить чат */}
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => setShowDeleteActionSheet(true)}
+              >
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="trash-outline" size={24} color={theme.error || '#FF3B30'} />
+                </View>
+                <Text style={[styles.quickActionText, { color: theme.error || '#FF3B30' }]}>
+                  Удалить
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        {/* Аватар чата (для всех участников групповых чатов) */}
+        {/* Аватар и быстрые действия для групповых чатов */}
         {chat?.type === 'group' && (
-          <View style={[styles.avatarSection, dynamicStyles.section]}>
+          <View style={[styles.groupInfoSection, dynamicStyles.section]}>
             <View style={styles.avatarContainer}>
               <Avatar
                 imageUrl={chat?.avatar}
@@ -397,105 +691,225 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
                 size={100}
               />
             </View>
-            {/* Кнопка изменения только для создателя */}
-            {isCreator && (
+            <Text style={[styles.chatName, { color: theme.text }]}>
+              {chatName || 'Группа'}
+            </Text>
+            <Text style={[styles.membersCount, { color: theme.textSecondary }]}>
+              {members.length} {members.length === 1 ? 'участник' : members.length < 5 ? 'участника' : 'участников'}
+            </Text>
+
+            {/* Быстрые действия */}
+            <View style={styles.quickActionsContainer}>
+              {/* Изменить фото - только для создателя */}
+              {isCreator && (
+                <TouchableOpacity
+                  style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={handleChangeAvatar}
+                  disabled={isUploadingAvatar}
+                >
+                  <View style={styles.quickActionIcon}>
+                    <Ionicons name="camera-outline" size={24} color={theme.primary} />
+                  </View>
+                  <Text style={[styles.quickActionText, { color: theme.text }]}>
+                    {isUploadingAvatar ? 'Загрузка...' : 'Фото'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Переименовать - только для создателя */}
+              {isCreator && (
+                <TouchableOpacity
+                  style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => setShowRenameDialog(true)}
+                >
+                  <View style={styles.quickActionIcon}>
+                    <Ionicons name="create-outline" size={24} color={theme.primary} />
+                  </View>
+                  <Text style={[styles.quickActionText, { color: theme.text }]}>
+                    Название
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Поиск */}
               <TouchableOpacity
-                style={[styles.changeAvatarButton, { backgroundColor: theme.primary }]}
-                onPress={handleChangeAvatar}
-                disabled={isUploadingAvatar}
+                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={handleSearchMessages}
               >
-                <Ionicons name="camera" size={20} color="#fff" />
-                <Text style={styles.changeAvatarText}>
-                  {isUploadingAvatar ? 'Загрузка...' : 'Изменить изображение'}
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="search-outline" size={24} color={theme.primary} />
+                </View>
+                <Text style={[styles.quickActionText, { color: theme.text }]}>
+                  Поиск
                 </Text>
               </TouchableOpacity>
-            )}
+
+              {/* Покинуть/Удалить чат */}
+              {!isCreator ? (
+                <TouchableOpacity
+                  style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => setShowDeleteActionSheet(true)}
+                >
+                  <View style={styles.quickActionIcon}>
+                    <Ionicons name="exit-outline" size={24} color={theme.error || '#FF3B30'} />
+                  </View>
+                  <Text style={[styles.quickActionText, { color: theme.error || '#FF3B30' }]}>
+                    Покинуть
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => setShowDeleteActionSheet(true)}
+                >
+                  <View style={styles.quickActionIcon}>
+                    <Ionicons name="trash-outline" size={24} color={theme.error || '#FF3B30'} />
+                  </View>
+                  <Text style={[styles.quickActionText, { color: theme.error || '#FF3B30' }]}>
+                    Удалить
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         )}
+
 
         {/* Участники (только для групповых чатов) */}
         {chat?.type === 'group' && (
-          <View style={[styles.section, dynamicStyles.section]}>
-            <TouchableOpacity
-              style={[styles.option, dynamicStyles.option]}
-              onPress={() => setMembersModalVisible(true)}
-            >
-              <Ionicons name="people-outline" size={24} color={theme.primary} />
-              <Text style={[styles.optionText, dynamicStyles.optionText]}>
-                Участники группы
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          </View>
+          <>
+            {/* Разделитель */}
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            {/* Кнопка добавления участников */}
+            {canManageMembers && (
+              <View style={[styles.section, dynamicStyles.section]}>
+                <TouchableOpacity
+                  style={[styles.option, dynamicStyles.option]}
+                  onPress={() => setShowAddMembersModal(true)}
+                >
+                  <Ionicons name="person-add-outline" size={24} color={theme.primary} />
+                  <Text style={[styles.optionText, dynamicStyles.optionText]}>
+                    Добавить участников
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Список участников */}
+            <View style={[styles.membersSection, dynamicStyles.section, canManageMembers ? {} : styles.sectionMarginTop]}>
+              <View style={styles.membersSectionHeader}>
+                <Text style={[styles.membersSectionTitle, { color: theme.text }]}>
+                  Участники ({members.length})
+                </Text>
+              </View>
+
+              {isLoadingMembers ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={theme.primary} />
+                </View>
+              ) : (
+                members.map((item) => {
+                  const user = item.user;
+                  if (!user) return null;
+
+                  const canRemove = canManageMembers &&
+                    item.user_id !== creatorId &&
+                    currentUser &&
+                    item.user_id !== currentUser.id &&
+                    !(isAdmin && item.role === 'admin');
+
+                  const canChangeRole = canManageMembers &&
+                    item.role !== 'owner' &&
+                    currentUser &&
+                    item.user_id !== currentUser.id &&
+                    !(isAdmin && item.role === 'admin');
+
+                  return (
+                    <View key={item.id} style={[styles.memberItem, { borderBottomColor: theme.border }]}>
+                      <View style={styles.memberInfo}>
+                        <Avatar
+                          name={user.name}
+                          imageUrl={user.avatar}
+                          size={44}
+                          status={user.status}
+                          showStatus={true}
+                        />
+                        <View style={styles.memberDetails}>
+                          <View style={styles.memberNameRow}>
+                            <Text style={[styles.memberName, { color: theme.text }]} numberOfLines={1}>
+                              {user.name}
+                            </Text>
+                            {user.role === 'department_head' && (
+                              <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+                            )}
+                          </View>
+                          <Text style={[styles.memberRole, { color: getChatRoleColor(item.role) }]}>
+                            {getChatRoleLabel(item.role)}
+                          </Text>
+                        </View>
+                      </View>
+                      {(canChangeRole || canRemove) && (
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => handleOpenActionMenu(item.user_id, user.name, item.role)}
+                          style={styles.menuButton}
+                        >
+                          <Ionicons name="ellipsis-horizontal" size={20} color={theme.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </>
         )}
 
-        {/* Переименование (только для групповых чатов и только для создателя) */}
-        {isCreator && chat?.type === 'group' && (
-          <View style={[styles.section, dynamicStyles.section, styles.sectionMargin]}>
-            <TouchableOpacity
-              style={[styles.option, dynamicStyles.option]}
-              onPress={() => setShowRenameDialog(true)}
-            >
-              <Ionicons name="create-outline" size={24} color={theme.primary} />
-              <Text style={[styles.optionText, dynamicStyles.optionText]}>
-                Переименовать чат
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Поиск */}
-        <View style={[styles.section, dynamicStyles.section, styles.sectionMargin]}>
-          <TouchableOpacity
-            style={[styles.option, dynamicStyles.option]}
-            onPress={handleSearchMessages}
-          >
-            <Ionicons name="search-outline" size={24} color={theme.primary} />
-            <Text style={[styles.optionText, dynamicStyles.optionText]}>
-              Поиск по сообщениям
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Действия */}
-        <View style={[styles.section, dynamicStyles.section, styles.sectionMargin]}>
-          {!isCreator && (
-            <TouchableOpacity
-              style={[styles.option, dynamicStyles.option]}
-              onPress={() => setShowLeaveDialog(true)}
-            >
-              <Ionicons name="exit-outline" size={24} color={theme.error || '#FF3B30'} />
-              <Text style={[styles.optionText, dynamicStyles.dangerText]}>
-                Покинуть чат
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          )}
-
-          {isCreator && (
-            <TouchableOpacity
-              style={[styles.option, dynamicStyles.option]}
-              onPress={() => setShowDeleteDialog(true)}
-            >
-              <Ionicons name="trash-outline" size={24} color={theme.error || '#FF3B30'} />
-              <Text style={[styles.optionText, dynamicStyles.dangerText]}>
-                Удалить чат
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
       </ScrollView>
 
-      {/* Модальное окно участников */}
-      <ChatMembersModal
-        visible={membersModalVisible}
-        chatId={chatId}
-        onClose={() => setMembersModalVisible(false)}
-        isCreator={isCreator}
-        creatorId={creatorId}
+      {/* Модальное окно добавления участников */}
+      {showAddMembersModal && (
+        <UserSelectorModal
+          visible={showAddMembersModal}
+          onClose={() => {
+            setShowAddMembersModal(false);
+            setSelectedUserIds([]);
+          }}
+          selectedUserIds={selectedUserIds}
+          onSelectionChange={setSelectedUserIds}
+          multiSelect={true}
+          title="Добавить участников"
+          excludeUserIds={members.map(m => m.user_id)}
+          onDone={handleAddMembers}
+        />
+      )}
+
+      {/* Action menu modal */}
+      <ActionSheet
+        visible={showActionMenu}
+        title={selectedMember?.userName || ''}
+        options={[
+          {
+            label: selectedMember?.role === 'admin' ? 'Снять права администратора' : 'Назначить администратором',
+            onPress: () => {
+              if (selectedMember) {
+                handleMenuAction('changeRole');
+              }
+            },
+          },
+          {
+            label: 'Удалить из чата',
+            onPress: () => {
+              if (selectedMember) {
+                handleMenuAction('remove');
+              }
+            },
+            destructive: true,
+          },
+        ]}
+        onCancel={handleCloseActionMenu}
       />
 
       {/* Диалог удаления */}
@@ -533,6 +947,57 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         onConfirm={handleRenameChat}
         onCancel={() => setShowRenameDialog(false)}
       />
+
+      {/* Confirm remove member dialog */}
+      <ConfirmDialog
+        visible={showRemoveDialog}
+        title="Удалить участника"
+        message={`Вы уверены, что хотите удалить ${userToRemove?.name} из чата?`}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmRemoveMember}
+        onCancel={() => {
+          setShowRemoveDialog(false);
+          setUserToRemove(null);
+        }}
+        destructive
+      />
+
+      {/* Confirm role change dialog */}
+      <ConfirmDialog
+        visible={showRoleChangeDialog}
+        title="Изменить роль"
+        message={
+          roleChangeData
+            ? `Вы уверены, что хотите ${roleChangeData.newRole === 'admin' ? 'назначить' : 'снять'} ${roleChangeData.userName} ${roleChangeData.newRole === 'admin' ? 'администратором' : 'с должности администратора'}?`
+            : ''
+        }
+        confirmText="Подтвердить"
+        cancelText="Отмена"
+        onConfirm={confirmRoleChange}
+        onCancel={cancelRoleChange}
+        destructive={false}
+      />
+
+      {/* Диалог очистки истории */}
+      <ConfirmDialog
+        visible={showClearHistoryDialog}
+        title="Очистить историю"
+        message="Вы уверены, что хотите очистить всю историю сообщений? Это действие нельзя отменить."
+        confirmText="Очистить"
+        cancelText="Отмена"
+        onConfirm={handleClearHistory}
+        onCancel={() => setShowClearHistoryDialog(false)}
+        destructive
+      />
+
+      {/* Delete/Leave ActionSheet */}
+      <ActionSheet
+        visible={showDeleteActionSheet}
+        title={chat?.type === 'private' ? 'Удалить чат' : isOwner ? 'Удалить чат' : 'Покинуть чат'}
+        options={deleteActionOptions}
+        onCancel={() => setShowDeleteActionSheet(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -540,6 +1005,9 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -585,9 +1053,6 @@ const styles = StyleSheet.create({
   section: {
     borderTopWidth: 1,
     borderBottomWidth: 1,
-  },
-  sectionMargin: {
-    marginTop: 20,
   },
   option: {
     flexDirection: 'row',
@@ -646,6 +1111,142 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textAlign: 'center',
     fontWeight: '500',
+  },
+  // Members section styles
+  membersSection: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+  },
+  membersSectionHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  membersSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  memberDetails: {
+    flex: 1,
+  },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  memberName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  memberRole: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  menuButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  floatingButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  floatingButton: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Group info section styles
+  groupInfoSection: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+  },
+  // Quick actions styles
+  quickActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    width: '100%',
+    gap: 12,
+  },
+  quickActionButton: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  quickActionIcon: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  chatName: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  membersCount: {
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  divider: {
+    height: 1,
+    marginVertical: 0,
+  },
+  sectionMarginTop: {
+    marginTop: 8,
+  },
+  privateActionsSection: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
 });
 

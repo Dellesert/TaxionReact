@@ -9,13 +9,14 @@ import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion } from '@utils/chatUtils';
+import { ActionSheet, ActionSheetOption } from '@components/common/ActionSheet';
 
 interface ChatItemProps {
   chat: Chat;
   onPress: (chat: Chat) => void;
   onLongPress?: (chat: Chat) => void;
   onMarkAsRead?: (chatId: number) => void;
-  onDelete?: (chatId: number) => void;
+  onDelete?: (chatId: number, clearHistory?: boolean) => void;
   onToggleFavorite?: (chatId: number) => void;
   onTogglePinned?: (chatId: number) => void;
   isEditMode?: boolean;
@@ -26,6 +27,7 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
+  const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
 
   const getChatName = () => {
     return getChatDisplayName(chat, currentUser?.id);
@@ -167,8 +169,26 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
 
   const handleDelete = () => {
     setShowContextMenu(false);
-    onDelete?.(chat.id);
+    setShowDeleteActionSheet(true);
   };
+
+  const deleteActionOptions: ActionSheetOption[] = [
+    {
+      label: 'Удалить',
+      onPress: () => {
+        console.log(`🗑️ ChatItem: Deleting chat ${chat.id} with clearHistory=false`);
+        onDelete?.(chat.id, false);
+      },
+    },
+    {
+      label: 'Удалить и очистить историю',
+      onPress: () => {
+        console.log(`🗑️ ChatItem: Deleting chat ${chat.id} with clearHistory=true`);
+        onDelete?.(chat.id, true);
+      },
+      destructive: true,
+    },
+  ];
 
   const handleToggleFavorite = () => {
     setShowContextMenu(false);
@@ -379,6 +399,14 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, 
           </Pressable>
         </BlurView>
       </Modal>
+
+      {/* Delete ActionSheet */}
+      <ActionSheet
+        visible={showDeleteActionSheet}
+        title="Удалить чат"
+        options={deleteActionOptions}
+        onCancel={() => setShowDeleteActionSheet(false)}
+      />
     </>
   );
 };

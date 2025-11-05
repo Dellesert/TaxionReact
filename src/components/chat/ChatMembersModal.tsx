@@ -3,12 +3,13 @@
  * Модальное окно для просмотра и добавления участников чата
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
   Modal,
   FlatList,
+  SectionList,
   TouchableOpacity,
   TextInput,
   StyleSheet,
@@ -22,12 +23,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { User } from '../../types/user.types';
 import { ChatMember } from '../../types/chat.types';
-import { getChatMembers, addChatMembers } from '@api/chat.api';
+import { getChatMembers, addChatMembers, updateChatMemberRole } from '@api/chat.api';
 import { getUsers } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@utils/mockData';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import { ConfirmDialog } from '@components/common/ConfirmDialog';
+import Avatar from '@components/common/Avatar';
 
 interface ChatMembersModalProps {
   visible: boolean;
@@ -57,12 +59,22 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [userToRemove, setUserToRemove] = useState<{ id: number; name: string } | null>(null);
+  const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
+  const [roleChangeData, setRoleChangeData] = useState<{ userId: number; userName: string; currentRole: string; newRole: string } | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<{ userId: number; userName: string; role: string } | null>(null);
 
   useEffect(() => {
     if (visible) {
       loadMembers();
     }
   }, [visible, chatId]);
+
+  // Определяем роль текущего пользователя в чате
+  const currentUserRole = members.find(m => m.user_id === currentUser?.id)?.role;
+  const isAdmin = currentUserRole === 'admin';
+  const isOwner = currentUserRole === 'owner';
+  const canManageMembers = isOwner || isAdmin;
 
   const loadMembers = async () => {
     try {
@@ -109,6 +121,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       if (isMockMode()) {
         usersList = await mockGetUsers();
       } else {
+        // Загружаем всех активных пользователей для добавления в чат (без фильтра for_task_assignment)
         const response = await getUsers({ is_active: true }, { limit: 100, offset: 0 });
         usersList = response.data || [];
       }
@@ -128,6 +141,19 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
         return true;
       });
+
+      // Sort users: department heads first, then others
+      availableUsers.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // If both are dept heads or both are not, sort by name
+        return a.name.localeCompare(b.name);
+      });
+
       setAllUsers(availableUsers);
     } catch (error: any) {
       console.error('Failed to load users:', error);
@@ -154,6 +180,26 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       setSelectedUsers(selectedUsers.filter((id) => id !== userId));
     } else {
       setSelectedUsers([...selectedUsers, userId]);
+    }
+  };
+
+  const toggleDepartmentSelection = (departmentUsers: User[]) => {
+    const departmentUserIds = departmentUsers.map(u => u.id);
+    // Проверяем, все ли пользователи отдела уже выбраны
+    const allSelected = departmentUserIds.every(id => selectedUsers.includes(id));
+
+    if (allSelected) {
+      // Снимаем выбор со всех пользователей отдела
+      setSelectedUsers(selectedUsers.filter(id => !departmentUserIds.includes(id)));
+    } else {
+      // Добавляем всех пользователей отдела (избегая дублирования)
+      const newSelectedUsers = [...selectedUsers];
+      departmentUserIds.forEach(id => {
+        if (!newSelectedUsers.includes(id)) {
+          newSelectedUsers.push(id);
+        }
+      });
+      setSelectedUsers(newSelectedUsers);
     }
   };
 
@@ -219,6 +265,62 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     setUserToRemove(null);
   };
 
+  const handleToggleAdmin = (userId: number, userName: string, currentRole: string) => {
+    console.log('🎯 handleToggleAdmin called:', { userId, userName, currentRole });
+
+    const newRole = currentRole === 'admin' ? 'member' : 'admin';
+    console.log('🎯 Role change:', { currentRole, newRole });
+
+    setRoleChangeData({ userId, userName, currentRole, newRole });
+    setShowRoleChangeDialog(true);
+  };
+
+  const confirmRoleChange = async () => {
+    if (!roleChangeData) return;
+
+    try {
+      console.log(`👤 Updating role for user ${roleChangeData.userId} to ${roleChangeData.newRole}`);
+      await updateChatMemberRole(chatId, roleChangeData.userId, roleChangeData.newRole as 'admin' | 'member');
+      console.log(`✅ Role updated successfully`);
+      setShowRoleChangeDialog(false);
+      setRoleChangeData(null);
+      loadMembers();
+    } catch (error: any) {
+      console.error('❌ Failed to update role:', error);
+      // Показываем ошибку через диалог или просто закрываем
+      setShowRoleChangeDialog(false);
+      setRoleChangeData(null);
+      // В идеале нужно показать error toast или другой способ уведомления
+    }
+  };
+
+  const cancelRoleChange = () => {
+    setShowRoleChangeDialog(false);
+    setRoleChangeData(null);
+  };
+
+  const handleOpenActionMenu = (userId: number, userName: string, role: string) => {
+    setSelectedMember({ userId, userName, role });
+    setShowActionMenu(true);
+  };
+
+  const handleCloseActionMenu = () => {
+    setShowActionMenu(false);
+    setSelectedMember(null);
+  };
+
+  const handleMenuAction = (action: 'changeRole' | 'remove') => {
+    if (!selectedMember) return;
+
+    handleCloseActionMenu();
+
+    if (action === 'changeRole') {
+      handleToggleAdmin(selectedMember.userId, selectedMember.userName, selectedMember.role);
+    } else if (action === 'remove') {
+      handleRemoveMember(selectedMember.userId, selectedMember.userName);
+    }
+  };
+
   const getInitials = (name: string) => {
     const words = name.split(' ');
     if (words.length >= 2) {
@@ -240,53 +342,25 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'owner':
+        return 'Владелец';
+      case 'admin':
+        return 'Администратор';
+      default:
+        return ''; // Don't show label for regular members
+    }
+  };
+
+  const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner':
         return '#E94444';
       case 'admin':
         return '#F59E0B';
       default:
-        return '#9CA3AF';
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'Владелец';
-      case 'admin':
-        return 'Админ';
-      default:
-        return 'Участник';
-    }
-  };
-
-  const getUserRoleBadgeColor = (role?: string) => {
-    switch (role) {
-      case 'admin':
-      case 'super_admin':
-        return '#DC2626'; // Красный для администратора
-      case 'manager':
-        return '#2563EB'; // Синий для менеджера
-      case 'employee':
-        return '#059669'; // Зелёный для сотрудника
-      default:
-        return '#6B7280'; // Серый по умолчанию
-    }
-  };
-
-  const getUserRoleLabel = (role?: string) => {
-    switch (role) {
-      case 'admin':
-      case 'super_admin':
-        return 'Администратор';
-      case 'manager':
-        return 'Менеджер';
-      case 'employee':
-        return 'Сотрудник';
-      default:
-        return '';
+        return theme.textSecondary;
     }
   };
 
@@ -297,6 +371,86 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
         return searchText.includes(searchQuery.toLowerCase());
       })
     : (members || []);
+
+  // Группируем пользователей по отделам для режима добавления
+  const userSections = useMemo(() => {
+    if (!isAddingMode) return [];
+
+    const currentUser = useAuthStore.getState().user;
+    const currentUserDepartmentId = currentUser?.department_id;
+
+    // Группируем пользователей
+    const byDepartment = new Map<number | null, User[]>();
+
+    // filteredUsers в режиме добавления это User[], а не ChatMember[]
+    const usersToGroup = filteredUsers as User[];
+    usersToGroup.forEach((user) => {
+      const deptId = user.department_id || null;
+      if (!byDepartment.has(deptId)) {
+        byDepartment.set(deptId, []);
+      }
+      byDepartment.get(deptId)!.push(user);
+    });
+
+    // Сортируем пользователей внутри каждого отдела: руководители сначала, потом остальные
+    byDepartment.forEach((users) => {
+      users.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        // Если оба руководители или оба нет, сортируем по имени
+        return a.name.localeCompare(b.name);
+      });
+    });
+
+    const sections: Array<{ title: string; data: User[]; departmentId: number | null }> = [];
+
+    // Сначала добавляем подразделение текущего пользователя
+    if (currentUserDepartmentId && byDepartment.has(currentUserDepartmentId)) {
+      const users = byDepartment.get(currentUserDepartmentId)!;
+      const departmentName = users[0]?.department?.name || 'Мое подразделение';
+      sections.push({
+        title: departmentName,
+        data: users,
+        departmentId: currentUserDepartmentId,
+      });
+      byDepartment.delete(currentUserDepartmentId);
+    }
+
+    // Затем добавляем остальные подразделения (с названием)
+    const departmentsWithNames: Array<{ id: number; name: string; users: User[] }> = [];
+    byDepartment.forEach((users, deptId) => {
+      if (deptId !== null) {
+        const departmentName = users[0]?.department?.name || `Подразделение ${deptId}`;
+        departmentsWithNames.push({ id: deptId, name: departmentName, users });
+      }
+    });
+
+    // Сортируем по названию
+    departmentsWithNames.sort((a, b) => a.name.localeCompare(b.name));
+    departmentsWithNames.forEach((dept) => {
+      sections.push({
+        title: dept.name,
+        data: dept.users,
+        departmentId: dept.id,
+      });
+    });
+
+    // В конце добавляем пользователей без подразделения
+    if (byDepartment.has(null)) {
+      const users = byDepartment.get(null)!;
+      sections.push({
+        title: 'Без подразделения',
+        data: users,
+        departmentId: null,
+      });
+    }
+
+    return sections;
+  }, [filteredUsers, isAddingMode]);
 
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -357,12 +511,6 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     memberName: {
       color: theme.text,
     },
-    memberEmail: {
-      color: theme.textSecondary,
-    },
-    memberPosition: {
-      color: theme.textTertiary,
-    },
     checkbox: {
       borderColor: theme.border,
     },
@@ -376,16 +524,6 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     emptyText: {
       color: theme.textTertiary,
     },
-    footer: {
-      backgroundColor: theme.backgroundSecondary,
-      borderTopColor: theme.border,
-    },
-    cancelButton: {
-      backgroundColor: theme.backgroundTertiary,
-    },
-    cancelButtonText: {
-      color: theme.textSecondary,
-    },
   });
 
   const renderMemberItem = ({ item }: { item: ChatMember }) => {
@@ -393,55 +531,76 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     if (!user) return null;
 
     // Можно удалить участника если:
-    // 1. Текущий пользователь - владелец чата
+    // 1. Текущий пользователь - владелец или админ чата
     // 2. Участник не является владельцем чата
     // 3. Участник не является текущим пользователем (нельзя удалить самого себя)
-    const canRemove = isCreator && item.user_id !== creatorId && currentUser && item.user_id !== currentUser.id;
+    // 4. Админ не может удалить другого админа (только владелец может)
+    const canRemove = canManageMembers &&
+      item.user_id !== creatorId &&
+      currentUser &&
+      item.user_id !== currentUser.id &&
+      !(isAdmin && item.role === 'admin'); // Админ не может удалить другого админа
 
-    console.log('🔍 Member removal check:', {
+    // Можно изменить роль участника если:
+    // 1. Текущий пользователь - владелец или админ чата
+    // 2. Участник не является владельцем чата
+    // 3. Участник не является текущим пользователем
+    // 4. Админ не может изменить роль другого админа (только владелец может)
+    const canChangeRole = canManageMembers &&
+      item.role !== 'owner' &&
+      currentUser &&
+      item.user_id !== currentUser.id &&
+      !(isAdmin && item.role === 'admin'); // Админ не может изменить роль другого админа
+
+    console.log('🔍 Member actions check:', {
       userId: item.user_id,
       userName: user.name,
-      isCreator,
+      currentUserRole,
+      isOwner,
+      isAdmin,
+      canManageMembers,
       creatorId,
       currentUserId: currentUser?.id,
-      canRemove
+      memberRole: item.role,
+      canRemove,
+      canChangeRole,
     });
 
     return (
       <View style={[styles.memberItem, dynamicStyles.memberItem]}>
         <View style={styles.memberInfo}>
-          <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, dynamicStyles.avatar]}>
-              <Text style={[styles.avatarText, dynamicStyles.avatarText]}>{getInitials(user.name)}</Text>
-            </View>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor(user.status) }]} />
-          </View>
+          <Avatar
+            name={user.name}
+            imageUrl={user.avatar}
+            size={44}
+            status={user.status}
+            showStatus={true}
+          />
           <View style={styles.memberDetails}>
-            <Text style={[styles.memberName, dynamicStyles.memberName]}>{user.name}</Text>
-            <Text style={[styles.memberEmail, dynamicStyles.memberEmail]}>{user.email}</Text>
-            {user.position && <Text style={[styles.memberPosition, dynamicStyles.memberPosition]}>{user.position}</Text>}
-          </View>
-        </View>
-        <View style={styles.memberActions}>
-          {/* Роль пользователя в системе */}
-          {user.role && (
-            <View style={[styles.userRoleBadge, { backgroundColor: getUserRoleBadgeColor(user.role) }]}>
-              <Text style={styles.roleBadgeText}>{getUserRoleLabel(user.role)}</Text>
+            <View style={styles.memberNameRow}>
+              <Text style={[styles.memberName, dynamicStyles.memberName]} numberOfLines={1}>
+                {user.name}
+              </Text>
+              {user.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+              )}
             </View>
-          )}
-          {/* Роль участника в чате */}
-          <View style={[styles.roleBadge, { backgroundColor: getRoleBadgeColor(item.role) }]}>
-            <Text style={styles.roleBadgeText}>{getRoleLabel(item.role)}</Text>
+            {/* Роль участника в чате как текст под именем с цветовым акцентом */}
+            <Text style={[styles.memberRole, { color: getRoleColor(item.role) }]}>
+              {getRoleLabel(item.role)}
+            </Text>
           </View>
-          {canRemove && (
-            <TouchableOpacity
-              style={[styles.removeButton, { backgroundColor: theme.error || '#FF3B30' }]}
-              onPress={() => handleRemoveMember(item.user_id, user.name)}
-            >
-              <Ionicons name="close" size={18} color="#FFF" />
-            </TouchableOpacity>
-          )}
         </View>
+        {/* Кнопка меню действий - показывается если можно изменить роль или удалить */}
+        {(canChangeRole || canRemove) && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => handleOpenActionMenu(item.user_id, user.name, item.role)}
+            style={styles.menuButton}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -455,16 +614,22 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
         onPress={() => toggleUserSelection(item.id)}
       >
         <View style={styles.memberInfo}>
-          <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, dynamicStyles.avatar]}>
-              <Text style={[styles.avatarText, dynamicStyles.avatarText]}>{getInitials(item.name)}</Text>
-            </View>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
-          </View>
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatar}
+            size={44}
+            status={item.status}
+            showStatus={true}
+          />
           <View style={styles.memberDetails}>
-            <Text style={[styles.memberName, dynamicStyles.memberName]}>{item.name}</Text>
-            <Text style={[styles.memberEmail, dynamicStyles.memberEmail]}>{item.email}</Text>
-            {item.position && <Text style={[styles.memberPosition, dynamicStyles.memberPosition]}>{item.position}</Text>}
+            <View style={styles.memberNameRow}>
+              <Text style={[styles.memberName, dynamicStyles.memberName]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              {item.role === 'department_head' && (
+                <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+              )}
+            </View>
           </View>
         </View>
         <View style={[styles.checkbox, dynamicStyles.checkbox, isSelected && [styles.checkboxSelected, dynamicStyles.checkboxSelected]]}>
@@ -484,9 +649,15 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       <View style={[styles.container, dynamicStyles.container, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={[styles.header, dynamicStyles.header]}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={theme.text} />
-          </TouchableOpacity>
+          {isAddingMode ? (
+            <TouchableOpacity onPress={handleCancelAdd} style={styles.closeButton}>
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={theme.text} />
+            </TouchableOpacity>
+          )}
           <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>
             {isAddingMode ? 'Добавить участников' : 'Участники чата'}
           </Text>
@@ -507,7 +678,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
               )}
             </TouchableOpacity>
           ) : (
-            isCreator && (
+            canManageMembers && (
               <TouchableOpacity onPress={handleAddMode} style={styles.addIconButton}>
                 <Ionicons name="person-add" size={24} color={theme.primary} />
               </TouchableOpacity>
@@ -558,11 +729,41 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
             <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Загрузка...</Text>
           </View>
         ) : isAddingMode ? (
-          <FlatList
-            data={filteredUsers as User[]}
+          <SectionList
+            sections={userSections}
             keyExtractor={(item) => `user-${item.id}`}
             renderItem={renderUserItem}
+            renderSectionHeader={({ section }) => {
+              const departmentUserIds = section.data.map(u => u.id);
+              const allSelected = departmentUserIds.every(id => selectedUsers.includes(id));
+              const someSelected = departmentUserIds.some(id => selectedUsers.includes(id)) && !allSelected;
+
+              return (
+                <TouchableOpacity
+                  style={[styles.sectionHeaderContainer, { backgroundColor: theme.backgroundTertiary }]}
+                  onPress={() => toggleDepartmentSelection(section.data)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.sectionHeaderLeft}>
+                    <View style={[
+                      styles.sectionCheckbox,
+                      { borderColor: theme.border },
+                      allSelected && { backgroundColor: theme.primary, borderColor: theme.primary },
+                      someSelected && { backgroundColor: theme.primaryLight, borderColor: theme.primary }
+                    ]}>
+                      {allSelected && <Ionicons name="checkmark" size={14} color="white" />}
+                      {someSelected && <View style={styles.partialCheckmark} />}
+                    </View>
+                    <Text style={[styles.sectionHeaderText, { color: theme.text }]}>{section.title}</Text>
+                  </View>
+                  <Text style={[styles.sectionHeaderCount, { color: theme.textSecondary }]}>
+                    {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
             contentContainerStyle={styles.listContent}
+            stickySectionHeadersEnabled={true}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color={theme.borderLight} />
@@ -588,15 +789,6 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
             }
           />
         )}
-
-        {/* Cancel button in add mode */}
-        {isAddingMode && (
-          <View style={[styles.footer, dynamicStyles.footer]}>
-            <TouchableOpacity onPress={handleCancelAdd} style={[styles.cancelButton, dynamicStyles.cancelButton]}>
-              <Text style={[styles.cancelButtonText, dynamicStyles.cancelButtonText]}>Отмена</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
       {/* Confirm remove dialog */}
@@ -610,6 +802,91 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
         onCancel={cancelRemoveMember}
         destructive={true}
       />
+
+      {/* Confirm role change dialog */}
+      <ConfirmDialog
+        visible={showRoleChangeDialog}
+        title="Изменить роль"
+        message={
+          roleChangeData
+            ? `Вы уверены, что хотите ${
+                roleChangeData.newRole === 'admin' ? 'назначить администратором' : 'снять права администратора'
+              } для ${roleChangeData.userName}?`
+            : ''
+        }
+        confirmText="Подтвердить"
+        cancelText="Отмена"
+        onConfirm={confirmRoleChange}
+        onCancel={cancelRoleChange}
+        destructive={false}
+      />
+
+      {/* Action menu modal */}
+      <Modal
+        visible={showActionMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseActionMenu}
+      >
+        <TouchableOpacity
+          style={styles.actionMenuOverlay}
+          activeOpacity={1}
+          onPress={handleCloseActionMenu}
+        >
+          <View style={[styles.actionMenuContainer, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={[styles.actionMenuHeader, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.actionMenuTitle, { color: theme.text }]}>
+                {selectedMember?.userName}
+              </Text>
+            </View>
+
+            {/* Change role option */}
+            {canManageMembers && selectedMember?.role !== 'owner' && !(isAdmin && selectedMember?.role === 'admin') && (
+              <TouchableOpacity
+                style={[styles.actionMenuItem, { borderBottomColor: theme.borderLight }]}
+                onPress={() => handleMenuAction('changeRole')}
+              >
+                <Ionicons
+                  name="swap-horizontal"
+                  size={20}
+                  color={theme.primary}
+                  style={styles.actionMenuIcon}
+                />
+                <Text style={[styles.actionMenuItemText, { color: theme.text }]}>
+                  {selectedMember?.role === 'admin' ? 'Снять права администратора' : 'Назначить администратором'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Remove option */}
+            {canManageMembers && selectedMember?.userId !== creatorId && selectedMember?.userId !== currentUser?.id && !(isAdmin && selectedMember?.role === 'admin') && (
+              <TouchableOpacity
+                style={styles.actionMenuItem}
+                onPress={() => handleMenuAction('remove')}
+              >
+                <Ionicons
+                  name="person-remove"
+                  size={20}
+                  color={theme.error || '#FF3B30'}
+                  style={styles.actionMenuIcon}
+                />
+                <Text style={[styles.actionMenuItemText, { color: theme.error || '#FF3B30' }]}>
+                  Удалить из чата
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.actionMenuCancelButton, { borderTopColor: theme.border }]}
+              onPress={handleCloseActionMenu}
+            >
+              <Text style={[styles.actionMenuCancelText, { color: theme.textSecondary }]}>
+                Отмена
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </Modal>
   );
 };
@@ -694,7 +971,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
   },
   userItem: {
@@ -709,74 +986,77 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  statusDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    gap: 12,
   },
   memberDetails: {
     flex: 1,
-    marginLeft: 12,
   },
-  memberName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  memberEmail: {
-    fontSize: 14,
-  },
-  memberPosition: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  userRoleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  roleBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  memberActions: {
+  memberNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    marginBottom: 2,
   },
-  removeButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  memberName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  memberRole: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  menuButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  actionMenuContainer: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  actionMenuHeader: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+  },
+  actionMenuTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  actionMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+  },
+  actionMenuIcon: {
+    marginRight: 12,
+  },
+  actionMenuItemText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  actionMenuCancelButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    alignItems: 'center',
+  },
+  actionMenuCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   checkbox: {
     width: 24,
@@ -805,18 +1085,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 16,
   },
-  footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-  },
-  cancelButton: {
-    paddingVertical: 12,
-    borderRadius: 8,
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  cancelButtonText: {
-    fontSize: 16,
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partialCheckmark: {
+    width: 10,
+    height: 2,
+    backgroundColor: 'white',
+    borderRadius: 1,
+  },
+  sectionHeaderText: {
+    fontSize: 14,
     fontWeight: '600',
+  },
+  sectionHeaderCount: {
+    fontSize: 12,
   },
 });

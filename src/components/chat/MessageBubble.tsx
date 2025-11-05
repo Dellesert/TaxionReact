@@ -122,7 +122,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         !isCardMessage && dynamicStyles.messageBubble,
         isOwnMessage && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
         isHighlighted && [styles.highlightedBubble, { backgroundColor: theme.primary + '40' }],
-        isForwarded && [styles.forwardedBubble, { borderLeftColor: theme.primary }],
         isCardMessage && { backgroundColor: 'transparent', padding: 0 },
       ]}
     >
@@ -196,8 +195,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         ) : (
           <>
             <View style={styles.messageContent}>
-              {/* Render text first */}
-              {messageContent && (
+              {messageContent && messageContent.length > 0 && (
                 <Text
                   style={[
                     styles.messageText,
@@ -210,7 +208,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               )}
 
               {/* Render attachments below text */}
-              {message.attachments && message.attachments.length > 0 && (
+              {!!(message.attachments && message.attachments.length > 0) && (
                 <MessageAttachments
                   attachments={message.attachments}
                   imageUrls={imageUrls}
@@ -233,7 +231,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         >
           {formatTime(message.created_at)}
         </Text>
-        {message.is_edited && !message.is_deleted && (
+        {!!(message.is_edited && !message.is_deleted) && (
           <Text
             style={[
               styles.edited,
@@ -334,9 +332,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 6,
-  },
-  forwardedBubble: {
-    borderLeftWidth: 4,
   },
   forwardHeader: {
     flexDirection: 'row',
