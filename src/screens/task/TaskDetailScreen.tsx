@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
   Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -123,6 +124,9 @@ const TaskDetailScreen: React.FC = () => {
 
   // Delegate modal state
   const [showDelegateModal, setShowDelegateModal] = useState(false);
+
+  // Action menu state
+  const [showActionMenu, setShowActionMenu] = useState(false);
 
   // Attachments state
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
@@ -281,7 +285,6 @@ const TaskDetailScreen: React.FC = () => {
       const taskIdNum = Number(taskId);
       await taskApi.updateTask(taskIdNum, { status: newStatus });
       setTask({ ...task, status: newStatus });
-      Alert.alert('Успех', 'Статус обновлён');
     } catch (error) {
       Alert.alert('Ошибка', 'Не удалось обновить статус');
     }
@@ -976,11 +979,6 @@ const TaskDetailScreen: React.FC = () => {
       borderWidth: 1.5,
       borderColor: theme.border,
     },
-    delegateFixedButton: {
-      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f5f3ff',
-      borderWidth: 1.5,
-      borderColor: '#8b5cf6',
-    },
     disabledButton: {
       backgroundColor: '#9CA3AF',
       opacity: 0.6,
@@ -994,9 +992,6 @@ const TaskDetailScreen: React.FC = () => {
     },
     secondaryFixedButtonText: {
       color: theme.text,
-    },
-    delegateFixedButtonText: {
-      color: '#8b5cf6',
     },
     // Checklists section
     checklistProgressIndicator: {
@@ -1461,6 +1456,9 @@ const TaskDetailScreen: React.FC = () => {
     return Math.round((completedItems / allItems.length) * 100);
   };
 
+  // Check if current user is the task creator
+  const isCreator = user?.id === task.created_by;
+
   // Get task action button text based on status
   const getActionButtonText = () => {
     if (task.status === 'new') return 'Начать';
@@ -1473,7 +1471,8 @@ const TaskDetailScreen: React.FC = () => {
       if (!areAllChecklistItemsCompleted()) {
         return 'Завершите чек-листы';
       }
-      return 'Сдать на проверку';
+      // Creator can complete directly, assignee submits for review
+      return isCreator ? 'Завершить' : 'Сдать на проверку';
     }
     if (task.status === 'review') return 'На проверке';
     return 'Завершена';
@@ -1483,25 +1482,28 @@ const TaskDetailScreen: React.FC = () => {
     if (task.status === 'new') {
       await handleStatusChange('in_progress');
     } else if (task.status === 'in_progress') {
-      // Check if all subtasks are completed before allowing to submit for review
+      // Check if all subtasks are completed
       if (!areAllSubtasksCompleted()) {
+        const action = isCreator ? 'завершить задачу' : 'сдать на проверку';
         Alert.alert(
-          'Невозможно сдать на проверку',
-          'Пожалуйста, завершите все подзадачи перед тем, как сдать задачу на проверку.',
+          `Невозможно ${action}`,
+          'Пожалуйста, завершите все подзадачи перед тем, как продолжить.',
           [{ text: 'OK' }]
         );
         return;
       }
-      // Check if all checklist items are completed before allowing to submit for review
+      // Check if all checklist items are completed
       if (!areAllChecklistItemsCompleted()) {
+        const action = isCreator ? 'завершить задачу' : 'сдать на проверку';
         Alert.alert(
-          'Невозможно сдать на проверку',
-          'Пожалуйста, завершите все пункты чек-листов перед тем, как сдать задачу на проверку.',
+          `Невозможно ${action}`,
+          'Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.',
           [{ text: 'OK' }]
         );
         return;
       }
-      await handleStatusChange('review');
+      // Creator completes directly, assignee submits for review
+      await handleStatusChange(isCreator ? 'done' : 'review');
     }
   };
 
@@ -1521,29 +1523,23 @@ const TaskDetailScreen: React.FC = () => {
       <View style={styles.container}>
         {/* Header Section */}
         <View style={styles.headerSection}>
-          {/* Header Row with Back and Edit buttons */}
+          {/* Header Row with Back and Action buttons */}
           <View style={styles.headerRow}>
             <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
               <Ionicons name="close" size={28} color={theme.error} />
             </TouchableOpacity>
-            <View style={styles.headerButtons}>
-              {canEditTask(task, user?.id, user?.role) && (
-                <>
-                  <TouchableOpacity
-                    style={styles.headerButton}
-                    onPress={() => setShowEditModal(true)}
-                  >
-                    <Ionicons name="create-outline" size={24} color={theme.error} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.headerButton}
-                    onPress={handleDeleteTask}
-                  >
-                    <Ionicons name="trash-outline" size={24} color={theme.error} />
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
+
+            {/* Action Menu Button - show if user has any actions available */}
+            {(canEditTask(task, user?.id, user?.role) ||
+              ((user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+               task.status !== 'done' && task.status !== 'cancelled')) && (
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => setShowActionMenu(true)}
+              >
+                <Ionicons name="ellipsis-horizontal" size={24} color={theme.error} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -1887,19 +1883,6 @@ const TaskDetailScreen: React.FC = () => {
         {/* Fixed Action Buttons at Bottom */}
         {task.status !== 'done' && !isDelegatedByMe && activeTab === 'overview' && (
           <View style={styles.fixedActionsContainer}>
-            {/* Delegate Button - for department heads, admins */}
-            {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-             task.status !== 'done' && task.status !== 'cancelled' && (
-              <TouchableOpacity
-                style={[styles.fixedActionButton, styles.delegateFixedButton]}
-                onPress={() => setShowDelegateModal(true)}
-              >
-                <Text style={[styles.fixedActionButtonText, styles.delegateFixedButtonText]}>
-                  Делегировать
-                </Text>
-              </TouchableOpacity>
-            )}
-
             {/* Start/Submit Button - for new or in_progress tasks */}
             {(task.status === 'new' || task.status === 'in_progress') && (
               <TouchableOpacity
@@ -2040,6 +2023,235 @@ const TaskDetailScreen: React.FC = () => {
             }
           }}
         />
+
+        {/* Action Menu Modal */}
+        <Modal
+          visible={showActionMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowActionMenu(false)}
+        >
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              justifyContent: 'flex-end',
+            }}
+            activeOpacity={1}
+            onPress={() => setShowActionMenu(false)}
+          >
+            <View
+              style={{
+                backgroundColor: theme.card,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+                paddingTop: 8,
+              }}
+              onStartShouldSetResponder={() => true}
+            >
+              {/* Handle Bar */}
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <View
+                  style={{
+                    width: 40,
+                    height: 4,
+                    backgroundColor: theme.border,
+                    borderRadius: 2,
+                  }}
+                />
+              </View>
+
+              {/* Menu Items */}
+              <View style={{ paddingHorizontal: 16 }}>
+                {/* Edit Task Option */}
+                {canEditTask(task, user?.id, user?.role) && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      setShowEditModal(true);
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={20} color="#3b82f6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 2 }}>
+                        Редактировать
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Изменить детали задачи
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Delegate Task Option */}
+                {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+                 task.status !== 'done' && task.status !== 'cancelled' && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      setShowDelegateModal(true);
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f5f3ff',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="git-branch-outline" size={20} color="#8b5cf6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 2 }}>
+                        Делегировать задачу
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Передать задачу другому сотруднику
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Add Subtask Option */}
+                {task.created_by !== user?.id &&
+                 (user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+                 (canEditTask(task, user?.id, user?.role) || task.assignees?.some(a => a.id === user?.id)) && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      setShowSubtaskModal(true);
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 2 }}>
+                        Добавить подзадачу
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Разбить задачу на этапы
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Delete Task Option */}
+                {canEditTask(task, user?.id, user?.role) && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      handleDeleteTask();
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#ef4444', marginBottom: 2 }}>
+                        Удалить задачу
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Это действие нельзя отменить
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Cancel Button */}
+                <TouchableOpacity
+                  style={{
+                    alignItems: 'center',
+                    paddingVertical: 14,
+                    marginTop: 8,
+                  }}
+                  onPress={() => setShowActionMenu(false)}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: theme.textSecondary }}>
+                    Отмена
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     </SafeAreaView>
   );
