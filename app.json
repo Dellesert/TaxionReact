@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Tachyon Messenger",
+    "name": "Тахион",
     "slug": "tachyon-messenger",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.tachyon-messenger",
+      "displayName": "Тахион",
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
       "infoPlist": {
@@ -29,6 +30,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "name": "Тахион",
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.tachyonmessenger",
       "permissions": [
