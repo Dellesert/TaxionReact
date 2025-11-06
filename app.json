@@ -16,6 +16,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.tachyon-messenger",
+      "icon": "./assets/images/icon.png",
+      "backgroundColor": "#E94444",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
         "NSCameraUsageDescription": "Tachyon нужен доступ к камере для съемки и отправки фотографий",
