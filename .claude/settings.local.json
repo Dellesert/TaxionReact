@@ -48,7 +48,16 @@
       "Bash(pod install:*)",
       "Bash(lsof:*)",
       "Bash(xargs ps:*)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(PORT=8093 npx expo start:*)",
+      "Bash(docker info:*)",
+      "Bash(/dev/null)",
+      "Bash(xargs kill:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm start -- --reset-cache)",
+      "Bash(security find-identity:*)",
+      "Bash(emulator -list-avds:*)"
     ],
     "deny": [],
     "ask": []
