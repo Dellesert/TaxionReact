@@ -506,11 +506,6 @@ const ProfileScreen: React.FC = () => {
             <View style={dynamicStyles.sectionHeader}>
               <Text style={dynamicStyles.sectionTitle}>ПРОФИЛЬ</Text>
             </View>
-            <TouchableOpacity style={dynamicStyles.menuItem}>
-              <Ionicons name="pencil-outline" size={22} color={theme.primary} />
-              <Text style={dynamicStyles.menuItemText}>Изменить статус</Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
 
             <TouchableOpacity
               style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}
