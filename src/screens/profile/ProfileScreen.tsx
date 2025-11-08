@@ -540,7 +540,7 @@ const ProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('PasskeyManagement')}
             >
               <Ionicons style={[styles.menuIcon, {backgroundColor: '#6366F1'}]} name="key-outline" size={20} color="#FFFFFF" />
-              <Text style={[dynamicStyles.menuItemText]}>Управление Passkey</Text>
+              <Text style={[dynamicStyles.menuItemText]}>Ключ входа</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
             <TouchableOpacity style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
