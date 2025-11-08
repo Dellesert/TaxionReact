@@ -318,7 +318,7 @@ const LoginScreen: React.FC = () => {
                       <ActivityIndicator color="#6366F1" size="small" />
                     ) : (
                       <Text style={styles.altMethodText}>
-                        🔑 Passkey
+                        🔑 Вход по ключу
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -331,7 +331,7 @@ const LoginScreen: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.altMethodText}>
-                    ✉️ Приглашение
+                    ✉️ Есть риглашение?
                   </Text>
                 </TouchableOpacity>
               </View>
