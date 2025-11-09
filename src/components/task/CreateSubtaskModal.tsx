@@ -173,7 +173,6 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
         }
       }
 
-      Alert.alert('Успех', 'Подзадача создана');
       onSubtaskCreated?.();
       handleClose();
     } catch (error: any) {

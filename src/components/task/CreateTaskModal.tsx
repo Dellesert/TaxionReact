@@ -184,8 +184,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           // Don't fail the whole operation, just log the error
         }
       }
-
-      Alert.alert('Успех', 'Задача создана');
       onTaskCreated();
       handleClose();
     } catch (error: any) {

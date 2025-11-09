@@ -100,7 +100,6 @@ const RegisterScreen: React.FC = () => {
 
     try {
       await register({ name, email, password });
-      Alert.alert('Успех', 'Регистрация прошла успешно!');
     } catch (err: any) {
       Alert.alert('Ошибка регистрации', err.message || 'Не удалось зарегистрироваться');
     }

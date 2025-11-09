@@ -84,7 +84,6 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     try {
       setIsUpdatingStatus(true);
       await calendarApi.updateParticipantStatus(event.id, { status });
-      Alert.alert('Успех', 'Статус участия обновлён');
       onEventUpdated();
     } catch (error) {
       console.error('Failed to update status:', error);
@@ -103,7 +102,6 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
       try {
         setIsDeleting(true);
         await calendarApi.deleteEvent(event.id);
-        window.alert('Событие удалено');
         onEventUpdated();
         onClose();
       } catch (error) {
@@ -126,7 +124,6 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
               try {
                 setIsDeleting(true);
                 await calendarApi.deleteEvent(event.id);
-                Alert.alert('Успех', 'Событие удалено');
                 onEventUpdated();
                 onClose();
               } catch (error) {

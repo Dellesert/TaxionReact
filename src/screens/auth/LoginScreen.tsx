@@ -136,7 +136,6 @@ const LoginScreen: React.FC = () => {
       // 6. Обновляем состояние авторизации
       setUser(loginResponse.user);
 
-      Alert.alert('Успех', 'Вход выполнен успешно!');
     } catch (error: any) {
       console.error('❌ Passkey login error:', error);
       const errorMessage = formatPasskeyError(error);

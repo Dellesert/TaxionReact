@@ -109,10 +109,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
 
     try {
       setIsLoading(true);
-      console.log('🔄 Delegating task:', { taskId, to_user_id: selectedUserId });
       const result = await delegateTask(taskId, { to_user_id: selectedUserId });
-      console.log('✅ Delegation successful:', result);
-      Alert.alert('Успешно', 'Задача успешно делегирована');
       handleReset();
       onDelegated?.();
       onClose();

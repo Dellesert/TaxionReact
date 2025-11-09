@@ -9,6 +9,7 @@ import PollMessageCard from './PollMessageCard';
 import TaskMessageCard from './TaskMessageCard';
 import { MessageStatus } from './MessageStatus';
 import { formatTime, parseForwardedMessage } from '@utils/message.utils';
+import { LinkifiedText } from './LinkifiedText';
 
 interface MessageBubbleProps {
   message: Message;
@@ -196,15 +197,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <>
             <View style={styles.messageContent}>
               {messageContent && messageContent.length > 0 && (
-                <Text
+                <LinkifiedText
+                  text={messageContent}
                   style={[
                     styles.messageText,
                     dynamicStyles.messageText,
                     isOwnMessage && dynamicStyles.ownMessageText,
                   ]}
-                >
-                  {messageContent}
-                </Text>
+                />
               )}
 
               {/* Render attachments below text */}

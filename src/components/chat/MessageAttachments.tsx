@@ -158,7 +158,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               mimeType: attachment.mime_type,
             });
           } else {
-            Alert.alert('Успех', `Файл скачан:\n${originalFileName}`);
+            console.log('Успех', `Файл скачан:\n${originalFileName}`);
           }
         }
       }

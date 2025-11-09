@@ -241,8 +241,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       for (const userId of selectedUserIds) {
         await chatApi.addChatMember(chatId, userId);
       }
-
-      Alert.alert('Успех', 'Участники добавлены');
       setShowAddMembersModal(false);
       setSelectedUserIds([]);
 
@@ -266,7 +264,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
     try {
       await chatApi.removeChatMember(chatId, userToRemove.id);
-      Alert.alert('Успех', `${userToRemove.name} удален из чата`);
       setShowRemoveDialog(false);
       setUserToRemove(null);
 
@@ -295,7 +292,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       await chatApi.updateChatMemberRole(chatId, roleChangeData.userId, roleChangeData.newRole as 'admin' | 'member');
       const action = roleChangeData.newRole === 'admin' ? 'назначен администратором' : 'снят с должности администратора';
-      Alert.alert('Успех', `${roleChangeData.userName} ${action}`);
       setShowRoleChangeDialog(false);
       setRoleChangeData(null);
 
@@ -417,16 +413,12 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleSearchMessages = () => {
     // TODO: Реализовать поиск по сообщениям
-    Alert.alert('Поиск', 'Функция поиска по сообщениям в разработке');
   };
 
   const handleClearHistory = async () => {
     try {
       await clearChatHistory(chatId);
-
-      Alert.alert('Успех', 'История сообщений очищена');
       setShowClearHistoryDialog(false);
-
       // Navigate back to chat to show empty state
       navigation.goBack();
     } catch (error) {
@@ -476,8 +468,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
             // Update chat with new avatar URL
             await updateChat(chatId, { avatar: avatarUrl });
             console.log('✅ Chat updated with new avatar');
-
-            Alert.alert('Успех', 'Изображение чата обновлено');
           } catch (error) {
             console.error('❌ Failed to upload chat avatar:', error);
             Alert.alert('Ошибка', 'Не удалось обновить изображение. Попробуйте снова.');
@@ -542,7 +532,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
           await updateChat(chatId, { avatar: avatarUrl });
           console.log('✅ Chat updated with new avatar');
 
-          Alert.alert('Успех', 'Изображение чата обновлено');
         } catch (error) {
           console.error('❌ Failed to upload chat avatar:', error);
           Alert.alert('Ошибка', 'Не удалось обновить изображение. Попробуйте снова.');

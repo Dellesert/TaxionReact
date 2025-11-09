@@ -147,7 +147,6 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
       }
 
       await pollApi.updatePoll(pollId, updateData);
-      Alert.alert('Успех', 'Опрос обновлён');
       onPollUpdated();
       onClose();
     } catch (error: any) {

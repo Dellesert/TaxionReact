@@ -46,6 +46,7 @@ const TaskListScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<StatusTab>('new');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const isFirstRender = useRef(true);
+  const isFirstMount = useRef(true);
 
   // Animation for tab transitions (slide with Reanimated)
   const translateX = useSharedValue(0);
@@ -97,8 +98,14 @@ const TaskListScreen: React.FC = () => {
   }, [isSearchVisible]);
 
   useEffect(() => {
+    // Пропускаем первый рендер, чтобы не было двойной загрузки
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
-      loadAllTasks();
+      loadAllTasks(true); // true = silent update without skeleton
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery, filter]);
@@ -200,10 +207,16 @@ const TaskListScreen: React.FC = () => {
         isFirstRender.current = false;
         return;
       }
-      loadAllTasks();
+      // Тихое обновление - данные обновляются в фоне без показа skeleton
+      loadAllTasks(true);
     });
     return unsubscribe;
   }, [navigation]);
+
+  // Начальная загрузка при монтировании компонента
+  useEffect(() => {
+    loadAllTasks();
+  }, []);
 
   const buildFilters = () => {
     const filters: any = {};
@@ -262,13 +275,16 @@ const TaskListScreen: React.FC = () => {
     }
   };
 
-  const loadAllTasks = async () => {
+  const loadAllTasks = async (silentUpdate: boolean = false) => {
     try {
-      // Показываем skeleton только если нет задач в кеше
+      // Показываем skeleton только при самой первой загрузке (когда нет данных)
       const hasTasksInCache = newTasks.length > 0 || inProgressTasks.length > 0 ||
                               reviewTasks.length > 0 || doneTasks.length > 0;
 
-      if (!hasTasksInCache) {
+      // Skeleton показывается только если:
+      // 1. Нет задач в кеше (первая загрузка)
+      // 2. И это не тихое обновление в фоне
+      if (!hasTasksInCache && !silentUpdate) {
         setIsInitialLoading(true);
       }
 
@@ -281,6 +297,7 @@ const TaskListScreen: React.FC = () => {
     } catch (error) {
       console.error('Failed to load tasks:', error);
     } finally {
+      // Всегда убираем skeleton после загрузки
       setIsInitialLoading(false);
     }
   };
@@ -298,7 +315,7 @@ const TaskListScreen: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadAllTasks();
+    await loadAllTasks(true); // Тихое обновление, так как используется RefreshControl
     setRefreshing(false);
   };
 
@@ -372,7 +389,7 @@ const TaskListScreen: React.FC = () => {
   };
 
   const handleTaskCreated = () => {
-    loadAllTasks();
+    loadAllTasks(true); // Тихое обновление после создания задачи
   };
 
   const statusTabs: { key: StatusTab; label: string; color: string }[] = [

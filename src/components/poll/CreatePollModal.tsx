@@ -169,7 +169,6 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
       }
 
       await pollApi.createPoll(pollData);
-      Alert.alert('Успех', 'Опрос создан');
       onPollCreated();
       handleClose();
     } catch (error: any) {

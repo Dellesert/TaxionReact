@@ -114,8 +114,6 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
       };
 
       await uploadAttachment(taskId, fileToUpload as any);
-
-      Alert.alert('Успешно', 'Файл успешно загружен');
       loadAttachments();
       onAttachmentAdded?.();
     } catch (error) {

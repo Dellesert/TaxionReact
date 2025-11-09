@@ -65,7 +65,6 @@ const ShareTaskModal: React.FC<ShareTaskModalProps> = ({
       await onShare(chatId);
 
       if (Platform.OS === 'web') {
-        alert('Задача отправлена в чат!');
       } else {
         Alert.alert('Успех', 'Задача отправлена в чат!');
       }
@@ -75,7 +74,7 @@ const ShareTaskModal: React.FC<ShareTaskModalProps> = ({
       console.error('Failed to share task:', error);
 
       if (Platform.OS === 'web') {
-        alert(error.message || 'Не удалось отправить задачу');
+        console.log(error.message || 'Не удалось отправить задачу');
       } else {
         Alert.alert('Ошибка', error.message || 'Не удалось отправить задачу');
       }

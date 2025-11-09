@@ -204,7 +204,6 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       onClose();
 
       if (Platform.OS !== 'web') {
-        Alert.alert('Успех', 'Задача обновлена');
       }
     } catch (error: any) {
       console.error('Failed to update task:', error);

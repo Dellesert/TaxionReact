@@ -52,6 +52,9 @@ export interface Theme {
   // Special
   overlay: string;
   ripple: string;
+
+  // Link color
+  linkColor: string;
 }
 
 export const lightTheme: Theme = {
@@ -100,6 +103,9 @@ export const lightTheme: Theme = {
   // Special
   overlay: 'rgba(0, 0, 0, 0.5)',
   ripple: 'rgba(0, 0, 0, 0.1)',
+
+  // Link color
+  linkColor: '#1D4ED8',
 };
 
 export const darkTheme: Theme = {
@@ -149,6 +155,9 @@ export const darkTheme: Theme = {
   // Special
   overlay: 'rgba(0, 0, 0, 0.7)',
   ripple: 'rgba(255, 255, 255, 0.1)',
+
+  // Link color
+  linkColor: '#60A5FA',
 };
 
 export const themes: Record<ThemeMode, Theme> = {

@@ -223,10 +223,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           }
         }
 
-        Alert.alert('Успех', 'Событие обновлено');
       } else {
         await calendarApi.createEvent(eventData);
-        Alert.alert('Успех', 'Событие создано');
       }
       onEventCreated();
       handleClose();

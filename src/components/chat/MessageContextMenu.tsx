@@ -129,7 +129,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
       // Проверяем, доступен ли Clipboard API
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(message.content);
-        Alert.alert('Скопировано', 'Текст сообщения скопирован в буфер обмена');
+        console.log('Скопировано', 'Текст сообщения скопирован в буфер обмена');
       } else {
         // Fallback для старых браузеров
         const textArea = document.createElement('textarea');
@@ -142,7 +142,6 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 
         try {
           document.execCommand('copy');
-          Alert.alert('Скопировано', 'Текст сообщения скопирован в буфер обмена');
         } catch (err) {
           console.error('❌ Failed to copy using fallback:', err);
           Alert.alert('Ошибка', 'Не удалось скопировать текст');

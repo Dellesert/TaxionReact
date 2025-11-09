@@ -65,9 +65,9 @@ const SharePollModal: React.FC<SharePollModalProps> = ({
       await onShare(chatId);
 
       if (Platform.OS === 'web') {
-        alert('Опрос отправлен в чат!');
+        console.log('Опрос отправлен в чат!');
       } else {
-        Alert.alert('Успех', 'Опрос отправлен в чат!');
+        console.log('Успех', 'Опрос отправлен в чат!');
       }
 
       onClose();
@@ -75,7 +75,7 @@ const SharePollModal: React.FC<SharePollModalProps> = ({
       console.error('Failed to share poll:', error);
 
       if (Platform.OS === 'web') {
-        alert(error.message || 'Не удалось отправить опрос');
+        console.log(error.message || 'Не удалось отправить опрос');
       } else {
         Alert.alert('Ошибка', error.message || 'Не удалось отправить опрос');
       }
