@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -72,7 +73,6 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
   // Poll settings
   const [allowAnonymous, setAllowAnonymous] = useState(false);
   const [allowMultipleVote, setAllowMultipleVote] = useState(false);
-  const [requireComment, setRequireComment] = useState(false);
   const [showResults, setShowResults] = useState(true);
   const [showResultsAfter, setShowResultsAfter] = useState(false);
 
@@ -150,7 +150,6 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
         visibility,
         allow_anonymous: allowAnonymous,
         allow_multiple_vote: allowMultipleVote,
-        require_comment: requireComment,
         show_results: showResults,
         show_results_after: showResultsAfter,
         end_time: endDate?.toISOString(),
@@ -190,7 +189,6 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
     setOptions([{ text: '' }, { text: '' }]);
     setAllowAnonymous(false);
     setAllowMultipleVote(false);
-    setRequireComment(false);
     setShowResults(true);
     setShowResultsAfter(false);
     setEndDate(undefined);
@@ -258,36 +256,39 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
       onRequestClose={handleClose}
       presentationStyle="fullScreen"
     >
-      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+      >
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={currentStep === 1 ? handleClose : goToPreviousStep}
-            >
-              <Ionicons
-                name={currentStep === 1 ? 'close' : 'arrow-back'}
-                size={28}
-                color={theme.error}
-              />
-            </TouchableOpacity>
+          <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+            <Ionicons name="close" size={28} color={theme.textSecondary} />
+          </TouchableOpacity>
 
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Новый опрос</Text>
-
-            <View style={{ width: 40 }} />
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Создание опроса</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+              Шаг {currentStep} из {totalSteps}
+            </Text>
           </View>
 
-          {/* Progress Indicator */}
-          <View style={styles.progressContainer}>
+          <View style={styles.headerButton} />
+        </View>
+
+        {/* Progress Indicator */}
+        <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
+          <View style={styles.progressBar}>
             {[1, 2, 3, 4].map((step) => (
               <View
                 key={step}
                 style={[
-                  styles.progressDot,
-                  { backgroundColor: step <= currentStep ? theme.error : theme.border },
+                  styles.progressStep,
+                  { backgroundColor: theme.border },
+                  currentStep >= step && { backgroundColor: theme.primary },
                 ]}
               />
             ))}
@@ -308,7 +309,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             <View style={[styles.stepContent, { width: SCREEN_WIDTH }]}>
               <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
@@ -354,7 +355,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             <View style={[styles.stepContent, { width: SCREEN_WIDTH }]}>
               <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
@@ -373,7 +374,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         style={[
                           styles.typeChip,
                           { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                          pollType === 'single_choice' && { backgroundColor: theme.error, borderColor: theme.error },
+                          pollType === 'single_choice' && { backgroundColor: theme.primary, borderColor: theme.primary },
                         ]}
                         onPress={() => setPollType('single_choice')}
                       >
@@ -385,7 +386,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         style={[
                           styles.typeChip,
                           { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                          pollType === 'multiple_choice' && { backgroundColor: theme.error, borderColor: theme.error },
+                          pollType === 'multiple_choice' && { backgroundColor: theme.primary, borderColor: theme.primary },
                         ]}
                         onPress={() => setPollType('multiple_choice')}
                       >
@@ -417,8 +418,8 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         </View>
                       ))}
                       <TouchableOpacity onPress={addOption} style={[styles.addButton, { backgroundColor: theme.backgroundSecondary }]}>
-                        <Ionicons name="add" size={20} color={theme.error} />
-                        <Text style={[styles.addButtonText, { color: theme.error }]}>Добавить вариант</Text>
+                        <Ionicons name="add" size={20} color={theme.primary} />
+                        <Text style={[styles.addButtonText, { color: theme.primary }]}>Добавить вариант</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -430,7 +431,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             <View style={[styles.stepContent, { width: SCREEN_WIDTH }]}>
               <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
@@ -449,7 +450,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         style={[
                           styles.typeChip,
                           { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                          audienceType === 'all' && { backgroundColor: theme.error, borderColor: theme.error },
+                          audienceType === 'all' && { backgroundColor: theme.primary, borderColor: theme.primary },
                         ]}
                         onPress={() => setAudienceType('all')}
                       >
@@ -461,7 +462,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         style={[
                           styles.typeChip,
                           { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                          audienceType === 'department' && { backgroundColor: theme.error, borderColor: theme.error },
+                          audienceType === 'department' && { backgroundColor: theme.primary, borderColor: theme.primary },
                         ]}
                         onPress={() => setAudienceType('department')}
                       >
@@ -473,7 +474,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         style={[
                           styles.typeChip,
                           { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                          audienceType === 'selected_users' && { backgroundColor: theme.error, borderColor: theme.error },
+                          audienceType === 'selected_users' && { backgroundColor: theme.primary, borderColor: theme.primary },
                         ]}
                         onPress={() => setAudienceType('selected_users')}
                       >
@@ -502,7 +503,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             <View style={[styles.stepContent, { width: SCREEN_WIDTH }]}>
               <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
@@ -520,7 +521,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                       style={[styles.dateButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
                       onPress={() => setShowEndDatePicker(true)}
                     >
-                      <Ionicons name="calendar" size={20} color={theme.error} />
+                      <Ionicons name="calendar" size={20} color={theme.primary} />
                       <Text style={[styles.dateButtonText, { color: theme.text }]}>
                         {endDate ? endDate.toLocaleDateString('ru-RU') : 'Выберите дату окончания'}
                       </Text>
@@ -540,7 +541,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                       <Switch
                         value={allowAnonymous}
                         onValueChange={setAllowAnonymous}
-                        trackColor={{ false: theme.border, true: theme.error }}
+                        trackColor={{ false: theme.border, true: theme.primary }}
                         thumbColor="#FFFFFF"
                       />
                     </View>
@@ -550,20 +551,11 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
                       <Switch
                         value={showResults}
                         onValueChange={setShowResults}
-                        trackColor={{ false: theme.border, true: theme.error }}
+                        trackColor={{ false: theme.border, true: theme.primary }}
                         thumbColor="#FFFFFF"
                       />
                     </View>
 
-                    <View style={styles.switchRow}>
-                      <Text style={[styles.switchLabel, { color: theme.text }]}>Требовать комментарий</Text>
-                      <Switch
-                        value={requireComment}
-                        onValueChange={setRequireComment}
-                        trackColor={{ false: theme.border, true: theme.error }}
-                        thumbColor="#FFFFFF"
-                      />
-                    </View>
                   </View>
                 </View>
               </ScrollView>
@@ -572,35 +564,48 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
         </View>
 
         {/* Bottom Navigation */}
-        <View style={[styles.bottomNav, { backgroundColor: theme.card, paddingBottom: insets.bottom, borderTopColor: theme.border }]}>
+        <View style={[styles.bottomNav, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: insets.bottom }]}>
+          {currentStep > 1 ? (
+            <TouchableOpacity
+              onPress={goToPreviousStep}
+              style={[styles.navButton, styles.backButton, { borderColor: theme.border }]}
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.text} />
+              <Text style={[styles.navButtonText, { color: theme.text }]}>Назад</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.navButton} />
+          )}
+
           {currentStep < totalSteps ? (
             <TouchableOpacity
-              style={[
-                styles.nextButton,
-                { backgroundColor: theme.error },
-                !canProceedFromStep(currentStep) && { backgroundColor: theme.backgroundTertiary }
-              ]}
               onPress={goToNextStep}
               disabled={!canProceedFromStep(currentStep)}
+              style={[
+                styles.navButton,
+                styles.nextButton,
+                { backgroundColor: theme.primary },
+                !canProceedFromStep(currentStep) && { backgroundColor: theme.backgroundTertiary }
+              ]}
             >
-              <Text style={[styles.nextButtonText, !canProceedFromStep(currentStep) && { color: theme.textTertiary }]}>
+              <Text style={[styles.navButtonText, { color: '#FFFFFF' }, !canProceedFromStep(currentStep) && { color: theme.textTertiary }]}>
                 Далее
               </Text>
+              <Ionicons name="arrow-forward" size={20} color={!canProceedFromStep(currentStep) ? theme.textTertiary : '#FFFFFF'} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[
-                styles.nextButton,
-                { backgroundColor: theme.error },
-                isSubmitting && { backgroundColor: theme.backgroundTertiary }
-              ]}
               onPress={handleSubmit}
               disabled={isSubmitting}
+              style={[styles.navButton, styles.createButton, { backgroundColor: theme.primary }]}
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.nextButtonText}>Создать опрос</Text>
+                <>
+                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  <Text style={[styles.navButtonText, { color: '#FFFFFF' }]}>Создать</Text>
+                </>
               )}
             </TouchableOpacity>
           )}
@@ -617,7 +622,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             mode="date"
           />
         )}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -627,38 +632,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
   },
   headerButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+  headerCenter: {
     flex: 1,
-    textAlign: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
   },
   progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  progressBar: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  progressStep: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
   },
   content: {
     flex: 1,
@@ -669,20 +679,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    padding: 20,
   },
   stepHeader: {
     marginBottom: 24,
   },
   stepTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   stepSubtitle: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   card: {
     borderRadius: 16,
@@ -788,20 +797,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 16,
     borderTopWidth: 1,
+    gap: 12,
   },
-  nextButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
+  navButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    flex: 1,
   },
-  nextButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
+  backButton: {
+    borderWidth: 1,
+  },
+  nextButton: {},
+  createButton: {},
+  navButtonText: {
+    fontSize: 16,
     fontWeight: '600',
   },
 });

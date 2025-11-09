@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Event, EventType, CalendarView } from '../../types/calendar.types';
 import { EventItem } from '@components/calendar/EventItem';
-import { CreateEventModal } from '@components/calendar/CreateEventModal';
+import CreateEventModal from '@components/calendar/CreateEventModal';
 import { EventDetailModal } from '@components/calendar/EventDetailModal';
 import { ScreenHeader } from '@components/common/ScreenHeader';
 import { mockGetEvents, isMockMode } from '@utils/mockData';

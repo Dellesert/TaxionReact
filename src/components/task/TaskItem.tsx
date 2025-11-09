@@ -160,21 +160,19 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         <View style={styles.delegationChain}>
           <View style={styles.avatarChain}>
             {task.delegation_chain.map((user, index) => (
-              <React.Fragment key={user.id}>
-                <View style={styles.chainItem}>
-                  <Avatar
-                    name={user.name}
-                    imageUrl={user.avatar}
-                    size={16}
-                  />
-                  <Text style={styles.delegationText} numberOfLines={1}>
-                    {formatUserName(user.name, user.id)}
-                  </Text>
-                </View>
+              <View key={user.id} style={styles.chainItem}>
+                <Avatar
+                  name={user.name}
+                  imageUrl={user.avatar}
+                  size={18}
+                />
+                <Text style={styles.delegationText} numberOfLines={1}>
+                  {formatUserName(user.name, user.id)}
+                </Text>
                 {index < task.delegation_chain!.length - 1 && (
                   <Text style={styles.chainArrow}>→</Text>
                 )}
-              </React.Fragment>
+              </View>
             ))}
           </View>
         </View>
@@ -217,21 +215,19 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         <View style={styles.delegationChain}>
           <View style={styles.avatarChain}>
             {chain.map((user, index) => (
-              <React.Fragment key={user.id || index}>
-                <View style={styles.chainItem}>
-                  <Avatar
-                    name={user.name}
-                    imageUrl={user.avatar}
-                    size={16}
-                  />
-                  <Text style={styles.delegationText} numberOfLines={1}>
-                    {formatUserName(user.name, user.id)}
-                  </Text>
-                </View>
+              <View key={user.id || index} style={styles.chainItem}>
+                <Avatar
+                  name={user.name}
+                  imageUrl={user.avatar}
+                  size={18}
+                />
+                <Text style={styles.delegationText} numberOfLines={1}>
+                  {formatUserName(user.name, user.id)}
+                </Text>
                 {index < chain.length - 1 && (
                   <Text style={styles.chainArrow}>→</Text>
                 )}
-              </React.Fragment>
+              </View>
             ))}
           </View>
         </View>
@@ -722,16 +718,19 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: 8,
+    flexWrap: 'wrap',
   },
   footerLeft: {
     flex: 1,
-    marginRight: 12,
+    minWidth: 0,
   },
   metaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
   },
   divider: {
     height: 1,
@@ -788,29 +787,37 @@ const styles = StyleSheet.create({
   },
   delegationChain: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
+    minWidth: 0,
   },
   avatarChain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     flex: 1,
     flexWrap: 'wrap',
+    minWidth: 0,
+    rowGap: 8,
   },
   chainItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexShrink: 0,
+    maxWidth: '48%',
   },
   chainArrow: {
     fontSize: 12,
     color: '#9ca3af',
-    marginHorizontal: 2,
+    marginLeft: 4,
+    flexShrink: 0,
   },
   delegationText: {
     fontSize: 13,
     color: '#6b7280',
+    flexShrink: 1,
+    maxWidth: 100,
   },
   attachmentBadge: {
     flexDirection: 'row',

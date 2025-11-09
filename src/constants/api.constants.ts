@@ -106,8 +106,8 @@ export const API_ENDPOINTS = {
     UNASSIGN: (id: number) => `/tasks/${id}/assign`,
     COMMENTS: (id: number) => `/tasks/${id}/comments`,
     ADD_COMMENT: (id: number) => `/tasks/${id}/comments`,
-    UPDATE_COMMENT: (id: number) => `/comments/${id}`,
-    DELETE_COMMENT: (id: number) => `/comments/${id}`,
+    UPDATE_COMMENT: (commentId: number) => `/comments/${commentId}`,
+    DELETE_COMMENT: (commentId: number) => `/comments/${commentId}`,
     STATS: '/tasks/stats',
   },
 

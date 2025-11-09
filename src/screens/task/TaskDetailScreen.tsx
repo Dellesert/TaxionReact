@@ -101,6 +101,8 @@ const TaskDetailScreen: React.FC = () => {
   const [commentsOffset, setCommentsOffset] = useState(0);
   const [hasMoreComments, setHasMoreComments] = useState(false);
   const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
 
   // Activities state
   const [activities, setActivities] = useState<TaskActivity[]>([]);
@@ -331,6 +333,66 @@ const TaskDetailScreen: React.FC = () => {
       Alert.alert('Ошибка', 'Не удалось отправить комментарий');
     } finally {
       setIsSendingComment(false);
+    }
+  };
+
+  const handleEditComment = (comment: TaskComment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.content);
+  };
+
+  const handleSaveEditComment = async (commentId: number) => {
+    if (!editingCommentText.trim()) return;
+
+    try {
+      await taskApi.updateComment(commentId, editingCommentText);
+      setEditingCommentId(null);
+      setEditingCommentText('');
+      await loadComments();
+    } catch (error) {
+      Alert.alert('Ошибка', 'Не удалось обновить комментарий');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm('Вы уверены, что хотите удалить этот комментарий?')
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Удалить комментарий?',
+            'Это действие нельзя отменить.',
+            [
+              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
+              {
+                text: 'Удалить',
+                style: 'destructive',
+                onPress: () => resolve(true),
+              },
+            ]
+          );
+        });
+
+    if (!confirmed) return;
+
+    try {
+      await taskApi.deleteComment(commentId);
+      await loadComments();
+      if (Platform.OS === 'web') {
+        alert('Комментарий удалён');
+      } else {
+        Alert.alert('Успех', 'Комментарий удалён');
+      }
+    } catch (error) {
+      if (Platform.OS === 'web') {
+        alert('Не удалось удалить комментарий');
+      } else {
+        Alert.alert('Ошибка', 'Не удалось удалить комментарий');
+      }
     }
   };
 
@@ -1164,32 +1226,36 @@ const TaskDetailScreen: React.FC = () => {
     commentItem: {
       flexDirection: 'row',
       marginBottom: 16,
+      gap: 12,
     },
     commentAvatar: {
       marginRight: 12,
     },
     commentContent: {
       flex: 1,
+      minWidth: 0,
     },
     commentHeader: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 4,
+      alignItems: 'flex-start',
+      marginBottom: 6,
     },
     commentAuthor: {
       fontSize: 14,
       fontWeight: '600',
       color: theme.text,
+      flexShrink: 1,
     },
     commentDate: {
       fontSize: 12,
       color: theme.textTertiary,
+      flexShrink: 0,
     },
     commentText: {
       fontSize: 14,
       color: theme.textSecondary,
       lineHeight: 20,
+      marginTop: 2,
     },
     emptyComments: {
       fontSize: 14,
@@ -1559,17 +1625,65 @@ const TaskDetailScreen: React.FC = () => {
               style={[styles.tab, activeTab === 'attachments' && styles.activeTab]}
               onPress={() => setActiveTab('attachments')}
             >
-              <Text style={[styles.tabText, activeTab === 'attachments' && styles.activeTabText]}>
-                Вложения
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.tabText, activeTab === 'attachments' && styles.activeTabText]}>
+                  Вложения
+                </Text>
+                {attachments.length > 0 && (
+                  <View
+                    style={{
+                      backgroundColor: activeTab === 'attachments' ? theme.primary : theme.backgroundTertiary,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                      minWidth: 20,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: activeTab === 'attachments' ? '#FFFFFF' : theme.textTertiary,
+                      }}
+                    >
+                      {attachments.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, activeTab === 'comments' && styles.activeTab]}
               onPress={() => setActiveTab('comments')}
             >
-              <Text style={[styles.tabText, activeTab === 'comments' && styles.activeTabText]}>
-                Комментарии
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.tabText, activeTab === 'comments' && styles.activeTabText]}>
+                  Комментарии
+                </Text>
+                {comments.length > 0 && (
+                  <View
+                    style={{
+                      backgroundColor: activeTab === 'comments' ? theme.primary : theme.backgroundTertiary,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                      minWidth: 20,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: activeTab === 'comments' ? '#FFFFFF' : theme.textTertiary,
+                      }}
+                    >
+                      {comments.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, activeTab === 'history' && styles.activeTab]}
@@ -1797,12 +1911,166 @@ const TaskDetailScreen: React.FC = () => {
                 )}
               </View>
             ) : activeTab === 'comments' ? (
-              // Comments Tab (Placeholder)
+              // Comments Tab
               <View style={styles.content}>
-                <View style={styles.emptyStateContainer}>
-                  <Ionicons name="chatbubbles-outline" size={48} color={theme.textTertiary} />
-                  <Text style={styles.emptyStateText}>Комментарии скоро появятся</Text>
-                </View>
+                {/* Comment Input */}
+                {!isDelegatedByMe && task.status !== 'done' && (
+                  <View style={styles.commentInputContainer}>
+                    <TextInput
+                      style={styles.commentInput}
+                      placeholder="Написать комментарий..."
+                      placeholderTextColor={theme.textTertiary}
+                      value={newComment}
+                      onChangeText={setNewComment}
+                      multiline
+                      maxLength={1000}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.sendButton,
+                        { backgroundColor: newComment.trim() ? theme.primary : theme.backgroundTertiary }
+                      ]}
+                      onPress={handleSendComment}
+                      disabled={!newComment.trim() || isSendingComment}
+                    >
+                      {isSendingComment ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Ionicons
+                          name="send"
+                          size={20}
+                          color={newComment.trim() ? '#FFFFFF' : theme.textTertiary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Comments List */}
+                {comments.length > 0 ? (
+                  <>
+                    {comments.map((comment) => {
+                      const isMyComment = user?.id === comment.user_id;
+                      const isEditing = editingCommentId === comment.id;
+
+                      return (
+                        <View key={comment.id} style={styles.commentItem}>
+                          <TouchableOpacity
+                            onPress={() => comment.user && handleUserPress(comment.user.id)}
+                            activeOpacity={0.7}
+                          >
+                            <Avatar
+                              name={comment.user?.name || 'User'}
+                              imageUrl={comment.user?.avatar}
+                              size={36}
+                            />
+                          </TouchableOpacity>
+                          <View style={styles.commentContent}>
+                            <View style={styles.commentHeader}>
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <TouchableOpacity
+                                  onPress={() => comment.user && handleUserPress(comment.user.id)}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.commentAuthor} numberOfLines={1}>
+                                    {comment.user?.name || 'Пользователь'}
+                                  </Text>
+                                </TouchableOpacity>
+                                <Text style={styles.commentDate}>
+                                  {format(new Date(comment.created_at), 'dd MMM, HH:mm', { locale: ru })}
+                                </Text>
+                              </View>
+                              {isMyComment && !isEditing && (
+                                <View style={{ flexDirection: 'row', gap: 4, marginLeft: 8 }}>
+                                  <TouchableOpacity
+                                    onPress={() => handleEditComment(comment)}
+                                    style={{ padding: 4 }}
+                                  >
+                                    <Ionicons name="create-outline" size={16} color={theme.primary} />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    onPress={() => handleDeleteComment(comment.id)}
+                                    style={{ padding: 4 }}
+                                  >
+                                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                                  </TouchableOpacity>
+                                </View>
+                              )}
+                            </View>
+                            {isEditing ? (
+                              <View style={{ marginTop: 8 }}>
+                                <TextInput
+                                  style={[styles.commentInput, { marginBottom: 8 }]}
+                                  value={editingCommentText}
+                                  onChangeText={setEditingCommentText}
+                                  multiline
+                                  maxLength={1000}
+                                  autoFocus
+                                />
+                                <View style={{ flexDirection: 'row', gap: 8 }}>
+                                  <TouchableOpacity
+                                    style={{
+                                      flex: 1,
+                                      backgroundColor: theme.primary,
+                                      paddingVertical: 8,
+                                      paddingHorizontal: 12,
+                                      borderRadius: 8,
+                                      alignItems: 'center',
+                                    }}
+                                    onPress={() => handleSaveEditComment(comment.id)}
+                                  >
+                                    <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Сохранить</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={{
+                                      flex: 1,
+                                      backgroundColor: theme.backgroundSecondary,
+                                      paddingVertical: 8,
+                                      paddingHorizontal: 12,
+                                      borderRadius: 8,
+                                      alignItems: 'center',
+                                      borderWidth: 1,
+                                      borderColor: theme.border,
+                                    }}
+                                    onPress={handleCancelEdit}
+                                  >
+                                    <Text style={{ color: theme.text, fontWeight: '600' }}>Отмена</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            ) : (
+                              <Text style={styles.commentText}>{comment.content}</Text>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+
+                    {/* Load More Button */}
+                    {hasMoreComments && (
+                      <TouchableOpacity
+                        style={styles.loadMore}
+                        onPress={loadMoreComments}
+                        disabled={isLoadingMoreComments}
+                      >
+                        {isLoadingMoreComments ? (
+                          <ActivityIndicator size="small" color={theme.primary} />
+                        ) : (
+                          <Text style={styles.loadMoreText}>Загрузить еще</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.emptyStateContainer}>
+                    <Ionicons name="chatbubbles-outline" size={48} color={theme.textTertiary} />
+                    <Text style={styles.emptyStateText}>
+                      {isDelegatedByMe || task.status === 'done'
+                        ? 'Нет комментариев'
+                        : 'Будьте первым, кто оставит комментарий'}
+                    </Text>
+                  </View>
+                )}
               </View>
             ) : (
               // History Tab (Activities)

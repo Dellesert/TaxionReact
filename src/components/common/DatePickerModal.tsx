@@ -1,7 +1,29 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Modal, Platform, TouchableWithoutFeedback, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Platform, TouchableWithoutFeedback, Animated, StyleSheet } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '@hooks/useTheme';
+
+// Динамический импорт для веба
+let ReactDatePicker: any = null;
+let registerLocale: any = null;
+let ruLocale: any = null;
+
+if (Platform.OS === 'web') {
+  try {
+    ReactDatePicker = require('react-datepicker').default;
+    registerLocale = require('react-datepicker').registerLocale;
+    ruLocale = require('date-fns/locale/ru').ru;
+    require('react-datepicker/dist/react-datepicker.css');
+    require('../../styles/datepicker-custom.css');
+
+    // Регистрируем русскую локаль
+    if (registerLocale && ruLocale) {
+      registerLocale('ru', ruLocale);
+    }
+  } catch (e) {
+    console.warn('react-datepicker not available');
+  }
+}
 
 interface DatePickerModalProps {
   visible: boolean;
@@ -106,8 +128,110 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
     );
   }
 
-  // Web или когда не visible - ничего не показываем
+  // Web: показываем модальное окно с react-datepicker
+  if (Platform.OS === 'web' && visible && ReactDatePicker) {
+    const handleDateChange = (date: Date | null) => {
+      if (date) {
+        onChange({}, date);
+      }
+    };
+
+    return (
+      <Modal
+        transparent
+        animationType="fade"
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <TouchableWithoutFeedback onPress={onClose}>
+          <Animated.View style={[styles.webOverlay, { opacity: fadeAnim }]}>
+            <TouchableWithoutFeedback>
+              <Animated.View style={[
+                styles.webModal,
+                { backgroundColor: theme.card, transform: [{ translateY: slideAnim }] }
+              ]}>
+                <View style={styles.webHeader}>
+                  <Text style={[styles.webTitle, { color: theme.text }]}>
+                    {mode === 'date' ? 'Выберите дату' : mode === 'time' ? 'Выберите время' : 'Выберите дату и время'}
+                  </Text>
+                </View>
+
+                <View style={styles.webContent}>
+                  <ReactDatePicker
+                    selected={value}
+                    onChange={handleDateChange}
+                    inline
+                    showTimeSelect={mode !== 'date'}
+                    showTimeSelectOnly={mode === 'time'}
+                    timeIntervals={15}
+                    timeCaption="Время"
+                    dateFormat={mode === 'date' ? 'dd.MM.yyyy' : mode === 'time' ? 'HH:mm' : 'dd.MM.yyyy HH:mm'}
+                    minDate={minimumDate}
+                    maxDate={maximumDate}
+                    locale="ru"
+                    calendarClassName={theme.isDark ? 'dark-calendar' : ''}
+                  />
+                </View>
+
+                <View style={styles.webFooter}>
+                  <TouchableOpacity onPress={onClose} style={[styles.webButton, { backgroundColor: theme.primary }]}>
+                    <Text style={styles.webButtonText}>Готово</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </Animated.View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    );
+  }
+
   return null;
 };
+
+const styles = StyleSheet.create({
+  webOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  webModal: {
+    borderRadius: 12,
+    padding: 20,
+    minWidth: 320,
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  webHeader: {
+    marginBottom: 16,
+  },
+  webTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  webContent: {
+    alignItems: 'center',
+  },
+  webFooter: {
+    marginTop: 16,
+  },
+  webButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  webButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
 
 export default DatePickerModal;

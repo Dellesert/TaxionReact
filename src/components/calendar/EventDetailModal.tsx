@@ -20,7 +20,7 @@ import * as calendarApi from '@api/calendar.api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@components/common/Avatar';
-import { CreateEventModal } from './CreateEventModal';
+import CreateEventModal from './CreateEventModal';
 
 interface EventDetailModalProps {
   visible: boolean;
