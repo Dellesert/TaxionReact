@@ -66,6 +66,16 @@ const canEditTask = (task: Task | null, userId: number | undefined, userRole: st
   return false;
 };
 
+const canDeleteTask = (task: Task | null, userId: number | undefined, userRole: string | undefined): boolean => {
+  if (!task || !userId) return false;
+
+  // Only super admin and task creator can delete
+  if (userRole === 'super_admin') return true;
+  if (task.created_by === userId) return true;
+
+  return false;
+};
+
 /**
  * Check if user has access to view task (includes assignees)
  */
@@ -292,32 +302,48 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
-  const handleDeleteTask = () => {
-    Alert.alert(
-      'Удалить задачу?',
-      'Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const taskIdNum = Number(taskId);
-              await taskApi.deleteTask(taskIdNum);
-              Alert.alert('Успех', 'Задача удалена', [
-                {
-                  text: 'OK',
-                  onPress: () => navigation.goBack(),
-                },
-              ]);
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось удалить задачу');
-            }
+  const handleDeleteTask = async () => {
+    // Use window.confirm for web, Alert.alert for mobile
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.');
+      if (!confirmed) return;
+
+      try {
+        const taskIdNum = Number(taskId);
+        await taskApi.deleteTask(taskIdNum);
+        alert('Задача удалена');
+        navigation.goBack();
+      } catch (error) {
+        alert(`Не удалось удалить задачу: ${error.message || error}`);
+      }
+    } else {
+      // Mobile: use Alert.alert
+      Alert.alert(
+        'Удалить задачу?',
+        'Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const taskIdNum = Number(taskId);
+                await taskApi.deleteTask(taskIdNum);
+                Alert.alert('Успех', 'Задача удалена', [
+                  {
+                    text: 'OK',
+                    onPress: () => navigation.goBack(),
+                  },
+                ]);
+              } catch (error) {
+                Alert.alert('Ошибка', `Не удалось удалить задачу: ${error.message || error}`);
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleSendComment = async () => {
@@ -2462,7 +2488,7 @@ const TaskDetailScreen: React.FC = () => {
                 )}
 
                 {/* Delete Task Option */}
-                {canEditTask(task, user?.id, user?.role) && (
+                {canDeleteTask(task, user?.id, user?.role) && (
                   <TouchableOpacity
                     style={{
                       flexDirection: 'row',
