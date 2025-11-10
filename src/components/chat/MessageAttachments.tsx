@@ -38,6 +38,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
 }) => {
   const { theme } = useTheme();
   const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [blobUrls, setBlobUrls] = React.useState<{ [key: number]: string }>({});
 
   // Load session ID once
   React.useEffect(() => {
@@ -51,6 +52,48 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   const images = attachments.filter(a => isImageFile(a.mime_type || a.file_type || ''));
   const files = attachments.filter(a => !isImageFile(a.mime_type || a.file_type || ''));
   const imageCount = images.length;
+
+  // Load images with auth headers for web platform
+  React.useEffect(() => {
+    if (Platform.OS === 'web' && sessionId && images.length > 0) {
+      const loadImageBlobs = async () => {
+        const newBlobUrls: { [key: number]: string } = {};
+
+        for (const attachment of images) {
+          try {
+            const imageUrl = replaceLocalhostWithIP(attachment.file_url);
+            const response = await fetch(imageUrl, {
+              headers: {
+                'X-Session-ID': sessionId,
+              },
+            });
+
+            if (response.ok) {
+              const blob = await response.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              newBlobUrls[attachment.id] = blobUrl;
+            } else {
+              console.error('❌ Failed to load image blob:', imageUrl, response.status);
+            }
+          } catch (error) {
+            console.error('❌ Error loading image blob:', error);
+          }
+        }
+
+        setBlobUrls(newBlobUrls);
+      };
+
+      loadImageBlobs();
+
+      // Cleanup blob URLs on unmount
+      return () => {
+        Object.values(blobUrls).forEach(url => URL.revokeObjectURL(url));
+      };
+    }
+  }, [Platform.OS, sessionId, images.length, attachments]);
+
+  // Prepare image URLs with proper baseURL replacement for gallery
+  const galleryImageUrls = images.map(img => replaceLocalhostWithIP(img.file_url));
 
   // Determine image size based on count
   const screenWidth = Dimensions.get('window').width;
@@ -190,20 +233,30 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 imageCount > 1 && styles.imageAttachmentGrid,
               ]}
               onPress={() => {
-                const imageUrl = imageUrls[attachment.id];
-                if (imageUrl) {
-                  onImagePress(imageUrl);
-                } else {
-                  Alert.alert('Ошибка', 'Изображение еще загружается');
-                }
+                onImagePress(Platform.OS === 'web' && blobUrls[attachment.id] ? blobUrls[attachment.id] : galleryImageUrls[index]);
               }}
               onLongPress={onLongPress}
               delayLongPress={500}
             >
-              {imageUrls[attachment.id] ? (
+              {Platform.OS === 'web' && blobUrls[attachment.id] ? (
+                <Image
+                  source={{ uri: blobUrls[attachment.id] }}
+                  style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height, maxWidth: '100%' }]}
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                />
+              ) : Platform.OS === 'web' && !blobUrls[attachment.id] ? (
+                <View style={[
+                  styles.imagePreview,
+                  { width: imageSize.width, height: imageSize.height, maxWidth: '100%', backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }
+                ]}>
+                  <ActivityIndicator size="small" color={theme.primary} />
+                </View>
+              ) : (
                 <Image
                   source={{
-                    uri: imageUrls[attachment.id],
+                    uri: replaceLocalhostWithIP(attachment.file_url),
                     headers: sessionId ? {
                       'X-Session-ID': sessionId,
                     } : undefined,
@@ -212,14 +265,10 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                   contentFit="cover"
                   transition={200}
                   cachePolicy="memory-disk"
+                  onError={(error) => {
+                    console.error('❌ Message image load error:', replaceLocalhostWithIP(attachment.file_url), error);
+                  }}
                 />
-              ) : (
-                <View style={[
-                  styles.imagePreview,
-                  { width: imageSize.width, height: imageSize.height, maxWidth: '100%', backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }
-                ]}>
-                  <ActivityIndicator size="small" color={theme.primary} />
-                </View>
               )}
             </TouchableOpacity>
           ))}

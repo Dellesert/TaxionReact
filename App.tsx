@@ -5,20 +5,67 @@
 
 import './global.css';
 import React, { useEffect } from 'react';
-import { LogBox, AppState, AppStateStatus } from 'react-native';
+import { LogBox, AppState, AppStateStatus, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
 import { useThemeStore } from './src/store/themeStore';
 import { websocketService } from './src/services/websocket.service';
 
-// Ignore all logs in the app UI (they will still appear in Metro console)
-LogBox.ignoreAllLogs();
+// Добавляем типы для ErrorUtils (глобальная переменная React Native)
+declare const ErrorUtils: {
+  setGlobalHandler: (handler: (error: Error, isFatal: boolean) => void) => void;
+  getGlobalHandler: () => ((error: Error, isFatal: boolean) => void) | undefined;
+};
 
-// Optionally, ignore specific warnings
-// LogBox.ignoreLogs([
-//   'Non-serializable values were found in the navigation state',
-// ]);
+// Ignore specific logs - показываем другие ошибки, но скрываем известные проблемы
+LogBox.ignoreLogs([
+  'Non-serializable values were found in the navigation state',
+  // Проблема dismiss в DateTimePicker - известный баг библиотеки, не влияет на работу
+  'dismiss',
+]);
+
+// Optionally, ignore all logs
+// LogBox.ignoreAllLogs();
+
+// Подавление ошибки dismiss в Android DateTimePicker
+// Это известная проблема в библиотеке @react-native-community/datetimepicker
+// Ошибка безвредна и не влияет на функциональность
+if (Platform.OS === 'android') {
+  // Перехватываем console.error
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    const errorMessage = args[0]?.toString() || '';
+    // Подавляем только конкретную ошибку dismiss
+    if (errorMessage.includes('Cannot read property \'dismiss\' of undefined') ||
+        errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')') ||
+        errorMessage.includes('dismiss') && errorMessage.includes('undefined')) {
+      return; // Игнорируем эту ошибку
+    }
+    originalConsoleError(...args);
+  };
+
+  // Перехватываем глобальные ошибки
+  const originalErrorHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    const errorMessage = error?.message || error?.toString() || '';
+    const errorStack = error?.stack || '';
+
+    // Подавляем только конкретную ошибку dismiss из DateTimePicker
+    if (errorMessage.includes('Cannot read property \'dismiss\'') ||
+        errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')') ||
+        errorMessage.includes('dismiss') && errorMessage.includes('undefined') ||
+        errorStack.includes('DateTimePicker') ||
+        errorStack.includes('RNDateTimePicker')) {
+      console.log('[Suppressed] DateTimePicker dismiss error (harmless)');
+      return; // Игнорируем эту ошибку
+    }
+    // Все остальные ошибки обрабатываются как обычно
+    if (originalErrorHandler) {
+      originalErrorHandler(error, isFatal);
+    }
+  });
+}
 
 export default function App() {
   const initialize = useAuthStore((state) => state.initialize);

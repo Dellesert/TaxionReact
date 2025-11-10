@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Platform, TouchableWithoutFeedback, Animated, StyleSheet } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '@hooks/useTheme';
@@ -48,8 +48,14 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
+  // Для Android: используем ref чтобы отслеживать, был ли обработан onChange
+  const isProcessingRef = useRef(false);
+
   useEffect(() => {
     if (visible) {
+      // Сбрасываем флаг обработки при открытии
+      isProcessingRef.current = false;
+
       // Анимация появления
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -116,16 +122,51 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
 
   // Android: возвращаем только DateTimePicker (он сам показывает нативный диалог)
   if (Platform.OS === 'android' && visible) {
-    return (
-      <DateTimePicker
-        value={value}
-        mode={mode}
-        display="default"
-        onChange={onChange}
-        minimumDate={minimumDate}
-        maximumDate={maximumDate}
-      />
-    );
+    const handleAndroidChange = (event: any, selectedDate?: Date) => {
+      // Предотвращаем множественные вызовы
+      if (isProcessingRef.current) {
+        return;
+      }
+      isProcessingRef.current = true;
+
+      // Откладываем вызовы для предотвращения конфликта с нативным dismiss
+      // Используем более длинную задержку для гарантии завершения нативного кода
+      setTimeout(() => {
+        try {
+          // Если пользователь подтвердил выбор (нажал OK), передаем дату
+          if (event.type === 'set' && selectedDate) {
+            onChange(event, selectedDate);
+          }
+        } catch (error) {
+          // Подавляем любые ошибки при вызове onChange
+          console.log('[DatePicker] Suppressed error in onChange:', error);
+        }
+
+        // Закрываем модальное окно
+        try {
+          onClose();
+        } catch (error) {
+          // Подавляем любые ошибки при закрытии
+          console.log('[DatePicker] Suppressed error in onClose:', error);
+        }
+      }, 200);
+    };
+
+    try {
+      return (
+        <DateTimePicker
+          value={value}
+          mode={mode}
+          display="default"
+          onChange={handleAndroidChange}
+          minimumDate={minimumDate}
+          maximumDate={maximumDate}
+        />
+      );
+    } catch (error) {
+      console.log('[DatePicker] Suppressed error in render:', error);
+      return null;
+    }
   }
 
   // Web: показываем модальное окно с react-datepicker

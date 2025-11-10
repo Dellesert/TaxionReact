@@ -64,7 +64,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const messageBubbleRef = useRef<View>(null);
 
@@ -115,7 +115,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   };
 
   const handleImagePress = (imageUrl: string) => {
-    setSelectedImage(imageUrl);
+    // Найти индекс изображения в массиве imageUrls
+    const imageUrlsArray = Object.values(imageUrls);
+    const index = imageUrlsArray.findIndex(url => url === imageUrl);
+    setSelectedImageIndex(index >= 0 ? index : 0);
     setShowImageViewer(true);
   };
 
@@ -219,10 +222,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {/* Полноэкранный просмотр изображения */}
       <ImageViewer
         visible={showImageViewer}
-        imageUrl={selectedImage}
+        imageUrls={Object.values(imageUrls)}
+        initialIndex={selectedImageIndex}
         onClose={() => {
           setShowImageViewer(false);
-          setSelectedImage(null);
+          setSelectedImageIndex(0);
         }}
       />
     </View>

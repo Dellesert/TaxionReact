@@ -19,11 +19,11 @@ export interface Attachment {
   file_id: number; // Reference to file in file-service
   file_url: string;
   file_name: string;
-  original_name?: string; // Original filename before server renamed it
-  file_type: string;
   file_size: number;
+  mime_type: string; // MIME type of the file (e.g., "image/png", "application/pdf")
+  file_type: string; // Category: "image", "video", "audio", "document", "other"
   thumbnail_url?: string;
-  created_at: ISODateString;
+  created_at?: ISODateString;
 }
 
 // Reaction Interface

@@ -22,6 +22,9 @@ import { User, ChatMember } from '@/types/user.types';
 import * as userApi from '@api/user.api';
 import * as chatApi from '@api/chat.api';
 import UserSelectorModal from '@components/common/UserSelectorModal';
+import { ChatDetailTabs, TabType } from '@components/chat/ChatDetailTabs';
+import { ParticipantsTab } from '@components/chat/ParticipantsTab';
+import { AttachmentsTab } from '@components/chat/AttachmentsTab';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ChatSettings'>;
 
@@ -56,6 +59,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const [roleChangeData, setRoleChangeData] = useState<{ userId: number; userName: string; currentRole: string; newRole: string } | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [selectedMember, setSelectedMember] = useState<{ userId: number; userName: string; role: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('participants');
 
   const chat = getChatById(chatId);
   const creatorId = chat?.created_by || chat?.creator_id;
@@ -198,6 +202,17 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       loadMembers();
     }
   }, [chat?.type, chatId]);
+
+  // Установка начальной вкладки в зависимости от типа чата
+  useEffect(() => {
+    if (chat?.type === 'private') {
+      // Для личных чатов показываем только вложения
+      setActiveTab('attachments');
+    } else if (chat?.type === 'group') {
+      // Для групповых чатов по умолчанию показываем участников
+      setActiveTab('participants');
+    }
+  }, [chat?.type]);
 
   const loadMembers = async () => {
     try {
@@ -764,96 +779,31 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
 
 
-        {/* Участники (только для групповых чатов) */}
-        {chat?.type === 'group' && (
-          <>
-            {/* Разделитель */}
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        {/* Разделитель перед вкладками */}
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            {/* Кнопка добавления участников */}
-            {canManageMembers && (
-              <View style={[styles.section, dynamicStyles.section]}>
-                <TouchableOpacity
-                  style={[styles.option, dynamicStyles.option]}
-                  onPress={() => setShowAddMembersModal(true)}
-                >
-                  <Ionicons name="person-add-outline" size={24} color={theme.primary} />
-                  <Text style={[styles.optionText, dynamicStyles.optionText]}>
-                    Добавить участников
-                  </Text>
-                  <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-                </TouchableOpacity>
-              </View>
-            )}
+        {/* Вкладки (Участники и Вложения для групповых чатов, только Вложения для личных) */}
+        <ChatDetailTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          showParticipants={chat?.type === 'group'}
+        />
 
-            {/* Список участников */}
-            <View style={[styles.membersSection, dynamicStyles.section, canManageMembers ? {} : styles.sectionMarginTop]}>
-              <View style={styles.membersSectionHeader}>
-                <Text style={[styles.membersSectionTitle, { color: theme.text }]}>
-                  Участники ({members.length})
-                </Text>
-              </View>
+        {/* Контент вкладок */}
+        {activeTab === 'participants' && chat?.type === 'group' && (
+          <ParticipantsTab
+            members={members}
+            isLoading={isLoadingMembers}
+            currentUserId={currentUser?.id}
+            creatorId={creatorId}
+            currentUserRole={currentUserRole}
+            onAddMembers={canManageMembers ? () => setShowAddMembersModal(true) : undefined}
+            onMemberPress={handleOpenActionMenu}
+          />
+        )}
 
-              {isLoadingMembers ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={theme.primary} />
-                </View>
-              ) : (
-                members.map((item) => {
-                  const user = item.user;
-                  if (!user) return null;
-
-                  const canRemove = canManageMembers &&
-                    item.user_id !== creatorId &&
-                    currentUser &&
-                    item.user_id !== currentUser.id &&
-                    !(isAdmin && item.role === 'admin');
-
-                  const canChangeRole = canManageMembers &&
-                    item.role !== 'owner' &&
-                    currentUser &&
-                    item.user_id !== currentUser.id &&
-                    !(isAdmin && item.role === 'admin');
-
-                  return (
-                    <View key={item.id} style={[styles.memberItem, { borderBottomColor: theme.border }]}>
-                      <View style={styles.memberInfo}>
-                        <Avatar
-                          name={user.name}
-                          imageUrl={user.avatar}
-                          size={44}
-                          status={user.status}
-                          showStatus={true}
-                        />
-                        <View style={styles.memberDetails}>
-                          <View style={styles.memberNameRow}>
-                            <Text style={[styles.memberName, { color: theme.text }]} numberOfLines={1}>
-                              {user.name}
-                            </Text>
-                            {user.role === 'department_head' && (
-                              <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
-                            )}
-                          </View>
-                          <Text style={[styles.memberRole, { color: getChatRoleColor(item.role) }]}>
-                            {getChatRoleLabel(item.role)}
-                          </Text>
-                        </View>
-                      </View>
-                      {(canChangeRole || canRemove) && (
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => handleOpenActionMenu(item.user_id, user.name, item.role)}
-                          style={styles.menuButton}
-                        >
-                          <Ionicons name="ellipsis-horizontal" size={20} color={theme.textSecondary} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  );
-                })
-              )}
-            </View>
-          </>
+        {activeTab === 'attachments' && (
+          <AttachmentsTab chatId={chatId} />
         )}
 
       </ScrollView>

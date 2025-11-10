@@ -622,3 +622,30 @@ export const toggleChatPinned = async (chatId: number, isPinned: boolean): Promi
   await api.put(`/chats/${chatId}/pinned`, { is_pinned: isPinned });
   console.log(`✅ Chat ${chatId} pinned status updated to ${isPinned}`);
 };
+
+/**
+ * Get all attachments for a chat
+ * @param chatId - ID of chat to get attachments from
+ * @param limit - Number of attachments to retrieve (default: 50, max: 100)
+ * @param offset - Offset for pagination (default: 0)
+ */
+export const getChatAttachments = async (
+  chatId: number,
+  limit: number = 50,
+  offset: number = 0
+): Promise<{ attachments: any[]; total: number }> => {
+  console.log(`📎 Loading attachments for chat ${chatId} (limit: ${limit}, offset: ${offset})`);
+  try {
+    const response = await api.get(`/chats/${chatId}/attachments`, {
+      params: { limit, offset },
+    });
+    console.log(`✅ Loaded ${response.data.attachments?.length || 0} attachments for chat ${chatId} (total: ${response.data.total || 0})`);
+    return {
+      attachments: response.data.attachments || [],
+      total: response.data.total || 0,
+    };
+  } catch (error) {
+    console.error(`❌ Failed to load attachments for chat ${chatId}:`, error);
+    return { attachments: [], total: 0 };
+  }
+};
