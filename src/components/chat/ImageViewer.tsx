@@ -137,16 +137,16 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <BlurView intensity={95} style={styles.blurOverlay} tint="dark">
-          {/* Заголовок с счетчиком */}
-          {hasMultipleImages && (
-            <View style={[styles.header, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-              <Text style={[styles.counterText, { color: '#FFFFFF' }]}>
-                {currentIndex + 1} из {imageUrls.length}
-              </Text>
-            </View>
-          )}
-
           <View style={styles.imageViewerOverlay} pointerEvents="box-none">
+            {/* Заголовок с счетчиком */}
+            {hasMultipleImages && (
+              <View style={[styles.header, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+                <Text style={[styles.counterText, { color: '#FFFFFF' }]}>
+                  {currentIndex + 1} из {imageUrls.length}
+                </Text>
+              </View>
+            )}
+
             <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
               <PanGestureHandler
                 onGestureEvent={onGestureEvent}
@@ -174,7 +174,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
 
             {/* Кнопка закрытия */}
             <TouchableOpacity
-              style={[styles.closeButton, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}
+              style={styles.closeButton}
               onPress={onClose}
               activeOpacity={0.7}
             >
@@ -270,19 +270,15 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
+    top: Platform.OS === 'ios' ? 50 : 5,
     right: 20,
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    zIndex: 100,
+    backgroundColor: 'transparent',
   },
   navButton: {
     position: 'absolute',
