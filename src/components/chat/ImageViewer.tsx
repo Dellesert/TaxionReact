@@ -137,7 +137,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <BlurView intensity={95} style={styles.blurOverlay} tint="dark">
-          <View style={styles.imageViewerOverlay} pointerEvents="box-none">
+          <View style={styles.imageViewerOverlay}>
             {/* Заголовок с счетчиком */}
             {hasMultipleImages && (
               <View style={[styles.header, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
@@ -147,7 +147,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
               </View>
             )}
 
-            <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
+            <Pressable style={styles.imagePressable} onPress={onClose}>
               <PanGestureHandler
                 onGestureEvent={onGestureEvent}
                 onHandlerStateChange={onHandlerStateChange}
@@ -254,6 +254,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   imageViewerOverlay: {
+    flex: 1,
+  },
+  imagePressable: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

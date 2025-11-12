@@ -212,7 +212,7 @@ export interface Passkey {
   attestation_type: string;
   aaguid: string;
   sign_count: number;
-  device_name?: string;
+  name?: string;  // Backend uses 'name', not 'device_name'
   last_used_at?: ISODateString;
   created_at: ISODateString;
   updated_at: ISODateString;
@@ -253,5 +253,5 @@ export interface PasskeyListResponse {
 }
 
 export interface UpdatePasskeyDto {
-  device_name: string;
+  name: string;  // Backend expects 'name', not 'device_name'
 }

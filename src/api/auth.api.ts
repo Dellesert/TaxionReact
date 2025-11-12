@@ -91,12 +91,23 @@ export const verify2FACode = async (data: Verify2FADto): Promise<Verify2FARespon
 };
 
 /**
- * Begin passkey login (get challenge)
+ * Begin passkey login (get challenge) - Legacy: requires email
  */
 export const beginPasskeyLogin = async (data: PasskeyLoginBeginDto): Promise<PasskeyLoginBeginResponse> => {
   const response = await api.post<PasskeyLoginBeginResponse>(
     API_ENDPOINTS.AUTH.PASSKEY_LOGIN_BEGIN,
     data
+  );
+  return response.data;
+};
+
+/**
+ * Begin discoverable passkey login (get challenge) - New: no email required
+ */
+export const beginDiscoverablePasskeyLogin = async (): Promise<PasskeyLoginBeginResponse> => {
+  const response = await api.post<PasskeyLoginBeginResponse>(
+    API_ENDPOINTS.AUTH.PASSKEY_LOGIN_DISCOVERABLE_BEGIN,
+    {}
   );
   return response.data;
 };

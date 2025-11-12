@@ -76,26 +76,23 @@ const LoginScreen: React.FC = () => {
 
   const handlePasskeyLogin = async () => {
     console.log('👆 Passkey button clicked!');
-    console.log('📧 Email:', email);
     console.log('🔒 isPasskeyLoading:', isPasskeyLoading);
     console.log('🔒 isLoading:', isLoading);
 
-    if (!email) {
-      Alert.alert('Ошибка', 'Введите email для входа с помощью Passkey');
-      return;
-    }
+    // No email required for discoverable passkey login!
 
     setIsPasskeyLoading(true);
     try {
-      console.log('🔐 Starting passkey login for:', email);
+      console.log('🔐 Starting discoverable passkey login (no email required)');
 
       const authApi = await import('@api/auth.api');
 
-      // 1. Начинаем процесс входа - получаем challenge от сервера
-      const beginResponse = await authApi.beginPasskeyLogin({ email });
+      // 1. Начинаем процесс входа - получаем challenge от сервера (БЕЗ email!)
+      const beginResponse = await authApi.beginDiscoverablePasskeyLogin();
       console.log('✅ Got passkey challenge:', beginResponse);
 
       // 2. Показываем системный диалог для аутентификации (кросс-платформенно)
+      // Браузер/устройство покажет доступные passkeys
       const credential = await authenticateWithPasskey(
         beginResponse.publicKey.challenge,
         { publicKey: beginResponse.publicKey }
@@ -317,7 +314,7 @@ const LoginScreen: React.FC = () => {
                       <ActivityIndicator color="#6366F1" size="small" />
                     ) : (
                       <Text style={styles.altMethodText}>
-                        🔑 Вход по ключу
+                        🔑 Быстрый вход
                       </Text>
                     )}
                   </TouchableOpacity>

@@ -156,7 +156,7 @@ const PasskeyManagementScreen: React.FC = () => {
       // Mobile: show confirmation dialog
       Alert.alert(
         'Удалить Passkey',
-        `Вы уверены, что хотите удалить "${passkey.device_name || 'Устройство'}"?`,
+        `Вы уверены, что хотите удалить "${passkey.name || 'Устройство'}"?`,
         [
           { text: 'Отмена', style: 'cancel' },
           {
@@ -186,7 +186,7 @@ const PasskeyManagementScreen: React.FC = () => {
 
   const handleRenamePasskey = (passkey: PasskeyType) => {
     setEditingPasskey(passkey);
-    setDeviceName(passkey.device_name || '');
+    setDeviceName(passkey.name || '');
     setShowNameModal(true);
   };
 
@@ -194,7 +194,8 @@ const PasskeyManagementScreen: React.FC = () => {
     if (!editingPasskey) return;
 
     try {
-      await authApi.updatePasskey(editingPasskey.id, { device_name: deviceName });
+      // Backend expects 'name', not 'device_name'
+      await authApi.updatePasskey(editingPasskey.id, { name: deviceName });
       console.log('✅ Passkey renamed:', editingPasskey.id);
       Alert.alert('Успех', 'Название обновлено');
       setShowNameModal(false);
@@ -518,7 +519,7 @@ const PasskeyManagementScreen: React.FC = () => {
                   />
                   <View style={dynamicStyles.passkeyInfo}>
                     <Text style={dynamicStyles.passkeyName}>
-                      {passkey.device_name || 'Устройство'}
+                      {passkey.name || 'Устройство'}
                     </Text>
                     <Text style={dynamicStyles.passkeyDate}>
                       Создан: {formatDate(passkey.created_at)}

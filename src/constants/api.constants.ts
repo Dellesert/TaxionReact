@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
     SEND_2FA: '/auth/2fa/send',
     VERIFY_2FA: '/auth/2fa/verify',
     PASSKEY_LOGIN_BEGIN: '/auth/passkey/login/begin',
+    PASSKEY_LOGIN_DISCOVERABLE_BEGIN: '/auth/passkey/login/discoverable/begin',
     PASSKEY_LOGIN_FINISH: '/auth/passkey/login/finish',
     PASSKEY_REGISTER_BEGIN: '/auth/passkey/register/begin',
     PASSKEY_REGISTER_FINISH: '/auth/passkey/register/finish',
