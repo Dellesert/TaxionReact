@@ -89,6 +89,12 @@ const TaskListScreen: React.FC = () => {
   const [loadingReview, setLoadingReview] = useState(false);
   const [loadingDone, setLoadingDone] = useState(false);
 
+  // Can load more states for infinite scroll
+  const [canLoadMoreNew, setCanLoadMoreNew] = useState(false);
+  const [canLoadMoreInProgress, setCanLoadMoreInProgress] = useState(false);
+  const [canLoadMoreReview, setCanLoadMoreReview] = useState(false);
+  const [canLoadMoreDone, setCanLoadMoreDone] = useState(false);
+
   useEffect(() => {
     RNAnimated.timing(searchAnimation, {
       toValue: isSearchVisible ? 1 : 0,
@@ -254,20 +260,69 @@ const TaskListScreen: React.FC = () => {
 
       switch (status) {
         case 'new':
-          setNewTasks(append ? [...newTasks, ...tasks] : tasks);
-          setNewTasksTotal(response.total);
+          if (append) {
+            const existingIds = new Set(newTasks.map(t => t.id));
+            const uniqueTasks = tasks.filter(t => !existingIds.has(t.id));
+            const updatedTasks = [...newTasks, ...uniqueTasks];
+            setNewTasks(updatedTasks);
+            setNewTasksTotal(response.total);
+            // Если все дубликаты - просто ждем следующего скролла
+            if (uniqueTasks.length === 0 && updatedTasks.length < response.total && tasks.length > 0) {
+              console.log('⚠️ All new tasks were duplicates, user needs to scroll more');
+            }
+          } else {
+            setNewTasks(tasks);
+            setNewTasksTotal(response.total);
+            setTimeout(() => setCanLoadMoreNew(true), 500);
+          }
           break;
         case 'in_progress':
-          setInProgressTasks(append ? [...inProgressTasks, ...tasks] : tasks);
-          setInProgressTotal(response.total);
+          if (append) {
+            const existingIds = new Set(inProgressTasks.map(t => t.id));
+            const uniqueTasks = tasks.filter(t => !existingIds.has(t.id));
+            const updatedTasks = [...inProgressTasks, ...uniqueTasks];
+            setInProgressTasks(updatedTasks);
+            setInProgressTotal(response.total);
+            if (uniqueTasks.length === 0 && updatedTasks.length < response.total && tasks.length > 0) {
+              console.log('⚠️ All in_progress tasks were duplicates, user needs to scroll more');
+            }
+          } else {
+            setInProgressTasks(tasks);
+            setInProgressTotal(response.total);
+            setTimeout(() => setCanLoadMoreInProgress(true), 500);
+          }
           break;
         case 'review':
-          setReviewTasks(append ? [...reviewTasks, ...tasks] : tasks);
-          setReviewTotal(response.total);
+          if (append) {
+            const existingIds = new Set(reviewTasks.map(t => t.id));
+            const uniqueTasks = tasks.filter(t => !existingIds.has(t.id));
+            const updatedTasks = [...reviewTasks, ...uniqueTasks];
+            setReviewTasks(updatedTasks);
+            setReviewTotal(response.total);
+            if (uniqueTasks.length === 0 && updatedTasks.length < response.total && tasks.length > 0) {
+              console.log('⚠️ All review tasks were duplicates, user needs to scroll more');
+            }
+          } else {
+            setReviewTasks(tasks);
+            setReviewTotal(response.total);
+            setTimeout(() => setCanLoadMoreReview(true), 500);
+          }
           break;
         case 'done':
-          setDoneTasks(append ? [...doneTasks, ...tasks] : tasks);
-          setDoneTotal(response.total);
+          if (append) {
+            const existingIds = new Set(doneTasks.map(t => t.id));
+            const uniqueTasks = tasks.filter(t => !existingIds.has(t.id));
+            const updatedTasks = [...doneTasks, ...uniqueTasks];
+            setDoneTasks(updatedTasks);
+            setDoneTotal(response.total);
+            if (uniqueTasks.length === 0 && updatedTasks.length < response.total && tasks.length > 0) {
+              console.log('⚠️ All done tasks were duplicates, user needs to scroll more');
+            }
+          } else {
+            setDoneTasks(tasks);
+            setDoneTotal(response.total);
+            setTimeout(() => setCanLoadMoreDone(true), 500);
+          }
           break;
       }
     } catch (error) {
@@ -315,6 +370,11 @@ const TaskListScreen: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    // Сбрасываем флаги при обновлении
+    setCanLoadMoreNew(false);
+    setCanLoadMoreInProgress(false);
+    setCanLoadMoreReview(false);
+    setCanLoadMoreDone(false);
     await loadAllTasks(true); // Тихое обновление, так как используется RefreshControl
     setRefreshing(false);
   };
@@ -373,6 +433,15 @@ const TaskListScreen: React.FC = () => {
       case 'in_progress': return loadingInProgress;
       case 'review': return loadingReview;
       case 'done': return loadingDone;
+    }
+  };
+
+  const getCanLoadMoreForStatus = (status: StatusTab): boolean => {
+    switch (status) {
+      case 'new': return canLoadMoreNew;
+      case 'in_progress': return canLoadMoreInProgress;
+      case 'review': return canLoadMoreReview;
+      case 'done': return canLoadMoreDone;
     }
   };
 
@@ -496,24 +565,16 @@ const TaskListScreen: React.FC = () => {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
+            onEndReached={() => {
+              if (getCanLoadMoreForStatus(tab) && tabHasMore && !getLoadingForStatus(tab)) {
+                handleLoadMore(tab);
+              }
+            }}
+            onEndReachedThreshold={0.3}
             ListFooterComponent={
-              tabHasMore ? (
+              getLoadingForStatus(tab) && tabHasMore ? (
                 <View style={styles.loadMoreContainer}>
-                  <TouchableOpacity
-                    style={styles.loadMoreButton}
-                    onPress={() => handleLoadMore(tab)}
-                  >
-                    {getLoadingForStatus(tab) ? (
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    ) : (
-                      <>
-                        <Ionicons name="chevron-down" size={20} color={theme.primary} />
-                        <Text style={[styles.loadMoreText, { color: theme.primary }]}>
-                          Ещё {tabTotal - tabTasks.length}
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                  <ActivityIndicator size="small" color={theme.primary} />
                 </View>
               ) : null
             }
@@ -612,20 +673,6 @@ const TaskListScreen: React.FC = () => {
     loadMoreContainer: {
       paddingVertical: 12,
       alignItems: 'center',
-    },
-    loadMoreButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 20,
-      backgroundColor: theme.backgroundTertiary,
-    },
-    loadMoreText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-      marginLeft: 6,
     },
     emptyContainer: {
       flex: 1,
@@ -772,10 +819,12 @@ const TaskListScreen: React.FC = () => {
                   <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color={theme.error} />
                 </TouchableOpacity>
 
-                {/* Add Button */}
-                <TouchableOpacity onPress={handleNewTask} style={styles.iconButton}>
-                  <Ionicons name="add" size={30} color={theme.primary} />
-                </TouchableOpacity>
+                {/* Add Button - Hidden for regular employees */}
+                {user?.role !== 'employee' && (
+                  <TouchableOpacity onPress={handleNewTask} style={styles.iconButton}>
+                    <Ionicons name="add" size={30} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 

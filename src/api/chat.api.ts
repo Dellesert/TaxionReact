@@ -24,16 +24,32 @@ import { ApiResponse, PaginatedResponse } from '../types/common.types';
 // ============= Chat Operations =============
 
 /**
- * Get list of chats with pagination
+ * Get list of chats with pagination and filters
  */
 export const getChats = async (
   limit?: number,
-  offset?: number
+  offset?: number,
+  filters?: {
+    type?: 'private' | 'group' | 'channel';
+    is_favorite?: boolean;
+    is_pinned?: boolean;
+  }
 ): Promise<{ chats: Chat[]; total: number; hasMore: boolean }> => {
-  const params = {
+  const params: any = {
     limit: limit || 50,
     offset: offset || 0,
   };
+
+  // Add filters if provided
+  if (filters?.type) {
+    params.type = filters.type;
+  }
+  if (filters?.is_favorite !== undefined) {
+    params.is_favorite = filters.is_favorite.toString();
+  }
+  if (filters?.is_pinned !== undefined) {
+    params.is_pinned = filters.is_pinned.toString();
+  }
 
   const response = await api.get<{ chats: Chat[]; total?: number }>(API_ENDPOINTS.CHAT.LIST, {
     params,

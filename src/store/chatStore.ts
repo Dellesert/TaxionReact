@@ -21,7 +21,8 @@ interface ChatState {
   isLoadingMore: boolean;
   error: string | null;
   typingUsers: Record<number, TypingIndicator[]>;
-  loadChats: (append?: boolean) => Promise<void>;
+  currentFilter: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean } | null;
+  loadChats: (append?: boolean, filters?: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean }) => Promise<void>;
   loadMoreChats: () => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
   updateChat: (chatId: number, data: { name?: string; avatar?: string; description?: string }) => Promise<void>;
@@ -101,14 +102,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoadingMore: false,
   error: null,
   typingUsers: {},
+  currentFilter: null,
 
-  loadChats: async (append = false) => {
+  loadChats: async (append = false, filters) => {
     try {
       if (!append) {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, currentFilter: filters || null });
       }
-      const { chats: currentChats } = useChatStore.getState();
+      const { chats: currentChats, currentFilter } = useChatStore.getState();
       const offset = append ? currentChats.length : 0;
+
+      // Use passed filters or current filter
+      const activeFilters = filters || currentFilter;
 
       let chats;
       let total = 0;
@@ -119,7 +124,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         chats = await mockGetChats();
         total = chats.length;
       } else {
-        const response = await chatApi.getChats(50, offset);
+        const response = await chatApi.getChats(15, offset, activeFilters || undefined);
         chats = response.chats;
         total = response.total;
         hasMore = response.hasMore;
@@ -128,12 +133,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       if (append) {
+        // Дедупликация - убираем дубликаты по ID
+        const existingIds = new Set(currentChats.map(c => c.id));
+        const uniqueChats = chats.filter(c => !existingIds.has(c.id));
+        const updatedChats = [...currentChats, ...uniqueChats];
+        const stillHasMore = updatedChats.length < total;
+
         set({
-          chats: [...currentChats, ...chats],
+          chats: updatedChats,
           totalChats: total,
-          hasMoreChats: hasMore,
+          hasMoreChats: stillHasMore,
           isLoading: false
         });
+
+        // Если получили только дубликаты и еще есть данные, не делаем автозагрузку
+        // Пользователь продолжит скроллить и onEndReached сработает снова
+        // Это предотвратит бесконечный цикл
+        if (uniqueChats.length === 0 && stillHasMore && chats.length > 0) {
+          console.log('⚠️ All chats were duplicates, user needs to scroll more');
+          // Не делаем рекурсивный вызов - ждем следующего onEndReached
+        }
       } else {
         set({
           chats,

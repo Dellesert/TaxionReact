@@ -49,6 +49,7 @@ const PollListScreen: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPollId, setEditingPollId] = useState<number | null>(null);
   const [isFilterMenuVisible, setIsFilterMenuVisible] = useState(false);
+  const [canLoadMore, setCanLoadMore] = useState(false);
 
   // Animation for search
   const searchAnimation = useRef(new RNAnimated.Value(0)).current;
@@ -76,19 +77,32 @@ const PollListScreen: React.FC = () => {
     try {
       if (!append) {
         setIsLoading(true);
+        setCanLoadMore(false);
       }
       setError(null);
       const filters = filter !== 'all' ? { status: filter as PollStatus } : undefined;
       const offset = append ? polls.length : 0;
+
       const response = await pollApi.getPolls(filters, POLLS_PER_PAGE, offset);
 
       if (append) {
-        setPolls([...polls, ...response.polls]);
+        // Дедупликация на случай, если бэкенд ещё не перезапущен с фиксом
+        const existingIds = new Set(polls.map(p => p.id));
+        const uniquePolls = response.polls.filter(p => !existingIds.has(p.id));
+        const updatedPolls = [...polls, ...uniquePolls];
+        setPolls(updatedPolls);
+        setTotal(response.total);
+        setHasMore(response.hasMore);
       } else {
         setPolls(response.polls);
+        setHasMore(response.hasMore);
+        setTotal(response.total);
       }
-      setTotal(response.total);
-      setHasMore(response.hasMore);
+
+      // Разрешаем подгрузку после загрузки
+      if (!append) {
+        setTimeout(() => setCanLoadMore(true), 500);
+      }
     } catch (error: any) {
       console.error('Failed to load polls:', error);
       setError(error.message || 'Failed to load polls');
@@ -99,6 +113,7 @@ const PollListScreen: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setCanLoadMore(false);
     await loadPolls(false);
     setRefreshing(false);
   };
@@ -270,25 +285,16 @@ const PollListScreen: React.FC = () => {
                 refreshControl={
                   <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
                 }
+                onEndReached={() => {
+                  if (canLoadMore && hasMore && !isLoadingMore) {
+                    handleLoadMore();
+                  }
+                }}
+                onEndReachedThreshold={0.3}
                 ListFooterComponent={
-                  hasMore ? (
+                  isLoadingMore && hasMore ? (
                     <View style={styles.loadMoreContainer}>
-                      <TouchableOpacity
-                        style={[styles.loadMoreButton, { backgroundColor: theme.backgroundTertiary }]}
-                        onPress={handleLoadMore}
-                        disabled={isLoadingMore}
-                      >
-                        {isLoadingMore ? (
-                          <ActivityIndicator size="small" color={theme.primary} />
-                        ) : (
-                          <>
-                            <Ionicons name="chevron-down" size={20} color={theme.primary} />
-                            <Text style={[styles.loadMoreText, { color: theme.primary }]}>
-                              Ещё {total - polls.length}
-                            </Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
+                      <ActivityIndicator size="small" color={theme.primary} />
                     </View>
                   ) : null
                 }
@@ -483,18 +489,6 @@ const styles = StyleSheet.create({
   loadMoreContainer: {
     paddingVertical: 16,
     alignItems: 'center',
-  },
-  loadMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 20,
-    gap: 6,
-  },
-  loadMoreText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,

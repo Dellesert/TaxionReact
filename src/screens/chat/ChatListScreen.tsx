@@ -77,6 +77,7 @@ const ChatListScreen: React.FC = () => {
   const [chatFilter, setChatFilter] = useState<ChatFilter>('all');
   const [isCreateMenuVisible, setIsCreateMenuVisible] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [canLoadMore, setCanLoadMore] = useState(false);
 
   // Animation for search
   const searchAnimation = useRef(new RNAnimated.Value(0)).current;
@@ -142,28 +143,64 @@ const ChatListScreen: React.FC = () => {
   const loadChats = async () => {
     try {
       await fetchChats();
+      // Разрешаем подгрузку только после первой загрузки
+      setTimeout(() => setCanLoadMore(true), 500);
     } catch (error) {
       console.error('Failed to load chats:', error);
     }
   };
 
+
   // Swipe gesture to switch tabs (iOS only)
   const filterTabsOrder: ChatFilter[] = ['all', 'private', 'group', 'favorite'];
 
-  const switchToFilter = (newFilter: ChatFilter) => {
+  const switchToFilter = async (newFilter: ChatFilter) => {
     setChatFilter(newFilter);
+    // Сбрасываем флаг при переключении табов, чтобы не было автозагрузки сразу
+    setCanLoadMore(false);
+    setTimeout(() => setCanLoadMore(true), 500);
+
     // Animate to the new tab position on iOS
     if (Platform.OS === 'ios') {
       const newIndex = filterTabsOrder.indexOf(newFilter);
       currentTabIndex.value = newIndex;
       translateX.value = withTiming(-newIndex * SCREEN_WIDTH, { duration: 300 });
     }
+
+    // Загружаем чаты с новым фильтром с бэкенда
+    const filters = getFiltersForTab(newFilter);
+    await fetchChats(false, filters);
+  };
+
+  const getFiltersForTab = (filterTab: ChatFilter) => {
+    const filters: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean } = {};
+
+    if (filterTab === 'private') {
+      filters.type = 'private';
+    } else if (filterTab === 'group') {
+      filters.type = 'group';
+    } else if (filterTab === 'favorite') {
+      filters.is_favorite = true;
+    }
+    // 'all' = no filters
+
+    return Object.keys(filters).length > 0 ? filters : undefined;
   };
 
   const resetSwipeFlag = () => {
     setTimeout(() => {
       isSwipingHorizontally.value = false;
     }, 100);
+  };
+
+  const handleFilterChange = async (newFilter: ChatFilter) => {
+    setChatFilter(newFilter);
+    // Сбрасываем флаг при переключении табов
+    setCanLoadMore(false);
+    setTimeout(() => setCanLoadMore(true), 500);
+    // Загружаем чаты с новым фильтром с бэкенда
+    const filters = getFiltersForTab(newFilter);
+    await fetchChats(false, filters);
   };
 
   // Initialize translateX based on active filter
@@ -217,7 +254,7 @@ const ChatListScreen: React.FC = () => {
       });
 
       if (targetIndex !== currentIndex) {
-        runOnJS(setChatFilter)(filterTabsOrder[targetIndex]);
+        runOnJS(handleFilterChange)(filterTabsOrder[targetIndex]);
       }
 
       runOnJS(resetSwipeFlag)();
@@ -229,6 +266,7 @@ const ChatListScreen: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setCanLoadMore(false); // Сбрасываем флаг при обновлении
 
     // Если WebSocket отключен, пытаемся переподключить
     if (!websocketService.isConnected()) {
@@ -385,18 +423,16 @@ const ChatListScreen: React.FC = () => {
 
   // Render a single tab content
   const renderFilterContent = (filterKey: ChatFilter) => {
+    // Фильтрация теперь на бэкенде, здесь только поиск по имени на клиенте
     const tabChats = chats
       .filter((chat) => {
-        if (filterKey === 'group' && chat.type !== 'group') return false;
-        if (filterKey === 'private' && chat.type !== 'private') return false;
-        if (filterKey === 'favorite' && !chat.is_favorite) return false;
-
         if (!searchQuery) return true;
         const chatName = chat.name || '';
         const searchText = chatName.toLowerCase();
         return searchText.includes(searchQuery.toLowerCase());
       })
       .sort((a, b) => {
+        // Сортировка по закрепленным
         if (a.is_pinned && !b.is_pinned) return -1;
         if (!a.is_pinned && b.is_pinned) return 1;
         const timeA = a.last_message?.created_at || a.created_at || '';
@@ -431,25 +467,16 @@ const ChatListScreen: React.FC = () => {
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
             contentContainerStyle={{ paddingBottom: 80 }}
+            onEndReached={() => {
+              if (canLoadMore && hasMoreChats && !isLoadingMore) {
+                loadMoreChats();
+              }
+            }}
+            onEndReachedThreshold={0.3}
             ListFooterComponent={
-              hasMoreChats && tabChats.length > 0 ? (
+              isLoadingMore && hasMoreChats ? (
                 <View style={styles.loadMoreContainer}>
-                  <TouchableOpacity
-                    style={[styles.loadMoreButton, { backgroundColor: theme.backgroundTertiary }]}
-                    onPress={loadMoreChats}
-                    disabled={isLoadingMore}
-                  >
-                    {isLoadingMore ? (
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    ) : (
-                      <>
-                        <Ionicons name="chevron-down" size={20} color={theme.primary} />
-                        <Text style={[styles.loadMoreText, { color: theme.primary }]}>
-                          Ещё {totalChats - chats.length}
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                  <ActivityIndicator size="small" color={theme.primary} />
                 </View>
               ) : null
             }
@@ -458,30 +485,6 @@ const ChatListScreen: React.FC = () => {
       </View>
     );
   };
-
-  const filteredChats = chats
-    .filter((chat) => {
-      // Фильтр по типу
-      if (chatFilter === 'group' && chat.type !== 'group') return false;
-      if (chatFilter === 'private' && chat.type !== 'private') return false;
-      if (chatFilter === 'favorite' && !chat.is_favorite) return false;
-
-      // Фильтр по поиску
-      if (!searchQuery) return true;
-      const chatName = chat.name || '';
-      const searchText = chatName.toLowerCase();
-      return searchText.includes(searchQuery.toLowerCase());
-    })
-    .sort((a, b) => {
-      // Закрепленные чаты всегда вверху
-      if (a.is_pinned && !b.is_pinned) return -1;
-      if (!a.is_pinned && b.is_pinned) return 1;
-
-      // Затем сортируем по времени последнего сообщения
-      const timeA = a.last_message?.created_at || a.created_at || '';
-      const timeB = b.last_message?.created_at || b.created_at || '';
-      return new Date(timeB).getTime() - new Date(timeA).getTime();
-    });
 
   // Show error state if there's an error and no chats loaded
   if (error && chats.length === 0 && !isLoading) {

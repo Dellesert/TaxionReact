@@ -16,6 +16,7 @@ import { EventItem } from '@components/calendar/EventItem';
 import CreateEventModal from '@components/calendar/CreateEventModal';
 import { EventDetailModal } from '@components/calendar/EventDetailModal';
 import { ScreenHeader } from '@components/common/ScreenHeader';
+import { MonthCalendarView } from '@components/calendar/MonthCalendarView';
 import { mockGetEvents, isMockMode } from '@utils/mockData';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
@@ -137,6 +138,14 @@ const CalendarScreen: React.FC = () => {
 
   const handleToday = () => {
     setSelectedDate(new Date());
+  };
+
+  const handleDatePress = (date: Date) => {
+    setSelectedDate(date);
+    // Switch to day view when clicking on a date in month view
+    if (selectedView === 'month') {
+      setSelectedView('day');
+    }
   };
 
   const getDateRangeText = () => {
@@ -289,11 +298,18 @@ const CalendarScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Events List */}
+        {/* Events List or Month Calendar */}
         {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
+      ) : selectedView === 'month' ? (
+        <MonthCalendarView
+          selectedDate={selectedDate}
+          events={events}
+          onDatePress={handleDatePress}
+          onEventPress={handleEventPress}
+        />
       ) : sections.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSecondary }]}>
