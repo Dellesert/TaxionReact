@@ -540,6 +540,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                 />
               </View>
             )}
+            {/* Progress for subtasks with progress > 0 */}
+            {isSubtask && task.progress_percentage !== undefined && task.progress_percentage > 0 && (
+              <View style={styles.progressBadge}>
+                <Ionicons name="stats-chart" size={14} color={isCompleted ? '#9ca3af' : '#6b7280'} />
+                <Text style={[styles.progressText, isSubtask && styles.subtaskProgressText]}>
+                  {task.progress_percentage}%
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -884,6 +893,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#9ca3af',
+  },
+  subtaskProgressText: {
+    fontSize: 11,
   },
   divider: {
     height: 1,

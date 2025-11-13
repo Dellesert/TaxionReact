@@ -25,6 +25,9 @@ import * as authApi from '@api/auth.api';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
+import { extractErrorCode, ErrorCode, formatApiError, isSuperAdminWebOnly } from '@utils/errorUtils';
+import { ApiError } from '@types/common.types';
 
 type TwoFactorScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'TwoFactor'>;
 type TwoFactorScreenRouteProp = RouteProp<AuthStackParamList, 'TwoFactor'>;
@@ -33,6 +36,7 @@ const TwoFactorScreen: React.FC = () => {
   const navigation = useNavigation<TwoFactorScreenNavigationProp>();
   const route = useRoute<TwoFactorScreenRouteProp>();
   const { email } = route.params;
+  const notification = useNotification();
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -114,7 +118,7 @@ const TwoFactorScreen: React.FC = () => {
     const fullCode = code.join('');
 
     if (fullCode.length !== 6) {
-      Alert.alert('Ошибка', 'Введите полный код из 6 цифр');
+      notification.showError('Введите полный код из 6 цифр');
       return;
     }
 
@@ -127,10 +131,7 @@ const TwoFactorScreen: React.FC = () => {
 
       // Блокируем доступ для super_admin - они должны использовать веб-панель
       if (response.user.role === 'super_admin') {
-        Alert.alert(
-          'Доступ запрещен',
-          'Super admin должен использовать веб-панель администратора'
-        );
+        notification.showError('Супер-администратор должен использовать веб-панель');
         setIsLoading(false);
         return;
       }
@@ -152,11 +153,47 @@ const TwoFactorScreen: React.FC = () => {
       // Обновляем стор
       useAuthStore.getState().setUser(response.user);
 
+      // Показываем успешное уведомление
+      notification.showSuccess('Успешная авторизация');
+
       // Навигация произойдет автоматически через AuthNavigator
     } catch (err: any) {
       console.error('2FA verification error:', err);
-      Alert.alert('Ошибка', err.message || 'Неверный код');
-      // Очистить код при ошибке
+
+      // Проверяем error_code если доступен
+      const errorCode = extractErrorCode(err);
+
+      if (errorCode) {
+        // Обрабатываем специфичные коды ошибок
+        if (errorCode === ErrorCode.AUTH_2FA_INVALID_CODE) {
+          notification.showError('Неверный код подтверждения');
+          // Очистить код при ошибке
+          setCode(['', '', '', '', '', '']);
+          inputRefs.current[0]?.focus();
+          return;
+        }
+
+        if (errorCode === ErrorCode.AUTH_2FA_CODE_EXPIRED) {
+          notification.showError('Код подтверждения истёк. Запросите новый код');
+          // Очистить код
+          setCode(['', '', '', '', '', '']);
+          inputRefs.current[0]?.focus();
+          return;
+        }
+
+        if (isSuperAdminWebOnly(err as ApiError)) {
+          notification.showError('Супер-администратор может входить только через веб-панель');
+          return;
+        }
+
+        // Показываем ошибку через notification
+        notification.showApiError(err as ApiError);
+      } else {
+        // Fallback на старую логику
+        notification.showError(err.message || 'Неверный код');
+      }
+
+      // Очистить код при любой ошибке
       setCode(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {

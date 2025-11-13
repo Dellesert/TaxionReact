@@ -25,6 +25,7 @@ export interface ScreenHeaderProps {
   leftButton?: {
     icon?: keyof typeof Ionicons.glyphMap;
     text?: string;
+    color?: string;
     onPress: () => void;
   };
 
@@ -32,6 +33,7 @@ export interface ScreenHeaderProps {
   rightButton?: {
     icon?: keyof typeof Ionicons.glyphMap;
     text?: string;
+    color?: string;
     onPress: () => void;
   };
 
@@ -98,9 +100,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         {leftButton ? (
           <TouchableOpacity onPress={leftButton.onPress} style={styles.sideButton}>
             {leftButton.icon ? (
-              <Ionicons name={leftButton.icon} size={24} color={theme.text} />
+              <Ionicons name={leftButton.icon} size={24} color={leftButton.color || theme.text} />
             ) : leftButton.text ? (
-              <Text style={[styles.buttonText, { color: theme.error }]}>{leftButton.text}</Text>
+              <Text style={[styles.buttonText, { color: leftButton.color || theme.error }]}>{leftButton.text}</Text>
             ) : null}
           </TouchableOpacity>
         ) : (
@@ -123,9 +125,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         {rightButton ? (
           <TouchableOpacity onPress={rightButton.onPress} style={styles.sideButton}>
             {rightButton.icon ? (
-              <Ionicons name={rightButton.icon} size={24} color={theme.primary} />
+              <Ionicons name={rightButton.icon} size={24} color={rightButton.color || theme.primary} />
             ) : rightButton.text ? (
-              <Text style={[styles.addButtonText, { color: theme.primary }]}>{rightButton.text}</Text>
+              <Text style={[styles.addButtonText, { color: rightButton.color || theme.primary }]}>{rightButton.text}</Text>
             ) : null}
           </TouchableOpacity>
         ) : (

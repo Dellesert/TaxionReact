@@ -23,12 +23,22 @@ import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { useAuth } from '@hooks/useAuth';
 import { isPasskeySupported, authenticateWithPasskey, formatPasskeyError } from '@utils/passkeyUtils';
+import { useNotification } from '@contexts/NotificationContext';
+import {
+  extractErrorCode,
+  ErrorCode,
+  isSuperAdminWebOnly,
+} from '@utils/errorUtils';
+import type { ApiError } from '../../types/common.types';
+import { useTheme } from '@hooks/useTheme';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login, isLoading, error, setUser } = useAuth();
+  const { login, isLoading, setUser } = useAuth();
+  const notification = useNotification();
+  const { theme } = useTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -135,8 +145,24 @@ const LoginScreen: React.FC = () => {
 
     } catch (error: any) {
       console.error('❌ Passkey login error:', error);
-      const errorMessage = formatPasskeyError(error);
-      Alert.alert('Ошибка входа', errorMessage);
+
+      // Проверяем если это ApiError с error_code
+      if (error && typeof error === 'object' && 'error_code' in error) {
+        const apiError = error as ApiError;
+
+        // Обрабатываем специальные случаи
+        if (isSuperAdminWebOnly(apiError)) {
+          notification.showError('Супер-администратор может входить только через веб-панель');
+          return;
+        }
+
+        // Показываем ошибку через notification
+        notification.showApiError(apiError);
+      } else {
+        // Fallback для других ошибок
+        const errorMessage = formatPasskeyError(error);
+        notification.showError(errorMessage);
+      }
     } finally {
       setIsPasskeyLoading(false);
     }
@@ -146,7 +172,7 @@ const LoginScreen: React.FC = () => {
     console.log('Login button clicked!', { email, password });
 
     if (!email || !password) {
-      Alert.alert('Ошибка', 'Заполните все поля');
+      notification.showError('Заполните все поля');
       return;
     }
 
@@ -163,22 +189,79 @@ const LoginScreen: React.FC = () => {
         // Если успешно - значит 2FA включена, переходим на экран ввода кода
         console.log('✅ 2FA code sent successfully:', response);
         console.log('📧 Navigating to TwoFactor screen for email:', email);
+        notification.showSuccess('Код подтверждения отправлен на ваш email');
         navigation.navigate('TwoFactor', { email });
         return; // ВАЖНО: Останавливаем выполнение, не продолжаем логин
       } catch (twoFAError: any) {
-        // Если ошибка - значит 2FA не включена, делаем обычный логин
-        console.log('⚠️ 2FA error (expected if 2FA not enabled):', {
-          message: twoFAError?.message,
-          status: twoFAError?.status,
-          responseData: twoFAError?.details?.error,
-        });
+        console.log('⚠️ 2FA error (expected if 2FA not enabled):', twoFAError);
 
+        // Проверяем error_code если доступен
+        const errorCode = extractErrorCode(twoFAError);
+
+        // Если это ApiError с error_code
+        if (errorCode) {
+          // Обрабатываем специальные коды ошибок
+          if (errorCode === ErrorCode.AUTH_2FA_REQUIRED) {
+            console.log('🔐 2FA is required, navigating to TwoFactor screen...');
+            // Код уже отправлен или отправим снова
+            try {
+              await authApi.send2FACode({ email, password });
+              notification.showInfo('Код подтверждения отправлен на ваш email');
+            } catch (sendError) {
+              console.log('⚠️ Error sending code:', sendError);
+            }
+            navigation.navigate('TwoFactor', { email });
+            return;
+          }
+
+          if (errorCode === ErrorCode.AUTH_SUPER_ADMIN_WEB_ONLY) {
+            console.log('🚫 Super admin access blocked');
+            notification.showError('Супер-администратор может входить только через веб-панель');
+            return;
+          }
+
+          if (errorCode === ErrorCode.AUTH_PASSKEY_ONLY) {
+            console.log('🔑 Passkey only for this account');
+            notification.showError('Для этого аккаунта доступен только вход через Passkey');
+            return;
+          }
+
+          if (errorCode === ErrorCode.AUTH_ACCOUNT_DEACTIVATED) {
+            notification.showApiError(twoFAError);
+            return;
+          }
+
+          if (errorCode === ErrorCode.AUTH_INVALID_CREDENTIALS) {
+            notification.showApiError(twoFAError);
+            return;
+          }
+
+          // Если это ошибка "2FA not enabled" - делаем обычный логин
+          if (errorCode === ErrorCode.AUTH_2FA_NOT_ENABLED) {
+            console.log('🔓 2FA not enabled for this user, doing regular login...');
+            await login({ email, password });
+            console.log('✅ Regular login successful!');
+            return;
+          }
+
+          // Для других error_code показываем через notification
+          notification.showApiError(twoFAError);
+          return;
+        }
+
+        // Fallback: если нет error_code, используем старую логику
         const errorMessage = (twoFAError?.message?.toLowerCase() || '') + ' ' + (twoFAError?.details?.error?.toLowerCase() || '');
 
-        // Проверяем если это ошибка "2FA is required" - переходим на экран ввода кода
+        // Проверяем на блокировку super admin (403 Forbidden)
+        if (twoFAError?.status === 403 && (errorMessage.includes('super admin') || errorMessage.includes('restricted to web'))) {
+          console.log('🚫 Super admin access blocked');
+          notification.showError('Супер-администратор может входить только через веб-панель');
+          return;
+        }
+
+        // Проверяем если это ошибка "2FA is required"
         if (twoFAError?.status === 403 && errorMessage.includes('2fa is required')) {
           console.log('🔐 2FA is globally required, navigating to TwoFactor screen...');
-          // Сначала отправляем код
           try {
             await authApi.send2FACode({ email, password });
           } catch (sendError) {
@@ -188,14 +271,7 @@ const LoginScreen: React.FC = () => {
           return;
         }
 
-        // Проверяем на блокировку super admin (403 Forbidden)
-        if (twoFAError?.status === 403 && (errorMessage.includes('super admin') || errorMessage.includes('restricted to web'))) {
-          console.log('🚫 Super admin access blocked');
-          throw new Error('Super admin должен использовать веб-панель администратора');
-        }
-
         // Проверяем что это именно ошибка "2FA not enabled"
-        // Либо по тексту ошибки, либо по статус коду 400
         const is2FANotEnabled =
           twoFAError?.status === 400 ||
           errorMessage.includes('two factor') ||
@@ -204,23 +280,27 @@ const LoginScreen: React.FC = () => {
 
         if (is2FANotEnabled) {
           console.log('🔓 2FA not enabled for this user, doing regular login...');
-          // Пробуем обычный логин
           await login({ email, password });
           console.log('✅ Regular login successful!');
         } else {
-          // Это другая ошибка (например, неправильный пароль)
-          console.error('❌ Not a 2FA error, throwing:', twoFAError);
-          throw twoFAError;
+          // Это другая ошибка - показываем через notification
+          console.error('❌ Unexpected error:', twoFAError);
+          notification.showApiError(twoFAError);
         }
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      Alert.alert('Ошибка входа', err.message || 'Не удалось войти в систему');
+      // Показываем ошибку через notification вместо Alert
+      if (err && typeof err === 'object' && 'error_code' in err) {
+        notification.showApiError(err as ApiError);
+      } else {
+        notification.showError(err.message || 'Не удалось войти в систему');
+      }
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.primary }]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -247,15 +327,23 @@ const LoginScreen: React.FC = () => {
             style={[
               styles.formSection,
               {
+                backgroundColor: theme.background,
                 transform: [{ translateY: formTranslateY }],
               }
             ]}
           >
             <View style={styles.formContainer}>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  }
+                ]}
                 placeholder="Email"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={theme.inputPlaceholder}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -265,9 +353,16 @@ const LoginScreen: React.FC = () => {
               />
 
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  }
+                ]}
                 placeholder="Пароль"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={theme.inputPlaceholder}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -279,17 +374,13 @@ const LoginScreen: React.FC = () => {
                 style={styles.forgotPassword}
                 onPress={() => navigation.navigate('ForgotPassword')}
               >
-                <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
+                <Text style={[styles.forgotPasswordText, { color: theme.textSecondary }]}>
+                  Забыли пароль?
+                </Text>
               </TouchableOpacity>
 
-              {error && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              )}
-
               <TouchableOpacity
-                style={[styles.button, isLoading && styles.buttonDisabled]}
+                style={[styles.button, { backgroundColor: theme.primary }, isLoading && styles.buttonDisabled]}
                 onPress={handleLogin}
                 disabled={isLoading}
                 activeOpacity={0.8}
@@ -311,9 +402,9 @@ const LoginScreen: React.FC = () => {
                     activeOpacity={0.7}
                   >
                     {isPasskeyLoading ? (
-                      <ActivityIndicator color="#6366F1" size="small" />
+                      <ActivityIndicator color={theme.primary} size="small" />
                     ) : (
-                      <Text style={styles.altMethodText}>
+                      <Text style={[styles.altMethodText, { color: theme.textSecondary }]}>
                         🔑 Быстрый вход
                       </Text>
                     )}
@@ -326,7 +417,7 @@ const LoginScreen: React.FC = () => {
                   disabled={isLoading}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.altMethodText}>
+                  <Text style={[styles.altMethodText, { color: theme.textSecondary }]}>
                     ✉️ Есть риглашение?
                   </Text>
                 </TouchableOpacity>
@@ -342,7 +433,6 @@ const LoginScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E94444',
   },
   keyboardView: {
     flex: 1,
@@ -357,12 +447,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 40,
   },
-  
-  logoText: {
-    fontSize: 56,
-    fontWeight: '700',
-    color: '#E94444',
-  },
   logoImage: {
     width: 140,
     height: 140,
@@ -374,7 +458,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   formSection: {
-    backgroundColor: '#F3F4F6',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingTop: 40,
@@ -386,12 +469,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   input: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#1F2937',
     marginBottom: 16,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -405,17 +487,14 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '500',
   },
   button: {
-    backgroundColor: '#E94444',
     borderRadius: 14,
     padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    shadowColor: '#E94444',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -430,17 +509,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  errorContainer: {
-    backgroundColor: '#FEE2E2',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 14,
-    textAlign: 'center',
-  },
   altMethodsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -454,7 +522,6 @@ const styles = StyleSheet.create({
   },
   altMethodText: {
     fontSize: 15,
-    color: '#6B7280',
     fontWeight: '500',
   },
 });

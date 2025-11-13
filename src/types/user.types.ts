@@ -107,8 +107,7 @@ export interface LoginResponse {
   session?: SessionInfo; // Optional for Session mode
   auth_mode: AuthMode;
   must_change_password?: boolean;
-  requires_2fa?: boolean;
-  request_id?: string;
+  request_id: string;
 }
 
 export interface RegisterDto {
@@ -186,7 +185,9 @@ export interface Send2FADto {
 
 export interface Send2FAResponse {
   message: string;
-  request_id?: string;
+  request_id: string;
+  code_expires_in: number;      // 300 seconds (5 minutes)
+  can_resend_after: number;     // 60 seconds
 }
 
 export interface Verify2FADto {

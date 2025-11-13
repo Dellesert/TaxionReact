@@ -10,11 +10,32 @@ export interface ApiResponse<T> {
   success: boolean;
 }
 
+// Field validation error
+export interface FieldError {
+  field: string;
+  code: string;
+  message: string;
+}
+
+// Structured API error response from backend
+export interface APIErrorResponse {
+  error: string;                    // Human-readable message
+  error_code: string;                // Machine-readable error code
+  request_id?: string;               // Request ID for debugging
+  details?: any;                     // Additional details
+  fields?: FieldError[];             // Field validation errors
+  metadata?: Record<string, any>;    // Additional metadata
+}
+
+// Legacy ApiError (keeping for backward compatibility)
 export interface ApiError {
   message: string;
   code?: string;
   status?: number;
-  details?: Record<string, unknown>;
+  details?: APIErrorResponse | Record<string, unknown>;
+  error_code?: string;               // Machine-readable error code
+  request_id?: string;               // Request ID
+  fields?: FieldError[];             // Field errors
 }
 
 // Pagination Types

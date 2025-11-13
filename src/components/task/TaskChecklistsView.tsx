@@ -7,11 +7,9 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  RefreshControl,
   StyleSheet,
   Alert,
   Image,
@@ -229,7 +227,6 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   const { theme, isDark } = useTheme();
   const [checklists, setChecklists] = useState<TaskChecklist[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [newChecklistTitle, setNewChecklistTitle] = useState('');
   const [newItemTexts, setNewItemTexts] = useState<Record<number, string>>({});
   const [expandedChecklists, setExpandedChecklists] = useState<Set<number>>(new Set());
@@ -246,18 +243,12 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       Alert.alert('Ошибка', 'Не удалось загрузить чеклисты');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     loadChecklists();
   }, [taskId]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadChecklists();
-  };
 
   const handleCreateChecklist = async () => {
     if (!newChecklistTitle.trim() || !canEdit) return;
@@ -407,12 +398,13 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
           activeOpacity={0.7}
         >
           {/* Expand/Collapse Icon - Left */}
-          <Ionicons
-            name={isExpanded ? 'chevron-down-outline' : 'chevron-forward-outline'}
-            size={18}
-            color={theme.textSecondary}
-            style={{ marginRight: 8 }}
-          />
+          <View style={{ marginRight: 8 }}>
+            <Ionicons
+              name={isExpanded ? 'chevron-down-outline' : 'chevron-forward-outline'}
+              size={18}
+              color={theme.textSecondary}
+            />
+          </View>
 
           <View style={styles.checklistHeaderLeft}>
             <Text style={[styles.checklistTitle, { color: theme.text }]}>
@@ -524,6 +516,9 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
                       </Text>
                     </View>
                   )}
+                  <Text style={[styles.assigneeName, { color: theme.text }]}>
+                    {assigneeName}
+                  </Text>
                 </View>
               )}
             </View>
@@ -548,23 +543,17 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={checklists}
-        renderItem={renderChecklistItem}
-        keyExtractor={(item) => item.id.toString()}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      />
+      {checklists.map((checklist) => (
+        <React.Fragment key={checklist.id}>
+          {renderChecklistItem({ item: checklist })}
+        </React.Fragment>
+      ))}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
   },
   addChecklistContainer: {
     flexDirection: 'row',
@@ -586,10 +575,9 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   list: {
-    flex: 1,
   },
   listContent: {
-    paddingVertical: 8,
+    paddingVertical: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -621,7 +609,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 0,
   },
   checklistHeaderExpanded: {
@@ -707,7 +696,9 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   checklistFooter: {
+    paddingHorizontal: 12,
     paddingTop: 12,
+    paddingBottom: 10,
     marginTop: 4,
     borderTopWidth: 1,
     flexDirection: 'row',
@@ -743,24 +734,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   assigneeAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
   },
   assigneeAvatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
   },
   assigneeAvatarText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
   },
   assigneeName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
   },
 });

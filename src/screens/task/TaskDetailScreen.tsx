@@ -11,8 +11,9 @@ import {
   Animated,
   Platform,
   Modal,
+  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task, TaskComment, TaskActivity, TaskAttachment } from '../../types/task.types';
@@ -21,6 +22,7 @@ import * as taskApi from '@api/task.api';
 import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
+import { ScreenHeader } from '@components/common/ScreenHeader';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import { getUser } from '@api/user.api';
@@ -101,6 +103,10 @@ const TaskDetailScreen: React.FC = () => {
   const { taskId } = route.params;
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
+
+  // Check if screen is narrow (phone in portrait)
+  const [isNarrowScreen, setIsNarrowScreen] = useState(Dimensions.get('window').width < 460);
 
   const [task, setTask] = useState<Task | null>(null);
   const [comments, setComments] = useState<TaskComment[]>([]);
@@ -151,6 +157,15 @@ const TaskDetailScreen: React.FC = () => {
 
   // Scroll animation - disabled due to performance issues
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Update screen width on resize
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setIsNarrowScreen(window.width < 460);
+    });
+
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     loadTask();
@@ -773,32 +788,7 @@ const TaskDetailScreen: React.FC = () => {
       backgroundColor: theme.card,
     },
     scrollContent: {
-      paddingBottom: Platform.OS === 'ios' ? 180 : 140,
-    },
-    // Header section
-    headerSection: {
-      backgroundColor: theme.card,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    headerButtons: {
-      flexDirection: 'row',
-      gap: 8,
-    },
-    headerButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
+      // paddingBottom is set inline based on insets and activeTab
     },
     // Task title (now in content)
     taskTitle: {
@@ -901,7 +891,7 @@ const TaskDetailScreen: React.FC = () => {
       backgroundColor: theme.card,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
-      paddingHorizontal: 4,
+      paddingHorizontal: 2,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,
@@ -910,8 +900,8 @@ const TaskDetailScreen: React.FC = () => {
     },
     tab: {
       flex: 1,
-      paddingVertical: 14,
-      paddingHorizontal: 4,
+      paddingVertical: 12,
+      paddingHorizontal: 2,
       alignItems: 'center',
       borderBottomWidth: 3,
       borderBottomColor: 'transparent',
@@ -920,7 +910,7 @@ const TaskDetailScreen: React.FC = () => {
       borderBottomColor: theme.primary,
     },
     tabText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '600',
       color: theme.textTertiary,
     },
@@ -955,7 +945,6 @@ const TaskDetailScreen: React.FC = () => {
     descriptionHeader: {
       paddingHorizontal: 12,
       paddingVertical: 10,
-      borderBottomWidth: 1,
     },
     descriptionLabel: {
       fontSize: 13,
@@ -1021,6 +1010,10 @@ const TaskDetailScreen: React.FC = () => {
       alignItems: 'center',
       gap: 8,
     },
+    descriptionAssigneeName: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
     assigneeName: {
       fontSize: 14,
       fontWeight: '500',
@@ -1070,7 +1063,6 @@ const TaskDetailScreen: React.FC = () => {
     // Fixed Action Buttons at Bottom
     fixedActionsContainer: {
       position: 'absolute',
-      bottom: Platform.OS === 'ios' ? 95 : 70,
       left: 0,
       right: 0,
       backgroundColor: theme.card,
@@ -1281,6 +1273,17 @@ const TaskDetailScreen: React.FC = () => {
       alignItems: 'flex-end',
       gap: 8,
       marginBottom: 12,
+    },
+    fixedCommentInputContainer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      borderTopWidth: 1,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
     },
     commentInput: {
       flex: 1,
@@ -1521,7 +1524,7 @@ const TaskDetailScreen: React.FC = () => {
       case 'task_assigned':
         return `${taskPrefix}${userName} назначил задачу`;
       case 'task_delegated':
-        return `${taskPrefix}${userName} делегировал задачу`;
+        return `${taskPrefix}${userName} переназначил задачу`;
       case 'task_viewed':
         return `${taskPrefix}${userName} ознакомился с задачей`;
       case 'comment_added':
@@ -1651,25 +1654,28 @@ const TaskDetailScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
         {/* Header Section */}
-        <View style={styles.headerSection}>
-          {/* Header Row with Back and Action buttons */}
-          <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="close" size={28} color={theme.error} />
-            </TouchableOpacity>
-
-            {/* Action Menu Button - show if user has any actions available */}
-            {(canEditTask(task, user?.id, user?.role) ||
-              ((user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-               task.status !== 'done' && task.status !== 'cancelled')) && (
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => setShowActionMenu(true)}
-              >
-                <Ionicons name="ellipsis-horizontal" size={24} color={theme.error} />
-              </TouchableOpacity>
-            )}
-          </View>
+        <View style={{ borderBottomWidth: 1, borderBottomColor: theme.border }}>
+          <ScreenHeader
+            title="Задача"
+            leftButton={{
+              icon: 'close',
+              color: theme.error,
+              onPress: () => navigation.goBack(),
+            }}
+            rightButton={
+              (canEditTask(task, user?.id, user?.role) ||
+                ((user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
+                 task.status !== 'done' && task.status !== 'cancelled'))
+                ? {
+                    icon: 'ellipsis-horizontal',
+                    onPress: () => setShowActionMenu(true),
+                  }
+                : undefined
+            }
+            showDivider={false}
+            withShadow={false}
+            containerStyle={{ paddingTop: 14, paddingBottom: 14 }}
+          />
         </View>
 
         {/* Card with Tabs */}
@@ -1680,32 +1686,48 @@ const TaskDetailScreen: React.FC = () => {
               style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
               onPress={() => setActiveTab('overview')}
             >
-              <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
-                Обзор
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={18}
+                  color={activeTab === 'overview' ? theme.primary : theme.textTertiary}
+                />
+                {isNarrowScreen ? null : (
+                  <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
+                    Обзор
+                  </Text>
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, activeTab === 'attachments' && styles.activeTab]}
               onPress={() => setActiveTab('attachments')}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={[styles.tabText, activeTab === 'attachments' && styles.activeTabText]}>
-                  Вложения
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name="attach-outline"
+                  size={18}
+                  color={activeTab === 'attachments' ? theme.primary : theme.textTertiary}
+                />
+                {isNarrowScreen ? null : (
+                  <Text style={[styles.tabText, activeTab === 'attachments' && styles.activeTabText]}>
+                    Вложения
+                  </Text>
+                )}
                 {attachments.length > 0 && (
                   <View
                     style={{
                       backgroundColor: activeTab === 'attachments' ? theme.primary : theme.backgroundTertiary,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
+                      paddingHorizontal: 5,
+                      paddingVertical: 1,
                       borderRadius: 10,
-                      minWidth: 20,
+                      minWidth: 18,
                       alignItems: 'center',
                     }}
                   >
                     <Text
                       style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: '700',
                         color: activeTab === 'attachments' ? '#FFFFFF' : theme.textTertiary,
                       }}
@@ -1720,24 +1742,31 @@ const TaskDetailScreen: React.FC = () => {
               style={[styles.tab, activeTab === 'comments' && styles.activeTab]}
               onPress={() => setActiveTab('comments')}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={[styles.tabText, activeTab === 'comments' && styles.activeTabText]}>
-                  Комментарии
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={18}
+                  color={activeTab === 'comments' ? theme.primary : theme.textTertiary}
+                />
+                {isNarrowScreen ? null : (
+                  <Text style={[styles.tabText, activeTab === 'comments' && styles.activeTabText]}>
+                    Комментарии
+                  </Text>
+                )}
                 {comments.length > 0 && (
                   <View
                     style={{
                       backgroundColor: activeTab === 'comments' ? theme.primary : theme.backgroundTertiary,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
+                      paddingHorizontal: 5,
+                      paddingVertical: 1,
                       borderRadius: 10,
-                      minWidth: 20,
+                      minWidth: 18,
                       alignItems: 'center',
                     }}
                   >
                     <Text
                       style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: '700',
                         color: activeTab === 'comments' ? '#FFFFFF' : theme.textTertiary,
                       }}
@@ -1752,16 +1781,32 @@ const TaskDetailScreen: React.FC = () => {
               style={[styles.tab, activeTab === 'history' && styles.activeTab]}
               onPress={() => setActiveTab('history')}
             >
-              <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
-                История
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name="time-outline"
+                  size={18}
+                  color={activeTab === 'history' ? theme.primary : theme.textTertiary}
+                />
+                {isNarrowScreen ? null : (
+                  <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+                    История
+                  </Text>
+                )}
+              </View>
             </TouchableOpacity>
           </View>
 
           {/* Tab Content */}
           <ScrollView
             style={styles.tabContent}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingBottom: activeTab === 'comments' && !isDelegatedByMe && task.status !== 'done'
+                  ? insets.bottom + 170
+                  : insets.bottom + 100
+              }
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -1775,37 +1820,39 @@ const TaskDetailScreen: React.FC = () => {
                   </View>
                 )}
 
-                {/* Description Section */}
-                {task.description && (
+                {/* Task Title and Info Card - show ONLY if no checklists */}
+                {(!task.checklists || task.checklists.length === 0) && (
                   <View style={styles.descriptionContainer}>
                     {/* Header */}
                     <View style={[styles.descriptionHeader, { borderBottomColor: theme.border }]}>
                       <Text style={[styles.descriptionLabel, { color: theme.text }]}>{task.title}</Text>
                     </View>
 
-                    {/* Content */}
-                    <View style={styles.descriptionContent}>
-                      <Text
-                        style={[
-                          styles.descriptionText,
-                          { color: theme.textSecondary },
-                          !isDescriptionExpanded && styles.descriptionCollapsed,
-                        ]}
-                        numberOfLines={isDescriptionExpanded ? undefined : 2}
-                      >
-                        {task.description}
-                      </Text>
-                      {task.description.length > 80 && (
-                        <TouchableOpacity
-                          style={styles.expandButton}
-                          onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                    {/* Content - show description if exists */}
+                    {task.description && (
+                      <View style={styles.descriptionContent}>
+                        <Text
+                          style={[
+                            styles.descriptionText,
+                            { color: theme.textSecondary },
+                            !isDescriptionExpanded && styles.descriptionCollapsed,
+                          ]}
+                          numberOfLines={isDescriptionExpanded ? undefined : 2}
                         >
-                          <Text style={[styles.expandButtonText, { color: theme.primary }]}>
-                            {isDescriptionExpanded ? 'Свернуть' : 'Раскрыть'}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                          {task.description}
+                        </Text>
+                        {task.description.length > 80 && (
+                          <TouchableOpacity
+                            style={styles.expandButton}
+                            onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                          >
+                            <Text style={[styles.expandButtonText, { color: theme.primary }]}>
+                              {isDescriptionExpanded ? 'Свернуть' : 'Раскрыть'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
 
                     {/* Footer with priority, progress, and assignee */}
                     {(task.priority || (task.assignees && task.assignees.length > 0) || (!subtasks || subtasks.length === 0)) && (
@@ -1843,10 +1890,33 @@ const TaskDetailScreen: React.FC = () => {
                               imageUrl={task.assignees[0].avatar}
                               size={22}
                             />
+                            <Text style={[styles.descriptionAssigneeName, { color: theme.text }]}>
+                              {task.assignees[0].name}
+                            </Text>
                           </TouchableOpacity>
                         )}
                       </View>
                     )}
+                  </View>
+                )}
+
+                {/* Checklists Section - show for all who have access */}
+                {canViewTask(task, user?.id) && (
+                  <View style={styles.checklistsSection}>
+                    <TaskChecklistsView
+                      taskId={task.id}
+                      taskTitle={task.title}
+                      assigneeName={task.assignees && task.assignees.length > 0 ? task.assignees[0].name : undefined}
+                      assigneeAvatar={task.assignees && task.assignees.length > 0 ? task.assignees[0].avatar : undefined}
+                      priority={task.priority}
+                      dueDate={task.due_date}
+                      onChecklistChanged={() => {
+                        loadTask(); // Reload task to update progress
+                      }}
+                      canEdit={canEditTask(task, user?.id, user?.role) && task.status !== 'done'}
+                      canToggleOnly={!canEditTask(task, user?.id, user?.role) && canViewTask(task, user?.id) && task.status !== 'done'}
+                      readOnly={isDelegatedByMe || task.status === 'done'}
+                    />
                   </View>
                 )}
 
@@ -1864,26 +1934,6 @@ const TaskDetailScreen: React.FC = () => {
                           : 'Дата неизвестна'}
                       </Text>
                     </View>
-                  </View>
-                )}
-
-                {/* Checklists Section - show for all who have access */}
-                {task.status !== 'done' && canViewTask(task, user?.id) && (
-                  <View style={styles.checklistsSection}>
-                    <TaskChecklistsView
-                      taskId={task.id}
-                      taskTitle={task.title}
-                      assigneeName={task.assignees && task.assignees.length > 0 ? task.assignees[0].name : undefined}
-                      assigneeAvatar={task.assignees && task.assignees.length > 0 ? task.assignees[0].avatar : undefined}
-                      priority={task.priority}
-                      dueDate={task.due_date}
-                      onChecklistChanged={() => {
-                        loadTask(); // Reload task to update progress
-                      }}
-                      canEdit={canEditTask(task, user?.id, user?.role)}
-                      canToggleOnly={!canEditTask(task, user?.id, user?.role) && canViewTask(task, user?.id)}
-                      readOnly={isDelegatedByMe}
-                    />
                   </View>
                 )}
 
@@ -2013,39 +2063,6 @@ const TaskDetailScreen: React.FC = () => {
             ) : activeTab === 'comments' ? (
               // Comments Tab
               <View style={styles.content}>
-                {/* Comment Input */}
-                {!isDelegatedByMe && task.status !== 'done' && (
-                  <View style={styles.commentInputContainer}>
-                    <TextInput
-                      style={styles.commentInput}
-                      placeholder="Написать комментарий..."
-                      placeholderTextColor={theme.textTertiary}
-                      value={newComment}
-                      onChangeText={setNewComment}
-                      multiline
-                      maxLength={1000}
-                    />
-                    <TouchableOpacity
-                      style={[
-                        styles.sendButton,
-                        { backgroundColor: newComment.trim() ? theme.primary : theme.backgroundTertiary }
-                      ]}
-                      onPress={handleSendComment}
-                      disabled={!newComment.trim() || isSendingComment}
-                    >
-                      {isSendingComment ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Ionicons
-                          name="send"
-                          size={20}
-                          color={newComment.trim() ? '#FFFFFF' : theme.textTertiary}
-                        />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 {/* Comments List */}
                 {comments.length > 0 ? (
                   <>
@@ -2250,7 +2267,7 @@ const TaskDetailScreen: React.FC = () => {
 
         {/* Fixed Action Buttons at Bottom */}
         {task.status !== 'done' && !isDelegatedByMe && activeTab === 'overview' && (
-          <View style={styles.fixedActionsContainer}>
+          <View style={[styles.fixedActionsContainer, { bottom: insets.bottom + 80 }]}>
             {/* Start/Submit Button - for new or in_progress tasks */}
             {(task.status === 'new' || task.status === 'in_progress') && (
               <TouchableOpacity
@@ -2309,6 +2326,39 @@ const TaskDetailScreen: React.FC = () => {
                 </TouchableOpacity>
               </>
             )}
+          </View>
+        )}
+
+        {/* Fixed Comment Input at Bottom - for Comments Tab */}
+        {task.status !== 'done' && !isDelegatedByMe && activeTab === 'comments' && (
+          <View style={[styles.fixedCommentInputContainer, { backgroundColor: theme.background, borderTopColor: theme.border, bottom: insets.bottom + 80 }]}>
+            <TextInput
+              style={[styles.commentInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              placeholder="Написать комментарий..."
+              placeholderTextColor={theme.textTertiary}
+              value={newComment}
+              onChangeText={setNewComment}
+              multiline
+              maxLength={1000}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                { backgroundColor: newComment.trim() ? theme.primary : theme.backgroundTertiary }
+              ]}
+              onPress={handleSendComment}
+              disabled={!newComment.trim() || isSendingComment}
+            >
+              {isSendingComment ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons
+                  name="send"
+                  size={20}
+                  color={newComment.trim() ? '#FFFFFF' : theme.textTertiary}
+                />
+              )}
+            </TouchableOpacity>
           </View>
         )}
 

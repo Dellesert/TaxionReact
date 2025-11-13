@@ -71,12 +71,18 @@ api.interceptors.response.use(
       // Auth store will handle redirect to login
     }
 
-    // Transform error to ApiError format
+    // Extract structured error data from response
+    const responseData = error.response?.data as any;
+
+    // Transform error to ApiError format (backward compatible)
     const apiError: ApiError = {
-      message: error.response?.data?.message || error.message || 'An error occurred',
+      message: responseData?.error || responseData?.message || error.message || 'An error occurred',
       code: error.code,
       status: error.response?.status,
-      details: error.response?.data,
+      details: responseData,
+      error_code: responseData?.error_code,
+      request_id: responseData?.request_id,
+      fields: responseData?.fields,
     };
 
     return Promise.reject(apiError);
