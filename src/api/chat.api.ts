@@ -24,6 +24,19 @@ import { ApiResponse, PaginatedResponse } from '../types/common.types';
 // ============= Chat Operations =============
 
 /**
+ * Get total unread messages count across all chats
+ */
+export const getChatUnreadCount = async (): Promise<number> => {
+  try {
+    const response = await api.get<{ unread_count: number }>(API_ENDPOINTS.CHAT.UNREAD_COUNT);
+    return response.data.unread_count || 0;
+  } catch (error) {
+    console.error('Failed to load unread count:', error);
+    return 0;
+  }
+};
+
+/**
  * Get list of chats with pagination and filters
  */
 export const getChats = async (

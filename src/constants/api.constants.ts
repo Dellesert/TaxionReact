@@ -77,6 +77,7 @@ export const API_ENDPOINTS = {
     ADD_MEMBERS: (id: number) => `/chats/${id}/members/`,
     REMOVE_MEMBER: (chatId: number, userId: number) => `/chats/${chatId}/members/${userId}/`,
     CLEAR_HISTORY: (id: number) => `/chats/${id}/clear-history`,
+    UNREAD_COUNT: '/chats/unread-count',
   },
 
   // Message

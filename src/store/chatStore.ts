@@ -22,8 +22,10 @@ interface ChatState {
   error: string | null;
   typingUsers: Record<number, TypingIndicator[]>;
   currentFilter: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean } | null;
+  totalUnreadCount: number;
   loadChats: (append?: boolean, filters?: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean }) => Promise<void>;
   loadMoreChats: () => Promise<void>;
+  loadUnreadCount: () => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
   updateChat: (chatId: number, data: { name?: string; avatar?: string; description?: string }) => Promise<void>;
   deleteChat: (chatId: number, clearHistory?: boolean) => Promise<void>;
@@ -103,6 +105,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
   typingUsers: {},
   currentFilter: null,
+  totalUnreadCount: 0,
 
   loadChats: async (append = false, filters) => {
     try {
@@ -173,6 +176,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoadingMore: true });
     await useChatStore.getState().loadChats(true);
     set({ isLoadingMore: false });
+  },
+
+  loadUnreadCount: async () => {
+    try {
+      if (isMockMode()) {
+        // В mock режиме считаем из загруженных чатов
+        const { chats } = useChatStore.getState();
+        const count = chats.reduce((total, chat) => total + (chat.unread_count || 0), 0);
+        set({ totalUnreadCount: count });
+      } else {
+        const count = await chatApi.getChatUnreadCount();
+        set({ totalUnreadCount: count });
+      }
+    } catch (error: any) {
+      console.error('Failed to load unread count:', error);
+    }
   },
 
   createChat: async (name: string, memberIds: number[], type: 'private' | 'group' = 'group') => {
@@ -618,11 +637,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       await chatApi.markChatAsRead(chatId);
       // Update unread count in state
-      set((state) => ({
-        chats: state.chats.map((chat) =>
-          chat.id === chatId ? { ...chat, unread_count: 0 } : chat
-        ),
-      }));
+      set((state) => {
+        const chat = state.chats.find((c) => c.id === chatId);
+        const unreadCount = chat?.unread_count || 0;
+
+        return {
+          chats: state.chats.map((chat) =>
+            chat.id === chatId ? { ...chat, unread_count: 0 } : chat
+          ),
+          totalUnreadCount: Math.max(0, state.totalUnreadCount - unreadCount),
+        };
+      });
     } catch (error: any) {
       console.error('Failed to mark chat as read:', error);
     }
@@ -780,9 +805,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
         return new Date(timeB).getTime() - new Date(timeA).getTime();
       });
 
+      // Update total unread count if a new unread message was added
+      const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+      const newTotalUnreadCount = shouldIncrementUnread
+        ? state.totalUnreadCount + 1
+        : state.totalUnreadCount;
+
       return {
         messages: updatedMessages,
         chats: sortedChats,
+        totalUnreadCount: newTotalUnreadCount,
       };
     });
   },

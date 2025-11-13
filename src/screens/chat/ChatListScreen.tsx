@@ -66,7 +66,7 @@ const ChatListScreen: React.FC = () => {
     }
   );
 
-  const { isLoading, isLoadingMore, totalChats, hasMoreChats, error, loadChats: fetchChats, loadMoreChats, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
+  const { isLoading, isLoadingMore, totalChats, hasMoreChats, error, loadChats: fetchChats, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
@@ -90,6 +90,13 @@ const ChatListScreen: React.FC = () => {
   useEffect(() => {
     loadChats();
   }, []);
+
+  // Обновляем счетчик непрочитанных при возврате на экран
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUnreadCount();
+    }, [loadUnreadCount])
+  );
 
   useEffect(() => {
     RNAnimated.timing(searchAnimation, {
@@ -142,7 +149,10 @@ const ChatListScreen: React.FC = () => {
 
   const loadChats = async () => {
     try {
-      await fetchChats();
+      await Promise.all([
+        fetchChats(),
+        loadUnreadCount(),
+      ]);
       // Разрешаем подгрузку только после первой загрузки
       setTimeout(() => setCanLoadMore(true), 500);
     } catch (error) {

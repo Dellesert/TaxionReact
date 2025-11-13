@@ -18,12 +18,7 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
 }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const chats = useChatStore((state) => state.chats);
-
-  // Подсчитываем общее количество непрочитанных сообщений
-  const totalUnreadCount = React.useMemo(() => {
-    return chats.reduce((total, chat) => total + (chat.unread_count || 0), 0);
-  }, [chats]);
+  const totalUnreadCount = useChatStore((state) => state.totalUnreadCount);
 
   // Анимированное значение для скрытия/показа tab bar (используем обычный Animated API)
   const translateY = useRef(new Animated.Value(0)).current;
