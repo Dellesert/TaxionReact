@@ -13,6 +13,144 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@components/common/Avatar';
 
+// Circular Progress Indicator Component
+const ProgressIndicator: React.FC<{
+  progress: number;
+  size: number;
+  color: string;
+  backgroundColor: string;
+}> = ({ progress, size, color, backgroundColor }) => {
+  const borderWidth = 2.5;
+
+  // Calculate which parts of the border to show in color based on progress
+  const showTop = progress >= 5;
+  const showTopRight = progress >= 15;
+  const showRight = progress >= 30;
+  const showBottomRight = progress >= 45;
+  const showBottom = progress >= 60;
+  const showBottomLeft = progress >= 75;
+  const showLeft = progress >= 90;
+  const showTopLeft = progress >= 95;
+
+  return (
+    <View style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: 'transparent',
+      position: 'relative',
+    }}>
+      {/* Base circle background */}
+      <View style={{
+        position: 'absolute',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: borderWidth,
+        borderColor: backgroundColor,
+      }} />
+
+      {/* Progress segments */}
+      {showTop && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderTopColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showTopRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderTopColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderRightColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showBottomRight && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderRightColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showBottom && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showBottomLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+      {showLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderLeftColor: color,
+          transform: [{ rotate: '-45deg' }],
+        }} />
+      )}
+      {showTopLeft && (
+        <View style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: borderWidth,
+          borderColor: 'transparent',
+          borderLeftColor: color,
+          transform: [{ rotate: '0deg' }],
+        }} />
+      )}
+    </View>
+  );
+};
+
 interface TaskItemProps {
   task: Task;
   onPress: (task: Task) => void;
@@ -70,7 +208,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const isExpanded = forceExpanded || expanded;
 
   const hasSubtasks = subtasks && subtasks.length > 0;
-  const completedSubtasks = subtasks.filter(st => st.status === 'done').length;
 
   // Get priority config based on theme
   const PRIORITY_CONFIG = getPriorityConfig(isDark);
@@ -389,6 +526,20 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                 ]}>{attachmentCount}</Text>
               </View>
             )}
+            {/* Progress for tasks without subtasks (always show) */}
+            {!hasSubtasks && !isSubtask && (
+              <View style={styles.progressBadge}>
+                <Text style={styles.progressText}>
+                  {task.progress_percentage}%
+                </Text>
+                <ProgressIndicator
+                  progress={task.progress_percentage}
+                  size={16}
+                  color={task.progress_percentage === 100 ? '#10B981' : theme.primary}
+                  backgroundColor={isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'}
+                />
+              </View>
+            )}
           </View>
         </View>
 
@@ -413,23 +564,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   </Text>
                 </View>
                 <View style={styles.subtasksProgress}>
-                  <View style={[
-                    styles.progressBar,
-                    { backgroundColor: theme.backgroundTertiary }
-                  ]}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${subtasks.length > 0 ? (completedSubtasks / subtasks.length) * 100 : 0}%`,
-                          backgroundColor: completedSubtasks === subtasks.length ? '#10b981' : '#3b82f6',
-                        }
-                      ]}
-                    />
-                  </View>
                   <Text style={styles.subtasksCount}>
-                    {completedSubtasks}/{subtasks.length}
+                    {task.progress_percentage}%
                   </Text>
+                  <ProgressIndicator
+                    progress={task.progress_percentage}
+                    size={18}
+                    color={task.progress_percentage === 100 ? '#10B981' : theme.primary}
+                    backgroundColor={isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'}
+                  />
                 </View>
               </View>
             </TouchableOpacity>
@@ -732,6 +875,16 @@ const styles = StyleSheet.create({
     gap: 8,
     flexShrink: 0,
   },
+  progressBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9ca3af',
+  },
   divider: {
     height: 1,
     opacity: 0.3,
@@ -761,17 +914,7 @@ const styles = StyleSheet.create({
   subtasksProgress: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  progressBar: {
-    width: 80,
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 2,
+    gap: 8,
   },
   subtasksCount: {
     fontSize: 12,

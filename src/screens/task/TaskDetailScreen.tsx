@@ -434,7 +434,33 @@ const TaskDetailScreen: React.FC = () => {
       setIsLoadingAttachments(true);
       const taskIdNum = Number(taskId);
       const data = await taskApi.getTaskAttachments(taskIdNum);
-      setAttachments(data);
+
+      // Load user info for each attachment if not provided by backend
+      const attachmentsWithUsers = await Promise.all(
+        data.map(async (attachment) => {
+          if (!attachment.uploaded_by && attachment.uploaded_by_user_id) {
+            try {
+              const user = await getUser(attachment.uploaded_by_user_id);
+              return {
+                ...attachment,
+                uploaded_by: {
+                  id: user.id,
+                  name: user.name,
+                  email: user.email,
+                  avatar: user.avatar,
+                  position: user.position,
+                },
+              };
+            } catch (error) {
+              console.error(`Failed to load user ${attachment.uploaded_by_user_id}:`, error);
+              return attachment;
+            }
+          }
+          return attachment;
+        })
+      );
+
+      setAttachments(attachmentsWithUsers);
     } catch (error) {
       console.error('Error loading attachments:', error);
     } finally {
@@ -964,12 +990,29 @@ const TaskDetailScreen: React.FC = () => {
       justifyContent: 'space-between',
       alignItems: 'center',
     },
+    descriptionFooterLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flex: 1,
+    },
     priorityBadge: {
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 12,
     },
     priorityText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    taskDetailProgressBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    taskDetailProgressText: {
       fontSize: 12,
       fontWeight: '600',
     },
@@ -1170,6 +1213,16 @@ const TaskDetailScreen: React.FC = () => {
     attachmentMeta: {
       fontSize: 12,
       color: '#6b7280',
+    },
+    attachmentUploader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 6,
+    },
+    attachmentUploaderName: {
+      fontSize: 11,
+      color: '#9ca3af',
     },
     deleteAttachmentButton: {
       padding: 4,
@@ -1532,22 +1585,6 @@ const TaskDetailScreen: React.FC = () => {
     return allItems.every(item => item.is_completed);
   };
 
-  // Calculate overall task progress based on checklists
-  const calculateChecklistProgress = (): number => {
-    if (!task?.checklists || task.checklists.length === 0) {
-      return 0;
-    }
-
-    const allItems = task.checklists.flatMap(checklist => checklist.items);
-
-    if (allItems.length === 0) {
-      return 0;
-    }
-
-    const completedItems = allItems.filter(item => item.is_completed).length;
-    return Math.round((completedItems / allItems.length) * 100);
-  };
-
   // Check if current user is the task creator
   const isCreator = user?.id === task.created_by;
 
@@ -1770,17 +1807,29 @@ const TaskDetailScreen: React.FC = () => {
                       )}
                     </View>
 
-                    {/* Footer with priority and assignee */}
-                    {(task.priority || (task.assignees && task.assignees.length > 0)) && (
+                    {/* Footer with priority, progress, and assignee */}
+                    {(task.priority || (task.assignees && task.assignees.length > 0) || (!subtasks || subtasks.length === 0)) && (
                       <View style={[styles.descriptionFooter, { borderTopColor: theme.border }]}>
-                        {/* Priority Badge - Left */}
-                        {task.priority && (
-                          <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.color + '20' }]}>
-                            <Text style={[styles.priorityText, { color: priorityConfig.color }]}>
-                              {priorityConfig.label}
-                            </Text>
-                          </View>
-                        )}
+                        <View style={styles.descriptionFooterLeft}>
+                          {/* Priority Badge */}
+                          {task.priority && (
+                            <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.color + '20' }]}>
+                              <Text style={[styles.priorityText, { color: priorityConfig.color }]}>
+                                {priorityConfig.label}
+                              </Text>
+                            </View>
+                          )}
+
+                          {/* Progress Badge - for tasks without subtasks (always show) */}
+                          {(!subtasks || subtasks.length === 0) && (
+                            <View style={styles.taskDetailProgressBadge}>
+                              <Ionicons name="stats-chart-outline" size={14} color={theme.textSecondary} />
+                              <Text style={[styles.taskDetailProgressText, { color: theme.textSecondary }]}>
+                                {task.progress_percentage}%
+                              </Text>
+                            </View>
+                          )}
+                        </View>
 
                         {/* Assignee - Right */}
                         {task.assignees && task.assignees.length > 0 && (
@@ -1843,6 +1892,7 @@ const TaskDetailScreen: React.FC = () => {
                   <View style={styles.subtasksSection}>
                     <TaskSubtasksList
                       parentTaskId={task.id}
+                      parentTaskProgress={task.progress_percentage}
                       onSubtaskPress={(subtask) => {
                         // @ts-ignore
                         navigation.push('TaskDetail', { taskId: subtask.id.toString() });
@@ -1879,6 +1929,15 @@ const TaskDetailScreen: React.FC = () => {
                   <View style={styles.attachmentsList}>
                     {attachments.map((attachment) => {
                       const fileIcon = getFileIcon(attachment.file_type || '', attachment.file_name);
+
+                      // DEBUG: Log attachment data
+                      console.log('🔍 TaskDetailScreen - Attachment:', {
+                        id: attachment.id,
+                        file_name: attachment.file_name,
+                        uploaded_by: attachment.uploaded_by,
+                        uploaded_by_user_id: attachment.uploaded_by_user_id,
+                      });
+
                       return (
                         <View key={attachment.id} style={styles.attachmentItem}>
                           <TouchableOpacity
@@ -1894,9 +1953,24 @@ const TaskDetailScreen: React.FC = () => {
                               <Text style={styles.attachmentMeta}>
                                 {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
                               </Text>
+                              {attachment.uploaded_by && (
+                                <View style={styles.attachmentUploader}>
+                                  <Avatar
+                                    name={attachment.uploaded_by.name}
+                                    imageUrl={attachment.uploaded_by.avatar}
+                                    size={20}
+                                  />
+                                  <Text style={styles.attachmentUploaderName} numberOfLines={1}>
+                                    {attachment.uploaded_by.name}
+                                  </Text>
+                                </View>
+                              )}
                             </View>
                           </TouchableOpacity>
-                          {!isDelegatedByMe && task.status !== 'done' && (
+                          {!isDelegatedByMe &&
+                           task.status !== 'done' &&
+                           user &&
+                           attachment.uploaded_by_user_id === user.id && (
                             <TouchableOpacity
                               style={styles.deleteAttachmentButton}
                               onPress={() => handleDeleteAttachment(attachment.id)}

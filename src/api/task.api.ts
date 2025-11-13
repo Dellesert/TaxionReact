@@ -140,7 +140,11 @@ export const createTask = async (data: CreateTaskDto): Promise<Task> => {
  * Get task by ID
  */
 export const getTask = async (id: number): Promise<Task> => {
-  const response = await api.get<ApiResponse<Task>>(API_ENDPOINTS.TASK.BY_ID(id));
+  const response = await api.get<ApiResponse<Task>>(API_ENDPOINTS.TASK.BY_ID(id), {
+    params: {
+      include: 'attachments.uploaded_by'
+    }
+  });
 
   let task: Task;
   if (response.data.data) {

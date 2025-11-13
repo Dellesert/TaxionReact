@@ -35,25 +35,11 @@ export const getPolls = async (
     offset: offset || 0,
   };
 
-  const response = await api.get<ApiResponse<any>>(API_ENDPOINTS.POLL.LIST, {
-    params,
-  });
+  const response = await api.get<any>(API_ENDPOINTS.POLL.LIST, { params });
 
-  // Handle different response formats
-  let polls: Poll[] = [];
-  let total: number = 0;
-
-  if (response.data.data) {
-    polls = response.data.data;
-    total = response.data.total || polls.length;
-  } else if (response.data.polls) {
-    polls = response.data.polls;
-    total = response.data.total || polls.length;
-  } else if (Array.isArray(response.data)) {
-    polls = response.data;
-    total = polls.length;
-  }
-
+  // Backend returns: { polls: [...], total: 10, limit: 20, offset: 0 }
+  const polls = response.data.polls || [];
+  const total = response.data.total || 0;
   const hasMore = (params.offset + polls.length) < total;
 
   return { polls, total, hasMore };
@@ -63,45 +49,27 @@ export const getPolls = async (
  * Create new poll
  */
 export const createPoll = async (data: CreatePollDto): Promise<Poll> => {
-  const response = await api.post<ApiResponse<Poll>>(API_ENDPOINTS.POLL.CREATE, data);
-
-  if (response.data.data) {
-    return response.data.data;
-  } else if (response.data.poll) {
-    return response.data.poll;
-  }
-
-  return response.data as any;
+  const response = await api.post<any>(API_ENDPOINTS.POLL.CREATE, data);
+  // Backend returns: { message: "...", poll: {...} }
+  return response.data.poll;
 };
 
 /**
  * Get poll by ID
  */
 export const getPoll = async (id: number): Promise<Poll> => {
-  const response = await api.get<ApiResponse<Poll>>(API_ENDPOINTS.POLL.BY_ID(id));
-
-  if (response.data.data) {
-    return response.data.data;
-  } else if (response.data.poll) {
-    return response.data.poll;
-  }
-
-  return response.data as any;
+  const response = await api.get<any>(API_ENDPOINTS.POLL.BY_ID(id));
+  // Backend returns: { poll: {...} }
+  return response.data.poll;
 };
 
 /**
  * Update poll
  */
 export const updatePoll = async (id: number, data: UpdatePollDto): Promise<Poll> => {
-  const response = await api.put<ApiResponse<Poll>>(API_ENDPOINTS.POLL.UPDATE(id), data);
-
-  if (response.data.data) {
-    return response.data.data;
-  } else if (response.data.poll) {
-    return response.data.poll;
-  }
-
-  return response.data as any;
+  const response = await api.put<any>(API_ENDPOINTS.POLL.UPDATE(id), data);
+  // Backend returns: { message: "...", poll: {...} }
+  return response.data.poll;
 };
 
 /**
@@ -118,18 +86,12 @@ export const updatePollStatus = async (
   id: number,
   data: UpdatePollStatusDto
 ): Promise<Poll> => {
-  const response = await api.patch<ApiResponse<Poll>>(
+  const response = await api.patch<any>(
     API_ENDPOINTS.POLL.UPDATE_STATUS(id),
     data
   );
-
-  if (response.data.data) {
-    return response.data.data;
-  } else if (response.data.poll) {
-    return response.data.poll;
-  }
-
-  return response.data as any;
+  // Backend returns: { message: "...", poll: {...} }
+  return response.data.poll;
 };
 
 // ============= Voting =============
@@ -138,70 +100,42 @@ export const updatePollStatus = async (
  * Vote in poll
  */
 export const vote = async (pollId: number, data: VoteDto): Promise<Poll> => {
-  const response = await api.post<ApiResponse<Poll>>(API_ENDPOINTS.POLL.VOTE(pollId), data);
-
-  if (response.data.data) {
-    return response.data.data;
-  } else if (response.data.poll) {
-    return response.data.poll;
-  } else if (response.data.votes) {
-    // Return the poll from the vote response
-    return response.data as any;
-  }
-
-  return response.data as any;
+  const response = await api.post<any>(API_ENDPOINTS.POLL.VOTE(pollId), data);
+  // Backend returns: { message: "...", poll: {...} }
+  return response.data.poll;
 };
 
 /**
  * Get poll results
  */
 export const getPollResults = async (pollId: number): Promise<PollResults> => {
-  const response = await api.get<ApiResponse<PollResults>>(
+  const response = await api.get<any>(
     API_ENDPOINTS.POLL.RESULTS(pollId)
   );
-
-  if (response.data.data) {
-    return response.data.data;
-  } else if (response.data.results) {
-    return response.data.results;
-  }
-
-  return response.data as any;
+  // Backend returns: { results: {...} }
+  return response.data.results;
 };
 
 /**
  * Get my votes in poll
  */
 export const getMyVotes = async (pollId: number): Promise<PollVote[]> => {
-  const response = await api.get<ApiResponse<PollVote[]>>(
+  const response = await api.get<any>(
     API_ENDPOINTS.POLL.MY_VOTES(pollId)
   );
-
-  if (response.data.data) {
-    return response.data.data;
-  } else if (response.data.votes) {
-    return response.data.votes;
-  } else if (Array.isArray(response.data)) {
-    return response.data;
-  }
-
-  return [];
+  // Backend returns: { votes: [...] }
+  return response.data.votes || [];
 };
 
 /**
  * Get list of poll voters
  */
 export const getPollVoters = async (pollId: number): Promise<PollVotersList> => {
-  const response = await api.get<ApiResponse<PollVotersList>>(
+  const response = await api.get<any>(
     API_ENDPOINTS.POLL.VOTERS(pollId)
   );
-
-
-  if (response.data.data) {
-    return response.data.data;
-  }
-
-  return response.data as any;
+  // Backend returns: { voters: [...] }
+  return response.data.voters;
 };
 
 // ============= Poll Comments =============
@@ -210,10 +144,11 @@ export const getPollVoters = async (pollId: number): Promise<PollVotersList> => 
  * Get poll comments
  */
 export const getPollComments = async (pollId: number): Promise<Comment[]> => {
-  const response = await api.get<ApiResponse<Comment[]>>(
+  const response = await api.get<any>(
     API_ENDPOINTS.POLL.COMMENTS(pollId)
   );
-  return response.data.data;
+  // Backend returns: { comments: [...] }
+  return response.data.comments;
 };
 
 /**
@@ -223,11 +158,12 @@ export const addPollComment = async (
   pollId: number,
   data: AddPollCommentDto
 ): Promise<Comment> => {
-  const response = await api.post<ApiResponse<Comment>>(
+  const response = await api.post<any>(
     API_ENDPOINTS.POLL.ADD_COMMENT(pollId),
     data
   );
-  return response.data.data;
+  // Backend returns: { message: "...", comment: {...} }
+  return response.data.comment;
 };
 
 /**

@@ -19,8 +19,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { CreateTaskDto, TaskPriority } from '../../types/task.types';
-import { createSubtask } from '../../api/task.api';
+import { CreateTaskDto, TaskPriority, TaskAttachment } from '../../types/task.types';
+import { createSubtask, getTaskAttachments } from '../../api/task.api';
 import UserSelector from '../common/UserSelector';
 import DatePickerModal from '../common/DatePickerModal';
 import { useTheme } from '@hooks/useTheme';
@@ -35,7 +35,7 @@ interface CreateSubtaskModalProps {
 }
 
 type TaskContentType = 'checklist' | 'description' | 'none';
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   visible,
@@ -61,7 +61,12 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   const [checklistItems, setChecklistItems] = useState<string[]>([]);
   const [newItemText, setNewItemText] = useState('');
 
-  // Step 4: Priority, Date, Assignee
+  // Step 4: Attachments from parent task
+  const [parentAttachments, setParentAttachments] = useState<TaskAttachment[]>([]);
+  const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<number[]>([]);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+
+  // Step 5: Priority, Date, Assignee
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -79,6 +84,25 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
     { value: 'high', label: 'Высокий', color: '#F97316' },
     { value: 'critical', label: 'Критический', color: '#EF4444' },
   ];
+
+  // Load parent task attachments when modal opens
+  useEffect(() => {
+    if (visible && parentTaskId) {
+      loadParentAttachments();
+    }
+  }, [visible, parentTaskId]);
+
+  const loadParentAttachments = async () => {
+    try {
+      setIsLoadingAttachments(true);
+      const attachments = await getTaskAttachments(parentTaskId);
+      setParentAttachments(attachments);
+    } catch (error) {
+      console.error('Failed to load parent attachments:', error);
+    } finally {
+      setIsLoadingAttachments(false);
+    }
+  };
 
   // Animation when step changes
   useEffect(() => {
@@ -102,16 +126,16 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
       return;
     }
 
-    // Skip step 3 if content type is 'none'
+    // Skip step 3 if content type is 'none' (go from step 2 to step 4)
     if (currentStep === 2 && contentType === 'none') {
       setCurrentStep(4);
-    } else if (currentStep < 4) {
+    } else if (currentStep < 5) {
       setCurrentStep((currentStep + 1) as Step);
     }
   };
 
   const goToPreviousStep = () => {
-    // Skip step 3 if going back and content type is 'none'
+    // Skip step 3 if going back and content type is 'none' (go from step 4 to step 2)
     if (currentStep === 4 && contentType === 'none') {
       setCurrentStep(2);
     } else if (currentStep > 1) {
@@ -144,6 +168,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
         checklists: contentType === 'checklist' && checklistItems.length > 0
           ? [{ title: 'Checklist', items: checklistItems }]
           : undefined,
+        parent_attachment_ids: selectedAttachmentIds.length > 0 ? selectedAttachmentIds : undefined,
       };
 
       const createdSubtask = await createSubtask(parentTaskId, subtaskData);
@@ -193,6 +218,8 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
     setAssigneeIds([]);
     setChecklistItems([]);
     setNewItemText('');
+    setParentAttachments([]);
+    setSelectedAttachmentIds([]);
     slideAnim.setValue(0);
     onClose();
   };
@@ -208,23 +235,48 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
     setChecklistItems(checklistItems.filter((_, i) => i !== index));
   };
 
+  // Attachment selection handlers
+  const toggleAttachmentSelection = (attachmentId: number) => {
+    if (selectedAttachmentIds.includes(attachmentId)) {
+      setSelectedAttachmentIds(selectedAttachmentIds.filter(id => id !== attachmentId));
+    } else {
+      setSelectedAttachmentIds([...selectedAttachmentIds, attachmentId]);
+    }
+  };
+
+  const selectAllAttachments = () => {
+    setSelectedAttachmentIds(parentAttachments.map(att => att.id));
+  };
+
+  const deselectAllAttachments = () => {
+    setSelectedAttachmentIds([]);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   // Get step info
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return 'Название подзадачи';
       case 2: return 'Тип содержимого';
       case 3: return contentType === 'checklist' ? 'Чек-лист' : 'Описание';
-      case 4: return 'Детали подзадачи';
+      case 4: return 'Вложения из родительской задачи';
+      case 5: return 'Детали подзадачи';
       default: return '';
     }
   };
 
   const getTotalSteps = () => {
-    return contentType === 'none' ? 3 : 4;
+    return contentType === 'none' ? 4 : 5;
   };
 
   const getDisplayStep = () => {
     if (contentType === 'none' && currentStep === 4) return 3;
+    if (contentType === 'none' && currentStep === 5) return 4;
     return currentStep;
   };
 
@@ -279,7 +331,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
         {/* Progress Indicator */}
         <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
           <View style={styles.progressBar}>
-            {[1, 2, 3, 4].slice(0, getTotalSteps()).map((step) => (
+            {[1, 2, 3, 4, 5].slice(0, getTotalSteps()).map((step) => (
               <View
                 key={step}
                 style={[
@@ -434,8 +486,109 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
                 </View>
               )}
 
-              {/* Step 4: Details (Priority, Date, Assignee) */}
+              {/* Step 4: Attachments */}
               {currentStep === 4 && (
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                    Выберите файлы из родительской задачи, которые нужно скопировать в подзадачу
+                  </Text>
+
+                  {isLoadingAttachments ? (
+                    <View style={[styles.emptyState, { backgroundColor: theme.card }]}>
+                      <ActivityIndicator size="large" color={theme.primary} />
+                      <Text style={[styles.emptyStateText, { color: theme.textTertiary }]}>
+                        Загрузка вложений...
+                      </Text>
+                    </View>
+                  ) : parentAttachments.length === 0 ? (
+                    <View style={[styles.emptyState, { backgroundColor: theme.card }]}>
+                      <Ionicons name="attach-outline" size={48} color={theme.textTertiary} />
+                      <Text style={[styles.emptyStateText, { color: theme.textTertiary }]}>
+                        В родительской задаче нет вложений
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      {/* Select/Deselect All Buttons */}
+                      <View style={styles.attachmentActionsRow}>
+                        <TouchableOpacity
+                          onPress={selectAllAttachments}
+                          style={[styles.attachmentActionButton, { borderColor: theme.border }]}
+                        >
+                          <Ionicons name="checkmark-done" size={16} color={theme.primary} />
+                          <Text style={[styles.attachmentActionText, { color: theme.primary }]}>
+                            Выбрать все
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={deselectAllAttachments}
+                          style={[styles.attachmentActionButton, { borderColor: theme.border }]}
+                        >
+                          <Ionicons name="close" size={16} color={theme.textSecondary} />
+                          <Text style={[styles.attachmentActionText, { color: theme.textSecondary }]}>
+                            Снять всё
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Attachments List */}
+                      <View style={styles.attachmentsContainer}>
+                        {parentAttachments.map((attachment) => {
+                          const isSelected = selectedAttachmentIds.includes(attachment.id);
+                          return (
+                            <TouchableOpacity
+                              key={attachment.id}
+                              onPress={() => toggleAttachmentSelection(attachment.id)}
+                              style={[
+                                styles.attachmentItem,
+                                { backgroundColor: theme.card, borderColor: theme.border },
+                                isSelected && { borderColor: theme.primary, borderWidth: 2 },
+                              ]}
+                            >
+                              <View style={[
+                                styles.attachmentCheckbox,
+                                { borderColor: theme.border },
+                                isSelected && { backgroundColor: theme.primary, borderColor: theme.primary }
+                              ]}>
+                                {isSelected && (
+                                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                                )}
+                              </View>
+                              <Ionicons
+                                name="document-attach"
+                                size={24}
+                                color={isSelected ? theme.primary : theme.textSecondary}
+                              />
+                              <View style={styles.attachmentInfo}>
+                                <Text
+                                  style={[
+                                    styles.attachmentName,
+                                    { color: theme.text },
+                                    isSelected && { fontWeight: '600' }
+                                  ]}
+                                  numberOfLines={1}
+                                >
+                                  {attachment.file_name}
+                                </Text>
+                                <Text style={[styles.attachmentSize, { color: theme.textSecondary }]}>
+                                  {formatFileSize(attachment.file_size)}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      <Text style={[styles.attachmentCountText, { color: theme.textTertiary }]}>
+                        Выбрано: {selectedAttachmentIds.length} из {parentAttachments.length}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              )}
+
+              {/* Step 5: Details (Priority, Date, Assignee) */}
+              {currentStep === 5 && (
                 <View style={styles.stepContent}>
                   <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
                     Укажите приоритет, срок выполнения и исполнителя
@@ -524,7 +677,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
             <View style={styles.navButton} />
           )}
 
-          {currentStep < 4 ? (
+          {currentStep < 5 ? (
             <TouchableOpacity
               onPress={goToNextStep}
               style={[styles.navButton, styles.nextButton, { backgroundColor: theme.primary }]}
@@ -800,5 +953,58 @@ const styles = StyleSheet.create({
   navButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Attachment styles
+  attachmentActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  attachmentActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+  },
+  attachmentActionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  attachmentsContainer: {
+    gap: 12,
+  },
+  attachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  attachmentCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachmentInfo: {
+    flex: 1,
+  },
+  attachmentName: {
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  attachmentSize: {
+    fontSize: 13,
+  },
+  attachmentCountText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 12,
   },
 });

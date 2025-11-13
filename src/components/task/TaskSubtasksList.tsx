@@ -11,11 +11,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
-  Platform,
 } from 'react-native';
-import { Task, TaskStatus, CreateTaskDto } from '../../types/task.types';
-import { getSubtasks, createSubtask, updateTaskStatus, deleteTask } from '../../api/task.api';
-import { useAuthStore } from '@store/authStore';
+import { Task, TaskStatus } from '../../types/task.types';
+import { getSubtasks, updateTaskStatus } from '../../api/task.api';
 import { useTheme } from '@hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
@@ -160,6 +158,7 @@ const ProgressIndicator: React.FC<{
 
 interface TaskSubtasksListProps {
   parentTaskId: number;
+  parentTaskProgress: number; // 0-100, from backend's progress_percentage field
   onSubtaskPress?: (subtask: Task) => void;
   onSubtaskCreated?: () => void;
   onCreateSubtaskPress?: () => void;
@@ -207,12 +206,12 @@ const formatDeadline = (dateString: string) => {
 
 export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   parentTaskId,
+  parentTaskProgress,
   onSubtaskPress,
   onSubtaskCreated,
   onCreateSubtaskPress,
   readOnly = false,
 }) => {
-  const { user: currentUser } = useAuthStore();
   const { theme, isDark } = useTheme();
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -396,10 +395,6 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     assigneeAvatarContainer: {
       paddingTop: 1,
     },
-    deleteButton: {
-      padding: 4,
-      paddingTop: 1,
-    },
     subtaskActions: {
       flexDirection: 'row',
       gap: 8,
@@ -460,55 +455,13 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
         prev.map(s => (s.id === subtask.id ? { ...s, status: newStatus } : s))
       );
 
-      // Notify parent about change (to recalculate progress)
+      // Notify parent about change to reload task and update progress
       if (onSubtaskCreated) {
         onSubtaskCreated();
       }
     } catch (error) {
       console.error('Error updating subtask status:', error);
       Alert.alert('Ошибка', 'Не удалось обновить статус подзадачи');
-    }
-  };
-
-  const handleDeleteSubtask = async (subtask: Task) => {
-    const confirmDelete = async () => {
-      try {
-        await deleteTask(subtask.id);
-
-        // Update local state
-        setSubtasks(prev => prev.filter(s => s.id !== subtask.id));
-
-        // Notify parent about change (to recalculate progress)
-        if (onSubtaskCreated) {
-          onSubtaskCreated();
-        }
-      } catch (error) {
-        console.error('Error deleting subtask:', error);
-        if (Platform.OS === 'web') {
-          alert('Ошибка: Не удалось удалить подзадачу');
-        } else {
-          Alert.alert('Ошибка', 'Не удалось удалить подзадачу');
-        }
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Вы уверены, что хотите удалить подзадачу "${subtask.title}"?`)) {
-        await confirmDelete();
-      }
-    } else {
-      Alert.alert(
-        'Удалить подзадачу?',
-        `Вы уверены, что хотите удалить подзадачу "${subtask.title}"?`,
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Удалить',
-            style: 'destructive',
-            onPress: confirmDelete,
-          },
-        ]
-      );
     }
   };
 
@@ -585,19 +538,6 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
             />
           </View>
         )}
-
-        {/* Delete Button */}
-        {!readOnly && (
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => {
-              console.log('Delete button pressed for subtask:', item.id);
-              handleDeleteSubtask(item);
-            }}
-          >
-            <Ionicons name="trash-outline" size={18} color="#ef4444" />
-          </TouchableOpacity>
-        )}
       </View>
     );
   };
@@ -632,7 +572,8 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
 
   // If there are subtasks, show list with add button at the end
   const completedCount = subtasks.filter(s => s.status === 'done').length;
-  const progress = subtasks.length > 0 ? Math.round((completedCount / subtasks.length) * 100) : 0;
+  // Use backend-calculated progress
+  const progress = parentTaskProgress;
 
   return (
     <View style={styles.container}>

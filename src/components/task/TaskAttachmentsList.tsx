@@ -13,7 +13,6 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
-  Platform,
 } from 'react-native';
 import { TaskAttachment } from '@/types/task.types';
 import {
@@ -23,9 +22,10 @@ import {
 } from '@/api/task.api';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useAuthStore } from '@store/authStore';
+import { Avatar } from '@components/common/Avatar';
 
 interface TaskAttachmentsListProps {
   taskId: number;
@@ -65,6 +65,7 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
   taskId,
   onAttachmentAdded,
 }) => {
+  const { user: currentUser } = useAuthStore();
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -160,6 +161,17 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
       locale: ru,
     });
 
+    // DEBUG: Log attachment data
+    console.log('🔍 TaskAttachmentsList - Attachment:', {
+      id: item.id,
+      file_name: item.file_name,
+      uploaded_by: item.uploaded_by,
+      uploaded_by_user_id: item.uploaded_by_user_id,
+    });
+
+    // Check if current user is the uploader
+    const canDelete = currentUser && item.uploaded_by_user_id === currentUser.id;
+
     return (
       <View style={styles.attachmentItem}>
         <View style={styles.fileIcon}>
@@ -178,18 +190,28 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
             <Text style={styles.fileTime}>{timeAgo}</Text>
           </View>
           {item.uploaded_by && (
-            <Text style={styles.uploader} numberOfLines={1}>
-              {item.uploaded_by.name}
-            </Text>
+            <View style={styles.uploaderContainer}>
+              <Avatar
+                name={item.uploaded_by.name}
+                imageUrl={item.uploaded_by.avatar}
+                size={18}
+              />
+              <Text style={styles.uploader} numberOfLines={1}>
+                {item.uploaded_by.name}
+              </Text>
+            </View>
           )}
         </View>
 
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteAttachment(item)}
-        >
-          <Ionicons name="trash-outline" size={20} color="#ef4444" />
-        </TouchableOpacity>
+        {/* Show delete button only for the user who uploaded the file */}
+        {canDelete && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteAttachment(item)}
+          >
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -360,10 +382,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
   },
+  uploaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   uploader: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#9ca3af',
-    marginTop: 2,
   },
   deleteButton: {
     padding: 8,

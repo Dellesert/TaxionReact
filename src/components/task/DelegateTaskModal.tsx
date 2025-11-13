@@ -10,7 +10,7 @@ import {
   Modal,
   TextInput,
   TouchableOpacity,
-  FlatList,
+  SectionList,
   StyleSheet,
   Alert,
   ActivityIndicator,
@@ -19,6 +19,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { delegateTask } from '@/api/task.api';
 import { getUsers } from '@/api/user.api';
 import { User } from '@/types/user.types';
+import { useTheme } from '@hooks/useTheme';
+import { useAuthStore } from '@store/authStore';
+import Avatar from '@components/common/Avatar';
 
 interface DelegateTaskModalProps {
   visible: boolean;
@@ -33,8 +36,12 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   onClose,
   onDelegated,
 }) => {
+  const { theme, isDark } = useTheme();
+  const currentUser = useAuthStore((state) => state.user);
   const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [sections, setSections] = useState<
+    { title: string; data: User[]; key: string }[]
+  >([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,26 +54,35 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   }, [visible]);
 
   useEffect(() => {
-    filterUsers();
+    groupUsersByDepartment();
   }, [searchQuery, users]);
 
   const loadUsers = async () => {
     try {
       setIsLoadingUsers(true);
-      // Load all users and filter for department heads and admins
-      const response = await getUsers({}, { limit: 100, offset: 0 });
 
-      // Filter only department heads, admins, and super admins
-      const departmentHeads = response.data.filter(
-        (user) =>
-          user.role === 'department_head' ||
-          user.role === 'admin' ||
-          user.role === 'super_admin'
+      if (!currentUser) {
+        Alert.alert('Ошибка', 'Пользователь не авторизован');
+        setIsLoadingUsers(false);
+        return;
+      }
+
+      // Use server-side filtering for task assignment
+      // This automatically handles role-based filtering
+      const filters: any = {
+        is_active: true,
+        for_task_assignment: true,
+      };
+
+      const response = await getUsers(filters, { limit: 100, offset: 0 });
+
+      // Filter out the current user from the list
+      let availableUsers = (response.data || []).filter(
+        (user) => user.id !== currentUser.id
       );
 
-      console.log('👥 Loaded department heads:', departmentHeads);
-      setUsers(departmentHeads);
-      setFilteredUsers(departmentHeads);
+      console.log('👥 Loaded available users for delegation:', availableUsers);
+      setUsers(availableUsers);
     } catch (error) {
       console.error('Error loading users:', error);
       Alert.alert('Ошибка', 'Не удалось загрузить список пользователей');
@@ -75,20 +91,96 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
     }
   };
 
-  const filterUsers = () => {
-    if (!searchQuery.trim()) {
-      setFilteredUsers(users);
-      return;
+  const groupUsersByDepartment = () => {
+    // Filter users by search query
+    let filteredUsers = users;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filteredUsers = users.filter(
+        (user) =>
+          user.name.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query) ||
+          user.position?.toLowerCase().includes(query) ||
+          user.department?.name.toLowerCase().includes(query)
+      );
     }
 
-    const query = searchQuery.toLowerCase();
-    const filtered = users.filter(
-      (user) =>
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.position?.toLowerCase().includes(query)
+    // Group users by department
+    const departmentMap = new Map<string, User[]>();
+    const noDepartmentUsers: User[] = [];
+
+    // Filter out admins/super admins and group by department
+    filteredUsers.forEach((user) => {
+      // Skip admins and super admins
+      if (user.role === 'admin' || user.role === 'super_admin') {
+        return;
+      }
+
+      if (user.department) {
+        const deptName = user.department.name;
+        if (!departmentMap.has(deptName)) {
+          departmentMap.set(deptName, []);
+        }
+        departmentMap.get(deptName)!.push(user);
+      } else {
+        noDepartmentUsers.push(user);
+      }
+    });
+
+    // Sort users within each department: department heads first, then by name
+    const sortUsersByRole = (a: User, b: User) => {
+      const aIsDeptHead = a.role === 'department_head';
+      const bIsDeptHead = b.role === 'department_head';
+
+      if (aIsDeptHead && !bIsDeptHead) return -1;
+      if (!aIsDeptHead && bIsDeptHead) return 1;
+
+      return a.name.localeCompare(b.name);
+    };
+
+    departmentMap.forEach((users) => users.sort(sortUsersByRole));
+    noDepartmentUsers.sort(sortUsersByRole);
+
+    // Create sections array
+    const newSections: { title: string; data: User[]; key: string }[] = [];
+
+    // Get current user's department
+    const currentUserDeptName = currentUser?.department?.name;
+
+    // Add current user's department first
+    if (currentUserDeptName && departmentMap.has(currentUserDeptName)) {
+      const myDeptUsers = departmentMap.get(currentUserDeptName)!;
+      newSections.push({
+        title: currentUserDeptName,
+        data: myDeptUsers,
+        key: `dept-${currentUserDeptName}`,
+      });
+      departmentMap.delete(currentUserDeptName);
+    }
+
+    // Add other department sections (sorted alphabetically)
+    const sortedDepartments = Array.from(departmentMap.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0])
     );
-    setFilteredUsers(filtered);
+
+    sortedDepartments.forEach(([deptName, users]) => {
+      newSections.push({
+        title: deptName,
+        data: users,
+        key: `dept-${deptName}`,
+      });
+    });
+
+    // Add users without department if any
+    if (noDepartmentUsers.length > 0) {
+      newSections.push({
+        title: 'Без отдела',
+        data: noDepartmentUsers,
+        key: 'no-dept',
+      });
+    }
+
+    setSections(newSections);
   };
 
   const handleReset = () => {
@@ -109,7 +201,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
 
     try {
       setIsLoading(true);
-      const result = await delegateTask(taskId, { to_user_id: selectedUserId });
+      await delegateTask(taskId, { to_user_id: selectedUserId });
       handleReset();
       onDelegated?.();
       onClose();
@@ -126,25 +218,52 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
 
     return (
       <TouchableOpacity
-        style={[styles.userItem, isSelected && styles.userItemSelected]}
+        style={[
+          styles.userItem,
+          { backgroundColor: theme.card },
+          isSelected && {
+            backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff',
+          },
+        ]}
         onPress={() => setSelectedUserId(item.id)}
         disabled={isLoading}
       >
-        <View style={styles.userAvatar}>
-          {item.avatar ? (
-            <Text style={styles.userAvatarText}>
-              {item.name.charAt(0).toUpperCase()}
-            </Text>
-          ) : (
-            <Ionicons name="person" size={20} color="#6b7280" />
-          )}
-        </View>
+        <Avatar
+          name={item.name}
+          imageUrl={item.avatar}
+          size={44}
+          status={item.status}
+          showStatus={true}
+        />
 
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{item.name}</Text>
-          <Text style={styles.userPosition} numberOfLines={1}>
+          <View style={styles.userNameContainer}>
+            <Text style={[styles.userName, { color: theme.text }]}>
+              {item.name}
+            </Text>
+            {item.role === 'department_head' && (
+              <Ionicons
+                name="shield-checkmark"
+                size={16}
+                color="#F59E0B"
+                style={{ marginLeft: 4 }}
+              />
+            )}
+          </View>
+          <Text
+            style={[styles.userPosition, { color: theme.textSecondary }]}
+            numberOfLines={1}
+          >
             {item.position || item.email}
           </Text>
+          {item.department && (
+            <Text
+              style={[styles.userDepartment, { color: theme.textTertiary }]}
+              numberOfLines={1}
+            >
+              {item.department.name}
+            </Text>
+          )}
         </View>
 
         {isSelected && (
@@ -155,18 +274,10 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   };
 
   const renderEmptyState = () => {
-    if (isLoadingUsers) {
-      return (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-        </View>
-      );
-    }
-
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="search-outline" size={48} color="#d1d5db" />
-        <Text style={styles.emptyText}>
+        <Ionicons name="search-outline" size={48} color={theme.textTertiary} />
+        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
           {searchQuery ? 'Пользователи не найдены' : 'Список пользователей пуст'}
         </Text>
       </View>
@@ -181,51 +292,110 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
       onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Делегировать задачу</Text>
+          <View
+            style={[
+              styles.header,
+              {
+                backgroundColor: theme.card,
+                borderBottomColor: theme.border,
+              },
+            ]}
+          >
+            <Text style={[styles.headerTitle, { color: theme.text }]}>
+              Делегировать задачу
+            </Text>
             <TouchableOpacity onPress={handleClose} disabled={isLoading}>
-              <Ionicons name="close" size={24} color="#6b7280" />
+              <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Search */}
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#9ca3af" />
+          <View
+            style={[
+              styles.searchContainer,
+              {
+                backgroundColor: theme.card,
+                borderBottomColor: theme.border,
+              },
+            ]}
+          >
+            <Ionicons name="search" size={20} color={theme.textTertiary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: theme.text }]}
               placeholder="Поиск по имени, должности или email..."
+              placeholderTextColor={theme.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               editable={!isLoading}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color="#9ca3af" />
+                <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
 
           {/* User List */}
-          <FlatList
-            data={filteredUsers}
-            renderItem={renderUserItem}
-            keyExtractor={(item) => item.id.toString()}
-            style={styles.list}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={renderEmptyState}
-            showsVerticalScrollIndicator={false}
-          />
+          {isLoadingUsers ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color="#3b82f6" />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                Загрузка пользователей...
+              </Text>
+            </View>
+          ) : sections.length === 0 ? (
+            renderEmptyState()
+          ) : (
+            <SectionList
+              sections={sections}
+              renderItem={renderUserItem}
+              renderSectionHeader={({ section }) => (
+                <View
+                  style={[
+                    styles.sectionHeader,
+                    { backgroundColor: theme.background },
+                  ]}
+                >
+                  <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+                    {section.title}
+                  </Text>
+                </View>
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              style={styles.list}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={true}
+              stickySectionHeadersEnabled={true}
+              nestedScrollEnabled={true}
+            />
+          )}
 
           {/* Footer */}
-          <View style={styles.footer}>
+          <View
+            style={[
+              styles.footer,
+              {
+                backgroundColor: theme.card,
+                borderTopColor: theme.border,
+              },
+            ]}
+          >
             <TouchableOpacity
-              style={[styles.button, styles.buttonCancel]}
+              style={[
+                styles.button,
+                styles.buttonCancel,
+                { backgroundColor: isDark ? theme.border : '#f3f4f6' },
+              ]}
               onPress={handleClose}
               disabled={isLoading}
             >
-              <Text style={styles.buttonCancelText}>Отмена</Text>
+              <Text
+                style={[styles.buttonCancelText, { color: theme.textSecondary }]}
+              >
+                Отмена
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -257,11 +427,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '85%',
     height: '85%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -270,12 +440,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -283,58 +451,55 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#f9fafb',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#111827',
   },
   list: {
     flex: 1,
+    flexGrow: 1,
   },
   listContent: {
+    paddingBottom: 16,
+    flexGrow: 1,
+  },
+  sectionHeader: {
+    paddingHorizontal: 20,
     paddingVertical: 8,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  userItemSelected: {
-    backgroundColor: '#eff6ff',
-  },
-  userAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#e5e7eb',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  userAvatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6b7280',
+    gap: 12,
   },
   userInfo: {
     flex: 1,
   },
+  userNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
   userName: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#111827',
-    marginBottom: 2,
   },
   userPosition: {
     fontSize: 13,
-    color: '#6b7280',
+    marginBottom: 2,
+  },
+  userDepartment: {
+    fontSize: 12,
   },
   emptyContainer: {
     flex: 1,
@@ -344,7 +509,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9ca3af',
     marginTop: 12,
     textAlign: 'center',
   },
@@ -353,7 +517,6 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   button: {
     flex: 1,
@@ -362,13 +525,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonCancel: {
-    backgroundColor: '#f3f4f6',
-  },
+  buttonCancel: {},
   buttonCancelText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6b7280',
   },
   buttonDelegate: {
     backgroundColor: '#3b82f6',

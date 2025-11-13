@@ -140,8 +140,8 @@ export interface Task {
   original_assignee_id?: number;
   delegation_chain?: TaskUserInfo[];
 
-  // NEW: Progress tracking
-  progress_percentage?: number;
+  // NEW: Progress tracking (automatically calculated by backend based on checklists and subtasks)
+  progress_percentage: number; // 0-100, always provided by backend
 
   // NEW: First-view tracking
   first_viewed_at?: ISODateString;
@@ -195,6 +195,7 @@ export interface CreateTaskDto {
   due_date?: ISODateString;
   tags?: string[];
   checklists?: CreateTaskChecklistDto[]; // Checklists to create with task
+  parent_attachment_ids?: number[]; // IDs of parent task attachments to copy
 }
 
 // Update Task DTO
