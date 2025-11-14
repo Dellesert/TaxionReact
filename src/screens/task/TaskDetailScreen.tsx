@@ -1800,7 +1800,11 @@ const TaskDetailScreen: React.FC = () => {
               onPress: () => navigation.goBack(),
             }}
             rightButton={
-              (permissions.can_edit || permissions.can_change_status || permissions.can_delegate || permissions.can_delete)
+              (permissions.can_edit ||
+               permissions.can_delegate ||
+               permissions.can_create_subtasks ||
+               permissions.can_emergency_complete ||
+               permissions.can_delete)
                 ? {
                     icon: 'ellipsis-horizontal',
                     onPress: () => setShowActionMenu(true),
@@ -2330,8 +2334,8 @@ const TaskDetailScreen: React.FC = () => {
             ) : (
               // History Tab (Activities)
               <View style={styles.content}>
-                {/* Check if user has permission to view history */}
-                {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') ? (
+                {/* History is available to everyone who can view the task */}
+                {permissions.can_view ? (
                   <>
                     {isLoadingActivities ? (
                       <View style={styles.activityLoadingContainer}>
@@ -2390,11 +2394,11 @@ const TaskDetailScreen: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  // Access denied for employees
+                  // Access denied (should rarely happen if permissions are correct)
                   <View style={styles.accessDeniedContainer}>
                     <Ionicons name="lock-closed-outline" size={48} color={theme.textTertiary} />
                     <Text style={styles.accessDeniedText}>
-                      История доступна только руководителям
+                      История недоступна
                     </Text>
                   </View>
                 )}
