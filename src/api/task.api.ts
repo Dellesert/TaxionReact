@@ -214,6 +214,24 @@ export const updateTaskStatus = async (
 };
 
 /**
+ * Emergency complete task (for overdue tasks by delegation chain users)
+ */
+export const emergencyCompleteTask = async (id: number): Promise<Task> => {
+  const response = await api.post<ApiResponse<Task>>(
+    `/tasks/${id}/emergency-complete`
+  );
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.task) {
+    return response.data.task;
+  }
+
+  return response.data as any;
+};
+
+/**
  * Assign task to user
  */
 export const assignTask = async (id: number, data: AssignTaskDto): Promise<Task> => {

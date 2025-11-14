@@ -5,3 +5,4 @@
 
 export { useAuth } from './useAuth';
 export { useWebSocket, useTypingIndicator } from './useWebSocket';
+export { useTaskPermissions, useHasPermission } from './useTaskPermissions';

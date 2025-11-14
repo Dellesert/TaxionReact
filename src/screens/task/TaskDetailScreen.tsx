@@ -25,6 +25,7 @@ import { UserProfileModal } from '@components/common/UserProfileModal';
 import { ScreenHeader } from '@components/common/ScreenHeader';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useTaskPermissions } from '@hooks/useTaskPermissions';
 import { getUser } from '@api/user.api';
 import { getOrCreateDirectChat } from '@api/chat.api';
 import { format } from 'date-fns';
@@ -177,6 +178,9 @@ const TaskDetailScreen: React.FC = () => {
 
   // Track if this is the first focus to avoid reloading on initial mount
   const isFirstFocus = useRef(true);
+
+  // Get permissions for current task using the new hook
+  const permissions = useTaskPermissions(task);
 
   // Update screen width on resize
   useEffect(() => {
@@ -402,6 +406,51 @@ const TaskDetailScreen: React.FC = () => {
       setTask({ ...task, status: newStatus });
     } catch (error) {
       Alert.alert('Ошибка', 'Не удалось обновить статус');
+    }
+  };
+
+  const handleEmergencyComplete = async () => {
+    // Use window.confirm for web, Alert.alert for mobile
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        'Аварийное завершение задачи\n\n' +
+        'Вы собираетесь завершить просроченную задачу в аварийном режиме. ' +
+        'Это действие будет зафиксировано в истории задачи.\n\n' +
+        'Продолжить?'
+      );
+      if (!confirmed) return;
+
+      try {
+        const taskIdNum = Number(taskId);
+        await taskApi.emergencyCompleteTask(taskIdNum);
+        alert('Задача завершена в аварийном режиме');
+        loadTask(); // Reload task to update status
+      } catch (error: any) {
+        alert(`Не удалось завершить задачу: ${error.message || error}`);
+      }
+    } else {
+      // Mobile: use Alert.alert
+      Alert.alert(
+        'Аварийное завершение',
+        'Вы собираетесь завершить просроченную задачу в аварийном режиме. Это действие будет зафиксировано в истории задачи.\n\nПродолжить?',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Завершить',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const taskIdNum = Number(taskId);
+                await taskApi.emergencyCompleteTask(taskIdNum);
+                Alert.alert('Успешно', 'Задача завершена в аварийном режиме');
+                loadTask(); // Reload task to update status
+              } catch (error: any) {
+                Alert.alert('Ошибка', `Не удалось завершить задачу: ${error.message || error}`);
+              }
+            },
+          },
+        ]
+      );
     }
   };
 
@@ -1751,9 +1800,7 @@ const TaskDetailScreen: React.FC = () => {
               onPress: () => navigation.goBack(),
             }}
             rightButton={
-              (canEditTask(task, user?.id, user?.role) ||
-                ((user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-                 task.status !== 'done' && task.status !== 'cancelled'))
+              (permissions.can_edit || permissions.can_change_status || permissions.can_delegate || permissions.can_delete)
                 ? {
                     icon: 'ellipsis-horizontal',
                     onPress: () => setShowActionMenu(true),
@@ -1989,7 +2036,7 @@ const TaskDetailScreen: React.FC = () => {
                 )}
 
                 {/* Checklists Section - show for all who have access */}
-                {canViewTask(task, user?.id) && (
+                {permissions.can_view && (
                   <View style={styles.checklistsSection}>
                     <TaskChecklistsView
                       key={task.id}
@@ -2004,8 +2051,8 @@ const TaskDetailScreen: React.FC = () => {
                         loadTask(); // Reload task to update progress
                       }}
                       onAssigneePress={handleUserPress}
-                      canEdit={canEditTask(task, user?.id, user?.role) && task.status !== 'done'}
-                      canToggleOnly={!canEditTask(task, user?.id, user?.role) && canViewTask(task, user?.id) && task.status !== 'done'}
+                      canEdit={permissions.can_edit && task.status !== 'done'}
+                      canToggleOnly={permissions.can_check_items && !permissions.can_edit && task.status !== 'done'}
                       readOnly={isDelegatedByMe || task.status === 'done'}
                     />
                   </View>
@@ -2029,7 +2076,7 @@ const TaskDetailScreen: React.FC = () => {
                 )}
 
                 {/* Subtasks Section - show for all who have access, readonly for assignees */}
-                {task.status !== 'done' && canViewTask(task, user?.id) && (
+                {task.status !== 'done' && permissions.can_view_subtasks && (
                   <View style={styles.subtasksSection}>
                     <TaskSubtasksList
                       parentTaskId={task.id}
@@ -2041,16 +2088,14 @@ const TaskDetailScreen: React.FC = () => {
                       onSubtaskCreated={() => {
                         loadTask(); // Reload task to update progress
                       }}
-                      // Show create button only for managers who received delegated tasks (not creators, not employees)
+                      // Show create button only for users with permission
                       onCreateSubtaskPress={
-                        task.created_by !== user?.id &&
-                        (user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-                        (canEditTask(task, user?.id, user?.role) || task.assignees?.some(a => a.id === user?.id))
+                        permissions.can_create_subtasks
                           ? () => setShowSubtaskModal(true)
                           : undefined
                       }
                       // Readonly for users who can view but not edit
-                      readOnly={!canEditTask(task, user?.id, user?.role)}
+                      readOnly={!permissions.can_edit}
                     />
                   </View>
                 )}
@@ -2359,7 +2404,7 @@ const TaskDetailScreen: React.FC = () => {
         </View>
 
         {/* Fixed Action Buttons at Bottom */}
-        {task.status !== 'done' && !isDelegatedByMe && activeTab === 'overview' && (
+        {task.status !== 'done' && !isDelegatedByMe && activeTab === 'overview' && permissions.can_change_status && (
           <View style={[styles.fixedActionsContainer, { bottom: insets.bottom + 80 }]}>
             {/* Start/Submit Button - for new or in_progress tasks */}
             {(task.status === 'new' || task.status === 'in_progress') && (
@@ -2478,10 +2523,8 @@ const TaskDetailScreen: React.FC = () => {
           />
         )}
 
-        {/* Create Subtask Modal - only for managers who received delegated tasks (not creators, not employees) */}
-        {task && task.created_by !== user?.id &&
-         (user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-         (canEditTask(task, user?.id, user?.role) || task.assignees?.some(a => a.id === user?.id)) && (
+        {/* Create Subtask Modal - only for users with permission */}
+        {task && permissions.can_create_subtasks && (
           <CreateSubtaskModal
             visible={showSubtaskModal}
             parentTaskId={task.id}
@@ -2584,7 +2627,7 @@ const TaskDetailScreen: React.FC = () => {
               {/* Menu Items */}
               <View style={{ paddingHorizontal: 16 }}>
                 {/* Edit Task Option */}
-                {canEditTask(task, user?.id, user?.role) && (
+                {permissions.can_edit && (
                   <TouchableOpacity
                     style={{
                       flexDirection: 'row',
@@ -2625,10 +2668,8 @@ const TaskDetailScreen: React.FC = () => {
                   </TouchableOpacity>
                 )}
 
-                {/* Delegate Task Option - only for tasks NOT created by current user */}
-                {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-                 task.status !== 'done' && task.status !== 'cancelled' &&
-                 task.created_by !== user?.id && (
+                {/* Delegate Task Option */}
+                {permissions.can_delegate && task.status !== 'done' && task.status !== 'cancelled' && (
                   <TouchableOpacity
                     style={{
                       flexDirection: 'row',
@@ -2670,9 +2711,7 @@ const TaskDetailScreen: React.FC = () => {
                 )}
 
                 {/* Add Subtask Option */}
-                {task.created_by !== user?.id &&
-                 (user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-                 (canEditTask(task, user?.id, user?.role) || task.assignees?.some(a => a.id === user?.id)) && (
+                {permissions.can_create_subtasks && (
                   <TouchableOpacity
                     style={{
                       flexDirection: 'row',
@@ -2713,8 +2752,50 @@ const TaskDetailScreen: React.FC = () => {
                   </TouchableOpacity>
                 )}
 
+                {/* Emergency Complete Option */}
+                {permissions.can_emergency_complete && task.status !== 'done' && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      handleEmergencyComplete();
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="warning-outline" size={20} color="#f59e0b" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#f59e0b', marginBottom: 2 }}>
+                        Аварийное завершение
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Завершить просроченную задачу
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
                 {/* Delete Task Option */}
-                {canDeleteTask(task, user?.id, user?.role) && (
+                {permissions.can_delete && (
                   <TouchableOpacity
                     style={{
                       flexDirection: 'row',

@@ -12,6 +12,20 @@ export type TaskStatus = 'new' | 'viewed' | 'in_progress' | 'review' | 'done' | 
 // Task Priority
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 
+// Task Permissions
+export interface TaskPermissions {
+  can_view: boolean;                // Просмотр задачи
+  can_view_subtasks: boolean;       // Просмотр всех подзадач
+  can_edit: boolean;                // Редактирование задачи
+  can_change_status: boolean;       // Изменение статуса
+  can_check_items: boolean;         // Отмечание чеклистов
+  can_create_subtasks: boolean;     // Создание подзадач
+  can_delegate: boolean;            // Делегирование задачи
+  can_emergency_complete: boolean;  // Аварийное завершение
+  can_assign_users: boolean;        // Назначение исполнителей
+  can_delete: boolean;              // Удаление задачи
+}
+
 // Task Activity Action Types
 export type TaskActivityAction =
   | 'task_created'
@@ -152,6 +166,9 @@ export interface Task {
   activities?: TaskActivity[];
   attachments?: TaskAttachment[];
   checklists?: TaskChecklist[];
+
+  // Permissions for current user
+  permissions?: TaskPermissions;
 
   created_at: ISODateString;
   updated_at: ISODateString;
