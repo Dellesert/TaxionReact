@@ -12,7 +12,6 @@ import {
   ScrollView,
   StyleSheet,
   Modal,
-  Alert,
   Platform,
   StatusBar,
   Switch,
@@ -21,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import * as pollApi from '@api/poll.api';
 import { Poll, PollVisibility } from '@/types/poll.types';
 import DatePickerModal from '@components/common/DatePickerModal';
@@ -40,6 +40,7 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { showSuccess, showError } = useNotification();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,7 +86,7 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
       }
     } catch (error: any) {
       console.error('Failed to load poll:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить опрос');
+      showError('Не удалось загрузить опрос');
       onClose();
     } finally {
       setIsLoading(false);
@@ -100,7 +101,7 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
     if (options.length > 2) {
       setOptions(options.filter((_, i) => i !== index));
     } else {
-      Alert.alert('Ошибка', 'Минимум 2 варианта ответа');
+      showError('Минимум 2 варианта ответа');
     }
   };
 
@@ -112,14 +113,14 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      Alert.alert('Ошибка', 'Введите название опроса');
+      showError('Введите название опроса');
       return;
     }
 
     if (poll?.type !== 'open_text') {
       const filledOptions = options.filter((opt) => opt.text.trim());
       if (filledOptions.length < 2) {
-        Alert.alert('Ошибка', 'Добавьте минимум 2 варианта ответа');
+        showError('Добавьте минимум 2 варианта ответа');
         return;
       }
     }
@@ -147,11 +148,12 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
       }
 
       await pollApi.updatePoll(pollId, updateData);
+      showSuccess('Опрос успешно обновлён');
       onPollUpdated();
       onClose();
     } catch (error: any) {
       console.error('Failed to update poll:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось обновить опрос');
+      showError(error.message || 'Не удалось обновить опрос');
     } finally {
       setIsSubmitting(false);
     }

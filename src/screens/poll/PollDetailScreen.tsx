@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Platform,
   SafeAreaView,
@@ -16,6 +15,8 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import * as pollApi from '@api/poll.api';
 import * as chatApi from '@api/chat.api';
 import { Poll, PollOption, PollType } from '@/types/poll.types';
@@ -41,6 +42,8 @@ const PollDetailScreen: React.FC = () => {
   const route = useRoute<PollDetailScreenRouteProp>();
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
+  const { showSuccess, showError } = useNotification();
+  const { showConfirm } = useActionModal();
 
   const [poll, setPoll] = useState<Poll | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,22 +240,11 @@ const PollDetailScreen: React.FC = () => {
       setIsPublishing(true);
       await pollApi.updatePollStatus(poll.id, { status: 'active' });
 
-      if (Platform.OS === 'web') {
-        alert('Опрос опубликован!');
-      } else {
-        Alert.alert('Успешно', 'Опрос опубликован!');
-      }
-
-      // Reload poll to get updated status
+      showSuccess('Опрос опубликован');
       await loadPollDetail();
     } catch (error: any) {
       console.error('Failed to publish poll:', error);
-      const errorMsg = error.message || 'Не удалось опубликовать опрос';
-      if (Platform.OS === 'web') {
-        alert('Ошибка: ' + errorMsg);
-      } else {
-        Alert.alert('Ошибка', errorMsg);
-      }
+      showError(error.message || 'Не удалось опубликовать опрос');
     } finally {
       setIsPublishing(false);
     }
@@ -261,113 +253,54 @@ const PollDetailScreen: React.FC = () => {
   const handleClose = async () => {
     if (!poll) return;
 
-    const confirmClose = async () => {
-      try {
-        setIsPublishing(true); // Reuse publishing state for closing too
-        await pollApi.updatePollStatus(poll.id, { status: 'closed' });
+    showConfirm(
+      'Завершить опрос?',
+      'Вы уверены, что хотите завершить этот опрос? После завершения голосование будет невозможно.',
+      async () => {
+        try {
+          setIsPublishing(true);
+          await pollApi.updatePollStatus(poll.id, { status: 'closed' });
 
-        if (Platform.OS === 'web') {
-          alert('Опрос завершен!');
-        } else {
-          Alert.alert('Успешно', 'Опрос завершен!');
+          showSuccess('Опрос завершён');
+          await loadPollDetail();
+        } catch (error: any) {
+          console.error('Failed to close poll:', error);
+          showError(error.message || 'Не удалось завершить опрос');
+        } finally {
+          setIsPublishing(false);
         }
-
-        // Reload poll to get updated status
-        await loadPollDetail();
-      } catch (error: any) {
-        console.error('Failed to close poll:', error);
-        const errorMsg = error.message || 'Не удалось завершить опрос';
-        if (Platform.OS === 'web') {
-          alert('Ошибка: ' + errorMsg);
-        } else {
-          Alert.alert('Ошибка', errorMsg);
-        }
-      } finally {
-        setIsPublishing(false);
-      }
-    };
-
-    // For web, use window.confirm
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Вы уверены, что хотите завершить этот опрос? После завершения голосование будет невозможно.');
-      if (confirmed) {
-        await confirmClose();
-      }
-    } else {
-      // For native, use Alert
-      Alert.alert(
-        'Завершить опрос?',
-        'Вы уверены, что хотите завершить этот опрос? После завершения голосование будет невозможно.',
-        [
-          {
-            text: 'Отмена',
-            style: 'cancel',
-          },
-          {
-            text: 'Завершить',
-            style: 'destructive',
-            onPress: confirmClose,
-          },
-        ]
-      );
-    }
+      },
+      undefined,
+      { confirmText: 'Завершить', cancelText: 'Отмена', destructive: true }
+    );
   };
 
   const handleDelete = async () => {
     if (!poll) return;
 
-    const confirmDelete = async () => {
-      try {
-        setIsDeleting(true);
-        const result = await pollApi.deletePoll(poll.id);
+    showConfirm(
+      'Удалить опрос?',
+      'Вы уверены, что хотите удалить этот опрос? Это действие нельзя отменить.',
+      async () => {
+        try {
+          setIsDeleting(true);
+          await pollApi.deletePoll(poll.id);
 
-        if (Platform.OS === 'web') {
-          alert('Опрос удален!');
-        } else {
-          Alert.alert('Успешно', 'Опрос удален!');
+          showSuccess('Опрос удалён');
+          navigation.goBack();
+        } catch (error: any) {
+          console.error('❌ Failed to delete poll:', error);
+          console.error('❌ Error message:', error.message);
+          console.error('❌ Error details:', error.details);
+
+          showError(error.details?.error || error.message || 'Не удалось удалить опрос');
+        } finally {
+          setIsDeleting(false);
         }
-
-        navigation.goBack();
-      } catch (error: any) {
-        console.error('❌ Failed to delete poll:', error);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error details:', error.details);
-
-        const errorMsg = error.details?.error || error.message || 'Не удалось удалить опрос';
-        if (Platform.OS === 'web') {
-          alert('Ошибка: ' + errorMsg);
-        } else {
-          Alert.alert('Ошибка', errorMsg);
-        }
-      } finally {
-        setIsDeleting(false);
-      }
-    };
-
-    // For web, use window.confirm
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Вы уверены, что хотите удалить этот опрос? Это действие нельзя отменить.');
-      if (confirmed) {
-        await confirmDelete();
-      }
-    } else {
-      // For native, use Alert
-      Alert.alert(
-        'Удалить опрос?',
-        'Вы уверены, что хотите удалить этот опрос? Это действие нельзя отменить.',
-        [
-          {
-            text: 'Отмена',
-            style: 'cancel',
-          },
-          {
-            text: 'Удалить',
-            style: 'destructive',
-            onPress: confirmDelete,
-          },
-        ]
-      );
-    }
+      },
+      undefined,
+      { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
+    );
   };
 
   const handleSharePoll = async (chatId: number) => {
@@ -415,7 +348,7 @@ const PollDetailScreen: React.FC = () => {
       switch (poll.type) {
         case 'single_choice':
           if (selectedOptions.length === 0) {
-            Alert.alert('Ошибка', 'Выберите вариант ответа');
+            showError('Выберите вариант ответа');
             setIsVoting(false);
             return;
           }
@@ -424,7 +357,7 @@ const PollDetailScreen: React.FC = () => {
 
         case 'multiple_choice':
           if (selectedOptions.length === 0) {
-            Alert.alert('Ошибка', 'Выберите хотя бы один вариант');
+            showError('Выберите хотя бы один вариант');
             setIsVoting(false);
             return;
           }
@@ -433,7 +366,7 @@ const PollDetailScreen: React.FC = () => {
 
         case 'open_text':
           if (!textAnswer.trim()) {
-            Alert.alert('Ошибка', 'Введите текстовый ответ');
+            showError('Введите текстовый ответ');
             setIsVoting(false);
             return;
           }
@@ -442,7 +375,7 @@ const PollDetailScreen: React.FC = () => {
 
         case 'rating':
           if (ratingValue === null) {
-            Alert.alert('Ошибка', 'Выберите оценку');
+            showError('Выберите оценку');
             setIsVoting(false);
             return;
           }
@@ -458,7 +391,7 @@ const PollDetailScreen: React.FC = () => {
 
         case 'ranking':
           if (Object.keys(rankingValues).length === 0) {
-            Alert.alert('Ошибка', 'Проставьте ранжирование');
+            showError('Проставьте ранжирование');
             setIsVoting(false);
             return;
           }
@@ -482,13 +415,13 @@ const PollDetailScreen: React.FC = () => {
       // Reload poll to get updated results
       await loadPollDetail();
 
-      Alert.alert('Успешно', wasRevoting ? 'Ваш голос изменен!' : 'Ваш голос учтен!');
+      showSuccess(wasRevoting ? 'Ваш голос изменён' : 'Ваш голос учтён');
     } catch (error: any) {
       console.error('❌ Failed to vote:', error);
       console.error('📋 Vote data sent:', JSON.stringify(voteData, null, 2));
       console.error('📋 Error details:', JSON.stringify(error.details, null, 2));
       setError(error.message || 'Failed to submit vote');
-      Alert.alert('Ошибка', error.details?.error || error.message || 'Не удалось проголосовать');
+      showError(error.details?.error || error.message || 'Не удалось проголосовать');
     } finally {
       setIsVoting(false);
     }
@@ -1115,7 +1048,7 @@ const PollDetailScreen: React.FC = () => {
               });
             }
           } catch (error: any) {
-            Alert.alert('Ошибка', error.message || 'Не удалось открыть чат');
+            showError(error.message || 'Не удалось открыть чат');
           }
         }}
       />

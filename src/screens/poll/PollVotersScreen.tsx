@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   ScrollView,
   SafeAreaView,
 } from 'react-native';
@@ -14,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import * as pollApi from '@api/poll.api';
 import { PollVoter, PollVotersList } from '@/types/poll.types';
 import Avatar from '@/components/common/Avatar';
@@ -34,6 +34,7 @@ const PollVotersScreen: React.FC = () => {
   const navigation = useNavigation<PollVotersScreenNavigationProp>();
   const route = useRoute<PollVotersScreenRouteProp>();
   const { theme } = useTheme();
+  const { showError } = useNotification();
 
   const [votersData, setVotersData] = useState<PollVotersList | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,9 +55,9 @@ const PollVotersScreen: React.FC = () => {
       console.error('Failed to load voters:', error);
       setError(error.message || 'Не удалось загрузить список проголосовавших');
 
-      // Show alert for access denied
+      // Show error for access denied
       if (error.message?.includes('access denied') || error.message?.includes('доступ')) {
-        Alert.alert('Доступ запрещен', 'У вас нет прав для просмотра списка проголосовавших');
+        showError('У вас нет прав для просмотра списка проголосовавших');
         navigation.goBack();
       }
     } finally {

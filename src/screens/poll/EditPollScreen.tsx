@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Platform,
   Switch,
@@ -16,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import * as pollApi from '@api/poll.api';
 import { Poll, PollVisibility } from '@/types/poll.types';
 import { PollStackParamList } from '@navigation/types';
@@ -28,6 +28,7 @@ const EditPollScreen: React.FC = () => {
   const navigation = useNavigation<EditPollScreenNavigationProp>();
   const route = useRoute<EditPollScreenRouteProp>();
   const { theme } = useTheme();
+  const { showSuccess, showError } = useNotification();
   const pollId = route.params.pollId;
 
   const [isLoading, setIsLoading] = useState(true);
@@ -83,12 +84,7 @@ const EditPollScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to load poll:', error);
-      const msg = 'Не удалось загрузить опрос';
-      if (Platform.OS === 'web') {
-        alert(msg);
-      } else {
-        Alert.alert('Ошибка', msg);
-      }
+      showError('Не удалось загрузить опрос');
       navigation.goBack();
     } finally {
       setIsLoading(false);
@@ -97,22 +93,12 @@ const EditPollScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      const msg = 'Введите название опроса';
-      if (Platform.OS === 'web') {
-        alert(msg);
-      } else {
-        Alert.alert('Ошибка', msg);
-      }
+      showError('Введите название опроса');
       return;
     }
 
     if (startDate && endDate && endDate <= startDate) {
-      const msg = 'Дата окончания должна быть позже даты начала';
-      if (Platform.OS === 'web') {
-        alert(msg);
-      } else {
-        Alert.alert('Ошибка', msg);
-      }
+      showError('Дата окончания должна быть позже даты начала');
       return;
     }
 
@@ -140,22 +126,11 @@ const EditPollScreen: React.FC = () => {
       console.log('📤 Sending update data:', JSON.stringify(updateData, null, 2));
       await pollApi.updatePoll(pollId, updateData);
 
-      const successMsg = 'Опрос успешно обновлен!';
-      if (Platform.OS === 'web') {
-        alert(successMsg);
-      } else {
-        Alert.alert('Успешно', successMsg);
-      }
-
+      showSuccess('Опрос успешно обновлён');
       navigation.goBack();
     } catch (error: any) {
       console.error('Failed to update poll:', error);
-      const errorMsg = error.message || 'Не удалось обновить опрос';
-      if (Platform.OS === 'web') {
-        alert(`Ошибка: ${errorMsg}`);
-      } else {
-        Alert.alert('Ошибка', errorMsg);
-      }
+      showError(error.message || 'Не удалось обновить опрос');
     } finally {
       setIsSubmitting(false);
     }

@@ -12,7 +12,6 @@ import {
   ScrollView,
   StyleSheet,
   Modal,
-  Alert,
   Platform,
   StatusBar,
   Switch,
@@ -25,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
 import * as pollApi from '@api/poll.api';
 import { PollType, PollVisibility, CreatePollDto } from '@/types/poll.types';
 import UserSelector from '@components/common/UserSelector';
@@ -46,6 +46,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
+  const { showSuccess, showError } = useNotification();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,7 +89,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
     if (options.length > 2) {
       setOptions(options.filter((_, i) => i !== index));
     } else {
-      Alert.alert('Ошибка', 'Минимум 2 варианта ответа');
+      showError('Минимум 2 варианта ответа');
     }
   };
 
@@ -100,14 +101,14 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
 
   const validateForm = (): boolean => {
     if (!title.trim()) {
-      Alert.alert('Ошибка', 'Введите название опроса');
+      showError('Введите название опроса');
       return false;
     }
 
     if (pollType !== 'open_text') {
       const filledOptions = options.filter((opt) => opt.text.trim());
       if (filledOptions.length < 2) {
-        Alert.alert('Ошибка', 'Добавьте минимум 2 варианта ответа');
+        showError('Добавьте минимум 2 варианта ответа');
         return false;
       }
     }
@@ -127,14 +128,14 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
       visibility = 'department';
       departmentId = currentUser?.department_id;
       if (!departmentId) {
-        Alert.alert('Ошибка', 'Вы не принадлежите ни к одному отделу');
+        showError('Вы не принадлежите ни к одному отделу');
         return;
       }
     } else if (audienceType === 'selected_users') {
       visibility = 'invite_only';
       participantIds = selectedUserIds;
       if (selectedUserIds.length === 0) {
-        Alert.alert('Ошибка', 'Выберите хотя бы одного пользователя');
+        showError('Выберите хотя бы одного пользователя');
         return;
       }
     }
@@ -168,11 +169,12 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
       }
 
       await pollApi.createPoll(pollData);
+      showSuccess('Опрос успешно создан');
       onPollCreated();
       handleClose();
     } catch (error: any) {
       console.error('Failed to create poll:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось создать опрос');
+      showError(error.message || 'Не удалось создать опрос');
     } finally {
       setIsSubmitting(false);
     }
