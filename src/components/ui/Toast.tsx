@@ -32,11 +32,11 @@ const Toast: React.FC<ToastProps> = ({
   duration = 4000,
   onHide,
 }) => {
-  const translateY = useRef(new Animated.Value(-100)).current;
+  const translateY = useRef(new Animated.Value(100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Анимация появления
+    // Анимация появления (снизу вверх)
     Animated.parallel([
       Animated.timing(translateY, {
         toValue: 0,
@@ -61,7 +61,7 @@ const Toast: React.FC<ToastProps> = ({
   const hideToast = () => {
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: -100,
+        toValue: 100,
         duration: 300,
         useNativeDriver: true,
       }),
@@ -134,14 +134,12 @@ const Toast: React.FC<ToastProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 50,
     left: 16,
     right: 16,
     maxWidth: width - 32,
     borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,

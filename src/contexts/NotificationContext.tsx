@@ -108,7 +108,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           {notifications.map((notification, index) => (
             <View
               key={notification.id}
-              style={[styles.toastWrapper, { top: 50 + index * 90 }]}
+              style={[styles.toastWrapper, { bottom: 100 + index * 90 }]}
             >
               <Toast
                 {...notification}
@@ -125,7 +125,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 const styles = StyleSheet.create({
   toastContainer: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
     zIndex: 9999,
