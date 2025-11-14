@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Poll } from '../../types/poll.types';
 import { useTheme } from '@hooks/useTheme';
+import { useAuthStore } from '@store/authStore';
 import { Avatar } from '@components/common/Avatar';
 
 interface PollItemProps {
@@ -12,6 +13,7 @@ interface PollItemProps {
 
 export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
   const { theme } = useTheme();
+  const { user } = useAuthStore();
 
   const getStatusColor = () => {
     switch (poll.status) {
@@ -121,6 +123,11 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
   };
 
   const getCreatorName = () => {
+    // Check if creator is current user
+    if (user && poll.created_by === user.id) {
+      return 'Я';
+    }
+
     if (!poll.creator) {
       return poll.created_by ? `Пользователь #${poll.created_by}` : 'Неизвестно';
     }
@@ -133,9 +140,6 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
       onPress={() => onPress(poll)}
       activeOpacity={0.7}
     >
-      {/* Accent Border - colored left border based on status */}
-      <View style={[styles.accentBorder, { backgroundColor: getStatusColor() }]} />
-
       {/* Header with Title */}
       <View style={styles.content}>
         <View style={styles.header}>
@@ -201,37 +205,38 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
         )}
 
         {/* Stats Footer */}
-        <View style={[styles.footer, { borderTopColor: theme.border }]}>
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <View style={[styles.statIconCircle, { backgroundColor: '#10B981' + '15' }]}>
-                <Ionicons name="people" size={16} color="#10B981" />
-              </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>{poll.total_voters || 0}</Text>
+        <View style={[styles.metadataRow, { borderTopColor: theme.border }]}>
+          {/* Metadata items */}
+          <View style={styles.metadataItems}>
+            {/* Voters count */}
+            <View style={styles.metaItem}>
+              <Ionicons name="people-outline" size={14} color={theme.primary} />
+              <Text style={[styles.metaText, { color: theme.text }]}>
+                {poll.total_voters || 0}
+              </Text>
             </View>
 
+            {/* Comments count */}
             {poll.comments_count && poll.comments_count > 0 && (
-              <View style={styles.statBox}>
-                <View style={[styles.statIconCircle, { backgroundColor: '#F59E0B' + '15' }]}>
-                  <Ionicons name="chatbubbles" size={16} color="#F59E0B" />
-                </View>
-                <Text style={[styles.statValue, { color: theme.text }]}>{poll.comments_count}</Text>
+              <View style={styles.metaItem}>
+                <Ionicons name="chatbubbles-outline" size={14} color={theme.primary} />
+                <Text style={[styles.metaText, { color: theme.text }]}>
+                  {poll.comments_count}
+                </Text>
               </View>
             )}
           </View>
 
-          <View style={styles.footerRight}>
-            {/* Creator name with avatar in bottom right corner */}
-            <View style={styles.creatorContainer}>
-              <Avatar
-                name={getCreatorName()}
-                imageUrl={poll.creator?.avatar}
-                size={20}
-              />
-              <Text style={[styles.creatorName, { color: theme.textSecondary }]} numberOfLines={1}>
-                {getCreatorName()}
-              </Text>
-            </View>
+          {/* Creator with avatar and name */}
+          <View style={styles.creatorContainer}>
+            <Text style={[styles.creatorName, { color: theme.textSecondary }]} numberOfLines={1}>
+              {getCreatorName()}
+            </Text>
+            <Avatar
+              name={getCreatorName()}
+              imageUrl={poll.creator?.avatar}
+              size={24}
+            />
           </View>
         </View>
       </View>
@@ -252,13 +257,6 @@ const styles = StyleSheet.create({
     elevation: 3,
     position: 'relative',
     borderWidth: 1,
-  },
-  accentBorder: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
   },
   content: {
     paddingLeft: 16,
@@ -341,39 +339,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  footer: {
+  metadataRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 14,
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
+  },
+  metadataItems: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    flex: 1,
     gap: 12,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: 14,
-    flexWrap: 'wrap',
-  },
-  statBox: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
-  statIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  footerRight: {
-    alignItems: 'flex-end',
-    gap: 6,
+  metaText: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
   },
   deadlineChip: {
     flexDirection: 'row',

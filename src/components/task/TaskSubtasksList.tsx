@@ -233,7 +233,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       borderWidth: 1,
       backgroundColor: theme.backgroundSecondary,
       borderColor: theme.border,
-      shadowColor: '#000',
+      shadowColor: '#fa0000ff',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,
       shadowRadius: 3,
@@ -324,92 +324,61 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       color: theme.primary,
     },
     subtaskItem: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 8,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
+      backgroundColor: theme.backgroundTertiary,
+      borderRadius: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
       borderWidth: 1,
       borderColor: theme.border,
-      gap: 10,
-    },
-    checkboxContainer: {
-      paddingTop: 1,
-    },
-    checkbox: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 2,
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    checkboxChecked: {
-      backgroundColor: '#10b981',
-      borderColor: '#10b981',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     },
     subtaskContent: {
       flex: 1,
     },
     subtaskTitle: {
       fontSize: 14,
-      fontWeight: '500',
+      fontWeight: '600',
       lineHeight: 20,
       color: theme.text,
-      marginBottom: 6,
+      marginBottom: 8,
     },
     subtaskTitleCompleted: {
       textDecorationLine: 'line-through',
       color: theme.textTertiary,
       opacity: 0.6,
     },
-    subtaskMeta: {
+    subtaskFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    subtaskFooterLeft: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      flexWrap: 'wrap',
     },
-    statusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 10,
-    },
-    statusText: {
-      fontSize: 11,
-      fontWeight: '600',
-    },
-    dueDateInfo: {
+    subtaskFooterRight: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-    },
-    dueDateText: {
-      fontSize: 11,
-      color: theme.textSecondary,
-    },
-    progressContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
+      gap: 6,
     },
     progressText: {
-      fontSize: 11,
-      color: theme.textSecondary,
-    },
-    assigneeAvatarContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      alignSelf: 'center',
-      gap: 4,
-      width: 60,
+      fontSize: 13,
+      fontWeight: '500',
     },
     assigneeName: {
-      fontSize: 10,
+      fontSize: 13,
+      fontWeight: '500',
       color: theme.textSecondary,
-      textAlign: 'center',
-      width: '100%',
     },
     subtaskActions: {
       flexDirection: 'row',
@@ -511,21 +480,28 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     const isDone = item.status === 'done';
     const statusColor = STATUS_COLORS[item.status];
 
+    // Get status icon (same as in TaskItem for subtasks)
+    const getStatusIcon = () => {
+      switch (item.status) {
+        case 'done':
+          return 'checkmark-circle';
+        case 'in_progress':
+          return 'time';
+        case 'review':
+          return 'eye';
+        case 'new':
+          return 'ellipse-outline';
+        case 'viewed':
+          return 'eye-outline';
+        case 'cancelled':
+          return 'close-circle-outline';
+        default:
+          return 'ellipse-outline';
+      }
+    };
+
     return (
       <View style={styles.subtaskItem}>
-        {/* Checkbox */}
-        <TouchableOpacity
-          style={styles.checkboxContainer}
-          onPress={() => handleStatusToggle(item)}
-          disabled={readOnly}
-        >
-          <View style={[styles.checkbox, isDone && styles.checkboxChecked]}>
-            {isDone && (
-              <Ionicons name="checkmark" size={16} color="#fff" />
-            )}
-          </View>
-        </TouchableOpacity>
-
         {/* Content */}
         <TouchableOpacity
           style={styles.subtaskContent}
@@ -541,56 +517,45 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
             {item.title}
           </Text>
 
-          {/* Meta info row */}
-          <View style={styles.subtaskMeta}>
-            {/* Status Badge */}
-            <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-              <Text style={[styles.statusText, { color: statusColor }]}>
-                {STATUS_LABELS[item.status]}
-              </Text>
+          {/* Footer */}
+          <View style={styles.subtaskFooter}>
+            {/* Left side: Status icon and progress */}
+            <View style={styles.subtaskFooterLeft}>
+              <Ionicons
+                name={getStatusIcon() as any}
+                size={14}
+                color={statusColor}
+              />
+              {item.progress_percentage !== undefined && item.progress_percentage > 0 && (
+                <Text style={[styles.progressText, { color: theme.text }]}>
+                  {item.progress_percentage}%
+                </Text>
+              )}
             </View>
 
-            {/* Date */}
-            {item.due_date && (
-              <View style={styles.dueDateInfo}>
-                <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
-                <Text style={styles.dueDateText}>
-                  {formatDeadline(item.due_date)}
+            {/* Right side: Name and avatar */}
+            {item.assignees && item.assignees.length > 0 && (
+              <TouchableOpacity
+                style={styles.subtaskFooterRight}
+                onPress={() => {
+                  if (item.assignees && item.assignees[0]) {
+                    setSelectedUserId(item.assignees[0].id);
+                    setIsProfileModalVisible(true);
+                  }
+                }}
+              >
+                <Text style={styles.assigneeName} numberOfLines={1}>
+                  {item.assignees[0].name}
                 </Text>
-              </View>
-            )}
-
-            {/* Progress */}
-            {item.progress_percentage !== undefined && item.progress_percentage > 0 && (
-              <View style={styles.progressContainer}>
-                <Ionicons name="stats-chart" size={12} color={theme.textSecondary} />
-                <Text style={styles.progressText}>{item.progress_percentage}%</Text>
-              </View>
+                <Avatar
+                  name={item.assignees[0].name}
+                  imageUrl={item.assignees[0].avatar}
+                  size={24}
+                />
+              </TouchableOpacity>
             )}
           </View>
         </TouchableOpacity>
-
-        {/* Assignee Avatar - Right */}
-        {item.assignees && item.assignees.length > 0 && (
-          <TouchableOpacity
-            style={styles.assigneeAvatarContainer}
-            onPress={() => {
-              if (item.assignees && item.assignees[0]) {
-                setSelectedUserId(item.assignees[0].id);
-                setIsProfileModalVisible(true);
-              }
-            }}
-          >
-            <Avatar
-              name={item.assignees[0].name}
-              imageUrl={item.assignees[0].avatar}
-              size={24}
-            />
-            <Text style={styles.assigneeName} numberOfLines={1}>
-              {item.assignees[0].name}
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
     );
   };

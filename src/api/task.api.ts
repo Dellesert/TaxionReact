@@ -155,15 +155,15 @@ export const getTask = async (id: number): Promise<Task> => {
     task = response.data as any;
   }
 
-  // Load delegation chain if task has delegation info
-  if (task.delegated_from_user_id || task.original_assignee_id) {
-    try {
-      const delegationChain = await getDelegationChain(id);
+  // Always try to load delegation chain (important for subtasks of delegated tasks)
+  try {
+    const delegationChain = await getDelegationChain(id);
+    // Only set if delegation chain exists and is not empty
+    if (delegationChain && delegationChain.length > 0) {
       task.delegation_chain = delegationChain;
-      console.log('📋 Loaded delegation chain:', delegationChain);
-    } catch (error) {
-      console.error('Failed to load delegation chain:', error);
     }
+  } catch (error) {
+    // Silently ignore if delegation chain doesn't exist (not all tasks have delegation)
   }
 
   return task;

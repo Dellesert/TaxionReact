@@ -251,7 +251,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       setChecklists(data);
       // Auto-expand all checklists initially
       setExpandedChecklists(new Set(data.map(c => c.id)));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading checklists:', error);
       Alert.alert('Ошибка', 'Не удалось загрузить чеклисты');
     } finally {
@@ -260,6 +260,8 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   };
 
   useEffect(() => {
+    setLoading(true);
+    setChecklists([]);
     loadChecklists();
   }, [taskId]);
 
@@ -421,7 +423,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 
           <View style={styles.checklistHeaderLeft}>
             <Text style={[styles.checklistTitle, { color: theme.text }]}>
-              {checklist.title}
+              {taskTitle || checklist.title}
             </Text>
           </View>
 
@@ -526,6 +528,9 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
                   disabled={!assigneeId || !onAssigneePress}
                   activeOpacity={0.7}
                 >
+                  <Text style={[styles.assigneeName, { color: theme.textSecondary }]}>
+                    {assigneeId ? getUserDisplayName(assigneeName, assigneeId, user?.id) : assigneeName}
+                  </Text>
                   {assigneeAvatar ? (
                     <Image
                       source={{ uri: assigneeAvatar }}
@@ -538,9 +543,6 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
                       </Text>
                     </View>
                   )}
-                  <Text style={[styles.assigneeName, { color: theme.textSecondary }]}>
-                    {assigneeId ? getUserDisplayName(assigneeName, assigneeId, user?.id) : assigneeName}
-                  </Text>
                 </TouchableOpacity>
               )}
             </View>

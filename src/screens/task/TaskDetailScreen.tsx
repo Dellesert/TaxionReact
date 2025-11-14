@@ -86,7 +86,7 @@ const canDeleteTask = (task: Task | null, userId: number | undefined, userRole: 
 };
 
 /**
- * Check if user has access to view task (includes assignees)
+ * Check if user has access to view task (includes assignees and delegation chain)
  */
 const canViewTask = (task: Task | null, userId: number | undefined): boolean => {
   if (!task || !userId) return false;
@@ -98,6 +98,14 @@ const canViewTask = (task: Task | null, userId: number | undefined): boolean => 
   if (task.assignees) {
     for (const assignee of task.assignees) {
       if (assignee.id === userId) return true;
+    }
+  }
+
+  // Users in delegation chain have access
+  if (task.delegation_chain && Array.isArray(task.delegation_chain)) {
+    for (const delegator of task.delegation_chain) {
+      // Check both delegator_id and id fields (API may return different formats)
+      if (delegator.delegator_id === userId || delegator.id === userId) return true;
     }
   }
 
@@ -167,6 +175,9 @@ const TaskDetailScreen: React.FC = () => {
   // Scroll animation - disabled due to performance issues
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // Track if this is the first focus to avoid reloading on initial mount
+  const isFirstFocus = useRef(true);
+
   // Update screen width on resize
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -221,37 +232,73 @@ const TaskDetailScreen: React.FC = () => {
     }
   }, [showActionMenu]);
 
-  // Reload subtasks when screen gains focus (e.g., coming back from subtask detail)
+  // Reload task and subtasks when screen gains focus (e.g., coming back from subtask detail)
   useFocusEffect(
     useCallback(() => {
-      if (task && task.subtask_count && task.subtask_count > 0) {
-        loadSubtasks(Number(taskId));
+      // Skip reload on first focus (initial mount)
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
       }
-    }, [task, taskId])
+
+      // Reload task silently when returning to this screen
+      loadTaskSilently();
+    }, [taskId])
   );
 
-  const loadTask = async () => {
+  // Silent reload without showing loading indicator
+  const loadTaskSilently = async () => {
     try {
-      console.log('🔄 Loading task:', taskId);
-      setIsLoading(true);
-      setAccessDenied(false);
       const taskIdNum = Number(taskId);
       const response = await taskApi.getTask(taskIdNum);
-      console.log('📥 Task loaded:', {
-        id: response.id,
-        title: response.title,
-        delegation_chain: response.delegation_chain,
-        assigned_to: response.assigned_to,
-      });
 
       // Load checklists for the task
       try {
         const checklists = await taskApi.getTaskChecklists(taskIdNum);
         response.checklists = checklists;
-        console.log('📋 Loaded checklists:', checklists.length);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load checklists:', error);
-        // Don't fail the whole task load if checklists fail
+        response.checklists = [];
+      }
+
+      setTask(response);
+
+      // Load subtasks if this is a parent task
+      if (response.subtask_count && response.subtask_count > 0) {
+        loadSubtasks(taskIdNum);
+      }
+    } catch (error: any) {
+      console.error('Failed to silently reload task:', error);
+      // Don't show error alert for silent reloads
+    }
+  };
+
+  const loadTask = async () => {
+    try {
+      setIsLoading(true);
+      setAccessDenied(false);
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTask(taskIdNum);
+
+      // If this is a subtask, ALWAYS load delegation chain from parent task (override subtask's own chain)
+      if (response.parent_task_id) {
+        try {
+          const parentDelegationChain = await taskApi.getDelegationChain(response.parent_task_id);
+          if (parentDelegationChain && parentDelegationChain.length > 0) {
+            response.delegation_chain = parentDelegationChain;
+          }
+        } catch (error) {
+          console.error('Failed to load parent delegation chain:', error);
+        }
+      }
+
+      // Load checklists for the task
+      try {
+        const checklists = await taskApi.getTaskChecklists(taskIdNum);
+        response.checklists = checklists;
+      } catch (error: any) {
+        console.error('Failed to load checklists:', error);
+        response.checklists = [];
       }
 
       setTask(response);
@@ -1247,11 +1294,16 @@ const TaskDetailScreen: React.FC = () => {
       fontSize: 12,
       color: '#6b7280',
     },
+    attachmentMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
     attachmentUploader: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      marginTop: 6,
     },
     attachmentUploaderName: {
       fontSize: 11,
@@ -1921,14 +1973,14 @@ const TaskDetailScreen: React.FC = () => {
                             onPress={() => handleUserPress(task.assignees![0].id)}
                             activeOpacity={0.7}
                           >
+                            <Text style={[styles.descriptionAssigneeName, { color: theme.textSecondary }]}>
+                              {getUserDisplayName(task.assignees[0].name, task.assignees[0].id, user?.id)}
+                            </Text>
                             <Avatar
                               name={task.assignees[0].name}
                               imageUrl={task.assignees[0].avatar}
                               size={22}
                             />
-                            <Text style={[styles.descriptionAssigneeName, { color: theme.textSecondary }]}>
-                              {getUserDisplayName(task.assignees[0].name, task.assignees[0].id, user?.id)}
-                            </Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -1940,6 +1992,7 @@ const TaskDetailScreen: React.FC = () => {
                 {canViewTask(task, user?.id) && (
                   <View style={styles.checklistsSection}>
                     <TaskChecklistsView
+                      key={task.id}
                       taskId={task.id}
                       taskTitle={task.title}
                       assigneeName={task.assignees && task.assignees.length > 0 ? task.assignees[0].name : undefined}
@@ -2038,21 +2091,23 @@ const TaskDetailScreen: React.FC = () => {
                               <Text style={styles.attachmentName} numberOfLines={1}>
                                 {decodeFileName(attachment.file_name)}
                               </Text>
-                              <Text style={styles.attachmentMeta}>
-                                {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
-                              </Text>
-                              {attachment.uploaded_by && (
-                                <View style={styles.attachmentUploader}>
-                                  <Avatar
-                                    name={attachment.uploaded_by.name}
-                                    imageUrl={attachment.uploaded_by.avatar}
-                                    size={20}
-                                  />
-                                  <Text style={styles.attachmentUploaderName} numberOfLines={1}>
-                                    {getUserDisplayName(attachment.uploaded_by.name, attachment.uploaded_by.id, user?.id)}
-                                  </Text>
-                                </View>
-                              )}
+                              <View style={styles.attachmentMetaRow}>
+                                <Text style={styles.attachmentMeta}>
+                                  {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
+                                </Text>
+                                {attachment.uploaded_by && (
+                                  <View style={styles.attachmentUploader}>
+                                    <Text style={styles.attachmentUploaderName} numberOfLines={1}>
+                                      {getUserDisplayName(attachment.uploaded_by.name, attachment.uploaded_by.id, user?.id)}
+                                    </Text>
+                                    <Avatar
+                                      name={attachment.uploaded_by.name}
+                                      imageUrl={attachment.uploaded_by.avatar}
+                                      size={20}
+                                    />
+                                  </View>
+                                )}
+                              </View>
                             </View>
                           </TouchableOpacity>
                           {!isDelegatedByMe &&
