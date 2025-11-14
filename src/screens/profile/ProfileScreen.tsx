@@ -519,11 +519,6 @@ const ProfileScreen: React.FC = () => {
               <Text style={[dynamicStyles.menuItemText]}>Ключ входа</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
-            <TouchableOpacity style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
-              <Ionicons style={[styles.menuIcon, {backgroundColor: '#a2a2a2ff'}]} name="lock-closed-outline" size={20} color="#FFFFFF" />
-              <Text style={[dynamicStyles.menuItemText]}>Конфиденциальность</Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
           </View>
 
           {/* Notifications */}
