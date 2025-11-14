@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   TextInput,
   Platform,
@@ -15,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import * as userApi from '@api/user.api';
 import { Department, User } from '@/types/user.types';
 import { Avatar } from '@components/common/Avatar';
@@ -28,6 +29,8 @@ const EditDepartmentScreen: React.FC = () => {
   const route = useRoute<EditDepartmentRouteProp>();
   const { theme } = useTheme();
   const { user: currentUser } = useAuthStore();
+  const { showError, showSuccess } = useNotification();
+  const { showConfirm } = useActionModal();
   const { departmentId } = route.params;
 
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +69,7 @@ const EditDepartmentScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to load department:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить данные отдела');
+      showError('Не удалось загрузить данные отдела');
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +77,7 @@ const EditDepartmentScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Ошибка', 'Введите название отдела');
+      showError('Введите название отдела');
       return;
     }
 
@@ -85,11 +88,11 @@ const EditDepartmentScreen: React.FC = () => {
         head_id: headId,
       });
 
-      Alert.alert('Успех', 'Отдел обновлен');
+      showSuccess('Отдел обновлен');
       navigation.goBack();
     } catch (error: any) {
       console.error('Failed to update department:', error);
-      Alert.alert('Ошибка', 'Не удалось обновить отдел');
+      showError('Не удалось обновить отдел');
     } finally {
       setIsSaving(false);
     }
@@ -102,72 +105,59 @@ const EditDepartmentScreen: React.FC = () => {
         await userApi.updateUser(userId, { department_id: departmentId });
       }
 
-      Alert.alert('Успех', 'Пользователи добавлены в отдел');
+      showSuccess('Пользователи добавлены в отдел');
       loadData(); // Reload data
     } catch (error: any) {
       console.error('Failed to add users:', error);
-      Alert.alert('Ошибка', 'Не удалось добавить пользователей');
+      showError('Не удалось добавить пользователей');
     }
   };
 
   const handleRemoveUser = async (user: User) => {
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm(`Вы уверены, что хотите удалить "${user.name}" из отдела?`)
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Удалить из отдела',
-            `Вы уверены, что хотите удалить "${user.name}" из отдела?`,
-            [
-              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
-              {
-                text: 'Удалить',
-                style: 'destructive',
-                onPress: () => resolve(true),
-              },
-            ]
-          );
-        });
-
-    if (!confirmed) return;
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Вы уверены, что хотите удалить "${user.name}" из отдела?`);
+      if (!confirmed) return;
+    } else {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        showConfirm(
+          'Удалить из отдела',
+          `Вы уверены, что хотите удалить "${user.name}" из отдела?`,
+          () => resolve(true),
+          () => resolve(false),
+          { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
+        );
+      });
+      if (!confirmed) return;
+    }
 
     try {
       await userApi.updateUser(user.id, { department_id: 0 });
-      if (Platform.OS === 'web') {
-        alert('Пользователь удален из отдела');
-      } else {
-        Alert.alert('Успех', 'Пользователь удален из отдела');
-      }
+      showSuccess('Пользователь удален из отдела');
       loadData();
     } catch (error: any) {
       console.error('Failed to remove user:', error);
       console.error('Error details:', error.response?.data || error.message);
       const errorMessage = `Не удалось удалить пользователя: ${error.response?.data?.error || error.message}`;
-      if (Platform.OS === 'web') {
-        alert(errorMessage);
-      } else {
-        Alert.alert('Ошибка', errorMessage);
-      }
+      showError(errorMessage);
     }
   };
 
   const handleSetHead = async (user: User) => {
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm(`Назначить "${user.name}" руководителем отдела?`)
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Назначить руководителем',
-            `Назначить "${user.name}" руководителем отдела?`,
-            [
-              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
-              {
-                text: 'Назначить',
-                onPress: () => resolve(true),
-              },
-            ]
-          );
-        });
-
-    if (!confirmed) return;
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Назначить "${user.name}" руководителем отдела?`);
+      if (!confirmed) return;
+    } else {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        showConfirm(
+          'Назначить руководителем',
+          `Назначить "${user.name}" руководителем отдела?`,
+          () => resolve(true),
+          () => resolve(false),
+          { confirmText: 'Назначить', cancelText: 'Отмена' }
+        );
+      });
+      if (!confirmed) return;
+    }
 
     try {
       setHeadId(user.id);
@@ -175,19 +165,11 @@ const EditDepartmentScreen: React.FC = () => {
         name: name.trim(),
         head_id: user.id,
       });
-      if (Platform.OS === 'web') {
-        alert('Руководитель назначен');
-      } else {
-        Alert.alert('Успех', 'Руководитель назначен');
-      }
+      showSuccess('Руководитель назначен');
       loadData();
     } catch (error: any) {
       console.error('Failed to set head:', error);
-      if (Platform.OS === 'web') {
-        alert('Не удалось назначить руководителя');
-      } else {
-        Alert.alert('Ошибка', 'Не удалось назначить руководителя');
-      }
+      showError('Не удалось назначить руководителя');
       loadData(); // Reload to reset state
     }
   };

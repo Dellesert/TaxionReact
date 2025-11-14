@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +18,7 @@ import { ScreenHeader } from '@components/common/ScreenHeader';
 import { MonthCalendarView } from '@components/calendar/MonthCalendarView';
 import { mockGetEvents, isMockMode } from '@utils/mockData';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { useAuthStore } from '@store/authStore';
 import * as calendarApi from '@api/calendar.api';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths } from 'date-fns';
@@ -31,6 +31,7 @@ interface EventSection {
 
 const CalendarScreen: React.FC = () => {
   const { theme } = useTheme();
+  const { showError } = useNotification();
   const { user } = useAuthStore();
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +88,7 @@ const CalendarScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load events:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить события');
+      showError('Не удалось загрузить события');
     } finally {
       setIsLoading(false);
     }

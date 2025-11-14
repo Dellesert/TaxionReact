@@ -11,7 +11,6 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import * as sessionApi from '@api/session.api';
@@ -28,6 +29,8 @@ import type { ActiveSession } from '../types/user.types';
 export default function ActiveSessionsScreen() {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
+  const { showError, showSuccess } = useNotification();
+  const { showConfirm } = useActionModal();
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,11 +64,7 @@ export default function ActiveSessionsScreen() {
       setSessions(response.sessions || []);
     } catch (error: any) {
       console.error('Failed to load sessions:', error);
-      if (Platform.OS === 'web') {
-        alert('Не удалось загрузить список устройств');
-      } else {
-        Alert.alert('Ошибка', 'Не удалось загрузить список устройств');
-      }
+      showError('Не удалось загрузить список устройств');
     } finally {
       setLoading(false);
     }
@@ -86,12 +85,7 @@ export default function ActiveSessionsScreen() {
     const performDelete = async () => {
       try {
         await sessionApi.deleteSession(session.session_id);
-
-        if (Platform.OS === 'web') {
-          alert('Сессия удалена');
-        } else {
-          Alert.alert('Успешно', 'Сессия удалена');
-        }
+        showSuccess('Сессия удалена');
 
         if (isCurrentSession) {
           // If deleted current session, logout
@@ -102,11 +96,7 @@ export default function ActiveSessionsScreen() {
         }
       } catch (error: any) {
         console.error('Failed to delete session:', error);
-        if (Platform.OS === 'web') {
-          alert('Не удалось удалить сессию');
-        } else {
-          Alert.alert('Ошибка', 'Не удалось удалить сессию');
-        }
+        showError('Не удалось удалить сессию');
       }
     };
 
@@ -116,29 +106,20 @@ export default function ActiveSessionsScreen() {
         await performDelete();
       }
     } else {
-      // Use Alert.alert for mobile
-      Alert.alert(
+      // Use showConfirm for mobile
+      showConfirm(
         'Удалить сессию?',
         message,
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Удалить',
-            style: 'destructive',
-            onPress: performDelete,
-          },
-        ]
+        performDelete,
+        undefined,
+        { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
       );
     }
   };
 
   const handleDeleteAllOther = async () => {
     if (sessions.length <= 1) {
-      if (Platform.OS === 'web') {
-        alert('Это единственная активная сессия');
-      } else {
-        Alert.alert('Нет других сессий', 'Это единственная активная сессия');
-      }
+      showError('Это единственная активная сессия');
       return;
     }
 
@@ -148,22 +129,11 @@ export default function ActiveSessionsScreen() {
     const performDeleteAll = async () => {
       try {
         const response = await sessionApi.deleteAllOtherSessions();
-
-        if (Platform.OS === 'web') {
-          alert(`Удалено сессий: ${response.deleted_count}`);
-        } else {
-          Alert.alert('Успешно', `Удалено сессий: ${response.deleted_count}`);
-        }
-
+        showSuccess(`Удалено сессий: ${response.deleted_count}`);
         loadSessions();
       } catch (error: any) {
         console.error('Failed to delete all sessions:', error);
-
-        if (Platform.OS === 'web') {
-          alert('Не удалось удалить сессии');
-        } else {
-          Alert.alert('Ошибка', 'Не удалось удалить сессии');
-        }
+        showError('Не удалось удалить сессии');
       }
     };
 
@@ -173,18 +143,13 @@ export default function ActiveSessionsScreen() {
         await performDeleteAll();
       }
     } else {
-      // Use Alert.alert for mobile
-      Alert.alert(
+      // Use showConfirm for mobile
+      showConfirm(
         'Выйти со всех устройств?',
         message,
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Выйти',
-            style: 'destructive',
-            onPress: performDeleteAll,
-          },
-        ]
+        performDeleteAll,
+        undefined,
+        { confirmText: 'Выйти', cancelText: 'Отмена', destructive: true }
       );
     }
   };

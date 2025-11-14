@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import FileViewer from 'react-native-file-viewer';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import { isImageFile, replaceLocalhostWithIP } from '@utils/message.utils';
@@ -37,6 +38,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   onLongPress,
 }) => {
   const { theme } = useTheme();
+  const { showError } = useNotification();
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const [blobUrls, setBlobUrls] = React.useState<{ [key: number]: string }>({});
 
@@ -125,7 +127,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
       // Get auth session ID
       const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
       if (!sessionId) {
-        Alert.alert('Ошибка', 'Необходима авторизация для скачивания файла');
+        showError('Необходима авторизация для скачивания файла');
         return;
       }
 
@@ -207,7 +209,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
       }
     } catch (error) {
       console.error('❌ Failed to download file:', error);
-      Alert.alert('Ошибка', 'Не удалось скачать файл');
+      showError('Не удалось скачать файл');
     }
   };
 

@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Platform,
   ActionSheetIOS,
-  Alert,
   Modal,
   Pressable,
 } from 'react-native';
@@ -16,6 +15,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { fileApi, FileUploadResponse } from '../../api/fileApi';
 import { useTheme } from '@hooks/useTheme';
+import { useActionModal } from '@contexts/ActionModalContext';
 
 interface FileAttachmentPickerProps {
   onFilesSelected: (fileIds: number[]) => void;
@@ -27,6 +27,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   onError,
 }) => {
   const { theme } = useTheme();
+  const { showOptions } = useActionModal();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const [showMenu, setShowMenu] = useState(false);
@@ -140,17 +141,14 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         }
       );
     } else {
-      // На Android используем простой Alert с кнопками
-      Alert.alert(
+      // На Android используем ActionModal
+      showOptions(
         'Прикрепить файл',
-        'Выберите источник',
         [
-          { text: 'Отмена', style: 'cancel' },
-          { text: 'Галерея', onPress: handleImagePick },
-          { text: 'Камера', onPress: handleCameraPick },
-          { text: 'Документы', onPress: handleDocumentPick },
-        ],
-        { cancelable: true }
+          { text: 'Галерея', onPress: handleImagePick, icon: 'image' },
+          { text: 'Камера', onPress: handleCameraPick, icon: 'camera' },
+          { text: 'Документы', onPress: handleDocumentPick, icon: 'document-attach' },
+        ]
       );
     }
   };

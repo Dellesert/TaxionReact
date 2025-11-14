@@ -10,12 +10,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { Task, TaskStatus } from '../../types/task.types';
 import { getSubtasks, updateTaskStatus } from '../../api/task.api';
 import { getOrCreateDirectChat } from '@api/chat.api';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
@@ -216,6 +216,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   readOnly = false,
 }) => {
   const { theme, isDark } = useTheme();
+  const { showError } = useNotification();
   const navigation = useNavigation();
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -420,7 +421,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       setSubtasks(data);
     } catch (error) {
       console.error('Error loading subtasks:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить подзадачи');
+      showError('Не удалось загрузить подзадачи');
     } finally {
       setLoading(false);
     }
@@ -446,7 +447,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       }
     } catch (error) {
       console.error('Error updating subtask status:', error);
-      Alert.alert('Ошибка', 'Не удалось обновить статус подзадачи');
+      showError('Не удалось обновить статус подзадачи');
     }
   };
 
@@ -468,11 +469,11 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
           },
         });
       } else {
-        Alert.alert('Ошибка', 'Не удалось открыть чат');
+        showError('Не удалось открыть чат');
       }
     } catch (error: any) {
       console.error('Error opening chat:', error);
-      Alert.alert('Ошибка', 'Не удалось открыть чат');
+      showError('Не удалось открыть чат');
     }
   };
 

@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
   StyleSheet,
   Platform,
   ActivityIndicator,
@@ -17,6 +16,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { Avatar } from '@components/common/Avatar';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import { fileApi } from '@api/fileApi';
 import { updateAvatar } from '@api/user.api';
 import * as secureStorage from '@utils/secureStorage';
@@ -26,6 +27,8 @@ const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user, logout, setUser, refreshUser } = useAuthStore();
   const { theme, mode, isDark, setTheme } = useTheme();
+  const { showSuccess, showError } = useNotification();
+  const { showConfirm, showOptions } = useActionModal();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [notifications, setNotifications] = useState({
@@ -66,13 +69,13 @@ const ProfileScreen: React.FC = () => {
 
           // Validate file size (max 5MB)
           if (file.size > 5 * 1024 * 1024) {
-            Alert.alert('Ошибка', 'Размер файла не должен превышать 5 МБ');
+            showError('Размер файла не должен превышать 5 МБ');
             return;
           }
 
           // Validate file type
           if (!file.type.startsWith('image/')) {
-            Alert.alert('Ошибка', 'Пожалуйста, выберите изображение');
+            showError('Пожалуйста, выберите изображение');
             return;
           }
 
@@ -101,10 +104,10 @@ const ProfileScreen: React.FC = () => {
             await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
             console.log('✅ User data saved to storage');
 
-            Alert.alert('Успех', 'Фотография профиля обновлена');
+            showSuccess('Фотография профиля обновлена');
           } catch (error) {
             console.error('❌ Failed to upload avatar:', error);
-            Alert.alert('Ошибка', 'Не удалось обновить фотографию. Попробуйте снова.');
+            showError('Не удалось обновить фотографию. Попробуйте снова.');
           } finally {
             setIsUploadingAvatar(false);
           }
@@ -117,21 +120,21 @@ const ProfileScreen: React.FC = () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permissionResult.granted) {
-          Alert.alert('Требуется разрешение', 'Пожалуйста, разрешите доступ к галерее для загрузки фото');
+          showError('Пожалуйста, разрешите доступ к галерее для загрузки фото');
           return;
         }
 
         // Show action sheet to choose between camera and gallery
-        Alert.alert(
+        showOptions(
           'Выбрать фото',
-          'Выберите источник изображения',
           [
             {
               text: 'Камера',
+              icon: 'camera',
               onPress: async () => {
                 const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
                 if (!cameraPermission.granted) {
-                  Alert.alert('Требуется разрешение', 'Пожалуйста, разрешите доступ к камере');
+                  showError('Пожалуйста, разрешите доступ к камере');
                   return;
                 }
                 await pickImageFromSource('camera');
@@ -139,18 +142,15 @@ const ProfileScreen: React.FC = () => {
             },
             {
               text: 'Галерея',
+              icon: 'image',
               onPress: () => pickImageFromSource('gallery'),
-            },
-            {
-              text: 'Отмена',
-              style: 'cancel',
             },
           ]
         );
       }
     } catch (error) {
       console.error('❌ Error opening file picker:', error);
-      Alert.alert('Ошибка', 'Не удалось открыть выбор файла');
+      showError('Не удалось открыть выбор файла');
     }
   };
 
@@ -212,51 +212,38 @@ const ProfileScreen: React.FC = () => {
         await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
         console.log('✅ User data saved to storage');
 
-        Alert.alert('Успех', 'Фотография профиля обновлена');
+        showSuccess('Фотография профиля обновлена');
       } catch (error) {
         console.error('❌ Failed to upload avatar:', error);
-        Alert.alert('Ошибка', 'Не удалось обновить фотографию. Попробуйте снова.');
+        showError('Не удалось обновить фотографию. Попробуйте снова.');
       } finally {
         setIsUploadingAvatar(false);
       }
     } catch (error) {
       console.error('❌ Error picking image:', error);
-      Alert.alert('Ошибка', 'Не удалось выбрать изображение');
+      showError('Не удалось выбрать изображение');
     }
   };
 
   const handleLogout = async () => {
-  if (Platform.OS === 'web') {
-    // Веб: просто выполняем выход
-    try {
-      setIsLoggingOut(true);
-      await logout();
-    } catch (error) {
-      console.error('Ошибка при выходе:', error);
-    } finally {
-      setIsLoggingOut(false);
-    }
-  } else {
-    // Мобильные платформы: показываем диалог подтверждения
-    Alert.alert('Выход', 'Вы уверены, что хотите выйти?', [
-      { text: 'Отмена', style: 'cancel' },
-      {
-        text: 'Выйти',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setIsLoggingOut(true);
-            await logout();
-          } catch (error) {
-            Alert.alert('Ошибка', 'Не удалось выйти из аккаунта');
-          } finally {
-            setIsLoggingOut(false);
-          }
-        },
+    showConfirm(
+      'Выход',
+      'Вы уверены, что хотите выйти?',
+      async () => {
+        try {
+          setIsLoggingOut(true);
+          await logout();
+        } catch (error) {
+          console.error('Ошибка при выходе:', error);
+          showError('Не удалось выйти из аккаунта');
+        } finally {
+          setIsLoggingOut(false);
+        }
       },
-    ]);
-  }
-};
+      undefined,
+      { confirmText: 'Выйти', cancelText: 'Отмена', destructive: true }
+    );
+  };
 
   const handleToggleNotification = (key: keyof typeof notifications, value: boolean) => {
     setNotifications((prev) => ({ ...prev, [key]: value }));
@@ -276,37 +263,26 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleThemePress = () => {
-    if (Platform.OS === 'web') {
-      // На web просто переключаем
-      const modes: Array<typeof mode> = ['system', 'light', 'dark'];
-      const currentIndex = modes.indexOf(mode);
-      const nextMode = modes[(currentIndex + 1) % modes.length];
-      setTheme(nextMode);
-    } else {
-      // На мобильных показываем диалог выбора
-      Alert.alert(
-        'Выбор темы',
-        'Выберите тему оформления приложения',
-        [
-          {
-            text: 'Системная',
-            onPress: () => setTheme('system'),
-          },
-          {
-            text: 'Светлая',
-            onPress: () => setTheme('light'),
-          },
-          {
-            text: 'Тёмная',
-            onPress: () => setTheme('dark'),
-          },
-          {
-            text: 'Отмена',
-            style: 'cancel',
-          },
-        ]
-      );
-    }
+    showOptions(
+      'Выбор темы',
+      [
+        {
+          text: 'Системная',
+          icon: 'phone-portrait',
+          onPress: () => setTheme('system'),
+        },
+        {
+          text: 'Светлая',
+          icon: 'sunny',
+          onPress: () => setTheme('light'),
+        },
+        {
+          text: 'Тёмная',
+          icon: 'moon',
+          onPress: () => setTheme('dark'),
+        },
+      ]
+    );
   };
 
   if (!user) {

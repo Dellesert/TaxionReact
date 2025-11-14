@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { ConfirmDialog } from '@components/common/ConfirmDialog';
 import { InputDialog } from '@components/common/InputDialog';
 import { ActionSheet, ActionSheetOption } from '@components/common/ActionSheet';
@@ -31,6 +32,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'ChatSettings'>;
 const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const { chatId, chatName } = route.params;
   const { theme } = useTheme();
+  const { showError } = useNotification();
   const currentUser = useAuthStore((state) => state.user);
   const getChatById = useChatStore((state) => state.getChatById);
   const deleteChat = useChatStore((state) => state.deleteChat);
@@ -245,7 +247,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleAddMembers = async () => {
     if (selectedUserIds.length === 0) {
-      Alert.alert('Ошибка', 'Выберите хотя бы одного участника');
+      showError('Выберите хотя бы одного участника');
       return;
     }
 
@@ -263,7 +265,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       await loadMembers();
     } catch (error: any) {
       console.error('❌ Failed to add members:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось добавить участников');
+      showError(error.message || 'Не удалось добавить участников');
     } finally {
       setIsAddingMembers(false);
     }
@@ -286,7 +288,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       await loadMembers();
     } catch (error: any) {
       console.error('❌ Failed to remove member:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось удалить участника');
+      showError(error.message || 'Не удалось удалить участника');
     }
   };
 
@@ -314,7 +316,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       await loadMembers();
     } catch (error: any) {
       console.error('❌ Failed to update member role:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось изменить роль участника');
+      showError(error.message || 'Не удалось изменить роль участника');
     }
   };
 
@@ -438,7 +440,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       navigation.goBack();
     } catch (error) {
       console.error('Failed to clear history:', error);
-      Alert.alert('Ошибка', 'Не удалось очистить историю');
+      showError('Не удалось очистить историю');
     }
   };
 
@@ -457,13 +459,13 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
           // Validate file size (max 5MB)
           if (file.size > 5 * 1024 * 1024) {
-            Alert.alert('Ошибка', 'Размер файла не должен превышать 5 МБ');
+            showError('Размер файла не должен превышать 5 МБ');
             return;
           }
 
           // Validate file type
           if (!file.type.startsWith('image/')) {
-            Alert.alert('Ошибка', 'Пожалуйста, выберите изображение');
+            showError('Пожалуйста, выберите изображение');
             return;
           }
 
@@ -485,7 +487,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
             console.log('✅ Chat updated with new avatar');
           } catch (error) {
             console.error('❌ Failed to upload chat avatar:', error);
-            Alert.alert('Ошибка', 'Не удалось обновить изображение. Попробуйте снова.');
+            showError('Не удалось обновить изображение. Попробуйте снова.');
           } finally {
             setIsUploadingAvatar(false);
           }
@@ -498,7 +500,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permission.granted) {
-          Alert.alert('Ошибка', 'Нужно разрешение для доступа к галерее');
+          showError('Нужно разрешение для доступа к галерее');
           return;
         }
 
@@ -519,7 +521,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
         // Validate file size (max 5MB) if available
         if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-          Alert.alert('Ошибка', 'Размер файла не должен превышать 5 МБ');
+          showError('Размер файла не должен превышать 5 МБ');
           return;
         }
 
@@ -549,14 +551,14 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
         } catch (error) {
           console.error('❌ Failed to upload chat avatar:', error);
-          Alert.alert('Ошибка', 'Не удалось обновить изображение. Попробуйте снова.');
+          showError('Не удалось обновить изображение. Попробуйте снова.');
         } finally {
           setIsUploadingAvatar(false);
         }
       }
     } catch (error) {
       console.error('❌ Error opening file picker:', error);
-      Alert.alert('Ошибка', 'Не удалось открыть выбор файла');
+      showError('Не удалось открыть выбор файла');
     }
   };
 

@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   Platform,
   Modal,
   StatusBar,
@@ -23,6 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { useAuthStore } from '@store/authStore';
 import { CreateEventDto, Event } from '@/types/calendar.types';
 import * as calendarApi from '@api/calendar.api';
@@ -58,6 +58,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   editEvent = null,
 }) => {
   const { theme, isDark } = useTheme();
+  const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -143,24 +144,24 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const goToNextStep = () => {
     if (currentStep === 1 && !title.trim()) {
-      Alert.alert('Внимание', 'Введите название события');
+      showError('Введите название события');
       return;
     }
 
     if (currentStep === 2) {
       if (endDate <= startDate) {
-        Alert.alert('Внимание', 'Время окончания должно быть позже времени начала');
+        showError('Время окончания должно быть позже времени начала');
         return;
       }
     }
 
     if (currentStep === 3) {
       if (audienceType === 'department' && !user?.department_id) {
-        Alert.alert('Внимание', 'Вы не принадлежите ни к одному отделу');
+        showError('Вы не принадлежите ни к одному отделу');
         return;
       }
       if (audienceType === 'selected_users' && selectedParticipants.length === 0) {
-        Alert.alert('Внимание', 'Выберите хотя бы одного участника');
+        showError('Выберите хотя бы одного участника');
         return;
       }
     }
@@ -178,12 +179,12 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleCreate = async () => {
     if (!title.trim()) {
-      Alert.alert('Ошибка', 'Введите название события');
+      showError('Введите название события');
       return;
     }
 
     if (endDate <= startDate) {
-      Alert.alert('Ошибка', 'Время окончания должно быть позже времени начала');
+      showError('Время окончания должно быть позже времени начала');
       return;
     }
 
@@ -206,7 +207,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               participantIds = usersResponse.data.map(u => u.id);
             } catch (error) {
               console.error('Failed to fetch department users:', error);
-              Alert.alert('Ошибка', 'Не удалось загрузить пользователей отдела');
+              showError('Не удалось загрузить пользователей отдела');
               return;
             }
           }
@@ -216,7 +217,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             participantIds = usersResponse.data.map(u => u.id);
           } catch (error) {
             console.error('Failed to fetch all users:', error);
-            Alert.alert('Ошибка', 'Не удалось загрузить список пользователей');
+            showError('Не удалось загрузить список пользователей');
             return;
           }
         }
@@ -260,6 +261,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         await calendarApi.createEvent(eventData);
       }
 
+      showSuccess(isEditMode ? 'Событие успешно обновлено' : 'Событие успешно создано');
       onEventCreated();
       handleClose();
     } catch (error: any) {
@@ -272,7 +274,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         errorMessage = error.message;
       }
 
-      Alert.alert('Ошибка', errorMessage);
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }

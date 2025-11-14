@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -20,11 +19,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { requestPasswordReset } from '@api/password-reset.api';
+import { useActionModal } from '@contexts/ActionModalContext';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 
 const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation<ForgotPasswordScreenNavigationProp>();
+  const { showModal } = useActionModal();
 
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,11 +54,11 @@ const ForgotPasswordScreen: React.FC = () => {
 
       setSuccess(true);
 
-      Alert.alert(
+      showModal(
         'Запрос отправлен',
         'Если учётная запись с таким email существует, вы получите письмо с инструкциями для сброса пароля.',
         [
-          { text: 'OK', onPress: () => navigation.navigate('Login') }
+          { text: 'OK', onPress: () => navigation.navigate('Login'), style: 'primary' }
         ]
       );
     } catch (err: any) {

@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
 import { User, Department } from '../../types/user.types';
 import { ChatType } from '../../types/chat.types';
 import { getUsers, getDepartments } from '@api/user.api';
@@ -35,6 +35,7 @@ const CreateChatScreen: React.FC = () => {
   const route = useRoute<RouteProp<ChatStackParamList, 'CreateChat'>>();
   const { createChat } = useChatStore();
   const { theme } = useTheme();
+  const { showError } = useNotification();
 
   const [chatType, setChatType] = useState<ChatType>(route.params?.initialChatType || 'group');
   const [chatName, setChatName] = useState('');
@@ -121,7 +122,7 @@ const CreateChatScreen: React.FC = () => {
         errorMessage = 'Недостаточно прав для просмотра списка пользователей.';
       }
 
-      Alert.alert('Ошибка загрузки пользователей', errorMessage);
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -171,19 +172,19 @@ const CreateChatScreen: React.FC = () => {
     // Валидация для группового чата
     if (chatType === 'group') {
       if (!chatName.trim()) {
-        Alert.alert('Ошибка', 'Введите название группового чата');
+        showError('Введите название группового чата');
         return;
       }
     }
 
     // Валидация количества участников
     if (selectedUsers.length === 0) {
-      Alert.alert('Ошибка', 'Выберите хотя бы одного участника');
+      showError('Выберите хотя бы одного участника');
       return;
     }
 
     if (chatType === 'private' && selectedUsers.length > 1) {
-      Alert.alert('Ошибка', 'Личный чат может быть только с одним пользователем');
+      showError('Личный чат может быть только с одним пользователем');
       return;
     }
 
@@ -222,7 +223,7 @@ const CreateChatScreen: React.FC = () => {
       });
     } catch (error: any) {
       console.error('❌ Failed to create chat:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось создать чат');
+      showError(error.message || 'Не удалось создать чат');
     } finally {
       setIsCreating(false);
     }

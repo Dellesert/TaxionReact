@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Platform,
   StatusBar,
 } from 'react-native';
@@ -15,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import { useAuthStore } from '@store/authStore';
 import { Event, EventParticipantStatus } from '../../types/calendar.types';
 import * as calendarApi from '@api/calendar.api';
@@ -39,6 +40,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   onEventUpdated,
 }) => {
   const { theme, isDark } = useTheme();
+  const { showError } = useNotification();
+  const { showConfirm } = useActionModal();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -93,7 +96,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
       onEventUpdated();
     } catch (error) {
       console.error('Failed to update status:', error);
-      Alert.alert('Ошибка', 'Не удалось обновить статус');
+      showError('Не удалось обновить статус');
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -105,49 +108,25 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   };
 
   const handleDelete = async () => {
-    if (Platform.OS === 'web') {
-      // Use native browser confirm dialog on web
-      const confirmed = window.confirm('Вы уверены, что хотите удалить это событие?');
-      if (!confirmed) return;
-
-      try {
-        setIsDeleting(true);
-        await calendarApi.deleteEvent(event.id);
-        onEventUpdated();
-        onClose();
-      } catch (error) {
-        console.error('Failed to delete event:', error);
-        window.alert('Не удалось удалить событие');
-      } finally {
-        setIsDeleting(false);
-      }
-    } else {
-      // Use React Native Alert on mobile
-      Alert.alert(
-        'Удалить событие?',
-        'Вы уверены, что хотите удалить это событие?',
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Удалить',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                setIsDeleting(true);
-                await calendarApi.deleteEvent(event.id);
-                onEventUpdated();
-                onClose();
-              } catch (error) {
-                console.error('Failed to delete event:', error);
-                Alert.alert('Ошибка', 'Не удалось удалить событие');
-              } finally {
-                setIsDeleting(false);
-              }
-            },
-          },
-        ]
-      );
-    }
+    showConfirm(
+      'Удалить событие?',
+      'Вы уверены, что хотите удалить это событие?',
+      async () => {
+        try {
+          setIsDeleting(true);
+          await calendarApi.deleteEvent(event.id);
+          onEventUpdated();
+          onClose();
+        } catch (error) {
+          console.error('Failed to delete event:', error);
+          showError('Не удалось удалить событие');
+        } finally {
+          setIsDeleting(false);
+        }
+      },
+      undefined,
+      { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
+    );
   };
 
   const formatDateTime = (dateString: string) => {
@@ -459,7 +438,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             }
           } catch (error: any) {
             console.error('❌ Error opening chat:', error);
-            Alert.alert('Ошибка', error.message || 'Не удалось открыть чат');
+            showError(error.message || 'Не удалось открыть чат');
           }
         }}
       />

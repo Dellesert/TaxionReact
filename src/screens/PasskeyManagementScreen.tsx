@@ -9,7 +9,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   ActivityIndicator,
   TextInput,
@@ -20,6 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import * as authApi from '@api/auth.api';
 import type { Passkey as PasskeyType } from '@types/user.types';
 import { isPasskeySupported, registerPasskey, formatPasskeyError, getPlatformInfo } from '@utils/passkeyUtils';
@@ -27,6 +28,8 @@ import { isPasskeySupported, registerPasskey, formatPasskeyError, getPlatformInf
 const PasskeyManagementScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme } = useTheme();
+  const { showError, showSuccess } = useNotification();
+  const { showConfirm } = useActionModal();
 
   const [passkeys, setPasskeys] = useState<PasskeyType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +67,7 @@ const PasskeyManagementScreen: React.FC = () => {
       console.log('✅ Loaded passkeys:', response.passkeys);
     } catch (error: any) {
       console.error('❌ Failed to load passkeys:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить список Passkey');
+      showError('Не удалось загрузить список Passkey');
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +75,7 @@ const PasskeyManagementScreen: React.FC = () => {
 
   const handleRegisterPasskey = async () => {
     if (!passkeySupported) {
-      Alert.alert('Не поддерживается', 'Passkey не поддерживается на этом устройстве');
+      showError('Passkey не поддерживается на этом устройстве');
       return;
     }
 
@@ -107,7 +110,7 @@ const PasskeyManagementScreen: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Passkey registration error:', error);
       const errorMessage = formatPasskeyError(error);
-      Alert.alert('Ошибка регистрации', errorMessage);
+      showError(errorMessage);
     } finally {
       setIsRegistering(false);
     }
@@ -115,7 +118,7 @@ const PasskeyManagementScreen: React.FC = () => {
 
   const handleFinishRegistration = async () => {
     if (!pendingCredential) {
-      Alert.alert('Ошибка', 'Credential не найден');
+      showError('Credential не найден');
       return;
     }
 
@@ -132,7 +135,7 @@ const PasskeyManagementScreen: React.FC = () => {
       });
       console.log('✅ Passkey registered:', registerResponse);
 
-      Alert.alert('Успех', 'Passkey успешно зарегистрирован!');
+      showSuccess('Passkey успешно зарегистрирован!');
       setShowNameModal(false);
       setDeviceName('');
       setPendingCredential(null);
@@ -141,10 +144,7 @@ const PasskeyManagementScreen: React.FC = () => {
       await loadPasskeys();
     } catch (error: any) {
       console.error('❌ Failed to finish registration:', error);
-      Alert.alert(
-        'Ошибка',
-        error.message || 'Не удалось завершить регистрацию Passkey'
-      );
+      showError(error.message || 'Не удалось завершить регистрацию Passkey');
     }
   };
 
@@ -154,17 +154,12 @@ const PasskeyManagementScreen: React.FC = () => {
       await performDeletePasskey(passkey);
     } else {
       // Mobile: show confirmation dialog
-      Alert.alert(
+      showConfirm(
         'Удалить Passkey',
         `Вы уверены, что хотите удалить "${passkey.name || 'Устройство'}"?`,
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Удалить',
-            style: 'destructive',
-            onPress: () => performDeletePasskey(passkey),
-          },
-        ]
+        () => performDeletePasskey(passkey),
+        undefined,
+        { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
       );
     }
   };
@@ -174,11 +169,11 @@ const PasskeyManagementScreen: React.FC = () => {
       setIsDeleting(passkey.id);
       await authApi.deletePasskey(passkey.id);
       console.log('✅ Passkey deleted:', passkey.id);
-      Alert.alert('Успех', 'Passkey удален');
+      showSuccess('Passkey удален');
       await loadPasskeys();
     } catch (error: any) {
       console.error('❌ Failed to delete passkey:', error);
-      Alert.alert('Ошибка', 'Не удалось удалить Passkey');
+      showError('Не удалось удалить Passkey');
     } finally {
       setIsDeleting(null);
     }
@@ -197,14 +192,14 @@ const PasskeyManagementScreen: React.FC = () => {
       // Backend expects 'name', not 'device_name'
       await authApi.updatePasskey(editingPasskey.id, { name: deviceName });
       console.log('✅ Passkey renamed:', editingPasskey.id);
-      Alert.alert('Успех', 'Название обновлено');
+      showSuccess('Название обновлено');
       setShowNameModal(false);
       setDeviceName('');
       setEditingPasskey(null);
       await loadPasskeys();
     } catch (error: any) {
       console.error('❌ Failed to rename passkey:', error);
-      Alert.alert('Ошибка', 'Не удалось обновить название');
+      showError('Не удалось обновить название');
     }
   };
 

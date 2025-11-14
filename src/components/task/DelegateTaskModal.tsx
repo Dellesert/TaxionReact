@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   SectionList,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +20,7 @@ import { getUsers } from '@/api/user.api';
 import { User } from '@/types/user.types';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
 import Avatar from '@components/common/Avatar';
 
 interface DelegateTaskModalProps {
@@ -37,6 +37,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   onDelegated,
 }) => {
   const { theme, isDark } = useTheme();
+  const { showError } = useNotification();
   const currentUser = useAuthStore((state) => state.user);
   const [users, setUsers] = useState<User[]>([]);
   const [sections, setSections] = useState<
@@ -62,7 +63,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
       setIsLoadingUsers(true);
 
       if (!currentUser) {
-        Alert.alert('Ошибка', 'Пользователь не авторизован');
+        showError('Пользователь не авторизован');
         setIsLoadingUsers(false);
         return;
       }
@@ -85,7 +86,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
       setUsers(availableUsers);
     } catch (error) {
       console.error('Error loading users:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить список пользователей');
+      showError('Не удалось загрузить список пользователей');
     } finally {
       setIsLoadingUsers(false);
     }
@@ -195,7 +196,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
 
   const handleDelegate = async () => {
     if (!selectedUserId) {
-      Alert.alert('Ошибка', 'Выберите пользователя для делегирования');
+      showError('Выберите пользователя для делегирования');
       return;
     }
 
@@ -207,7 +208,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
       onClose();
     } catch (error) {
       console.error('❌ Error delegating task:', error);
-      Alert.alert('Ошибка', 'Не удалось делегировать задачу');
+      showError('Не удалось делегировать задачу');
     } finally {
       setIsLoading(false);
     }

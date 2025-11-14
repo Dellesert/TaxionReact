@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -116,7 +115,7 @@ const LoginScreen: React.FC = () => {
       // 4. Блокируем доступ для super_admin
       if (loginResponse.user.role === 'super_admin') {
         console.log('🚫 Super admin access blocked - use web dashboard instead');
-        Alert.alert('Ошибка', 'Super admin доступ ограничен веб-панелью. Используйте админ-панель.');
+        notification.showError('Super admin доступ ограничен веб-панелью. Используйте админ-панель.');
         return;
       }
 

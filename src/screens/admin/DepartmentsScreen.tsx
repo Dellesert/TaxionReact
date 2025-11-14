@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   TextInput,
   Platform,
@@ -15,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import * as userApi from '@api/user.api';
 import { Department } from '@/types/user.types';
 
@@ -22,6 +23,8 @@ const DepartmentsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { user } = useAuthStore();
+  const { showError, showSuccess } = useNotification();
+  const { showConfirm } = useActionModal();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,7 +59,7 @@ const DepartmentsScreen: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to load departments:', error);
       console.error('Error details:', error.response?.data || error.message);
-      Alert.alert('Ошибка', `Не удалось загрузить список отделов: ${error.response?.data?.error || error.message}`);
+      showError(`Не удалось загрузить список отделов: ${error.response?.data?.error || error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -64,11 +67,7 @@ const DepartmentsScreen: React.FC = () => {
 
   const handleCreateDepartment = async () => {
     if (!newDepartmentName.trim()) {
-      if (Platform.OS === 'web') {
-        alert('Введите название отдела');
-      } else {
-        Alert.alert('Ошибка', 'Введите название отдела');
-      }
+      showError('Введите название отдела');
       return;
     }
 
@@ -80,59 +79,40 @@ const DepartmentsScreen: React.FC = () => {
 
       setNewDepartmentName('');
       setShowCreateModal(false);
-      if (Platform.OS === 'web') {
-        alert('Отдел создан');
-      } else {
-        Alert.alert('Успех', 'Отдел создан');
-      }
+      showSuccess('Отдел создан');
       loadDepartments();
     } catch (error: any) {
       console.error('Failed to create department:', error);
-      if (Platform.OS === 'web') {
-        alert('Не удалось создать отдел');
-      } else {
-        Alert.alert('Ошибка', 'Не удалось создать отдел');
-      }
+      showError('Не удалось создать отдел');
     } finally {
       setIsCreating(false);
     }
   };
 
   const handleDeleteDepartment = async (department: Department) => {
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm(`Вы уверены, что хотите удалить отдел "${department.name}"?`)
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Удаление отдела',
-            `Вы уверены, что хотите удалить отдел "${department.name}"?`,
-            [
-              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
-              {
-                text: 'Удалить',
-                style: 'destructive',
-                onPress: () => resolve(true),
-              },
-            ]
-          );
-        });
-
-    if (!confirmed) return;
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Вы уверены, что хотите удалить отдел "${department.name}"?`);
+      if (!confirmed) return;
+    } else {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        showConfirm(
+          'Удаление отдела',
+          `Вы уверены, что хотите удалить отдел "${department.name}"?`,
+          () => resolve(true),
+          () => resolve(false),
+          { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
+        );
+      });
+      if (!confirmed) return;
+    }
 
     try {
       await userApi.deleteDepartment(department.id);
-      if (Platform.OS === 'web') {
-        alert('Отдел удален');
-      } else {
-        Alert.alert('Успех', 'Отдел удален');
-      }
+      showSuccess('Отдел удален');
       loadDepartments();
     } catch (error: any) {
       console.error('Failed to delete department:', error);
-      if (Platform.OS === 'web') {
-        alert('Не удалось удалить отдел');
-      } else {
-        Alert.alert('Ошибка', 'Не удалось удалить отдел');
-      }
+      showError('Не удалось удалить отдел');
     }
   };
 

@@ -1,8 +1,9 @@
 import React from 'react';
-import { Modal, Pressable, View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert } from 'react-native';
+import { Modal, Pressable, View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { Message } from '../../types/chat.types';
 import { formatTime } from '@utils/message.utils';
 import { getFileIcon, decodeFileName } from '@utils/file.utils';
@@ -48,6 +49,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   onRestore,
 }) => {
   const { theme } = useTheme();
+  const { showError } = useNotification();
 
   // Check if user can pin/unpin messages
   const canPinUnpin = React.useMemo(() => {
@@ -144,14 +146,14 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
           document.execCommand('copy');
         } catch (err) {
           console.error('❌ Failed to copy using fallback:', err);
-          Alert.alert('Ошибка', 'Не удалось скопировать текст');
+          showError('Не удалось скопировать текст');
         }
 
         document.body.removeChild(textArea);
       }
     } catch (error) {
       console.error('❌ Failed to copy message:', error);
-      Alert.alert('Ошибка', 'Не удалось скопировать текст');
+      showError('Не удалось скопировать текст');
     }
     onClose();
   };

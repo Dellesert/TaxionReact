@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Dimensions, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChatStackParamList } from '@navigation/types';
@@ -7,6 +7,7 @@ import { Message } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
 import { MessageBubble } from './MessageBubble';
 import { MessageContextMenu } from './MessageContextMenu';
 import { DeleteMessageModal } from './DeleteMessageModal';
@@ -59,6 +60,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   chatMemberIds = [],
 }) => {
   const currentUser = useAuthStore((state) => state.user);
+  const { showError } = useNotification();
   const navigation = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -193,18 +195,18 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             navigation.navigate('Chat', { chatId: chat.id });
           } catch (error: any) {
             console.error('❌ Error opening chat:', error);
-            Alert.alert('Ошибка', error.message || 'Не удалось открыть чат');
+            showError(error.message || 'Не удалось открыть чат');
           }
         }}
         onAddToFavorites={(userId) => {
           // TODO: Add to favorites
           console.log('Add to favorites:', userId);
-          Alert.alert('В разработке', 'Функция добавления в избранное будет реализована позже');
+          showError('Функция добавления в избранное будет реализована позже');
         }}
         onBlock={(userId) => {
           // TODO: Block user
           console.log('Block user:', userId);
-          Alert.alert('В разработке', 'Функция блокировки будет реализована позже');
+          showError('Функция блокировки будет реализована позже');
         }}
       />
 

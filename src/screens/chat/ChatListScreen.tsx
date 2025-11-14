@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Alert, Modal, Platform, Animated as RNAnimated, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Modal, Platform, Animated as RNAnimated, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -14,6 +14,7 @@ import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withTiming } from 
 import { ChatStackParamList } from '@navigation/types';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
+import { useActionModal } from '@contexts/ActionModalContext';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
@@ -69,6 +70,7 @@ const ChatListScreen: React.FC = () => {
   const { isLoading, isLoadingMore, totalChats, hasMoreChats, error, loadChats: fetchChats, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
+  const { showConfirm } = useActionModal();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -348,25 +350,20 @@ const ChatListScreen: React.FC = () => {
   const handleDeleteSelectedChats = async () => {
     if (selectedChats.length === 0) return;
 
-    Alert.alert(
+    showConfirm(
       'Удалить чаты',
       `Удалить выбранные чаты (${selectedChats.length})?`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await Promise.all(selectedChats.map(id => deleteChat(id)));
-              setSelectedChats([]);
-              setIsEditMode(false);
-            } catch (error) {
-              console.error('Failed to delete chats:', error);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await Promise.all(selectedChats.map(id => deleteChat(id)));
+          setSelectedChats([]);
+          setIsEditMode(false);
+        } catch (error) {
+          console.error('Failed to delete chats:', error);
+        }
+      },
+      undefined,
+      { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
     );
   };
 

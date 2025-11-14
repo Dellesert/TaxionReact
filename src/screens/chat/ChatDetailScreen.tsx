@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useChatStore } from '@store/chatStore';
 import { useWebSocket } from '@hooks/useWebSocket';
 import { useTypingIndicator } from '@hooks/useTypingIndicator';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import { Loading } from '@components/common/Loading';
 import { ChatHeader } from '@components/chat/ChatHeader';
 import { MessageBubble } from '@components/chat/MessageBubble';
@@ -21,6 +23,8 @@ const ChatDetailScreen: React.FC = () => {
   const chatId = Number(chatIdParam);
 
   const user = useAuthStore((state) => state.user);
+  const { showError } = useNotification();
+  const { showOptions } = useActionModal();
 
   // Use individual selectors to prevent re-renders
   const loadMessages = useChatStore((state) => state.loadMessages);
@@ -44,7 +48,7 @@ const ChatDetailScreen: React.FC = () => {
       hasLoadedRef.current = true;
       loadMessages(chatId).catch((error) => {
         console.error('Failed to load messages:', error);
-        Alert.alert('Ошибка', 'Не удалось загрузить сообщения');
+        showError('Не удалось загрузить сообщения');
         hasLoadedRef.current = false;
       });
     }
@@ -55,7 +59,7 @@ const ChatDetailScreen: React.FC = () => {
       await sendMessage(chatId, content);
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     } catch (error: any) {
-      Alert.alert('Ошибка', error.message || 'Не удалось отправить сообщение');
+      showError(error.message || 'Не удалось отправить сообщение');
       throw error;
     }
   };
@@ -74,21 +78,31 @@ const ChatDetailScreen: React.FC = () => {
   };
 
   const handleLongPress = (message: Message) => {
-    Alert.alert(
+    showOptions(
       'Действия с сообщением',
-      undefined,
       [
-        { text: 'Ответить', onPress: () => console.log('Reply to', message.id) },
-        { text: 'Переслать', onPress: () => console.log('Forward', message.id) },
-        { text: 'Скопировать', onPress: () => console.log('Copy', message.content) },
+        {
+          text: 'Ответить',
+          onPress: () => console.log('Reply to', message.id),
+          icon: 'arrow-undo'
+        },
+        {
+          text: 'Переслать',
+          onPress: () => console.log('Forward', message.id),
+          icon: 'arrow-redo'
+        },
+        {
+          text: 'Скопировать',
+          onPress: () => console.log('Copy', message.content),
+          icon: 'copy'
+        },
         {
           text: 'Удалить',
           onPress: () => console.log('Delete', message.id),
           style: 'destructive',
+          icon: 'trash'
         },
-        { text: 'Отмена', style: 'cancel' },
-      ],
-      { cancelable: true }
+      ]
     );
   };
 

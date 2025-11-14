@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   TextInput,
   Platform,
@@ -15,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@components/common/Avatar';
@@ -23,6 +24,8 @@ const UsersScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { user: currentUser } = useAuthStore();
+  const { showError, showSuccess } = useNotification();
+  const { showOptions, showConfirm } = useActionModal();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,11 +56,7 @@ const UsersScreen: React.FC = () => {
       const response = await userApi.getUsers({}, { limit: 100, offset: 0 });
       setUsers(response.data);
     } catch (error: any) {
-      if (Platform.OS === 'web') {
-        alert('Не удалось загрузить список пользователей');
-      } else {
-        Alert.alert('Ошибка', 'Не удалось загрузить список пользователей');
-      }
+      showError('Не удалось загрузить список пользователей');
     } finally {
       setIsLoading(false);
     }
@@ -110,17 +109,13 @@ const UsersScreen: React.FC = () => {
         updateUserRole(user, newRole as UserRole);
       }
     } else {
-      // For mobile, show alert with options
-      Alert.alert(
+      // For mobile, show modal with options
+      showOptions(
         'Изменить роль',
-        `Выберите новую роль для ${user.name}`,
-        [
-          ...roles.map(role => ({
-            text: getRoleLabel(role),
-            onPress: () => updateUserRole(user, role),
-          })),
-          { text: 'Отмена', style: 'cancel' },
-        ]
+        roles.map(role => ({
+          text: getRoleLabel(role),
+          onPress: () => updateUserRole(user, role),
+        }))
       );
     }
   };
@@ -128,58 +123,42 @@ const UsersScreen: React.FC = () => {
   const updateUserRole = async (user: User, newRole: UserRole) => {
     try {
       const result = await userApi.updateUserRole(user.id, newRole);
-
-      if (Platform.OS === 'web') {
-        alert(`Роль пользователя изменена на "${getRoleLabel(newRole)}"`);
-      } else {
-        Alert.alert('Успех', `Роль пользователя изменена на "${getRoleLabel(newRole)}"`);
-      }
+      showSuccess(`Роль пользователя изменена на "${getRoleLabel(newRole)}"`);
       loadUsers();
     } catch (error: any) {
       const errorMessage = error?.response?.data?.error || error?.message || 'Не удалось изменить роль пользователя';
-
-      if (Platform.OS === 'web') {
-        alert(errorMessage);
-      } else {
-        Alert.alert('Ошибка', errorMessage);
-      }
+      showError(errorMessage);
     }
   };
 
   const handleToggleUserStatus = async (user: User) => {
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm(`Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`)
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            user.is_active ? 'Деактивировать пользователя' : 'Активировать пользователя',
-            `Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`,
-            [
-              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
-              {
-                text: user.is_active ? 'Деактивировать' : 'Активировать',
-                style: user.is_active ? 'destructive' : 'default',
-                onPress: () => resolve(true),
-              },
-            ]
-          );
-        });
-
-    if (!confirmed) return;
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`);
+      if (!confirmed) return;
+    } else {
+      // For mobile, use showConfirm with await
+      const confirmed = await new Promise<boolean>((resolve) => {
+        showConfirm(
+          user.is_active ? 'Деактивировать пользователя' : 'Активировать пользователя',
+          `Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`,
+          () => resolve(true),
+          () => resolve(false),
+          {
+            confirmText: user.is_active ? 'Деактивировать' : 'Активировать',
+            cancelText: 'Отмена',
+            destructive: user.is_active,
+          }
+        );
+      });
+      if (!confirmed) return;
+    }
 
     try {
       await userApi.updateUser(user.id, { is_active: !user.is_active });
-      if (Platform.OS === 'web') {
-        alert(`Пользователь ${user.is_active ? 'деактивирован' : 'активирован'}`);
-      } else {
-        Alert.alert('Успех', `Пользователь ${user.is_active ? 'деактивирован' : 'активирован'}`);
-      }
+      showSuccess(`Пользователь ${user.is_active ? 'деактивирован' : 'активирован'}`);
       loadUsers();
     } catch (error: any) {
-      if (Platform.OS === 'web') {
-        alert('Не удалось изменить статус пользователя');
-      } else {
-        Alert.alert('Ошибка', 'Не удалось изменить статус пользователя');
-      }
+      showError('Не удалось изменить статус пользователя');
     }
   };
 

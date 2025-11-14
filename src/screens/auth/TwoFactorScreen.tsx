@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -26,6 +25,7 @@ import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import { useAuthStore } from '@store/authStore';
 import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@contexts/ActionModalContext';
 import { extractErrorCode, ErrorCode, formatApiError, isSuperAdminWebOnly } from '@utils/errorUtils';
 import { ApiError } from '@types/common.types';
 
@@ -37,6 +37,7 @@ const TwoFactorScreen: React.FC = () => {
   const route = useRoute<TwoFactorScreenRouteProp>();
   const { email } = route.params;
   const notification = useNotification();
+  const { showConfirm } = useActionModal();
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -206,16 +207,12 @@ const TwoFactorScreen: React.FC = () => {
       setIsResending(true);
       // Для повторной отправки нужен пароль, который мы не храним
       // Поэтому предлагаем вернуться на экран логина
-      Alert.alert(
+      showConfirm(
         'Отправить код повторно',
         'Для повторной отправки кода необходимо вернуться на экран входа',
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Вернуться',
-            onPress: () => navigation.goBack(),
-          },
-        ]
+        () => navigation.goBack(),
+        undefined,
+        { confirmText: 'Вернуться', cancelText: 'Отмена' }
       );
     } finally {
       setIsResending(false);

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Text, StyleProp, TextStyle, Linking, Alert } from 'react-native';
+import { Text, StyleProp, TextStyle, Linking } from 'react-native';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 
 interface LinkifiedTextProps {
   text: string;
@@ -20,6 +21,7 @@ interface TextPart {
  */
 export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style }) => {
   const { theme } = useTheme();
+  const { showError } = useNotification();
 
   // Регулярные выражения для различных типов ссылок
   const urlRegex = /(https?:\/\/[^\s]+)/gi;
@@ -103,11 +105,11 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style }) => 
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Ошибка', 'Невозможно открыть эту ссылку');
+        showError('Невозможно открыть эту ссылку');
       }
     } catch (error) {
       console.error('Error opening URL:', error);
-      Alert.alert('Ошибка', 'Не удалось открыть ссылку');
+      showError('Не удалось открыть ссылку');
     }
   };
 

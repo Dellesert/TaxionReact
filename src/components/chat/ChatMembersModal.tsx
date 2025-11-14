@@ -16,11 +16,11 @@ import {
   ActivityIndicator,
   Platform,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { User } from '../../types/user.types';
 import { ChatMember } from '../../types/chat.types';
 import { getChatMembers, addChatMembers, updateChatMemberRole } from '@api/chat.api';
@@ -47,6 +47,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   creatorId,
 }) => {
   const { theme } = useTheme();
+  const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
   const removeChatMember = useChatStore((state) => state.removeChatMember);
@@ -106,7 +107,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       }
     } catch (error: any) {
       console.error('Failed to load members:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить список участников');
+      showError('Не удалось загрузить список участников');
       setMembers([]);
     } finally {
       setIsLoading(false);
@@ -157,7 +158,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       setAllUsers(availableUsers);
     } catch (error: any) {
       console.error('Failed to load users:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить список пользователей');
+      showError('Не удалось загрузить список пользователей');
       setAllUsers([]);
     } finally {
       setIsLoading(false);
@@ -205,7 +206,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
   const handleAddMembers = async () => {
     if (selectedUsers.length === 0) {
-      Alert.alert('Ошибка', 'Выберите хотя бы одного участника');
+      showError('Выберите хотя бы одного участника');
       return;
     }
 
@@ -226,12 +227,12 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
       await Promise.all(addPromises);
 
-      Alert.alert('Успех', `Добавлено участников: ${selectedUsers.length}`);
+      showSuccess(`Добавлено участников: ${selectedUsers.length}`);
       handleCancelAdd();
       loadMembers();
     } catch (error: any) {
       console.error('Failed to add members:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось добавить участников');
+      showError(error.message || 'Не удалось добавить участников');
     } finally {
       setIsAdding(false);
     }

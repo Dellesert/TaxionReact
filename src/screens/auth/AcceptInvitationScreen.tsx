@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -21,6 +20,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import * as invitationApi from '@api/invitation.api';
+import { useNotification } from '@contexts/NotificationContext';
 
 type AcceptInvitationScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'AcceptInvitation'>;
 type AcceptInvitationScreenRouteProp = RouteProp<AuthStackParamList, 'AcceptInvitation'>;
@@ -28,6 +28,7 @@ type AcceptInvitationScreenRouteProp = RouteProp<AuthStackParamList, 'AcceptInvi
 const AcceptInvitationScreen: React.FC = () => {
   const navigation = useNavigation<AcceptInvitationScreenNavigationProp>();
   const route = useRoute<AcceptInvitationScreenRouteProp>();
+  const { showError } = useNotification();
 
   // Получаем токен из параметров (если пришли по deep link)
   const initialToken = route.params?.token || '';
@@ -57,7 +58,7 @@ const AcceptInvitationScreen: React.FC = () => {
 
   const handleValidateCode = async () => {
     if (!invitationCode.trim()) {
-      Alert.alert('Ошибка', 'Введите код приглашения');
+      showError('Введите код приглашения');
       return;
     }
 
@@ -67,7 +68,7 @@ const AcceptInvitationScreen: React.FC = () => {
       const data = await invitationApi.validateInvitation(invitationCode.trim());
 
       if (!data || !data.is_valid) {
-        Alert.alert('Ошибка', 'Приглашение недействительно или истекло');
+        showError('Приглашение недействительно или истекло');
         setIsLoading(false);
         return;
       }
@@ -76,8 +77,7 @@ const AcceptInvitationScreen: React.FC = () => {
       setStep('create_password');
     } catch (error: any) {
       console.error('Validation error:', error);
-      Alert.alert(
-        'Ошибка',
+      showError(
         error?.message || error?.response?.data?.error || 'Не удалось проверить код приглашения'
       );
     } finally {
@@ -87,17 +87,17 @@ const AcceptInvitationScreen: React.FC = () => {
 
   const handleAcceptInvitation = async () => {
     if (!password || !confirmPassword) {
-      Alert.alert('Ошибка', 'Заполните все поля');
+      showError('Заполните все поля');
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert('Ошибка', 'Пароль должен содержать минимум 8 символов');
+      showError('Пароль должен содержать минимум 8 символов');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Ошибка', 'Пароли не совпадают');
+      showError('Пароли не совпадают');
       return;
     }
 
@@ -138,7 +138,7 @@ const AcceptInvitationScreen: React.FC = () => {
         errorMessage = error.message;
       }
 
-      Alert.alert('Ошибка', errorMessage);
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }
