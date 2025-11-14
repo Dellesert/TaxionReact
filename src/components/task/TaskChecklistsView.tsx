@@ -30,15 +30,18 @@ import {
 } from '@/api/task.api';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useAuthStore } from '@store/authStore';
 
 interface TaskChecklistsViewProps {
   taskId: number;
   taskTitle?: string;
   assigneeName?: string;
   assigneeAvatar?: string;
+  assigneeId?: number;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   dueDate?: string; // Срок выполнения задачи
   onChecklistChanged?: () => void;
+  onAssigneePress?: (assigneeId: number) => void;
   canEdit?: boolean; // Создатель и делегировавший могут создавать/редактировать/удалять чек-листы
   canToggleOnly?: boolean; // Исполнители могут только чекать/анчекать пункты
   readOnly?: boolean; // Только просмотр, никаких изменений
@@ -212,19 +215,29 @@ const formatDeadline = (dateString: string) => {
   return `${day} ${month}`;
 };
 
+/**
+ * Helper function to display user name or "Я" if it's current user
+ */
+const getUserDisplayName = (userName: string, userId: number, currentUserId: number | undefined): string => {
+  return currentUserId && userId === currentUserId ? 'Я' : userName;
+};
+
 export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   taskId,
   taskTitle,
   assigneeName,
   assigneeAvatar,
+  assigneeId,
   priority,
   dueDate,
   onChecklistChanged,
+  onAssigneePress,
   canEdit = true,
   canToggleOnly = false,
   readOnly = false,
 }) => {
   const { theme, isDark } = useTheme();
+  const { user } = useAuthStore();
   const [checklists, setChecklists] = useState<TaskChecklist[]>([]);
   const [loading, setLoading] = useState(true);
   const [newChecklistTitle, setNewChecklistTitle] = useState('');
@@ -408,7 +421,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 
           <View style={styles.checklistHeaderLeft}>
             <Text style={[styles.checklistTitle, { color: theme.text }]}>
-              {taskTitle || 'Задача'}
+              {checklist.title}
             </Text>
           </View>
 
@@ -503,7 +516,16 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 
               {/* Assignee Avatar */}
               {assigneeName && (
-                <View style={styles.assigneeContainer}>
+                <TouchableOpacity
+                  style={styles.assigneeContainer}
+                  onPress={() => {
+                    if (assigneeId && onAssigneePress) {
+                      onAssigneePress(assigneeId);
+                    }
+                  }}
+                  disabled={!assigneeId || !onAssigneePress}
+                  activeOpacity={0.7}
+                >
                   {assigneeAvatar ? (
                     <Image
                       source={{ uri: assigneeAvatar }}
@@ -516,10 +538,10 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
                       </Text>
                     </View>
                   )}
-                  <Text style={[styles.assigneeName, { color: theme.text }]}>
-                    {assigneeName}
+                  <Text style={[styles.assigneeName, { color: theme.textSecondary }]}>
+                    {assigneeId ? getUserDisplayName(assigneeName, assigneeId, user?.id) : assigneeName}
                   </Text>
-                </View>
+                </TouchableOpacity>
               )}
             </View>
           </View>

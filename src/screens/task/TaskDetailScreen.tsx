@@ -50,6 +50,13 @@ type TaskDetailRouteParams = {
 };
 
 /**
+ * Helper function to display user name or "Я" if it's current user
+ */
+const getUserDisplayName = (userName: string, userId: number, currentUserId: number | undefined): string => {
+  return currentUserId && userId === currentUserId ? 'Я' : userName;
+};
+
+/**
  * Check if user can edit task
  * Creator (delegator) always has edit rights even if task is delegated
  */
@@ -153,7 +160,7 @@ const TaskDetailScreen: React.FC = () => {
 
   // User profile modal state
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   // Scroll animation - disabled due to performance issues
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -1640,14 +1647,9 @@ const TaskDetailScreen: React.FC = () => {
   };
 
   // Handle user profile press
-  const handleUserPress = async (userId: number) => {
-    try {
-      const userData = await getUser(userId);
-      setSelectedUser(userData);
-      setShowProfileModal(true);
-    } catch (error) {
-      console.error('Error loading user:', error);
-    }
+  const handleUserPress = (userId: number) => {
+    setSelectedUserId(userId);
+    setShowProfileModal(true);
   };
 
   return (
@@ -1890,8 +1892,8 @@ const TaskDetailScreen: React.FC = () => {
                               imageUrl={task.assignees[0].avatar}
                               size={22}
                             />
-                            <Text style={[styles.descriptionAssigneeName, { color: theme.text }]}>
-                              {task.assignees[0].name}
+                            <Text style={[styles.descriptionAssigneeName, { color: theme.textSecondary }]}>
+                              {getUserDisplayName(task.assignees[0].name, task.assignees[0].id, user?.id)}
                             </Text>
                           </TouchableOpacity>
                         )}
@@ -1908,11 +1910,13 @@ const TaskDetailScreen: React.FC = () => {
                       taskTitle={task.title}
                       assigneeName={task.assignees && task.assignees.length > 0 ? task.assignees[0].name : undefined}
                       assigneeAvatar={task.assignees && task.assignees.length > 0 ? task.assignees[0].avatar : undefined}
+                      assigneeId={task.assignees && task.assignees.length > 0 ? task.assignees[0].id : undefined}
                       priority={task.priority}
                       dueDate={task.due_date}
                       onChecklistChanged={() => {
                         loadTask(); // Reload task to update progress
                       }}
+                      onAssigneePress={handleUserPress}
                       canEdit={canEditTask(task, user?.id, user?.role) && task.status !== 'done'}
                       canToggleOnly={!canEditTask(task, user?.id, user?.role) && canViewTask(task, user?.id) && task.status !== 'done'}
                       readOnly={isDelegatedByMe || task.status === 'done'}
@@ -2011,7 +2015,7 @@ const TaskDetailScreen: React.FC = () => {
                                     size={20}
                                   />
                                   <Text style={styles.attachmentUploaderName} numberOfLines={1}>
-                                    {attachment.uploaded_by.name}
+                                    {getUserDisplayName(attachment.uploaded_by.name, attachment.uploaded_by.id, user?.id)}
                                   </Text>
                                 </View>
                               )}
@@ -2090,7 +2094,7 @@ const TaskDetailScreen: React.FC = () => {
                                   activeOpacity={0.7}
                                 >
                                   <Text style={styles.commentAuthor} numberOfLines={1}>
-                                    {comment.user?.name || 'Пользователь'}
+                                    {comment.user ? getUserDisplayName(comment.user.name, comment.user.id, user?.id) : 'Пользователь'}
                                   </Text>
                                 </TouchableOpacity>
                                 <Text style={styles.commentDate}>
@@ -2418,8 +2422,11 @@ const TaskDetailScreen: React.FC = () => {
         {/* User Profile Modal */}
         <UserProfileModal
           visible={showProfileModal}
-          user={selectedUser}
-          onClose={() => setShowProfileModal(false)}
+          userId={selectedUserId}
+          onClose={() => {
+            setShowProfileModal(false);
+            setSelectedUserId(null);
+          }}
           onOpenChat={async (userId) => {
             try {
               console.log('💬 Opening chat with user:', userId);

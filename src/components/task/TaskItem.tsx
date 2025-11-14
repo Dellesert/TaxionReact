@@ -303,7 +303,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   imageUrl={user.avatar}
                   size={18}
                 />
-                <Text style={styles.delegationText} numberOfLines={1}>
+                <Text style={[styles.delegationText, { color: theme.textSecondary }]} numberOfLines={1}>
                   {formatUserName(user.name, user.id)}
                 </Text>
                 {index < task.delegation_chain!.length - 1 && (
@@ -358,7 +358,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   imageUrl={user.avatar}
                   size={18}
                 />
-                <Text style={styles.delegationText} numberOfLines={1}>
+                <Text style={[styles.delegationText, { color: theme.textSecondary }]} numberOfLines={1}>
                   {formatUserName(user.name, user.id)}
                 </Text>
                 {index < chain.length - 1 && (
@@ -381,7 +381,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
               imageUrl={task.creator.avatar}
               size={16}
             />
-            <Text style={styles.delegationText} numberOfLines={1}>
+            <Text style={[styles.delegationText, { color: theme.textSecondary }]} numberOfLines={1}>
               {formatUserName(task.creator.name, task.creator.id)}
             </Text>
           </View>
@@ -970,7 +970,6 @@ const styles = StyleSheet.create({
   },
   delegationText: {
     fontSize: 13,
-    color: '#6b7280',
     flexShrink: 1,
     maxWidth: 100,
   },

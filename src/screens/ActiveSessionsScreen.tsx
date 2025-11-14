@@ -61,7 +61,11 @@ export default function ActiveSessionsScreen() {
       setSessions(response.sessions || []);
     } catch (error: any) {
       console.error('Failed to load sessions:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить список устройств');
+      if (Platform.OS === 'web') {
+        alert('Не удалось загрузить список устройств');
+      } else {
+        Alert.alert('Ошибка', 'Не удалось загрузить список устройств');
+      }
     } finally {
       setLoading(false);
     }
@@ -73,74 +77,131 @@ export default function ActiveSessionsScreen() {
     setRefreshing(false);
   }, []);
 
-  const handleDeleteSession = (session: ActiveSession) => {
+  const handleDeleteSession = async (session: ActiveSession) => {
     const isCurrentSession = session.session_id === currentSessionId;
+    const message = isCurrentSession
+      ? 'Вы действительно хотите выйти из текущего устройства? Придется войти заново.'
+      : `Вы действительно хотите выйти из этого устройства?\n\n${getDeviceInfo(session.user_agent)}`;
 
-    Alert.alert(
-      'Удалить сессию?',
-      isCurrentSession
-        ? 'Вы действительно хотите выйти из текущего устройства? Придется войти заново.'
-        : `Вы действительно хотите выйти из этого устройства?\n\n${getDeviceInfo(session.user_agent)}`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await sessionApi.deleteSession(session.session_id);
-              Alert.alert('Успешно', 'Сессия удалена');
+    const performDelete = async () => {
+      try {
+        await sessionApi.deleteSession(session.session_id);
 
-              if (isCurrentSession) {
-                // If deleted current session, logout
-                navigation.goBack();
-              } else {
-                // Reload sessions list
-                loadSessions();
-              }
-            } catch (error: any) {
-              console.error('Failed to delete session:', error);
-              Alert.alert('Ошибка', 'Не удалось удалить сессию');
-            }
+        if (Platform.OS === 'web') {
+          alert('Сессия удалена');
+        } else {
+          Alert.alert('Успешно', 'Сессия удалена');
+        }
+
+        if (isCurrentSession) {
+          // If deleted current session, logout
+          navigation.goBack();
+        } else {
+          // Reload sessions list
+          loadSessions();
+        }
+      } catch (error: any) {
+        console.error('Failed to delete session:', error);
+        if (Platform.OS === 'web') {
+          alert('Не удалось удалить сессию');
+        } else {
+          Alert.alert('Ошибка', 'Не удалось удалить сессию');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      // Use native confirm dialog for web
+      if (window.confirm(`Удалить сессию?\n\n${message}`)) {
+        await performDelete();
+      }
+    } else {
+      // Use Alert.alert for mobile
+      Alert.alert(
+        'Удалить сессию?',
+        message,
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            onPress: performDelete,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
-  const handleDeleteAllOther = () => {
+  const handleDeleteAllOther = async () => {
     if (sessions.length <= 1) {
-      Alert.alert('Нет других сессий', 'Это единственная активная сессия');
+      if (Platform.OS === 'web') {
+        alert('Это единственная активная сессия');
+      } else {
+        Alert.alert('Нет других сессий', 'Это единственная активная сессия');
+      }
       return;
     }
 
     const otherCount = sessions.filter(s => s.session_id !== currentSessionId).length;
+    const message = `Вы действительно хотите выйти со всех других устройств? (${otherCount} ${otherCount === 1 ? 'устройство' : 'устройств'})`;
 
-    Alert.alert(
-      'Выйти со всех устройств?',
-      `Вы действительно хотите выйти со всех других устройств? (${otherCount} ${otherCount === 1 ? 'устройство' : 'устройств'})`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Выйти',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await sessionApi.deleteAllOtherSessions();
-              Alert.alert('Успешно', `Удалено сессий: ${response.deleted_count}`);
-              loadSessions();
-            } catch (error: any) {
-              console.error('Failed to delete all sessions:', error);
-              Alert.alert('Ошибка', 'Не удалось удалить сессии');
-            }
+    const performDeleteAll = async () => {
+      try {
+        const response = await sessionApi.deleteAllOtherSessions();
+
+        if (Platform.OS === 'web') {
+          alert(`Удалено сессий: ${response.deleted_count}`);
+        } else {
+          Alert.alert('Успешно', `Удалено сессий: ${response.deleted_count}`);
+        }
+
+        loadSessions();
+      } catch (error: any) {
+        console.error('Failed to delete all sessions:', error);
+
+        if (Platform.OS === 'web') {
+          alert('Не удалось удалить сессии');
+        } else {
+          Alert.alert('Ошибка', 'Не удалось удалить сессии');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      // Use native confirm dialog for web
+      if (window.confirm(`Выйти со всех устройств?\n\n${message}`)) {
+        await performDeleteAll();
+      }
+    } else {
+      // Use Alert.alert for mobile
+      Alert.alert(
+        'Выйти со всех устройств?',
+        message,
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Выйти',
+            style: 'destructive',
+            onPress: performDeleteAll,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const getDeviceInfo = (userAgent: string): string => {
+    if (!userAgent) return 'Неизвестное устройство';
+
     // Parse user agent to get device info
+    // Check for custom app User-Agent format: "AppName/Version (Platform; DeviceName; OS Version)"
+    const customAppMatch = userAgent.match(/\(([^;]+);([^;]+);/);
+    if (customAppMatch) {
+      const platform = customAppMatch[1].trim(); // iPhone or Android
+      const deviceName = customAppMatch[2].trim();
+      return `${platform} (${deviceName})`;
+    }
+
+    // Fallback to standard browser User-Agent parsing
     if (userAgent.includes('iPhone')) return 'iPhone';
     if (userAgent.includes('iPad')) return 'iPad';
     if (userAgent.includes('Android')) return 'Android';

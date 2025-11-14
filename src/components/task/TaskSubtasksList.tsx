@@ -14,9 +14,12 @@ import {
 } from 'react-native';
 import { Task, TaskStatus } from '../../types/task.types';
 import { getSubtasks, updateTaskStatus } from '../../api/task.api';
+import { getOrCreateDirectChat } from '@api/chat.api';
 import { useTheme } from '@hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
+import { UserProfileModal } from '@components/common/UserProfileModal';
+import { useNavigation } from '@react-navigation/native';
 
 // Simple Progress Indicator Component (no SVG)
 const ProgressIndicator: React.FC<{
@@ -213,9 +216,12 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   readOnly = false,
 }) => {
   const { theme, isDark } = useTheme();
+  const navigation = useNavigation();
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 
   // Styles
   const styles = StyleSheet.create({
@@ -393,7 +399,17 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       color: theme.textSecondary,
     },
     assigneeAvatarContainer: {
-      paddingTop: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+      gap: 4,
+      width: 60,
+    },
+    assigneeName: {
+      fontSize: 10,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      width: '100%',
     },
     subtaskActions: {
       flexDirection: 'row',
@@ -465,6 +481,32 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     }
   };
 
+  const handleOpenChat = async (userId: number) => {
+    try {
+      const chat = await getOrCreateDirectChat(userId);
+      setIsProfileModalVisible(false);
+
+      // Navigate to chat - need to get root navigation
+      const rootNavigation = navigation.getParent();
+
+      if (rootNavigation) {
+        // @ts-ignore
+        rootNavigation.navigate('Chats', {
+          screen: 'Chat',
+          params: {
+            chatId: chat.id,
+            chat: chat,
+          },
+        });
+      } else {
+        Alert.alert('Ошибка', 'Не удалось открыть чат');
+      }
+    } catch (error: any) {
+      console.error('Error opening chat:', error);
+      Alert.alert('Ошибка', 'Не удалось открыть чат');
+    }
+  };
+
   const renderSubtaskItem = ({ item }: { item: Task }) => {
     const isDone = item.status === 'done';
     const statusColor = STATUS_COLORS[item.status];
@@ -530,13 +572,24 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
 
         {/* Assignee Avatar - Right */}
         {item.assignees && item.assignees.length > 0 && (
-          <View style={styles.assigneeAvatarContainer}>
+          <TouchableOpacity
+            style={styles.assigneeAvatarContainer}
+            onPress={() => {
+              if (item.assignees && item.assignees[0]) {
+                setSelectedUserId(item.assignees[0].id);
+                setIsProfileModalVisible(true);
+              }
+            }}
+          >
             <Avatar
               name={item.assignees[0].name}
               imageUrl={item.assignees[0].avatar}
-              size={32}
+              size={24}
             />
-          </View>
+            <Text style={styles.assigneeName} numberOfLines={1}>
+              {item.assignees[0].name}
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     );
@@ -632,6 +685,17 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
           )}
         </View>
       )}
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        visible={isProfileModalVisible}
+        userId={selectedUserId}
+        onClose={() => {
+          setIsProfileModalVisible(false);
+          setSelectedUserId(null);
+        }}
+        onOpenChat={handleOpenChat}
+      />
     </View>
   );
 };

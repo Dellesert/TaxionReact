@@ -12,6 +12,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
@@ -20,6 +21,8 @@ import * as calendarApi from '@api/calendar.api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@components/common/Avatar';
+import { UserProfileModal } from '@components/common/UserProfileModal';
+import { getOrCreateDirectChat } from '@api/chat.api';
 import CreateEventModal from './CreateEventModal';
 
 interface EventDetailModalProps {
@@ -38,6 +41,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAllAccepted, setShowAllAccepted] = useState(false);
@@ -45,6 +49,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const [showAllPending, setShowAllPending] = useState(false);
   const [showAllDeclined, setShowAllDeclined] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   if (!event) return null;
 
@@ -91,6 +97,11 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     } finally {
       setIsUpdatingStatus(false);
     }
+  };
+
+  const handleUserPress = (userId: number) => {
+    setSelectedUserId(userId);
+    setShowProfileModal(true);
   };
 
   const handleDelete = async () => {
@@ -345,13 +356,25 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           {/* Creator */}
           {event.creator && (
             <View style={[styles.section, { borderBottomColor: theme.border }]}>
-              <View style={styles.infoRow}>
-                <Ionicons name="person-outline" size={20} color={theme.textSecondary} />
-                <View style={styles.infoContent}>
-                  <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Организатор</Text>
-                  <Text style={[styles.infoValue, { color: theme.text }]}>{event.creator.name}</Text>
+              <TouchableOpacity
+                style={styles.creatorContainer}
+                onPress={() => handleUserPress(event.creator!.id)}
+                activeOpacity={0.7}
+              >
+                <Avatar
+                  name={event.creator.name}
+                  imageUrl={event.creator.avatar}
+                  size={32}
+                />
+                <View style={styles.creatorInfo}>
+                  <Text style={[styles.creatorName, { color: theme.text }]}>
+                    {event.creator.name}
+                  </Text>
+                  <Text style={[styles.creatorLabel, { color: theme.textSecondary }]}>
+                    Организатор
+                  </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -409,6 +432,37 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           editEvent={event}
         />
       )}
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        visible={showProfileModal}
+        userId={selectedUserId}
+        onClose={() => {
+          setShowProfileModal(false);
+          setSelectedUserId(null);
+        }}
+        onOpenChat={async (userId) => {
+          try {
+            console.log('💬 Opening chat with user:', userId);
+            const chat = await getOrCreateDirectChat(userId);
+            console.log('✅ Got chat:', chat.id);
+            setShowProfileModal(false);
+            onClose(); // Close event detail modal too
+            // Navigate to chat - need to get root navigation
+            const rootNavigation = navigation.getParent();
+            if (rootNavigation) {
+              // @ts-ignore
+              rootNavigation.navigate('Chats', {
+                screen: 'Chat',
+                params: { chatId: chat.id },
+              });
+            }
+          } catch (error: any) {
+            console.error('❌ Error opening chat:', error);
+            Alert.alert('Ошибка', error.message || 'Не удалось открыть чат');
+          }
+        }}
+      />
     </Modal>
   );
 };
@@ -539,6 +593,23 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 16,
     lineHeight: 22,
+  },
+  creatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  creatorInfo: {
+    flex: 1,
+  },
+  creatorName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  creatorLabel: {
+    fontSize: 12,
+    fontWeight: '400',
   },
   participantGroup: {
     marginBottom: 20,

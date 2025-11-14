@@ -108,7 +108,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
     return (
       <Animated.View style={[styles.compactContainer, { opacity: fadeAnim }]}>
         <Icon />
-        <Text style={[styles.compactText, dynamicStyles.compactText]}>{config.text }</Text>
+        <Text style={[styles.compactText, dynamicStyles.compactText]}>{config.text}</Text>
       </Animated.View>
     );
   }

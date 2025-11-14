@@ -68,7 +68,7 @@ export const DayEventsSheet: React.FC<DayEventsSheetProps> = ({
     }
   }, [visible, overlayOpacity, slideAnim]);
 
-  if (!date || events.length === 0) {
+  if (!date) {
     return null;
   }
 
@@ -123,35 +123,43 @@ export const DayEventsSheet: React.FC<DayEventsSheetProps> = ({
                 contentContainerStyle={styles.eventsListContent}
                 showsVerticalScrollIndicator={false}
               >
-                {events.map((event) => (
-                  <TouchableOpacity
-                    key={event.id}
-                    style={[styles.eventItem, { backgroundColor: theme.card }]}
-                    onPress={() => onEventPress(event)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.eventColorBar, { backgroundColor: event.color }]} />
-                    <View style={styles.eventContent}>
-                      <Text style={[styles.eventTitle, { color: theme.text }]} numberOfLines={1}>
-                        {event.title}
-                      </Text>
-                      {!event.all_day && (
-                        <Text style={[styles.eventTime, { color: theme.textSecondary }]}>
-                          {formatEventTime(event.start_time, event.end_time)}
+                {events.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                      Нет событий на эту дату
+                    </Text>
+                  </View>
+                ) : (
+                  events.map((event) => (
+                    <TouchableOpacity
+                      key={event.id}
+                      style={[styles.eventItem, { backgroundColor: theme.card }]}
+                      onPress={() => onEventPress(event)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.eventColorBar, { backgroundColor: event.color }]} />
+                      <View style={styles.eventContent}>
+                        <Text style={[styles.eventTitle, { color: theme.text }]} numberOfLines={1}>
+                          {event.title}
                         </Text>
-                      )}
-                      {event.location && (
-                        <View style={styles.locationRow}>
-                          <Ionicons name="location-outline" size={14} color={theme.textTertiary} />
-                          <Text style={[styles.eventLocation, { color: theme.textTertiary }]} numberOfLines={1}>
-                            {event.location}
+                        {!event.all_day && (
+                          <Text style={[styles.eventTime, { color: theme.textSecondary }]}>
+                            {formatEventTime(event.start_time, event.end_time)}
                           </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
-                  </TouchableOpacity>
-                ))}
+                        )}
+                        {event.location && (
+                          <View style={styles.locationRow}>
+                            <Ionicons name="location-outline" size={14} color={theme.textTertiary} />
+                            <Text style={[styles.eventLocation, { color: theme.textTertiary }]} numberOfLines={1}>
+                              {event.location}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                    </TouchableOpacity>
+                  ))
+                )}
               </ScrollView>
             </Animated.View>
           </TouchableWithoutFeedback>
@@ -249,5 +257,16 @@ const styles = StyleSheet.create({
   eventLocation: {
     fontSize: 13,
     flex: 1,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

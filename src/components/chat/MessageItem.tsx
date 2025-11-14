@@ -97,19 +97,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     });
   };
 
-  const handleUserPress = async () => {
-    let senderData = sender || message.sender;
-
-    if (!senderData && message.sender_id) {
-      try {
-        senderData = await getUser(message.sender_id);
-        setSender(senderData);
-      } catch (error) {
-        // Silent error handling
-      }
-    }
-
-    if (senderData) {
+  const handleUserPress = () => {
+    if (message.sender_id) {
       setShowProfileModal(true);
     }
   };
@@ -193,7 +182,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {/* Модальное окно профиля пользователя */}
       <UserProfileModal
         visible={showProfileModal}
-        user={sender}
+        userId={message.sender_id}
         onClose={() => setShowProfileModal(false)}
         onOpenChat={async (userId) => {
           try {

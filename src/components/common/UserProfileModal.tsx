@@ -3,17 +3,18 @@
  * Модальное окно с информацией о пользователе
  */
 
-import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { Avatar } from '@components/common/Avatar';
 import { User } from '../../types/user.types';
+import { getUserById } from '@api/user.api';
 
 interface UserProfileModalProps {
   visible: boolean;
-  user: User | null;
+  userId: number | null;
   onClose: () => void;
   onOpenChat?: (userId: number) => void;
   onAddToFavorites?: (userId: number) => void;
@@ -22,7 +23,7 @@ interface UserProfileModalProps {
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   visible,
-  user,
+  userId,
   onClose,
   onOpenChat,
   onAddToFavorites,
@@ -30,8 +31,33 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!user) return null;
+  useEffect(() => {
+    if (visible && userId) {
+      loadUser();
+    }
+  }, [visible, userId]);
+
+  const loadUser = async () => {
+    if (!userId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const userData = await getUserById(userId);
+      setUser(userData);
+    } catch (error: any) {
+      console.error('Error loading user:', error);
+      setError(error.message || 'Не удалось загрузить профиль');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!visible) return null;
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Не указано';
@@ -139,17 +165,38 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <View style={styles.headerRight} />
           </View>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-            {/* Avatar and Name */}
-            <View style={styles.avatarSection}>
-              <Avatar
-                imageUrl={user.avatar}
-                name={user.full_name || user.name || user.email}
-                size={80}
-              />
-              <Text style={[styles.userName, { color: theme.text }]}>
-                {user.full_name || user.name || 'Без имени'}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+                Загрузка профиля...
               </Text>
+            </View>
+          ) : error ? (
+            <View style={styles.loadingContainer}>
+              <Ionicons name="alert-circle-outline" size={48} color={theme.error} />
+              <Text style={[styles.loadingText, { color: theme.error }]}>
+                {error}
+              </Text>
+              <TouchableOpacity
+                onPress={loadUser}
+                style={[styles.retryButton, { backgroundColor: theme.primary }]}
+              >
+                <Text style={styles.retryButtonText}>Попробовать снова</Text>
+              </TouchableOpacity>
+            </View>
+          ) : user ? (
+            <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+              {/* Avatar and Name */}
+              <View style={styles.avatarSection}>
+                <Avatar
+                  imageUrl={user.avatar}
+                  name={user.name || user.email}
+                  size={80}
+                />
+                <Text style={[styles.userName, { color: theme.text }]}>
+                  {user.name || 'Без имени'}
+                </Text>
               <View style={styles.statusBadge}>
                 <View
                   style={[
@@ -219,6 +266,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </View>
               </View>
 
+              {user.position && (
+                <View style={[styles.infoRow, dynamicStyles.infoRow]}>
+                  <Ionicons name="briefcase-outline" size={20} color={theme.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={[styles.label, dynamicStyles.label]}>Должность</Text>
+                    <Text style={[styles.value, dynamicStyles.value]}>
+                      {user.position}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
               {user.phone && (
                 <View style={[styles.infoRow, dynamicStyles.infoRow]}>
                   <Ionicons name="call-outline" size={20} color={theme.primary} />
@@ -231,8 +290,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </View>
               )}
 
-              <View style={[styles.infoRow, dynamicStyles.infoRow]}>
-                <Ionicons name="briefcase-outline" size={20} color={theme.primary} />
+              {(user.department_name || user.department?.name) && (
+                <View style={[styles.infoRow, dynamicStyles.infoRow]}>
+                  <Ionicons name="business-outline" size={20} color={theme.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={[styles.label, dynamicStyles.label]}>Отдел</Text>
+                    <Text style={[styles.value, dynamicStyles.value]}>
+                      {user.department_name || user.department?.name}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <View style={[styles.infoRow, dynamicStyles.infoRow, { borderBottomWidth: 0 }]}>
+                <Ionicons name="person-outline" size={20} color={theme.primary} />
                 <View style={styles.infoContent}>
                   <Text style={[styles.label, dynamicStyles.label]}>Роль</Text>
                   <Text style={[styles.value, dynamicStyles.value]}>
@@ -240,30 +311,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </Text>
                 </View>
               </View>
-
-              {user.department_name && (
-                <View style={[styles.infoRow, dynamicStyles.infoRow]}>
-                  <Ionicons name="business-outline" size={20} color={theme.primary} />
-                  <View style={styles.infoContent}>
-                    <Text style={[styles.label, dynamicStyles.label]}>Отдел</Text>
-                    <Text style={[styles.value, dynamicStyles.value]}>
-                      {user.department_name}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={[styles.infoRow, dynamicStyles.infoRow, { borderBottomWidth: 0 }]}>
-                <Ionicons name="calendar-outline" size={20} color={theme.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={[styles.label, dynamicStyles.label]}>Дата регистрации</Text>
-                  <Text style={[styles.value, dynamicStyles.value]}>
-                    {formatDate(user.created_at)}
-                  </Text>
-                </View>
-              </View>
             </View>
           </ScrollView>
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -385,5 +435,26 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

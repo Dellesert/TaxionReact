@@ -4,11 +4,34 @@
  */
 
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { Platform } from 'react-native';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import * as secureStorage from '@utils/secureStorage';
 import { API_BASE_URL, HTTP_STATUS, TIMEOUTS } from '@constants/api.constants';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import { ApiError, ApiResponse } from '../types/common.types';
 import { RefreshTokenResponse } from '../types/user.types';
+
+/**
+ * Generate User-Agent string based on platform
+ */
+const getUserAgent = (): string => {
+  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const appName = Constants.expoConfig?.name || 'Taxion';
+
+  if (Platform.OS === 'web') {
+    // For web, browser will use its own User-Agent
+    return '';
+  }
+
+  // For mobile platforms
+  const deviceName = Device.modelName || Device.deviceName || 'Unknown Device';
+  const osVersion = Device.osVersion || 'Unknown';
+  const platform = Platform.OS === 'ios' ? 'iPhone' : 'Android';
+
+  return `${appName}/${appVersion} (${platform}; ${deviceName}; ${Platform.OS} ${osVersion})`;
+};
 
 // Create Axios instance
 const api = axios.create({
@@ -16,6 +39,7 @@ const api = axios.create({
   timeout: TIMEOUTS.DEFAULT,
   headers: {
     'Content-Type': 'application/json',
+    ...(Platform.OS !== 'web' && { 'User-Agent': getUserAgent() }),
   },
   withCredentials: true,
 });

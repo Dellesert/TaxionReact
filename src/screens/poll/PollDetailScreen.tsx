@@ -23,9 +23,7 @@ import { SendMessageDto } from '@/types/chat.types';
 import SharePollModal from '@components/poll/SharePollModal';
 import EditPollModal from '@components/poll/EditPollModal';
 import { Avatar } from '@components/common/Avatar';
-import { User } from '../../types/user.types';
 import { UserProfileModal } from '@components/common/UserProfileModal';
-import { getUser } from '@api/user.api';
 import { getOrCreateDirectChat } from '@api/chat.api';
 
 type PollStackParamList = {
@@ -54,7 +52,7 @@ const PollDetailScreen: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [votersPreview, setVotersPreview] = useState<any[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   // Проверяем, открыт ли опрос из чата по параметру fromChat
   const isFromChat = route.params.fromChat === true;
@@ -82,14 +80,9 @@ const PollDetailScreen: React.FC = () => {
   const [showResults, setShowResults] = useState(false);
   const [isRevoting, setIsRevoting] = useState(false);
 
-  const handleUserPress = async (userId: number) => {
-    try {
-      const userData = await getUser(userId);
-      setSelectedUser(userData);
-      setShowProfileModal(true);
-    } catch (error) {
-      console.error('Error loading user:', error);
-    }
+  const handleUserPress = (userId: number) => {
+    setSelectedUserId(userId);
+    setShowProfileModal(true);
   };
 
   useEffect(() => {
@@ -1105,8 +1098,11 @@ const PollDetailScreen: React.FC = () => {
       {/* User Profile Modal */}
       <UserProfileModal
         visible={showProfileModal}
-        user={selectedUser}
-        onClose={() => setShowProfileModal(false)}
+        userId={selectedUserId}
+        onClose={() => {
+          setShowProfileModal(false);
+          setSelectedUserId(null);
+        }}
         onOpenChat={async (userId) => {
           try {
             const chat = await getOrCreateDirectChat(userId);

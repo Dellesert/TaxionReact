@@ -68,7 +68,19 @@ export const updateStatus = async (data: UpdateStatusDto): Promise<User> => {
  */
 export const getUserById = async (id: number): Promise<User> => {
   const response = await api.get<ApiResponse<User>>(API_ENDPOINTS.USER.PROFILE_BY_ID(id));
-  return response.data.data;
+
+  // Try different response formats
+  if (response.data.profile) {
+    return response.data.profile;
+  } else if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.user) {
+    return response.data.user;
+  } else if (response.data.id) {
+    return response.data as User;
+  } else {
+    return response.data as any;
+  }
 };
 
 // ============= User Management (Admin) =============
