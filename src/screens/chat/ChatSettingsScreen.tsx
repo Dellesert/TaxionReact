@@ -781,6 +781,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
 
 
+
         {/* Разделитель перед вкладками */}
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
 

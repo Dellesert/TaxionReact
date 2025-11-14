@@ -12,26 +12,32 @@ import {
   ActivityIndicator,
   ScrollView,
   Dimensions,
-  Linking,
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import FileViewer from 'react-native-file-viewer';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { Attachment } from '@/types/chat.types';
 import * as chatApi from '@api/chat.api';
 import { ImageViewer } from './ImageViewer';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
+import { replaceLocalhostWithIP } from '@utils/message.utils';
+import { decodeFileName } from '@utils/file.utils';
 
 interface AttachmentsTabProps {
   chatId: number;
 }
 
-type AttachmentType = 'images' | 'files' | 'links' | 'voice';
+type AttachmentType = 'images' | 'files' | 'links';
 
 export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
   const { theme } = useTheme();
+  const { showError } = useNotification();
   const [selectedType, setSelectedType] = useState<AttachmentType>('images');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,9 +79,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
       case 'images':
         return attachments.filter((att) => att.file_type === 'image');
       case 'files':
-        return attachments.filter((att) => att.file_type === 'document' || att.file_type === 'other');
-      case 'voice':
-        return attachments.filter((att) => att.file_type === 'audio');
+        return attachments.filter((att) => att.file_type === 'document' || att.file_type === 'other' || att.file_type === 'audio');
       case 'links':
         // Ссылки могут потребовать отдельной логики
         return [];
@@ -117,6 +121,97 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
     setSelectedImageIndex(0);
   };
 
+  const handleFileDownload = async (attachment: Attachment) => {
+    try {
+      // Get auth session ID
+      const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      if (!sessionId) {
+        showError('Необходима авторизация для скачивания файла');
+        return;
+      }
+
+      // Replace localhost with real IP
+      const fileUrl = replaceLocalhostWithIP(attachment.file_url);
+
+      if (Platform.OS === 'web') {
+        // Web: Download using blob
+        const response = await fetch(fileUrl, {
+          headers: {
+            'X-Session-ID': sessionId,
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Server response:', response.status, errorText);
+          throw new Error(`Failed to download file: ${response.status} - ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = attachment.file_name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        // Mobile: Download and open with file viewer
+        // Decode filename and create safe filename for iOS
+        const originalFileName = decodeURIComponent(attachment.file_name);
+
+        // Extract file extension
+        const fileExtension = originalFileName.split('.').pop() || '';
+
+        // Create safe filename using timestamp and original extension
+        const safeFileName = `file_${Date.now()}.${fileExtension}`;
+
+        // Use cache directory which is more reliable for temporary downloads
+        const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
+
+        const downloadResult = await FileSystem.downloadAsync(
+          fileUrl,
+          fileUri,
+          {
+            headers: {
+              'X-Session-ID': sessionId,
+            },
+          }
+        );
+
+        if (downloadResult.status !== 200) {
+          throw new Error(`Download failed with status: ${downloadResult.status}`);
+        }
+
+        // Open file with native viewer
+        try {
+          await FileViewer.open(downloadResult.uri, {
+            displayName: originalFileName,
+            showOpenWithDialog: true,
+            showAppsSuggestions: true,
+          });
+        } catch (viewerError: any) {
+          // If FileViewer fails, fallback to sharing
+          console.log('FileViewer failed, falling back to sharing:', viewerError);
+          const isAvailable = await Sharing.isAvailableAsync();
+
+          if (isAvailable) {
+            await Sharing.shareAsync(downloadResult.uri, {
+              UTI: attachment.mime_type,
+              mimeType: attachment.mime_type,
+            });
+          } else {
+            console.log('Успех', `Файл скачан:\n${originalFileName}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to download file:', error);
+      showError('Не удалось скачать файл');
+    }
+  };
+
   const handleAttachmentPress = async (attachment: Attachment, index: number) => {
     // Если это изображение, открываем в ImageViewer
     if (attachment.file_type === 'image') {
@@ -124,16 +219,8 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
       return;
     }
 
-    // Для других типов файлов открываем в браузере/приложении
-    try {
-      if (Platform.OS === 'web') {
-        window.open(attachment.file_url, '_blank');
-      } else {
-        await Linking.openURL(attachment.file_url);
-      }
-    } catch (error) {
-      console.error('Failed to open attachment:', error);
-    }
+    // Для других типов файлов используем handleFileDownload для предпросмотра
+    await handleFileDownload(attachment);
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -171,7 +258,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, dynamicStyles.container]}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.primary} />
         <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
           Загрузка вложений...
@@ -181,7 +268,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
   }
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
+    <>
       {/* Фильтры */}
       <ScrollView
         horizontal
@@ -243,31 +330,6 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
           style={[
             styles.filterButton,
             dynamicStyles.filterButton,
-            selectedType === 'voice' && dynamicStyles.activeFilterButton,
-          ]}
-          onPress={() => setSelectedType('voice')}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name="mic-outline"
-            size={20}
-            color={selectedType === 'voice' ? '#FFFFFF' : theme.textSecondary}
-          />
-          <Text
-            style={[
-              styles.filterText,
-              dynamicStyles.filterText,
-              selectedType === 'voice' && dynamicStyles.activeFilterText,
-            ]}
-          >
-            Аудио
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            dynamicStyles.filterButton,
             selectedType === 'links' && dynamicStyles.activeFilterButton,
           ]}
           onPress={() => setSelectedType('links')}
@@ -291,17 +353,14 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
       </ScrollView>
 
       {/* Контент */}
-      <ScrollView style={styles.contentContainer}>
-        {filteredAttachments.length === 0 ? (
-          <View style={styles.emptyState}>
+      {filteredAttachments.length === 0 ? (
+        <View style={styles.emptyState}>
             <Ionicons
               name={
                 selectedType === 'images'
                   ? 'image-outline'
                   : selectedType === 'files'
                   ? 'document-outline'
-                  : selectedType === 'voice'
-                  ? 'mic-outline'
                   : 'link-outline'
               }
               size={64}
@@ -310,7 +369,6 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               {selectedType === 'images' && 'Нет фотографий'}
               {selectedType === 'files' && 'Нет файлов'}
-              {selectedType === 'voice' && 'Нет аудиозаписей'}
               {selectedType === 'links' && 'Нет ссылок'}
             </Text>
           </View>
@@ -385,7 +443,6 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
             ))}
           </View>
         )}
-      </ScrollView>
 
       {/* Image Viewer Modal */}
       <ImageViewer
@@ -394,16 +451,12 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
         initialIndex={selectedImageIndex}
         onClose={handleCloseImageViewer}
       />
-    </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   loadingContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
@@ -419,6 +472,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
+    justifyContent: 'center',
+    flexGrow: 1,
   },
   filterButton: {
     flexDirection: 'row',
@@ -434,11 +489,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  contentContainer: {
-    flex: 1,
-  },
   emptyState: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
