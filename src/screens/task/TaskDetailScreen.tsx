@@ -152,6 +152,8 @@ const TaskDetailScreen: React.FC = () => {
 
   // Action menu state
   const [showActionMenu, setShowActionMenu] = useState(false);
+  const actionMenuBackgroundOpacity = useRef(new Animated.Value(0)).current;
+  const actionMenuSlideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
 
   // Attachments state
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
@@ -186,6 +188,38 @@ const TaskDetailScreen: React.FC = () => {
       loadActivities();
     }
   }, [activeTab]);
+
+  // Animate action menu
+  useEffect(() => {
+    if (showActionMenu) {
+      Animated.parallel([
+        Animated.timing(actionMenuBackgroundOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(actionMenuSlideAnim, {
+          toValue: 0,
+          damping: 25,
+          stiffness: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(actionMenuBackgroundOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(actionMenuSlideAnim, {
+          toValue: Dimensions.get('window').height,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showActionMenu]);
 
   // Reload subtasks when screen gains focus (e.g., coming back from subtask detail)
   useFocusEffect(
@@ -2453,25 +2487,30 @@ const TaskDetailScreen: React.FC = () => {
         <Modal
           visible={showActionMenu}
           transparent
-          animationType="fade"
+          animationType="none"
           onRequestClose={() => setShowActionMenu(false)}
         >
-          <TouchableOpacity
+          <Animated.View
             style={{
               flex: 1,
               backgroundColor: 'rgba(0, 0, 0, 0.5)',
               justifyContent: 'flex-end',
+              opacity: actionMenuBackgroundOpacity,
             }}
-            activeOpacity={1}
-            onPress={() => setShowActionMenu(false)}
           >
-            <View
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={1}
+              onPress={() => setShowActionMenu(false)}
+            />
+            <Animated.View
               style={{
                 backgroundColor: theme.card,
                 borderTopLeftRadius: 20,
                 borderTopRightRadius: 20,
                 paddingBottom: Platform.OS === 'ios' ? 34 : 16,
                 paddingTop: 8,
+                transform: [{ translateY: actionMenuSlideAnim }],
               }}
               onStartShouldSetResponder={() => true}
             >
@@ -2531,9 +2570,10 @@ const TaskDetailScreen: React.FC = () => {
                   </TouchableOpacity>
                 )}
 
-                {/* Delegate Task Option */}
+                {/* Delegate Task Option - only for tasks NOT created by current user */}
                 {(user?.role === 'department_head' || user?.role === 'admin' || user?.role === 'super_admin') &&
-                 task.status !== 'done' && task.status !== 'cancelled' && (
+                 task.status !== 'done' && task.status !== 'cancelled' &&
+                 task.created_by !== user?.id && (
                   <TouchableOpacity
                     style={{
                       flexDirection: 'row',
@@ -2564,10 +2604,10 @@ const TaskDetailScreen: React.FC = () => {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 2 }}>
-                        Делегировать задачу
+                        Передать задачу
                       </Text>
                       <Text style={{ fontSize: 13, color: theme.textSecondary }}>
-                        Передать задачу другому сотруднику
+                        Назначить другого исполнителя
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
@@ -2674,8 +2714,8 @@ const TaskDetailScreen: React.FC = () => {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
         </Modal>
       </View>
     </SafeAreaView>
