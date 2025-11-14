@@ -64,6 +64,17 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
     }
   };
 
+  // Обработка клика на баннер: показать текущее сообщение и переключить на следующее
+  const handleBannerPress = () => {
+    // Прокручиваем к текущему сообщению
+    onPress(currentMessage.id);
+
+    // Если есть несколько закрепленных сообщений, переключаемся на следующее
+    if (hasMore) {
+      setCurrentIndex((prev) => (prev + 1) % sortedMessages.length);
+    }
+  };
+
   // Открепить текущее сообщение
   const handleUnpin = (e: any) => {
     e.stopPropagation();
@@ -132,7 +143,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
   return (
     <TouchableOpacity
       style={[styles.container, dynamicStyles.container]}
-      onPress={() => onPress(currentMessage.id)}
+      onPress={handleBannerPress}
       activeOpacity={0.7}
     >
       <View style={styles.content}>
