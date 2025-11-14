@@ -11,7 +11,6 @@ import {
   TextInput,
   ActivityIndicator,
   StyleSheet,
-  Alert,
   Image,
 } from 'react-native';
 import {
@@ -31,6 +30,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
+import { useActionModal } from '@contexts/ActionModalContext';
+import { useNotification } from '@contexts/NotificationContext';
 
 interface TaskChecklistsViewProps {
   taskId: number;
@@ -238,6 +239,8 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
+  const { showConfirm } = useActionModal();
+  const { showError } = useNotification();
   const [checklists, setChecklists] = useState<TaskChecklist[]>([]);
   const [loading, setLoading] = useState(true);
   const [newChecklistTitle, setNewChecklistTitle] = useState('');
@@ -253,7 +256,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       setExpandedChecklists(new Set(data.map(c => c.id)));
     } catch (error: any) {
       console.error('Error loading checklists:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить чеклисты');
+      showError('Не удалось загрузить чеклисты');
     } finally {
       setLoading(false);
     }
@@ -278,31 +281,30 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       onChecklistChanged?.();
     } catch (error) {
       console.error('Error creating checklist:', error);
-      Alert.alert('Ошибка', 'Не удалось создать чеклист');
+      showError('Не удалось создать чеклист');
     }
   };
 
   const handleDeleteChecklist = (checklist: TaskChecklist) => {
-    Alert.alert(
+    showConfirm(
       'Удалить чеклист?',
       `Вы уверены, что хотите удалить "${checklist.title}"?`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteChecklist(checklist.id);
-              setChecklists(prev => prev.filter(c => c.id !== checklist.id));
-              onChecklistChanged?.();
-            } catch (error) {
-              console.error('Error deleting checklist:', error);
-              Alert.alert('Ошибка', 'Не удалось удалить чеклист');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await deleteChecklist(checklist.id);
+          setChecklists(prev => prev.filter(c => c.id !== checklist.id));
+          onChecklistChanged?.();
+        } catch (error) {
+          console.error('Error deleting checklist:', error);
+          showError('Не удалось удалить чеклист');
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        destructive: true,
+      }
     );
   };
 
@@ -320,7 +322,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       onChecklistChanged?.();
     } catch (error) {
       console.error('Error adding item:', error);
-      Alert.alert('Ошибка', 'Не удалось добавить пункт');
+      showError('Не удалось добавить пункт');
     }
   };
 
@@ -342,7 +344,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       onChecklistChanged?.();
     } catch (error) {
       console.error('Error toggling item:', error);
-      Alert.alert('Ошибка', 'Не удалось изменить статус');
+      showError('Не удалось изменить статус');
       // Reload to restore correct state
       loadChecklists();
     }
@@ -360,7 +362,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       onChecklistChanged?.();
     } catch (error) {
       console.error('Error deleting item:', error);
-      Alert.alert('Ошибка', 'Не удалось удалить пункт');
+      showError('Не удалось удалить пункт');
     }
   };
 

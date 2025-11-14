@@ -12,6 +12,7 @@ import { useAuthStore } from './src/store/authStore';
 import { useThemeStore } from './src/store/themeStore';
 import { websocketService } from './src/services/websocket.service';
 import { NotificationProvider } from './src/contexts/NotificationContext';
+import { ActionModalProvider } from './src/contexts/ActionModalContext';
 
 // Добавляем типы для ErrorUtils (глобальная переменная React Native)
 declare const ErrorUtils: {
@@ -133,7 +134,9 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NotificationProvider>
-        <AppNavigator />
+        <ActionModalProvider>
+          <AppNavigator />
+        </ActionModalProvider>
       </NotificationProvider>
     </GestureHandlerRootView>
   );

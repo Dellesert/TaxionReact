@@ -13,11 +13,11 @@ import {
   Modal,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import { Chat } from '@/types/chat.types';
@@ -37,6 +37,7 @@ const ShareTaskModal: React.FC<ShareTaskModalProps> = ({
   onShare,
 }) => {
   const { theme } = useTheme();
+  const { showSuccess, showError } = useNotification();
   const { chats, loadChats } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,20 +65,11 @@ const ShareTaskModal: React.FC<ShareTaskModalProps> = ({
       setIsSending(true);
       await onShare(chatId);
 
-      if (Platform.OS === 'web') {
-      } else {
-        Alert.alert('Успех', 'Задача отправлена в чат!');
-      }
-
+      showSuccess('Задача отправлена в чат');
       onClose();
     } catch (error: any) {
       console.error('Failed to share task:', error);
-
-      if (Platform.OS === 'web') {
-        console.log(error.message || 'Не удалось отправить задачу');
-      } else {
-        Alert.alert('Ошибка', error.message || 'Не удалось отправить задачу');
-      }
+      showError(error.message || 'Не удалось отправить задачу');
     } finally {
       setIsSending(false);
     }

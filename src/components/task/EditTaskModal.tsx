@@ -12,7 +12,6 @@ import {
   ScrollView,
   StyleSheet,
   Modal,
-  Alert,
   Platform,
   StatusBar,
   ActivityIndicator,
@@ -20,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { Task, TaskPriority, TaskChecklist } from '../../types/task.types';
 import * as taskApi from '@api/task.api';
 import UserSelector from '@components/common/UserSelector';
@@ -42,6 +42,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { showSuccess, showError } = useNotification();
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
@@ -148,8 +149,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Ошибка', 'Название задачи не может быть пустым');
-      return;
+      return; // Кнопка сохранения уже задизейблена если нет названия
     }
 
     try {
@@ -200,14 +200,14 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         }
       }
 
+      // Показываем уведомление об успешном сохранении
+      showSuccess('Задача успешно обновлена');
+
       onTaskUpdated(updatedTask);
       onClose();
-
-      if (Platform.OS !== 'web') {
-      }
     } catch (error: any) {
       console.error('Failed to update task:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось обновить задачу');
+      showError(error.message || 'Не удалось обновить задачу');
     } finally {
       setIsSaving(false);
     }

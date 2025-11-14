@@ -8,7 +8,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '@hooks/useTheme';
 import { TaskStackParamList } from './types';
 import TaskListScreen from '@screens/task/TaskListScreen';
-import CreateTaskScreen from '@screens/task/CreateTaskScreen';
 import TaskDetailScreen from '@screens/task/TaskDetailScreen';
 
 const Stack = createNativeStackNavigator<TaskStackParamList>();
@@ -39,13 +38,6 @@ const TaskNavigator: React.FC = () => {
       <Stack.Screen
         name="TaskList"
         component={TaskListScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="CreateTask"
-        component={CreateTaskScreen}
         options={{
           headerShown: false,
         }}

@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { TaskAttachment } from '@/types/task.types';
 import {
@@ -26,6 +25,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useAuthStore } from '@store/authStore';
 import { Avatar } from '@components/common/Avatar';
+import { useActionModal } from '@contexts/ActionModalContext';
+import { useNotification } from '@contexts/NotificationContext';
 
 interface TaskAttachmentsListProps {
   taskId: number;
@@ -66,6 +67,8 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
   onAttachmentAdded,
 }) => {
   const { user: currentUser } = useAuthStore();
+  const { showConfirm } = useActionModal();
+  const { showError } = useNotification();
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -77,7 +80,7 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
       setAttachments(data);
     } catch (error) {
       console.error('Error loading attachments:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить файлы');
+      showError('Не удалось загрузить файлы');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -119,33 +122,32 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
       onAttachmentAdded?.();
     } catch (error) {
       console.error('Error uploading file:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить файл');
+      showError('Не удалось загрузить файл');
     } finally {
       setUploading(false);
     }
   };
 
   const handleDeleteAttachment = (attachment: TaskAttachment) => {
-    Alert.alert(
+    showConfirm(
       'Удалить файл?',
       `Вы уверены, что хотите удалить "${attachment.file_name}"?`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAttachment(attachment.id);
-              setAttachments(prev => prev.filter(a => a.id !== attachment.id));
-              onAttachmentAdded?.();
-            } catch (error) {
-              console.error('Error deleting attachment:', error);
-              Alert.alert('Ошибка', 'Не удалось удалить файл');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await deleteAttachment(attachment.id);
+          setAttachments(prev => prev.filter(a => a.id !== attachment.id));
+          onAttachmentAdded?.();
+        } catch (error) {
+          console.error('Error deleting attachment:', error);
+          showError('Не удалось удалить файл');
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        destructive: true,
+      }
     );
   };
 

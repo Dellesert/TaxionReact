@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   TextInput,
   StyleSheet,
   ActivityIndicator,
@@ -26,6 +25,8 @@ import { ScreenHeader } from '@components/common/ScreenHeader';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import { useTaskPermissions } from '@hooks/useTaskPermissions';
+import { useActionModal } from '@contexts/ActionModalContext';
+import { useNotification } from '@contexts/NotificationContext';
 import { getUser } from '@api/user.api';
 import { getOrCreateDirectChat } from '@api/chat.api';
 import { format } from 'date-fns';
@@ -120,6 +121,8 @@ const TaskDetailScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const { showConfirm } = useActionModal();
+  const { showSuccess, showError } = useNotification();
 
   // Check if screen is narrow (phone in portrait)
   const [isNarrowScreen, setIsNarrowScreen] = useState(Dimensions.get('window').width < 460);
@@ -317,7 +320,7 @@ const TaskDetailScreen: React.FC = () => {
       if (error.status === 403) {
         setAccessDenied(true);
       } else {
-        Alert.alert('Ошибка', 'Не удалось загрузить задачу');
+        showError('Не удалось загрузить задачу');
       }
     } finally {
       setIsLoading(false);
@@ -381,22 +384,14 @@ const TaskDetailScreen: React.FC = () => {
     // Check if trying to complete or submit for review with incomplete subtasks
     if ((newStatus === 'done' || newStatus === 'review') && !areAllSubtasksCompleted()) {
       const action = newStatus === 'done' ? 'завершить задачу' : 'сдать на проверку';
-      Alert.alert(
-        `Невозможно ${action}`,
-        'Пожалуйста, завершите все подзадачи перед тем, как продолжить.',
-        [{ text: 'OK' }]
-      );
+      showError(`Невозможно ${action}. Пожалуйста, завершите все подзадачи перед тем, как продолжить.`);
       return;
     }
 
     // Check if trying to complete or submit for review with incomplete checklist items
     if ((newStatus === 'done' || newStatus === 'review') && !areAllChecklistItemsCompleted()) {
       const action = newStatus === 'done' ? 'завершить задачу' : 'сдать на проверку';
-      Alert.alert(
-        `Невозможно ${action}`,
-        'Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.',
-        [{ text: 'OK' }]
-      );
+      showError(`Невозможно ${action}. Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.`);
       return;
     }
 
@@ -405,97 +400,54 @@ const TaskDetailScreen: React.FC = () => {
       await taskApi.updateTask(taskIdNum, { status: newStatus });
       setTask({ ...task, status: newStatus });
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось обновить статус');
+      showError('Не удалось обновить статус');
     }
   };
 
-  const handleEmergencyComplete = async () => {
-    // Use window.confirm for web, Alert.alert for mobile
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        'Аварийное завершение задачи\n\n' +
-        'Вы собираетесь завершить просроченную задачу в аварийном режиме. ' +
-        'Это действие будет зафиксировано в истории задачи.\n\n' +
-        'Продолжить?'
-      );
-      if (!confirmed) return;
-
-      try {
-        const taskIdNum = Number(taskId);
-        await taskApi.emergencyCompleteTask(taskIdNum);
-        alert('Задача завершена в аварийном режиме');
-        loadTask(); // Reload task to update status
-      } catch (error: any) {
-        alert(`Не удалось завершить задачу: ${error.message || error}`);
+  const handleEmergencyComplete = () => {
+    showConfirm(
+      'Аварийное завершение',
+      'Вы собираетесь завершить просроченную задачу в аварийном режиме. Это действие будет зафиксировано в истории задачи.\n\nПродолжить?',
+      async () => {
+        try {
+          const taskIdNum = Number(taskId);
+          await taskApi.emergencyCompleteTask(taskIdNum);
+          showSuccess('Задача завершена в аварийном режиме');
+          loadTask(); // Reload task to update status
+        } catch (error: any) {
+          showError(`Не удалось завершить задачу: ${error.message || error}`);
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Завершить',
+        cancelText: 'Отмена',
+        destructive: true,
       }
-    } else {
-      // Mobile: use Alert.alert
-      Alert.alert(
-        'Аварийное завершение',
-        'Вы собираетесь завершить просроченную задачу в аварийном режиме. Это действие будет зафиксировано в истории задачи.\n\nПродолжить?',
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Завершить',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const taskIdNum = Number(taskId);
-                await taskApi.emergencyCompleteTask(taskIdNum);
-                Alert.alert('Успешно', 'Задача завершена в аварийном режиме');
-                loadTask(); // Reload task to update status
-              } catch (error: any) {
-                Alert.alert('Ошибка', `Не удалось завершить задачу: ${error.message || error}`);
-              }
-            },
-          },
-        ]
-      );
-    }
+    );
   };
 
-  const handleDeleteTask = async () => {
-    // Use window.confirm for web, Alert.alert for mobile
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.');
-      if (!confirmed) return;
-
-      try {
-        const taskIdNum = Number(taskId);
-        await taskApi.deleteTask(taskIdNum);
-        alert('Задача удалена');
-        navigation.goBack();
-      } catch (error) {
-        alert(`Не удалось удалить задачу: ${error.message || error}`);
+  const handleDeleteTask = () => {
+    showConfirm(
+      'Удалить задачу?',
+      'Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.',
+      async () => {
+        try {
+          const taskIdNum = Number(taskId);
+          await taskApi.deleteTask(taskIdNum);
+          showSuccess('Задача удалена');
+          navigation.goBack();
+        } catch (error) {
+          showError(`Не удалось удалить задачу: ${error.message || error}`);
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        destructive: true,
       }
-    } else {
-      // Mobile: use Alert.alert
-      Alert.alert(
-        'Удалить задачу?',
-        'Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.',
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Удалить',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const taskIdNum = Number(taskId);
-                await taskApi.deleteTask(taskIdNum);
-                Alert.alert('Успех', 'Задача удалена', [
-                  {
-                    text: 'OK',
-                    onPress: () => navigation.goBack(),
-                  },
-                ]);
-              } catch (error) {
-                Alert.alert('Ошибка', `Не удалось удалить задачу: ${error.message || error}`);
-              }
-            },
-          },
-        ]
-      );
-    }
+    );
   };
 
   const handleSendComment = async () => {
@@ -508,7 +460,7 @@ const TaskDetailScreen: React.FC = () => {
       setNewComment('');
       await loadComments();
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось отправить комментарий');
+      showError('Не удалось отправить комментарий');
     } finally {
       setIsSendingComment(false);
     }
@@ -528,7 +480,7 @@ const TaskDetailScreen: React.FC = () => {
       setEditingCommentText('');
       await loadComments();
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось обновить комментарий');
+      showError('Не удалось обновить комментарий');
     }
   };
 
@@ -537,47 +489,32 @@ const TaskDetailScreen: React.FC = () => {
     setEditingCommentText('');
   };
 
-  const handleDeleteComment = async (commentId: number) => {
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm('Вы уверены, что хотите удалить этот комментарий?')
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Удалить комментарий?',
-            'Это действие нельзя отменить.',
-            [
-              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
-              {
-                text: 'Удалить',
-                style: 'destructive',
-                onPress: () => resolve(true),
-              },
-            ]
-          );
-        });
-
-    if (!confirmed) return;
-
-    try {
-      await taskApi.deleteComment(commentId);
-      await loadComments();
-      if (Platform.OS === 'web') {
-        alert('Комментарий удалён');
-      } else {
-        Alert.alert('Успех', 'Комментарий удалён');
+  const handleDeleteComment = (commentId: number) => {
+    showConfirm(
+      'Удалить комментарий?',
+      'Это действие нельзя отменить.',
+      async () => {
+        try {
+          await taskApi.deleteComment(commentId);
+          await loadComments();
+          showSuccess('Комментарий удалён');
+        } catch (error) {
+          showError('Не удалось удалить комментарий');
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        destructive: true,
       }
-    } catch (error) {
-      if (Platform.OS === 'web') {
-        alert('Не удалось удалить комментарий');
-      } else {
-        Alert.alert('Ошибка', 'Не удалось удалить комментарий');
-      }
-    }
+    );
   };
 
   const handleShareTask = async (chatId: number) => {
     console.log('Share task to chat:', chatId);
     // TODO: Implement task sharing
-    Alert.alert('Успех', 'Задача отправлена в чат');
+    showSuccess('Задача отправлена в чат');
   };
 
   // Load attachments
@@ -636,7 +573,7 @@ const TaskDetailScreen: React.FC = () => {
       await handleUploadFile(file);
     } catch (error) {
       console.error('Error picking file:', error);
-      Alert.alert('Ошибка', 'Не удалось выбрать файл');
+      showError('Не удалось выбрать файл');
     }
   };
 
@@ -670,13 +607,13 @@ const TaskDetailScreen: React.FC = () => {
       const result = await taskApi.attachFileToTask(taskIdNum, uploadedFile.id);
       console.log('✅ File attached to task:', result);
 
-      Alert.alert('Успех', 'Файл загружен');
+      showSuccess('Файл загружен');
       await loadAttachments();
       await loadTask();
     } catch (error: any) {
       console.error('❌ Error uploading file:', error);
       console.error('Error details:', error.response?.data || error.message);
-      Alert.alert('Ошибка', error.message || 'Не удалось загрузить файл');
+      showError(error.message || 'Не удалось загрузить файл');
     } finally {
       setIsUploadingAttachment(false);
     }
@@ -689,7 +626,7 @@ const TaskDetailScreen: React.FC = () => {
       // Extract file ID from file_path (e.g., "/files/11" -> "11")
       const fileId = attachment.file_path.split('/').pop();
       if (!fileId) {
-        Alert.alert('Ошибка', 'Неверный путь к файлу');
+        showError('Неверный путь к файлу');
         return;
       }
 
@@ -701,7 +638,7 @@ const TaskDetailScreen: React.FC = () => {
       // Get session ID
       const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
       if (!sessionId) {
-        Alert.alert('Ошибка', 'Не авторизован');
+        showError('Не авторизован');
         return;
       }
 
@@ -772,57 +709,38 @@ const TaskDetailScreen: React.FC = () => {
               mimeType: attachment.mime_type,
             });
           } else {
-            Alert.alert('Успех', `Файл скачан:\n${originalFileName}`);
+            showSuccess(`Файл скачан:\n${originalFileName}`);
           }
         }
       }
     } catch (error: any) {
       console.error('❌ Error opening file:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось открыть файл');
+      showError(error.message || 'Не удалось открыть файл');
     }
   };
 
-  const handleDeleteAttachment = async (attachmentId: number) => {
-    // Use window.confirm for web, Alert.alert for mobile
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm('Вы уверены, что хотите удалить этот файл?')
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Удалить файл?',
-            'Вы уверены, что хотите удалить этот файл?',
-            [
-              { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
-              {
-                text: 'Удалить',
-                style: 'destructive',
-                onPress: () => resolve(true),
-              },
-            ]
-          );
-        });
-
-    if (!confirmed) return;
-
-    try {
-      await taskApi.deleteAttachment(attachmentId);
-
-      if (Platform.OS === 'web') {
-        alert('Файл удалён');
-      } else {
-        Alert.alert('Успех', 'Файл удалён');
+  const handleDeleteAttachment = (attachmentId: number) => {
+    showConfirm(
+      'Удалить файл?',
+      'Вы уверены, что хотите удалить этот файл?',
+      async () => {
+        try {
+          await taskApi.deleteAttachment(attachmentId);
+          showSuccess('Файл удалён');
+          await loadAttachments();
+          await loadTask();
+        } catch (error) {
+          console.error('Error deleting attachment:', error);
+          showError('Не удалось удалить файл');
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        destructive: true,
       }
-
-      await loadAttachments();
-      await loadTask();
-    } catch (error) {
-      console.error('Error deleting attachment:', error);
-
-      if (Platform.OS === 'web') {
-        alert('Не удалось удалить файл');
-      } else {
-        Alert.alert('Ошибка', 'Не удалось удалить файл');
-      }
-    }
+    );
   };
 
   if (isLoading) {
@@ -1750,21 +1668,13 @@ const TaskDetailScreen: React.FC = () => {
       // Check if all subtasks are completed
       if (!areAllSubtasksCompleted()) {
         const action = isCreator ? 'завершить задачу' : 'сдать на проверку';
-        Alert.alert(
-          `Невозможно ${action}`,
-          'Пожалуйста, завершите все подзадачи перед тем, как продолжить.',
-          [{ text: 'OK' }]
-        );
+        showError(`Невозможно ${action}. Пожалуйста, завершите все подзадачи перед тем, как продолжить.`);
         return;
       }
       // Check if all checklist items are completed
       if (!areAllChecklistItemsCompleted()) {
         const action = isCreator ? 'завершить задачу' : 'сдать на проверку';
-        Alert.alert(
-          `Невозможно ${action}`,
-          'Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.',
-          [{ text: 'OK' }]
-        );
+        showError(`Невозможно ${action}. Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.`);
         return;
       }
       // Creator completes directly, assignee submits for review
@@ -2120,27 +2030,17 @@ const TaskDetailScreen: React.FC = () => {
                       const handleAttachmentLongPress = () => {
                         if (!canDelete) return;
 
-                        if (Platform.OS === 'web') {
-                          const confirmed = window.confirm(
-                            `Удалить файл "${decodeFileName(attachment.file_name)}"?`
-                          );
-                          if (confirmed) {
-                            handleDeleteAttachment(attachment.id);
+                        showConfirm(
+                          'Удалить файл?',
+                          `Вы уверены, что хотите удалить "${decodeFileName(attachment.file_name)}"?`,
+                          () => handleDeleteAttachment(attachment.id),
+                          undefined,
+                          {
+                            confirmText: 'Удалить',
+                            cancelText: 'Отмена',
+                            destructive: true,
                           }
-                        } else {
-                          Alert.alert(
-                            'Действия с файлом',
-                            decodeFileName(attachment.file_name),
-                            [
-                              { text: 'Отмена', style: 'cancel' },
-                              {
-                                text: 'Удалить',
-                                style: 'destructive',
-                                onPress: () => handleDeleteAttachment(attachment.id),
-                              },
-                            ]
-                          );
-                        }
+                        );
                       };
 
                       return (
@@ -2555,7 +2455,7 @@ const TaskDetailScreen: React.FC = () => {
               console.log('✅ onDelegated called, reloading task...');
               setShowDelegateModal(false);
               loadTask(); // Reload task to update delegation chain
-              Alert.alert('Успех', 'Задача успешно делегирована');
+              showSuccess('Задача успешно делегирована');
             }}
           />
         )}
@@ -2585,7 +2485,7 @@ const TaskDetailScreen: React.FC = () => {
               }
             } catch (error: any) {
               console.error('❌ Error opening chat:', error);
-              Alert.alert('Ошибка', error.message || 'Не удалось открыть чат');
+              showError(error.message || 'Не удалось открыть чат');
             }
           }}
         />

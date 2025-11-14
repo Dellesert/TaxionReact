@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   Platform,
   Modal,
   StatusBar,
@@ -23,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTaskStore } from '@store/taskStore';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@contexts/NotificationContext';
 import { TaskPriority, CreateTaskDto } from '../../types/task.types';
 import UserSelector from '@components/common/UserSelector';
 import DatePickerModal from '@components/common/DatePickerModal';
@@ -47,6 +47,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const insets = useSafeAreaInsets();
   const { createTask } = useTaskStore();
   const { user: currentUser } = useAuthStore();
+  const { showSuccess, showError } = useNotification();
 
   const isEmployee = currentUser?.role === 'employee';
 
@@ -97,12 +98,12 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   // Navigation handlers
   const goToNextStep = () => {
     if (currentStep === 1 && !title.trim()) {
-      Alert.alert('Внимание', 'Введите название задачи');
+      // Не показываем уведомление, пользователь сам видит что поле пустое
       return;
     }
 
     if (currentStep === 2 && !contentType) {
-      Alert.alert('Внимание', 'Выберите тип содержимого');
+      // Не показываем уведомление, пользователь сам видит что ничего не выбрано
       return;
     }
 
@@ -134,8 +135,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   const handleCreateTask = async () => {
     if (!title.trim()) {
-      Alert.alert('Ошибка', 'Введите название задачи');
-      return;
+      return; // Не должно произойти, т.к. кнопка на 4 шаге
     }
 
     try {
@@ -184,11 +184,15 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           // Don't fail the whole operation, just log the error
         }
       }
+
+      // Показываем уведомление об успешном создании
+      showSuccess('Задача успешно создана');
+
       onTaskCreated();
       handleClose();
     } catch (error: any) {
       console.error('Failed to create task:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось создать задачу');
+      showError(error.message || 'Не удалось создать задачу');
     } finally {
       setIsCreating(false);
     }

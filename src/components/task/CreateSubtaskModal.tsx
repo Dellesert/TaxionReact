@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   Modal,
   StatusBar,
   ActivityIndicator,
@@ -19,6 +18,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNotification } from '@contexts/NotificationContext';
 import { CreateTaskDto, TaskPriority, TaskAttachment } from '../../types/task.types';
 import { createSubtask, getTaskAttachments } from '../../api/task.api';
 import UserSelector from '../common/UserSelector';
@@ -45,6 +45,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { showSuccess, showError } = useNotification();
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -117,12 +118,12 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   // Navigation handlers
   const goToNextStep = () => {
     if (currentStep === 1 && !title.trim()) {
-      Alert.alert('Внимание', 'Введите название подзадачи');
+      // Не показываем уведомление, пользователь сам видит что поле пустое
       return;
     }
 
     if (currentStep === 2 && !contentType) {
-      Alert.alert('Внимание', 'Выберите тип содержимого');
+      // Не показываем уведомление, пользователь сам видит что ничего не выбрано
       return;
     }
 
@@ -152,8 +153,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 
   const handleCreateSubtask = async () => {
     if (!title.trim()) {
-      Alert.alert('Ошибка', 'Введите название подзадачи');
-      return;
+      return; // Не должно произойти, т.к. кнопка на последнем шаге
     }
 
     try {
@@ -198,11 +198,14 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
         }
       }
 
+      // Показываем уведомление об успешном создании
+      showSuccess('Подзадача успешно создана');
+
       onSubtaskCreated?.();
       handleClose();
     } catch (error: any) {
       console.error('Failed to create subtask:', error);
-      Alert.alert('Ошибка', error.message || 'Не удалось создать подзадачу');
+      showError(error.message || 'Не удалось создать подзадачу');
     } finally {
       setIsCreating(false);
     }
