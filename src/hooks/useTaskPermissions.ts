@@ -35,15 +35,38 @@ export const useTaskPermissions = (task: Task | null): TaskPermissions => {
       return DEFAULT_PERMISSIONS;
     }
 
-    // If backend provides permissions, use them (preferred)
+    // Debug logging to check what backend provides
+    console.log('🔍 Task permissions check:', {
+      taskId: task.id,
+      taskTitle: task.title,
+      userId: user.id,
+      assignees: task.assignees,
+      delegationChain: task.delegation_chain,
+      backendPermissions: task.permissions,
+    });
+
+    // If backend provides permissions, check if they're valid
     if (task.permissions) {
+      // Check if all permissions are false (likely a backend bug)
+      const allFalse = Object.values(task.permissions).every(v => v === false);
+
+      if (allFalse) {
+        console.warn('⚠️ Backend returned all permissions as false, using client calculation as fallback');
+        const calculated = calculateClientPermissions(task, user.id);
+        console.log('📊 Calculated permissions (backend returned all false):', calculated);
+        return calculated;
+      }
+
+      console.log('✅ Using backend permissions:', task.permissions);
       return task.permissions;
     }
 
     // Fallback: calculate permissions on client side
     // This should not normally happen if backend is working correctly
-    console.warn('Task permissions not provided by backend, calculating on client');
-    return calculateClientPermissions(task, user.id);
+    console.warn('⚠️ Task permissions not provided by backend, calculating on client');
+    const calculated = calculateClientPermissions(task, user.id);
+    console.log('📊 Calculated permissions:', calculated);
+    return calculated;
   }, [task, user]);
 };
 
@@ -57,6 +80,15 @@ function calculateClientPermissions(task: Task, userId: number): TaskPermissions
   const isInDelegationChain = task.delegation_chain?.some(
     d => d.id === userId
   ) ?? false;
+
+  console.log('🔍 Client permission calculation:', {
+    userId,
+    isCreator,
+    isAssignee,
+    isInDelegationChain,
+    assignees: task.assignees,
+    delegationChain: task.delegation_chain,
+  });
 
   // Creator has full access
   if (isCreator) {
@@ -74,7 +106,8 @@ function calculateClientPermissions(task: Task, userId: number): TaskPermissions
     };
   }
 
-  // Current assignee of main task
+  // Current assignee of main task (including delegated tasks)
+  // For delegated tasks, current assignee should be in assignees array
   if (isAssignee && !task.parent_task_id) {
     return {
       can_view: true,
@@ -106,8 +139,9 @@ function calculateClientPermissions(task: Task, userId: number): TaskPermissions
     };
   }
 
-  // In delegation chain (former assignee)
-  if (isInDelegationChain) {
+  // In delegation chain (former assignee) but NOT current assignee
+  // This handles the case where someone delegated the task away
+  if (isInDelegationChain && !isAssignee) {
     // Check if task is overdue >3 days
     let canEmergency = false;
     if (task.due_date) {
