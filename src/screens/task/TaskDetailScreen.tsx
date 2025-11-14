@@ -1312,7 +1312,7 @@ const TaskDetailScreen: React.FC = () => {
     attachmentItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      gap: 12,
       backgroundColor: theme.backgroundSecondary,
       borderRadius: 10,
       padding: 12,
@@ -1323,12 +1323,6 @@ const TaskDetailScreen: React.FC = () => {
       shadowOpacity: 0.05,
       shadowRadius: 2,
       elevation: 1,
-    },
-    attachmentInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-      gap: 12,
     },
     attachmentDetails: {
       flex: 1,
@@ -1357,9 +1351,6 @@ const TaskDetailScreen: React.FC = () => {
     attachmentUploaderName: {
       fontSize: 11,
       color: '#9ca3af',
-    },
-    deleteAttachmentButton: {
-      padding: 4,
     },
     addAttachmentButton: {
       flexDirection: 'row',
@@ -2120,57 +2111,71 @@ const TaskDetailScreen: React.FC = () => {
                     {attachments.map((attachment) => {
                       const fileIcon = getFileIcon(attachment.file_type || '', attachment.file_name);
 
-                      // DEBUG: Log attachment data
-                      console.log('🔍 TaskDetailScreen - Attachment:', {
-                        id: attachment.id,
-                        file_name: attachment.file_name,
-                        uploaded_by: attachment.uploaded_by,
-                        uploaded_by_user_id: attachment.uploaded_by_user_id,
-                      });
+                      // Check if user can delete this attachment
+                      const canDelete = !isDelegatedByMe &&
+                                       task.status !== 'done' &&
+                                       user &&
+                                       attachment.uploaded_by_user_id === user.id;
+
+                      const handleAttachmentLongPress = () => {
+                        if (!canDelete) return;
+
+                        if (Platform.OS === 'web') {
+                          const confirmed = window.confirm(
+                            `Удалить файл "${decodeFileName(attachment.file_name)}"?`
+                          );
+                          if (confirmed) {
+                            handleDeleteAttachment(attachment.id);
+                          }
+                        } else {
+                          Alert.alert(
+                            'Действия с файлом',
+                            decodeFileName(attachment.file_name),
+                            [
+                              { text: 'Отмена', style: 'cancel' },
+                              {
+                                text: 'Удалить',
+                                style: 'destructive',
+                                onPress: () => handleDeleteAttachment(attachment.id),
+                              },
+                            ]
+                          );
+                        }
+                      };
 
                       return (
-                        <View key={attachment.id} style={styles.attachmentItem}>
-                          <TouchableOpacity
-                            style={styles.attachmentInfo}
-                            onPress={() => handleOpenAttachment(attachment)}
-                            activeOpacity={0.7}
-                          >
-                            <Ionicons name={fileIcon as any} size={20} color={theme.primary} />
-                            <View style={styles.attachmentDetails}>
-                              <Text style={styles.attachmentName} numberOfLines={1}>
-                                {decodeFileName(attachment.file_name)}
+                        <TouchableOpacity
+                          key={attachment.id}
+                          style={styles.attachmentItem}
+                          onPress={() => handleOpenAttachment(attachment)}
+                          onLongPress={handleAttachmentLongPress}
+                          activeOpacity={0.7}
+                          delayLongPress={500}
+                        >
+                          <Ionicons name={fileIcon as any} size={20} color={theme.primary} />
+                          <View style={styles.attachmentDetails}>
+                            <Text style={styles.attachmentName} numberOfLines={1}>
+                              {decodeFileName(attachment.file_name)}
+                            </Text>
+                            <View style={styles.attachmentMetaRow}>
+                              <Text style={styles.attachmentMeta}>
+                                {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
                               </Text>
-                              <View style={styles.attachmentMetaRow}>
-                                <Text style={styles.attachmentMeta}>
-                                  {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
-                                </Text>
-                                {attachment.uploaded_by && (
-                                  <View style={styles.attachmentUploader}>
-                                    <Text style={styles.attachmentUploaderName} numberOfLines={1}>
-                                      {getUserDisplayName(attachment.uploaded_by.name, attachment.uploaded_by.id, user?.id)}
-                                    </Text>
-                                    <Avatar
-                                      name={attachment.uploaded_by.name}
-                                      imageUrl={attachment.uploaded_by.avatar}
-                                      size={20}
-                                    />
-                                  </View>
-                                )}
-                              </View>
+                              {attachment.uploaded_by && (
+                                <View style={styles.attachmentUploader}>
+                                  <Text style={styles.attachmentUploaderName} numberOfLines={1}>
+                                    {getUserDisplayName(attachment.uploaded_by.name, attachment.uploaded_by.id, user?.id)}
+                                  </Text>
+                                  <Avatar
+                                    name={attachment.uploaded_by.name}
+                                    imageUrl={attachment.uploaded_by.avatar}
+                                    size={20}
+                                  />
+                                </View>
+                              )}
                             </View>
-                          </TouchableOpacity>
-                          {!isDelegatedByMe &&
-                           task.status !== 'done' &&
-                           user &&
-                           attachment.uploaded_by_user_id === user.id && (
-                            <TouchableOpacity
-                              style={styles.deleteAttachmentButton}
-                              onPress={() => handleDeleteAttachment(attachment.id)}
-                            >
-                              <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                            </TouchableOpacity>
-                          )}
-                        </View>
+                          </View>
+                        </TouchableOpacity>
                       );
                     })}
                   </View>
