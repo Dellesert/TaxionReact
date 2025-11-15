@@ -28,7 +28,7 @@ LogBox.ignoreLogs([
 ]);
 
 // Optionally, ignore all logs
-// LogBox.ignoreAllLogs();
+LogBox.ignoreAllLogs();
 
 // Подавление ошибки dismiss в Android DateTimePicker
 // Это известная проблема в библиотеке @react-native-community/datetimepicker
