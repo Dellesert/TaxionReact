@@ -59,6 +59,8 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
       transparent
       animationType="fade"
       onRequestClose={onCancel}
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
     >
       <TouchableOpacity
         style={[styles.overlay, dynamicStyles.overlay]}

@@ -108,25 +108,29 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   };
 
   const handleDelete = async () => {
-    showConfirm(
-      'Удалить событие?',
-      'Вы уверены, что хотите удалить это событие?',
-      async () => {
-        try {
-          setIsDeleting(true);
-          await calendarApi.deleteEvent(event.id);
-          onEventUpdated();
-          onClose();
-        } catch (error) {
-          console.error('Failed to delete event:', error);
-          showError('Не удалось удалить событие');
-        } finally {
-          setIsDeleting(false);
-        }
-      },
-      undefined,
-      { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
-    );
+    // Close modal first, then show confirm dialog
+    onClose();
+    // Small delay to allow modal to close before showing ActionSheet
+    setTimeout(() => {
+      showConfirm(
+        'Удалить событие?',
+        'Вы уверены, что хотите удалить это событие?',
+        async () => {
+          try {
+            setIsDeleting(true);
+            await calendarApi.deleteEvent(event.id);
+            onEventUpdated();
+          } catch (error) {
+            console.error('Failed to delete event:', error);
+            showError('Не удалось удалить событие');
+          } finally {
+            setIsDeleting(false);
+          }
+        },
+        undefined,
+        { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
+      );
+    }, 300);
   };
 
   const formatDateTime = (dateString: string) => {
