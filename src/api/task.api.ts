@@ -563,7 +563,9 @@ export const attachFileToTask = async (taskId: number, fileId: number): Promise<
  * Delete attachment
  */
 export const deleteAttachment = async (attachmentId: number): Promise<void> => {
-  await api.delete(`/attachments/${attachmentId}`);
+  console.log('📤 API: Deleting attachment', attachmentId);
+  const response = await api.delete(`/attachments/${attachmentId}`);
+  console.log('📥 API: Attachment deleted response:', response.status);
 };
 
 // ============= Task Checklists =============

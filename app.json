@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.tachyon-messenger",
+      "bundleIdentifier": "com.dellesert.tachyon-messenger",
       "displayName": "Тахион",
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",

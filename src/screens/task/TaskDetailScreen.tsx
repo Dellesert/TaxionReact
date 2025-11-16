@@ -719,28 +719,18 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
-  const handleDeleteAttachment = (attachmentId: number) => {
-    showConfirm(
-      'Удалить файл?',
-      'Вы уверены, что хотите удалить этот файл?',
-      async () => {
-        try {
-          await taskApi.deleteAttachment(attachmentId);
-          showSuccess('Файл удалён');
-          await loadAttachments();
-          await loadTask();
-        } catch (error) {
-          console.error('Error deleting attachment:', error);
-          showError('Не удалось удалить файл');
-        }
-      },
-      undefined,
-      {
-        confirmText: 'Удалить',
-        cancelText: 'Отмена',
-        destructive: true,
-      }
-    );
+  const handleDeleteAttachment = async (attachmentId: number) => {
+    try {
+      console.log('🗑️ Deleting attachment:', attachmentId);
+      await taskApi.deleteAttachment(attachmentId);
+      console.log('✅ Attachment deleted successfully');
+      showSuccess('Файл удалён');
+      await loadAttachments();
+      await loadTask();
+    } catch (error: any) {
+      console.error('❌ Error deleting attachment:', error);
+      showError(error.message || 'Не удалось удалить файл');
+    }
   };
 
   if (isLoading) {
@@ -1463,6 +1453,25 @@ const TaskDetailScreen: React.FC = () => {
       justifyContent: 'center',
       marginTop: 2,
     },
+    activityAvatarContainer: {
+      position: 'relative',
+      width: 36,
+      height: 36,
+      marginTop: 2,
+    },
+    activityIconBadge: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: theme.backgroundSecondary,
+    },
     activityContent: {
       flex: 1,
       justifyContent: 'flex-start',
@@ -1536,6 +1545,7 @@ const TaskDetailScreen: React.FC = () => {
     if (actionType === 'task_updated_priority') return 'flag-outline';
     if (actionType === 'task_updated_due_date') return 'calendar-outline';
     if (actionType === 'progress_updated') return 'bar-chart-outline';
+    if (actionType === 'task_emergency_completed') return 'warning-outline';
     return 'ellipse-outline';
   };
 
@@ -1574,6 +1584,8 @@ const TaskDetailScreen: React.FC = () => {
       case 'attachment_deleted':
       case 'task_deleted':
         return '#EF4444'; // Red
+      case 'task_emergency_completed':
+        return '#F59E0B'; // Orange (warning color)
       case 'task_viewed':
       case 'checklist_item_uncompleted':
         return '#94A3B8'; // Gray
@@ -1839,6 +1851,15 @@ const TaskDetailScreen: React.FC = () => {
             <Text style={styles.activityText}>
               <Bold>{userName}</Bold> обновил прогресс
               {activity.new_value && <Text>: <Bold>{activity.new_value}%</Bold></Text>}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_emergency_completed':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> аварийно завершил задачу
             </Text>
             <SubtaskBadge />
           </>
@@ -2284,7 +2305,7 @@ const TaskDetailScreen: React.FC = () => {
                         showConfirm(
                           'Удалить файл?',
                           `Вы уверены, что хотите удалить "${decodeFileName(attachment.file_name)}"?`,
-                          () => handleDeleteAttachment(attachment.id),
+                          async () => await handleDeleteAttachment(attachment.id),
                           undefined,
                           {
                             confirmText: 'Удалить',
@@ -2521,12 +2542,21 @@ const TaskDetailScreen: React.FC = () => {
                               {/* Activities for this date */}
                               {dateActivities.map((activity) => (
                                 <View key={activity.id} style={styles.activityItem}>
-                                  <View style={styles.activityIcon}>
-                                    <Ionicons
-                                      name={getActivityIcon(activity)}
-                                      size={20}
-                                      color={getActivityIconColor(activity)}
+                                  <View style={styles.activityAvatarContainer}>
+                                    <Avatar
+                                      userId={activity.user?.id}
+                                      name={activity.user?.name || 'Система'}
+                                      imageUrl={activity.user?.avatar}
+                                      size={36}
+                                      onPress={() => activity.user && handleUserPress(activity.user.id)}
                                     />
+                                    <View style={styles.activityIconBadge}>
+                                      <Ionicons
+                                        name={getActivityIcon(activity)}
+                                        size={12}
+                                        color={getActivityIconColor(activity)}
+                                      />
+                                    </View>
                                   </View>
                                   <View style={styles.activityContent}>
                                     <View style={{ flex: 1 }}>

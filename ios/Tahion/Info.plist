@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>tachyon</string>
-          <string>com.anonymous.tachyon-messenger</string>
+          <string>com.dellesert.tachyon-messenger</string>
         </array>
       </dict>
       <dict>
