@@ -42,14 +42,14 @@ export const DayEventsSheet: React.FC<DayEventsSheetProps> = ({
       Animated.parallel([
         Animated.timing(overlayOpacity, {
           toValue: 1,
-          duration: 250,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.spring(slideAnim, {
           toValue: 0,
-          damping: 25,
-          stiffness: 200,
           useNativeDriver: true,
+          damping: 20,
+          stiffness: 90,
         }),
       ]).start();
     } else {
@@ -61,7 +61,7 @@ export const DayEventsSheet: React.FC<DayEventsSheetProps> = ({
         }),
         Animated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
-          duration: 250,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start();
@@ -93,7 +93,7 @@ export const DayEventsSheet: React.FC<DayEventsSheetProps> = ({
                 styles.container,
                 {
                   backgroundColor: theme.backgroundSecondary,
-                  transform: [{ translateY: slideAnim }]
+                  transform: [{ translateY: slideAnim }],
                 }
               ]}
             >
@@ -137,26 +137,26 @@ export const DayEventsSheet: React.FC<DayEventsSheetProps> = ({
                       onPress={() => onEventPress(event)}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.eventColorBar, { backgroundColor: event.color }]} />
-                      <View style={styles.eventContent}>
-                        <Text style={[styles.eventTitle, { color: theme.text }]} numberOfLines={1}>
-                          {event.title}
-                        </Text>
-                        {!event.all_day && (
-                          <Text style={[styles.eventTime, { color: theme.textSecondary }]}>
-                            {formatEventTime(event.start_time, event.end_time)}
+                        <View style={[styles.eventColorBar, { backgroundColor: event.color }]} />
+                        <View style={styles.eventContent}>
+                          <Text style={[styles.eventTitle, { color: theme.text }]} numberOfLines={1}>
+                            {event.title}
                           </Text>
-                        )}
-                        {event.location && (
-                          <View style={styles.locationRow}>
-                            <Ionicons name="location-outline" size={14} color={theme.textTertiary} />
-                            <Text style={[styles.eventLocation, { color: theme.textTertiary }]} numberOfLines={1}>
-                              {event.location}
+                          {!event.all_day && (
+                            <Text style={[styles.eventTime, { color: theme.textSecondary }]}>
+                              {formatEventTime(event.start_time, event.end_time)}
                             </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                          )}
+                          {event.location && (
+                            <View style={styles.locationRow}>
+                              <Ionicons name="location-outline" size={14} color={theme.textTertiary} />
+                              <Text style={[styles.eventLocation, { color: theme.textTertiary }]} numberOfLines={1}>
+                                {event.location}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
                     </TouchableOpacity>
                   ))
                 )}
@@ -178,8 +178,7 @@ const styles = StyleSheet.create({
   container: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: SCREEN_HEIGHT * 0.7,
-    paddingBottom: 100,
+    maxHeight: SCREEN_HEIGHT * 0.6,
   },
   handleBar: {
     alignItems: 'center',
@@ -209,10 +208,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   eventsList: {
-    flex: 1,
+    flexShrink: 1,
   },
   eventsListContent: {
-    paddingBottom: 20,
+    paddingBottom: 40,
+    paddingTop: 4,
   },
   eventItem: {
     flexDirection: 'row',

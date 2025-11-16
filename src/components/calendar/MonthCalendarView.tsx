@@ -33,6 +33,7 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
 }) => {
   const { theme } = useTheme();
   const [selectedDayForSheet, setSelectedDayForSheet] = useState<Date | null>(null);
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -49,8 +50,15 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     const grouped: { [key: string]: Event[] } = {};
 
     events.forEach((event) => {
+      // Parse the ISO date string
       const date = new Date(event.start_time);
-      const dateKey = format(date, 'yyyy-MM-dd');
+
+      // Get the local date components to create the date key
+      // This ensures we're using the local date, not UTC
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
 
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
@@ -63,7 +71,12 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
 
   // Get events for a specific date
   const getEventsForDate = (date: Date): Event[] => {
-    const dateKey = format(date, 'yyyy-MM-dd');
+    // Use the same logic as grouping to ensure consistency
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+
     return eventsByDate[dateKey] || [];
   };
 
@@ -83,14 +96,29 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
   const renderDay = (date: Date) => {
     const isCurrentMonth = isSameMonth(date, selectedDate);
     const isTodayDate = isToday(date);
-    const dayEvents = getEventsForDate(date);
+
+    // Create a normalized date at midnight local time to avoid timezone issues
+    const normalizedDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      0, 0, 0, 0
+    );
+
+    const dayEvents = getEventsForDate(normalizedDate);
     const hasEvents = dayEvents.length > 0;
     const dotColors = getEventDotColors(dayEvents);
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
     const handleDayPress = () => {
       if (hasEvents && isCurrentMonth) {
-        setSelectedDayForSheet(date);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
+
+        setSelectedDayForSheet(normalizedDate);
+        setSelectedDayKey(dateKey);
       }
     };
 
@@ -189,16 +217,22 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
       </ScrollView>
 
       {/* Day Events Sheet */}
-        <DayEventsSheet
-          visible={!!selectedDayForSheet}
-          date={selectedDayForSheet}
-          events={selectedDayForSheet ? getEventsForDate(selectedDayForSheet) : []}
-          onEventPress={(event) => {
-            setSelectedDayForSheet(null);
-            onEventPress?.(event);
-          }}
-          onClose={() => setSelectedDayForSheet(null)}
-        />
+        {selectedDayForSheet && selectedDayKey && (
+          <DayEventsSheet
+            visible={!!selectedDayForSheet}
+            date={selectedDayForSheet}
+            events={eventsByDate[selectedDayKey] || []}
+            onEventPress={(event) => {
+              setSelectedDayForSheet(null);
+              setSelectedDayKey(null);
+              onEventPress?.(event);
+            }}
+            onClose={() => {
+              setSelectedDayForSheet(null);
+              setSelectedDayKey(null);
+            }}
+          />
+        )}
       </View>
     </View>
   );

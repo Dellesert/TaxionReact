@@ -75,15 +75,7 @@ const CalendarScreen: React.FC = () => {
           end: endDate.toISOString(),
         };
 
-        console.log('📅 Loading events with filters:', {
-          view: selectedView,
-          start: startDate,
-          end: endDate,
-        });
-
         const response = await calendarApi.getEvents(filters, 100, 0);
-        console.log('📅 Fetched events count:', response.events?.length || 0);
-        console.log('📅 Total events in period:', response.total);
         setEvents(response.events);
       }
     } catch (error) {
@@ -113,7 +105,6 @@ const CalendarScreen: React.FC = () => {
   };
 
   const handleAddEvent = () => {
-    console.log('📅 Opening create event modal...');
     setShowCreateModal(true);
   };
 
@@ -343,15 +334,12 @@ const CalendarScreen: React.FC = () => {
       )}
 
       {/* Create Event Modal */}
-      {console.log('📅 Rendering CreateEventModal, showCreateModal:', showCreateModal)}
       <CreateEventModal
         visible={showCreateModal}
         onClose={() => {
-          console.log('📅 Closing modal');
           setShowCreateModal(false);
         }}
         onEventCreated={() => {
-          console.log('📅 Event created');
           setShowCreateModal(false);
           loadEvents();
         }}
