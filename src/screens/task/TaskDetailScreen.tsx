@@ -1605,7 +1605,7 @@ const TaskDetailScreen: React.FC = () => {
 
     // Helper to render bold text
     const Bold = ({ children }: { children: React.ReactNode }) => (
-      <Text style={{ fontWeight: '600', color: '#111827' }}>{children}</Text>
+      <Text style={{ fontWeight: '600', color: theme.text }}>{children}</Text>
     );
 
     // Helper to render subtask badge
