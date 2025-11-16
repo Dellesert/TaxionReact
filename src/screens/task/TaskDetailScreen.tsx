@@ -1452,6 +1452,7 @@ const TaskDetailScreen: React.FC = () => {
       shadowOpacity: 0.03,
       shadowRadius: 1,
       elevation: 1,
+      alignItems: 'flex-start',
     },
     activityIcon: {
       width: 36,
@@ -1460,21 +1461,25 @@ const TaskDetailScreen: React.FC = () => {
       backgroundColor: theme.background,
       alignItems: 'center',
       justifyContent: 'center',
+      marginTop: 2,
     },
     activityContent: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
+      minHeight: 36,
     },
     activityText: {
       fontSize: 14,
       color: theme.text,
       lineHeight: 20,
-      marginBottom: 4,
     },
     activityTime: {
-      fontSize: 12,
+      fontSize: 11,
       color: theme.textTertiary,
-      fontWeight: '500',
+      fontWeight: '600',
+      paddingTop: 4,
+      minWidth: 40,
+      textAlign: 'right',
     },
     emptyState: {
       flex: 1,
@@ -1526,6 +1531,11 @@ const TaskDetailScreen: React.FC = () => {
     if (actionType.includes('checklist_item')) return 'checkbox-outline';
     if (actionType === 'subtask_created') return 'git-branch-outline';
     if (actionType === 'subtask_status_changed') return 'git-commit-outline';
+    if (actionType === 'task_updated_title') return 'create-outline';
+    if (actionType === 'task_updated_description') return 'document-text-outline';
+    if (actionType === 'task_updated_priority') return 'flag-outline';
+    if (actionType === 'task_updated_due_date') return 'calendar-outline';
+    if (actionType === 'progress_updated') return 'bar-chart-outline';
     return 'ellipse-outline';
   };
 
@@ -1539,7 +1549,37 @@ const TaskDetailScreen: React.FC = () => {
       return '#10B981';
     }
 
-    return '#6B7280';
+    // Color by action type
+    switch (actionType) {
+      case 'task_created':
+      case 'subtask_created':
+      case 'checklist_added':
+      case 'checklist_item_completed':
+        return '#10B981'; // Green
+      case 'task_status_changed':
+      case 'progress_updated':
+        return '#3B82F6'; // Blue
+      case 'task_assigned':
+      case 'task_updated_title':
+      case 'task_updated_description':
+        return '#8B5CF6'; // Purple
+      case 'task_delegated':
+      case 'task_updated_priority':
+        return '#F59E0B'; // Orange
+      case 'comment_added':
+      case 'task_updated_due_date':
+        return '#06B6D4'; // Cyan
+      case 'attachment_added':
+        return '#EC4899'; // Pink
+      case 'attachment_deleted':
+      case 'task_deleted':
+        return '#EF4444'; // Red
+      case 'task_viewed':
+      case 'checklist_item_uncompleted':
+        return '#94A3B8'; // Gray
+      default:
+        return '#6B7280'; // Default gray
+    }
   };
 
   // Helper function to convert status to Russian
@@ -1555,63 +1595,274 @@ const TaskDetailScreen: React.FC = () => {
     return statusMap[status] || status;
   };
 
-  // Helper function to get activity description in Russian
-  const getActivityDescription = (activity: TaskActivity): string => {
+  // Helper function to get activity description in Russian with formatting
+  const getActivityDescription = (activity: TaskActivity): React.JSX.Element => {
     // Use user name from user object if available, otherwise use user_id
     const userName = activity.user?.name || (activity.user_id ? `Пользователь #${activity.user_id}` : 'Система');
 
     // Determine if this is about a subtask (task_id is different from current task)
     const taskTitle = activity.task_title || '';
-    const taskPrefix = taskTitle ? `"${taskTitle}": ` : '';
+
+    // Helper to render bold text
+    const Bold = ({ children }: { children: React.ReactNode }) => (
+      <Text style={{ fontWeight: '600', color: '#111827' }}>{children}</Text>
+    );
+
+    // Helper to render subtask badge
+    const SubtaskBadge = () => taskTitle ? (
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(139, 92, 246, 0.12)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        marginTop: 8,
+        alignSelf: 'flex-start',
+        gap: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 92, 246, 0.2)',
+      }}>
+        <Ionicons name="git-branch-outline" size={14} color="#8B5CF6" />
+        <Text style={{
+          fontSize: 12,
+          color: '#8B5CF6',
+          fontWeight: '600',
+          letterSpacing: 0.2,
+        }}>
+          {taskTitle}
+        </Text>
+      </View>
+    ) : null;
 
     switch (activity.action_type) {
       case 'task_created':
-        return `${userName} создал задачу ${taskPrefix}`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> создал задачу
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'task_status_changed': {
         const oldStatus = getStatusInRussian(activity.old_value || '');
         const newStatus = getStatusInRussian(activity.new_value || '');
-        return `${taskPrefix}${userName} изменил статус: ${oldStatus} → ${newStatus}`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил статус: <Bold>{oldStatus}</Bold> → <Bold>{newStatus}</Bold>
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       }
       case 'task_assigned':
-        return `${taskPrefix}${userName} назначил задачу`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> назначил задачу
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'task_delegated':
-        return `${taskPrefix}${userName} переназначил задачу`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> переназначил задачу
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'task_viewed':
-        return `${taskPrefix}${userName} ознакомился с задачей`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> ознакомился с задачей
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'comment_added':
-        return `${taskPrefix}${userName} добавил комментарий`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> добавил комментарий
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'attachment_added':
-        return `${taskPrefix}${userName} добавил файл: ${activity.new_value}`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> добавил файл: <Bold>{activity.new_value}</Bold>
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'attachment_deleted':
-        return `${taskPrefix}${userName} удалил файл: ${activity.old_value}`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> удалил файл: <Bold>{activity.old_value}</Bold>
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'checklist_added':
-        return `${taskPrefix}${userName} добавил чек-лист`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> добавил чек-лист
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'checklist_item_completed':
-        return `${taskPrefix}${userName} отметил пункт чек-листа`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> отметил пункт чек-листа
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'checklist_item_uncompleted':
-        return `${taskPrefix}${userName} снял отметку с пункта чек-листа`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> снял отметку с пункта чек-листа
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       case 'subtask_created': {
         // Get assignee names
-        let assigneeInfo = '';
+        let assigneeInfo: React.JSX.Element | null = null;
         if (activity.assignees && activity.assignees.length > 0) {
-          const assigneeNames = activity.assignees
-            .map(a => (user && a.id === user.id ? 'Я' : a.name))
-            .join(', ');
-          assigneeInfo = ` для ${assigneeNames}`;
+          const hasCurrentUser = activity.assignees.some(a => user && a.id === user.id);
+          const otherAssignees = activity.assignees
+            .filter(a => !(user && a.id === user.id))
+            .map(a => a.name);
+
+          let assigneeText = '';
+          if (hasCurrentUser && otherAssignees.length > 0) {
+            assigneeText = `вас и ${otherAssignees.join(', ')}`;
+          } else if (hasCurrentUser) {
+            assigneeText = 'вас';
+          } else {
+            assigneeText = otherAssignees.join(', ');
+          }
+
+          assigneeInfo = <Text> для <Bold>{assigneeText}</Bold></Text>;
         }
-        return `${userName} создал подзадачу: ${activity.new_value}${assigneeInfo}`;
+        return (
+          <Text style={styles.activityText}>
+            <Bold>{userName}</Bold> создал подзадачу: <Bold>{activity.new_value}</Bold>{assigneeInfo}
+          </Text>
+        );
       }
       case 'subtask_status_changed': {
         const oldStatus = getStatusInRussian(activity.old_value || '');
         const newStatus = getStatusInRussian(activity.new_value || '');
-        return `${userName} изменил статус подзадачи: ${oldStatus} → ${newStatus}`;
+        return (
+          <Text style={styles.activityText}>
+            <Bold>{userName}</Bold> изменил статус подзадачи: <Bold>{oldStatus}</Bold> → <Bold>{newStatus}</Bold>
+          </Text>
+        );
       }
+      case 'task_updated_title':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил название
+              {activity.new_value && (
+                <>
+                  {activity.old_value && (
+                    <Text style={{ color: '#9ca3af' }}>{'\n'}"{activity.old_value}" → </Text>
+                  )}
+                  <Text>{activity.old_value ? '' : ': '}<Bold>{activity.new_value}</Bold></Text>
+                </>
+              )}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_updated_description':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил описание
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_updated_priority':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил приоритет
+              {activity.new_value && (
+                <>
+                  {activity.old_value && (
+                    <Text>: <Text style={{ color: '#9ca3af' }}>{activity.old_value}</Text> → </Text>
+                  )}
+                  <Text>{activity.old_value ? '' : ': '}<Bold>{activity.new_value}</Bold></Text>
+                </>
+              )}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_updated_due_date':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил дедлайн
+              {activity.new_value && (
+                <>
+                  {activity.old_value && (
+                    <Text>: <Text style={{ color: '#9ca3af' }}>{activity.old_value}</Text> → </Text>
+                  )}
+                  <Text>{activity.old_value ? '' : ': '}<Bold>{activity.new_value}</Bold></Text>
+                </>
+              )}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'progress_updated':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> обновил прогресс
+              {activity.new_value && <Text>: <Bold>{activity.new_value}%</Bold></Text>}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
       default:
         if (activity.action_type.startsWith('task_updated_')) {
           const field = activity.action_type.replace('task_updated_', '');
-          return `${taskPrefix}${userName} обновил ${field}`;
+          return (
+            <>
+              <Text style={styles.activityText}>
+                <Bold>{userName}</Bold> обновил {field}
+              </Text>
+              <SubtaskBadge />
+            </>
+          );
         }
-        return `${taskPrefix}${userName} выполнил действие: ${activity.action_type}`;
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> выполнил действие: {activity.action_type}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
     }
   };
 
@@ -2278,13 +2529,13 @@ const TaskDetailScreen: React.FC = () => {
                                     />
                                   </View>
                                   <View style={styles.activityContent}>
-                                    <Text style={styles.activityText}>
+                                    <View style={{ flex: 1 }}>
                                       {getActivityDescription(activity)}
-                                    </Text>
-                                    <Text style={styles.activityTime}>
-                                      {format(new Date(activity.created_at), 'HH:mm')}
-                                    </Text>
+                                    </View>
                                   </View>
+                                  <Text style={styles.activityTime}>
+                                    {format(new Date(activity.created_at), 'HH:mm')}
+                                  </Text>
                                 </View>
                               ))}
                             </View>

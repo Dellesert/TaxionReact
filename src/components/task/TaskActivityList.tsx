@@ -54,6 +54,15 @@ const ACTION_COLORS: Partial<Record<TaskActivityAction, string>> = {
   attachment_deleted: '#ef4444',
   subtask_created: '#10b981',
   task_deleted: '#ef4444',
+  task_updated_title: '#8b5cf6',        
+  task_updated_description: '#8b5cf6',
+  task_updated_priority: '#f59e0b',     
+  task_updated_due_date: '#06b6d4', 
+  task_viewed: '#94a3b8', 
+  checklist_added: '#10b981',
+  checklist_item_completed: '#10b981',
+  checklist_item_uncompleted: '#94a3b8',
+  progress_updated: '#3b82f6',
 };
 
 export const TaskActivityList: React.FC<TaskActivityListProps> = ({ taskId }) => {
@@ -83,23 +92,27 @@ export const TaskActivityList: React.FC<TaskActivityListProps> = ({ taskId }) =>
   };
 
   const renderActivityItem = ({ item }: { item: TaskActivity }) => {
-    const actionLabel = ACTION_LABELS[item.action_type] || item.action_type;
-    const iconColor = ACTION_COLORS[item.action_type] || '#6b7280';
+    // Normalize action type in case backend sends different format
+    let normalizedActionType = item.action_type;
+    const actionTypeStr = item.action_type as string;
+
+    // Handle potential backend variations
+    if (actionTypeStr === 'updated_title' || actionTypeStr === 'title_updated') {
+      normalizedActionType = 'task_updated_title';
+    } else if (actionTypeStr === 'updated_description' || actionTypeStr === 'description_updated') {
+      normalizedActionType = 'task_updated_description';
+    } else if (actionTypeStr === 'updated_priority' || actionTypeStr === 'priority_updated') {
+      normalizedActionType = 'task_updated_priority';
+    } else if (actionTypeStr === 'updated_due_date' || actionTypeStr === 'due_date_updated') {
+      normalizedActionType = 'task_updated_due_date';
+    }
+
+    const actionLabel = ACTION_LABELS[normalizedActionType] || item.action_type;
+    const iconColor = ACTION_COLORS[normalizedActionType] || '#6b7280';
     const timeAgo = formatDistanceToNow(new Date(item.created_at), {
       addSuffix: true,
       locale: ru,
     });
-
-    // Debug logging for attachment activities
-    if (item.action_type === 'attachment_added' || item.action_type === 'attachment_deleted') {
-      console.log('Activity item:', {
-        id: item.id,
-        action_type: item.action_type,
-        old_value: item.old_value,
-        new_value: item.new_value,
-        details: item.details,
-      });
-    }
 
     return (
       <View style={styles.activityItem}>
