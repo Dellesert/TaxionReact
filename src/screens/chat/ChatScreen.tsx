@@ -44,10 +44,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const [contentReady, setContentReady] = useState(false);
   const [pollModalVisible, setPollModalVisible] = useState(false);
   const [selectedPollId, setSelectedPollId] = useState<number | null>(null);
+  const [ignoreReadReceipts, setIgnoreReadReceipts] = useState(true); // Игнорируем read_receipts до первого скролла
+  const [initialUnreadCount, setInitialUnreadCount] = useState(0); // Запоминаем начальное количество непрочитанных
+  const [savedUnreadCount, setSavedUnreadCount] = useState(0); // Сохраняем unread_count ДО WebSocket
 
 
   // Хуки
-  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } = useChatMessages(chatIdNum);
+  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } = useChatMessages(chatIdNum, ignoreReadReceipts, savedUnreadCount);
+
   const {
     editingMessage,
     setEditingMessage,
@@ -78,6 +82,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     currentDateLabel,
     showDateHeader,
     isLoadingMore,
+    hasReachedBottom,
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
@@ -86,7 +91,20 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     onViewableItemsChanged,
     viewabilityConfig,
     resetScroll,
-  } = useChatScroll(chatIdNum, messages);
+  } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount);
+
+  // Debug логи (после всех хуков!)
+  useEffect(() => {
+    console.log('💬 Chat state:', {
+      chatId: chatIdNum,
+      messagesCount: messages.length,
+      firstUnreadIndex,
+      unreadCount,
+      showUnreadBanner,
+      hasReachedBottom,
+      keyboardHeight,
+    });
+  }, [chatIdNum, messages.length, firstUnreadIndex, unreadCount, showUnreadBanner, hasReachedBottom, keyboardHeight]);
 
   // Store
   const isLoading = useChatStore((state) => state.isLoading);
@@ -215,14 +233,21 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Инициализация чата
   useEffect(() => {
+    console.log('🚀 Initializing chat:', chatIdNum);
     resetScroll();
     setShowUnreadBanner(true);
-    loadMessages(chatIdNum);
+    setIgnoreReadReceipts(true); // Игнорируем read_receipts при входе в чат
+    setInitialUnreadCount(0); // Сбрасываем запомненное значение
 
     const chat = getChatById(chatIdNum);
     if (chat) {
+      // Сохраняем unread_count ДО подключения к WebSocket
+      setSavedUnreadCount(chat.unread_count || 0);
+      console.log('💾 Saved unread_count before WebSocket:', chat.unread_count);
       setActiveChat(chat);
     }
+
+    loadMessages(chatIdNum);
 
     const connectWebSocket = async () => {
       if (!websocketService.isConnected()) {
@@ -237,6 +262,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       }
 
       if (websocketService.isConnected() && getChatById(chatIdNum)) {
+        console.log('🔌 Joining chat via WebSocket:', chatIdNum);
         websocketService.joinChat(chatIdNum);
       }
     };
@@ -250,18 +276,35 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [chatIdNum]);
 
-  // Отметить как прочитанное
+  // Запоминаем начальное количество непрочитанных при первой загрузке
   useEffect(() => {
-    if (messages.length > 0 && initialScrolled) {
+    if (messages.length > 0 && ignoreReadReceipts && unreadCount > 0 && initialUnreadCount === 0) {
+      console.log('💾 Saving initial unread count:', unreadCount);
+      setInitialUnreadCount(unreadCount);
+    }
+  }, [messages.length, ignoreReadReceipts, unreadCount, initialUnreadCount]);
+
+  // Отключаем игнорирование read_receipts после достижения низа или открытия клавиатуры
+  useEffect(() => {
+    if (initialScrolled && ignoreReadReceipts && (hasReachedBottom || keyboardHeight > 0)) {
+      console.log('✅ Reached bottom or keyboard opened, enabling read receipts tracking');
+      setIgnoreReadReceipts(false);
+      setInitialUnreadCount(0); // Сбрасываем запомненное значение
+    }
+  }, [initialScrolled, ignoreReadReceipts, hasReachedBottom, keyboardHeight]);
+
+  // Отметить как прочитанное и скрыть баннер
+  useEffect(() => {
+    if (messages.length > 0 && initialScrolled && (hasReachedBottom || keyboardHeight > 0)) {
       const markReadTimer = setTimeout(() => {
         markChatAsRead(chatIdNum);
         if (showUnreadBanner) {
           setShowUnreadBanner(false);
         }
-      }, 1000);
+      }, 500);
       return () => clearTimeout(markReadTimer);
     }
-  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled]);
+  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, hasReachedBottom, keyboardHeight]);
 
   const handleTyping = (isTyping: boolean) => {
     if (websocketService.isConnected() && getChatById(chatIdNum)) {

@@ -28,6 +28,7 @@ import { useNotification } from '@contexts/NotificationContext';
 import { useActionModal } from '@contexts/ActionModalContext';
 import { extractErrorCode, ErrorCode, formatApiError, isSuperAdminWebOnly } from '@utils/errorUtils';
 import { ApiError } from '@types/common.types';
+import { useTheme } from '@hooks/useTheme';
 
 type TwoFactorScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'TwoFactor'>;
 type TwoFactorScreenRouteProp = RouteProp<AuthStackParamList, 'TwoFactor'>;
@@ -38,6 +39,7 @@ const TwoFactorScreen: React.FC = () => {
   const { email } = route.params;
   const notification = useNotification();
   const { showConfirm } = useActionModal();
+  const { theme } = useTheme();
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -222,6 +224,125 @@ const TwoFactorScreen: React.FC = () => {
   // Проверяем, заполнены ли все поля
   const isCodeComplete = code.every((digit) => digit !== '');
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingVertical: 40,
+      paddingHorizontal: 24,
+    },
+    formContainer: {
+      backgroundColor: theme.card,
+      borderRadius: 20,
+      padding: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginBottom: 4,
+      textAlign: 'center',
+    },
+    email: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.primary,
+      textAlign: 'center',
+    },
+    codeContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 24,
+      gap: 8,
+    },
+    codeInput: {
+      width: 48,
+      height: 56,
+      borderWidth: 2,
+      borderColor: theme.border,
+      borderRadius: 12,
+      fontSize: 24,
+      fontWeight: '600',
+      color: theme.text,
+      textAlign: 'center',
+      backgroundColor: theme.backgroundTertiary,
+    },
+    codeInputFilled: {
+      borderColor: theme.primary,
+      backgroundColor: theme.card,
+    },
+    button: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      padding: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    buttonText: {
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    resendContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    resendText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
+    resendLink: {
+      fontSize: 14,
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    resendLinkDisabled: {
+      opacity: 0.5,
+    },
+    backButton: {
+      padding: 12,
+      alignItems: 'center',
+    },
+    backButtonText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
@@ -319,124 +440,5 @@ const TwoFactorScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingVertical: 40,
-    paddingHorizontal: 24,
-  },
-  formContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  email: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E94444',
-    textAlign: 'center',
-  },
-  codeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 8,
-  },
-  codeInput: {
-    width: 48,
-    height: 56,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1F2937',
-    textAlign: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  codeInputFilled: {
-    borderColor: '#E94444',
-    backgroundColor: '#FFFFFF',
-  },
-  button: {
-    backgroundColor: '#E94444',
-    borderRadius: 12,
-    padding: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: '#E94444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  resendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  resendText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  resendLink: {
-    fontSize: 14,
-    color: '#E94444',
-    fontWeight: '600',
-  },
-  resendLinkDisabled: {
-    opacity: 0.5,
-  },
-  backButton: {
-    padding: 12,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-});
 
 export default TwoFactorScreen;

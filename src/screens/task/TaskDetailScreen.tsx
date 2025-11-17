@@ -22,6 +22,7 @@ import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
 import { ScreenHeader } from '@components/common/ScreenHeader';
+import { TaskDetailSkeleton } from '@components/task/TaskDetailSkeleton';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import { useTaskPermissions } from '@hooks/useTaskPermissions';
@@ -361,6 +362,18 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
+  // Silent reload of activities without showing loading indicator
+  const loadActivitiesSilently = async () => {
+    try {
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTaskActivities(taskIdNum, 50, 0);
+      setActivities(response.activities || []);
+    } catch (error) {
+      console.error('Failed to silently reload activities:', error);
+      // Don't show error alert for silent reloads
+    }
+  };
+
   const loadMoreComments = async () => {
     if (isLoadingMoreComments || !hasMoreComments) return;
 
@@ -399,6 +412,7 @@ const TaskDetailScreen: React.FC = () => {
       const taskIdNum = Number(taskId);
       await taskApi.updateTask(taskIdNum, { status: newStatus });
       setTask({ ...task, status: newStatus });
+      loadActivitiesSilently(); // Reload activities to show the status change
     } catch (error) {
       showError('Не удалось обновить статус');
     }
@@ -413,7 +427,8 @@ const TaskDetailScreen: React.FC = () => {
           const taskIdNum = Number(taskId);
           await taskApi.emergencyCompleteTask(taskIdNum);
           showSuccess('Задача завершена в аварийном режиме');
-          loadTask(); // Reload task to update status
+          loadTaskSilently(); // Reload task to update status
+          loadActivitiesSilently(); // Reload activities to show the emergency completion
         } catch (error: any) {
           showError(`Не удалось завершить задачу: ${error.message || error}`);
         }
@@ -459,6 +474,7 @@ const TaskDetailScreen: React.FC = () => {
       await taskApi.addTaskComment(taskIdNum, { content: newComment });
       setNewComment('');
       await loadComments();
+      await loadActivitiesSilently(); // Reload activities to show the comment
     } catch (error) {
       showError('Не удалось отправить комментарий');
     } finally {
@@ -479,6 +495,7 @@ const TaskDetailScreen: React.FC = () => {
       setEditingCommentId(null);
       setEditingCommentText('');
       await loadComments();
+      await loadActivitiesSilently(); // Reload activities to show the comment update
     } catch (error) {
       showError('Не удалось обновить комментарий');
     }
@@ -497,6 +514,7 @@ const TaskDetailScreen: React.FC = () => {
         try {
           await taskApi.deleteComment(commentId);
           await loadComments();
+          await loadActivitiesSilently(); // Reload activities to show the comment deletion
           showSuccess('Комментарий удалён');
         } catch (error) {
           showError('Не удалось удалить комментарий');
@@ -609,7 +627,8 @@ const TaskDetailScreen: React.FC = () => {
 
       showSuccess('Файл загружен');
       await loadAttachments();
-      await loadTask();
+      await loadTaskSilently();
+      await loadActivitiesSilently(); // Reload activities to show the file attachment
     } catch (error: any) {
       console.error('❌ Error uploading file:', error);
       console.error('Error details:', error.response?.data || error.message);
@@ -726,7 +745,8 @@ const TaskDetailScreen: React.FC = () => {
       console.log('✅ Attachment deleted successfully');
       showSuccess('Файл удалён');
       await loadAttachments();
-      await loadTask();
+      await loadTaskSilently();
+      await loadActivitiesSilently(); // Reload activities to show the file deletion
     } catch (error: any) {
       console.error('❌ Error deleting attachment:', error);
       showError(error.message || 'Не удалось удалить файл');
@@ -734,7 +754,7 @@ const TaskDetailScreen: React.FC = () => {
   };
 
   if (isLoading) {
-    return <Loading text="Загрузка задачи..." fullScreen />;
+    return <TaskDetailSkeleton />;
   }
 
   // Show access denied screen if 403 error
@@ -2229,7 +2249,8 @@ const TaskDetailScreen: React.FC = () => {
                       priority={task.priority}
                       dueDate={task.due_date}
                       onChecklistChanged={() => {
-                        loadTask(); // Reload task to update progress
+                        loadTaskSilently(); // Reload task to update progress
+                        loadActivitiesSilently(); // Reload activities to show the checklist changes
                       }}
                       onAssigneePress={handleUserPress}
                       canEdit={permissions.can_edit && task.status !== 'done'}
@@ -2267,7 +2288,8 @@ const TaskDetailScreen: React.FC = () => {
                         navigation.push('TaskDetail', { taskId: subtask.id.toString() });
                       }}
                       onSubtaskCreated={() => {
-                        loadTask(); // Reload task to update progress
+                        loadTaskSilently(); // Reload task to update progress
+                        loadActivitiesSilently(); // Reload activities to show the subtask creation
                       }}
                       // Show create button only for users with permission
                       onCreateSubtaskPress={
@@ -2711,7 +2733,8 @@ const TaskDetailScreen: React.FC = () => {
             task={task}
             onClose={() => setShowEditModal(false)}
             onTaskUpdated={(updatedTask) => {
-              loadTask(); // Reload task to get updated checklists
+              loadTaskSilently(); // Reload task to get updated checklists
+              loadActivitiesSilently(); // Reload activities to show the task update
               setShowEditModal(false);
             }}
           />
@@ -2725,7 +2748,8 @@ const TaskDetailScreen: React.FC = () => {
             onClose={() => setShowSubtaskModal(false)}
             onSubtaskCreated={() => {
               setShowSubtaskModal(false);
-              loadTask(); // Reload task to update progress
+              loadTaskSilently(); // Reload task to update progress
+              loadActivitiesSilently(); // Reload activities to show the subtask creation
             }}
           />
         )}
@@ -2739,7 +2763,8 @@ const TaskDetailScreen: React.FC = () => {
             onDelegated={() => {
               console.log('✅ onDelegated called, reloading task...');
               setShowDelegateModal(false);
-              loadTask(); // Reload task to update delegation chain
+              loadTaskSilently(); // Reload task to update delegation chain
+              loadActivitiesSilently(); // Reload activities to show the delegation
               showSuccess('Задача успешно делегирована');
             }}
           />

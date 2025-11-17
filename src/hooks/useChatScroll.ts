@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { FlatList } from 'react-native';
 import { useChatStore } from '@store/chatStore';
 import { getDateLabel } from '@utils/dateHelpers';
@@ -6,7 +6,7 @@ import { getDateLabel } from '@utils/dateHelpers';
 /**
  * Хук для управления скроллом в чате
  */
-export const useChatScroll = (chatId: number, messages: any[]) => {
+export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex: number, unreadCount: number) => {
   const listRef = useRef<FlatList<any>>(null);
   const [initialScrolled, setInitialScrolled] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -14,8 +14,10 @@ export const useChatScroll = (chatId: number, messages: any[]) => {
   const [showDateHeader, setShowDateHeader] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [hasReachedBottom, setHasReachedBottom] = useState(false);
   const scrollToEndOnce = useRef(false);
   const lastOldestMessageId = useRef<number | null>(null);
+  const hasScrolledToUnread = useRef(false);
 
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
 
@@ -23,13 +25,18 @@ export const useChatScroll = (chatId: number, messages: any[]) => {
   const handleScroll = useCallback((event: any) => {
     const { contentOffset } = event.nativeEvent;
 
-    // Показываем элементы UI при прокрутке вверх
-    if (contentOffset.y > 50) {
-      setShowScrollToBottom(true);
-      setShowDateHeader(true);
-    } else {
+    // Проверяем достигли ли мы самого нового сообщения (низа)
+    // contentOffset.y близок к 0 означает что мы внизу (так как список inverted)
+    const isAtBottom = contentOffset.y < 50;
+
+    if (isAtBottom) {
+      setHasReachedBottom(true);
       setShowScrollToBottom(false);
       setShowDateHeader(false);
+    } else {
+      setHasReachedBottom(false);
+      setShowScrollToBottom(true);
+      setShowDateHeader(true);
     }
   }, []);
 
@@ -59,21 +66,45 @@ export const useChatScroll = (chatId: number, messages: any[]) => {
     }
   }, [chatId, messages, initialScrolled, isLoadingMore, hasMoreMessages, loadMoreMessages]);
 
-  // Скролл к началу (новым сообщениям)
+  // Скролл к началу (новым сообщениям) или к первому непрочитанному
   const handleContentSizeChange = useCallback(() => {
     if (!scrollToEndOnce.current && messages.length > 0) {
-      // Используем requestAnimationFrame для синхронизации с отрисовкой
-      requestAnimationFrame(() => {
-        listRef.current?.scrollToOffset({ offset: 0, animated: false });
-        scrollToEndOnce.current = true;
-        setInitialScrolled(true);
+      scrollToEndOnce.current = true;
+
+      console.log('📊 Chat scroll init:', {
+        messagesCount: messages.length,
+        firstUnreadIndex,
+        unreadCount,
+        hasScrolledToUnread: hasScrolledToUnread.current,
       });
+
+      // Небольшая задержка для рендера
+      setTimeout(() => {
+        if (firstUnreadIndex !== -1 && unreadCount > 2 && !hasScrolledToUnread.current) {
+          console.log('🔵 Scrolling to first unread at index:', firstUnreadIndex);
+          // Скроллим без анимации для мгновенного перехода
+          listRef.current?.scrollToIndex({
+            index: firstUnreadIndex,
+            animated: false,
+            viewPosition: 0.2,
+          });
+          hasScrolledToUnread.current = true;
+          setInitialScrolled(true);
+          setHasReachedBottom(false);
+        } else {
+          console.log('🟢 Scrolling to bottom (newest messages)');
+          listRef.current?.scrollToOffset({ offset: 0, animated: false });
+          setInitialScrolled(true);
+          setHasReachedBottom(true);
+        }
+      }, 100);
     }
-  }, [messages.length]);
+  }, [messages.length, firstUnreadIndex, unreadCount]);
 
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    setHasReachedBottom(true);
   }, []);
 
   // Скролл к конкретному сообщению
@@ -116,8 +147,10 @@ export const useChatScroll = (chatId: number, messages: any[]) => {
   const resetScroll = useCallback(() => {
     setHasMoreMessages(true);
     setInitialScrolled(false);
+    setHasReachedBottom(false);
     scrollToEndOnce.current = false;
     lastOldestMessageId.current = null;
+    hasScrolledToUnread.current = false;
   }, []);
 
   return {
@@ -128,6 +161,7 @@ export const useChatScroll = (chatId: number, messages: any[]) => {
     showDateHeader,
     isLoadingMore,
     hasMoreMessages,
+    hasReachedBottom,
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,

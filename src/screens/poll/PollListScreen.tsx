@@ -29,7 +29,7 @@ import EditPollModal from '@components/poll/EditPollModal';
 type PollFilter = 'all' | 'active' | 'closed';
 type PollListScreenNavigationProp = StackNavigationProp<PollStackParamList, 'PollList'>;
 
-const POLLS_PER_PAGE = 20;
+const POLLS_PER_PAGE = 50;
 
 const PollListScreen: React.FC = () => {
   const navigation = useNavigation<PollListScreenNavigationProp>();
@@ -53,10 +53,25 @@ const PollListScreen: React.FC = () => {
 
   // Animation for search
   const searchAnimation = useRef(new RNAnimated.Value(0)).current;
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
     loadPolls();
   }, [filter]); // Reload when filter changes
+
+  // Reload polls when search query changes (with debounce)
+  useEffect(() => {
+    // Пропускаем первый рендер
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      loadPolls(); // Перезагружаем с новым поисковым запросом
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     RNAnimated.timing(searchAnimation, {
@@ -66,24 +81,65 @@ const PollListScreen: React.FC = () => {
     }).start();
   }, [isSearchVisible]);
 
+  // Автоматически подгружаем больше опросов, если после фильтрации их слишком мало
+  useEffect(() => {
+    // Применяем клиентскую фильтрацию
+    const filtered = polls.filter((poll) => {
+      let statusMatch = true;
+      if (filter === 'active' || filter === 'closed') {
+        statusMatch = poll.status === filter;
+      }
+      return statusMatch;
+    });
+
+    // Если отфильтрованных опросов мало (< 10) и есть еще данные, подгружаем
+    if (filtered.length < 10 && hasMore && !isLoading && !isLoadingMore && canLoadMore) {
+      console.log(`📊 Filtered polls (${filtered.length}) < 10, loading more...`);
+      handleLoadMore();
+    }
+  }, [polls, filter, hasMore, isLoading, isLoadingMore, canLoadMore]);
+
+  // Track last loaded count to preserve scroll position
+  const lastLoadedCount = useRef(0);
+
   // Reload polls when screen is focused (e.g., after creating a new poll)
   useFocusEffect(
     useCallback(() => {
-      loadPolls();
+      // Если есть загруженные опросы, сохраняем их количество и перезагружаем столько же
+      if (polls.length > 0) {
+        lastLoadedCount.current = polls.length;
+        loadPolls(false, polls.length);
+      } else {
+        loadPolls();
+      }
     }, [filter])
   );
 
-  const loadPolls = async (append: boolean = false) => {
+  const loadPolls = async (append: boolean = false, customLimit?: number) => {
     try {
       if (!append) {
         setIsLoading(true);
         setCanLoadMore(false);
       }
       setError(null);
-      const filters = filter !== 'all' ? { status: filter as PollStatus } : undefined;
-      const offset = append ? polls.length : 0;
 
-      const response = await pollApi.getPolls(filters, POLLS_PER_PAGE, offset);
+      const offset = append ? polls.length : 0;
+      const limit = customLimit || POLLS_PER_PAGE;
+
+      let response;
+
+      // Если есть поисковый запрос, используем серверный поиск
+      if (searchQuery.trim()) {
+        console.log('🔍 Searching polls with query:', searchQuery.trim());
+        response = await pollApi.searchPolls(searchQuery.trim(), limit, offset);
+        console.log('🔍 Search results:', response.polls.length, 'polls');
+      } else {
+        // Формируем фильтры в зависимости от выбранного типа
+        const filters = filter !== 'all' ? { status: filter as PollStatus } : undefined;
+        console.log('📋 Loading polls with filters:', filters);
+        response = await pollApi.getPolls(filters, limit, offset);
+        console.log('📋 Loaded:', response.polls.length, 'polls');
+      }
 
       if (append) {
         // Дедупликация на случай, если бэкенд ещё не перезапущен с фиксом
@@ -94,13 +150,19 @@ const PollListScreen: React.FC = () => {
         setTotal(response.total);
         setHasMore(response.hasMore);
       } else {
+        // Всегда используем свежие данные с сервера при обновлении
         setPolls(response.polls);
         setHasMore(response.hasMore);
         setTotal(response.total);
+
+        // Если загрузили больше чем одну страницу, сразу разрешаем подгрузку
+        if (customLimit && customLimit > POLLS_PER_PAGE) {
+          setCanLoadMore(true);
+        }
       }
 
       // Разрешаем подгрузку после загрузки
-      if (!append) {
+      if (!append && !customLimit) {
         setTimeout(() => setCanLoadMore(true), 500);
       }
     } catch (error: any) {
@@ -147,19 +209,14 @@ const PollListScreen: React.FC = () => {
   // Check if user can create polls (department_head or admin)
   const canCreatePoll = currentUser?.role === 'department_head' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
-  const filteredPolls = polls.filter((poll) => {
-    // Filter by status
-    const statusMatch = filter === 'all' || poll.status === filter;
-
-    // Filter by search query
-    const searchLower = searchQuery.toLowerCase().trim();
-    const searchMatch = !searchLower ||
-      poll.title.toLowerCase().includes(searchLower) ||
-      poll.description?.toLowerCase().includes(searchLower) ||
-      poll.category?.toLowerCase().includes(searchLower);
-
-    return statusMatch && searchMatch;
-  });
+  // Если используется серверный поиск, клиентская фильтрация не нужна
+  const filteredPolls = searchQuery.trim()
+    ? polls // При поиске показываем результаты как есть
+    : polls.filter((poll) => {
+        // Filter by status только если нет поискового запроса
+        const statusMatch = filter === 'all' || poll.status === filter;
+        return statusMatch;
+      });
 
   const filterOptions: { key: PollFilter; label: string }[] = [
     { key: 'all', label: 'Все' },

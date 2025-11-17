@@ -17,6 +17,7 @@ import { useAuthStore } from '@store/authStore';
 import { useActionModal } from '@contexts/ActionModalContext';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
+import { ChatListSkeleton } from '@components/chat/ChatListSkeleton';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { ScreenHeader } from '@components/common/ScreenHeader';
 import { useTheme } from '@hooks/useTheme';
@@ -449,7 +450,9 @@ const ChatListScreen: React.FC = () => {
 
     return (
       <View key={filterKey} style={{ width: SCREEN_WIDTH, height: '100%' }}>
-        {tabChats.length === 0 ? (
+        {isLoading && chats.length === 0 ? (
+          <ChatListSkeleton />
+        ) : tabChats.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={64} color="#D1D5DB" />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Нет чатов</Text>
@@ -520,10 +523,6 @@ const ChatListScreen: React.FC = () => {
         </View>
       </SafeAreaView>
     );
-  }
-
-  if (isLoading && chats.length === 0) {
-    return <Loading text="Загрузка чатов..." fullScreen />;
   }
 
   const dynamicStyles = StyleSheet.create({

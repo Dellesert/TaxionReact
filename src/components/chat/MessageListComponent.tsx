@@ -105,7 +105,10 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         // Рендер сообщения
         const message = item.data;
 
-        const shouldShowBanner = index === firstUnreadIndex && unreadCount > 0 && showUnreadBanner;
+        // Показываем встроенный баннер только если непрочитанных больше 2
+        // (иначе sticky баннер сам справится)
+        // firstUnreadIndex - это индекс самого СТАРОГО непрочитанного сообщения (где должен быть баннер)
+        const shouldShowInlineBanner = index === firstUnreadIndex && unreadCount > 2 && showUnreadBanner;
 
         // Получаем роль пользователя в этом чате
         const currentChat = getChatById(chatId);
@@ -131,7 +134,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
               isHighlighted={message.id === highlightedMessageId}
               userRole={userRole}
             />
-            {shouldShowBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
+            {shouldShowInlineBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
           </>
         );
       }}
@@ -151,15 +154,23 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       onViewableItemsChanged={onViewableItemsChanged}
       viewabilityConfig={viewabilityConfig}
       onScrollToIndexFailed={(info) => {
+        console.warn('⚠️ scrollToIndex failed:', info);
+        // Сначала скроллим к средней позиции (чтобы FlatList отрендерил больше элементов)
+        const averageHeight = info.averageItemLength || 100;
+        const offset = averageHeight * info.index;
+        listRef.current?.scrollToOffset({ offset, animated: false });
+
+        // Затем пытаемся снова через задержку
         setTimeout(() => {
           if (info.index < messageListItems.length) {
+            console.log('🔄 Retrying scroll to index:', info.index);
             listRef.current?.scrollToIndex({
               index: info.index,
-              animated: true,
-              viewPosition: 0.5,
+              animated: false,
+              viewPosition: 0.2,
             });
           }
-        }, 100);
+        }, 300);
       }}
       ListFooterComponent={
         isLoadingMore ? (
