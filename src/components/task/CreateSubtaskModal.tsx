@@ -658,6 +658,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
                       multiSelect={false}
                       placeholder="Выберите исполнителя"
                       modalTitle="Выбрать исполнителя"
+                      filterForTaskAssignment={true}
                     />
                   </View>
                 </View>

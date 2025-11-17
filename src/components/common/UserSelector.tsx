@@ -8,7 +8,6 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
-import { useAuthStore } from '@store/authStore';
 import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import UserSelectorModal from './UserSelectorModal';
@@ -21,6 +20,7 @@ interface UserSelectorProps {
   excludeUserIds?: number[];
   mode?: 'checkbox' | 'radio';
   modalTitle?: string;
+  filterForTaskAssignment?: boolean; // Фильтр для назначения задач (только свой отдел + руководители других)
 }
 
 const UserSelector: React.FC<UserSelectorProps> = ({
@@ -31,6 +31,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
   excludeUserIds = [],
   mode = 'checkbox',
   modalTitle,
+  filterForTaskAssignment = false,
 }) => {
   const { theme } = useTheme();
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -43,8 +44,6 @@ const UserSelector: React.FC<UserSelectorProps> = ({
 
   const loadUsers = async () => {
     try {
-      const currentUser = useAuthStore.getState().user;
-
       // Фильтр - только активные пользователи, все отделы для задач
       let filters: any = {
         is_active: true,
@@ -190,6 +189,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
         title={modalTitle || placeholder}
         excludeUserIds={excludeUserIds}
         mode={mode}
+        filterForTaskAssignment={filterForTaskAssignment}
       />
     </View>
   );

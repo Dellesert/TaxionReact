@@ -518,6 +518,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         multiSelect={false}
                         placeholder="Выберите исполнителя"
                         modalTitle="Выбрать исполнителя"
+                        filterForTaskAssignment={true}
                       />
                     </View>
                   )}

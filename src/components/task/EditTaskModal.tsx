@@ -481,6 +481,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
                 multiSelect={false}
                 placeholder="Не назначен"
                 modalTitle="Выбрать исполнителя"
+                filterForTaskAssignment={true}
               />
             </View>
           </View>

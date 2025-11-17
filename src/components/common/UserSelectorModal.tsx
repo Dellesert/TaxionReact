@@ -34,6 +34,7 @@ interface UserSelectorModalProps {
   excludeUserIds?: number[]; // Исключить определенных пользователей из списка
   mode?: 'checkbox' | 'radio'; // Стиль отображения выбора
   onDone?: () => void; // Callback when Done button is pressed
+  filterForTaskAssignment?: boolean; // Фильтр для назначения задач (только свой отдел + руководители других)
 }
 
 const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
@@ -46,6 +47,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   excludeUserIds = [],
   mode = 'checkbox',
   onDone,
+  filterForTaskAssignment = false,
 }) => {
   const { theme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
@@ -89,6 +91,20 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         // Если текущий пользователь - обычный сотрудник, исключаем администраторов
         if (currentUser?.role === 'employee') {
           if (user.role === 'admin' || user.role === 'super_admin') return false;
+        }
+
+        // Фильтр для назначения задач: только сотрудники своего отдела и руководители других отделов
+        if (filterForTaskAssignment && currentUser?.department_id) {
+          // Включаем пользователей из своего отдела
+          if (user.department_id === currentUser.department_id) {
+            return true;
+          }
+          // Включаем руководителей других отделов
+          if (user.role === 'department_head' && user.department_id !== currentUser.department_id) {
+            return true;
+          }
+          // Исключаем всех остальных
+          return false;
         }
 
         return true;
