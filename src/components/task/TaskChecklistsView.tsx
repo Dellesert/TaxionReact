@@ -460,13 +460,14 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
               <TouchableOpacity
                 style={styles.itemCheckbox}
                 onPress={() => handleToggleItem(item)}
-                disabled={readOnly}
-                activeOpacity={0.7}
+                disabled={readOnly || (!canEdit && !canToggleOnly)}
+                activeOpacity={readOnly || (!canEdit && !canToggleOnly) ? 1 : 0.7}
               >
                 <View style={[
                   styles.checkbox,
                   { borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)' },
-                  item.is_completed && styles.checkboxChecked
+                  item.is_completed && styles.checkboxChecked,
+                  (readOnly || (!canEdit && !canToggleOnly)) && { opacity: 0.5 }
                 ]}>
                   {item.is_completed && (
                     <Ionicons name="checkmark" size={16} color="#fff" />

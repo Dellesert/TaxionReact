@@ -461,11 +461,11 @@ const TaskListScreen: React.FC = () => {
     loadAllTasks(true); // Тихое обновление после создания задачи
   };
 
-  const statusTabs: { key: StatusTab; label: string; color: string }[] = [
-    { key: 'new', label: 'Новые', color: '#F59E0B' },
-    { key: 'in_progress', label: 'В работе', color: '#3B82F6' },
-    { key: 'review', label: 'Проверка', color: '#8B5CF6' },
-    { key: 'done', label: 'Готово', color: '#10B981' },
+  const statusTabs: { key: StatusTab; label: string; color: string; icon: string }[] = [
+    { key: 'new', label: 'Новые', color: '#F59E0B', icon: 'document-text' },
+    { key: 'in_progress', label: 'В работе', color: '#3B82F6', icon: 'time' },
+    { key: 'review', label: 'Проверка', color: '#8B5CF6', icon: 'eye' },
+    { key: 'done', label: 'Готово', color: '#10B981', icon: 'checkmark-circle' },
   ];
 
   const filterChips: { key: TaskFilter; label: string }[] = [
@@ -633,35 +633,54 @@ const TaskListScreen: React.FC = () => {
     },
     tab: {
       flex: 1,
-      paddingVertical: 8,
+      paddingTop: 4,
+      paddingBottom: 5,
+      paddingHorizontal: 4,
       alignItems: 'center',
+      justifyContent: 'center',
       borderBottomWidth: 3,
       borderBottomColor: 'transparent',
+      minHeight: 44,
     },
     tabActive: {
       borderBottomColor: 'transparent',
     },
     tabContent: {
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      width: '100%',
+    },
+    tabTopRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 6,
     },
+    tabIconWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
     tabLabel: {
-      fontSize: 14,
+      fontSize: 11,
       fontWeight: '600',
       color: theme.textSecondary,
+      textAlign: 'center',
     },
-    tabLabelActive: {
-      fontWeight: '700',
+    tabCountContainer: {
+      minWidth: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 8,
     },
     tabCount: {
       fontSize: 12,
       fontWeight: '700',
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 10,
-      minWidth: 22,
-      textAlign: 'center',
+      lineHeight: 14,
     },
     taskList: {
       paddingTop: 12,
@@ -874,27 +893,51 @@ const TaskListScreen: React.FC = () => {
                     onPress={() => switchToTab(tab.key)}
                   >
                     <View style={styles.tabContent}>
+                      {/* Текст всегда отображается */}
                       <Text
                         style={[
                           styles.tabLabel,
-                          isActive && { ...styles.tabLabelActive, color: tab.color },
+                          {
+                            color: isActive ? tab.color : theme.textSecondary,
+                            fontWeight: isActive ? '700' : '600',
+                            fontSize: 11,
+                          },
                         ]}
+                        numberOfLines={1}
                       >
                         {tab.label}
                       </Text>
-                      {count > 0 && (
-                        <Text
-                          style={[
-                            styles.tabCount,
-                            {
-                              backgroundColor: isActive ? tab.color : theme.backgroundTertiary,
-                              color: isActive ? '#FFFFFF' : theme.textTertiary,
-                            },
-                          ]}
-                        >
-                          {count}
-                        </Text>
-                      )}
+
+                      {/* Нижняя строка: иконка + число */}
+                      <View style={styles.tabTopRow}>
+                        <Ionicons
+                          name={tab.icon as any}
+                          size={isActive ? 22 : 20}
+                          color={isActive ? tab.color : theme.textSecondary}
+                        />
+
+                        {count > 0 && (
+                          <View
+                            style={[
+                              styles.tabCountContainer,
+                              {
+                                backgroundColor: isActive ? tab.color : theme.backgroundTertiary,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.tabCount,
+                                {
+                                  color: isActive ? '#FFFFFF' : theme.textTertiary,
+                                },
+                              ]}
+                            >
+                              {count}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   </TouchableOpacity>
                 );

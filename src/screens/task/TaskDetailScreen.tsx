@@ -2001,10 +2001,10 @@ const TaskDetailScreen: React.FC = () => {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Ionicons
                   name="information-circle-outline"
-                  size={18}
+                  size={activeTab === 'overview' ? 20 : 18}
                   color={activeTab === 'overview' ? theme.primary : theme.textTertiary}
                 />
-                {isNarrowScreen ? null : (
+                {(activeTab === 'overview' || !isNarrowScreen) && (
                   <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
                     Обзор
                   </Text>
@@ -2018,10 +2018,10 @@ const TaskDetailScreen: React.FC = () => {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Ionicons
                   name="attach-outline"
-                  size={18}
+                  size={activeTab === 'attachments' ? 20 : 18}
                   color={activeTab === 'attachments' ? theme.primary : theme.textTertiary}
                 />
-                {isNarrowScreen ? null : (
+                {(activeTab === 'attachments' || !isNarrowScreen) && (
                   <Text style={[styles.tabText, activeTab === 'attachments' && styles.activeTabText]}>
                     Вложения
                   </Text>
@@ -2030,16 +2030,18 @@ const TaskDetailScreen: React.FC = () => {
                   <View
                     style={{
                       backgroundColor: activeTab === 'attachments' ? theme.primary : theme.backgroundTertiary,
-                      paddingHorizontal: 5,
-                      paddingVertical: 1,
-                      borderRadius: 10,
-                      minWidth: 18,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 11,
+                      minWidth: 22,
+                      height: 22,
                       alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     <Text
                       style={{
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: '700',
                         color: activeTab === 'attachments' ? '#FFFFFF' : theme.textTertiary,
                       }}
@@ -2057,10 +2059,10 @@ const TaskDetailScreen: React.FC = () => {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Ionicons
                   name="chatbubble-outline"
-                  size={18}
+                  size={activeTab === 'comments' ? 20 : 18}
                   color={activeTab === 'comments' ? theme.primary : theme.textTertiary}
                 />
-                {isNarrowScreen ? null : (
+                {(activeTab === 'comments' || !isNarrowScreen) && (
                   <Text style={[styles.tabText, activeTab === 'comments' && styles.activeTabText]}>
                     Комментарии
                   </Text>
@@ -2069,16 +2071,18 @@ const TaskDetailScreen: React.FC = () => {
                   <View
                     style={{
                       backgroundColor: activeTab === 'comments' ? theme.primary : theme.backgroundTertiary,
-                      paddingHorizontal: 5,
-                      paddingVertical: 1,
-                      borderRadius: 10,
-                      minWidth: 18,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 11,
+                      minWidth: 22,
+                      height: 22,
                       alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     <Text
                       style={{
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: '700',
                         color: activeTab === 'comments' ? '#FFFFFF' : theme.textTertiary,
                       }}
@@ -2096,10 +2100,10 @@ const TaskDetailScreen: React.FC = () => {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Ionicons
                   name="time-outline"
-                  size={18}
+                  size={activeTab === 'history' ? 20 : 18}
                   color={activeTab === 'history' ? theme.primary : theme.textTertiary}
                 />
-                {isNarrowScreen ? null : (
+                {(activeTab === 'history' || !isNarrowScreen) && (
                   <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
                     История
                   </Text>
