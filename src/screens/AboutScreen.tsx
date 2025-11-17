@@ -19,11 +19,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 
 const APP_VERSION = '1.0.0';
-const APP_BUILD = '1';
+const APP_BUILD = '736';
 const APP_NAME = 'Tachyon Messenger';
 const COMPANY_NAME = 'Tachyon Technologies';
-const SUPPORT_EMAIL = 'support@tachyon.com';
-const WEBSITE_URL = 'https://tachyon.com';
+const SUPPORT_EMAIL = 'support@taxion.ru';
+const WEBSITE_URL = 'https://tahion.spb.ru';
 
 export default function AboutScreen() {
   const navigation = useNavigation();

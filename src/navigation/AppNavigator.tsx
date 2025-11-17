@@ -18,6 +18,7 @@ import PollDetailScreen from '@screens/poll/PollDetailScreen';
 import NotificationListScreen from '@screens/notification/NotificationListScreen';
 import ActiveSessionsScreen from '@screens/ActiveSessionsScreen';
 import PasskeyManagementScreen from '@screens/PasskeyManagementScreen';
+import AboutScreen from '@screens/AboutScreen';
 import * as Linking from 'expo-linking';
 
 export type RootStackParamList = {
@@ -30,6 +31,7 @@ export type RootStackParamList = {
   NotificationList: undefined;
   ActiveSessions: undefined;
   PasskeyManagement: undefined;
+  About: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -68,6 +70,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       NotificationList: 'notifications',
       ActiveSessions: 'sessions',
       PasskeyManagement: 'passkeys',
+      About: 'about',
     },
   },
 };
@@ -174,6 +177,14 @@ const AppNavigator: React.FC = () => {
             <Stack.Screen
               name="PasskeyManagement"
               component={PasskeyManagementScreen}
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="About"
+              component={AboutScreen}
               options={{
                 headerShown: false,
                 animation: 'slide_from_right',

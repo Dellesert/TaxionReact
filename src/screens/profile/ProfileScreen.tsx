@@ -577,7 +577,10 @@ const ProfileScreen: React.FC = () => {
               <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
+            <TouchableOpacity
+              style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}
+              onPress={() => navigation.navigate('About')}
+            >
               <Ionicons style={[styles.menuIcon, {backgroundColor: '#3ed6ccff'}]} name="information-circle-outline" size={20} color="#FFFFFF" />
               <Text style={dynamicStyles.menuItemText}>О приложении</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
