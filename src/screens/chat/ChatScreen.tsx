@@ -83,6 +83,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     showDateHeader,
     isLoadingMore,
     hasReachedBottom,
+    initialScrollIndex,
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
@@ -93,18 +94,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     resetScroll,
   } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount);
 
-  // Debug логи (после всех хуков!)
-  useEffect(() => {
-    console.log('💬 Chat state:', {
-      chatId: chatIdNum,
-      messagesCount: messages.length,
-      firstUnreadIndex,
-      unreadCount,
-      showUnreadBanner,
-      hasReachedBottom,
-      keyboardHeight,
-    });
-  }, [chatIdNum, messages.length, firstUnreadIndex, unreadCount, showUnreadBanner, hasReachedBottom, keyboardHeight]);
 
   // Store
   const isLoading = useChatStore((state) => state.isLoading);
@@ -233,17 +222,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Инициализация чата
   useEffect(() => {
-    console.log('🚀 Initializing chat:', chatIdNum);
     resetScroll();
     setShowUnreadBanner(true);
-    setIgnoreReadReceipts(true); // Игнорируем read_receipts при входе в чат
-    setInitialUnreadCount(0); // Сбрасываем запомненное значение
+    setIgnoreReadReceipts(true);
+    setInitialUnreadCount(0);
 
     const chat = getChatById(chatIdNum);
     if (chat) {
-      // Сохраняем unread_count ДО подключения к WebSocket
       setSavedUnreadCount(chat.unread_count || 0);
-      console.log('💾 Saved unread_count before WebSocket:', chat.unread_count);
       setActiveChat(chat);
     }
 
@@ -262,7 +248,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       }
 
       if (websocketService.isConnected() && getChatById(chatIdNum)) {
-        console.log('🔌 Joining chat via WebSocket:', chatIdNum);
         websocketService.joinChat(chatIdNum);
       }
     };
@@ -279,7 +264,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // Запоминаем начальное количество непрочитанных при первой загрузке
   useEffect(() => {
     if (messages.length > 0 && ignoreReadReceipts && unreadCount > 0 && initialUnreadCount === 0) {
-      console.log('💾 Saving initial unread count:', unreadCount);
       setInitialUnreadCount(unreadCount);
     }
   }, [messages.length, ignoreReadReceipts, unreadCount, initialUnreadCount]);
@@ -287,9 +271,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // Отключаем игнорирование read_receipts после достижения низа или открытия клавиатуры
   useEffect(() => {
     if (initialScrolled && ignoreReadReceipts && (hasReachedBottom || keyboardHeight > 0)) {
-      console.log('✅ Reached bottom or keyboard opened, enabling read receipts tracking');
       setIgnoreReadReceipts(false);
-      setInitialUnreadCount(0); // Сбрасываем запомненное значение
+      setInitialUnreadCount(0);
     }
   }, [initialScrolled, ignoreReadReceipts, hasReachedBottom, keyboardHeight]);
 
@@ -377,6 +360,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             insetsBottom={insets.bottom}
             listRef={listRef}
             highlightedMessageId={highlightedMessageId}
+            initialScrollIndex={initialScrollIndex}
             onContentSizeChange={handleContentSizeChange}
             onScroll={handleScroll}
             onViewableItemsChanged={onViewableItemsChanged}

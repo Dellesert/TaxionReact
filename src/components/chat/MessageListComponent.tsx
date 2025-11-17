@@ -25,6 +25,7 @@ interface MessageListComponentProps {
   insetsBottom: number;
   listRef: React.RefObject<FlatList<any> | null>;
   highlightedMessageId: number | null;
+  initialScrollIndex?: number;
   onContentSizeChange: () => void;
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
@@ -58,6 +59,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   insetsBottom,
   listRef,
   highlightedMessageId,
+  initialScrollIndex,
   onContentSizeChange,
   onScroll,
   onViewableItemsChanged,
@@ -96,6 +98,17 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       ref={listRef}
       data={messageListItems}
       extraData={messagesKey}
+      initialScrollIndex={initialScrollIndex}
+      getItemLayout={(data, index) => {
+        // Приблизительная высота элемента (достаточно для initialScrollIndex)
+        // React Native требует это для работы initialScrollIndex
+        const averageItemHeight = 80;
+        return {
+          length: averageItemHeight,
+          offset: averageItemHeight * index,
+          index,
+        };
+      }}
       renderItem={({ item, index }) => {
         // Рендер разделителя даты
         if (item.type === 'date') {
@@ -154,16 +167,12 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       onViewableItemsChanged={onViewableItemsChanged}
       viewabilityConfig={viewabilityConfig}
       onScrollToIndexFailed={(info) => {
-        console.warn('⚠️ scrollToIndex failed:', info);
-        // Сначала скроллим к средней позиции (чтобы FlatList отрендерил больше элементов)
         const averageHeight = info.averageItemLength || 100;
         const offset = averageHeight * info.index;
         listRef.current?.scrollToOffset({ offset, animated: false });
 
-        // Затем пытаемся снова через задержку
         setTimeout(() => {
           if (info.index < messageListItems.length) {
-            console.log('🔄 Retrying scroll to index:', info.index);
             listRef.current?.scrollToIndex({
               index: info.index,
               animated: false,

@@ -76,18 +76,6 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
 
     // В инвертированном списке: index 0 = самое новое, большой индекс = самое старое
     // Для скролла нужен lastIndex (самое старое непрочитанное)
-    console.log('📬 Unread messages calculated:', {
-      firstIndex,
-      lastIndex,
-      count,
-      totalMessages: messages.length,
-      userId: currentUser.id,
-      chatUnreadCount: chat?.unread_count,
-      savedUnreadCount,
-      ignoreReadReceipts,
-    });
-
-    // Возвращаем lastIndex как firstUnreadIndex для скролла к самому старому непрочитанному
     return { firstUnreadIndex: lastIndex, unreadCount: count };
   }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount]);
 

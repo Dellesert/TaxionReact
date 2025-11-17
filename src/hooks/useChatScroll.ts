@@ -18,8 +18,20 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const scrollToEndOnce = useRef(false);
   const lastOldestMessageId = useRef<number | null>(null);
   const hasScrolledToUnread = useRef(false);
+  const [initialScrollIndex, setInitialScrollIndex] = useState<number | undefined>(undefined);
 
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
+
+  // Вычисляем initialScrollIndex один раз при монтировании
+  useEffect(() => {
+    if (messages.length > 0 && initialScrollIndex === undefined) {
+      if (firstUnreadIndex !== -1 && unreadCount > 2) {
+        setInitialScrollIndex(firstUnreadIndex);
+      } else {
+        setInitialScrollIndex(0);
+      }
+    }
+  }, [messages.length, firstUnreadIndex, unreadCount, initialScrollIndex]);
 
   // Обработчик скролла
   const handleScroll = useCallback((event: any) => {
@@ -66,38 +78,18 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [chatId, messages, initialScrolled, isLoadingMore, hasMoreMessages, loadMoreMessages]);
 
-  // Скролл к началу (новым сообщениям) или к первому непрочитанному
+  // Обработчик изменения размера контента
   const handleContentSizeChange = useCallback(() => {
     if (!scrollToEndOnce.current && messages.length > 0) {
       scrollToEndOnce.current = true;
+      setInitialScrolled(true);
 
-      console.log('📊 Chat scroll init:', {
-        messagesCount: messages.length,
-        firstUnreadIndex,
-        unreadCount,
-        hasScrolledToUnread: hasScrolledToUnread.current,
-      });
-
-      // Небольшая задержка для рендера
-      setTimeout(() => {
-        if (firstUnreadIndex !== -1 && unreadCount > 2 && !hasScrolledToUnread.current) {
-          console.log('🔵 Scrolling to first unread at index:', firstUnreadIndex);
-          // Скроллим без анимации для мгновенного перехода
-          listRef.current?.scrollToIndex({
-            index: firstUnreadIndex,
-            animated: false,
-            viewPosition: 0.2,
-          });
-          hasScrolledToUnread.current = true;
-          setInitialScrolled(true);
-          setHasReachedBottom(false);
-        } else {
-          console.log('🟢 Scrolling to bottom (newest messages)');
-          listRef.current?.scrollToOffset({ offset: 0, animated: false });
-          setInitialScrolled(true);
-          setHasReachedBottom(true);
-        }
-      }, 100);
+      if (firstUnreadIndex !== -1 && unreadCount > 2) {
+        hasScrolledToUnread.current = true;
+        setHasReachedBottom(false);
+      } else {
+        setHasReachedBottom(true);
+      }
     }
   }, [messages.length, firstUnreadIndex, unreadCount]);
 
@@ -151,6 +143,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     scrollToEndOnce.current = false;
     lastOldestMessageId.current = null;
     hasScrolledToUnread.current = false;
+    setInitialScrollIndex(undefined); // Сбрасываем initialScrollIndex
   }, []);
 
   return {
@@ -162,6 +155,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isLoadingMore,
     hasMoreMessages,
     hasReachedBottom,
+    initialScrollIndex, // Добавляем в возвращаемое значение
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
