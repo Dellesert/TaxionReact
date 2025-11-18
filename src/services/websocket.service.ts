@@ -11,7 +11,8 @@ import { STORAGE_KEYS } from '@constants/app.constants';
 type WSMessageType =
   | 'user_join' | 'user_leave' | 'typing' | 'new_message'
   | 'message_read' | 'message_edit' | 'message_delete'
-  | 'reaction' | 'error' | 'pong' | 'ping' | 'user_presence';
+  | 'reaction' | 'error' | 'pong' | 'ping' | 'user_presence'
+  | 'chat_update';
 
 interface WSMessage {
   type: WSMessageType;
@@ -397,7 +398,23 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'message_read':
+          console.log('📖 Message read event:', { chatId: message.chat_id, messageId: message.data.message_id, userId: message.user_id });
           chatStore.handleMessageRead(message.chat_id, message.data.message_id, message.user_id);
+          break;
+
+        case 'chat_update':
+          // Handle chat update (e.g., unread_count reset)
+          console.log('💬 Chat update event:', message.data);
+          if (message.data.unread_count !== undefined) {
+            // Update chat's unread_count directly
+            chatStore.set({
+              chats: chatStore.getState().chats.map(chat =>
+                chat.id === message.chat_id
+                  ? { ...chat, unread_count: message.data.unread_count }
+                  : chat
+              ),
+            });
+          }
           break;
 
         case 'reaction':

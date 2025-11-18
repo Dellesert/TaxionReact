@@ -89,7 +89,7 @@ const ChangePasswordScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -102,7 +102,7 @@ const ChangePasswordScreen: React.FC = () => {
       </View>
 
       <KeyboardAvoidingView
-        style={styles.keyboardView}
+        style={[styles.keyboardView, { backgroundColor: theme.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView

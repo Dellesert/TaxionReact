@@ -847,17 +847,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   markChatAsRead: async (chatId: number) => {
     try {
+      const chat = get().chats.find((c) => c.id === chatId);
+      const unreadCount = chat?.unread_count || 0;
+
+      console.log(`📨 markChatAsRead: Marking chat ${chatId} as read (current unread: ${unreadCount})`);
+
+      // Всегда отправляем на сервер
       await chatApi.markChatAsRead(chatId);
-      // Update unread count in state
+      console.log(`✅ markChatAsRead: Chat ${chatId} marked as read on server`);
+
+      // После успешного запроса обновляем локальный state
       set((state) => {
-        const chat = state.chats.find((c) => c.id === chatId);
-        const unreadCount = chat?.unread_count || 0;
+        // Helper function to update chat
+        const updateChatUnread = (c: Chat) =>
+          c.id === chatId ? { ...c, unread_count: 0 } : c;
+
+        // Обновляем chats и tabs
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(updateChatUnread),
+            regularChats: tab.regularChats.map(updateChatUnread),
+          };
+        });
+
+        const newTotalUnreadCount = Math.max(0, state.totalUnreadCount - unreadCount);
+        console.log(`📨 markChatAsRead: Updated local state - totalUnread: ${state.totalUnreadCount} -> ${newTotalUnreadCount}`);
 
         return {
-          chats: state.chats.map((chat) =>
-            chat.id === chatId ? { ...chat, unread_count: 0 } : chat
-          ),
-          totalUnreadCount: Math.max(0, state.totalUnreadCount - unreadCount),
+          chats: state.chats.map(updateChatUnread),
+          tabs: updatedTabs,
+          totalUnreadCount: newTotalUnreadCount,
         };
       });
     } catch (error: any) {
@@ -1202,6 +1226,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Update read_by array and read_receipts in message
     // userId - кто прочитал сообщение (может быть текущий пользователь или другой)
     const readerId = userId || useAuthStore.getState().user?.id;
+    const currentUser = useAuthStore.getState().user;
 
     if (!readerId) {
       return;
@@ -1242,7 +1267,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
 
       // Также обновляем last_message в списке чатов, если это последнее сообщение
-      const updatedChats = state.chats.map((chat) => {
+      // И сбрасываем unread_count если текущий пользователь прочитал сообщение
+      const isCurrentUserRead = currentUser && readerId === currentUser.id;
+
+      // Helper function to update chat
+      const updateChatReadStatus = (chat: Chat) => {
         if (chat.id === chatId && chat.last_message && chat.last_message.id === messageId) {
           const currentReadBy = chat.last_message.read_by || [];
           const alreadyRead = currentReadBy.includes(readerId);
@@ -1254,15 +1283,52 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 ...chat.last_message,
                 read_by: [...currentReadBy, readerId],
               },
+              // Сбрасываем unread_count если текущий пользователь прочитал последнее сообщение
+              unread_count: isCurrentUserRead ? 0 : chat.unread_count,
             };
           }
         }
         return chat;
+      };
+
+      const updatedChats = state.chats.map(updateChatReadStatus);
+
+      // Обновляем tabs тоже
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (!tab.loaded) return;
+
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.map(updateChatReadStatus),
+          regularChats: tab.regularChats.map(updateChatReadStatus),
+        };
       });
+
+      // Обновляем totalUnreadCount если текущий пользователь прочитал сообщение
+      // Но только если unread_count действительно изменился
+      let newTotalUnreadCount = state.totalUnreadCount;
+      if (isCurrentUserRead) {
+        const oldChat = state.chats.find(c => c.id === chatId);
+        const newChat = updatedChats.find(c => c.id === chatId);
+
+        // Вычитаем разницу в unread_count
+        const oldUnreadCount = oldChat?.unread_count || 0;
+        const newUnreadCount = newChat?.unread_count || 0;
+        const unreadDiff = oldUnreadCount - newUnreadCount;
+
+        if (unreadDiff > 0) {
+          newTotalUnreadCount = Math.max(0, state.totalUnreadCount - unreadDiff);
+          console.log(`📨 handleMessageRead: Updated unread count for chat ${chatId}: ${oldUnreadCount} -> ${newUnreadCount}, total: ${state.totalUnreadCount} -> ${newTotalUnreadCount}`);
+        }
+      }
 
       return {
         messages: updatedMessages,
         chats: updatedChats,
+        tabs: updatedTabs,
+        totalUnreadCount: newTotalUnreadCount,
       };
     });
   },

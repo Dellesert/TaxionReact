@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Modal, Platform, Animated as RNAnimated, Dimensions, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +32,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
+  const insets = useSafeAreaInsets();
 
   const { chats, isLoading, isLoadingMore, totalChats, hasMoreChats, error, tabs, loadTabData, switchTab: storeSwitchTab, refreshCurrentTab, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
@@ -110,8 +111,11 @@ const ChatListScreen: React.FC = () => {
   }, []);
 
   // Обновляем счетчик непрочитанных при возврате на экран
+  // НЕ обновляем список чатов чтобы не перезаписать локальные изменения данными с сервера
   useFocusEffect(
     React.useCallback(() => {
+      console.log('🔄 ChatListScreen focused - updating unread count only...');
+      // Обновляем только общий счетчик непрочитанных
       loadUnreadCount();
     }, [loadUnreadCount])
   );
@@ -506,7 +510,7 @@ const ChatListScreen: React.FC = () => {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
-            contentContainerStyle={{ paddingBottom: 80 }}
+            contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
             onEndReached={() => {
               if (canLoadMore && hasMoreChats && !isLoadingMore) {
                 loadMoreChats();

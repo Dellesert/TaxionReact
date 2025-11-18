@@ -324,11 +324,20 @@ const ProfileScreen: React.FC = () => {
       shadowRadius: 16,
       elevation: 6,
     },
+    userNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+      gap: 6,
+    },
     userName: {
       fontSize: 24,
       fontWeight: 'bold',
       color: '#FFFFFF',
-      marginTop: 16,
+    },
+    roleIcon: {
+      marginTop: 2,
     },
     userEmail: {
       fontSize: 16,
@@ -466,7 +475,25 @@ const ProfileScreen: React.FC = () => {
         {/* User Info */}
         <View style={dynamicStyles.userInfoSection}>
           <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar} name={user.name || user.email} size={100} />
-          <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>
+          <View style={dynamicStyles.userNameRow}>
+            <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>
+            {user.role === 'department_head' && (
+              <Ionicons
+                name="shield-checkmark"
+                size={20}
+                color="#F59E0B"
+                style={dynamicStyles.roleIcon}
+              />
+            )}
+            {(user.role === 'admin' || user.role === 'super_admin') && (
+              <Ionicons
+                name="shield"
+                size={20}
+                color="#8B5CF6"
+                style={dynamicStyles.roleIcon}
+              />
+            )}
+          </View>
           <Text style={dynamicStyles.userEmail}>{user.email}</Text>
           {user.department && (
             <View style={dynamicStyles.departmentBadge}>

@@ -131,6 +131,10 @@ export const getChats = async (
     params,
   });
 
+  console.log(`📥 API: Got ${response.data.chats.length} chats. Unread counts:`,
+    response.data.chats.map(c => ({ id: c.id, name: c.name?.substring(0, 20), unread: c.unread_count }))
+  );
+
   // Normalize last_message to match Message type
   const normalizedChats = response.data.chats.map(chat => {
     if (chat.last_message) {
@@ -548,7 +552,9 @@ export const markMessageRead = async (messageId: number): Promise<void> => {
  * Mark all messages in chat as read
  */
 export const markChatAsRead = async (chatId: number): Promise<void> => {
-  await api.post(API_ENDPOINTS.MESSAGE.MARK_CHAT_READ(chatId));
+  console.log(`📤 API: Marking chat ${chatId} as read...`);
+  const response = await api.post(API_ENDPOINTS.MESSAGE.MARK_CHAT_READ(chatId));
+  console.log(`📥 API: Chat ${chatId} marked as read response:`, response.data);
 };
 
 /**
