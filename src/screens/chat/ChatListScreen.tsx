@@ -339,6 +339,7 @@ const ChatListScreen: React.FC = () => {
       navigation.navigate('Chat', {
         chatId: chat.id,
         chatName: chat.name,
+        unreadCount: chat.unread_count || 0, // Передаем количество непрочитанных
       });
     }
   };

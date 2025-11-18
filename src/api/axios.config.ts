@@ -28,9 +28,26 @@ const getUserAgent = (): string => {
   // For mobile platforms
   const deviceName = Device.modelName || Device.deviceName || 'Unknown Device';
   const osVersion = Device.osVersion || 'Unknown';
-  const platform = Platform.OS === 'ios' ? 'iPhone' : 'Android';
 
-  return `${appName}/${appVersion} (${platform}; ${deviceName}; ${Platform.OS} ${osVersion})`;
+  // Determine device type more accurately for iOS
+  let deviceType = 'Unknown';
+  let osName = 'Unknown';
+
+  if (Platform.OS === 'ios') {
+    osName = 'iOS';
+    // Check if it's an iPad
+    if (Device.modelName?.toLowerCase().includes('ipad') ||
+        Device.deviceName?.toLowerCase().includes('ipad')) {
+      deviceType = 'iPad';
+    } else {
+      deviceType = 'iPhone';
+    }
+  } else if (Platform.OS === 'android') {
+    deviceType = 'Android';
+    osName = 'Android';
+  }
+
+  return `${appName}/${appVersion} (${deviceType}; ${deviceName}; ${osName} ${osVersion})`;
 };
 
 // Create Axios instance
@@ -39,7 +56,6 @@ const api = axios.create({
   timeout: TIMEOUTS.DEFAULT,
   headers: {
     'Content-Type': 'application/json',
-    ...(Platform.OS !== 'web' && { 'User-Agent': getUserAgent() }),
   },
   withCredentials: true,
 });
@@ -48,7 +64,7 @@ const api = axios.create({
 
 /**
  * Request Interceptor
- * Adds session ID to all requests (session-based auth)
+ * Adds session ID and User-Agent to all requests (session-based auth)
  */
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
@@ -57,6 +73,20 @@ api.interceptors.request.use(
 
     if (sessionId && config.headers) {
       config.headers['X-Session-ID'] = sessionId;
+    }
+
+    // Add device info to request body for mobile platforms
+    // iOS blocks all custom headers and User-Agent override, so we use request body instead
+    if (Platform.OS !== 'web' && config.data && typeof config.data === 'object') {
+      const userAgent = getUserAgent();
+
+      // Add device_info to request body for POST/PUT requests
+      config.data = {
+        ...config.data,
+        device_info: userAgent,
+      };
+
+      console.log('📱 Added device_info to request body:', userAgent);
     }
 
     return config;

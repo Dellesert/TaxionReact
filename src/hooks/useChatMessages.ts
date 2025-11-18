@@ -30,6 +30,7 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
   // Вычисляем индекс первого непрочитанного сообщения и их количество
   const { firstUnreadIndex, unreadCount } = useMemo(() => {
     if (!currentUser || messages.length === 0) {
+      console.log(`📊 [Messages] Chat ${chatId}: Нет пользователя или сообщений`);
       return { firstUnreadIndex: -1, unreadCount: 0 };
     }
 
@@ -41,6 +42,8 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
       // При входе в чат используем savedUnreadCount (сохраненный ДО WebSocket)
       // Берем последние N сообщений от других пользователей как непрочитанные
       const targetUnreadCount = savedUnreadCount > 0 ? savedUnreadCount : (chat?.unread_count || 0);
+      console.log(`📊 [Messages] Chat ${chatId}: ignoreReadReceipts=true, targetUnreadCount=${targetUnreadCount}, savedUnreadCount=${savedUnreadCount}, chat.unread_count=${chat?.unread_count}`);
+
       if (targetUnreadCount > 0) {
         let foundUnread = 0;
         // Идем с начала (самые новые сообщения)
@@ -55,9 +58,11 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
             count++;
           }
         }
+        console.log(`📊 [Messages] Chat ${chatId}: Найдено ${count} непрочитанных, firstIndex=${firstIndex}, lastIndex=${lastIndex}`);
       }
     } else {
       // Нормальный режим - проверяем read_receipts
+      console.log(`📊 [Messages] Chat ${chatId}: ignoreReadReceipts=false, проверяем read_receipts`);
       for (let i = 0; i < messages.length; i++) {
         const message = messages[i];
         const readReceipts = message.read_receipts || [];
@@ -72,12 +77,13 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
           count++;
         }
       }
+      console.log(`📊 [Messages] Chat ${chatId}: Найдено ${count} непрочитанных по read_receipts, lastIndex=${lastIndex}`);
     }
 
     // В инвертированном списке: index 0 = самое новое, большой индекс = самое старое
     // Для скролла нужен lastIndex (самое старое непрочитанное)
     return { firstUnreadIndex: lastIndex, unreadCount: count };
-  }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount]);
+  }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount, chatId]);
 
   return {
     messages,

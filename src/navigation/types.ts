@@ -15,6 +15,7 @@ export type ChatStackParamList = {
   Chat: {
     chatId: number;
     chatName?: string;
+    unreadCount?: number; // Количество непрочитанных сообщений
   };
   ChatSettings: {
     chatId: number;

@@ -69,9 +69,10 @@ interface ChatState {
   muteChat: (chatId: number) => Promise<void>;
   unmuteChat: (chatId: number) => Promise<void>;
   toggleFavorite: (chatId: number) => Promise<void>;
-  handleNewMessage: (message: Message) => void;
+  handleNewMessage: (message: Message) => Promise<void>;
   handleMessageUpdate: (message: Message) => void;
   handleMessageDelete: (messageId: number, chatId: number) => void;
+  handleChatDelete: (chatId: number) => void;
   handleTypingStart: (chatId: number, typing: TypingIndicator) => void;
   handleTypingStop: (chatId: number, userId: number) => void;
   handleUserJoin: (chatId: number, userId?: number) => void;
@@ -647,7 +648,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
 
       // Handle new message locally
-      get().handleNewMessage(message);
+      await get().handleNewMessage(message);
 
     } catch (error: any) {
       set({ error: error.message || 'Failed to send message' });
@@ -967,11 +968,98 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  handleNewMessage: (message: Message) => {
+  handleNewMessage: async (message: Message) => {
     const currentUser = useAuthStore.getState().user;
     const isOwnMessage = currentUser && message.sender_id === currentUser.id;
     const activeChat = get().activeChat;
     const isInActiveChat = activeChat && activeChat.id === message.chat_id;
+
+    // Проверяем, существует ли чат в store
+    const currentChats = get().chats;
+    let chatExists = currentChats.some(chat => chat.id === message.chat_id);
+
+    console.log(`🔍 [ChatStore] handleNewMessage called for chat ${message.chat_id}`);
+    console.log(`📊 [ChatStore] Current chats count: ${currentChats.length}, Chat exists: ${chatExists}`);
+    console.log(`📊 [ChatStore] Current chat IDs:`, currentChats.map(c => c.id));
+
+    // Если чата нет - загружаем его через API
+    if (!chatExists) {
+      console.log(`📥 [ChatStore] Chat ${message.chat_id} not found in store, fetching from API...`);
+      try {
+        const fetchedChat = await chatApi.getChat(message.chat_id);
+        console.log(`✅ [ChatStore] Chat ${message.chat_id} fetched successfully:`, fetchedChat);
+        console.log(`📊 [ChatStore] Fetched chat type: ${fetchedChat.type}, is_favorite: ${fetchedChat.is_favorite}`);
+
+        // Добавляем загруженный чат в store
+        set((state) => {
+          const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+          const chatWithMessage = {
+            ...fetchedChat,
+            last_message: message,
+            unread_count: shouldIncrementUnread ? 1 : 0,
+          };
+
+          // Определяем в какой таб добавить чат
+          const updatedTabs = { ...state.tabs };
+          const chatType = fetchedChat.type;
+          const isFavorite = fetchedChat.is_favorite;
+
+          // Добавляем в соответствующие табы
+          ['all', chatType === 'private' ? 'private' : chatType === 'group' ? 'group' : null, isFavorite ? 'favorite' : null]
+            .filter(Boolean)
+            .forEach(tabKey => {
+              const tab = updatedTabs[tabKey as TabName];
+              if (tab && tab.loaded) {
+                // Добавляем в начало regular chats
+                updatedTabs[tabKey as TabName] = {
+                  ...tab,
+                  regularChats: [chatWithMessage, ...tab.regularChats],
+                };
+              }
+            });
+
+          // Формируем chats для текущего таба из обновленных табов
+          const currentTab = state.currentTab;
+          const currentTabData = updatedTabs[currentTab];
+          const updatedChats = currentTabData
+            ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
+            : state.chats;
+
+          // Добавляем сообщение в messages
+          const existingMessages = state.messages[message.chat_id] || [];
+          const messageWithDelivery = !isOwnMessage && currentUser
+            ? { ...message, delivered_to: [currentUser.id] }
+            : { ...message, delivered_to: [] };
+
+          return {
+            ...state,
+            chats: updatedChats,
+            tabs: updatedTabs,
+            messages: {
+              ...state.messages,
+              [message.chat_id]: [...existingMessages, messageWithDelivery],
+            },
+            totalUnreadCount: shouldIncrementUnread ? state.totalUnreadCount + 1 : state.totalUnreadCount,
+          };
+        });
+
+        // Чат успешно добавлен, выходим из функции
+        const afterAddChats = get().chats;
+        console.log(`✅ [ChatStore] Chat ${message.chat_id} and message added to store`);
+        console.log(`📊 [ChatStore] After add - chats count: ${afterAddChats.length}`);
+        console.log(`📊 [ChatStore] After add - chat IDs:`, afterAddChats.map(c => c.id));
+        console.log(`📊 [ChatStore] After add - tabs state:`, Object.keys(get().tabs).map(tab => ({
+          tab,
+          loaded: get().tabs[tab as TabName].loaded,
+          regularCount: get().tabs[tab as TabName].regularChats.length,
+          pinnedCount: get().tabs[tab as TabName].pinnedChats.length,
+        })));
+        return;
+      } catch (error) {
+        console.error(`❌ [ChatStore] Failed to fetch chat ${message.chat_id}:`, error);
+        // Продолжаем обработку сообщения даже если не удалось загрузить чат
+      }
+    }
 
     set((state) => {
       // Check if message already exists (deduplication)
@@ -1132,6 +1220,43 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       },
     }));
+  },
+
+  handleChatDelete: (chatId: number) => {
+    console.log(`🗑️ [ChatStore] Removing chat ${chatId} from store`);
+
+    set((state) => {
+      // Удаляем чат из основного списка
+      const updatedChats = state.chats.filter(chat => chat.id !== chatId);
+
+      // Удаляем чат из всех табов
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.filter(chat => chat.id !== chatId),
+          regularChats: tab.regularChats.filter(chat => chat.id !== chatId),
+        };
+      });
+
+      // Удаляем сообщения чата
+      const updatedMessages = { ...state.messages };
+      delete updatedMessages[chatId];
+
+      // Сбрасываем activeChat если это был удаленный чат
+      const updatedActiveChat = state.activeChat?.id === chatId ? null : state.activeChat;
+
+      return {
+        ...state,
+        chats: updatedChats,
+        tabs: updatedTabs,
+        messages: updatedMessages,
+        activeChat: updatedActiveChat,
+      };
+    });
+
+    console.log(`✅ [ChatStore] Chat ${chatId} removed from store`);
   },
 
   handleTypingStart: async (chatId: number, typing: TypingIndicator) => {

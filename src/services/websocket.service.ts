@@ -7,12 +7,13 @@ import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
+import * as chatApi from '@api/chat.api';
 
 type WSMessageType =
   | 'user_join' | 'user_leave' | 'typing' | 'new_message'
   | 'message_read' | 'message_edit' | 'message_delete'
   | 'reaction' | 'error' | 'pong' | 'ping' | 'user_presence'
-  | 'chat_update';
+  | 'chat_update' | 'chat_delete' | 'chat_create' | 'member_add' | 'member_remove';
 
 interface WSMessage {
   type: WSMessageType;
@@ -271,7 +272,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
   /**
    * Handle incoming WebSocket messages
    */
-  private handleMessage(event: MessageEvent): void {
+  private async handleMessage(event: MessageEvent): Promise<void> {
     try {
       console.log('🔸 Raw event.data:', event.data);
 
@@ -304,7 +305,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
       // Process each message
       for (const message of messages) {
-        this.processMessage(message);
+        await this.processMessage(message);
       }
     } catch (error) {
       console.error('❌ Error handling WebSocket message:', error);
@@ -314,7 +315,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
   /**
    * Process a single WebSocket message
    */
-  private processMessage(message: WSMessage): void {
+  private async processMessage(message: WSMessage): Promise<void> {
     try {
       console.log('📨 WebSocket received:', message);
 
@@ -345,7 +346,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             sender: message.data?.sender, // Don't provide fallback - let MessageItem fetch it
           };
 
-          chatStore.handleNewMessage(newMessage);
+          await chatStore.handleNewMessage(newMessage);
           break;
 
         case 'message_edit':
@@ -414,6 +415,92 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
                   : chat
               ),
             });
+          }
+          break;
+
+        case 'chat_delete':
+          // Handle chat deletion
+          console.log('🗑️ Chat delete event:', { chatId: message.chat_id, data: message.data });
+          chatStore.handleChatDelete(message.chat_id);
+          break;
+
+        case 'chat_create':
+          // Handle new chat creation - load the full chat from API
+          console.log('➕ Chat create event:', { chatId: message.chat_id, data: message.data });
+          try {
+            const newChat = await chatApi.getChat(message.chat_id);
+            console.log('✅ New chat loaded:', newChat);
+
+            // Add chat to appropriate tabs
+            const state = chatStore.getState();
+            const updatedTabs = { ...state.tabs };
+            const chatType = newChat.type;
+            const isFavorite = newChat.is_favorite;
+
+            // Add to appropriate tabs
+            ['all', chatType === 'private' ? 'private' : chatType === 'group' ? 'group' : null, isFavorite ? 'favorite' : null]
+              .filter(Boolean)
+              .forEach(tabKey => {
+                const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+                if (tab && tab.loaded) {
+                  updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+                    ...tab,
+                    regularChats: [newChat, ...tab.regularChats],
+                  };
+                }
+              });
+
+            // Update chats for current tab
+            const currentTab = state.currentTab;
+            const currentTabData = updatedTabs[currentTab];
+            const updatedChats = currentTabData
+              ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
+              : state.chats;
+
+            chatStore.set({
+              chats: updatedChats,
+              tabs: updatedTabs,
+            });
+          } catch (error) {
+            console.error('❌ Failed to load new chat:', error);
+          }
+          break;
+
+        case 'member_add':
+          // Handle member added to chat
+          console.log('👥 Member add event:', { chatId: message.chat_id, data: message.data });
+          // Reload chat to get updated members
+          try {
+            const updatedChat = await chatApi.getChat(message.chat_id);
+            chatStore.set({
+              chats: chatStore.getState().chats.map(chat =>
+                chat.id === message.chat_id ? updatedChat : chat
+              ),
+            });
+          } catch (error) {
+            console.error('❌ Failed to reload chat after member add:', error);
+          }
+          break;
+
+        case 'member_remove':
+          // Handle member removed from chat
+          console.log('👥 Member remove event:', { chatId: message.chat_id, data: message.data });
+          // If current user was removed, delete the chat from store
+          if (message.data?.user_id === currentUser?.id) {
+            console.log('Current user removed from chat, deleting from store');
+            chatStore.handleChatDelete(message.chat_id);
+          } else {
+            // Otherwise reload chat to get updated members
+            try {
+              const updatedChat = await chatApi.getChat(message.chat_id);
+              chatStore.set({
+                chats: chatStore.getState().chats.map(chat =>
+                  chat.id === message.chat_id ? updatedChat : chat
+                ),
+              });
+            } catch (error) {
+              console.error('❌ Failed to reload chat after member remove:', error);
+            }
           }
           break;
 

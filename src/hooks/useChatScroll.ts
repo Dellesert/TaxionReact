@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { FlatList } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useChatStore } from '@store/chatStore';
 import { getDateLabel } from '@utils/dateHelpers';
 
@@ -19,19 +20,25 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const lastOldestMessageId = useRef<number | null>(null);
   const hasScrolledToUnread = useRef(false);
   const [initialScrollIndex, setInitialScrollIndex] = useState<number | undefined>(undefined);
+  const [isScrollingToUnread, setIsScrollingToUnread] = useState(false); // Новое состояние для плавной анимации
 
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
 
   // Вычисляем initialScrollIndex один раз при монтировании
   useEffect(() => {
     if (messages.length > 0 && initialScrollIndex === undefined) {
-      if (firstUnreadIndex !== -1 && unreadCount > 2) {
+      if (firstUnreadIndex !== -1 && unreadCount >= 1) {
+        console.log(`📜 [Scroll] Chat ${chatId}: Обнаружено ${unreadCount} непрочитанных, индекс самого старого: ${firstUnreadIndex}, всего сообщений: ${messages.length}`);
         setInitialScrollIndex(firstUnreadIndex);
+        // НЕ скрываем UI - просто показываем сразу
+        setIsScrollingToUnread(false);
       } else {
+        console.log(`📜 [Scroll] Chat ${chatId}: Нет непрочитанных, показываем низ списка`);
         setInitialScrollIndex(0);
+        setIsScrollingToUnread(false);
       }
     }
-  }, [messages.length, firstUnreadIndex, unreadCount, initialScrollIndex]);
+  }, [messages.length, firstUnreadIndex, unreadCount, initialScrollIndex, chatId]);
 
   // Обработчик скролла
   const handleScroll = useCallback((event: any) => {
@@ -82,16 +89,46 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const handleContentSizeChange = useCallback(() => {
     if (!scrollToEndOnce.current && messages.length > 0) {
       scrollToEndOnce.current = true;
-      setInitialScrolled(true);
 
-      if (firstUnreadIndex !== -1 && unreadCount > 2) {
+      // Проверяем, нужен ли скролл к непрочитанным
+      const needsScrollToUnread = firstUnreadIndex !== -1 && unreadCount >= 1;
+
+      if (needsScrollToUnread) {
+        // НЕ скрываем UI - оставляем видимым
+        console.log(`📜 [Scroll] Chat ${chatId}: Начинаем позиционирование к непрочитанным (index: ${firstUnreadIndex})`);
         hasScrolledToUnread.current = true;
         setHasReachedBottom(false);
+
+        // Сохраняем позицию для будущего использования
+        AsyncStorage.setItem(
+          `chat_scroll_position_${chatId}`,
+          JSON.stringify({ unreadIndex: firstUnreadIndex, timestamp: Date.now() })
+        ).catch(err => console.warn('Failed to save scroll position:', err));
+
+        // Используем небольшую задержку для гарантии рендера списка
+        setTimeout(() => {
+          console.log(`📜 [Scroll] Chat ${chatId}: Скроллим к индексу ${firstUnreadIndex}`);
+
+          // Для инвертированного списка используем scrollToIndex
+          // viewPosition: 0 = элемент вверху экрана (нужен для того чтобы баннер был виден)
+          listRef.current?.scrollToIndex({
+            index: firstUnreadIndex,
+            animated: false,  // Без анимации!
+            viewPosition: 0.2, // 20% от верха экрана - баннер будет чуть ниже верхнего края
+          });
+
+          // UI уже видим, просто отмечаем что скролл завершен
+          console.log(`📜 [Scroll] Chat ${chatId}: Скролл завершен`);
+          setInitialScrolled(true);
+        }, 100);
       } else {
+        // Нет непрочитанных - сразу показываем UI внизу списка
+        console.log(`📜 [Scroll] Chat ${chatId}: Нет непрочитанных в handleContentSizeChange, показываем UI`);
         setHasReachedBottom(true);
+        setInitialScrolled(true);
       }
     }
-  }, [messages.length, firstUnreadIndex, unreadCount]);
+  }, [messages.length, firstUnreadIndex, unreadCount, chatId]);
 
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(() => {
@@ -143,7 +180,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     scrollToEndOnce.current = false;
     lastOldestMessageId.current = null;
     hasScrolledToUnread.current = false;
-    setInitialScrollIndex(undefined); // Сбрасываем initialScrollIndex
+    setInitialScrollIndex(undefined);
   }, []);
 
   return {
@@ -155,7 +192,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isLoadingMore,
     hasMoreMessages,
     hasReachedBottom,
-    initialScrollIndex, // Добавляем в возвращаемое значение
+    initialScrollIndex,
+    isScrollingToUnread, // Возвращаем новый флаг для управления видимостью UI
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,

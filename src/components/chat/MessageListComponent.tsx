@@ -100,8 +100,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       extraData={messagesKey}
       initialScrollIndex={initialScrollIndex}
       getItemLayout={(data, index) => {
-        // Приблизительная высота элемента (достаточно для initialScrollIndex)
-        // React Native требует это для работы initialScrollIndex
+        // Приблизительная высота элемента для оптимизации
         const averageItemHeight = 80;
         return {
           length: averageItemHeight,
@@ -118,10 +117,9 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         // Рендер сообщения
         const message = item.data;
 
-        // Показываем встроенный баннер только если непрочитанных больше 2
-        // (иначе sticky баннер сам справится)
+        // Показываем встроенный баннер при наличии непрочитанных
         // firstUnreadIndex - это индекс самого СТАРОГО непрочитанного сообщения (где должен быть баннер)
-        const shouldShowInlineBanner = index === firstUnreadIndex && unreadCount > 2 && showUnreadBanner;
+        const shouldShowInlineBanner = index === firstUnreadIndex && unreadCount >= 1 && showUnreadBanner;
 
         // Получаем роль пользователя в этом чате
         const currentChat = getChatById(chatId);

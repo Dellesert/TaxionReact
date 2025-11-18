@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
@@ -41,6 +42,8 @@ const AcceptInvitationScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [invitationData, setInvitationData] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Анимация
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -218,6 +221,22 @@ const AcceptInvitationScreen: React.FC = () => {
       padding: 16,
       fontSize: 16,
       color: theme.text,
+    },
+    passwordContainer: {
+      position: 'relative',
+      width: '100%',
+    },
+    passwordInput: {
+      paddingRight: 50,
+    },
+    eyeIcon: {
+      position: 'absolute',
+      right: 12,
+      top: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 12,
     },
     hint: {
       fontSize: 12,
@@ -417,30 +436,56 @@ const AcceptInvitationScreen: React.FC = () => {
               {/* Поля для создания пароля */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Создайте пароль</Text>
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Минимум 8 символов"
-                  placeholderTextColor={theme.inputPlaceholder}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!isLoading}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Минимум 8 символов"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={24}
+                      color={theme.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Подтвердите пароль</Text>
-                <TextInput
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Повторите пароль"
-                  placeholderTextColor={theme.inputPlaceholder}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!isLoading}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Повторите пароль"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={24}
+                      color={theme.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <TouchableOpacity

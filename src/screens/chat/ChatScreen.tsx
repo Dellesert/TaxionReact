@@ -29,7 +29,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
  * Рефакторенный экран чата - разделен на компоненты и хуки
  */
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { chatId, chatName } = route.params;
+  const { chatId, chatName, unreadCount: routeUnreadCount } = route.params;
   const chatIdNum = useMemo(() => Number(chatId), [chatId]);
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -84,6 +84,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     isLoadingMore,
     hasReachedBottom,
     initialScrollIndex,
+    isScrollingToUnread,
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
@@ -228,12 +229,25 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     setInitialUnreadCount(0);
 
     const chat = getChatById(chatIdNum);
+    console.log(`🔍 [ChatScreen] Chat ${chatIdNum}:`, chat ? `unread_count=${chat.unread_count}` : 'НЕ НАЙДЕН в store');
+    console.log(`📍 [ChatScreen] routeUnreadCount из навигации:`, routeUnreadCount);
+
+    // Используем unread_count из store или из параметров навигации
+    const unreadCountToSave = chat?.unread_count ?? routeUnreadCount ?? 0;
+    console.log(`💾 [ChatScreen] Сохраняем savedUnreadCount=${unreadCountToSave} для чата ${chatIdNum}`);
+    setSavedUnreadCount(unreadCountToSave);
+
     if (chat) {
-      setSavedUnreadCount(chat.unread_count || 0);
       setActiveChat(chat);
     }
 
-    loadMessages(chatIdNum);
+    loadMessages(chatIdNum).catch((error) => {
+      console.error(`❌ [ChatScreen] Ошибка загрузки сообщений чата ${chatIdNum}:`, error);
+      if (error?.status === 403) {
+        console.warn(`⚠️ [ChatScreen] Нет доступа к чату ${chatIdNum}`);
+        // Можно показать сообщение пользователю или перенаправить назад
+      }
+    });
 
     const connectWebSocket = async () => {
       if (!websocketService.isConnected()) {
@@ -279,15 +293,22 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // Отметить как прочитанное и скрыть баннер
   useEffect(() => {
     if (messages.length > 0 && initialScrolled && (hasReachedBottom || keyboardHeight > 0)) {
-      const markReadTimer = setTimeout(() => {
-        markChatAsRead(chatIdNum);
-        if (showUnreadBanner) {
-          setShowUnreadBanner(false);
+      const markReadTimer = setTimeout(async () => {
+        try {
+          await markChatAsRead(chatIdNum);
+          if (showUnreadBanner) {
+            setShowUnreadBanner(false);
+          }
+        } catch (error: any) {
+          // Игнорируем ошибки 403 - пользователь может не иметь доступа
+          if (error?.status !== 403) {
+            console.error(`❌ [ChatScreen] Ошибка пометки чата как прочитанного:`, error);
+          }
         }
       }, 500);
       return () => clearTimeout(markReadTimer);
     }
-  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, hasReachedBottom, keyboardHeight]);
+  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, hasReachedBottom, keyboardHeight, showUnreadBanner]);
 
   const handleTyping = (isTyping: boolean) => {
     if (websocketService.isConnected() && getChatById(chatIdNum)) {
@@ -326,13 +347,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     return <View style={[styles.container, dynamicStyles.container]} />;
   }
 
+  // Скрываем контент во время плавного скролла к непрочитанным
+  const shouldShowContent = contentReady && !isScrollingToUnread;
+
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       {/* Floating sticky date header */}
-      <FloatingDateHeader dateLabel={currentDateLabel} visible={showDateHeader} />
+      <FloatingDateHeader dateLabel={currentDateLabel} visible={showDateHeader && shouldShowContent} />
 
       <View style={styles.flex1}>
-        {contentReady ? (
+        {shouldShowContent ? (
           <>
             {/* Баннер закрепленных сообщений */}
             {pinnedMessages.length > 0 && (

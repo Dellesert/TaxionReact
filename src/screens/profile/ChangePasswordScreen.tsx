@@ -36,6 +36,9 @@ const ChangePasswordScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const newPasswordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
@@ -114,69 +117,111 @@ const ChangePasswordScreen: React.FC = () => {
               Введите текущий пароль и новый пароль для изменения
             </Text>
 
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.card,
-                  color: theme.text,
-                  borderColor: theme.border,
-                }
-              ]}
-              placeholder="Текущий пароль"
-              placeholderTextColor={theme.inputPlaceholder}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-              autoComplete="password"
-              editable={!isLoading}
-              returnKeyType="next"
-              onSubmitEditing={() => newPasswordInputRef.current?.focus()}
-              blurOnSubmit={false}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    backgroundColor: theme.card,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  }
+                ]}
+                placeholder="Текущий пароль"
+                placeholderTextColor={theme.inputPlaceholder}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry={!showCurrentPassword}
+                autoComplete="password"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => newPasswordInputRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={theme.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
 
-            <TextInput
-              ref={newPasswordInputRef}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.card,
-                  color: theme.text,
-                  borderColor: theme.border,
-                }
-              ]}
-              placeholder="Новый пароль"
-              placeholderTextColor={theme.inputPlaceholder}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              autoComplete="password-new"
-              editable={!isLoading}
-              returnKeyType="next"
-              onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
-              blurOnSubmit={false}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                ref={newPasswordInputRef}
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    backgroundColor: theme.card,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  }
+                ]}
+                placeholder="Новый пароль"
+                placeholderTextColor={theme.inputPlaceholder}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry={!showNewPassword}
+                autoComplete="password-new"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowNewPassword(!showNewPassword)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={theme.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
 
-            <TextInput
-              ref={confirmPasswordInputRef}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.card,
-                  color: theme.text,
-                  borderColor: theme.border,
-                }
-              ]}
-              placeholder="Подтвердите новый пароль"
-              placeholderTextColor={theme.inputPlaceholder}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoComplete="password-new"
-              editable={!isLoading}
-              returnKeyType="done"
-              onSubmitEditing={handleChangePassword}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                ref={confirmPasswordInputRef}
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    backgroundColor: theme.card,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  }
+                ]}
+                placeholder="Подтвердите новый пароль"
+                placeholderTextColor={theme.inputPlaceholder}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                autoComplete="password-new"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleChangePassword}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={theme.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.passwordHint}>
               <Text style={[styles.passwordHintText, { color: theme.textSecondary }]}>
@@ -264,6 +309,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
+  },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+    marginBottom: 16,
+  },
+  passwordInput: {
+    paddingRight: 50,
+    marginBottom: 0,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
   passwordHint: {
     marginBottom: 16,
