@@ -64,6 +64,7 @@ export const API_ENDPOINTS = {
   // Chat
   CHAT: {
     LIST: '/chats/',
+    PINNED: '/chats/pinned',
     CREATE: '/chats/',
     DIRECT: (userId: number) => `/chats/direct/${userId}`,
     TASK: (taskId: number) => `/chats/task/${taskId}`,

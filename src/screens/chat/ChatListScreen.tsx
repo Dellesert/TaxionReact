@@ -68,7 +68,7 @@ const ChatListScreen: React.FC = () => {
     }
   );
 
-  const { isLoading, isLoadingMore, totalChats, hasMoreChats, error, loadChats: fetchChats, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
+  const { isLoading, isLoadingMore, totalChats, hasMoreChats, error, loadTabData, switchTab: storeSwitchTab, refreshCurrentTab, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
   const { showConfirm } = useActionModal();
@@ -91,7 +91,8 @@ const ChatListScreen: React.FC = () => {
   const currentTabIndex = useSharedValue(0); // Track current tab index
 
   useEffect(() => {
-    loadChats();
+    // Load initial tab data on mount
+    loadTabData('all');
   }, []);
 
   // Обновляем счетчик непрочитанных при возврате на экран
@@ -150,20 +151,6 @@ const ChatListScreen: React.FC = () => {
     }
   }, [isEditMode]);
 
-  const loadChats = async () => {
-    try {
-      await Promise.all([
-        fetchChats(),
-        loadUnreadCount(),
-      ]);
-      // Разрешаем подгрузку только после первой загрузки
-      setTimeout(() => setCanLoadMore(true), 500);
-    } catch (error) {
-      console.error('Failed to load chats:', error);
-    }
-  };
-
-
   // Swipe gesture to switch tabs (iOS only)
   const filterTabsOrder: ChatFilter[] = ['all', 'private', 'group', 'favorite'];
 
@@ -180,24 +167,8 @@ const ChatListScreen: React.FC = () => {
       translateX.value = withTiming(-newIndex * SCREEN_WIDTH, { duration: 300 });
     }
 
-    // Загружаем чаты с новым фильтром с бэкенда
-    const filters = getFiltersForTab(newFilter);
-    await fetchChats(false, filters);
-  };
-
-  const getFiltersForTab = (filterTab: ChatFilter) => {
-    const filters: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean } = {};
-
-    if (filterTab === 'private') {
-      filters.type = 'private';
-    } else if (filterTab === 'group') {
-      filters.type = 'group';
-    } else if (filterTab === 'favorite') {
-      filters.is_favorite = true;
-    }
-    // 'all' = no filters
-
-    return Object.keys(filters).length > 0 ? filters : undefined;
+    // Use the new store switchTab function - it will load data if needed
+    storeSwitchTab(newFilter);
   };
 
   const resetSwipeFlag = () => {
@@ -211,9 +182,8 @@ const ChatListScreen: React.FC = () => {
     // Сбрасываем флаг при переключении табов
     setCanLoadMore(false);
     setTimeout(() => setCanLoadMore(true), 500);
-    // Загружаем чаты с новым фильтром с бэкенда
-    const filters = getFiltersForTab(newFilter);
-    await fetchChats(false, filters);
+    // Use the new store switchTab function
+    storeSwitchTab(newFilter);
   };
 
   // Initialize translateX based on active filter
@@ -287,8 +257,15 @@ const ChatListScreen: React.FC = () => {
       websocketService.reconnect();
     }
 
-    await loadChats();
+    // Refresh current tab data and unread count
+    await Promise.all([
+      refreshCurrentTab(),
+      loadUnreadCount(),
+    ]);
+
     setRefreshing(false);
+    // Разрешаем подгрузку после обновления
+    setTimeout(() => setCanLoadMore(true), 500);
   };
 
   const handleChatPress = (chat: Chat) => {
@@ -431,22 +408,14 @@ const ChatListScreen: React.FC = () => {
 
   // Render a single tab content
   const renderFilterContent = (filterKey: ChatFilter) => {
-    // Фильтрация теперь на бэкенде, здесь только поиск по имени на клиенте
-    const tabChats = chats
-      .filter((chat) => {
-        if (!searchQuery) return true;
-        const chatName = chat.name || '';
-        const searchText = chatName.toLowerCase();
-        return searchText.includes(searchQuery.toLowerCase());
-      })
-      .sort((a, b) => {
-        // Сортировка по закрепленным
-        if (a.is_pinned && !b.is_pinned) return -1;
-        if (!a.is_pinned && b.is_pinned) return 1;
-        const timeA = a.last_message?.created_at || a.created_at || '';
-        const timeB = b.last_message?.created_at || b.created_at || '';
-        return new Date(timeB).getTime() - new Date(timeA).getTime();
-      });
+    // Backend now handles filtering and sorting
+    // Here we only apply client-side search if a query is present
+    const tabChats = chats.filter((chat) => {
+      if (!searchQuery) return true;
+      const chatName = chat.name || '';
+      const searchText = chatName.toLowerCase();
+      return searchText.includes(searchQuery.toLowerCase());
+    });
 
     return (
       <View key={filterKey} style={{ width: SCREEN_WIDTH, height: '100%' }}>
@@ -515,7 +484,8 @@ const ChatListScreen: React.FC = () => {
                 console.log('🔄 Retry button: reconnecting WebSocket...');
                 websocketService.reconnect();
               }
-              loadChats();
+              // Reload current tab
+              loadTabData(chatFilter);
             }}
           >
             <Text style={styles.retryButtonText}>Попробовать снова</Text>

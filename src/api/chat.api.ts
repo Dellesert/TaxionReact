@@ -37,6 +37,69 @@ export const getChatUnreadCount = async (): Promise<number> => {
 };
 
 /**
+ * Get all pinned chats (without pagination)
+ */
+export const getPinnedChats = async (
+  type?: 'private' | 'group' | 'channel'
+): Promise<{ chats: Chat[]; count: number }> => {
+  const params: any = {};
+
+  if (type) {
+    params.type = type;
+  }
+
+  const response = await api.get<{ chats: Chat[]; count: number }>(
+    API_ENDPOINTS.CHAT.PINNED,
+    { params }
+  );
+
+  // Normalize chats similar to getChats
+  const normalizedChats = response.data.chats.map(chat => {
+    if (chat.last_message) {
+      const normalizedMessage: any = {
+        ...chat.last_message,
+        message_type: chat.last_message.type || chat.last_message.message_type || 'text',
+        attachments: chat.last_message.attachments || [],
+        reactions: chat.last_message.reactions || [],
+        read_by: chat.last_message.read_by || [],
+        is_pinned: chat.last_message.is_pinned || false,
+      };
+
+      if ((chat.last_message as any).poll_data && typeof (chat.last_message as any).poll_data === 'string') {
+        try {
+          normalizedMessage.poll_data = JSON.parse((chat.last_message as any).poll_data);
+        } catch (e) {
+          console.error('Failed to parse poll_data in last_message:', e);
+        }
+      } else if ((chat.last_message as any).poll_data) {
+        normalizedMessage.poll_data = (chat.last_message as any).poll_data;
+      }
+
+      if ((chat.last_message as any).task_data && typeof (chat.last_message as any).task_data === 'string') {
+        try {
+          normalizedMessage.task_data = JSON.parse((chat.last_message as any).task_data);
+        } catch (e) {
+          console.error('Failed to parse task_data in last_message:', e);
+        }
+      } else if ((chat.last_message as any).task_data) {
+        normalizedMessage.task_data = (chat.last_message as any).task_data;
+      }
+
+      return {
+        ...chat,
+        last_message: normalizedMessage
+      };
+    }
+    return chat;
+  });
+
+  return {
+    chats: normalizedChats,
+    count: response.data.count
+  };
+};
+
+/**
  * Get list of chats with pagination and filters
  */
 export const getChats = async (

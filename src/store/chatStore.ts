@@ -11,8 +11,21 @@ import { isMockMode, mockGetChats, mockGetMessages } from '@utils/mockData';
 import { useAuthStore } from '@store/authStore';
 import { websocketService } from '@services/websocket.service';
 
+// Tab data structure for caching
+interface TabData {
+  pinnedChats: Chat[];
+  regularChats: Chat[];
+  offset: number;
+  hasMore: boolean;
+  loaded: boolean;
+}
+
+type TabName = 'all' | 'private' | 'group' | 'favorite';
+
 interface ChatState {
-  chats: Chat[];
+  chats: Chat[]; // Combined list for current tab (for compatibility)
+  tabs: Record<TabName, TabData>;
+  currentTab: TabName;
   totalChats: number;
   hasMoreChats: boolean;
   activeChat: Chat | null;
@@ -21,11 +34,14 @@ interface ChatState {
   isLoadingMore: boolean;
   error: string | null;
   typingUsers: Record<number, TypingIndicator[]>;
-  currentFilter: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean } | null;
   totalUnreadCount: number;
-  loadChats: (append?: boolean, filters?: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean }) => Promise<void>;
+  loadTabData: (tabName: TabName) => Promise<void>;
   loadMoreChats: () => Promise<void>;
+  refreshCurrentTab: () => Promise<void>;
+  switchTab: (tabName: TabName) => void;
   loadUnreadCount: () => Promise<void>;
+  // Legacy support - keeping for backward compatibility but will use new tab logic
+  loadChats: (append?: boolean, filters?: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean }) => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
   updateChat: (chatId: number, data: { name?: string; avatar?: string; description?: string }) => Promise<void>;
   deleteChat: (chatId: number, clearHistory?: boolean) => Promise<void>;
@@ -96,6 +112,13 @@ const enrichChatWithUsers = async (chat: Chat): Promise<Chat> => {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   chats: [],
+  tabs: {
+    all: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+    private: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+    group: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+    favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+  },
+  currentTab: 'all',
   totalChats: 0,
   hasMoreChats: false,
   activeChat: null,
@@ -104,8 +127,134 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoadingMore: false,
   error: null,
   typingUsers: {},
-  currentFilter: null,
   totalUnreadCount: 0,
+
+  // Load data for a specific tab
+  loadTabData: async (tabName: TabName) => {
+    const { tabs, isLoading } = get();
+
+    // Skip if already loaded or currently loading
+    if (tabs[tabName].loaded || isLoading) {
+      console.log(`📋 Tab "${tabName}" already loaded or loading, skipping...`);
+      return;
+    }
+
+    set({ isLoading: true, error: null });
+
+    try {
+      // Determine filters based on tab
+      const typeMap: Record<TabName, 'private' | 'group' | undefined> = {
+        all: undefined,
+        private: 'private',
+        group: 'group',
+        favorite: undefined,
+      };
+
+      const type = typeMap[tabName];
+      const isFavorite = tabName === 'favorite';
+
+      console.log(`📋 Loading tab data for "${tabName}" (type: ${type || 'none'}, favorite: ${isFavorite})`);
+
+      // 1. Load all pinned chats for this tab
+      const pinnedResponse = await chatApi.getPinnedChats(type);
+      let pinnedChats = pinnedResponse.chats;
+
+      // Filter favorites if needed
+      if (isFavorite) {
+        pinnedChats = pinnedChats.filter(c => c.is_favorite);
+      }
+
+      // Enrich pinned chats with user data
+      pinnedChats = await Promise.all(pinnedChats.map(enrichChatWithUsers));
+
+      console.log(`📌 Loaded ${pinnedChats.length} pinned chats for "${tabName}"`);
+
+      // 2. Load first page of regular chats
+      const limit = 15;
+      const filters: any = {};
+      if (type) filters.type = type;
+      if (isFavorite) filters.is_favorite = true;
+
+      const regularResponse = await chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined);
+
+      // Filter out pinned chats from regular chats
+      const pinnedIds = new Set(pinnedChats.map(c => c.id));
+      let regularChats = regularResponse.chats.filter(c => !pinnedIds.has(c.id));
+
+      // Enrich regular chats with user data
+      regularChats = await Promise.all(regularChats.map(enrichChatWithUsers));
+
+      console.log(`📄 Loaded ${regularChats.length} regular chats for "${tabName}" (filtered ${regularResponse.chats.length - regularChats.length} pinned duplicates)`);
+
+      // Update tab data
+      set(state => ({
+        tabs: {
+          ...state.tabs,
+          [tabName]: {
+            pinnedChats,
+            regularChats,
+            offset: limit,
+            hasMore: regularResponse.hasMore,
+            loaded: true,
+          }
+        },
+        currentTab: tabName,
+        chats: [...pinnedChats, ...regularChats],
+        hasMoreChats: regularResponse.hasMore,
+        totalChats: regularResponse.total,
+        isLoading: false,
+      }));
+
+      console.log(`✅ Tab "${tabName}" loaded successfully`);
+    } catch (error: any) {
+      console.error(`❌ Failed to load tab "${tabName}":`, error);
+      set({ error: error.message || `Failed to load ${tabName} chats`, isLoading: false });
+    }
+  },
+
+  // Switch to a different tab
+  switchTab: (tabName: TabName) => {
+    const { tabs } = get();
+    const tabData = tabs[tabName];
+
+    console.log(`🔄 Switching to tab "${tabName}" (loaded: ${tabData.loaded})`);
+
+    // Update current chats from cached tab data
+    set({
+      currentTab: tabName,
+      chats: [...tabData.pinnedChats, ...tabData.regularChats],
+      hasMoreChats: tabData.hasMore,
+    });
+
+    // Load tab data if not loaded yet
+    if (!tabData.loaded) {
+      get().loadTabData(tabName);
+    }
+  },
+
+  // Refresh current tab (for pull-to-refresh)
+  refreshCurrentTab: async () => {
+    const { currentTab } = get();
+
+    console.log(`🔄 Refreshing current tab "${currentTab}"`);
+
+    // Reset tab data
+    set(state => ({
+      tabs: {
+        ...state.tabs,
+        [currentTab]: {
+          pinnedChats: [],
+          regularChats: [],
+          offset: 0,
+          hasMore: true,
+          loaded: false,
+        }
+      }
+    }));
+
+    // Reload tab data
+    await get().loadTabData(currentTab);
+  },
 
   loadChats: async (append = false, filters) => {
     try {
@@ -170,12 +319,75 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadMoreChats: async () => {
-    const { hasMoreChats, isLoadingMore } = useChatStore.getState();
-    if (!hasMoreChats || isLoadingMore) return;
+    const { currentTab, tabs, isLoadingMore } = get();
+    const tabData = tabs[currentTab];
+
+    if (!tabData.hasMore || isLoadingMore) {
+      console.log(`⏸️ Cannot load more for tab "${currentTab}": hasMore=${tabData.hasMore}, isLoadingMore=${isLoadingMore}`);
+      return;
+    }
 
     set({ isLoadingMore: true });
-    await useChatStore.getState().loadChats(true);
-    set({ isLoadingMore: false });
+
+    try {
+      // Determine filters based on current tab
+      const typeMap: Record<TabName, 'private' | 'group' | undefined> = {
+        all: undefined,
+        private: 'private',
+        group: 'group',
+        favorite: undefined,
+      };
+
+      const type = typeMap[currentTab];
+      const isFavorite = currentTab === 'favorite';
+
+      const limit = 15;
+      const filters: any = {};
+      if (type) filters.type = type;
+      if (isFavorite) filters.is_favorite = true;
+
+      console.log(`📄 Loading more chats for "${currentTab}" (offset: ${tabData.offset})`);
+
+      const response = await chatApi.getChats(
+        limit,
+        tabData.offset,
+        Object.keys(filters).length > 0 ? filters : undefined
+      );
+
+      // Filter out pinned chats and existing chats
+      const pinnedIds = new Set(tabData.pinnedChats.map(c => c.id));
+      const existingIds = new Set(tabData.regularChats.map(c => c.id));
+      let newChats = response.chats.filter(c => !pinnedIds.has(c.id) && !existingIds.has(c.id));
+
+      // Enrich with user data
+      newChats = await Promise.all(newChats.map(enrichChatWithUsers));
+
+      console.log(`📄 Loaded ${newChats.length} more chats for "${currentTab}" (filtered ${response.chats.length - newChats.length} duplicates)`);
+
+      // Update tab data
+      set(state => {
+        const updatedRegularChats = [...state.tabs[currentTab].regularChats, ...newChats];
+        return {
+          tabs: {
+            ...state.tabs,
+            [currentTab]: {
+              ...state.tabs[currentTab],
+              regularChats: updatedRegularChats,
+              offset: state.tabs[currentTab].offset + limit,
+              hasMore: response.hasMore,
+            }
+          },
+          chats: [...state.tabs[currentTab].pinnedChats, ...updatedRegularChats],
+          hasMoreChats: response.hasMore,
+          isLoadingMore: false,
+        };
+      });
+
+      console.log(`✅ Successfully loaded more chats for "${currentTab}"`);
+    } catch (error: any) {
+      console.error(`❌ Failed to load more chats for "${currentTab}":`, error);
+      set({ error: error.message || 'Failed to load more chats', isLoadingMore: false });
+    }
   },
 
   loadUnreadCount: async () => {
@@ -781,28 +993,52 @@ export const useChatStore = create<ChatState>((set, get) => ({
         [message.chat_id]: [...existingMessages, messageWithDelivery],
       };
 
-      // Update chats list
-      const updatedChats = state.chats.map((chat) => {
-        if (chat.id === message.chat_id) {
-          // Increment unread_count only if:
-          // 1. Message is not from current user
-          // 2. User is not currently viewing this chat
-          const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+      // Helper function to update chat in list
+      const updateChatInList = (chats: Chat[]) => {
+        return chats.map((chat) => {
+          if (chat.id === message.chat_id) {
+            const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+            return {
+              ...chat,
+              last_message: message,
+              unread_count: shouldIncrementUnread ? (chat.unread_count || 0) + 1 : chat.unread_count || 0,
+            };
+          }
+          return chat;
+        });
+      };
 
-          return {
-            ...chat,
-            last_message: message,
-            unread_count: shouldIncrementUnread ? (chat.unread_count || 0) + 1 : chat.unread_count || 0,
-          };
-        }
-        return chat;
-      });
+      // Helper function to sort chats by last message time (pinned stay at top)
+      const sortChatsByTime = (chats: Chat[]) => {
+        return [...chats].sort((a, b) => {
+          const timeA = a.last_message?.created_at || a.created_at || '';
+          const timeB = b.last_message?.created_at || b.created_at || '';
+          return new Date(timeB).getTime() - new Date(timeA).getTime();
+        });
+      };
 
-      // Sort chats by last message time (most recent first)
-      const sortedChats = [...updatedChats].sort((a, b) => {
-        const timeA = a.last_message?.created_at || a.created_at || '';
-        const timeB = b.last_message?.created_at || b.created_at || '';
-        return new Date(timeB).getTime() - new Date(timeA).getTime();
+      // Update chats list for current view
+      const updatedChats = updateChatInList(state.chats);
+      const sortedChats = sortChatsByTime(updatedChats);
+
+      // Update all tabs that might contain this chat
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (!tab.loaded) return;
+
+        // Update pinned chats
+        const updatedPinned = updateChatInList(tab.pinnedChats);
+
+        // Update regular chats and re-sort them
+        const updatedRegular = updateChatInList(tab.regularChats);
+        const sortedRegular = sortChatsByTime(updatedRegular);
+
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: updatedPinned,
+          regularChats: sortedRegular,
+        };
       });
 
       // Update total unread count if a new unread message was added
@@ -814,6 +1050,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return {
         messages: updatedMessages,
         chats: sortedChats,
+        tabs: updatedTabs,
         totalUnreadCount: newTotalUnreadCount,
       };
     });
