@@ -33,42 +33,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
 
-  // Используем селектор с пользовательской функцией сравнения для отслеживания изменений статуса пользователей в чатах
-  // Это гарантирует, что компонент перерисуется при изменении статуса через WebSocket
-  const chats = useChatStore(
-    (state) => state.chats,
-    (a, b) => {
-      // Сравниваем массивы чатов
-      if (a.length !== b.length) return false;
-
-      // Сравниваем каждый чат, особенно статусы участников и read_by в last_message
-      return a.every((chatA, i) => {
-        const chatB = b[i];
-        if (!chatA || !chatB) return false;
-        if (chatA.id !== chatB.id) return false;
-
-        // Проверяем изменения в статусах участников для личных чатов
-        if (chatA.type === 'private' && chatA.members && chatB.members) {
-          const membersMatch = chatA.members.every((memberA, j) => {
-            const memberB = chatB.members![j];
-            return memberA?.user?.status === memberB?.user?.status &&
-                   (memberA?.user as any)?.last_active_at === (memberB?.user as any)?.last_active_at;
-          });
-          if (!membersMatch) return false;
-        }
-
-        // Проверяем изменения в read_by для last_message
-        const readByA = chatA.last_message?.read_by || [];
-        const readByB = chatB.last_message?.read_by || [];
-        if (readByA.length !== readByB.length) return false;
-        if (!readByA.every((id, idx) => id === readByB[idx])) return false;
-
-        return true;
-      });
-    }
-  );
-
-  const { isLoading, isLoadingMore, totalChats, hasMoreChats, error, loadTabData, switchTab: storeSwitchTab, refreshCurrentTab, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
+  const { chats, isLoading, isLoadingMore, totalChats, hasMoreChats, error, tabs, loadTabData, switchTab: storeSwitchTab, refreshCurrentTab, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
   const { showConfirm } = useActionModal();
@@ -93,6 +58,14 @@ const ChatListScreen: React.FC = () => {
   useEffect(() => {
     // Load initial tab data on mount
     loadTabData('all');
+
+    // Preload adjacent tabs for smooth iOS swipe (only on iOS)
+    if (Platform.OS === 'ios') {
+      // Small delay to not block initial render
+      setTimeout(() => {
+        loadTabData('private');
+      }, 500);
+    }
   }, []);
 
   // Обновляем счетчик непрочитанных при возврате на экран
@@ -169,6 +142,23 @@ const ChatListScreen: React.FC = () => {
 
     // Use the new store switchTab function - it will load data if needed
     storeSwitchTab(newFilter);
+
+    // Preload adjacent tabs for smooth swipe on iOS
+    if (Platform.OS === 'ios') {
+      const currentIndex = filterTabsOrder.indexOf(newFilter);
+
+      // Preload next tab
+      if (currentIndex < filterTabsOrder.length - 1) {
+        const nextTab = filterTabsOrder[currentIndex + 1];
+        setTimeout(() => loadTabData(nextTab), 100);
+      }
+
+      // Preload previous tab
+      if (currentIndex > 0) {
+        const prevTab = filterTabsOrder[currentIndex - 1];
+        setTimeout(() => loadTabData(prevTab), 100);
+      }
+    }
   };
 
   const resetSwipeFlag = () => {
@@ -184,6 +174,23 @@ const ChatListScreen: React.FC = () => {
     setTimeout(() => setCanLoadMore(true), 500);
     // Use the new store switchTab function
     storeSwitchTab(newFilter);
+
+    // Preload adjacent tabs for smooth swipe on iOS
+    if (Platform.OS === 'ios') {
+      const currentIndex = filterTabsOrder.indexOf(newFilter);
+
+      // Preload next tab
+      if (currentIndex < filterTabsOrder.length - 1) {
+        const nextTab = filterTabsOrder[currentIndex + 1];
+        setTimeout(() => loadTabData(nextTab), 100);
+      }
+
+      // Preload previous tab
+      if (currentIndex > 0) {
+        const prevTab = filterTabsOrder[currentIndex - 1];
+        setTimeout(() => loadTabData(prevTab), 100);
+      }
+    }
   };
 
   // Initialize translateX based on active filter
@@ -408,9 +415,13 @@ const ChatListScreen: React.FC = () => {
 
   // Render a single tab content
   const renderFilterContent = (filterKey: ChatFilter) => {
+    // Get chats for this specific tab from store
+    const tabData = tabs[filterKey];
+    const tabChatsFromStore = [...tabData.pinnedChats, ...tabData.regularChats];
+
     // Backend now handles filtering and sorting
     // Here we only apply client-side search if a query is present
-    const tabChats = chats.filter((chat) => {
+    const tabChats = tabChatsFromStore.filter((chat) => {
       if (!searchQuery) return true;
       const chatName = chat.name || '';
       const searchText = chatName.toLowerCase();
@@ -419,7 +430,7 @@ const ChatListScreen: React.FC = () => {
 
     return (
       <View key={filterKey} style={{ width: SCREEN_WIDTH, height: '100%' }}>
-        {isLoading && chats.length === 0 ? (
+        {isLoading && !tabData.loaded ? (
           <ChatListSkeleton />
         ) : tabChats.length === 0 ? (
           <View style={styles.emptyContainer}>
