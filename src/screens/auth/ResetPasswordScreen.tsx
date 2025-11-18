@@ -28,7 +28,7 @@ type ResetPasswordScreenRouteProp = RouteProp<AuthStackParamList, 'ResetPassword
 const ResetPasswordScreen: React.FC = () => {
   const navigation = useNavigation<ResetPasswordScreenNavigationProp>();
   const route = useRoute<ResetPasswordScreenRouteProp>();
-  const { showModal } = useActionModal();
+  const { showModal, hideModal } = useActionModal();
   const { theme } = useTheme();
 
   const token = route.params?.token;
@@ -46,9 +46,20 @@ const ResetPasswordScreen: React.FC = () => {
   // Validate token on mount
   useEffect(() => {
     if (!token) {
-      showModal('Ошибка', 'Токен не найден', [
-        { text: 'OK', onPress: () => navigation.navigate('Login'), style: 'primary' },
-      ]);
+      showModal({
+        title: 'Ошибка',
+        message: 'Токен не найден',
+        actions: [
+          {
+            text: 'OK',
+            onPress: () => {
+              hideModal();
+              navigation.navigate('Login');
+            },
+            style: 'primary'
+          },
+        ]
+      });
       return;
     }
 
@@ -59,11 +70,20 @@ const ResetPasswordScreen: React.FC = () => {
         setEmail(response.email);
         setExpiresAt(response.expires_at);
       } catch (err: any) {
-        showModal(
-          'Недействительная ссылка',
-          err.message || 'Токен сброса пароля недействителен или истёк',
-          [{ text: 'Вернуться к входу', onPress: () => navigation.navigate('Login'), style: 'primary' }]
-        );
+        showModal({
+          title: 'Недействительная ссылка',
+          message: err.message || 'Токен сброса пароля недействителен или истёк',
+          actions: [
+            {
+              text: 'Вернуться к входу',
+              onPress: () => {
+                hideModal();
+                navigation.navigate('Login');
+              },
+              style: 'primary'
+            }
+          ]
+        });
       } finally {
         setIsValidating(false);
       }
@@ -99,11 +119,20 @@ const ResetPasswordScreen: React.FC = () => {
         confirm_password: confirmPassword,
       });
 
-      showModal(
-        'Успешно',
-        'Пароль успешно изменён. Теперь вы можете войти с новым паролем.',
-        [{ text: 'Войти', onPress: () => navigation.navigate('Login'), style: 'primary' }]
-      );
+      showModal({
+        title: 'Успешно',
+        message: 'Пароль успешно изменён. Теперь вы можете войти с новым паролем.',
+        actions: [
+          {
+            text: 'Войти',
+            onPress: () => {
+              hideModal();
+              navigation.navigate('Login');
+            },
+            style: 'primary'
+          }
+        ]
+      });
     } catch (err: any) {
       setError(err.message || 'Не удалось сбросить пароль');
     } finally {

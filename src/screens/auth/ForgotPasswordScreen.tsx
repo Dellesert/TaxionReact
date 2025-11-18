@@ -26,13 +26,15 @@ type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackPar
 
 const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation<ForgotPasswordScreenNavigationProp>();
-  const { showModal } = useActionModal();
+  const { showModal, hideModal } = useActionModal();
   const { theme } = useTheme();
 
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showManualCodeInput, setShowManualCodeInput] = useState(false);
+  const [manualCode, setManualCode] = useState('');
 
   const handleSubmit = async () => {
     setError(null);
@@ -56,17 +58,40 @@ const ForgotPasswordScreen: React.FC = () => {
 
       setSuccess(true);
 
-      showModal(
-        'Запрос отправлен',
-        'Если учётная запись с таким email существует, вы получите письмо с инструкциями для сброса пароля.',
-        [
-          { text: 'OK', onPress: () => navigation.navigate('Login'), style: 'primary' }
+      showModal({
+        title: 'Запрос отправлен',
+        message: 'Если учётная запись с таким email существует, вы получите письмо с инструкциями для сброса пароля.',
+        actions: [
+          {
+            text: 'OK',
+            onPress: () => {
+              hideModal();
+              navigation.navigate('Login');
+            },
+            style: 'primary'
+          }
         ]
-      );
+      });
     } catch (err: any) {
       setError(err.message || 'Не удалось отправить запрос');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleManualCodeSubmit = () => {
+    setError(null);
+
+    if (!manualCode.trim()) {
+      setError('Введите код восстановления');
+      return;
+    }
+
+    try {
+      // Переход на экран сброса пароля с токеном
+      navigation.navigate('ResetPassword', { token: manualCode.trim() });
+    } catch (err: any) {
+      setError(err.message || 'Не удалось перейти к сбросу пароля');
     }
   };
 
@@ -176,6 +201,30 @@ const ForgotPasswordScreen: React.FC = () => {
       lineHeight: 24,
       marginBottom: 32,
     },
+    dividerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 24,
+    },
+    divider: {
+      flex: 1,
+      height: 1,
+      backgroundColor: theme.border,
+    },
+    dividerText: {
+      marginHorizontal: 16,
+      color: theme.textSecondary,
+      fontSize: 14,
+    },
+    linkButton: {
+      alignItems: 'center',
+      padding: 12,
+    },
+    linkButtonText: {
+      color: theme.primary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
   });
 
   return (
@@ -197,36 +246,94 @@ const ForgotPasswordScreen: React.FC = () => {
 
           {!success ? (
             <View style={styles.formContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={theme.inputPlaceholder}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                editable={!isLoading}
-              />
+              {!showManualCodeInput ? (
+                <>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    editable={!isLoading}
+                  />
 
-              {error && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
+                  {error && (
+                    <View style={styles.errorContainer}>
+                      <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.button, isLoading && styles.buttonDisabled]}
+                    onPress={handleSubmit}
+                    disabled={isLoading}
+                    activeOpacity={0.8}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Text style={styles.buttonText}>Отправить инструкции</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.divider} />
+                    <Text style={styles.dividerText}>или</Text>
+                    <View style={styles.divider} />
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.linkButton}
+                    onPress={() => {
+                      setShowManualCodeInput(true);
+                      setError(null);
+                    }}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.linkButtonText}>У меня уже есть код</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Введите код восстановления"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={manualCode}
+                    onChangeText={setManualCode}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+
+                  {error && (
+                    <View style={styles.errorContainer}>
+                      <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.button}
+                    onPress={handleManualCodeSubmit}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.buttonText}>Продолжить</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.linkButton}
+                    onPress={() => {
+                      setShowManualCodeInput(false);
+                      setManualCode('');
+                      setError(null);
+                    }}
+                  >
+                    <Text style={styles.linkButtonText}>Отправить код на email</Text>
+                  </TouchableOpacity>
+                </>
               )}
-
-              <TouchableOpacity
-                style={[styles.button, isLoading && styles.buttonDisabled]}
-                onPress={handleSubmit}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.buttonText}>Отправить инструкции</Text>
-                )}
-              </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.backButton}

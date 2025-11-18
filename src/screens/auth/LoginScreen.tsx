@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Image,
   Animated,
+  Keyboard,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
@@ -43,6 +44,9 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [passkeySupported, setPasskeySupported] = useState(false);
+
+  // Ref для поля пароля (для фокуса при нажатии Enter)
+  const passwordInputRef = useRef<TextInput>(null);
 
   // Анимация для логотипа (fade in)
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -169,6 +173,9 @@ const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     console.log('Login button clicked!', { email, password });
+
+    // Скрываем клавиатуру перед входом (особенно важно для iOS)
+    Keyboard.dismiss();
 
     if (!email || !password) {
       notification.showError('Заполните все поля');
@@ -349,9 +356,16 @@ const LoginScreen: React.FC = () => {
                 autoCapitalize="none"
                 autoComplete="email"
                 editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  // Фокус на поле пароля при нажатии Enter
+                  passwordInputRef.current?.focus();
+                }}
+                blurOnSubmit={false}
               />
 
               <TextInput
+                ref={passwordInputRef}
                 style={[
                   styles.input,
                   {
@@ -367,6 +381,8 @@ const LoginScreen: React.FC = () => {
                 secureTextEntry
                 autoComplete="password"
                 editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
               />
 
               <TouchableOpacity

@@ -45,7 +45,19 @@ export const getProfile = async (): Promise<User> => {
  */
 export const updateProfile = async (data: UpdateProfileDto): Promise<User> => {
   const response = await api.put<ApiResponse<User>>(API_ENDPOINTS.USER.PROFILE, data);
-  return response.data.data;
+
+  // Handle different response formats
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.profile) {
+    return response.data.profile;
+  } else if (response.data.user) {
+    return response.data.user;
+  } else if (response.data.id) {
+    return response.data as User;
+  } else {
+    return response.data as any;
+  }
 };
 
 /**

@@ -484,11 +484,20 @@ const ProfileScreen: React.FC = () => {
             </View>
 
             <TouchableOpacity
+              style={dynamicStyles.menuItem}
+              onPress={() => navigation.navigate('EditProfile')}
+            >
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#3B82F6'}]} name="create-outline" size={20} color="#FFFFFF" />
+              <Text style={[dynamicStyles.menuItemText]}>Редактировать профиль</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}
               onPress={handleChangeAvatar}
               disabled={isUploadingAvatar}
             >
-              <Ionicons name="camera-outline" size={24} color={theme.primary} />
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#8B5CF6'}]} name="camera-outline" size={20} color="#FFFFFF" />
               <Text style={dynamicStyles.menuItemText}>Изменить фотографию</Text>
               {isUploadingAvatar ? (
                 <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 8 }} />
@@ -503,6 +512,14 @@ const ProfileScreen: React.FC = () => {
             <View style={dynamicStyles.sectionHeader}>
               <Text style={dynamicStyles.sectionTitle}>БЕЗОПАСНОСТЬ</Text>
             </View>
+            <TouchableOpacity
+              style={dynamicStyles.menuItem}
+              onPress={() => navigation.navigate('ChangePassword')}
+            >
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#F59E0B'}]} name="lock-closed-outline" size={20} color="#FFFFFF" />
+              <Text style={[dynamicStyles.menuItemText]}>Изменить пароль</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
             <TouchableOpacity
               style={dynamicStyles.menuItem}
               onPress={() => navigation.navigate('ActiveSessions')}
