@@ -10,7 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 export type ChatStackParamList = {
   ChatList: undefined;
   CreateChat: {
-    initialChatType?: 'private' | 'group';
+    initialChatType?: 'private' | 'group' | 'channel';
   };
   Chat: {
     chatId: number;

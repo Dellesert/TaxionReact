@@ -3,7 +3,7 @@
  * Экран списка чатов
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Modal, Platform, Animated as RNAnimated, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -47,6 +47,9 @@ const ChatListScreen: React.FC = () => {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [canLoadMore, setCanLoadMore] = useState(false);
 
+  // Store measured container width for accurate indicator positioning
+  const [tabContainerWidth, setTabContainerWidth] = useState<number>(SCREEN_WIDTH);
+
   // Animation for search
   const searchAnimation = useRef(new RNAnimated.Value(0)).current;
 
@@ -55,17 +58,55 @@ const ChatListScreen: React.FC = () => {
   const isSwipingHorizontally = useSharedValue(false);
   const currentTabIndex = useSharedValue(0); // Track current tab index
 
-  useEffect(() => {
-    // Load initial tab data on mount
-    loadTabData('all');
+  // Animated style for tab indicator
+  const tabIndicatorStyle = useAnimatedStyle(() => {
+    'worklet';
 
-    // Preload adjacent tabs for smooth iOS swipe (only on iOS)
+    let progress: number;
+
     if (Platform.OS === 'ios') {
-      // Small delay to not block initial render
+      // On iOS: use swipe progress for smooth swipe animation
+      progress = -translateX.value / SCREEN_WIDTH;
+    } else {
+      // On web/android: use currentTabIndex (which animates smoothly)
+      progress = currentTabIndex.value;
+    }
+
+    const clampedProgress = Math.max(0, Math.min(3, progress));
+
+    // Calculate position and width as percentage of container width
+    const containerWidth = tabContainerWidth;
+    const tabWidth = containerWidth / 4;
+    const offset = tabWidth * clampedProgress;
+
+    return {
+      width: tabWidth,
+      transform: [{ translateX: offset }],
+    };
+  }, [tabContainerWidth]);
+
+  useEffect(() => {
+    // Load all tabs on mount for instant switching
+    const loadAllTabs = async () => {
+      // Load current tab first (highest priority)
+      await loadTabData('all');
+
+      // Then load other tabs in background for instant switching
+      // Use setTimeout to not block the UI
       setTimeout(() => {
         loadTabData('private');
-      }, 500);
-    }
+      }, 100);
+
+      setTimeout(() => {
+        loadTabData('group');
+      }, 200);
+
+      setTimeout(() => {
+        loadTabData('favorite');
+      }, 300);
+    };
+
+    loadAllTabs();
   }, []);
 
   // Обновляем счетчик непрочитанных при возврате на экран
@@ -133,10 +174,13 @@ const ChatListScreen: React.FC = () => {
     setCanLoadMore(false);
     setTimeout(() => setCanLoadMore(true), 500);
 
+    const newIndex = filterTabsOrder.indexOf(newFilter);
+
+    // Animate tab index for smooth indicator transition (works on all platforms)
+    currentTabIndex.value = withTiming(newIndex, { duration: 250 });
+
     // Animate to the new tab position on iOS
     if (Platform.OS === 'ios') {
-      const newIndex = filterTabsOrder.indexOf(newFilter);
-      currentTabIndex.value = newIndex;
       translateX.value = withTiming(-newIndex * SCREEN_WIDTH, { duration: 300 });
     }
 
@@ -222,8 +266,8 @@ const ChatListScreen: React.FC = () => {
     })
     .onEnd((event) => {
       'worklet';
-      const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
-      const VELOCITY_THRESHOLD = 500;
+      const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25; // Reduced threshold for faster response
+      const VELOCITY_THRESHOLD = 400; // Reduced for easier swipes
       const currentIndex = currentTabIndex.value;
 
       const shouldSwitchTab = Math.abs(event.translationX) > SWIPE_THRESHOLD || Math.abs(event.velocityX) > VELOCITY_THRESHOLD;
@@ -237,9 +281,12 @@ const ChatListScreen: React.FC = () => {
       }
 
       const targetOffset = -targetIndex * SCREEN_WIDTH;
+
+      // Use spring animation for more natural feel
       translateX.value = withTiming(targetOffset, {
-        duration: 250,
+        duration: 200, // Faster animation
       }, () => {
+        'worklet';
         currentTabIndex.value = targetIndex;
       });
 
@@ -413,8 +460,22 @@ const ChatListScreen: React.FC = () => {
     }
   };
 
+  // Memoized render item for better performance
+  const renderChatItem = useCallback(({ item }: { item: Chat }) => (
+    <ChatItem
+      chat={item}
+      onPress={handleChatPress}
+      isSelected={selectedChats.includes(item.id)}
+      isEditMode={isEditMode}
+      onToggleFavorite={() => handleToggleFavorite(item.id)}
+      onTogglePinned={() => handleTogglePinned(item.id)}
+      onMarkAsRead={() => handleMarkAsRead(item.id)}
+      onDelete={handleDeleteChat}
+    />
+  ), [isEditMode, selectedChats, handleChatPress, handleToggleFavorite, handleTogglePinned, handleMarkAsRead, handleDeleteChat]);
+
   // Render a single tab content
-  const renderFilterContent = (filterKey: ChatFilter) => {
+  const renderFilterContent = useCallback((filterKey: ChatFilter) => {
     // Get chats for this specific tab from store
     const tabData = tabs[filterKey];
     const tabChatsFromStore = [...tabData.pinnedChats, ...tabData.regularChats];
@@ -441,18 +502,7 @@ const ChatListScreen: React.FC = () => {
           <FlatList
             data={tabChats}
             keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <ChatItem
-                chat={item}
-                onPress={handleChatPress}
-                isSelected={selectedChats.includes(item.id)}
-                isEditMode={isEditMode}
-                onToggleFavorite={() => handleToggleFavorite(item.id)}
-                onTogglePinned={() => handleTogglePinned(item.id)}
-                onMarkAsRead={() => handleMarkAsRead(item.id)}
-                onDelete={handleDeleteChat}
-              />
-            )}
+            renderItem={renderChatItem}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
@@ -470,11 +520,22 @@ const ChatListScreen: React.FC = () => {
                 </View>
               ) : null
             }
+            // Performance optimizations
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={15}
+            windowSize={5}
+            getItemLayout={(data, index) => ({
+              length: 80, // Примерная высота ChatItem
+              offset: 80 * index,
+              index,
+            })}
           />
         )}
       </View>
     );
-  };
+  }, [tabs, searchQuery, isLoading, refreshing, canLoadMore, hasMoreChats, isLoadingMore, theme, renderChatItem, handleRefresh, loadMoreChats]);
 
   // Show error state if there's an error and no chats loaded
   if (error && chats.length === 0 && !isLoading) {
@@ -600,66 +661,77 @@ const ChatListScreen: React.FC = () => {
             </RNAnimated.View>
 
             {/* Фильтры типов чатов */}
-            <View style={[styles.filterContainer, { borderTopColor: theme.border, borderBottomColor: theme.border }]}>
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            chatFilter === 'all' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-          ]}
-          onPress={() => switchToFilter('all')}
-        >
-          <Text style={[
-            styles.filterText,
-            { color: chatFilter === 'all' ? theme.primary : theme.textSecondary }
-          ]}>
-            Все
-          </Text>
-        </TouchableOpacity>
+            <View
+              style={[styles.filterContainer, { borderTopColor: theme.border, borderBottomColor: theme.border }]}
+              onLayout={(e) => {
+                const { width } = e.nativeEvent.layout;
+                setTabContainerWidth(width);
+              }}
+            >
+              <TouchableOpacity
+                style={styles.filterTab}
+                onPress={() => switchToFilter('all')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: chatFilter === 'all' ? theme.primary : theme.textSecondary }
+                  ]}
+                >
+                  Все
+                </Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            chatFilter === 'private' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-          ]}
-          onPress={() => switchToFilter('private')}
-        >
-          <Text style={[
-            styles.filterText,
-            { color: chatFilter === 'private' ? theme.primary : theme.textSecondary }
-          ]}>
-            Чаты
-          </Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.filterTab}
+                onPress={() => switchToFilter('private')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: chatFilter === 'private' ? theme.primary : theme.textSecondary }
+                  ]}
+                >
+                  Чаты
+                </Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            chatFilter === 'group' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-          ]}
-          onPress={() => switchToFilter('group')}
-        >
-          <Text style={[
-            styles.filterText,
-            { color: chatFilter === 'group' ? theme.primary : theme.textSecondary }
-          ]}>
-            Группы
-          </Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.filterTab}
+                onPress={() => switchToFilter('group')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: chatFilter === 'group' ? theme.primary : theme.textSecondary }
+                  ]}
+                >
+                  Группы
+                </Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            chatFilter === 'favorite' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-          ]}
-          onPress={() => switchToFilter('favorite')}
-        >
-          <Text style={[
-            styles.filterText,
-            { color: chatFilter === 'favorite' ? theme.primary : theme.textSecondary }
-          ]}>
-            Избранное
-          </Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.filterTab}
+                onPress={() => switchToFilter('favorite')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: chatFilter === 'favorite' ? theme.primary : theme.textSecondary }
+                  ]}
+                >
+                  Избранное
+                </Text>
+              </TouchableOpacity>
+
+              {/* Анимированный индикатор */}
+              <Animated.View
+                style={[
+                  styles.tabIndicator,
+                  { backgroundColor: theme.primary },
+                  tabIndicatorStyle
+                ]}
+              />
             </View>
           </>
         }
@@ -810,15 +882,25 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     borderTopWidth: 1,
     borderBottomWidth: 0,
+    position: 'relative',
   },
   filterTab: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   filterText: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    height: 2,
+    // Width is now dynamic, set by animated style
   },
   actionBar: {
     flexDirection: 'row',
