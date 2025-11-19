@@ -261,17 +261,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         }
       }
 
-      if (websocketService.isConnected() && getChatById(chatIdNum)) {
-        websocketService.joinChat(chatIdNum);
-      }
+      // WebSocket is already connected and subscribed to user's personal channel
+      // Events will arrive automatically - no need to join/leave specific chats
     };
     connectWebSocket();
 
     return () => {
       setActiveChat(null);
-      if (websocketService.isConnected()) {
-        websocketService.leaveChat(chatIdNum);
-      }
+      // No need to leave chat - events are delivered via personal channel
     };
   }, [chatIdNum]);
 

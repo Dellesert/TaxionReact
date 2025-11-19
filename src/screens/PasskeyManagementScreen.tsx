@@ -52,9 +52,7 @@ const PasskeyManagementScreen: React.FC = () => {
     try {
       const supported = await isPasskeySupported();
       setPasskeySupported(supported);
-      console.log('Passkey supported:', supported, 'Platform:', getPlatformInfo());
     } catch (error) {
-      console.error('Error checking passkey support:', error);
       setPasskeySupported(false);
     }
   };
@@ -64,9 +62,7 @@ const PasskeyManagementScreen: React.FC = () => {
       setIsLoading(true);
       const response = await authApi.listPasskeys();
       setPasskeys(response.passkeys || []);
-      console.log('✅ Loaded passkeys:', response.passkeys);
     } catch (error: any) {
-      console.error('❌ Failed to load passkeys:', error);
       showError('Не удалось загрузить список Passkey');
     } finally {
       setIsLoading(false);
@@ -81,18 +77,14 @@ const PasskeyManagementScreen: React.FC = () => {
 
     setIsRegistering(true);
     try {
-      console.log('🔐 Starting passkey registration...');
-
       // 1. Get creation options from server
       const beginResponse = await authApi.beginPasskeyRegister();
-      console.log('✅ Got creation options:', beginResponse);
 
       // 2. Create credential on device (кросс-платформенно)
       const credential = await registerPasskey(
         beginResponse.publicKey.challenge,
         { publicKey: beginResponse.publicKey }
       );
-      console.log('✅ Created credential on device:', credential);
 
       // 3. Get device name
       const defaultName = Platform.select({
@@ -124,16 +116,10 @@ const PasskeyManagementScreen: React.FC = () => {
 
     try {
       // 4. Send credential to server with device name
-      console.log('📤 Sending registration data:', JSON.stringify({
-        credential: pendingCredential,
-        name: deviceName,
-      }, null, 2));
-
       const registerResponse = await authApi.finishPasskeyRegister({
         credential: pendingCredential,
         name: deviceName,
       });
-      console.log('✅ Passkey registered:', registerResponse);
 
       showSuccess('Passkey успешно зарегистрирован!');
       setShowNameModal(false);
@@ -168,11 +154,9 @@ const PasskeyManagementScreen: React.FC = () => {
     try {
       setIsDeleting(passkey.id);
       await authApi.deletePasskey(passkey.id);
-      console.log('✅ Passkey deleted:', passkey.id);
       showSuccess('Passkey удален');
       await loadPasskeys();
     } catch (error: any) {
-      console.error('❌ Failed to delete passkey:', error);
       showError('Не удалось удалить Passkey');
     } finally {
       setIsDeleting(null);
@@ -191,14 +175,12 @@ const PasskeyManagementScreen: React.FC = () => {
     try {
       // Backend expects 'name', not 'device_name'
       await authApi.updatePasskey(editingPasskey.id, { name: deviceName });
-      console.log('✅ Passkey renamed:', editingPasskey.id);
       showSuccess('Название обновлено');
       setShowNameModal(false);
       setDeviceName('');
       setEditingPasskey(null);
       await loadPasskeys();
     } catch (error: any) {
-      console.error('❌ Failed to rename passkey:', error);
       showError('Не удалось обновить название');
     }
   };

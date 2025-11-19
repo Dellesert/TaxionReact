@@ -240,8 +240,26 @@ export const getOrCreateTaskChat = async (taskId: number): Promise<Chat> => {
  * Get chat by ID
  */
 export const getChat = async (id: number): Promise<Chat> => {
-  const response = await api.get<ApiResponse<Chat>>(API_ENDPOINTS.CHAT.BY_ID(id));
-  return response.data.data;
+  const response = await api.get<any>(API_ENDPOINTS.CHAT.BY_ID(id));
+
+  // Handle different response formats
+  // Format 1: { data: { chat } }
+  if (response.data && response.data.data) {
+    return response.data.data;
+  }
+
+  // Format 2: { chat: { ... } }
+  if (response.data && response.data.chat) {
+    return response.data.chat;
+  }
+
+  // Format 3: Chat data directly in response.data
+  if (response.data && response.data.id) {
+    return response.data as any;
+  }
+
+  console.error(`Invalid response format for chat ${id}:`, response.data);
+  throw new Error(`Invalid chat response format for chat ${id}`);
 };
 
 /**

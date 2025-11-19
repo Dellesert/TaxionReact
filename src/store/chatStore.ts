@@ -136,7 +136,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Skip if already loaded or currently loading
     if (tabs[tabName].loaded || isLoading) {
-      console.log(`📋 Tab "${tabName}" already loaded or loading, skipping...`);
       return;
     }
 
@@ -154,8 +153,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const type = typeMap[tabName];
       const isFavorite = tabName === 'favorite';
 
-      console.log(`📋 Loading tab data for "${tabName}" (type: ${type || 'none'}, favorite: ${isFavorite})`);
-
       // 1. Load all pinned chats for this tab
       const pinnedResponse = await chatApi.getPinnedChats(type);
       let pinnedChats = pinnedResponse.chats;
@@ -167,8 +164,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       // Enrich pinned chats with user data
       pinnedChats = await Promise.all(pinnedChats.map(enrichChatWithUsers));
-
-      console.log(`📌 Loaded ${pinnedChats.length} pinned chats for "${tabName}"`);
 
       // 2. Load first page of regular chats
       const limit = 15;
@@ -184,8 +179,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       // Enrich regular chats with user data
       regularChats = await Promise.all(regularChats.map(enrichChatWithUsers));
-
-      console.log(`📄 Loaded ${regularChats.length} regular chats for "${tabName}" (filtered ${regularResponse.chats.length - regularChats.length} pinned duplicates)`);
 
       // Update tab data
       set(state => ({
@@ -206,7 +199,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         isLoading: false,
       }));
 
-      console.log(`✅ Tab "${tabName}" loaded successfully`);
+      // No need to join chats - WebSocket delivers events via personal user channel
     } catch (error: any) {
       console.error(`❌ Failed to load tab "${tabName}":`, error);
       set({ error: error.message || `Failed to load ${tabName} chats`, isLoading: false });
@@ -217,8 +210,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   switchTab: (tabName: TabName) => {
     const { tabs } = get();
     const tabData = tabs[tabName];
-
-    console.log(`🔄 Switching to tab "${tabName}" (loaded: ${tabData.loaded})`);
 
     // Update current chats from cached tab data
     set({
@@ -236,8 +227,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // Refresh current tab (for pull-to-refresh)
   refreshCurrentTab: async () => {
     const { currentTab } = get();
-
-    console.log(`🔄 Refreshing current tab "${currentTab}"`);
 
     // Reset tab data
     set(state => ({
@@ -273,7 +262,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       let hasMore = false;
 
       if (isMockMode()) {
-        console.log('🔧 Using mock chats');
         chats = await mockGetChats();
         total = chats.length;
       } else {
@@ -302,10 +290,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // Если получили только дубликаты и еще есть данные, не делаем автозагрузку
         // Пользователь продолжит скроллить и onEndReached сработает снова
         // Это предотвратит бесконечный цикл
-        if (uniqueChats.length === 0 && stillHasMore && chats.length > 0) {
-          console.log('⚠️ All chats were duplicates, user needs to scroll more');
-          // Не делаем рекурсивный вызов - ждем следующего onEndReached
-        }
+        // Не делаем рекурсивный вызов - ждем следующего onEndReached
       } else {
         set({
           chats,
@@ -324,7 +309,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const tabData = tabs[currentTab];
 
     if (!tabData.hasMore || isLoadingMore) {
-      console.log(`⏸️ Cannot load more for tab "${currentTab}": hasMore=${tabData.hasMore}, isLoadingMore=${isLoadingMore}`);
       return;
     }
 
@@ -347,8 +331,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (type) filters.type = type;
       if (isFavorite) filters.is_favorite = true;
 
-      console.log(`📄 Loading more chats for "${currentTab}" (offset: ${tabData.offset})`);
-
       const response = await chatApi.getChats(
         limit,
         tabData.offset,
@@ -362,8 +344,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       // Enrich with user data
       newChats = await Promise.all(newChats.map(enrichChatWithUsers));
-
-      console.log(`📄 Loaded ${newChats.length} more chats for "${currentTab}" (filtered ${response.chats.length - newChats.length} duplicates)`);
 
       // Update tab data
       set(state => {
@@ -383,8 +363,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           isLoadingMore: false,
         };
       });
-
-      console.log(`✅ Successfully loaded more chats for "${currentTab}"`);
     } catch (error: any) {
       console.error(`❌ Failed to load more chats for "${currentTab}":`, error);
       set({ error: error.message || 'Failed to load more chats', isLoadingMore: false });
@@ -456,7 +434,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ? { ...state.activeChat, ...updatedChat }
           : state.activeChat,
       }));
-      console.log(`✏️ Chat ${chatId} updated:`, data);
     } catch (error: any) {
       set({ error: error.message || 'Failed to update chat' });
       throw error;
@@ -465,22 +442,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   deleteChat: async (chatId: number, clearHistory?: boolean) => {
     try {
-      console.log(`🗑️ Deleting chat ${chatId} (clearHistory: ${clearHistory})...`);
       await chatApi.deleteChat(chatId, clearHistory);
-      console.log(`✅ Chat ${chatId} deleted on server`);
 
-      // Remove chat from list and clear messages
-      set((state) => ({
-        chats: state.chats.filter((chat) => chat.id !== chatId),
-        messages: Object.fromEntries(
-          Object.entries(state.messages).filter(([id]) => Number(id) !== chatId)
-        ),
-        activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
-      }));
-
-      console.log(`🗑️ Chat ${chatId} deleted successfully (clearHistory: ${clearHistory})`);
+      // Use handleChatDelete to properly remove from all tabs
+      get().handleChatDelete(chatId);
     } catch (error: any) {
-      console.error(`❌ Failed to delete chat ${chatId}:`, error);
+      console.error(`Failed to delete chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to delete chat' });
       throw error;
     }
@@ -492,32 +459,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!currentUser) throw new Error('User not authenticated');
 
       await chatApi.removeChatMember(chatId, currentUser.id);
-      set((state) => ({
-        chats: state.chats.filter((chat) => chat.id !== chatId),
-        messages: Object.fromEntries(
-          Object.entries(state.messages).filter(([id]) => Number(id) !== chatId)
-        ),
-        activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
-      }));
-      console.log(`👋 Left chat ${chatId} successfully`);
+
+      // Use handleChatDelete to properly remove from all tabs
+      get().handleChatDelete(chatId);
     } catch (error: any) {
+      console.error(`Failed to leave chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to leave chat' });
       throw error;
     }
   },
 
   removeChatMember: async (chatId: number, userId: number) => {
-    console.log(`🚫 removeChatMember called: chatId=${chatId}, userId=${userId}`);
     try {
-      console.log(`🌐 Calling API to remove user ${userId} from chat ${chatId}`);
       await chatApi.removeChatMember(chatId, userId);
-      console.log(`✅ API call successful, updating local state`);
 
       // Обновляем список участников в чате
       set((state) => ({
         chats: state.chats.map((chat) => {
           if (chat.id === chatId && chat.members) {
-            console.log(`📝 Updating members list for chat ${chatId}`);
             return {
               ...chat,
               members: chat.members.filter((member) => member.user_id !== userId),
@@ -526,7 +485,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           return chat;
         }),
       }));
-      console.log(`🚫 Removed user ${userId} from chat ${chatId}`);
     } catch (error: any) {
       console.error(`❌ Failed to remove member:`, error);
       set({ error: error.message || 'Failed to remove member' });
@@ -540,13 +498,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       let messages;
 
       if (isMockMode()) {
-        console.log('🔧 Using mock messages for chat:', chatId);
         messages = await mockGetMessages(String(chatId));
       } else {
         // Загружаем только последние 30 сообщений
         // Старые сообщения будут подгружаться при скролле вверх
         const limit = 30;
-        console.log(`📚 Loading last ${limit} messages`);
 
         const response = await chatApi.getMessages(chatId, { limit });
         messages = (response.messages || response.data || []).reverse();
@@ -566,19 +522,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadMoreMessages: async (chatId: number, beforeMessageId: number) => {
     try {
-      console.log(`📚 Loading more messages before ID ${beforeMessageId}`);
-      console.log(`🔍 Request params: chatId=${chatId}, before_message_id=${beforeMessageId}, limit=30`);
       const response = await chatApi.getMessages(chatId, {
         limit: 30,
         before_message_id: beforeMessageId,
       });
       const responseMessages = response.messages || response.data || [];
-
-      console.log(`📚 Received ${responseMessages.length} older messages`);
-      if (responseMessages.length > 0) {
-        const ids = responseMessages.map(m => m.id).sort((a, b) => a - b);
-        console.log(`📚 Received message IDs: first=${ids[0]}, last=${ids[ids.length - 1]}, all=[${ids.slice(0, 5).join(',')}...${ids.slice(-3).join(',')}]`);
-      }
 
       let addedCount = 0;
 
@@ -593,7 +541,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
             .filter(msg => !existingIds.has(msg.id));
 
           addedCount = newMessages.length;
-          console.log(`📚 Adding ${newMessages.length} new messages (filtered ${responseMessages.length - newMessages.length} duplicates)`);
 
           return {
             messages: {
@@ -605,7 +552,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       // Возвращаем количество НОВЫХ сообщений (не дубликатов) для проверки "больше нет"
-      console.log(`📚 Returning ${addedCount} new messages (from ${responseMessages.length} received)`);
       return addedCount;
     } catch (error: any) {
       set({ error: error.message || 'Failed to load more messages' });
@@ -717,9 +663,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearChatHistory: async (chatId: number) => {
     try {
-      console.log(`🧹 Clearing chat history for chat ${chatId}...`);
       await chatApi.clearChatHistory(chatId);
-      console.log(`✅ Chat history cleared on server for chat ${chatId}`);
 
       // Очищаем сообщения локально
       set((state) => ({
@@ -728,7 +672,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           [chatId]: [],
         },
       }));
-      console.log(`✅ Local messages cleared for chat ${chatId}`);
     } catch (error: any) {
       console.error(`❌ Failed to clear chat history for chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to clear chat history' });
@@ -775,7 +718,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ),
         },
       }));
-      console.log(`📌 Message ${messageId} pinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to pin message' });
       throw error;
@@ -794,7 +736,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ),
         },
       }));
-      console.log(`📌 Message ${messageId} unpinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to unpin message' });
       throw error;
@@ -851,11 +792,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const chat = get().chats.find((c) => c.id === chatId);
       const unreadCount = chat?.unread_count || 0;
 
-      console.log(`📨 markChatAsRead: Marking chat ${chatId} as read (current unread: ${unreadCount})`);
-
       // Всегда отправляем на сервер
       await chatApi.markChatAsRead(chatId);
-      console.log(`✅ markChatAsRead: Chat ${chatId} marked as read on server`);
 
       // После успешного запроса обновляем локальный state
       set((state) => {
@@ -877,7 +815,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         });
 
         const newTotalUnreadCount = Math.max(0, state.totalUnreadCount - unreadCount);
-        console.log(`📨 markChatAsRead: Updated local state - totalUnread: ${state.totalUnreadCount} -> ${newTotalUnreadCount}`);
 
         return {
           chats: state.chats.map(updateChatUnread),
@@ -898,7 +835,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           chat.id === chatId ? { ...chat, is_pinned: true } : chat
         ),
       }));
-      console.log(`📌 Chat ${chatId} pinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to pin chat' });
       throw error;
@@ -913,7 +849,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           chat.id === chatId ? { ...chat, is_pinned: false } : chat
         ),
       }));
-      console.log(`📌 Chat ${chatId} unpinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to unpin chat' });
       throw error;
@@ -961,7 +896,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           c.id === chatId ? { ...c, is_favorite: newFavoriteStatus } : c
         ),
       }));
-      console.log(`⭐ Chat ${chatId} favorite status: ${newFavoriteStatus}`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to toggle favorite' });
       throw error;
@@ -978,17 +912,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const currentChats = get().chats;
     let chatExists = currentChats.some(chat => chat.id === message.chat_id);
 
-    console.log(`🔍 [ChatStore] handleNewMessage called for chat ${message.chat_id}`);
-    console.log(`📊 [ChatStore] Current chats count: ${currentChats.length}, Chat exists: ${chatExists}`);
-    console.log(`📊 [ChatStore] Current chat IDs:`, currentChats.map(c => c.id));
-
     // Если чата нет - загружаем его через API
     if (!chatExists) {
-      console.log(`📥 [ChatStore] Chat ${message.chat_id} not found in store, fetching from API...`);
       try {
-        const fetchedChat = await chatApi.getChat(message.chat_id);
-        console.log(`✅ [ChatStore] Chat ${message.chat_id} fetched successfully:`, fetchedChat);
-        console.log(`📊 [ChatStore] Fetched chat type: ${fetchedChat.type}, is_favorite: ${fetchedChat.is_favorite}`);
+        let fetchedChat = await chatApi.getChat(message.chat_id);
+
+        // Validate fetched chat
+        if (!fetchedChat || !fetchedChat.id) {
+          console.error(`Invalid chat data received for chat ${message.chat_id}:`, fetchedChat);
+          return;
+        }
+
+        // Enrich chat with user data for members
+        fetchedChat = await enrichChatWithUsers(fetchedChat);
 
         // Добавляем загруженный чат в store
         set((state) => {
@@ -1001,8 +937,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
           // Определяем в какой таб добавить чат
           const updatedTabs = { ...state.tabs };
-          const chatType = fetchedChat.type;
-          const isFavorite = fetchedChat.is_favorite;
+          const chatType = fetchedChat.type || 'private'; // Default to private if type is missing
+          const isFavorite = fetchedChat.is_favorite || false;
 
           // Добавляем в соответствующие табы
           ['all', chatType === 'private' ? 'private' : chatType === 'group' ? 'group' : null, isFavorite ? 'favorite' : null]
@@ -1025,11 +961,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
             ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
             : state.chats;
 
-          // Добавляем сообщение в messages
+          // Добавляем сообщение в messages (с проверкой на дубликаты)
           const existingMessages = state.messages[message.chat_id] || [];
-          const messageWithDelivery = !isOwnMessage && currentUser
-            ? { ...message, delivered_to: [currentUser.id] }
-            : { ...message, delivered_to: [] };
+          const messageExists = existingMessages.some(msg => msg.id === message.id);
+
+          let updatedMessagesForChat = existingMessages;
+          if (!messageExists) {
+            const messageWithDelivery = !isOwnMessage && currentUser
+              ? { ...message, delivered_to: [currentUser.id] }
+              : { ...message, delivered_to: [] };
+            updatedMessagesForChat = [...existingMessages, messageWithDelivery];
+            console.log(`✅ [ChatStore] Added message ${message.id} to new chat ${message.chat_id}`);
+          } else {
+            console.log(`⏭️ [ChatStore] Message ${message.id} already exists in new chat ${message.chat_id}, skipping`);
+          }
 
           return {
             ...state,
@@ -1037,27 +982,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
             tabs: updatedTabs,
             messages: {
               ...state.messages,
-              [message.chat_id]: [...existingMessages, messageWithDelivery],
+              [message.chat_id]: updatedMessagesForChat,
             },
-            totalUnreadCount: shouldIncrementUnread ? state.totalUnreadCount + 1 : state.totalUnreadCount,
+            totalUnreadCount: shouldIncrementUnread && !messageExists ? state.totalUnreadCount + 1 : state.totalUnreadCount,
           };
         });
 
         // Чат успешно добавлен, выходим из функции
-        const afterAddChats = get().chats;
-        console.log(`✅ [ChatStore] Chat ${message.chat_id} and message added to store`);
-        console.log(`📊 [ChatStore] After add - chats count: ${afterAddChats.length}`);
-        console.log(`📊 [ChatStore] After add - chat IDs:`, afterAddChats.map(c => c.id));
-        console.log(`📊 [ChatStore] After add - tabs state:`, Object.keys(get().tabs).map(tab => ({
-          tab,
-          loaded: get().tabs[tab as TabName].loaded,
-          regularCount: get().tabs[tab as TabName].regularChats.length,
-          pinnedCount: get().tabs[tab as TabName].pinnedChats.length,
-        })));
         return;
       } catch (error) {
         console.error(`❌ [ChatStore] Failed to fetch chat ${message.chat_id}:`, error);
-        // Продолжаем обработку сообщения даже если не удалось загрузить чат
+        // При ошибке загрузки чата НЕ продолжаем обработку, чтобы избежать дублирования
+        return;
       }
     }
 
@@ -1065,6 +1001,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // Check if message already exists (deduplication)
       const existingMessages = state.messages[message.chat_id] || [];
       const messageExists = existingMessages.some((msg) => msg.id === message.id);
+
+      console.log(`🔍 [ChatStore] Message ${message.id} in chat ${message.chat_id}: exists=${messageExists}, total messages=${existingMessages.length}`);
 
       // Если сообщение уже существует
       if (messageExists) {
@@ -1129,10 +1067,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         });
       };
 
-      // Update chats list for current view
-      const updatedChats = updateChatInList(state.chats);
-      const sortedChats = sortChatsByTime(updatedChats);
-
       // Update all tabs that might contain this chat
       const updatedTabs = { ...state.tabs };
       Object.keys(updatedTabs).forEach(tabKey => {
@@ -1153,6 +1087,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         };
       });
 
+      // Reconstruct chats array from current tab to ensure new reference
+      const currentTabData = updatedTabs[state.currentTab];
+      const sortedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
       // Update total unread count if a new unread message was added
       const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
       const newTotalUnreadCount = shouldIncrementUnread
@@ -1170,11 +1108,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   handleMessageUpdate: (message: Message) => {
     // Parse poll_data if it's a JSON string (comes from WebSocket)
-    console.log('🔄 handleMessageUpdate called for message:', message.id);
-    console.log('🔍 Incoming message_type:', message.message_type);
-    console.log('🔍 poll_data type:', typeof (message as any).poll_data);
-    console.log('🔍 poll_data value:', (message as any).poll_data);
-
     // Create updated message object and explicitly preserve message_type
     const updatedMessage: any = {
       ...message,
@@ -1184,28 +1117,51 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if ((message as any).poll_data && typeof (message as any).poll_data === 'string') {
       try {
         updatedMessage.poll_data = JSON.parse((message as any).poll_data);
-        console.log('📊 Parsed poll_data in WebSocket update:', updatedMessage.poll_data);
       } catch (e) {
         console.error('❌ Failed to parse poll_data in WebSocket update:', e);
       }
-    } else {
-      console.log('⚠️ poll_data is not a string or is empty, skipping parse');
     }
 
-    console.log('💾 Saving to store:', {
-      id: updatedMessage.id,
-      message_type: updatedMessage.message_type,
-      has_poll_data: !!updatedMessage.poll_data
-    });
-
-    set((state) => ({
-      messages: {
+    set((state) => {
+      // Update messages
+      const updatedMessages = {
         ...state.messages,
         [message.chat_id]: (state.messages[message.chat_id] || []).map((msg) =>
           msg.id === message.id ? updatedMessage : msg
         ),
-      },
-    }));
+      };
+
+      // Helper function to update last_message in chat if needed
+      const updateChatLastMessage = (chat: Chat) => {
+        if (chat.id === message.chat_id && chat.last_message?.id === message.id) {
+          return { ...chat, last_message: updatedMessage };
+        }
+        return chat;
+      };
+
+      // Update all tabs
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (!tab.loaded) return;
+
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.map(updateChatLastMessage),
+          regularChats: tab.regularChats.map(updateChatLastMessage),
+        };
+      });
+
+      // Reconstruct chats array from current tab to ensure new reference
+      const currentTabData = updatedTabs[state.currentTab];
+      const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+      return {
+        messages: updatedMessages,
+        chats: updatedChats,
+        tabs: updatedTabs,
+      };
+    });
   },
 
   handleMessageDelete: (messageId: number, chatId: number) => {
@@ -1223,12 +1179,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   handleChatDelete: (chatId: number) => {
-    console.log(`🗑️ [ChatStore] Removing chat ${chatId} from store`);
-
     set((state) => {
-      // Удаляем чат из основного списка
-      const updatedChats = state.chats.filter(chat => chat.id !== chatId);
-
       // Удаляем чат из всех табов
       const updatedTabs = { ...state.tabs };
       Object.keys(updatedTabs).forEach(tabKey => {
@@ -1239,6 +1190,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
           regularChats: tab.regularChats.filter(chat => chat.id !== chatId),
         };
       });
+
+      // Reconstruct chats array from current tab to ensure new reference
+      const currentTabData = updatedTabs[state.currentTab];
+      const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
 
       // Удаляем сообщения чата
       const updatedMessages = { ...state.messages };
@@ -1255,8 +1210,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         activeChat: updatedActiveChat,
       };
     });
-
-    console.log(`✅ [ChatStore] Chat ${chatId} removed from store`);
   },
 
   handleTypingStart: async (chatId: number, typing: TypingIndicator) => {
@@ -1305,7 +1258,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   handleUserPresence: (presence: any) => {
     // Update user status in all chats where user is a member
     const { user_id, status, last_seen, last_active_at } = presence;
-    console.log('👤 Updating user presence:', { user_id, status, last_seen, last_active_at });
 
     // Use last_active_at if available (from API), otherwise fall back to last_seen
     const lastActiveTime = last_active_at || last_seen;
@@ -1328,12 +1280,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               // Also update last_active_at if it exists in the user object
               ...(last_active_at ? { last_active_at } : {}),
             };
-            console.log('✅ Updated user in chat:', {
-              user_id,
-              old_status: member.user.status,
-              new_status: status,
-              last_active_at: lastActiveTime
-            });
             return {
               ...member,
               user: updatedUser,
@@ -1445,7 +1391,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         if (unreadDiff > 0) {
           newTotalUnreadCount = Math.max(0, state.totalUnreadCount - unreadDiff);
-          console.log(`📨 handleMessageRead: Updated unread count for chat ${chatId}: ${oldUnreadCount} -> ${newUnreadCount}, total: ${state.totalUnreadCount} -> ${newTotalUnreadCount}`);
         }
       }
 

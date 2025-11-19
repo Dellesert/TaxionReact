@@ -85,14 +85,11 @@ api.interceptors.request.use(
         ...config.data,
         device_info: userAgent,
       };
-
-      console.log('📱 Added device_info to request body:', userAgent);
     }
 
     return config;
   },
   (error: AxiosError) => {
-    console.error('Request Interceptor Error:', error);
     return Promise.reject(error);
   }
 );
@@ -106,18 +103,8 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    console.error('❌ API Error:', {
-      status: error.response?.status,
-      url: error.config?.url,
-      method: error.config?.method,
-      message: error.message,
-      responseData: error.response?.data,
-    });
-
     // Handle 401 Unauthorized errors (session expired)
     if (error.response?.status === HTTP_STATUS.UNAUTHORIZED) {
-      console.log('🔐 Session expired (401), clearing session data...');
-
       // Clear session data from storage
       await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);

@@ -114,7 +114,6 @@ const ChatListScreen: React.FC = () => {
   // НЕ обновляем список чатов чтобы не перезаписать локальные изменения данными с сервера
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🔄 ChatListScreen focused - updating unread count only...');
       // Обновляем только общий счетчик непрочитанных
       loadUnreadCount();
     }, [loadUnreadCount])
@@ -146,11 +145,6 @@ const ChatListScreen: React.FC = () => {
       setIsConnected(prev => {
         // Обновляем только если статус действительно изменился
         if (prev !== currentStatus) {
-          if (currentStatus) {
-            console.log('✅ WebSocket переподключен');
-          } else {
-            console.log('❌ WebSocket соединение потеряно');
-          }
           return currentStatus;
         }
         return prev;
@@ -311,7 +305,6 @@ const ChatListScreen: React.FC = () => {
 
     // Если WebSocket отключен, пытаемся переподключить
     if (!websocketService.isConnected()) {
-      console.log('🔄 Pull-to-refresh: reconnecting WebSocket...');
       websocketService.reconnect();
     }
 
@@ -376,9 +369,7 @@ const ChatListScreen: React.FC = () => {
 
   const handleDeleteChat = async (chatId: number, clearHistory?: boolean) => {
     try {
-      console.log(`📋 ChatListScreen.handleDeleteChat called with chatId=${chatId}, clearHistory=${clearHistory}`);
       await deleteChat(chatId, clearHistory);
-      console.log(`✅ Chat ${chatId} deleted (clearHistory: ${clearHistory})`);
     } catch (error) {
       console.error('Failed to delete chat:', error);
     }
@@ -419,7 +410,6 @@ const ChatListScreen: React.FC = () => {
   const handleRenameChat = async (chatId: number, newName: string) => {
     try {
       await updateChat(chatId, newName);
-      console.log(`✅ Chat ${chatId} renamed to "${newName}"`);
     } catch (error) {
       console.error('Failed to rename chat:', error);
     }
@@ -428,7 +418,6 @@ const ChatListScreen: React.FC = () => {
   const handleLeaveChat = async (chatId: number) => {
     try {
       await leaveChat(chatId);
-      console.log(`✅ Left chat ${chatId}`);
     } catch (error) {
       console.error('Failed to leave chat:', error);
     }
@@ -558,7 +547,6 @@ const ChatListScreen: React.FC = () => {
             onPress={() => {
               // Переподключаем WebSocket при повторной попытке
               if (!websocketService.isConnected()) {
-                console.log('🔄 Retry button: reconnecting WebSocket...');
                 websocketService.reconnect();
               }
               // Reload current tab
