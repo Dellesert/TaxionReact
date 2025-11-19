@@ -125,7 +125,7 @@ const PerformanceAnalyticsScreen: React.FC = () => {
     },
     scrollContent: {
       padding: 16,
-      paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 80 : 32,
+      paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 120 : 32,
     },
     periodSelector: {
       flexDirection: 'row',
@@ -269,7 +269,29 @@ const PerformanceAnalyticsScreen: React.FC = () => {
 
   if (isLoading && topPerformers.length === 0) {
     return (
-      <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
+      <View style={dynamicStyles.container}>
+        <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity
+              style={dynamicStyles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="chevron-back" size={24} color={theme.primary} />
+            </TouchableOpacity>
+            <Text style={dynamicStyles.headerTitle}>Топ сотрудников</Text>
+          </View>
+        </SafeAreaView>
+        <View style={dynamicStyles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={dynamicStyles.loadingText}>Загрузка данных...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={dynamicStyles.container}>
+      <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
         <View style={dynamicStyles.header}>
           <TouchableOpacity
             style={dynamicStyles.backButton}
@@ -277,28 +299,9 @@ const PerformanceAnalyticsScreen: React.FC = () => {
           >
             <Ionicons name="chevron-back" size={24} color={theme.primary} />
           </TouchableOpacity>
-          <Text style={dynamicStyles.headerTitle}>Топ сотрудников</Text>
-        </View>
-        <View style={dynamicStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={dynamicStyles.loadingText}>Загрузка данных...</Text>
+          <Text style={dynamicStyles.headerTitle}>🏆 Топ сотрудников</Text>
         </View>
       </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={dynamicStyles.header}>
-        <TouchableOpacity
-          style={dynamicStyles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={24} color={theme.primary} />
-        </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>🏆 Топ сотрудников</Text>
-      </View>
 
       <ScrollView
         style={{ flex: 1 }}
@@ -413,7 +416,7 @@ const PerformanceAnalyticsScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

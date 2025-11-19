@@ -90,7 +90,7 @@ const AnalyticsHubScreen: React.FC = () => {
     },
     scrollContent: {
       padding: 16,
-      paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 80 : 32,
+      paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 120 : 32,
     },
     sectionCard: {
       backgroundColor: theme.backgroundSecondary,
@@ -132,49 +132,23 @@ const AnalyticsHubScreen: React.FC = () => {
     chevron: {
       marginLeft: 'auto',
     },
-    introSection: {
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 20,
-      marginBottom: 24,
-      borderLeftWidth: 4,
-      borderLeftColor: theme.primary,
-    },
-    introTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-      marginBottom: 8,
-    },
-    introText: {
-      fontSize: 14,
-      color: theme.textSecondary,
-      lineHeight: 20,
-    },
   });
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={dynamicStyles.header}>
-        <TouchableOpacity
-          style={dynamicStyles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={24} color={theme.primary} />
-        </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>Аналитика</Text>
-      </View>
+    <View style={dynamicStyles.container}>
+      <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity
+            style={dynamicStyles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="chevron-back" size={24} color={theme.primary} />
+          </TouchableOpacity>
+          <Text style={dynamicStyles.headerTitle}>Аналитика</Text>
+        </View>
+      </SafeAreaView>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={dynamicStyles.scrollContent}>
-        {/* Intro */}
-        <View style={dynamicStyles.introSection}>
-          <Text style={dynamicStyles.introTitle}>📊 Панель аналитики</Text>
-          <Text style={dynamicStyles.introText}>
-            Выберите раздел для просмотра детальной статистики и аналитических данных
-          </Text>
-        </View>
-
         {/* Section Cards */}
         {sections.map((section) => (
           <TouchableOpacity
@@ -201,7 +175,7 @@ const AnalyticsHubScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
