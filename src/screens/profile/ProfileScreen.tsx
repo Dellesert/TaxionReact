@@ -31,13 +31,6 @@ const ProfileScreen: React.FC = () => {
   const { showConfirm, showOptions } = useActionModal();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [notifications, setNotifications] = useState({
-    push: true,
-    email: true,
-    messages: true,
-    mentions: true,
-    tasks: true,
-  });
 
   // Refresh user data on mount to ensure we have latest profile
   React.useEffect(() => {
@@ -243,10 +236,6 @@ const ProfileScreen: React.FC = () => {
       undefined,
       { confirmText: 'Выйти', cancelText: 'Отмена', destructive: true }
     );
-  };
-
-  const handleToggleNotification = (key: keyof typeof notifications, value: boolean) => {
-    setNotifications((prev) => ({ ...prev, [key]: value }));
   };
 
   const getThemeLabel = (themeMode: typeof mode): string => {
@@ -565,31 +554,20 @@ const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Notifications */}
-          <View style={dynamicStyles.section}>
-            <View style={dynamicStyles.sectionHeader}>
-              <Text style={dynamicStyles.sectionTitle}>УВЕДОМЛЕНИЯ</Text>
-            </View>
-            <View style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
-              <View style={dynamicStyles.menuItemLeft}>
-                <Ionicons style={[styles.menuIcon, {backgroundColor: '#E94444'}]} name="notifications-outline" size={20} color="#FFFFFF" />
-                <Text style={dynamicStyles.menuItemText}>Push-уведомления</Text>
-              </View>
-              <Switch
-                value={notifications.push}
-                onValueChange={(value) => handleToggleNotification('push', value)}
-                trackColor={{ false: '#D1D5DB', true: theme.primaryLight }}
-                thumbColor={notifications.push ? theme.primary : '#F3F4F6'}
-              />
-            </View>
-          </View>
-
           {/* Admin Section - Only for admin and super_admin */}
           {(user.role === 'admin' || user.role === 'super_admin') && (
             <View style={dynamicStyles.section}>
               <View style={dynamicStyles.sectionHeader}>
                 <Text style={dynamicStyles.sectionTitle}>АДМИНИСТРИРОВАНИЕ</Text>
               </View>
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => navigation.navigate('Analytics')}
+              >
+                <Ionicons style={[styles.menuIcon, {backgroundColor: '#3B82F6'}]} name="bar-chart-outline" size={20} color="#FFFFFF" />
+                <Text style={dynamicStyles.menuItemText}>Аналитика</Text>
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={dynamicStyles.menuItem}
                 onPress={() => navigation.navigate('Admin', { screen: 'Departments' })}
@@ -614,6 +592,15 @@ const ProfileScreen: React.FC = () => {
             <View style={dynamicStyles.sectionHeader}>
               <Text style={dynamicStyles.sectionTitle}>НАСТРОЙКИ</Text>
             </View>
+            <TouchableOpacity
+              style={dynamicStyles.menuItem}
+              onPress={() => navigation.navigate('NotificationSettings')}
+            >
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#E94444'}]} name="notifications-outline" size={20} color="#FFFFFF" />
+              <Text style={dynamicStyles.menuItemText}>Уведомления</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+
             <TouchableOpacity style={dynamicStyles.menuItem} onPress={handleThemePress}>
               <Ionicons style={[styles.menuIcon, {backgroundColor: '#44aae9ff'}]} name="color-palette-outline" size={20} color="#FFFFFF" />
               <Text style={dynamicStyles.menuItemText}>Тема оформления</Text>
