@@ -89,11 +89,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const isAdmin = userRole === 'owner' || userRole === 'admin';
   const isForwarded = isForwardedMessage(message.content);
 
-  // Debug logging for delete permissions
-  React.useEffect(() => {
-    console.log(`🔍 [MessageItem] Message ${message.id}: chatType=${chatType}, isOwnMessage=${isOwnMessage}, isAdmin=${isAdmin}, userRole=${userRole}`);
-  }, [message.id, chatType, isOwnMessage, isAdmin, userRole]);
-
   const handleLongPress = () => {
     messageBubbleRef.current?.measureInWindow((x, y, width, height) => {
       const screenWidth = Dimensions.get('window').width;
@@ -219,11 +214,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           // "Удалить для всех"
           // Для личных чатов: только свои сообщения
           // Для групповых: свои сообщения ИЛИ если пользователь админ/владелец
-          ...((()=> {
-            const canDeleteForEveryone = chatType === 'private' ? isOwnMessage : (isOwnMessage || isAdmin);
-            console.log(`🗑️ [MessageItem] Delete modal for message ${message.id}: chatType=${chatType}, isOwnMessage=${isOwnMessage}, isAdmin=${isAdmin}, canDeleteForEveryone=${canDeleteForEveryone}`);
-            return canDeleteForEveryone;
-          })() ? [{
+          ...((chatType === 'private' ? isOwnMessage : (isOwnMessage || isAdmin)) ? [{
             text: 'Удалить для всех',
             icon: 'trash-outline' as const,
             style: 'destructive' as const,

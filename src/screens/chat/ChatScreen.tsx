@@ -120,21 +120,18 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   useEffect(() => {
     const loadChat = async () => {
       if (chatFromStore) {
-        console.log(`✅ [ChatScreen] Chat ${chatIdNum} found in store`);
         setChatData(chatFromStore);
         return;
       }
 
       // Если чат не найден в store, загружаем через API
       try {
-        console.log(`📥 [ChatScreen] Chat ${chatIdNum} not in store, fetching from API...`);
         setIsLoadingChat(true);
         const { getChat } = await import('@api/chat.api');
         const fetchedChat = await getChat(chatIdNum);
-        console.log(`✅ [ChatScreen] Chat loaded from API:`, fetchedChat);
         setChatData(fetchedChat);
       } catch (error) {
-        console.error(`❌ [ChatScreen] Failed to load chat ${chatIdNum}:`, error);
+        console.error(`Failed to load chat ${chatIdNum}:`, error);
       } finally {
         setIsLoadingChat(false);
       }
@@ -145,10 +142,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Роль текущего пользователя в чате
   const currentUserRole = useMemo(() => {
-    const role = chat?.members?.find(m => m.user_id === currentUser?.id)?.role || 'member';
-    console.log(`🔐 [ChatScreen] User role in chat ${chatIdNum}: ${role}, chat.type: ${chat?.type}, chat exists: ${!!chat}`);
-    return role;
-  }, [chat?.members, currentUser?.id, chatIdNum, chat?.type]);
+    return chat?.members?.find(m => m.user_id === currentUser?.id)?.role || 'member';
+  }, [chat?.members, currentUser?.id]);
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
 
@@ -297,12 +292,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     setInitialUnreadCount(0);
 
     const chat = getChatById(chatIdNum);
-    console.log(`🔍 [ChatScreen] Chat ${chatIdNum}:`, chat ? `unread_count=${chat.unread_count}` : 'НЕ НАЙДЕН в store');
-    console.log(`📍 [ChatScreen] routeUnreadCount из навигации:`, routeUnreadCount);
 
     // Используем unread_count из store или из параметров навигации
     const unreadCountToSave = chat?.unread_count ?? routeUnreadCount ?? 0;
-    console.log(`💾 [ChatScreen] Сохраняем savedUnreadCount=${unreadCountToSave} для чата ${chatIdNum}`);
     setSavedUnreadCount(unreadCountToSave);
 
     if (chat) {
@@ -310,10 +302,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
 
     loadMessages(chatIdNum).catch((error) => {
-      console.error(`❌ [ChatScreen] Ошибка загрузки сообщений чата ${chatIdNum}:`, error);
+      console.error(`Failed to load messages for chat ${chatIdNum}:`, error);
       if (error?.status === 403) {
-        console.warn(`⚠️ [ChatScreen] Нет доступа к чату ${chatIdNum}`);
-        // Можно показать сообщение пользователю или перенаправить назад
+        // No access to chat
       }
     });
 
