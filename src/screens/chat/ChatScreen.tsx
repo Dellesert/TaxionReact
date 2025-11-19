@@ -23,6 +23,7 @@ import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion, getUserStatusText } from '@utils/chatUtils';
+import type { Chat } from '@/types/chat.types';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
 
@@ -50,6 +51,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const [savedUnreadCount, setSavedUnreadCount] = useState(0); // Сохраняем unread_count ДО WebSocket
   const [selectionMode, setSelectionMode] = useState(false); // Режим множественного выбора
   const [selectedMessages, setSelectedMessages] = useState<Set<number>>(new Set()); // Выбранные сообщения
+  const [chatData, setChatData] = useState<Chat | null>(null); // Данные чата
+  const [isLoadingChat, setIsLoadingChat] = useState(false); // Загружается ли чат
 
 
   // Хуки
@@ -110,12 +113,42 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const getPinnedMessages = useChatStore((state) => state.getPinnedMessages);
   const currentUser = useAuthStore((state) => state.user);
 
-  const chat = useChatStore((state) => state.chats.find(c => c.id === chatIdNum));
+  const chatFromStore = useChatStore((state) => state.chats.find(c => c.id === chatIdNum));
+  const chat = chatData || chatFromStore; // Используем загруженные данные или данные из store
+
+  // Загрузка чата если не найден в store
+  useEffect(() => {
+    const loadChat = async () => {
+      if (chatFromStore) {
+        console.log(`✅ [ChatScreen] Chat ${chatIdNum} found in store`);
+        setChatData(chatFromStore);
+        return;
+      }
+
+      // Если чат не найден в store, загружаем через API
+      try {
+        console.log(`📥 [ChatScreen] Chat ${chatIdNum} not in store, fetching from API...`);
+        setIsLoadingChat(true);
+        const { getChat } = await import('@api/chat.api');
+        const fetchedChat = await getChat(chatIdNum);
+        console.log(`✅ [ChatScreen] Chat loaded from API:`, fetchedChat);
+        setChatData(fetchedChat);
+      } catch (error) {
+        console.error(`❌ [ChatScreen] Failed to load chat ${chatIdNum}:`, error);
+      } finally {
+        setIsLoadingChat(false);
+      }
+    };
+
+    loadChat();
+  }, [chatIdNum, chatFromStore]);
 
   // Роль текущего пользователя в чате
   const currentUserRole = useMemo(() => {
-    return chat?.members?.find(m => m.user_id === currentUser?.id)?.role || 'member';
-  }, [chat?.members, currentUser?.id]);
+    const role = chat?.members?.find(m => m.user_id === currentUser?.id)?.role || 'member';
+    console.log(`🔐 [ChatScreen] User role in chat ${chatIdNum}: ${role}, chat.type: ${chat?.type}, chat exists: ${!!chat}`);
+    return role;
+  }, [chat?.members, currentUser?.id, chatIdNum, chat?.type]);
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
 
@@ -489,6 +522,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             selectedMessages={selectedMessages}
             onEnterSelectionMode={handleEnterSelectionMode}
             onToggleMessageSelection={handleToggleMessageSelection}
+            chatType={chat?.type}
+            userRole={currentUserRole}
           />
 
               {/* Кнопка scroll to bottom - абсолютное позиционирование */}

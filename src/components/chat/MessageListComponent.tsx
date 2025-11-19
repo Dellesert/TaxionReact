@@ -5,8 +5,6 @@ import { DateSeparator } from './DateSeparator';
 import { UnreadMessagesBanner } from './UnreadMessagesBanner';
 import { MessageSkeleton } from './MessageSkeleton';
 import { useTheme } from '@hooks/useTheme';
-import { useChatStore } from '@store/chatStore';
-import { useAuthStore } from '@store/authStore';
 
 type MessageListItem =
   | { type: 'message'; data: any }
@@ -45,6 +43,8 @@ interface MessageListComponentProps {
   selectedMessages?: Set<number>;
   onEnterSelectionMode?: (messageId: number) => void;
   onToggleMessageSelection?: (messageId: number) => void;
+  chatType?: 'private' | 'group' | 'channel';
+  userRole?: 'owner' | 'admin' | 'member';
 }
 
 /**
@@ -83,10 +83,10 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   selectedMessages = new Set(),
   onEnterSelectionMode,
   onToggleMessageSelection,
+  chatType,
+  userRole,
 }) => {
   const { theme } = useTheme();
-  const getChatById = useChatStore((state) => state.getChatById);
-  const currentUser = useAuthStore((state) => state.user);
 
   // Показываем skeleton'ы если сообщения еще не загружены
   const showSkeletons = isLoading && messageListItems.length === 0;
@@ -129,16 +129,11 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         // firstUnreadIndex - это индекс самого СТАРОГО непрочитанного сообщения (где должен быть баннер)
         const shouldShowInlineBanner = index === firstUnreadIndex && unreadCount >= 1 && showUnreadBanner;
 
-        // Получаем роль пользователя в этом чате
-        const currentChat = getChatById(chatId);
-        const currentMember = currentChat?.members?.find(m => m.user_id === currentUser?.id);
-        const userRole = currentMember?.role || 'member';
-
         return (
           <>
             <MessageItem
               message={message}
-              chatType={currentChat?.type}
+              chatType={chatType}
               onReply={onReply}
               onEdit={onEdit}
               onDelete={onDelete}
