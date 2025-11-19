@@ -63,7 +63,44 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const [selectedMember, setSelectedMember] = useState<{ userId: number; userName: string; role: string } | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('participants');
 
-  const chat = getChatById(chatId);
+  const [chat, setChat] = useState(getChatById(chatId));
+  const [isLoadingChat, setIsLoadingChat] = useState(false);
+
+  // Загрузка чата если не найден в store
+  useEffect(() => {
+    const loadChat = async () => {
+      const chatFromStore = getChatById(chatId);
+
+      if (chatFromStore) {
+        console.log(`✅ [ChatSettings] Chat ${chatId} found in store:`, chatFromStore);
+        setChat(chatFromStore);
+        return;
+      }
+
+      // Если чат не найден в store, загружаем через API
+      try {
+        console.log(`📥 [ChatSettings] Chat ${chatId} not in store, fetching from API...`);
+        setIsLoadingChat(true);
+        const fetchedChat = await chatApi.getChat(chatId);
+        console.log(`✅ [ChatSettings] Chat loaded from API:`, fetchedChat);
+        setChat(fetchedChat);
+      } catch (error) {
+        console.error(`❌ [ChatSettings] Failed to load chat ${chatId}:`, error);
+      } finally {
+        setIsLoadingChat(false);
+      }
+    };
+
+    loadChat();
+  }, [chatId]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log(`🔍 [ChatSettings] Chat data for chatId ${chatId}:`, chat);
+    console.log(`🔍 [ChatSettings] Chat type:`, chat?.type);
+    console.log(`🔍 [ChatSettings] Chat members:`, chat?.members);
+  }, [chatId, chat]);
+
   const creatorId = chat?.created_by || chat?.creator_id;
   const isCreator = currentUser && creatorId === currentUser.id;
 
@@ -218,15 +255,18 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const loadMembers = async () => {
     try {
+      console.log(`👥 [ChatSettings] Loading members for chat ${chatId}...`);
       setIsLoadingMembers(true);
       const chatMembers = await chatApi.getChatMembers(chatId);
-      console.log('👥 Loaded chat members:', chatMembers);
+      console.log('👥 [ChatSettings] Loaded chat members:', chatMembers);
 
       // Загружаем информацию о пользователях
       if (chatMembers && chatMembers.length > 0) {
+        console.log(`👥 [ChatSettings] Loading user data for ${chatMembers.length} members...`);
         const userIds = chatMembers.map((m) => m.user_id);
         const usersData = await userApi.getUsers({ ids: userIds }, { limit: 100, offset: 0 });
         const users = usersData.data || [];
+        console.log(`👥 [ChatSettings] Loaded ${users.length} users`);
 
         // Объединяем данные участников с данными пользователей
         const membersWithUsers = chatMembers.map((member) => ({
@@ -234,12 +274,14 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
           user: users.find((u) => u.id === member.user_id),
         }));
 
+        console.log(`✅ [ChatSettings] Members with user data:`, membersWithUsers);
         setMembers(membersWithUsers);
       } else {
+        console.log(`⚠️ [ChatSettings] No members returned from API`);
         setMembers([]);
       }
     } catch (error) {
-      console.error('❌ Failed to load members:', error);
+      console.error('❌ [ChatSettings] Failed to load members:', error);
     } finally {
       setIsLoadingMembers(false);
     }

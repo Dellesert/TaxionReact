@@ -26,12 +26,16 @@ export const useChatActions = (chatId: number) => {
 
   const handleSendMessage = async (content: string, replyToId?: number) => {
     if (!content.trim() && selectedFileIds.length === 0) {
+      console.log('⚠️ [useChatActions] Cannot send empty message');
       setError({ error: 'Message content or files are required' });
       return;
     }
-    if (!getChatById(chatId)) {
-      setError({ error: 'Chat not found' });
-      return;
+
+    const chat = getChatById(chatId);
+    if (!chat) {
+      console.warn('⚠️ [useChatActions] Chat not found in store, but continuing to send message. ChatId:', chatId);
+      // Don't return here - allow sending message even if chat is not in store yet
+      // The chat might be loading or will be created by the message
     }
 
     try {
@@ -39,15 +43,18 @@ export const useChatActions = (chatId: number) => {
         const parts = content.split(':');
         const messageId = parseInt(parts[1]);
         const newContent = parts.slice(2).join(':');
+        console.log('✏️ [useChatActions] Editing message:', messageId);
         await updateMessage(messageId, newContent);
         setEditingMessage(null);
       } else {
         const fileIdsToSend = selectedFileIds.length > 0 ? selectedFileIds : undefined;
+        console.log('📤 [useChatActions] Sending message to chat:', chatId, 'content:', content.substring(0, 50), 'replyTo:', replyToId, 'files:', fileIdsToSend);
         await sendMessage(chatId, content.trim(), replyToId, fileIdsToSend);
+        console.log('✅ [useChatActions] Message sent successfully');
         setSelectedFileIds([]);
       }
     } catch (error: any) {
-      console.error('Failed to send/edit message:', error);
+      console.error('❌ [useChatActions] Failed to send/edit message:', error);
       setError({ error: error.message || 'Failed to send/edit message' });
     }
   };

@@ -2,7 +2,9 @@ import React, { useState, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
+import { useTheme } from '@hooks/useTheme';
 import { Message } from '../../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
@@ -10,7 +12,7 @@ import { useAuthStore } from '@store/authStore';
 import { useNotification } from '@contexts/NotificationContext';
 import { MessageBubble } from './MessageBubble';
 import { MessageContextMenu } from './MessageContextMenu';
-import { DeleteMessageModal } from './DeleteMessageModal';
+import { ActionModal } from '@components/common/ActionModal';
 import { ImageViewer } from './ImageViewer';
 import { useMessageData } from '@hooks/useMessageData';
 import { useImageLoader } from '@hooks/useImageLoader';
@@ -35,6 +37,10 @@ interface MessageItemProps {
   isHighlighted?: boolean;
   userRole?: 'owner' | 'admin' | 'member';
   chatMemberIds?: number[];
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onEnterSelectionMode?: (messageId: number) => void;
+  onToggleSelection?: (messageId: number) => void;
 }
 
 /**
@@ -58,7 +64,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   isHighlighted = false,
   userRole = 'member',
   chatMemberIds = [],
+  selectionMode = false,
+  isSelected = false,
+  onEnterSelectionMode,
+  onToggleSelection,
 }) => {
+  const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const { showError } = useNotification();
   const navigation = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
@@ -77,6 +88,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const isOwnMessage = message.sender_id === currentUser?.id;
   const isAdmin = userRole === 'owner' || userRole === 'admin';
   const isForwarded = isForwardedMessage(message.content);
+
+  // Debug logging for delete permissions
+  React.useEffect(() => {
+    console.log(`🔍 [MessageItem] Message ${message.id}: chatType=${chatType}, isOwnMessage=${isOwnMessage}, isAdmin=${isAdmin}, userRole=${userRole}`);
+  }, [message.id, chatType, isOwnMessage, isAdmin, userRole]);
 
   const handleLongPress = () => {
     messageBubbleRef.current?.measureInWindow((x, y, width, height) => {
@@ -113,36 +129,64 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     setShowImageViewer(true);
   };
 
+  const handlePress = () => {
+    if (selectionMode && onToggleSelection) {
+      onToggleSelection(message.id);
+    }
+  };
+
   return (
-    <View style={[styles.container, isOwnMessage && styles.ownMessageContainer]}>
-      {/* Аватар отправителя (только для чужих сообщений) */}
-      {!isOwnMessage && (
-        <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
-          <Avatar
-            imageUrl={sender?.avatar}
-            name={sender?.name || `User ${message.sender_id}`}
-            size={32}
-            style={styles.avatar}
-          />
+    <View style={styles.outerContainer}>
+      {/* Чекбокс в режиме выбора (всегда слева) */}
+      {selectionMode && (
+        <TouchableOpacity
+          onPress={handlePress}
+          style={styles.checkboxContainer}
+          activeOpacity={0.7}
+        >
+          <View style={[
+            styles.checkbox,
+            { borderColor: theme.border },
+            isSelected && { backgroundColor: theme.primary, borderColor: theme.primary }
+          ]}>
+            {isSelected && (
+              <Ionicons name="checkmark" size={18} color="#fff" />
+            )}
+          </View>
         </TouchableOpacity>
       )}
 
-      {/* Пузырь сообщения */}
-      <MessageBubble
-        message={message}
-        isOwnMessage={isOwnMessage}
-        isHighlighted={isHighlighted}
-        sender={sender}
-        replySender={replySender}
-        imageUrls={imageUrls}
-        currentUserId={currentUser?.id}
-        onLongPress={handleLongPress}
-        onPollPress={onPollPress}
-        onTaskPress={onTaskPress}
-        onReplyPress={onReplyPress}
-        onImagePress={handleImagePress}
-        messageBubbleRef={messageBubbleRef}
-      />
+      {/* Контейнер для аватара и сообщения */}
+      <View style={[styles.container, isOwnMessage && styles.ownMessageContainer]}>
+        {/* Аватар отправителя (только для чужих сообщений) */}
+        {!isOwnMessage && !selectionMode && (
+          <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
+            <Avatar
+              imageUrl={sender?.avatar}
+              name={sender?.name || `User ${message.sender_id}`}
+              size={32}
+              style={styles.avatar}
+            />
+          </TouchableOpacity>
+        )}
+
+        {/* Пузырь сообщения */}
+        <MessageBubble
+          message={message}
+          isOwnMessage={isOwnMessage}
+          isHighlighted={isHighlighted}
+          sender={sender}
+          replySender={replySender}
+          imageUrls={imageUrls}
+          currentUserId={currentUser?.id}
+          onLongPress={selectionMode ? undefined : handleLongPress}
+          onPollPress={onPollPress}
+          onTaskPress={onTaskPress}
+          onReplyPress={onReplyPress}
+          onImagePress={handleImagePress}
+          messageBubbleRef={messageBubbleRef}
+        />
+      </View>
 
       {/* Контекстное меню */}
       <MessageContextMenu
@@ -162,23 +206,51 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         onForward={onForward}
         onDelete={() => setShowDeleteModal(true)}
         onRestore={onRestore}
+        onEnterSelectionMode={onEnterSelectionMode}
       />
 
       {/* Модальное окно удаления */}
-      <DeleteMessageModal
+      <ActionModal
         visible={showDeleteModal}
-        messageContent={message.content}
-        isOwnMessage={isOwnMessage}
-        isAdmin={isAdmin}
-        onClose={() => setShowDeleteModal(false)}
-        onDeleteForEveryone={() => {
-          setShowDeleteModal(false);
-          onDelete?.(message.id, 'everyone');
-        }}
-        onDeleteForMe={() => {
-          setShowDeleteModal(false);
-          onDelete?.(message.id, 'me');
-        }}
+        title="Удалить сообщение"
+        message={message.content.length > 100 ? `${message.content.substring(0, 100)}...` : message.content}
+        onDismiss={() => setShowDeleteModal(false)}
+        actions={[
+          // "Удалить для всех"
+          // Для личных чатов: только свои сообщения
+          // Для групповых: свои сообщения ИЛИ если пользователь админ/владелец
+          ...((()=> {
+            const canDeleteForEveryone = chatType === 'private' ? isOwnMessage : (isOwnMessage || isAdmin);
+            console.log(`🗑️ [MessageItem] Delete modal for message ${message.id}: chatType=${chatType}, isOwnMessage=${isOwnMessage}, isAdmin=${isAdmin}, canDeleteForEveryone=${canDeleteForEveryone}`);
+            return canDeleteForEveryone;
+          })() ? [{
+            text: 'Удалить для всех',
+            icon: 'trash-outline' as const,
+            style: 'destructive' as const,
+            onPress: async () => {
+              setShowDeleteModal(false);
+              onDelete?.(message.id, 'everyone');
+            },
+          }] : []),
+          // "Удалить для меня" - всегда доступно
+          {
+            text: 'Удалить для меня',
+            icon: 'trash-outline' as const,
+            style: 'default' as const,
+            onPress: async () => {
+              setShowDeleteModal(false);
+              onDelete?.(message.id, 'me');
+            },
+          },
+          // Отмена
+          {
+            text: 'Отмена',
+            style: 'cancel' as const,
+            onPress: async () => {
+              setShowDeleteModal(false);
+            },
+          },
+        ]}
       />
 
       {/* Модальное окно профиля пользователя */}
@@ -225,11 +297,17 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     flexDirection: 'row',
     marginVertical: 4,
     marginHorizontal: 16,
+    alignItems: 'center',
+  },
+  container: {
+    flexDirection: 'row',
+    marginVertical: 4,
     alignItems: 'flex-end',
+    flex: 1,
   },
   ownMessageContainer: {
     flexDirection: 'row-reverse',
@@ -237,6 +315,19 @@ const styles = StyleSheet.create({
   avatar: {
     marginLeft: 8,
     marginRight: 14,
+  },
+  checkboxContainer: {
+    marginRight: 12,
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

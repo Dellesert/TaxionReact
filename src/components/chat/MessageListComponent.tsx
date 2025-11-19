@@ -41,6 +41,10 @@ interface MessageListComponentProps {
   onReplyPress: (messageId: number) => void;
   onPollPress: (pollId: number) => void;
   onTaskPress?: (taskId: number) => void;
+  selectionMode?: boolean;
+  selectedMessages?: Set<number>;
+  onEnterSelectionMode?: (messageId: number) => void;
+  onToggleMessageSelection?: (messageId: number) => void;
 }
 
 /**
@@ -75,6 +79,10 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   onReplyPress,
   onPollPress,
   onTaskPress,
+  selectionMode = false,
+  selectedMessages = new Set(),
+  onEnterSelectionMode,
+  onToggleMessageSelection,
 }) => {
   const { theme } = useTheme();
   const getChatById = useChatStore((state) => state.getChatById);
@@ -144,6 +152,10 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
               onTaskPress={onTaskPress}
               isHighlighted={message.id === highlightedMessageId}
               userRole={userRole}
+              selectionMode={selectionMode}
+              isSelected={selectedMessages.has(message.id)}
+              onEnterSelectionMode={onEnterSelectionMode}
+              onToggleSelection={onToggleMessageSelection}
             />
             {shouldShowInlineBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
           </>

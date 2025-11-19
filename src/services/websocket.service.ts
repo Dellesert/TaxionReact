@@ -336,7 +336,9 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             sender: message.data?.sender, // Don't provide fallback - let MessageItem fetch it
           };
 
+          console.log(`📥 [WebSocket] Received new_message for chat ${message.chat_id}, message ${newMessage.id}, sender ${senderId}`);
           await chatStore.handleNewMessage(newMessage);
+          console.log(`✅ [WebSocket] Processed new_message for chat ${message.chat_id}`);
           break;
 
         case 'message_edit':
@@ -399,7 +401,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           if (message.data.unread_count !== undefined) {
             // Update chat's unread_count directly
             chatStore.set({
-              chats: chatStore.getState().chats.map(chat =>
+              chats: useChatStore.getState().chats.map(chat =>
                 chat.id === message.chat_id
                   ? { ...chat, unread_count: message.data.unread_count }
                   : chat
@@ -425,7 +427,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             }
 
             // Add chat to appropriate tabs
-            const state = chatStore.getState();
+            const state = useChatStore.getState();
             const updatedTabs = { ...state.tabs };
             const chatType = newChat.type || 'private';
             const isFavorite = newChat.is_favorite || false;
@@ -463,7 +465,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           // Handle member added to chat
           try {
             const updatedChat = await chatApi.getChat(message.chat_id);
-            const state = chatStore.getState();
+            const state = useChatStore.getState();
 
             // Helper to update chat in array
             const updateChatInArray = (chats: any[]) =>
@@ -503,7 +505,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             // Otherwise reload chat to get updated members
             try {
               const updatedChat = await chatApi.getChat(message.chat_id);
-              const state = chatStore.getState();
+              const state = useChatStore.getState();
 
               // Helper to update chat in array
               const updateChatInArray = (chats: any[]) =>
@@ -543,7 +545,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
             // Reload chat to get updated member info
             const updatedChat = await chatApi.getChat(message.chat_id);
-            const state = chatStore.getState();
+            const state = useChatStore.getState();
 
             // Helper to update chat in array
             const updateChatInArray = (chats: any[]) =>

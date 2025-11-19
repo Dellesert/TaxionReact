@@ -12,6 +12,7 @@ import { FloatingDateHeader } from '@components/chat/FloatingDateHeader';
 import { ScrollToBottomButton } from '@components/chat/ScrollToBottomButton';
 import { MessageListComponent } from '@components/chat/MessageListComponent';
 import { ChatHeader } from '@components/chat/ChatHeader';
+import { SelectionModeToolbar } from '@components/chat/SelectionModeToolbar';
 import PollDetailModal from '@components/poll/PollDetailModal';
 import { useTheme } from '@hooks/useTheme';
 import { useChatMessages } from '@hooks/useChatMessages';
@@ -47,6 +48,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const [ignoreReadReceipts, setIgnoreReadReceipts] = useState(true); // Игнорируем read_receipts до первого скролла
   const [initialUnreadCount, setInitialUnreadCount] = useState(0); // Запоминаем начальное количество непрочитанных
   const [savedUnreadCount, setSavedUnreadCount] = useState(0); // Сохраняем unread_count ДО WebSocket
+  const [selectionMode, setSelectionMode] = useState(false); // Режим множественного выбора
+  const [selectedMessages, setSelectedMessages] = useState<Set<number>>(new Set()); // Выбранные сообщения
 
 
   // Хуки
@@ -108,6 +111,38 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const currentUser = useAuthStore((state) => state.user);
 
   const chat = useChatStore((state) => state.chats.find(c => c.id === chatIdNum));
+
+  // Роль текущего пользователя в чате
+  const currentUserRole = useMemo(() => {
+    return chat?.members?.find(m => m.user_id === currentUser?.id)?.role || 'member';
+  }, [chat?.members, currentUser?.id]);
+
+  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
+
+  // Проверка: может ли пользователь удалить выбранные сообщения для всех
+  const canDeleteForEveryone = useMemo(() => {
+    if (!chat || selectedMessages.size === 0) return false;
+
+    // Для личных чатов: можно удалить для всех только свои сообщения
+    if (chat.type === 'private') {
+      return Array.from(selectedMessages).every(messageId => {
+        const message = messages.find(m => m.id === messageId);
+        return message && message.sender_id === currentUser?.id;
+      });
+    }
+
+    // Для групповых чатов и каналов
+    // Админы и владельцы могут удалять любые сообщения
+    if (isAdmin) {
+      return true;
+    }
+
+    // Обычные участники могут удалять только свои сообщения
+    return Array.from(selectedMessages).every(messageId => {
+      const message = messages.find(m => m.id === messageId);
+      return message && message.sender_id === currentUser?.id;
+    });
+  }, [chat, selectedMessages, messages, currentUser?.id, isAdmin]);
 
   // Печатающие пользователи
   const typingUserNames = useMemo(() => {
@@ -204,8 +239,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         <ChatHeader.Title
           displayName={displayName}
           statusText={finalStatusText}
-          membersText={''}
-          isPrivateChat={true}
+          membersText={membersText}
+          isPrivateChat={isPrivateChat}
           isConnected={isConnected}
           onHeaderPress={handleHeaderPress}
         />
@@ -333,6 +368,59 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     handleReplyPressWithHighlight(messageId);
   };
 
+  // Обработчики для режима множественного выбора
+  const handleEnterSelectionMode = (messageId: number) => {
+    setSelectionMode(true);
+    setSelectedMessages(new Set([messageId]));
+  };
+
+  const handleExitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedMessages(new Set());
+  };
+
+  const handleToggleMessageSelection = (messageId: number) => {
+    setSelectedMessages((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleBulkDelete = async (deleteFor: 'everyone' | 'me') => {
+    if (selectedMessages.size === 0) return;
+
+    try {
+      const messageIds = Array.from(selectedMessages);
+
+      // Импортируем функцию массового удаления
+      const { bulkDeleteMessages } = await import('@api/chat.api');
+
+      // Вызываем массовое удаление
+      await bulkDeleteMessages(messageIds, deleteFor);
+
+      // Локально обновляем состояние для каждого удаленного сообщения
+      if (deleteFor === 'everyone') {
+        // При удалении для всех сервер отправит WebSocket события
+        // handleMessageDelete будет вызван автоматически
+      } else {
+        // При удалении для себя обновляем локально
+        messageIds.forEach(messageId => {
+          handleDelete(messageId, deleteFor);
+        });
+      }
+
+      handleExitSelectionMode();
+    } catch (error: any) {
+      console.error('Failed to delete messages:', error);
+      // TODO: Показать уведомление об ошибке
+    }
+  };
+
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.background,
@@ -360,7 +448,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
               <PinnedMessageBanner
                 pinnedMessages={pinnedMessages}
                 chatType={chat?.type}
-                currentUserRole={chat?.members?.find(m => m.user_id === currentUser?.id)?.role}
+                currentUserRole={currentUserRole}
                 onPress={handlePinnedMessagePress}
                 onUnpin={handleUnpin}
               />
@@ -397,13 +485,17 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             onReplyPress={handleReplyPressWithHighlight}
             onPollPress={handlePollPress}
             onTaskPress={handleTaskPress}
+            selectionMode={selectionMode}
+            selectedMessages={selectedMessages}
+            onEnterSelectionMode={handleEnterSelectionMode}
+            onToggleMessageSelection={handleToggleMessageSelection}
           />
 
               {/* Кнопка scroll to bottom - абсолютное позиционирование */}
               <ScrollToBottomButton visible={showScrollToBottom} onPress={handleScrollToBottom} />
             </View>
 
-            {/* Панель ввода - обычный layout внизу */}
+            {/* Панель ввода или панель режима выбора - обычный layout внизу */}
             <View
               style={[
                 styles.inputWrapper,
@@ -414,17 +506,26 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
                 }
               ]}
             >
-              <MessageInput
-                onSend={handleSendMessage}
-                onTyping={handleTyping}
-                editingMessage={editingMessage}
-                onCancelEdit={() => setEditingMessage(null)}
-                replyingToMessage={replyingToMessage}
-                onCancelReply={() => setReplyingToMessage(null)}
-                onFilesSelected={(fileIds) => setSelectedFileIds(prev => [...prev, ...fileIds])}
-                selectedFileIds={selectedFileIds}
-                onRemoveFile={(fileId) => setSelectedFileIds(prev => prev.filter(id => id !== fileId))}
-              />
+              {selectionMode ? (
+                <SelectionModeToolbar
+                  selectedCount={selectedMessages.size}
+                  onCancel={handleExitSelectionMode}
+                  onDelete={handleBulkDelete}
+                  canDeleteForEveryone={canDeleteForEveryone}
+                />
+              ) : (
+                <MessageInput
+                  onSend={handleSendMessage}
+                  onTyping={handleTyping}
+                  editingMessage={editingMessage}
+                  onCancelEdit={() => setEditingMessage(null)}
+                  replyingToMessage={replyingToMessage}
+                  onCancelReply={() => setReplyingToMessage(null)}
+                  onFilesSelected={(fileIds) => setSelectedFileIds(prev => [...prev, ...fileIds])}
+                  selectedFileIds={selectedFileIds}
+                  onRemoveFile={(fileId) => setSelectedFileIds(prev => prev.filter(id => id !== fileId))}
+                />
+              )}
             </View>
           </>
         ) : (

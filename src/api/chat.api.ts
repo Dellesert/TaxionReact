@@ -765,3 +765,31 @@ export const getChatAttachments = async (
     return { attachments: [], total: 0 };
   }
 };
+
+/**
+ * Bulk delete messages
+ * @param messageIds - Array of message IDs to delete (1-100)
+ * @param deleteFor - 'everyone' or 'me'
+ */
+export const bulkDeleteMessages = async (
+  messageIds: number[],
+  deleteFor: 'everyone' | 'me' = 'everyone'
+): Promise<{ count: number }> => {
+  console.log(`🗑️ Bulk deleting ${messageIds.length} messages (deleteFor: ${deleteFor})`);
+
+  if (messageIds.length === 0) {
+    throw new Error('No messages to delete');
+  }
+
+  if (messageIds.length > 100) {
+    throw new Error('Cannot delete more than 100 messages at once');
+  }
+
+  const response = await api.post('/messages/bulk-delete', {
+    message_ids: messageIds,
+    delete_for: deleteFor,
+  });
+
+  console.log(`✅ Successfully deleted ${response.data.count} messages`);
+  return response.data;
+};

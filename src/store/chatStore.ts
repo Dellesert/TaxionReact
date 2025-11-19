@@ -903,17 +903,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   handleNewMessage: async (message: Message) => {
+    console.log(`📨 [ChatStore] handleNewMessage called for chat ${message.chat_id}, message ${message.id}`);
     const currentUser = useAuthStore.getState().user;
     const isOwnMessage = currentUser && message.sender_id === currentUser.id;
     const activeChat = get().activeChat;
     const isInActiveChat = activeChat && activeChat.id === message.chat_id;
+    console.log(`🔍 [ChatStore] isOwnMessage: ${isOwnMessage}, isInActiveChat: ${isInActiveChat}, currentUser: ${currentUser?.id}, sender: ${message.sender_id}`);
 
-    // Проверяем, существует ли чат в store
-    const currentChats = get().chats;
-    let chatExists = currentChats.some(chat => chat.id === message.chat_id);
+    // Проверяем, существует ли чат в любом из загруженных табов
+    const state = get();
+    const currentChats = state.chats;
+    const tabs = state.tabs;
 
-    // Если чата нет - загружаем его через API
-    if (!chatExists) {
+    // Ищем чат во всех загруженных табах
+    let chatExistsInTabs = false;
+    Object.keys(tabs).forEach(tabKey => {
+      const tab = tabs[tabKey as TabName];
+      if (tab.loaded) {
+        const inPinned = tab.pinnedChats.some(c => c.id === message.chat_id);
+        const inRegular = tab.regularChats.some(c => c.id === message.chat_id);
+        if (inPinned || inRegular) {
+          chatExistsInTabs = true;
+        }
+      }
+    });
+
+    console.log(`🔍 [ChatStore] Chat ${message.chat_id} exists in current chats array: ${currentChats.some(c => c.id === message.chat_id)}, exists in tabs: ${chatExistsInTabs}`);
+
+    // Если чата нет ни в одном табе - загружаем его через API
+    if (!chatExistsInTabs) {
+      console.log(`📥 [ChatStore] Chat ${message.chat_id} not in any tabs, fetching from API...`);
+
       try {
         let fetchedChat = await chatApi.getChat(message.chat_id);
 
@@ -946,11 +966,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
             .forEach(tabKey => {
               const tab = updatedTabs[tabKey as TabName];
               if (tab && tab.loaded) {
-                // Добавляем в начало regular chats
-                updatedTabs[tabKey as TabName] = {
-                  ...tab,
-                  regularChats: [chatWithMessage, ...tab.regularChats],
-                };
+                // Проверяем, не существует ли чат уже в regularChats
+                const chatExistsInTab = tab.regularChats.some(c => c.id === chatWithMessage.id);
+                if (!chatExistsInTab) {
+                  // Добавляем в начало regular chats только если его там еще нет
+                  updatedTabs[tabKey as TabName] = {
+                    ...tab,
+                    regularChats: [chatWithMessage, ...tab.regularChats],
+                  };
+                  console.log(`✅ [ChatStore] Added chat ${chatWithMessage.id} to tab "${tabKey}"`);
+                } else {
+                  console.log(`⏭️ [ChatStore] Chat ${chatWithMessage.id} already exists in tab "${tabKey}", skipping`);
+                }
               }
             });
 
@@ -1048,11 +1075,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
         return chats.map((chat) => {
           if (chat.id === message.chat_id) {
             const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
-            return {
+            const updatedChat = {
               ...chat,
               last_message: message,
               unread_count: shouldIncrementUnread ? (chat.unread_count || 0) + 1 : chat.unread_count || 0,
             };
+            console.log(`🔄 [ChatStore] Updating chat ${chat.id}: last_message set to msg ${message.id}, unread: ${updatedChat.unread_count}, isOwn: ${isOwnMessage}, isInActive: ${isInActiveChat}`);
+            return updatedChat;
           }
           return chat;
         });
@@ -1069,9 +1098,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       // Update all tabs that might contain this chat
       const updatedTabs = { ...state.tabs };
+      let chatFoundInTabs = false;
+      console.log(`🔍 [ChatStore] Searching for chat ${message.chat_id} in tabs. Current tab: ${state.currentTab}`);
+
       Object.keys(updatedTabs).forEach(tabKey => {
         const tab = updatedTabs[tabKey as TabName];
-        if (!tab.loaded) return;
+        if (!tab.loaded) {
+          console.log(`⏭️ [ChatStore] Tab "${tabKey}" not loaded, skipping`);
+          return;
+        }
+
+        // Check if chat exists in this tab
+        const chatInPinned = tab.pinnedChats.some(c => c.id === message.chat_id);
+        const chatInRegular = tab.regularChats.some(c => c.id === message.chat_id);
+
+        if (chatInPinned || chatInRegular) {
+          chatFoundInTabs = true;
+          console.log(`✅ [ChatStore] Chat ${message.chat_id} found in tab "${tabKey}" (pinned: ${chatInPinned}, regular: ${chatInRegular})`);
+          console.log(`📝 [ChatStore] Updating chat in tab "${tabKey}". Before update:`, tab.regularChats.find(c => c.id === message.chat_id));
+        }
 
         // Update pinned chats
         const updatedPinned = updateChatInList(tab.pinnedChats);
@@ -1085,7 +1130,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
           pinnedChats: updatedPinned,
           regularChats: sortedRegular,
         };
+
+        if (chatInPinned || chatInRegular) {
+          console.log(`✅ [ChatStore] Updated chat in tab "${tabKey}". After update:`, sortedRegular.find(c => c.id === message.chat_id));
+        }
       });
+
+      if (!chatFoundInTabs) {
+        console.warn(`⚠️ [ChatStore] Chat ${message.chat_id} NOT found in any loaded tabs!`);
+        console.warn(`⚠️ [ChatStore] Available chats in current tab (${state.currentTab}):`, state.chats.map(c => ({ id: c.id, type: c.type, name: c.name })));
+      }
 
       // Reconstruct chats array from current tab to ensure new reference
       const currentTabData = updatedTabs[state.currentTab];
