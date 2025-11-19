@@ -15,11 +15,13 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { validateResetToken, resetPassword } from '@api/password-reset.api';
 import { useActionModal } from '@contexts/ActionModalContext';
+import { useTheme } from '@hooks/useTheme';
 
 type ResetPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
 type ResetPasswordScreenRouteProp = RouteProp<AuthStackParamList, 'ResetPassword'>;
@@ -27,7 +29,8 @@ type ResetPasswordScreenRouteProp = RouteProp<AuthStackParamList, 'ResetPassword
 const ResetPasswordScreen: React.FC = () => {
   const navigation = useNavigation<ResetPasswordScreenNavigationProp>();
   const route = useRoute<ResetPasswordScreenRouteProp>();
-  const { showModal } = useActionModal();
+  const { showModal, hideModal } = useActionModal();
+  const { theme } = useTheme();
 
   const token = route.params?.token;
 
@@ -40,13 +43,26 @@ const ResetPasswordScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Validate token on mount
   useEffect(() => {
     if (!token) {
-      showModal('Ошибка', 'Токен не найден', [
-        { text: 'OK', onPress: () => navigation.navigate('Login'), style: 'primary' },
-      ]);
+      showModal({
+        title: 'Ошибка',
+        message: 'Токен не найден',
+        actions: [
+          {
+            text: 'OK',
+            onPress: () => {
+              hideModal();
+              navigation.navigate('Login');
+            },
+            style: 'primary'
+          },
+        ]
+      });
       return;
     }
 
@@ -57,11 +73,20 @@ const ResetPasswordScreen: React.FC = () => {
         setEmail(response.email);
         setExpiresAt(response.expires_at);
       } catch (err: any) {
-        showModal(
-          'Недействительная ссылка',
-          err.message || 'Токен сброса пароля недействителен или истёк',
-          [{ text: 'Вернуться к входу', onPress: () => navigation.navigate('Login'), style: 'primary' }]
-        );
+        showModal({
+          title: 'Недействительная ссылка',
+          message: err.message || 'Токен сброса пароля недействителен или истёк',
+          actions: [
+            {
+              text: 'Вернуться к входу',
+              onPress: () => {
+                hideModal();
+                navigation.navigate('Login');
+              },
+              style: 'primary'
+            }
+          ]
+        });
       } finally {
         setIsValidating(false);
       }
@@ -97,11 +122,20 @@ const ResetPasswordScreen: React.FC = () => {
         confirm_password: confirmPassword,
       });
 
-      showModal(
-        'Успешно',
-        'Пароль успешно изменён. Теперь вы можете войти с новым паролем.',
-        [{ text: 'Войти', onPress: () => navigation.navigate('Login'), style: 'primary' }]
-      );
+      showModal({
+        title: 'Успешно',
+        message: 'Пароль успешно изменён. Теперь вы можете войти с новым паролем.',
+        actions: [
+          {
+            text: 'Войти',
+            onPress: () => {
+              hideModal();
+              navigation.navigate('Login');
+            },
+            style: 'primary'
+          }
+        ]
+      });
     } catch (err: any) {
       setError(err.message || 'Не удалось сбросить пароль');
     } finally {
@@ -120,11 +154,158 @@ const ResetPasswordScreen: React.FC = () => {
     });
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      padding: 24,
+      justifyContent: 'center',
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: theme.textSecondary,
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    errorIcon: {
+      fontSize: 64,
+      marginBottom: 16,
+    },
+    errorTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    errorMessage: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    header: {
+      marginBottom: 32,
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: theme.textSecondary,
+    },
+    formContainer: {
+      width: '100%',
+    },
+    infoBox: {
+      backgroundColor: theme.isDark ? '#1E3A5F' : '#DBEAFE',
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.isDark ? '#60A5FA' : '#3B82F6',
+    },
+    infoText: {
+      fontSize: 14,
+      color: theme.isDark ? '#93C5FD' : '#1E40AF',
+    },
+    input: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: theme.text,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    passwordContainer: {
+      position: 'relative',
+      width: '100%',
+      marginBottom: 16,
+    },
+    passwordInput: {
+      paddingRight: 50,
+      marginBottom: 0,
+    },
+    eyeIcon: {
+      position: 'absolute',
+      right: 12,
+      top: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+    },
+    passwordHint: {
+      marginBottom: 16,
+    },
+    passwordHintText: {
+      fontSize: 12,
+      color: theme.textSecondary,
+    },
+    errorBanner: {
+      backgroundColor: theme.isDark ? '#7F1D1D' : '#FEE2E2',
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.error,
+    },
+    errorBannerText: {
+      color: theme.isDark ? '#FCA5A5' : '#DC2626',
+      fontSize: 14,
+    },
+    button: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      padding: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    buttonText: {
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    cancelButton: {
+      marginTop: 16,
+      alignItems: 'center',
+      padding: 12,
+    },
+    cancelButtonText: {
+      color: theme.textSecondary,
+      fontSize: 16,
+    },
+  });
+
   if (isValidating) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#E94444" />
+          <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>Проверка токена...</Text>
         </View>
       </View>
@@ -177,27 +358,53 @@ const ResetPasswordScreen: React.FC = () => {
               </View>
             )}
 
-            <TextInput
-              style={styles.input}
-              placeholder="Новый пароль"
-              placeholderTextColor="#9CA3AF"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="password-new"
-              editable={!isLoading}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Новый пароль"
+                placeholderTextColor={theme.inputPlaceholder}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoComplete="password-new"
+                editable={!isLoading}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={theme.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Подтвердите пароль"
-              placeholderTextColor="#9CA3AF"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoComplete="password-new"
-              editable={!isLoading}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Подтвердите пароль"
+                placeholderTextColor={theme.inputPlaceholder}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                autoComplete="password-new"
+                editable={!isLoading}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={theme.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.passwordHint}>
               <Text style={styles.passwordHintText}>
@@ -237,134 +444,5 @@ const ResetPasswordScreen: React.FC = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  errorTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  errorMessage: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  header: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  formContainer: {
-    width: '100%',
-  },
-  infoBox: {
-    backgroundColor: '#DBEAFE',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#1E40AF',
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#1F2937',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  passwordHint: {
-    marginBottom: 16,
-  },
-  passwordHintText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  errorBanner: {
-    backgroundColor: '#FEE2E2',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#DC2626',
-  },
-  errorBannerText: {
-    color: '#DC2626',
-    fontSize: 14,
-  },
-  button: {
-    backgroundColor: '#E94444',
-    borderRadius: 12,
-    padding: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    marginTop: 16,
-    alignItems: 'center',
-    padding: 12,
-  },
-  cancelButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-  },
-});
 
 export default ResetPasswordScreen;

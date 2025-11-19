@@ -31,9 +31,69 @@ export const getChatUnreadCount = async (): Promise<number> => {
     const response = await api.get<{ unread_count: number }>(API_ENDPOINTS.CHAT.UNREAD_COUNT);
     return response.data.unread_count || 0;
   } catch (error) {
-    console.error('Failed to load unread count:', error);
     return 0;
   }
+};
+
+/**
+ * Get all pinned chats (without pagination)
+ */
+export const getPinnedChats = async (
+  type?: 'private' | 'group' | 'channel'
+): Promise<{ chats: Chat[]; count: number }> => {
+  const params: any = {};
+
+  if (type) {
+    params.type = type;
+  }
+
+  const response = await api.get<{ chats: Chat[]; count: number }>(
+    API_ENDPOINTS.CHAT.PINNED,
+    { params }
+  );
+
+  // Normalize chats similar to getChats
+  const normalizedChats = response.data.chats.map(chat => {
+    if (chat.last_message) {
+      const normalizedMessage: any = {
+        ...chat.last_message,
+        message_type: chat.last_message.type || chat.last_message.message_type || 'text',
+        attachments: chat.last_message.attachments || [],
+        reactions: chat.last_message.reactions || [],
+        read_by: chat.last_message.read_by || [],
+        is_pinned: chat.last_message.is_pinned || false,
+      };
+
+      if ((chat.last_message as any).poll_data && typeof (chat.last_message as any).poll_data === 'string') {
+        try {
+          normalizedMessage.poll_data = JSON.parse((chat.last_message as any).poll_data);
+        } catch (e) {
+        }
+      } else if ((chat.last_message as any).poll_data) {
+        normalizedMessage.poll_data = (chat.last_message as any).poll_data;
+      }
+
+      if ((chat.last_message as any).task_data && typeof (chat.last_message as any).task_data === 'string') {
+        try {
+          normalizedMessage.task_data = JSON.parse((chat.last_message as any).task_data);
+        } catch (e) {
+        }
+      } else if ((chat.last_message as any).task_data) {
+        normalizedMessage.task_data = (chat.last_message as any).task_data;
+      }
+
+      return {
+        ...chat,
+        last_message: normalizedMessage
+      };
+    }
+    return chat;
+  });
+
+  return {
+    chats: normalizedChats,
+    count: response.data.count
+  };
 };
 
 /**
@@ -85,7 +145,6 @@ export const getChats = async (
         try {
           normalizedMessage.poll_data = JSON.parse((chat.last_message as any).poll_data);
         } catch (e) {
-          console.error('Failed to parse poll_data in last_message:', e);
         }
       } else if ((chat.last_message as any).poll_data) {
         normalizedMessage.poll_data = (chat.last_message as any).poll_data;
@@ -96,7 +155,6 @@ export const getChats = async (
         try {
           normalizedMessage.task_data = JSON.parse((chat.last_message as any).task_data);
         } catch (e) {
-          console.error('Failed to parse task_data in last_message:', e);
         }
       } else if ((chat.last_message as any).task_data) {
         normalizedMessage.task_data = (chat.last_message as any).task_data;
@@ -133,16 +191,12 @@ export const createChat = async (data: CreateChatDto): Promise<Chat> => {
  * Get or create direct chat with user
  */
 export const getOrCreateDirectChat = async (userId: number): Promise<Chat> => {
-  console.log('💬 Getting or creating direct chat with user:', userId);
-  console.log('🔗 Endpoint:', API_ENDPOINTS.CHAT.DIRECT(userId));
 
   const response = await api.post<{ chat: Chat }>(API_ENDPOINTS.CHAT.DIRECT(userId));
 
-  console.log('✅ Direct chat response:', response.data);
 
   // Check response structure
   if (response.data && response.data.chat) {
-    console.log('📦 Response has chat field, extracting it');
     return response.data.chat;
   }
 
@@ -153,16 +207,12 @@ export const getOrCreateDirectChat = async (userId: number): Promise<Chat> => {
  * Get or create task chat
  */
 export const getOrCreateTaskChat = async (taskId: number): Promise<Chat> => {
-  console.log('📋 Getting or creating task chat for task:', taskId);
-  console.log('🔗 Endpoint:', API_ENDPOINTS.CHAT.TASK(taskId));
 
   const response = await api.post<{ chat: Chat }>(API_ENDPOINTS.CHAT.TASK(taskId));
 
-  console.log('✅ Task chat response:', response.data);
 
   // Check response structure
   if (response.data && response.data.chat) {
-    console.log('📦 Response has chat field, extracting it');
     return response.data.chat;
   }
 
@@ -173,17 +223,32 @@ export const getOrCreateTaskChat = async (taskId: number): Promise<Chat> => {
  * Get chat by ID
  */
 export const getChat = async (id: number): Promise<Chat> => {
-  const response = await api.get<ApiResponse<Chat>>(API_ENDPOINTS.CHAT.BY_ID(id));
-  return response.data.data;
+  const response = await api.get<any>(API_ENDPOINTS.CHAT.BY_ID(id));
+
+  // Handle different response formats
+  // Format 1: { data: { chat } }
+  if (response.data && response.data.data) {
+    return response.data.data;
+  }
+
+  // Format 2: { chat: { ... } }
+  if (response.data && response.data.chat) {
+    return response.data.chat;
+  }
+
+  // Format 3: Chat data directly in response.data
+  if (response.data && response.data.id) {
+    return response.data as any;
+  }
+
+  throw new Error(`Invalid chat response format for chat ${id}`);
 };
 
 /**
  * Update chat
  */
 export const updateChat = async (id: number, data: UpdateChatDto): Promise<Chat> => {
-  console.log('✏️ Updating chat:', id, 'with data:', data);
   const response = await api.put<any>(API_ENDPOINTS.CHAT.UPDATE(id), data);
-  console.log('✅ Update response:', response.data);
 
   // Проверяем разные форматы ответа
   if (response.data && response.data.data) {
@@ -209,11 +274,8 @@ export const updateChat = async (id: number, data: UpdateChatDto): Promise<Chat>
  * @param clearHistory - Whether to clear chat history for the user
  */
 export const deleteChat = async (id: number, clearHistory?: boolean): Promise<void> => {
-  console.log(`🗑️ API: Deleting chat ${id} (clearHistory: ${clearHistory})`);
   const params = clearHistory ? { clear_history: 'true' } : undefined;
-  console.log(`📡 API: DELETE ${API_ENDPOINTS.CHAT.DELETE(id)} with params:`, params);
   await api.delete(API_ENDPOINTS.CHAT.DELETE(id), { params });
-  console.log(`✅ API: Chat ${id} deleted successfully`);
 };
 
 /**
@@ -221,9 +283,7 @@ export const deleteChat = async (id: number, clearHistory?: boolean): Promise<vo
  * @param chatId - ID of chat to join
  */
 export const joinChat = async (chatId: number): Promise<void> => {
-  console.log(`👋 Joining chat ${chatId}`);
   await api.post(API_ENDPOINTS.CHAT.JOIN(chatId));
-  console.log(`✅ Successfully joined chat ${chatId}`);
 };
 
 // ============= Chat Members =============
@@ -232,29 +292,21 @@ export const joinChat = async (chatId: number): Promise<void> => {
  * Get chat members
  */
 export const getChatMembers = async (chatId: number): Promise<ChatMember[]> => {
-  console.log('👥 Getting chat members for chat:', chatId);
-  console.log('🔗 Endpoint:', API_ENDPOINTS.CHAT.MEMBERS(chatId));
 
   const response = await api.get<ApiResponse<ChatMember[]>>(
     API_ENDPOINTS.CHAT.MEMBERS(chatId)
   );
 
-  console.log('✅ Chat members response:', response.data);
-  console.log('✅ Response keys:', Object.keys(response.data));
-
   // Сервер возвращает {count, members}
   if (response.data && response.data.members) {
-    console.log('📦 Found members array:', response.data.members.length);
     return response.data.members;
   }
 
   // Или стандартный формат {data: [...]}
   if (response.data && response.data.data) {
-    console.log('📦 Found data array:', response.data.data.length);
     return response.data.data;
   }
 
-  console.warn('⚠️ Unexpected response format, returning empty array');
   return [];
 };
 
@@ -297,9 +349,7 @@ export const updateChatMemberRole = async (
   userId: number,
   role: 'admin' | 'member'
 ): Promise<void> => {
-  console.log(`👤 Updating member role in chat ${chatId} for user ${userId} to ${role}`);
   await api.put(`/chats/${chatId}/members/${userId}`, { role });
-  console.log(`✅ Member role updated successfully`);
 };
 
 // ============= Message Operations =============
@@ -318,8 +368,6 @@ export const getMessages = async (
     after: params?.after_message_id,   // Backend expects "after" not "after_message_id"
   };
 
-  console.log(`🌐 API getMessages: chatId=${chatId}, queryParams=`, queryParams);
-  console.log(`🌐 API URL: ${API_ENDPOINTS.CHAT.MESSAGES(chatId)}`);
 
   const response = await api.get<{
     messages: Message[];
@@ -331,16 +379,6 @@ export const getMessages = async (
     API_ENDPOINTS.CHAT.MESSAGES(chatId),
     { params: queryParams }
   );
-
-  // Логируем сырой ответ с бэкенда
-  if (response.data.messages.length > 0) {
-    console.log('🔍 Raw backend message sample:', {
-      id: response.data.messages[0].id,
-      sender_id: response.data.messages[0].sender_id,
-      read_receipts: (response.data.messages[0] as any).read_receipts,
-      reactions: response.data.messages[0].reactions,
-    });
-  }
 
   // Normalize messages to ensure all fields are present
   const normalizedMessages = response.data.messages.map(msg => {
@@ -359,7 +397,6 @@ export const getMessages = async (
       try {
         message.poll_data = JSON.parse((msg as any).poll_data);
       } catch (e) {
-        console.error('Failed to parse poll_data:', e);
       }
     } else if ((msg as any).poll_data) {
       message.poll_data = (msg as any).poll_data;
@@ -370,7 +407,6 @@ export const getMessages = async (
       try {
         message.task_data = JSON.parse((msg as any).task_data);
       } catch (e) {
-        console.error('Failed to parse task_data:', e);
       }
     } else if ((msg as any).task_data) {
       message.task_data = (msg as any).task_data;
@@ -395,14 +431,11 @@ export const getMessages = async (
  * Send message to chat
  */
 export const sendMessage = async (chatId: number, data: SendMessageDto): Promise<Message> => {
-  console.log('📤 sendMessage API called with data:', JSON.stringify(data, null, 2));
 
   const response = await api.post<{ message: Message }>(
     API_ENDPOINTS.CHAT.SEND_MESSAGE,
     { ...data, chat_id: chatId }
   );
-
-  console.log('📥 sendMessage API response:', JSON.stringify(response.data.message, null, 2));
 
   // Normalize: convert 'type' to 'message_type' and parse poll_data
   const message: any = {
@@ -414,9 +447,7 @@ export const sendMessage = async (chatId: number, data: SendMessageDto): Promise
   if ((response.data.message as any).poll_data && typeof (response.data.message as any).poll_data === 'string') {
     try {
       message.poll_data = JSON.parse((response.data.message as any).poll_data);
-      console.log('📊 Parsed poll_data in sendMessage:', message.poll_data);
     } catch (e) {
-      console.error('❌ Failed to parse poll_data in sendMessage:', e);
     }
   } else if ((response.data.message as any).poll_data) {
     message.poll_data = (response.data.message as any).poll_data;
@@ -427,18 +458,10 @@ export const sendMessage = async (chatId: number, data: SendMessageDto): Promise
     try {
       message.task_data = JSON.parse((response.data.message as any).task_data);
     } catch (e) {
-      console.error('❌ Failed to parse task_data in sendMessage:', e);
     }
   } else if ((response.data.message as any).task_data) {
     message.task_data = (response.data.message as any).task_data;
   }
-
-  console.log('💾 sendMessage returning:', {
-    id: message.id,
-    message_type: message.message_type,
-    has_poll_data: !!message.poll_data,
-    has_task_data: !!message.task_data
-  });
 
   return message;
 };
@@ -485,7 +508,7 @@ export const markMessageRead = async (messageId: number): Promise<void> => {
  * Mark all messages in chat as read
  */
 export const markChatAsRead = async (chatId: number): Promise<void> => {
-  await api.post(API_ENDPOINTS.MESSAGE.MARK_CHAT_READ(chatId));
+  const response = await api.post(API_ENDPOINTS.MESSAGE.MARK_CHAT_READ(chatId));
 };
 
 /**
@@ -552,10 +575,7 @@ export const deleteMessageForUser = async (
  * @param chatId - ID of chat to clear
  */
 export const clearChatHistory = async (chatId: number): Promise<void> => {
-  console.log(`📡 API: Clearing chat history for chat ${chatId}`);
-  console.log(`📡 Endpoint: POST ${API_ENDPOINTS.CHAT.CLEAR_HISTORY(chatId)}`);
   await api.post(API_ENDPOINTS.CHAT.CLEAR_HISTORY(chatId));
-  console.log(`✅ API: Chat history cleared successfully for chat ${chatId}`);
 };
 
 /**
@@ -579,9 +599,7 @@ export const deletePermanentMessage = async (messageId: number): Promise<void> =
  * @param messageId - ID of message to pin
  */
 export const pinMessage = async (messageId: number): Promise<Message> => {
-  console.log(`📌 Pinning message ${messageId}`);
   const response = await api.post<{ message: Message }>(API_ENDPOINTS.MESSAGE.PIN(messageId));
-  console.log(`✅ Message ${messageId} pinned successfully`);
 
   // Normalize: convert 'type' to 'message_type' and parse poll_data
   const message: any = {
@@ -592,13 +610,10 @@ export const pinMessage = async (messageId: number): Promise<Message> => {
   if ((response.data.message as any).poll_data && typeof (response.data.message as any).poll_data === 'string') {
     try {
       message.poll_data = JSON.parse((response.data.message as any).poll_data);
-      console.log('📊 Parsed poll_data in pinMessage:', message.poll_data);
     } catch (e) {
-      console.error('❌ Failed to parse poll_data in pinMessage:', e);
     }
   }
 
-  console.log('💾 pinMessage returning:', { id: message.id, message_type: message.message_type, has_poll_data: !!message.poll_data });
   return message;
 };
 
@@ -607,9 +622,7 @@ export const pinMessage = async (messageId: number): Promise<Message> => {
  * @param messageId - ID of message to unpin
  */
 export const unpinMessage = async (messageId: number): Promise<Message> => {
-  console.log(`📌 Unpinning message ${messageId}`);
   const response = await api.post<{ message: Message }>(API_ENDPOINTS.MESSAGE.UNPIN(messageId));
-  console.log(`✅ Message ${messageId} unpinned successfully`);
 
   // Normalize: convert 'type' to 'message_type' and parse poll_data
   const message: any = {
@@ -620,13 +633,10 @@ export const unpinMessage = async (messageId: number): Promise<Message> => {
   if ((response.data.message as any).poll_data && typeof (response.data.message as any).poll_data === 'string') {
     try {
       message.poll_data = JSON.parse((response.data.message as any).poll_data);
-      console.log('📊 Parsed poll_data in unpinMessage:', message.poll_data);
     } catch (e) {
-      console.error('❌ Failed to parse poll_data in unpinMessage:', e);
     }
   }
 
-  console.log('💾 unpinMessage returning:', { id: message.id, message_type: message.message_type, has_poll_data: !!message.poll_data });
   return message;
 };
 
@@ -636,9 +646,7 @@ export const unpinMessage = async (messageId: number): Promise<Message> => {
  * @param isFavorite - Set as favorite (true) or unfavorite (false)
  */
 export const toggleChatFavorite = async (chatId: number, isFavorite: boolean): Promise<void> => {
-  console.log(`⭐ Toggling favorite for chat ${chatId} to ${isFavorite}`);
   await api.put(`/chats/${chatId}/favorite`, { is_favorite: isFavorite });
-  console.log(`✅ Chat ${chatId} favorite status updated to ${isFavorite}`);
 };
 
 /**
@@ -647,9 +655,7 @@ export const toggleChatFavorite = async (chatId: number, isFavorite: boolean): P
  * @param isPinned - Set as pinned (true) or unpinned (false)
  */
 export const toggleChatPinned = async (chatId: number, isPinned: boolean): Promise<void> => {
-  console.log(`📌 Toggling pinned for chat ${chatId} to ${isPinned}`);
   await api.put(`/chats/${chatId}/pinned`, { is_pinned: isPinned });
-  console.log(`✅ Chat ${chatId} pinned status updated to ${isPinned}`);
 };
 
 /**
@@ -663,18 +669,41 @@ export const getChatAttachments = async (
   limit: number = 50,
   offset: number = 0
 ): Promise<{ attachments: any[]; total: number }> => {
-  console.log(`📎 Loading attachments for chat ${chatId} (limit: ${limit}, offset: ${offset})`);
   try {
     const response = await api.get(`/chats/${chatId}/attachments`, {
       params: { limit, offset },
     });
-    console.log(`✅ Loaded ${response.data.attachments?.length || 0} attachments for chat ${chatId} (total: ${response.data.total || 0})`);
     return {
       attachments: response.data.attachments || [],
       total: response.data.total || 0,
     };
   } catch (error) {
-    console.error(`❌ Failed to load attachments for chat ${chatId}:`, error);
     return { attachments: [], total: 0 };
   }
+};
+
+/**
+ * Bulk delete messages
+ * @param messageIds - Array of message IDs to delete (1-100)
+ * @param deleteFor - 'everyone' or 'me'
+ */
+export const bulkDeleteMessages = async (
+  messageIds: number[],
+  deleteFor: 'everyone' | 'me' = 'everyone'
+): Promise<{ count: number }> => {
+
+  if (messageIds.length === 0) {
+    throw new Error('No messages to delete');
+  }
+
+  if (messageIds.length > 100) {
+    throw new Error('Cannot delete more than 100 messages at once');
+  }
+
+  const response = await api.post('/messages/bulk-delete', {
+    message_ids: messageIds,
+    delete_for: deleteFor,
+  });
+
+  return response.data;
 };

@@ -46,6 +46,30 @@ export const getPolls = async (
 };
 
 /**
+ * Search polls by query
+ */
+export const searchPolls = async (
+  query: string,
+  limit?: number,
+  offset?: number
+): Promise<{ polls: Poll[]; total: number; hasMore: boolean }> => {
+  const params = {
+    q: query,
+    limit: limit || 20,
+    offset: offset || 0,
+  };
+
+  const response = await api.get<any>(API_ENDPOINTS.POLL.SEARCH, { params });
+
+  // Backend returns: { polls: [...], total: 10, limit: 20, offset: 0 }
+  const polls = response.data.polls || [];
+  const total = response.data.total || 0;
+  const hasMore = (params.offset + polls.length) < total;
+
+  return { polls, total, hasMore };
+};
+
+/**
  * Create new poll
  */
 export const createPoll = async (data: CreatePollDto): Promise<Poll> => {

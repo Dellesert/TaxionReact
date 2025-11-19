@@ -7,11 +7,20 @@ import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
+import * as chatApi from '@api/chat.api';
 
 type WSMessageType =
-  | 'user_join' | 'user_leave' | 'typing' | 'new_message'
-  | 'message_read' | 'message_edit' | 'message_delete'
-  | 'reaction' | 'error' | 'pong' | 'ping' | 'user_presence';
+  // Messages
+  | 'new_message' | 'message_edit' | 'message_delete'
+  | 'message_read' | 'typing' | 'reaction'
+  // Chats
+  | 'chat_create' | 'chat_update' | 'chat_delete'
+  // Members
+  | 'member_add' | 'member_remove' | 'member_update'
+  // Presence
+  | 'user_join' | 'user_leave' | 'user_presence'
+  // System
+  | 'error' | 'pong' | 'ping';
 
 interface WSMessage {
   type: WSMessageType;
@@ -241,38 +250,21 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
    * Handle WebSocket open
    */
   private handleOpen(event: Event): void {
-    console.log('✅ WebSocket connected successfully');
     this.resetReconnectAttempts();
     this.isIntentionalClose = false;
 
     // Start heartbeat
     this.startHeartbeat();
 
-    // Notify that connection is established
-    const user = useAuthStore.getState().user;
-    if (user) {
-      console.log('👤 User connected:', user.full_name);
-    }
-
-    // ✅ РЕШЕНИЕ: Join all user's chats to receive last_message updates
-    // This allows chat list to show new messages in real-time
-    // without interfering with ChatScreen's join/leave logic
-    const chatStore = useChatStore.getState();
-    const chats = chatStore.chats;
-    if (chats && chats.length > 0) {
-      chats.forEach((chat) => {
-        this.joinChat(chat.id);
-      });
-      console.log(`📍 Joined ${chats.length} chats for updates`);
-    }
+    // Backend automatically subscribes user to their personal channel
+    // All chat events (new_message, chat_create, etc.) are delivered automatically
   }
 
   /**
    * Handle incoming WebSocket messages
    */
-  private handleMessage(event: MessageEvent): void {
+  private async handleMessage(event: MessageEvent): Promise<void> {
     try {
-      console.log('🔸 Raw event.data:', event.data);
 
       // Handle case where backend sends multiple JSON objects in one message
       const rawData = event.data.trim();
@@ -303,7 +295,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
       // Process each message
       for (const message of messages) {
-        this.processMessage(message);
+        await this.processMessage(message);
       }
     } catch (error) {
       console.error('❌ Error handling WebSocket message:', error);
@@ -313,7 +305,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
   /**
    * Process a single WebSocket message
    */
-  private processMessage(message: WSMessage): void {
+  private async processMessage(message: WSMessage): Promise<void> {
     try {
       console.log('📨 WebSocket received:', message);
 
@@ -344,7 +336,9 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             sender: message.data?.sender, // Don't provide fallback - let MessageItem fetch it
           };
 
-          chatStore.handleNewMessage(newMessage);
+          console.log(`📥 [WebSocket] Received new_message for chat ${message.chat_id}, message ${newMessage.id}, sender ${senderId}`);
+          await chatStore.handleNewMessage(newMessage);
+          console.log(`✅ [WebSocket] Processed new_message for chat ${message.chat_id}`);
           break;
 
         case 'message_edit':
@@ -397,16 +391,198 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'message_read':
+          console.log('📖 Message read event:', { chatId: message.chat_id, messageId: message.data.message_id, userId: message.user_id });
           chatStore.handleMessageRead(message.chat_id, message.data.message_id, message.user_id);
           break;
 
+        case 'chat_update':
+          // Handle chat update (e.g., unread_count reset)
+          console.log('💬 Chat update event:', message.data);
+          if (message.data.unread_count !== undefined) {
+            // Update chat's unread_count directly
+            chatStore.set({
+              chats: useChatStore.getState().chats.map(chat =>
+                chat.id === message.chat_id
+                  ? { ...chat, unread_count: message.data.unread_count }
+                  : chat
+              ),
+            });
+          }
+          break;
+
+        case 'chat_delete':
+          // Handle chat deletion
+          chatStore.handleChatDelete(message.chat_id);
+          break;
+
+        case 'chat_create':
+          // Handle new chat creation - load the full chat from API
+          try {
+            const newChat = await chatApi.getChat(message.chat_id);
+
+            // Validate chat data
+            if (!newChat || !newChat.id) {
+              console.error('Invalid chat data received for chat_create:', newChat);
+              break;
+            }
+
+            // Add chat to appropriate tabs
+            const state = useChatStore.getState();
+            const updatedTabs = { ...state.tabs };
+            const chatType = newChat.type || 'private';
+            const isFavorite = newChat.is_favorite || false;
+
+            // Add to appropriate tabs
+            ['all', chatType === 'private' ? 'private' : chatType === 'group' ? 'group' : null, isFavorite ? 'favorite' : null]
+              .filter(Boolean)
+              .forEach(tabKey => {
+                const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+                if (tab && tab.loaded) {
+                  updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+                    ...tab,
+                    regularChats: [newChat, ...tab.regularChats],
+                  };
+                }
+              });
+
+            // Update chats for current tab
+            const currentTab = state.currentTab;
+            const currentTabData = updatedTabs[currentTab];
+            const updatedChats = currentTabData
+              ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
+              : state.chats;
+
+            chatStore.set({
+              chats: updatedChats,
+              tabs: updatedTabs,
+            });
+          } catch (error) {
+            console.error('Failed to load new chat:', error);
+          }
+          break;
+
+        case 'member_add':
+          // Handle member added to chat
+          try {
+            const updatedChat = await chatApi.getChat(message.chat_id);
+            const state = useChatStore.getState();
+
+            // Helper to update chat in array
+            const updateChatInArray = (chats: any[]) =>
+              chats.map(chat => chat.id === message.chat_id ? updatedChat : chat);
+
+            // Update all tabs
+            const updatedTabs = { ...state.tabs };
+            Object.keys(updatedTabs).forEach(tabKey => {
+              const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+              if (!tab.loaded) return;
+
+              updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+                ...tab,
+                pinnedChats: updateChatInArray(tab.pinnedChats),
+                regularChats: updateChatInArray(tab.regularChats),
+              };
+            });
+
+            // Reconstruct chats from current tab
+            const currentTabData = updatedTabs[state.currentTab];
+            const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+            chatStore.set({
+              chats: updatedChats,
+              tabs: updatedTabs,
+            });
+          } catch (error) {
+            console.error('Failed to reload chat after member add:', error);
+          }
+          break;
+
+        case 'member_remove':
+          // Handle member removed from chat
+          if (message.data?.user_id === currentUser?.id) {
+            chatStore.handleChatDelete(message.chat_id);
+          } else {
+            // Otherwise reload chat to get updated members
+            try {
+              const updatedChat = await chatApi.getChat(message.chat_id);
+              const state = useChatStore.getState();
+
+              // Helper to update chat in array
+              const updateChatInArray = (chats: any[]) =>
+                chats.map(chat => chat.id === message.chat_id ? updatedChat : chat);
+
+              // Update all tabs
+              const updatedTabs = { ...state.tabs };
+              Object.keys(updatedTabs).forEach(tabKey => {
+                const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+                if (!tab.loaded) return;
+
+                updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+                  ...tab,
+                  pinnedChats: updateChatInArray(tab.pinnedChats),
+                  regularChats: updateChatInArray(tab.regularChats),
+                };
+              });
+
+              // Reconstruct chats from current tab
+              const currentTabData = updatedTabs[state.currentTab];
+              const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+              chatStore.set({
+                chats: updatedChats,
+                tabs: updatedTabs,
+              });
+            } catch (error) {
+              console.error('Failed to reload chat after member remove:', error);
+            }
+          }
+          break;
+
+        case 'member_update':
+          // Handle member role update
+          try {
+            const { user_id, role } = message.data;
+
+            // Reload chat to get updated member info
+            const updatedChat = await chatApi.getChat(message.chat_id);
+            const state = useChatStore.getState();
+
+            // Helper to update chat in array
+            const updateChatInArray = (chats: any[]) =>
+              chats.map(chat => chat.id === message.chat_id ? updatedChat : chat);
+
+            // Update all tabs
+            const updatedTabs = { ...state.tabs };
+            Object.keys(updatedTabs).forEach(tabKey => {
+              const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+              if (!tab.loaded) return;
+
+              updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+                ...tab,
+                pinnedChats: updateChatInArray(tab.pinnedChats),
+                regularChats: updateChatInArray(tab.regularChats),
+              };
+            });
+
+            // Reconstruct chats from current tab
+            const currentTabData = updatedTabs[state.currentTab];
+            const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+            chatStore.set({
+              chats: updatedChats,
+              tabs: updatedTabs,
+            });
+          } catch (error) {
+            console.error('Failed to reload chat after member role update:', error);
+          }
+          break;
+
         case 'reaction':
-          console.log('😊 Reaction added:', message.data);
           chatStore.handleReaction(message.chat_id, message.data.message_id, message.data.emoji, message.user_id);
           break;
 
         case 'error':
-          console.error('❌ WebSocket error message:', message.data);
+          console.error('WebSocket error message:', message.data);
           break;
 
         case 'user_presence':
@@ -423,22 +599,19 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
           // Update timestamp and process
           this.lastPresenceUpdate.set(userId, now);
-          console.log('👤 User presence update:', message.data);
           chatStore.handleUserPresence(message.data);
           break;
 
         case 'ping':
         case 'pong':
           // WebSocket ping/pong frames are handled automatically by the browser
-          // If we receive these as JSON messages, just log them
-          console.log('🏓 Ping/Pong message (handled automatically)');
           break;
 
         default:
-          console.log('❓ Unknown message type:', message.type);
+          console.log('Unknown message type:', message.type);
       }
     } catch (error) {
-      console.error('❌ Error handling WebSocket message:', error);
+      console.error('Error handling WebSocket message:', error);
     }
   }
 
@@ -451,8 +624,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
     if (event.type === 'error') {
       // Prevent default error handling
       event.preventDefault?.();
-
-      console.log('⚠️ WebSocket connection error (will retry if needed)');
 
       // Only log detailed error in development
       if (__DEV__) {
@@ -477,16 +648,13 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
         const delay = this.getReconnectDelay();
         this.reconnectAttempts++;
-        console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
 
         this.reconnectTimeout = setTimeout(() => {
           this.connect();
         }, delay);
       } else {
-        console.warn('⚠️ Max reconnection attempts reached. Will retry when user interacts with app.');
         // Don't give up completely - reset after a longer delay
         this.reconnectTimeout = setTimeout(() => {
-          console.log('🔄 Resetting reconnection attempts after cooldown...');
           this.reconnectAttempts = 0;
           this.connect();
         }, 60000); // Retry after 1 minute
@@ -510,25 +678,14 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
     // Monitor connection state every 20 seconds (less than backend's 54s ping period)
     this.heartbeatInterval = setInterval(() => {
       if (!this.ws) {
-        console.warn('⚠️ WebSocket: No connection object');
         return;
       }
 
       const state = this.ws.readyState;
 
-      if (state === WebSocket.CONNECTING) {
-        console.log('🔄 WebSocket: Still connecting...');
-      } else if (state === WebSocket.OPEN) {
-        // Connection is alive - no action needed
-        // Browser automatically responds to ping frames from server
-        console.log('✅ WebSocket: Connection alive');
-      } else if (state === WebSocket.CLOSING) {
-        console.warn('⚠️ WebSocket: Connection closing...');
-      } else if (state === WebSocket.CLOSED) {
-        console.error('❌ WebSocket: Connection closed unexpectedly');
+      if (state === WebSocket.CLOSED) {
         // Try to reconnect
         if (!this.isIntentionalClose && this.reconnectAttempts < this.maxReconnectAttempts) {
-          console.log('🔄 Attempting to reconnect...');
           this.connect();
         }
       }

@@ -12,6 +12,7 @@ import { FloatingDateHeader } from '@components/chat/FloatingDateHeader';
 import { ScrollToBottomButton } from '@components/chat/ScrollToBottomButton';
 import { MessageListComponent } from '@components/chat/MessageListComponent';
 import { ChatHeader } from '@components/chat/ChatHeader';
+import { SelectionModeToolbar } from '@components/chat/SelectionModeToolbar';
 import PollDetailModal from '@components/poll/PollDetailModal';
 import { useTheme } from '@hooks/useTheme';
 import { useChatMessages } from '@hooks/useChatMessages';
@@ -22,6 +23,7 @@ import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion, getUserStatusText } from '@utils/chatUtils';
+import type { Chat } from '@/types/chat.types';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
 
@@ -29,7 +31,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
  * Рефакторенный экран чата - разделен на компоненты и хуки
  */
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { chatId, chatName } = route.params;
+  const { chatId, chatName, unreadCount: routeUnreadCount } = route.params;
   const chatIdNum = useMemo(() => Number(chatId), [chatId]);
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -44,10 +46,18 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const [contentReady, setContentReady] = useState(false);
   const [pollModalVisible, setPollModalVisible] = useState(false);
   const [selectedPollId, setSelectedPollId] = useState<number | null>(null);
+  const [ignoreReadReceipts, setIgnoreReadReceipts] = useState(true); // Игнорируем read_receipts до первого скролла
+  const [initialUnreadCount, setInitialUnreadCount] = useState(0); // Запоминаем начальное количество непрочитанных
+  const [savedUnreadCount, setSavedUnreadCount] = useState(0); // Сохраняем unread_count ДО WebSocket
+  const [selectionMode, setSelectionMode] = useState(false); // Режим множественного выбора
+  const [selectedMessages, setSelectedMessages] = useState<Set<number>>(new Set()); // Выбранные сообщения
+  const [chatData, setChatData] = useState<Chat | null>(null); // Данные чата
+  const [isLoadingChat, setIsLoadingChat] = useState(false); // Загружается ли чат
 
 
   // Хуки
-  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } = useChatMessages(chatIdNum);
+  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } = useChatMessages(chatIdNum, ignoreReadReceipts, savedUnreadCount);
+
   const {
     editingMessage,
     setEditingMessage,
@@ -78,6 +88,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     currentDateLabel,
     showDateHeader,
     isLoadingMore,
+    hasReachedBottom,
+    initialScrollIndex,
+    isScrollingToUnread,
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
@@ -86,7 +99,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     onViewableItemsChanged,
     viewabilityConfig,
     resetScroll,
-  } = useChatScroll(chatIdNum, messages);
+  } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount);
+
 
   // Store
   const isLoading = useChatStore((state) => state.isLoading);
@@ -99,7 +113,64 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const getPinnedMessages = useChatStore((state) => state.getPinnedMessages);
   const currentUser = useAuthStore((state) => state.user);
 
-  const chat = useChatStore((state) => state.chats.find(c => c.id === chatIdNum));
+  const chatFromStore = useChatStore((state) => state.chats.find(c => c.id === chatIdNum));
+  const chat = chatData || chatFromStore; // Используем загруженные данные или данные из store
+
+  // Загрузка чата если не найден в store
+  useEffect(() => {
+    const loadChat = async () => {
+      if (chatFromStore) {
+        setChatData(chatFromStore);
+        return;
+      }
+
+      // Если чат не найден в store, загружаем через API
+      try {
+        setIsLoadingChat(true);
+        const { getChat } = await import('@api/chat.api');
+        const fetchedChat = await getChat(chatIdNum);
+        setChatData(fetchedChat);
+      } catch (error) {
+        console.error(`Failed to load chat ${chatIdNum}:`, error);
+      } finally {
+        setIsLoadingChat(false);
+      }
+    };
+
+    loadChat();
+  }, [chatIdNum, chatFromStore]);
+
+  // Роль текущего пользователя в чате
+  const currentUserRole = useMemo(() => {
+    return chat?.members?.find(m => m.user_id === currentUser?.id)?.role || 'member';
+  }, [chat?.members, currentUser?.id]);
+
+  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
+
+  // Проверка: может ли пользователь удалить выбранные сообщения для всех
+  const canDeleteForEveryone = useMemo(() => {
+    if (!chat || selectedMessages.size === 0) return false;
+
+    // Для личных чатов: можно удалить для всех только свои сообщения
+    if (chat.type === 'private') {
+      return Array.from(selectedMessages).every(messageId => {
+        const message = messages.find(m => m.id === messageId);
+        return message && message.sender_id === currentUser?.id;
+      });
+    }
+
+    // Для групповых чатов и каналов
+    // Админы и владельцы могут удалять любые сообщения
+    if (isAdmin) {
+      return true;
+    }
+
+    // Обычные участники могут удалять только свои сообщения
+    return Array.from(selectedMessages).every(messageId => {
+      const message = messages.find(m => m.id === messageId);
+      return message && message.sender_id === currentUser?.id;
+    });
+  }, [chat, selectedMessages, messages, currentUser?.id, isAdmin]);
 
   // Печатающие пользователи
   const typingUserNames = useMemo(() => {
@@ -196,8 +267,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         <ChatHeader.Title
           displayName={displayName}
           statusText={finalStatusText}
-          membersText={''}
-          isPrivateChat={true}
+          membersText={membersText}
+          isPrivateChat={isPrivateChat}
           isConnected={isConnected}
           onHeaderPress={handleHeaderPress}
         />
@@ -217,12 +288,25 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   useEffect(() => {
     resetScroll();
     setShowUnreadBanner(true);
-    loadMessages(chatIdNum);
+    setIgnoreReadReceipts(true);
+    setInitialUnreadCount(0);
 
     const chat = getChatById(chatIdNum);
+
+    // Используем unread_count из store или из параметров навигации
+    const unreadCountToSave = chat?.unread_count ?? routeUnreadCount ?? 0;
+    setSavedUnreadCount(unreadCountToSave);
+
     if (chat) {
       setActiveChat(chat);
     }
+
+    loadMessages(chatIdNum).catch((error) => {
+      console.error(`Failed to load messages for chat ${chatIdNum}:`, error);
+      if (error?.status === 403) {
+        // No access to chat
+      }
+    });
 
     const connectWebSocket = async () => {
       if (!websocketService.isConnected()) {
@@ -236,32 +320,51 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         }
       }
 
-      if (websocketService.isConnected() && getChatById(chatIdNum)) {
-        websocketService.joinChat(chatIdNum);
-      }
+      // WebSocket is already connected and subscribed to user's personal channel
+      // Events will arrive automatically - no need to join/leave specific chats
     };
     connectWebSocket();
 
     return () => {
       setActiveChat(null);
-      if (websocketService.isConnected()) {
-        websocketService.leaveChat(chatIdNum);
-      }
+      // No need to leave chat - events are delivered via personal channel
     };
   }, [chatIdNum]);
 
-  // Отметить как прочитанное
+  // Запоминаем начальное количество непрочитанных при первой загрузке
   useEffect(() => {
-    if (messages.length > 0 && initialScrolled) {
-      const markReadTimer = setTimeout(() => {
-        markChatAsRead(chatIdNum);
-        if (showUnreadBanner) {
-          setShowUnreadBanner(false);
+    if (messages.length > 0 && ignoreReadReceipts && unreadCount > 0 && initialUnreadCount === 0) {
+      setInitialUnreadCount(unreadCount);
+    }
+  }, [messages.length, ignoreReadReceipts, unreadCount, initialUnreadCount]);
+
+  // Отключаем игнорирование read_receipts после достижения низа или открытия клавиатуры
+  useEffect(() => {
+    if (initialScrolled && ignoreReadReceipts && (hasReachedBottom || keyboardHeight > 0)) {
+      setIgnoreReadReceipts(false);
+      setInitialUnreadCount(0);
+    }
+  }, [initialScrolled, ignoreReadReceipts, hasReachedBottom, keyboardHeight]);
+
+  // Отметить как прочитанное и скрыть баннер
+  useEffect(() => {
+    if (messages.length > 0 && initialScrolled && (hasReachedBottom || keyboardHeight > 0)) {
+      const markReadTimer = setTimeout(async () => {
+        try {
+          await markChatAsRead(chatIdNum);
+          if (showUnreadBanner) {
+            setShowUnreadBanner(false);
+          }
+        } catch (error: any) {
+          // Игнорируем ошибки 403 - пользователь может не иметь доступа
+          if (error?.status !== 403) {
+            console.error(`❌ [ChatScreen] Ошибка пометки чата как прочитанного:`, error);
+          }
         }
-      }, 1000);
+      }, 500);
       return () => clearTimeout(markReadTimer);
     }
-  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled]);
+  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, hasReachedBottom, keyboardHeight, showUnreadBanner]);
 
   const handleTyping = (isTyping: boolean) => {
     if (websocketService.isConnected() && getChatById(chatIdNum)) {
@@ -289,6 +392,59 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     handleReplyPressWithHighlight(messageId);
   };
 
+  // Обработчики для режима множественного выбора
+  const handleEnterSelectionMode = (messageId: number) => {
+    setSelectionMode(true);
+    setSelectedMessages(new Set([messageId]));
+  };
+
+  const handleExitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedMessages(new Set());
+  };
+
+  const handleToggleMessageSelection = (messageId: number) => {
+    setSelectedMessages((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleBulkDelete = async (deleteFor: 'everyone' | 'me') => {
+    if (selectedMessages.size === 0) return;
+
+    try {
+      const messageIds = Array.from(selectedMessages);
+
+      // Импортируем функцию массового удаления
+      const { bulkDeleteMessages } = await import('@api/chat.api');
+
+      // Вызываем массовое удаление
+      await bulkDeleteMessages(messageIds, deleteFor);
+
+      // Локально обновляем состояние для каждого удаленного сообщения
+      if (deleteFor === 'everyone') {
+        // При удалении для всех сервер отправит WebSocket события
+        // handleMessageDelete будет вызван автоматически
+      } else {
+        // При удалении для себя обновляем локально
+        messageIds.forEach(messageId => {
+          handleDelete(messageId, deleteFor);
+        });
+      }
+
+      handleExitSelectionMode();
+    } catch (error: any) {
+      console.error('Failed to delete messages:', error);
+      // TODO: Показать уведомление об ошибке
+    }
+  };
+
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.background,
@@ -300,20 +456,23 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     return <View style={[styles.container, dynamicStyles.container]} />;
   }
 
+  // Скрываем контент во время плавного скролла к непрочитанным
+  const shouldShowContent = contentReady && !isScrollingToUnread;
+
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       {/* Floating sticky date header */}
-      <FloatingDateHeader dateLabel={currentDateLabel} visible={showDateHeader} />
+      <FloatingDateHeader dateLabel={currentDateLabel} visible={showDateHeader && shouldShowContent} />
 
       <View style={styles.flex1}>
-        {contentReady ? (
+        {shouldShowContent ? (
           <>
             {/* Баннер закрепленных сообщений */}
             {pinnedMessages.length > 0 && (
               <PinnedMessageBanner
                 pinnedMessages={pinnedMessages}
                 chatType={chat?.type}
-                currentUserRole={chat?.members?.find(m => m.user_id === currentUser?.id)?.role}
+                currentUserRole={currentUserRole}
                 onPress={handlePinnedMessagePress}
                 onUnpin={handleUnpin}
               />
@@ -334,6 +493,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             insetsBottom={insets.bottom}
             listRef={listRef}
             highlightedMessageId={highlightedMessageId}
+            initialScrollIndex={initialScrollIndex}
             onContentSizeChange={handleContentSizeChange}
             onScroll={handleScroll}
             onViewableItemsChanged={onViewableItemsChanged}
@@ -349,13 +509,19 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
             onReplyPress={handleReplyPressWithHighlight}
             onPollPress={handlePollPress}
             onTaskPress={handleTaskPress}
+            selectionMode={selectionMode}
+            selectedMessages={selectedMessages}
+            onEnterSelectionMode={handleEnterSelectionMode}
+            onToggleMessageSelection={handleToggleMessageSelection}
+            chatType={chat?.type}
+            userRole={currentUserRole}
           />
 
               {/* Кнопка scroll to bottom - абсолютное позиционирование */}
               <ScrollToBottomButton visible={showScrollToBottom} onPress={handleScrollToBottom} />
             </View>
 
-            {/* Панель ввода - обычный layout внизу */}
+            {/* Панель ввода или панель режима выбора - обычный layout внизу */}
             <View
               style={[
                 styles.inputWrapper,
@@ -366,17 +532,26 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
                 }
               ]}
             >
-              <MessageInput
-                onSend={handleSendMessage}
-                onTyping={handleTyping}
-                editingMessage={editingMessage}
-                onCancelEdit={() => setEditingMessage(null)}
-                replyingToMessage={replyingToMessage}
-                onCancelReply={() => setReplyingToMessage(null)}
-                onFilesSelected={(fileIds) => setSelectedFileIds(prev => [...prev, ...fileIds])}
-                selectedFileIds={selectedFileIds}
-                onRemoveFile={(fileId) => setSelectedFileIds(prev => prev.filter(id => id !== fileId))}
-              />
+              {selectionMode ? (
+                <SelectionModeToolbar
+                  selectedCount={selectedMessages.size}
+                  onCancel={handleExitSelectionMode}
+                  onDelete={handleBulkDelete}
+                  canDeleteForEveryone={canDeleteForEveryone}
+                />
+              ) : (
+                <MessageInput
+                  onSend={handleSendMessage}
+                  onTyping={handleTyping}
+                  editingMessage={editingMessage}
+                  onCancelEdit={() => setEditingMessage(null)}
+                  replyingToMessage={replyingToMessage}
+                  onCancelReply={() => setReplyingToMessage(null)}
+                  onFilesSelected={(fileIds) => setSelectedFileIds(prev => [...prev, ...fileIds])}
+                  selectedFileIds={selectedFileIds}
+                  onRemoveFile={(fileId) => setSelectedFileIds(prev => prev.filter(id => id !== fileId))}
+                />
+              )}
             </View>
           </>
         ) : (

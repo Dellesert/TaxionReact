@@ -5,9 +5,10 @@ import { useAuthStore } from '@store/authStore';
 /**
  * Хук для работы с сообщениями чата
  */
-export const useChatMessages = (chatId: number) => {
+export const useChatMessages = (chatId: number, ignoreReadReceipts = false, savedUnreadCount = 0) => {
   const allMessages = useChatStore((state) => state.messages);
   const currentUser = useAuthStore((state) => state.user);
+  const chat = useChatStore((state) => state.chats.find(c => c.id === chatId));
 
   // Инвертируем массив для inverted FlatList [новые -> старые]
   const messages = useMemo(() => {
@@ -32,25 +33,52 @@ export const useChatMessages = (chatId: number) => {
       return { firstUnreadIndex: -1, unreadCount: 0 };
     }
 
-    let firstIndex = -1;
+    let firstIndex = -1; // Самое новое непрочитанное (наименьший индекс)
+    let lastIndex = -1;  // Самое старое непрочитанное (наибольший индекс)
     let count = 0;
 
-    for (let i = 0; i < messages.length; i++) {
-      const message = messages[i];
-      const readReceipts = message.read_receipts || [];
-      const hasReadReceipt = readReceipts.some((receipt) => receipt.user_id === currentUser.id);
-      const isUnread = message.sender_id !== currentUser.id && !hasReadReceipt;
+    if (ignoreReadReceipts) {
+      // При входе в чат используем savedUnreadCount (сохраненный ДО WebSocket)
+      // Берем последние N сообщений от других пользователей как непрочитанные
+      const targetUnreadCount = savedUnreadCount > 0 ? savedUnreadCount : (chat?.unread_count || 0);
 
-      if (isUnread) {
-        if (firstIndex === -1) {
-          firstIndex = i;
+      if (targetUnreadCount > 0) {
+        let foundUnread = 0;
+        // Идем с начала (самые новые сообщения)
+        for (let i = 0; i < messages.length && foundUnread < targetUnreadCount; i++) {
+          const message = messages[i];
+          if (message.sender_id !== currentUser.id) {
+            if (firstIndex === -1) {
+              firstIndex = i;
+            }
+            lastIndex = i;
+            foundUnread++;
+            count++;
+          }
         }
-        count++;
+      }
+    } else {
+      // Нормальный режим - проверяем read_receipts
+      for (let i = 0; i < messages.length; i++) {
+        const message = messages[i];
+        const readReceipts = message.read_receipts || [];
+        const hasReadReceipt = readReceipts.some((receipt) => receipt.user_id === currentUser.id);
+        const isUnread = message.sender_id !== currentUser.id && !hasReadReceipt;
+
+        if (isUnread) {
+          if (firstIndex === -1) {
+            firstIndex = i;
+          }
+          lastIndex = i;
+          count++;
+        }
       }
     }
 
-    return { firstUnreadIndex: firstIndex, unreadCount: count };
-  }, [messages, currentUser]);
+    // В инвертированном списке: index 0 = самое новое, большой индекс = самое старое
+    // Для скролла нужен lastIndex (самое старое непрочитанное)
+    return { firstUnreadIndex: lastIndex, unreadCount: count };
+  }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount, chatId]);
 
   return {
     messages,

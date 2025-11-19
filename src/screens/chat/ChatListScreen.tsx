@@ -3,9 +3,9 @@
  * Экран списка чатов
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, StyleSheet, Modal, Platform, Animated as RNAnimated, Dimensions, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import { useAuthStore } from '@store/authStore';
 import { useActionModal } from '@contexts/ActionModalContext';
 import { Loading } from '@components/common/Loading';
 import { ChatItem } from '@components/chat/ChatItem';
+import { ChatListSkeleton } from '@components/chat/ChatListSkeleton';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { ScreenHeader } from '@components/common/ScreenHeader';
 import { useTheme } from '@hooks/useTheme';
@@ -31,43 +32,9 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
+  const insets = useSafeAreaInsets();
 
-  // Используем селектор с пользовательской функцией сравнения для отслеживания изменений статуса пользователей в чатах
-  // Это гарантирует, что компонент перерисуется при изменении статуса через WebSocket
-  const chats = useChatStore(
-    (state) => state.chats,
-    (a, b) => {
-      // Сравниваем массивы чатов
-      if (a.length !== b.length) return false;
-
-      // Сравниваем каждый чат, особенно статусы участников и read_by в last_message
-      return a.every((chatA, i) => {
-        const chatB = b[i];
-        if (!chatA || !chatB) return false;
-        if (chatA.id !== chatB.id) return false;
-
-        // Проверяем изменения в статусах участников для личных чатов
-        if (chatA.type === 'private' && chatA.members && chatB.members) {
-          const membersMatch = chatA.members.every((memberA, j) => {
-            const memberB = chatB.members![j];
-            return memberA?.user?.status === memberB?.user?.status &&
-                   (memberA?.user as any)?.last_active_at === (memberB?.user as any)?.last_active_at;
-          });
-          if (!membersMatch) return false;
-        }
-
-        // Проверяем изменения в read_by для last_message
-        const readByA = chatA.last_message?.read_by || [];
-        const readByB = chatB.last_message?.read_by || [];
-        if (readByA.length !== readByB.length) return false;
-        if (!readByA.every((id, idx) => id === readByB[idx])) return false;
-
-        return true;
-      });
-    }
-  );
-
-  const { isLoading, isLoadingMore, totalChats, hasMoreChats, error, loadChats: fetchChats, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
+  const { chats, isLoading, isLoadingMore, totalChats, hasMoreChats, error, tabs, loadTabData, switchTab: storeSwitchTab, refreshCurrentTab, loadMoreChats, loadUnreadCount, createChat, deleteChat, updateChat, leaveChat, pinChat, unpinChat, markChatAsRead, toggleFavorite } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
   const { theme } = useTheme();
   const { showConfirm } = useActionModal();
@@ -81,6 +48,9 @@ const ChatListScreen: React.FC = () => {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [canLoadMore, setCanLoadMore] = useState(false);
 
+  // Store measured container width for accurate indicator positioning
+  const [tabContainerWidth, setTabContainerWidth] = useState<number>(SCREEN_WIDTH);
+
   // Animation for search
   const searchAnimation = useRef(new RNAnimated.Value(0)).current;
 
@@ -89,13 +59,62 @@ const ChatListScreen: React.FC = () => {
   const isSwipingHorizontally = useSharedValue(false);
   const currentTabIndex = useSharedValue(0); // Track current tab index
 
+  // Animated style for tab indicator
+  const tabIndicatorStyle = useAnimatedStyle(() => {
+    'worklet';
+
+    let progress: number;
+
+    if (Platform.OS === 'ios') {
+      // On iOS: use swipe progress for smooth swipe animation
+      progress = -translateX.value / SCREEN_WIDTH;
+    } else {
+      // On web/android: use currentTabIndex (which animates smoothly)
+      progress = currentTabIndex.value;
+    }
+
+    const clampedProgress = Math.max(0, Math.min(3, progress));
+
+    // Calculate position and width as percentage of container width
+    const containerWidth = tabContainerWidth;
+    const tabWidth = containerWidth / 4;
+    const offset = tabWidth * clampedProgress;
+
+    return {
+      width: tabWidth,
+      transform: [{ translateX: offset }],
+    };
+  }, [tabContainerWidth]);
+
   useEffect(() => {
-    loadChats();
+    // Load all tabs on mount for instant switching
+    const loadAllTabs = async () => {
+      // Load current tab first (highest priority)
+      await loadTabData('all');
+
+      // Then load other tabs in background for instant switching
+      // Use setTimeout to not block the UI
+      setTimeout(() => {
+        loadTabData('private');
+      }, 100);
+
+      setTimeout(() => {
+        loadTabData('group');
+      }, 200);
+
+      setTimeout(() => {
+        loadTabData('favorite');
+      }, 300);
+    };
+
+    loadAllTabs();
   }, []);
 
   // Обновляем счетчик непрочитанных при возврате на экран
+  // НЕ обновляем список чатов чтобы не перезаписать локальные изменения данными с сервера
   useFocusEffect(
     React.useCallback(() => {
+      // Обновляем только общий счетчик непрочитанных
       loadUnreadCount();
     }, [loadUnreadCount])
   );
@@ -126,11 +145,6 @@ const ChatListScreen: React.FC = () => {
       setIsConnected(prev => {
         // Обновляем только если статус действительно изменился
         if (prev !== currentStatus) {
-          if (currentStatus) {
-            console.log('✅ WebSocket переподключен');
-          } else {
-            console.log('❌ WebSocket соединение потеряно');
-          }
           return currentStatus;
         }
         return prev;
@@ -149,20 +163,6 @@ const ChatListScreen: React.FC = () => {
     }
   }, [isEditMode]);
 
-  const loadChats = async () => {
-    try {
-      await Promise.all([
-        fetchChats(),
-        loadUnreadCount(),
-      ]);
-      // Разрешаем подгрузку только после первой загрузки
-      setTimeout(() => setCanLoadMore(true), 500);
-    } catch (error) {
-      console.error('Failed to load chats:', error);
-    }
-  };
-
-
   // Swipe gesture to switch tabs (iOS only)
   const filterTabsOrder: ChatFilter[] = ['all', 'private', 'group', 'favorite'];
 
@@ -172,31 +172,35 @@ const ChatListScreen: React.FC = () => {
     setCanLoadMore(false);
     setTimeout(() => setCanLoadMore(true), 500);
 
+    const newIndex = filterTabsOrder.indexOf(newFilter);
+
+    // Animate tab index for smooth indicator transition (works on all platforms)
+    currentTabIndex.value = withTiming(newIndex, { duration: 250 });
+
     // Animate to the new tab position on iOS
     if (Platform.OS === 'ios') {
-      const newIndex = filterTabsOrder.indexOf(newFilter);
-      currentTabIndex.value = newIndex;
       translateX.value = withTiming(-newIndex * SCREEN_WIDTH, { duration: 300 });
     }
 
-    // Загружаем чаты с новым фильтром с бэкенда
-    const filters = getFiltersForTab(newFilter);
-    await fetchChats(false, filters);
-  };
+    // Use the new store switchTab function - it will load data if needed
+    storeSwitchTab(newFilter);
 
-  const getFiltersForTab = (filterTab: ChatFilter) => {
-    const filters: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean } = {};
+    // Preload adjacent tabs for smooth swipe on iOS
+    if (Platform.OS === 'ios') {
+      const currentIndex = filterTabsOrder.indexOf(newFilter);
 
-    if (filterTab === 'private') {
-      filters.type = 'private';
-    } else if (filterTab === 'group') {
-      filters.type = 'group';
-    } else if (filterTab === 'favorite') {
-      filters.is_favorite = true;
+      // Preload next tab
+      if (currentIndex < filterTabsOrder.length - 1) {
+        const nextTab = filterTabsOrder[currentIndex + 1];
+        setTimeout(() => loadTabData(nextTab), 100);
+      }
+
+      // Preload previous tab
+      if (currentIndex > 0) {
+        const prevTab = filterTabsOrder[currentIndex - 1];
+        setTimeout(() => loadTabData(prevTab), 100);
+      }
     }
-    // 'all' = no filters
-
-    return Object.keys(filters).length > 0 ? filters : undefined;
   };
 
   const resetSwipeFlag = () => {
@@ -210,9 +214,25 @@ const ChatListScreen: React.FC = () => {
     // Сбрасываем флаг при переключении табов
     setCanLoadMore(false);
     setTimeout(() => setCanLoadMore(true), 500);
-    // Загружаем чаты с новым фильтром с бэкенда
-    const filters = getFiltersForTab(newFilter);
-    await fetchChats(false, filters);
+    // Use the new store switchTab function
+    storeSwitchTab(newFilter);
+
+    // Preload adjacent tabs for smooth swipe on iOS
+    if (Platform.OS === 'ios') {
+      const currentIndex = filterTabsOrder.indexOf(newFilter);
+
+      // Preload next tab
+      if (currentIndex < filterTabsOrder.length - 1) {
+        const nextTab = filterTabsOrder[currentIndex + 1];
+        setTimeout(() => loadTabData(nextTab), 100);
+      }
+
+      // Preload previous tab
+      if (currentIndex > 0) {
+        const prevTab = filterTabsOrder[currentIndex - 1];
+        setTimeout(() => loadTabData(prevTab), 100);
+      }
+    }
   };
 
   // Initialize translateX based on active filter
@@ -244,8 +264,8 @@ const ChatListScreen: React.FC = () => {
     })
     .onEnd((event) => {
       'worklet';
-      const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
-      const VELOCITY_THRESHOLD = 500;
+      const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25; // Reduced threshold for faster response
+      const VELOCITY_THRESHOLD = 400; // Reduced for easier swipes
       const currentIndex = currentTabIndex.value;
 
       const shouldSwitchTab = Math.abs(event.translationX) > SWIPE_THRESHOLD || Math.abs(event.velocityX) > VELOCITY_THRESHOLD;
@@ -259,9 +279,12 @@ const ChatListScreen: React.FC = () => {
       }
 
       const targetOffset = -targetIndex * SCREEN_WIDTH;
+
+      // Use spring animation for more natural feel
       translateX.value = withTiming(targetOffset, {
-        duration: 250,
+        duration: 200, // Faster animation
       }, () => {
+        'worklet';
         currentTabIndex.value = targetIndex;
       });
 
@@ -282,12 +305,18 @@ const ChatListScreen: React.FC = () => {
 
     // Если WebSocket отключен, пытаемся переподключить
     if (!websocketService.isConnected()) {
-      console.log('🔄 Pull-to-refresh: reconnecting WebSocket...');
       websocketService.reconnect();
     }
 
-    await loadChats();
+    // Refresh current tab data and unread count
+    await Promise.all([
+      refreshCurrentTab(),
+      loadUnreadCount(),
+    ]);
+
     setRefreshing(false);
+    // Разрешаем подгрузку после обновления
+    setTimeout(() => setCanLoadMore(true), 500);
   };
 
   const handleChatPress = (chat: Chat) => {
@@ -303,6 +332,7 @@ const ChatListScreen: React.FC = () => {
       navigation.navigate('Chat', {
         chatId: chat.id,
         chatName: chat.name,
+        unreadCount: chat.unread_count || 0, // Передаем количество непрочитанных
       });
     }
   };
@@ -339,9 +369,7 @@ const ChatListScreen: React.FC = () => {
 
   const handleDeleteChat = async (chatId: number, clearHistory?: boolean) => {
     try {
-      console.log(`📋 ChatListScreen.handleDeleteChat called with chatId=${chatId}, clearHistory=${clearHistory}`);
       await deleteChat(chatId, clearHistory);
-      console.log(`✅ Chat ${chatId} deleted (clearHistory: ${clearHistory})`);
     } catch (error) {
       console.error('Failed to delete chat:', error);
     }
@@ -382,7 +410,6 @@ const ChatListScreen: React.FC = () => {
   const handleRenameChat = async (chatId: number, newName: string) => {
     try {
       await updateChat(chatId, newName);
-      console.log(`✅ Chat ${chatId} renamed to "${newName}"`);
     } catch (error) {
       console.error('Failed to rename chat:', error);
     }
@@ -391,7 +418,6 @@ const ChatListScreen: React.FC = () => {
   const handleLeaveChat = async (chatId: number) => {
     try {
       await leaveChat(chatId);
-      console.log(`✅ Left chat ${chatId}`);
     } catch (error) {
       console.error('Failed to leave chat:', error);
     }
@@ -428,28 +454,40 @@ const ChatListScreen: React.FC = () => {
     }
   };
 
+  // Memoized render item for better performance
+  const renderChatItem = useCallback(({ item }: { item: Chat }) => (
+    <ChatItem
+      chat={item}
+      onPress={handleChatPress}
+      isSelected={selectedChats.includes(item.id)}
+      isEditMode={isEditMode}
+      onToggleFavorite={() => handleToggleFavorite(item.id)}
+      onTogglePinned={() => handleTogglePinned(item.id)}
+      onMarkAsRead={() => handleMarkAsRead(item.id)}
+      onDelete={handleDeleteChat}
+    />
+  ), [isEditMode, selectedChats, handleChatPress, handleToggleFavorite, handleTogglePinned, handleMarkAsRead, handleDeleteChat]);
+
   // Render a single tab content
-  const renderFilterContent = (filterKey: ChatFilter) => {
-    // Фильтрация теперь на бэкенде, здесь только поиск по имени на клиенте
-    const tabChats = chats
-      .filter((chat) => {
-        if (!searchQuery) return true;
-        const chatName = chat.name || '';
-        const searchText = chatName.toLowerCase();
-        return searchText.includes(searchQuery.toLowerCase());
-      })
-      .sort((a, b) => {
-        // Сортировка по закрепленным
-        if (a.is_pinned && !b.is_pinned) return -1;
-        if (!a.is_pinned && b.is_pinned) return 1;
-        const timeA = a.last_message?.created_at || a.created_at || '';
-        const timeB = b.last_message?.created_at || b.created_at || '';
-        return new Date(timeB).getTime() - new Date(timeA).getTime();
-      });
+  const renderFilterContent = useCallback((filterKey: ChatFilter) => {
+    // Get chats for this specific tab from store
+    const tabData = tabs[filterKey];
+    const tabChatsFromStore = [...tabData.pinnedChats, ...tabData.regularChats];
+
+    // Backend now handles filtering and sorting
+    // Here we only apply client-side search if a query is present
+    const tabChats = tabChatsFromStore.filter((chat) => {
+      if (!searchQuery) return true;
+      const chatName = chat.name || '';
+      const searchText = chatName.toLowerCase();
+      return searchText.includes(searchQuery.toLowerCase());
+    });
 
     return (
       <View key={filterKey} style={{ width: SCREEN_WIDTH, height: '100%' }}>
-        {tabChats.length === 0 ? (
+        {isLoading && !tabData.loaded ? (
+          <ChatListSkeleton />
+        ) : tabChats.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={64} color="#D1D5DB" />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Нет чатов</Text>
@@ -458,22 +496,11 @@ const ChatListScreen: React.FC = () => {
           <FlatList
             data={tabChats}
             keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <ChatItem
-                chat={item}
-                onPress={handleChatPress}
-                isSelected={selectedChats.includes(item.id)}
-                isEditMode={isEditMode}
-                onToggleFavorite={() => handleToggleFavorite(item.id)}
-                onTogglePinned={() => handleTogglePinned(item.id)}
-                onMarkAsRead={() => handleMarkAsRead(item.id)}
-                onDelete={handleDeleteChat}
-              />
-            )}
+            renderItem={renderChatItem}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
-            contentContainerStyle={{ paddingBottom: 80 }}
+            contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
             onEndReached={() => {
               if (canLoadMore && hasMoreChats && !isLoadingMore) {
                 loadMoreChats();
@@ -487,11 +514,22 @@ const ChatListScreen: React.FC = () => {
                 </View>
               ) : null
             }
+            // Performance optimizations
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={15}
+            windowSize={5}
+            getItemLayout={(data, index) => ({
+              length: 80, // Примерная высота ChatItem
+              offset: 80 * index,
+              index,
+            })}
           />
         )}
       </View>
     );
-  };
+  }, [tabs, searchQuery, isLoading, refreshing, canLoadMore, hasMoreChats, isLoadingMore, theme, renderChatItem, handleRefresh, loadMoreChats]);
 
   // Show error state if there's an error and no chats loaded
   if (error && chats.length === 0 && !isLoading) {
@@ -509,10 +547,10 @@ const ChatListScreen: React.FC = () => {
             onPress={() => {
               // Переподключаем WebSocket при повторной попытке
               if (!websocketService.isConnected()) {
-                console.log('🔄 Retry button: reconnecting WebSocket...');
                 websocketService.reconnect();
               }
-              loadChats();
+              // Reload current tab
+              loadTabData(chatFilter);
             }}
           >
             <Text style={styles.retryButtonText}>Попробовать снова</Text>
@@ -520,10 +558,6 @@ const ChatListScreen: React.FC = () => {
         </View>
       </SafeAreaView>
     );
-  }
-
-  if (isLoading && chats.length === 0) {
-    return <Loading text="Загрузка чатов..." fullScreen />;
   }
 
   const dynamicStyles = StyleSheet.create({
@@ -620,66 +654,77 @@ const ChatListScreen: React.FC = () => {
             </RNAnimated.View>
 
             {/* Фильтры типов чатов */}
-            <View style={[styles.filterContainer, { borderTopColor: theme.border, borderBottomColor: theme.border }]}>
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            chatFilter === 'all' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-          ]}
-          onPress={() => switchToFilter('all')}
-        >
-          <Text style={[
-            styles.filterText,
-            { color: chatFilter === 'all' ? theme.primary : theme.textSecondary }
-          ]}>
-            Все
-          </Text>
-        </TouchableOpacity>
+            <View
+              style={[styles.filterContainer, { borderTopColor: theme.border, borderBottomColor: theme.border }]}
+              onLayout={(e) => {
+                const { width } = e.nativeEvent.layout;
+                setTabContainerWidth(width);
+              }}
+            >
+              <TouchableOpacity
+                style={styles.filterTab}
+                onPress={() => switchToFilter('all')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: chatFilter === 'all' ? theme.primary : theme.textSecondary }
+                  ]}
+                >
+                  Все
+                </Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            chatFilter === 'private' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-          ]}
-          onPress={() => switchToFilter('private')}
-        >
-          <Text style={[
-            styles.filterText,
-            { color: chatFilter === 'private' ? theme.primary : theme.textSecondary }
-          ]}>
-            Чаты
-          </Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.filterTab}
+                onPress={() => switchToFilter('private')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: chatFilter === 'private' ? theme.primary : theme.textSecondary }
+                  ]}
+                >
+                  Чаты
+                </Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            chatFilter === 'group' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-          ]}
-          onPress={() => switchToFilter('group')}
-        >
-          <Text style={[
-            styles.filterText,
-            { color: chatFilter === 'group' ? theme.primary : theme.textSecondary }
-          ]}>
-            Группы
-          </Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.filterTab}
+                onPress={() => switchToFilter('group')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: chatFilter === 'group' ? theme.primary : theme.textSecondary }
+                  ]}
+                >
+                  Группы
+                </Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            chatFilter === 'favorite' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-          ]}
-          onPress={() => switchToFilter('favorite')}
-        >
-          <Text style={[
-            styles.filterText,
-            { color: chatFilter === 'favorite' ? theme.primary : theme.textSecondary }
-          ]}>
-            Избранное
-          </Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.filterTab}
+                onPress={() => switchToFilter('favorite')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: chatFilter === 'favorite' ? theme.primary : theme.textSecondary }
+                  ]}
+                >
+                  Избранное
+                </Text>
+              </TouchableOpacity>
+
+              {/* Анимированный индикатор */}
+              <Animated.View
+                style={[
+                  styles.tabIndicator,
+                  { backgroundColor: theme.primary },
+                  tabIndicatorStyle
+                ]}
+              />
             </View>
           </>
         }
@@ -830,15 +875,25 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     borderTopWidth: 1,
     borderBottomWidth: 0,
+    position: 'relative',
   },
   filterTab: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   filterText: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    height: 2,
+    // Width is now dynamic, set by animated style
   },
   actionBar: {
     flexDirection: 'row',

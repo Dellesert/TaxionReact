@@ -29,6 +29,10 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
+  middle_name?: string;
+  birth_date?: string;
   role: UserRole;
   status: UserStatus;
   avatar?: string;
@@ -47,16 +51,20 @@ export interface User {
 // Profile Update Types
 export interface UpdateProfileDto {
   name?: string;
+  first_name?: string;
+  last_name?: string;
+  middle_name?: string;
+  birth_date?: string;
   position?: string;
   phone?: string;
   bio?: string;
   avatar?: string;
+  department_id?: number;
 }
 
 export interface UpdatePasswordDto {
   current_password: string;
   new_password: string;
-  confirm_password: string;
 }
 
 export interface UpdateStatusDto {

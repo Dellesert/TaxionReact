@@ -32,6 +32,7 @@ import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import { useActionModal } from '@contexts/ActionModalContext';
 import { useNotification } from '@contexts/NotificationContext';
+import { ChecklistSkeleton } from './ChecklistSkeleton';
 
 interface TaskChecklistsViewProps {
   taskId: number;
@@ -556,11 +557,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
+    return <ChecklistSkeleton />;
   }
 
   // Don't render anything if there are no checklists
@@ -605,12 +602,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: 0,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
   },
   emptyContainer: {
     alignItems: 'center',

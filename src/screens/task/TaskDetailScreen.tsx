@@ -22,6 +22,7 @@ import { Loading } from '@components/common/Loading';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
 import { ScreenHeader } from '@components/common/ScreenHeader';
+import { TaskDetailSkeleton } from '@components/task/TaskDetailSkeleton';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import { useTaskPermissions } from '@hooks/useTaskPermissions';
@@ -361,6 +362,18 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
+  // Silent reload of activities without showing loading indicator
+  const loadActivitiesSilently = async () => {
+    try {
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTaskActivities(taskIdNum, 50, 0);
+      setActivities(response.activities || []);
+    } catch (error) {
+      console.error('Failed to silently reload activities:', error);
+      // Don't show error alert for silent reloads
+    }
+  };
+
   const loadMoreComments = async () => {
     if (isLoadingMoreComments || !hasMoreComments) return;
 
@@ -399,6 +412,7 @@ const TaskDetailScreen: React.FC = () => {
       const taskIdNum = Number(taskId);
       await taskApi.updateTask(taskIdNum, { status: newStatus });
       setTask({ ...task, status: newStatus });
+      loadActivitiesSilently(); // Reload activities to show the status change
     } catch (error) {
       showError('Не удалось обновить статус');
     }
@@ -413,7 +427,8 @@ const TaskDetailScreen: React.FC = () => {
           const taskIdNum = Number(taskId);
           await taskApi.emergencyCompleteTask(taskIdNum);
           showSuccess('Задача завершена в аварийном режиме');
-          loadTask(); // Reload task to update status
+          loadTaskSilently(); // Reload task to update status
+          loadActivitiesSilently(); // Reload activities to show the emergency completion
         } catch (error: any) {
           showError(`Не удалось завершить задачу: ${error.message || error}`);
         }
@@ -459,6 +474,7 @@ const TaskDetailScreen: React.FC = () => {
       await taskApi.addTaskComment(taskIdNum, { content: newComment });
       setNewComment('');
       await loadComments();
+      await loadActivitiesSilently(); // Reload activities to show the comment
     } catch (error) {
       showError('Не удалось отправить комментарий');
     } finally {
@@ -479,6 +495,7 @@ const TaskDetailScreen: React.FC = () => {
       setEditingCommentId(null);
       setEditingCommentText('');
       await loadComments();
+      await loadActivitiesSilently(); // Reload activities to show the comment update
     } catch (error) {
       showError('Не удалось обновить комментарий');
     }
@@ -497,6 +514,7 @@ const TaskDetailScreen: React.FC = () => {
         try {
           await taskApi.deleteComment(commentId);
           await loadComments();
+          await loadActivitiesSilently(); // Reload activities to show the comment deletion
           showSuccess('Комментарий удалён');
         } catch (error) {
           showError('Не удалось удалить комментарий');
@@ -609,7 +627,8 @@ const TaskDetailScreen: React.FC = () => {
 
       showSuccess('Файл загружен');
       await loadAttachments();
-      await loadTask();
+      await loadTaskSilently();
+      await loadActivitiesSilently(); // Reload activities to show the file attachment
     } catch (error: any) {
       console.error('❌ Error uploading file:', error);
       console.error('Error details:', error.response?.data || error.message);
@@ -726,7 +745,8 @@ const TaskDetailScreen: React.FC = () => {
       console.log('✅ Attachment deleted successfully');
       showSuccess('Файл удалён');
       await loadAttachments();
-      await loadTask();
+      await loadTaskSilently();
+      await loadActivitiesSilently(); // Reload activities to show the file deletion
     } catch (error: any) {
       console.error('❌ Error deleting attachment:', error);
       showError(error.message || 'Не удалось удалить файл');
@@ -734,7 +754,7 @@ const TaskDetailScreen: React.FC = () => {
   };
 
   if (isLoading) {
-    return <Loading text="Загрузка задачи..." fullScreen />;
+    return <TaskDetailSkeleton />;
   }
 
   // Show access denied screen if 403 error
@@ -1652,7 +1672,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> создал задачу
+              <Bold>{userName}</Bold> создал(а) задачу
             </Text>
             <SubtaskBadge />
           </>
@@ -1663,35 +1683,115 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> изменил статус: <Bold>{oldStatus}</Bold> → <Bold>{newStatus}</Bold>
+              <Bold>{userName}</Bold> изменил(а) статус: <Bold>{oldStatus}</Bold> → <Bold>{newStatus}</Bold>
             </Text>
             <SubtaskBadge />
           </>
         );
       }
-      case 'task_assigned':
+      case 'task_assigned': {
+        let assigneeInfo: React.JSX.Element | null = null;
+
+        // Try to get assignees from activity.assignees first
+        if (activity.assignees && activity.assignees.length > 0) {
+          const hasCurrentUser = activity.assignees.some(a => user && a.id === user.id);
+          const otherAssignees = activity.assignees
+            .filter(a => !(user && a.id === user.id))
+            .map(a => a.name);
+
+          let assigneeText = '';
+          if (hasCurrentUser && otherAssignees.length > 0) {
+            assigneeText = `вас и ${otherAssignees.join(', ')}`;
+          } else if (hasCurrentUser) {
+            assigneeText = 'вас';
+          } else {
+            assigneeText = otherAssignees.join(', ');
+          }
+
+          assigneeInfo = <Text> на <Bold>{assigneeText}</Bold></Text>;
+        } else if (activity.new_value) {
+          // Try to extract user ID from "User 29" format
+          const userIdMatch = activity.new_value.match(/User (\d+)/);
+          if (userIdMatch && task?.assignees) {
+            const userId = parseInt(userIdMatch[1], 10);
+            const assignee = task.assignees.find(a => a.id === userId);
+            if (assignee) {
+              const isCurrentUser = user && assignee.id === user.id;
+              const assigneeText = isCurrentUser ? 'вас' : assignee.name;
+              assigneeInfo = <Text> на <Bold>{assigneeText}</Bold></Text>;
+            } else {
+              // User not found in task.assignees, show as is
+              assigneeInfo = <Text> на <Bold>{activity.new_value}</Bold></Text>;
+            }
+          } else {
+            // No match or no assignees, show as is
+            assigneeInfo = <Text> на <Bold>{activity.new_value}</Bold></Text>;
+          }
+        }
+
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> назначил задачу
+              <Bold>{userName}</Bold> назначил(а) задачу{assigneeInfo}
             </Text>
             <SubtaskBadge />
           </>
         );
-      case 'task_delegated':
+      }
+      case 'task_delegated': {
+        let assigneeInfo: React.JSX.Element | null = null;
+
+        // Try to get assignees from activity.assignees first
+        if (activity.assignees && activity.assignees.length > 0) {
+          const hasCurrentUser = activity.assignees.some(a => user && a.id === user.id);
+          const otherAssignees = activity.assignees
+            .filter(a => !(user && a.id === user.id))
+            .map(a => a.name);
+
+          let assigneeText = '';
+          if (hasCurrentUser && otherAssignees.length > 0) {
+            assigneeText = `вас и ${otherAssignees.join(', ')}`;
+          } else if (hasCurrentUser) {
+            assigneeText = 'вас';
+          } else {
+            assigneeText = otherAssignees.join(', ');
+          }
+
+          assigneeInfo = <Text> на <Bold>{assigneeText}</Bold></Text>;
+        } else if (activity.new_value) {
+          // Try to extract user ID from "User 29" format
+          const userIdMatch = activity.new_value.match(/User (\d+)/);
+          if (userIdMatch && task?.assignees) {
+            const userId = parseInt(userIdMatch[1], 10);
+            const assignee = task.assignees.find(a => a.id === userId);
+            if (assignee) {
+              const isCurrentUser = user && assignee.id === user.id;
+              const assigneeText = isCurrentUser ? 'вас' : assignee.name;
+              assigneeInfo = <Text> на <Bold>{assigneeText}</Bold></Text>;
+            } else {
+              // User not found in task.assignees, show as is
+              assigneeInfo = <Text> на <Bold>{activity.new_value}</Bold></Text>;
+            }
+          } else {
+            // No match or no assignees, show as is
+            assigneeInfo = <Text> на <Bold>{activity.new_value}</Bold></Text>;
+          }
+        }
+
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> переназначил задачу
+              <Bold>{userName}</Bold> переназначил(а) задачу{assigneeInfo}
             </Text>
             <SubtaskBadge />
           </>
         );
+      }
       case 'task_viewed':
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> ознакомился с задачей
+              <Bold>{userName}</Bold> ознакомился(лась) с задачей
             </Text>
             <SubtaskBadge />
           </>
@@ -1700,7 +1800,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> добавил комментарий
+              <Bold>{userName}</Bold> добавил(а) комментарий
             </Text>
             <SubtaskBadge />
           </>
@@ -1709,7 +1809,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> добавил файл: <Bold>{activity.new_value}</Bold>
+              <Bold>{userName}</Bold> добавил(а) файл: <Bold>{activity.new_value}</Bold>
             </Text>
             <SubtaskBadge />
           </>
@@ -1718,7 +1818,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> удалил файл: <Bold>{activity.old_value}</Bold>
+              <Bold>{userName}</Bold> удалил(а) файл: <Bold>{activity.old_value}</Bold>
             </Text>
             <SubtaskBadge />
           </>
@@ -1727,7 +1827,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> добавил чек-лист
+              <Bold>{userName}</Bold> добавил(а) чек-лист
             </Text>
             <SubtaskBadge />
           </>
@@ -1736,7 +1836,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> отметил пункт чек-листа
+              <Bold>{userName}</Bold> отметил(а) пункт чек-листа
             </Text>
             <SubtaskBadge />
           </>
@@ -1745,7 +1845,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> снял отметку с пункта чек-листа
+              <Bold>{userName}</Bold> снял(а) отметку с пункта чек-листа
             </Text>
             <SubtaskBadge />
           </>
@@ -1772,7 +1872,7 @@ const TaskDetailScreen: React.FC = () => {
         }
         return (
           <Text style={styles.activityText}>
-            <Bold>{userName}</Bold> создал подзадачу: <Bold>{activity.new_value}</Bold>{assigneeInfo}
+            <Bold>{userName}</Bold> создал(а) подзадачу: <Bold>{activity.new_value}</Bold>{assigneeInfo}
           </Text>
         );
       }
@@ -1781,7 +1881,7 @@ const TaskDetailScreen: React.FC = () => {
         const newStatus = getStatusInRussian(activity.new_value || '');
         return (
           <Text style={styles.activityText}>
-            <Bold>{userName}</Bold> изменил статус подзадачи: <Bold>{oldStatus}</Bold> → <Bold>{newStatus}</Bold>
+            <Bold>{userName}</Bold> изменил(а) статус подзадачи: <Bold>{oldStatus}</Bold> → <Bold>{newStatus}</Bold>
           </Text>
         );
       }
@@ -1789,7 +1889,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> изменил название
+              <Bold>{userName}</Bold> изменил(а) название
               {activity.new_value && (
                 <>
                   {activity.old_value && (
@@ -1806,7 +1906,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> изменил описание
+              <Bold>{userName}</Bold> изменил(а) описание
             </Text>
             <SubtaskBadge />
           </>
@@ -1815,7 +1915,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> изменил приоритет
+              <Bold>{userName}</Bold> изменил(а) приоритет
               {activity.new_value && (
                 <>
                   {activity.old_value && (
@@ -1832,7 +1932,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> изменил дедлайн
+              <Bold>{userName}</Bold> изменил(а) дедлайн
               {activity.new_value && (
                 <>
                   {activity.old_value && (
@@ -1849,7 +1949,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> обновил прогресс
+              <Bold>{userName}</Bold> обновил(а) прогресс
               {activity.new_value && <Text>: <Bold>{activity.new_value}%</Bold></Text>}
             </Text>
             <SubtaskBadge />
@@ -1859,7 +1959,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> аварийно завершил задачу
+              <Bold>{userName}</Bold> аварийно завершил(а) задачу
             </Text>
             <SubtaskBadge />
           </>
@@ -1870,7 +1970,7 @@ const TaskDetailScreen: React.FC = () => {
           return (
             <>
               <Text style={styles.activityText}>
-                <Bold>{userName}</Bold> обновил {field}
+                <Bold>{userName}</Bold> обновил(а) {field}
               </Text>
               <SubtaskBadge />
             </>
@@ -1879,7 +1979,7 @@ const TaskDetailScreen: React.FC = () => {
         return (
           <>
             <Text style={styles.activityText}>
-              <Bold>{userName}</Bold> выполнил действие: {activity.action_type}
+              <Bold>{userName}</Bold> выполнил(а) действие: {activity.action_type}
             </Text>
             <SubtaskBadge />
           </>
@@ -2229,7 +2329,8 @@ const TaskDetailScreen: React.FC = () => {
                       priority={task.priority}
                       dueDate={task.due_date}
                       onChecklistChanged={() => {
-                        loadTask(); // Reload task to update progress
+                        loadTaskSilently(); // Reload task to update progress
+                        loadActivitiesSilently(); // Reload activities to show the checklist changes
                       }}
                       onAssigneePress={handleUserPress}
                       canEdit={permissions.can_edit && task.status !== 'done'}
@@ -2267,7 +2368,8 @@ const TaskDetailScreen: React.FC = () => {
                         navigation.push('TaskDetail', { taskId: subtask.id.toString() });
                       }}
                       onSubtaskCreated={() => {
-                        loadTask(); // Reload task to update progress
+                        loadTaskSilently(); // Reload task to update progress
+                        loadActivitiesSilently(); // Reload activities to show the subtask creation
                       }}
                       // Show create button only for users with permission
                       onCreateSubtaskPress={
@@ -2711,7 +2813,8 @@ const TaskDetailScreen: React.FC = () => {
             task={task}
             onClose={() => setShowEditModal(false)}
             onTaskUpdated={(updatedTask) => {
-              loadTask(); // Reload task to get updated checklists
+              loadTaskSilently(); // Reload task to get updated checklists
+              loadActivitiesSilently(); // Reload activities to show the task update
               setShowEditModal(false);
             }}
           />
@@ -2725,7 +2828,8 @@ const TaskDetailScreen: React.FC = () => {
             onClose={() => setShowSubtaskModal(false)}
             onSubtaskCreated={() => {
               setShowSubtaskModal(false);
-              loadTask(); // Reload task to update progress
+              loadTaskSilently(); // Reload task to update progress
+              loadActivitiesSilently(); // Reload activities to show the subtask creation
             }}
           />
         )}
@@ -2739,7 +2843,8 @@ const TaskDetailScreen: React.FC = () => {
             onDelegated={() => {
               console.log('✅ onDelegated called, reloading task...');
               setShowDelegateModal(false);
-              loadTask(); // Reload task to update delegation chain
+              loadTaskSilently(); // Reload task to update delegation chain
+              loadActivitiesSilently(); // Reload activities to show the delegation
               showSuccess('Задача успешно делегирована');
             }}
           />

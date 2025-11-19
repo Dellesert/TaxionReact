@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Event, EventType, CalendarView } from '../../types/calendar.types';
 import { EventItem } from '@components/calendar/EventItem';
+import { EventListSkeleton } from '@components/calendar/EventListSkeleton';
 import CreateEventModal from '@components/calendar/CreateEventModal';
 import { EventDetailModal } from '@components/calendar/EventDetailModal';
 import { ScreenHeader } from '@components/common/ScreenHeader';
@@ -292,10 +293,8 @@ const CalendarScreen: React.FC = () => {
 
         {/* Events List or Month Calendar */}
         {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      ) : selectedView === 'month' ? (
+          <EventListSkeleton />
+        ) : selectedView === 'month' ? (
         <MonthCalendarView
           selectedDate={selectedDate}
           events={events}
@@ -434,11 +433,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     textTransform: 'capitalize',
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   list: {
     flex: 1,

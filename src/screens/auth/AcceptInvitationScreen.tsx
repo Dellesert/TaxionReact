@@ -16,11 +16,13 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import * as invitationApi from '@api/invitation.api';
 import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@hooks/useTheme';
 
 type AcceptInvitationScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'AcceptInvitation'>;
 type AcceptInvitationScreenRouteProp = RouteProp<AuthStackParamList, 'AcceptInvitation'>;
@@ -29,6 +31,7 @@ const AcceptInvitationScreen: React.FC = () => {
   const navigation = useNavigation<AcceptInvitationScreenNavigationProp>();
   const route = useRoute<AcceptInvitationScreenRouteProp>();
   const { showError } = useNotification();
+  const { theme } = useTheme();
 
   // Получаем токен из параметров (если пришли по deep link)
   const initialToken = route.params?.token || '';
@@ -39,6 +42,8 @@ const AcceptInvitationScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [invitationData, setInvitationData] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Анимация
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -154,6 +159,167 @@ const AcceptInvitationScreen: React.FC = () => {
     }
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 20,
+    },
+    content: {
+      width: '100%',
+      maxWidth: 400,
+      alignSelf: 'center',
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    headerIcon: {
+      fontSize: 64,
+      marginBottom: 16,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+    form: {
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      padding: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    inputGroup: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: theme.backgroundTertiary,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: theme.text,
+    },
+    passwordContainer: {
+      position: 'relative',
+      width: '100%',
+    },
+    passwordInput: {
+      paddingRight: 50,
+    },
+    eyeIcon: {
+      position: 'absolute',
+      right: 12,
+      top: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+    },
+    hint: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginTop: 4,
+    },
+    infoBox: {
+      backgroundColor: theme.backgroundSecondary,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.primary,
+      borderRadius: 8,
+      padding: 16,
+      marginBottom: 24,
+    },
+    infoTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginBottom: 12,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    infoLabel: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      fontWeight: '600',
+    },
+    infoValue: {
+      fontSize: 14,
+      color: theme.text,
+      flex: 1,
+      textAlign: 'right',
+    },
+    button: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    buttonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    linkButton: {
+      marginTop: 16,
+      alignItems: 'center',
+    },
+    linkText: {
+      color: theme.primary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    successBox: {
+      alignItems: 'center',
+      padding: 24,
+      marginBottom: 24,
+    },
+    successIcon: {
+      fontSize: 80,
+      marginBottom: 24,
+    },
+    successTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginBottom: 16,
+    },
+    successMessage: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      lineHeight: 24,
+    },
+  });
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -186,7 +352,7 @@ const AcceptInvitationScreen: React.FC = () => {
                 <Text style={styles.successMessage}>
                   Ваш аккаунт активирован. Сейчас вы будете перенаправлены на страницу входа.
                 </Text>
-                <ActivityIndicator color="#E94444" style={{ marginTop: 20 }} />
+                <ActivityIndicator color={theme.primary} style={{ marginTop: 20 }} />
               </View>
 
               <TouchableOpacity
@@ -206,6 +372,7 @@ const AcceptInvitationScreen: React.FC = () => {
                   value={invitationCode}
                   onChangeText={setInvitationCode}
                   placeholder="Введите код из письма"
+                  placeholderTextColor={theme.inputPlaceholder}
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!isLoading}
@@ -269,28 +436,56 @@ const AcceptInvitationScreen: React.FC = () => {
               {/* Поля для создания пароля */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Создайте пароль</Text>
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Минимум 8 символов"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!isLoading}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Минимум 8 символов"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={24}
+                      color={theme.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Подтвердите пароль</Text>
-                <TextInput
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Повторите пароль"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!isLoading}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Повторите пароль"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={24}
+                      color={theme.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <TouchableOpacity
@@ -323,150 +518,5 @@ const AcceptInvitationScreen: React.FC = () => {
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  content: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  headerIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  form: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#f9f9f9',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#333',
-  },
-  hint: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
-  },
-  infoBox: {
-    backgroundColor: '#f8f9fa',
-    borderLeftWidth: 4,
-    borderLeftColor: '#E94444',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 24,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-    textAlign: 'right',
-  },
-  button: {
-    backgroundColor: '#E94444',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#E94444',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  successBox: {
-    alignItems: 'center',
-    padding: 24,
-    marginBottom: 24,
-  },
-  successIcon: {
-    fontSize: 80,
-    marginBottom: 24,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-  },
-  successMessage: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-});
 
 export default AcceptInvitationScreen;

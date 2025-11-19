@@ -25,6 +25,7 @@ import SharePollModal from '@components/poll/SharePollModal';
 import EditPollModal from '@components/poll/EditPollModal';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
+import { PollDetailSkeleton } from '@components/poll/PollDetailSkeleton';
 import { getOrCreateDirectChat } from '@api/chat.api';
 
 type PollStackParamList = {
@@ -683,13 +684,7 @@ const PollDetailScreen: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      </SafeAreaView>
-    );
+    return <PollDetailSkeleton isFromChat={isFromChat} />;
   }
 
   if (error) {

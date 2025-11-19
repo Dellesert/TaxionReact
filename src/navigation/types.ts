@@ -10,11 +10,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 export type ChatStackParamList = {
   ChatList: undefined;
   CreateChat: {
-    initialChatType?: 'private' | 'group';
+    initialChatType?: 'private' | 'group' | 'channel';
   };
   Chat: {
     chatId: number;
     chatName?: string;
+    unreadCount?: number; // Количество непрочитанных сообщений
   };
   ChatSettings: {
     chatId: number;
@@ -60,13 +61,23 @@ export type AdminStackParamList = {
   };
 };
 
+// Profile Stack
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  EditProfile: undefined;
+  ChangePassword: undefined;
+  ActiveSessions: undefined;
+  PasskeyManagement: undefined;
+  About: undefined;
+};
+
 // Main Tab Navigator
 export type MainTabParamList = {
   Chats: NavigatorScreenParams<ChatStackParamList>;
   Tasks: NavigatorScreenParams<TaskStackParamList>;
   Calendar: undefined;
   Polls: NavigatorScreenParams<PollStackParamList>;
-  Profile: undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList>;
   Admin: NavigatorScreenParams<AdminStackParamList>;
 };
 

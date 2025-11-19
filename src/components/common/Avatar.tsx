@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ViewStyle, Platform } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, Platform, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useAuthStore } from '@store/authStore';
 import { API_BASE_URL } from '@constants/api.constants';
@@ -16,6 +16,8 @@ interface AvatarProps {
   status?: 'online' | 'offline' | 'busy' | 'away';
   showStatus?: boolean;
   style?: ViewStyle;
+  onPress?: () => void;
+  userId?: number;
 }
 
 const Avatar: React.FC<AvatarProps> = ({
@@ -25,6 +27,8 @@ const Avatar: React.FC<AvatarProps> = ({
   status,
   showStatus = false,
   style,
+  onPress,
+  userId,
 }) => {
   const [imageError, setImageError] = useState(false);
   const sessionId = useAuthStore((state) => state.sessionId);
@@ -94,8 +98,8 @@ const Avatar: React.FC<AvatarProps> = ({
   // Check if we should show the image or fallback to initials
   const shouldShowImage = imageSource && !imageError;
 
-  return (
-    <View style={[styles.container, style]}>
+  const avatarContent = (
+    <>
       {shouldShowImage ? (
         <Image
           source={imageSource}
@@ -125,6 +129,24 @@ const Avatar: React.FC<AvatarProps> = ({
           ]}
         />
       )}
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        style={[styles.container, style]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {avatarContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={[styles.container, style]}>
+      {avatarContent}
     </View>
   );
 };

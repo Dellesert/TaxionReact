@@ -31,13 +31,6 @@ const ProfileScreen: React.FC = () => {
   const { showConfirm, showOptions } = useActionModal();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [notifications, setNotifications] = useState({
-    push: true,
-    email: true,
-    messages: true,
-    mentions: true,
-    tasks: true,
-  });
 
   // Refresh user data on mount to ensure we have latest profile
   React.useEffect(() => {
@@ -245,10 +238,6 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
-  const handleToggleNotification = (key: keyof typeof notifications, value: boolean) => {
-    setNotifications((prev) => ({ ...prev, [key]: value }));
-  };
-
   const getThemeLabel = (themeMode: typeof mode): string => {
     switch (themeMode) {
       case 'light':
@@ -324,11 +313,20 @@ const ProfileScreen: React.FC = () => {
       shadowRadius: 16,
       elevation: 6,
     },
+    userNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+      gap: 6,
+    },
     userName: {
       fontSize: 24,
       fontWeight: 'bold',
       color: '#FFFFFF',
-      marginTop: 16,
+    },
+    roleIcon: {
+      marginTop: 2,
     },
     userEmail: {
       fontSize: 16,
@@ -466,7 +464,25 @@ const ProfileScreen: React.FC = () => {
         {/* User Info */}
         <View style={dynamicStyles.userInfoSection}>
           <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar} name={user.name || user.email} size={100} />
-          <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>
+          <View style={dynamicStyles.userNameRow}>
+            <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>
+            {user.role === 'department_head' && (
+              <Ionicons
+                name="shield-checkmark"
+                size={20}
+                color="#F59E0B"
+                style={dynamicStyles.roleIcon}
+              />
+            )}
+            {(user.role === 'admin' || user.role === 'super_admin') && (
+              <Ionicons
+                name="shield"
+                size={20}
+                color="#8B5CF6"
+                style={dynamicStyles.roleIcon}
+              />
+            )}
+          </View>
           <Text style={dynamicStyles.userEmail}>{user.email}</Text>
           {user.department && (
             <View style={dynamicStyles.departmentBadge}>
@@ -484,11 +500,20 @@ const ProfileScreen: React.FC = () => {
             </View>
 
             <TouchableOpacity
+              style={dynamicStyles.menuItem}
+              onPress={() => navigation.navigate('EditProfile')}
+            >
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#3B82F6'}]} name="create-outline" size={20} color="#FFFFFF" />
+              <Text style={[dynamicStyles.menuItemText]}>Редактировать профиль</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}
               onPress={handleChangeAvatar}
               disabled={isUploadingAvatar}
             >
-              <Ionicons name="camera-outline" size={24} color={theme.primary} />
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#8B5CF6'}]} name="camera-outline" size={20} color="#FFFFFF" />
               <Text style={dynamicStyles.menuItemText}>Изменить фотографию</Text>
               {isUploadingAvatar ? (
                 <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 8 }} />
@@ -503,6 +528,14 @@ const ProfileScreen: React.FC = () => {
             <View style={dynamicStyles.sectionHeader}>
               <Text style={dynamicStyles.sectionTitle}>БЕЗОПАСНОСТЬ</Text>
             </View>
+            <TouchableOpacity
+              style={dynamicStyles.menuItem}
+              onPress={() => navigation.navigate('ChangePassword')}
+            >
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#F59E0B'}]} name="lock-closed-outline" size={20} color="#FFFFFF" />
+              <Text style={[dynamicStyles.menuItemText]}>Изменить пароль</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
             <TouchableOpacity
               style={dynamicStyles.menuItem}
               onPress={() => navigation.navigate('ActiveSessions')}
@@ -521,31 +554,20 @@ const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Notifications */}
-          <View style={dynamicStyles.section}>
-            <View style={dynamicStyles.sectionHeader}>
-              <Text style={dynamicStyles.sectionTitle}>УВЕДОМЛЕНИЯ</Text>
-            </View>
-            <View style={[dynamicStyles.menuItem, dynamicStyles.menuItemLast]}>
-              <View style={dynamicStyles.menuItemLeft}>
-                <Ionicons style={[styles.menuIcon, {backgroundColor: '#E94444'}]} name="notifications-outline" size={20} color="#FFFFFF" />
-                <Text style={dynamicStyles.menuItemText}>Push-уведомления</Text>
-              </View>
-              <Switch
-                value={notifications.push}
-                onValueChange={(value) => handleToggleNotification('push', value)}
-                trackColor={{ false: '#D1D5DB', true: theme.primaryLight }}
-                thumbColor={notifications.push ? theme.primary : '#F3F4F6'}
-              />
-            </View>
-          </View>
-
           {/* Admin Section - Only for admin and super_admin */}
           {(user.role === 'admin' || user.role === 'super_admin') && (
             <View style={dynamicStyles.section}>
               <View style={dynamicStyles.sectionHeader}>
                 <Text style={dynamicStyles.sectionTitle}>АДМИНИСТРИРОВАНИЕ</Text>
               </View>
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => navigation.navigate('Analytics')}
+              >
+                <Ionicons style={[styles.menuIcon, {backgroundColor: '#3B82F6'}]} name="bar-chart-outline" size={20} color="#FFFFFF" />
+                <Text style={dynamicStyles.menuItemText}>Аналитика</Text>
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={dynamicStyles.menuItem}
                 onPress={() => navigation.navigate('Admin', { screen: 'Departments' })}
@@ -570,6 +592,15 @@ const ProfileScreen: React.FC = () => {
             <View style={dynamicStyles.sectionHeader}>
               <Text style={dynamicStyles.sectionTitle}>НАСТРОЙКИ</Text>
             </View>
+            <TouchableOpacity
+              style={dynamicStyles.menuItem}
+              onPress={() => navigation.navigate('NotificationSettings')}
+            >
+              <Ionicons style={[styles.menuIcon, {backgroundColor: '#E94444'}]} name="notifications-outline" size={20} color="#FFFFFF" />
+              <Text style={dynamicStyles.menuItemText}>Уведомления</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+
             <TouchableOpacity style={dynamicStyles.menuItem} onPress={handleThemePress}>
               <Ionicons style={[styles.menuIcon, {backgroundColor: '#44aae9ff'}]} name="color-palette-outline" size={20} color="#FFFFFF" />
               <Text style={dynamicStyles.menuItemText}>Тема оформления</Text>

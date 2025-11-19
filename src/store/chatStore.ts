@@ -11,8 +11,21 @@ import { isMockMode, mockGetChats, mockGetMessages } from '@utils/mockData';
 import { useAuthStore } from '@store/authStore';
 import { websocketService } from '@services/websocket.service';
 
+// Tab data structure for caching
+interface TabData {
+  pinnedChats: Chat[];
+  regularChats: Chat[];
+  offset: number;
+  hasMore: boolean;
+  loaded: boolean;
+}
+
+type TabName = 'all' | 'private' | 'group' | 'favorite';
+
 interface ChatState {
-  chats: Chat[];
+  chats: Chat[]; // Combined list for current tab (for compatibility)
+  tabs: Record<TabName, TabData>;
+  currentTab: TabName;
   totalChats: number;
   hasMoreChats: boolean;
   activeChat: Chat | null;
@@ -21,11 +34,14 @@ interface ChatState {
   isLoadingMore: boolean;
   error: string | null;
   typingUsers: Record<number, TypingIndicator[]>;
-  currentFilter: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean } | null;
   totalUnreadCount: number;
-  loadChats: (append?: boolean, filters?: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean }) => Promise<void>;
+  loadTabData: (tabName: TabName) => Promise<void>;
   loadMoreChats: () => Promise<void>;
+  refreshCurrentTab: () => Promise<void>;
+  switchTab: (tabName: TabName) => void;
   loadUnreadCount: () => Promise<void>;
+  // Legacy support - keeping for backward compatibility but will use new tab logic
+  loadChats: (append?: boolean, filters?: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean }) => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
   updateChat: (chatId: number, data: { name?: string; avatar?: string; description?: string }) => Promise<void>;
   deleteChat: (chatId: number, clearHistory?: boolean) => Promise<void>;
@@ -53,9 +69,10 @@ interface ChatState {
   muteChat: (chatId: number) => Promise<void>;
   unmuteChat: (chatId: number) => Promise<void>;
   toggleFavorite: (chatId: number) => Promise<void>;
-  handleNewMessage: (message: Message) => void;
+  handleNewMessage: (message: Message) => Promise<void>;
   handleMessageUpdate: (message: Message) => void;
   handleMessageDelete: (messageId: number, chatId: number) => void;
+  handleChatDelete: (chatId: number) => void;
   handleTypingStart: (chatId: number, typing: TypingIndicator) => void;
   handleTypingStop: (chatId: number, userId: number) => void;
   handleUserJoin: (chatId: number, userId?: number) => void;
@@ -96,6 +113,13 @@ const enrichChatWithUsers = async (chat: Chat): Promise<Chat> => {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   chats: [],
+  tabs: {
+    all: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+    private: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+    group: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+    favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+  },
+  currentTab: 'all',
   totalChats: 0,
   hasMoreChats: false,
   activeChat: null,
@@ -104,8 +128,123 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoadingMore: false,
   error: null,
   typingUsers: {},
-  currentFilter: null,
   totalUnreadCount: 0,
+
+  // Load data for a specific tab
+  loadTabData: async (tabName: TabName) => {
+    const { tabs, isLoading } = get();
+
+    // Skip if already loaded or currently loading
+    if (tabs[tabName].loaded || isLoading) {
+      return;
+    }
+
+    set({ isLoading: true, error: null });
+
+    try {
+      // Determine filters based on tab
+      const typeMap: Record<TabName, 'private' | 'group' | undefined> = {
+        all: undefined,
+        private: 'private',
+        group: 'group',
+        favorite: undefined,
+      };
+
+      const type = typeMap[tabName];
+      const isFavorite = tabName === 'favorite';
+
+      // 1. Load all pinned chats for this tab
+      const pinnedResponse = await chatApi.getPinnedChats(type);
+      let pinnedChats = pinnedResponse.chats;
+
+      // Filter favorites if needed
+      if (isFavorite) {
+        pinnedChats = pinnedChats.filter(c => c.is_favorite);
+      }
+
+      // Enrich pinned chats with user data
+      pinnedChats = await Promise.all(pinnedChats.map(enrichChatWithUsers));
+
+      // 2. Load first page of regular chats
+      const limit = 15;
+      const filters: any = {};
+      if (type) filters.type = type;
+      if (isFavorite) filters.is_favorite = true;
+
+      const regularResponse = await chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined);
+
+      // Filter out pinned chats from regular chats
+      const pinnedIds = new Set(pinnedChats.map(c => c.id));
+      let regularChats = regularResponse.chats.filter(c => !pinnedIds.has(c.id));
+
+      // Enrich regular chats with user data
+      regularChats = await Promise.all(regularChats.map(enrichChatWithUsers));
+
+      // Update tab data
+      set(state => ({
+        tabs: {
+          ...state.tabs,
+          [tabName]: {
+            pinnedChats,
+            regularChats,
+            offset: limit,
+            hasMore: regularResponse.hasMore,
+            loaded: true,
+          }
+        },
+        currentTab: tabName,
+        chats: [...pinnedChats, ...regularChats],
+        hasMoreChats: regularResponse.hasMore,
+        totalChats: regularResponse.total,
+        isLoading: false,
+      }));
+
+      // No need to join chats - WebSocket delivers events via personal user channel
+    } catch (error: any) {
+      console.error(`❌ Failed to load tab "${tabName}":`, error);
+      set({ error: error.message || `Failed to load ${tabName} chats`, isLoading: false });
+    }
+  },
+
+  // Switch to a different tab
+  switchTab: (tabName: TabName) => {
+    const { tabs } = get();
+    const tabData = tabs[tabName];
+
+    // Update current chats from cached tab data
+    set({
+      currentTab: tabName,
+      chats: [...tabData.pinnedChats, ...tabData.regularChats],
+      hasMoreChats: tabData.hasMore,
+    });
+
+    // Load tab data if not loaded yet
+    if (!tabData.loaded) {
+      get().loadTabData(tabName);
+    }
+  },
+
+  // Refresh current tab (for pull-to-refresh)
+  refreshCurrentTab: async () => {
+    const { currentTab } = get();
+
+    // Reset tab data
+    set(state => ({
+      tabs: {
+        ...state.tabs,
+        [currentTab]: {
+          pinnedChats: [],
+          regularChats: [],
+          offset: 0,
+          hasMore: true,
+          loaded: false,
+        }
+      }
+    }));
+
+    // Reload tab data
+    await get().loadTabData(currentTab);
+  },
 
   loadChats: async (append = false, filters) => {
     try {
@@ -123,7 +262,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       let hasMore = false;
 
       if (isMockMode()) {
-        console.log('🔧 Using mock chats');
         chats = await mockGetChats();
         total = chats.length;
       } else {
@@ -152,10 +290,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // Если получили только дубликаты и еще есть данные, не делаем автозагрузку
         // Пользователь продолжит скроллить и onEndReached сработает снова
         // Это предотвратит бесконечный цикл
-        if (uniqueChats.length === 0 && stillHasMore && chats.length > 0) {
-          console.log('⚠️ All chats were duplicates, user needs to scroll more');
-          // Не делаем рекурсивный вызов - ждем следующего onEndReached
-        }
+        // Не делаем рекурсивный вызов - ждем следующего onEndReached
       } else {
         set({
           chats,
@@ -170,12 +305,68 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadMoreChats: async () => {
-    const { hasMoreChats, isLoadingMore } = useChatStore.getState();
-    if (!hasMoreChats || isLoadingMore) return;
+    const { currentTab, tabs, isLoadingMore } = get();
+    const tabData = tabs[currentTab];
+
+    if (!tabData.hasMore || isLoadingMore) {
+      return;
+    }
 
     set({ isLoadingMore: true });
-    await useChatStore.getState().loadChats(true);
-    set({ isLoadingMore: false });
+
+    try {
+      // Determine filters based on current tab
+      const typeMap: Record<TabName, 'private' | 'group' | undefined> = {
+        all: undefined,
+        private: 'private',
+        group: 'group',
+        favorite: undefined,
+      };
+
+      const type = typeMap[currentTab];
+      const isFavorite = currentTab === 'favorite';
+
+      const limit = 15;
+      const filters: any = {};
+      if (type) filters.type = type;
+      if (isFavorite) filters.is_favorite = true;
+
+      const response = await chatApi.getChats(
+        limit,
+        tabData.offset,
+        Object.keys(filters).length > 0 ? filters : undefined
+      );
+
+      // Filter out pinned chats and existing chats
+      const pinnedIds = new Set(tabData.pinnedChats.map(c => c.id));
+      const existingIds = new Set(tabData.regularChats.map(c => c.id));
+      let newChats = response.chats.filter(c => !pinnedIds.has(c.id) && !existingIds.has(c.id));
+
+      // Enrich with user data
+      newChats = await Promise.all(newChats.map(enrichChatWithUsers));
+
+      // Update tab data
+      set(state => {
+        const updatedRegularChats = [...state.tabs[currentTab].regularChats, ...newChats];
+        return {
+          tabs: {
+            ...state.tabs,
+            [currentTab]: {
+              ...state.tabs[currentTab],
+              regularChats: updatedRegularChats,
+              offset: state.tabs[currentTab].offset + limit,
+              hasMore: response.hasMore,
+            }
+          },
+          chats: [...state.tabs[currentTab].pinnedChats, ...updatedRegularChats],
+          hasMoreChats: response.hasMore,
+          isLoadingMore: false,
+        };
+      });
+    } catch (error: any) {
+      console.error(`❌ Failed to load more chats for "${currentTab}":`, error);
+      set({ error: error.message || 'Failed to load more chats', isLoadingMore: false });
+    }
   },
 
   loadUnreadCount: async () => {
@@ -243,7 +434,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ? { ...state.activeChat, ...updatedChat }
           : state.activeChat,
       }));
-      console.log(`✏️ Chat ${chatId} updated:`, data);
     } catch (error: any) {
       set({ error: error.message || 'Failed to update chat' });
       throw error;
@@ -252,22 +442,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   deleteChat: async (chatId: number, clearHistory?: boolean) => {
     try {
-      console.log(`🗑️ Deleting chat ${chatId} (clearHistory: ${clearHistory})...`);
       await chatApi.deleteChat(chatId, clearHistory);
-      console.log(`✅ Chat ${chatId} deleted on server`);
 
-      // Remove chat from list and clear messages
-      set((state) => ({
-        chats: state.chats.filter((chat) => chat.id !== chatId),
-        messages: Object.fromEntries(
-          Object.entries(state.messages).filter(([id]) => Number(id) !== chatId)
-        ),
-        activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
-      }));
-
-      console.log(`🗑️ Chat ${chatId} deleted successfully (clearHistory: ${clearHistory})`);
+      // Use handleChatDelete to properly remove from all tabs
+      get().handleChatDelete(chatId);
     } catch (error: any) {
-      console.error(`❌ Failed to delete chat ${chatId}:`, error);
+      console.error(`Failed to delete chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to delete chat' });
       throw error;
     }
@@ -279,32 +459,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!currentUser) throw new Error('User not authenticated');
 
       await chatApi.removeChatMember(chatId, currentUser.id);
-      set((state) => ({
-        chats: state.chats.filter((chat) => chat.id !== chatId),
-        messages: Object.fromEntries(
-          Object.entries(state.messages).filter(([id]) => Number(id) !== chatId)
-        ),
-        activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
-      }));
-      console.log(`👋 Left chat ${chatId} successfully`);
+
+      // Use handleChatDelete to properly remove from all tabs
+      get().handleChatDelete(chatId);
     } catch (error: any) {
+      console.error(`Failed to leave chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to leave chat' });
       throw error;
     }
   },
 
   removeChatMember: async (chatId: number, userId: number) => {
-    console.log(`🚫 removeChatMember called: chatId=${chatId}, userId=${userId}`);
     try {
-      console.log(`🌐 Calling API to remove user ${userId} from chat ${chatId}`);
       await chatApi.removeChatMember(chatId, userId);
-      console.log(`✅ API call successful, updating local state`);
 
       // Обновляем список участников в чате
       set((state) => ({
         chats: state.chats.map((chat) => {
           if (chat.id === chatId && chat.members) {
-            console.log(`📝 Updating members list for chat ${chatId}`);
             return {
               ...chat,
               members: chat.members.filter((member) => member.user_id !== userId),
@@ -313,7 +485,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           return chat;
         }),
       }));
-      console.log(`🚫 Removed user ${userId} from chat ${chatId}`);
     } catch (error: any) {
       console.error(`❌ Failed to remove member:`, error);
       set({ error: error.message || 'Failed to remove member' });
@@ -327,13 +498,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       let messages;
 
       if (isMockMode()) {
-        console.log('🔧 Using mock messages for chat:', chatId);
         messages = await mockGetMessages(String(chatId));
       } else {
         // Загружаем только последние 30 сообщений
         // Старые сообщения будут подгружаться при скролле вверх
         const limit = 30;
-        console.log(`📚 Loading last ${limit} messages`);
 
         const response = await chatApi.getMessages(chatId, { limit });
         messages = (response.messages || response.data || []).reverse();
@@ -353,19 +522,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadMoreMessages: async (chatId: number, beforeMessageId: number) => {
     try {
-      console.log(`📚 Loading more messages before ID ${beforeMessageId}`);
-      console.log(`🔍 Request params: chatId=${chatId}, before_message_id=${beforeMessageId}, limit=30`);
       const response = await chatApi.getMessages(chatId, {
         limit: 30,
         before_message_id: beforeMessageId,
       });
       const responseMessages = response.messages || response.data || [];
-
-      console.log(`📚 Received ${responseMessages.length} older messages`);
-      if (responseMessages.length > 0) {
-        const ids = responseMessages.map(m => m.id).sort((a, b) => a - b);
-        console.log(`📚 Received message IDs: first=${ids[0]}, last=${ids[ids.length - 1]}, all=[${ids.slice(0, 5).join(',')}...${ids.slice(-3).join(',')}]`);
-      }
 
       let addedCount = 0;
 
@@ -380,7 +541,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
             .filter(msg => !existingIds.has(msg.id));
 
           addedCount = newMessages.length;
-          console.log(`📚 Adding ${newMessages.length} new messages (filtered ${responseMessages.length - newMessages.length} duplicates)`);
 
           return {
             messages: {
@@ -392,7 +552,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       // Возвращаем количество НОВЫХ сообщений (не дубликатов) для проверки "больше нет"
-      console.log(`📚 Returning ${addedCount} new messages (from ${responseMessages.length} received)`);
       return addedCount;
     } catch (error: any) {
       set({ error: error.message || 'Failed to load more messages' });
@@ -435,7 +594,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
 
       // Handle new message locally
-      get().handleNewMessage(message);
+      await get().handleNewMessage(message);
 
     } catch (error: any) {
       set({ error: error.message || 'Failed to send message' });
@@ -504,9 +663,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearChatHistory: async (chatId: number) => {
     try {
-      console.log(`🧹 Clearing chat history for chat ${chatId}...`);
       await chatApi.clearChatHistory(chatId);
-      console.log(`✅ Chat history cleared on server for chat ${chatId}`);
 
       // Очищаем сообщения локально
       set((state) => ({
@@ -515,7 +672,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           [chatId]: [],
         },
       }));
-      console.log(`✅ Local messages cleared for chat ${chatId}`);
     } catch (error: any) {
       console.error(`❌ Failed to clear chat history for chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to clear chat history' });
@@ -562,7 +718,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ),
         },
       }));
-      console.log(`📌 Message ${messageId} pinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to pin message' });
       throw error;
@@ -581,7 +736,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ),
         },
       }));
-      console.log(`📌 Message ${messageId} unpinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to unpin message' });
       throw error;
@@ -635,17 +789,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   markChatAsRead: async (chatId: number) => {
     try {
+      const chat = get().chats.find((c) => c.id === chatId);
+      const unreadCount = chat?.unread_count || 0;
+
+      // Всегда отправляем на сервер
       await chatApi.markChatAsRead(chatId);
-      // Update unread count in state
+
+      // После успешного запроса обновляем локальный state
       set((state) => {
-        const chat = state.chats.find((c) => c.id === chatId);
-        const unreadCount = chat?.unread_count || 0;
+        // Helper function to update chat
+        const updateChatUnread = (c: Chat) =>
+          c.id === chatId ? { ...c, unread_count: 0 } : c;
+
+        // Обновляем chats и tabs
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(updateChatUnread),
+            regularChats: tab.regularChats.map(updateChatUnread),
+          };
+        });
+
+        const newTotalUnreadCount = Math.max(0, state.totalUnreadCount - unreadCount);
 
         return {
-          chats: state.chats.map((chat) =>
-            chat.id === chatId ? { ...chat, unread_count: 0 } : chat
-          ),
-          totalUnreadCount: Math.max(0, state.totalUnreadCount - unreadCount),
+          chats: state.chats.map(updateChatUnread),
+          tabs: updatedTabs,
+          totalUnreadCount: newTotalUnreadCount,
         };
       });
     } catch (error: any) {
@@ -661,7 +835,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           chat.id === chatId ? { ...chat, is_pinned: true } : chat
         ),
       }));
-      console.log(`📌 Chat ${chatId} pinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to pin chat' });
       throw error;
@@ -676,7 +849,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           chat.id === chatId ? { ...chat, is_pinned: false } : chat
         ),
       }));
-      console.log(`📌 Chat ${chatId} unpinned`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to unpin chat' });
       throw error;
@@ -724,23 +896,140 @@ export const useChatStore = create<ChatState>((set, get) => ({
           c.id === chatId ? { ...c, is_favorite: newFavoriteStatus } : c
         ),
       }));
-      console.log(`⭐ Chat ${chatId} favorite status: ${newFavoriteStatus}`);
     } catch (error: any) {
       set({ error: error.message || 'Failed to toggle favorite' });
       throw error;
     }
   },
 
-  handleNewMessage: (message: Message) => {
+  handleNewMessage: async (message: Message) => {
+    console.log(`📨 [ChatStore] handleNewMessage called for chat ${message.chat_id}, message ${message.id}`);
     const currentUser = useAuthStore.getState().user;
     const isOwnMessage = currentUser && message.sender_id === currentUser.id;
     const activeChat = get().activeChat;
     const isInActiveChat = activeChat && activeChat.id === message.chat_id;
+    console.log(`🔍 [ChatStore] isOwnMessage: ${isOwnMessage}, isInActiveChat: ${isInActiveChat}, currentUser: ${currentUser?.id}, sender: ${message.sender_id}`);
+
+    // Проверяем, существует ли чат в любом из загруженных табов
+    const state = get();
+    const currentChats = state.chats;
+    const tabs = state.tabs;
+
+    // Ищем чат во всех загруженных табах
+    let chatExistsInTabs = false;
+    Object.keys(tabs).forEach(tabKey => {
+      const tab = tabs[tabKey as TabName];
+      if (tab.loaded) {
+        const inPinned = tab.pinnedChats.some(c => c.id === message.chat_id);
+        const inRegular = tab.regularChats.some(c => c.id === message.chat_id);
+        if (inPinned || inRegular) {
+          chatExistsInTabs = true;
+        }
+      }
+    });
+
+    console.log(`🔍 [ChatStore] Chat ${message.chat_id} exists in current chats array: ${currentChats.some(c => c.id === message.chat_id)}, exists in tabs: ${chatExistsInTabs}`);
+
+    // Если чата нет ни в одном табе - загружаем его через API
+    if (!chatExistsInTabs) {
+      console.log(`📥 [ChatStore] Chat ${message.chat_id} not in any tabs, fetching from API...`);
+
+      try {
+        let fetchedChat = await chatApi.getChat(message.chat_id);
+
+        // Validate fetched chat
+        if (!fetchedChat || !fetchedChat.id) {
+          console.error(`Invalid chat data received for chat ${message.chat_id}:`, fetchedChat);
+          return;
+        }
+
+        // Enrich chat with user data for members
+        fetchedChat = await enrichChatWithUsers(fetchedChat);
+
+        // Добавляем загруженный чат в store
+        set((state) => {
+          const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+          const chatWithMessage = {
+            ...fetchedChat,
+            last_message: message,
+            unread_count: shouldIncrementUnread ? 1 : 0,
+          };
+
+          // Определяем в какой таб добавить чат
+          const updatedTabs = { ...state.tabs };
+          const chatType = fetchedChat.type || 'private'; // Default to private if type is missing
+          const isFavorite = fetchedChat.is_favorite || false;
+
+          // Добавляем в соответствующие табы
+          ['all', chatType === 'private' ? 'private' : chatType === 'group' ? 'group' : null, isFavorite ? 'favorite' : null]
+            .filter(Boolean)
+            .forEach(tabKey => {
+              const tab = updatedTabs[tabKey as TabName];
+              if (tab && tab.loaded) {
+                // Проверяем, не существует ли чат уже в regularChats
+                const chatExistsInTab = tab.regularChats.some(c => c.id === chatWithMessage.id);
+                if (!chatExistsInTab) {
+                  // Добавляем в начало regular chats только если его там еще нет
+                  updatedTabs[tabKey as TabName] = {
+                    ...tab,
+                    regularChats: [chatWithMessage, ...tab.regularChats],
+                  };
+                  console.log(`✅ [ChatStore] Added chat ${chatWithMessage.id} to tab "${tabKey}"`);
+                } else {
+                  console.log(`⏭️ [ChatStore] Chat ${chatWithMessage.id} already exists in tab "${tabKey}", skipping`);
+                }
+              }
+            });
+
+          // Формируем chats для текущего таба из обновленных табов
+          const currentTab = state.currentTab;
+          const currentTabData = updatedTabs[currentTab];
+          const updatedChats = currentTabData
+            ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
+            : state.chats;
+
+          // Добавляем сообщение в messages (с проверкой на дубликаты)
+          const existingMessages = state.messages[message.chat_id] || [];
+          const messageExists = existingMessages.some(msg => msg.id === message.id);
+
+          let updatedMessagesForChat = existingMessages;
+          if (!messageExists) {
+            const messageWithDelivery = !isOwnMessage && currentUser
+              ? { ...message, delivered_to: [currentUser.id] }
+              : { ...message, delivered_to: [] };
+            updatedMessagesForChat = [...existingMessages, messageWithDelivery];
+            console.log(`✅ [ChatStore] Added message ${message.id} to new chat ${message.chat_id}`);
+          } else {
+            console.log(`⏭️ [ChatStore] Message ${message.id} already exists in new chat ${message.chat_id}, skipping`);
+          }
+
+          return {
+            ...state,
+            chats: updatedChats,
+            tabs: updatedTabs,
+            messages: {
+              ...state.messages,
+              [message.chat_id]: updatedMessagesForChat,
+            },
+            totalUnreadCount: shouldIncrementUnread && !messageExists ? state.totalUnreadCount + 1 : state.totalUnreadCount,
+          };
+        });
+
+        // Чат успешно добавлен, выходим из функции
+        return;
+      } catch (error) {
+        console.error(`❌ [ChatStore] Failed to fetch chat ${message.chat_id}:`, error);
+        // При ошибке загрузки чата НЕ продолжаем обработку, чтобы избежать дублирования
+        return;
+      }
+    }
 
     set((state) => {
       // Check if message already exists (deduplication)
       const existingMessages = state.messages[message.chat_id] || [];
       const messageExists = existingMessages.some((msg) => msg.id === message.id);
+
+      console.log(`🔍 [ChatStore] Message ${message.id} in chat ${message.chat_id}: exists=${messageExists}, total messages=${existingMessages.length}`);
 
       // Если сообщение уже существует
       if (messageExists) {
@@ -781,29 +1070,80 @@ export const useChatStore = create<ChatState>((set, get) => ({
         [message.chat_id]: [...existingMessages, messageWithDelivery],
       };
 
-      // Update chats list
-      const updatedChats = state.chats.map((chat) => {
-        if (chat.id === message.chat_id) {
-          // Increment unread_count only if:
-          // 1. Message is not from current user
-          // 2. User is not currently viewing this chat
-          const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+      // Helper function to update chat in list
+      const updateChatInList = (chats: Chat[]) => {
+        return chats.map((chat) => {
+          if (chat.id === message.chat_id) {
+            const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+            const updatedChat = {
+              ...chat,
+              last_message: message,
+              unread_count: shouldIncrementUnread ? (chat.unread_count || 0) + 1 : chat.unread_count || 0,
+            };
+            console.log(`🔄 [ChatStore] Updating chat ${chat.id}: last_message set to msg ${message.id}, unread: ${updatedChat.unread_count}, isOwn: ${isOwnMessage}, isInActive: ${isInActiveChat}`);
+            return updatedChat;
+          }
+          return chat;
+        });
+      };
 
-          return {
-            ...chat,
-            last_message: message,
-            unread_count: shouldIncrementUnread ? (chat.unread_count || 0) + 1 : chat.unread_count || 0,
-          };
+      // Helper function to sort chats by last message time (pinned stay at top)
+      const sortChatsByTime = (chats: Chat[]) => {
+        return [...chats].sort((a, b) => {
+          const timeA = a.last_message?.created_at || a.created_at || '';
+          const timeB = b.last_message?.created_at || b.created_at || '';
+          return new Date(timeB).getTime() - new Date(timeA).getTime();
+        });
+      };
+
+      // Update all tabs that might contain this chat
+      const updatedTabs = { ...state.tabs };
+      let chatFoundInTabs = false;
+      console.log(`🔍 [ChatStore] Searching for chat ${message.chat_id} in tabs. Current tab: ${state.currentTab}`);
+
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (!tab.loaded) {
+          console.log(`⏭️ [ChatStore] Tab "${tabKey}" not loaded, skipping`);
+          return;
         }
-        return chat;
+
+        // Check if chat exists in this tab
+        const chatInPinned = tab.pinnedChats.some(c => c.id === message.chat_id);
+        const chatInRegular = tab.regularChats.some(c => c.id === message.chat_id);
+
+        if (chatInPinned || chatInRegular) {
+          chatFoundInTabs = true;
+          console.log(`✅ [ChatStore] Chat ${message.chat_id} found in tab "${tabKey}" (pinned: ${chatInPinned}, regular: ${chatInRegular})`);
+          console.log(`📝 [ChatStore] Updating chat in tab "${tabKey}". Before update:`, tab.regularChats.find(c => c.id === message.chat_id));
+        }
+
+        // Update pinned chats
+        const updatedPinned = updateChatInList(tab.pinnedChats);
+
+        // Update regular chats and re-sort them
+        const updatedRegular = updateChatInList(tab.regularChats);
+        const sortedRegular = sortChatsByTime(updatedRegular);
+
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: updatedPinned,
+          regularChats: sortedRegular,
+        };
+
+        if (chatInPinned || chatInRegular) {
+          console.log(`✅ [ChatStore] Updated chat in tab "${tabKey}". After update:`, sortedRegular.find(c => c.id === message.chat_id));
+        }
       });
 
-      // Sort chats by last message time (most recent first)
-      const sortedChats = [...updatedChats].sort((a, b) => {
-        const timeA = a.last_message?.created_at || a.created_at || '';
-        const timeB = b.last_message?.created_at || b.created_at || '';
-        return new Date(timeB).getTime() - new Date(timeA).getTime();
-      });
+      if (!chatFoundInTabs) {
+        console.warn(`⚠️ [ChatStore] Chat ${message.chat_id} NOT found in any loaded tabs!`);
+        console.warn(`⚠️ [ChatStore] Available chats in current tab (${state.currentTab}):`, state.chats.map(c => ({ id: c.id, type: c.type, name: c.name })));
+      }
+
+      // Reconstruct chats array from current tab to ensure new reference
+      const currentTabData = updatedTabs[state.currentTab];
+      const sortedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
 
       // Update total unread count if a new unread message was added
       const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
@@ -814,6 +1154,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return {
         messages: updatedMessages,
         chats: sortedChats,
+        tabs: updatedTabs,
         totalUnreadCount: newTotalUnreadCount,
       };
     });
@@ -821,11 +1162,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   handleMessageUpdate: (message: Message) => {
     // Parse poll_data if it's a JSON string (comes from WebSocket)
-    console.log('🔄 handleMessageUpdate called for message:', message.id);
-    console.log('🔍 Incoming message_type:', message.message_type);
-    console.log('🔍 poll_data type:', typeof (message as any).poll_data);
-    console.log('🔍 poll_data value:', (message as any).poll_data);
-
     // Create updated message object and explicitly preserve message_type
     const updatedMessage: any = {
       ...message,
@@ -835,28 +1171,51 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if ((message as any).poll_data && typeof (message as any).poll_data === 'string') {
       try {
         updatedMessage.poll_data = JSON.parse((message as any).poll_data);
-        console.log('📊 Parsed poll_data in WebSocket update:', updatedMessage.poll_data);
       } catch (e) {
         console.error('❌ Failed to parse poll_data in WebSocket update:', e);
       }
-    } else {
-      console.log('⚠️ poll_data is not a string or is empty, skipping parse');
     }
 
-    console.log('💾 Saving to store:', {
-      id: updatedMessage.id,
-      message_type: updatedMessage.message_type,
-      has_poll_data: !!updatedMessage.poll_data
-    });
-
-    set((state) => ({
-      messages: {
+    set((state) => {
+      // Update messages
+      const updatedMessages = {
         ...state.messages,
         [message.chat_id]: (state.messages[message.chat_id] || []).map((msg) =>
           msg.id === message.id ? updatedMessage : msg
         ),
-      },
-    }));
+      };
+
+      // Helper function to update last_message in chat if needed
+      const updateChatLastMessage = (chat: Chat) => {
+        if (chat.id === message.chat_id && chat.last_message?.id === message.id) {
+          return { ...chat, last_message: updatedMessage };
+        }
+        return chat;
+      };
+
+      // Update all tabs
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (!tab.loaded) return;
+
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.map(updateChatLastMessage),
+          regularChats: tab.regularChats.map(updateChatLastMessage),
+        };
+      });
+
+      // Reconstruct chats array from current tab to ensure new reference
+      const currentTabData = updatedTabs[state.currentTab];
+      const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+      return {
+        messages: updatedMessages,
+        chats: updatedChats,
+        tabs: updatedTabs,
+      };
+    });
   },
 
   handleMessageDelete: (messageId: number, chatId: number) => {
@@ -871,6 +1230,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       },
     }));
+  },
+
+  handleChatDelete: (chatId: number) => {
+    set((state) => {
+      // Удаляем чат из всех табов
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.filter(chat => chat.id !== chatId),
+          regularChats: tab.regularChats.filter(chat => chat.id !== chatId),
+        };
+      });
+
+      // Reconstruct chats array from current tab to ensure new reference
+      const currentTabData = updatedTabs[state.currentTab];
+      const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+      // Удаляем сообщения чата
+      const updatedMessages = { ...state.messages };
+      delete updatedMessages[chatId];
+
+      // Сбрасываем activeChat если это был удаленный чат
+      const updatedActiveChat = state.activeChat?.id === chatId ? null : state.activeChat;
+
+      return {
+        ...state,
+        chats: updatedChats,
+        tabs: updatedTabs,
+        messages: updatedMessages,
+        activeChat: updatedActiveChat,
+      };
+    });
   },
 
   handleTypingStart: async (chatId: number, typing: TypingIndicator) => {
@@ -919,7 +1312,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   handleUserPresence: (presence: any) => {
     // Update user status in all chats where user is a member
     const { user_id, status, last_seen, last_active_at } = presence;
-    console.log('👤 Updating user presence:', { user_id, status, last_seen, last_active_at });
 
     // Use last_active_at if available (from API), otherwise fall back to last_seen
     const lastActiveTime = last_active_at || last_seen;
@@ -942,12 +1334,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               // Also update last_active_at if it exists in the user object
               ...(last_active_at ? { last_active_at } : {}),
             };
-            console.log('✅ Updated user in chat:', {
-              user_id,
-              old_status: member.user.status,
-              new_status: status,
-              last_active_at: lastActiveTime
-            });
             return {
               ...member,
               user: updatedUser,
@@ -965,6 +1351,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Update read_by array and read_receipts in message
     // userId - кто прочитал сообщение (может быть текущий пользователь или другой)
     const readerId = userId || useAuthStore.getState().user?.id;
+    const currentUser = useAuthStore.getState().user;
 
     if (!readerId) {
       return;
@@ -1005,7 +1392,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
 
       // Также обновляем last_message в списке чатов, если это последнее сообщение
-      const updatedChats = state.chats.map((chat) => {
+      // И сбрасываем unread_count если текущий пользователь прочитал сообщение
+      const isCurrentUserRead = currentUser && readerId === currentUser.id;
+
+      // Helper function to update chat
+      const updateChatReadStatus = (chat: Chat) => {
         if (chat.id === chatId && chat.last_message && chat.last_message.id === messageId) {
           const currentReadBy = chat.last_message.read_by || [];
           const alreadyRead = currentReadBy.includes(readerId);
@@ -1017,15 +1408,51 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 ...chat.last_message,
                 read_by: [...currentReadBy, readerId],
               },
+              // Сбрасываем unread_count если текущий пользователь прочитал последнее сообщение
+              unread_count: isCurrentUserRead ? 0 : chat.unread_count,
             };
           }
         }
         return chat;
+      };
+
+      const updatedChats = state.chats.map(updateChatReadStatus);
+
+      // Обновляем tabs тоже
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (!tab.loaded) return;
+
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.map(updateChatReadStatus),
+          regularChats: tab.regularChats.map(updateChatReadStatus),
+        };
       });
+
+      // Обновляем totalUnreadCount если текущий пользователь прочитал сообщение
+      // Но только если unread_count действительно изменился
+      let newTotalUnreadCount = state.totalUnreadCount;
+      if (isCurrentUserRead) {
+        const oldChat = state.chats.find(c => c.id === chatId);
+        const newChat = updatedChats.find(c => c.id === chatId);
+
+        // Вычитаем разницу в unread_count
+        const oldUnreadCount = oldChat?.unread_count || 0;
+        const newUnreadCount = newChat?.unread_count || 0;
+        const unreadDiff = oldUnreadCount - newUnreadCount;
+
+        if (unreadDiff > 0) {
+          newTotalUnreadCount = Math.max(0, state.totalUnreadCount - unreadDiff);
+        }
+      }
 
       return {
         messages: updatedMessages,
         chats: updatedChats,
+        tabs: updatedTabs,
+        totalUnreadCount: newTotalUnreadCount,
       };
     });
   },

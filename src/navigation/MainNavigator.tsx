@@ -15,8 +15,8 @@ import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
 import PollNavigator from './PollNavigator';
 import AdminNavigator from './AdminNavigator';
+import ProfileNavigator from './ProfileNavigator';
 import CalendarScreen from '@screens/calendar/CalendarScreen';
-import ProfileScreen from '@screens/profile/ProfileScreen';
 import { AnimatedTabBar } from '@components/navigation/AnimatedTabBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -125,7 +125,7 @@ const MainNavigator: React.FC = () => {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileNavigator}
         options={{ tabBarLabel: 'Настройки' }}
       />
       <Tab.Screen

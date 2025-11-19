@@ -78,9 +78,9 @@ export const useWebSocket = (): UseWebSocketReturn => {
     // ============= Chat Events =============
 
     // New message
-    socket.on(WS_EVENTS.MESSAGE_NEW, (payload: WsMessageNewPayload) => {
+    socket.on(WS_EVENTS.MESSAGE_NEW, async (payload: WsMessageNewPayload) => {
       console.log('New message received:', payload);
-      chatStore.handleNewMessage(payload.message);
+      await chatStore.handleNewMessage(payload.message);
     });
 
     // Message updated

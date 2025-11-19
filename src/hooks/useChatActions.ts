@@ -29,9 +29,11 @@ export const useChatActions = (chatId: number) => {
       setError({ error: 'Message content or files are required' });
       return;
     }
-    if (!getChatById(chatId)) {
-      setError({ error: 'Chat not found' });
-      return;
+
+    const chat = getChatById(chatId);
+    if (!chat) {
+      // Don't return here - allow sending message even if chat is not in store yet
+      // The chat might be loading or will be created by the message
     }
 
     try {

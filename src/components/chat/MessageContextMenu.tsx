@@ -25,6 +25,7 @@ interface MessageContextMenuProps {
   onForward?: (message: Message) => void;
   onDelete?: () => void;
   onRestore?: (messageId: number) => void;
+  onEnterSelectionMode?: (messageId: number) => void;
 }
 
 /**
@@ -47,6 +48,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   onForward,
   onDelete,
   onRestore,
+  onEnterSelectionMode,
 }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
@@ -258,6 +260,20 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   >
                     <Ionicons name="arrow-undo-outline" size={20} color={theme.text} />
                     <Text style={[styles.menuText, { color: theme.text }]}>Ответить</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Выбрать */}
+                {onEnterSelectionMode && (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      onClose();
+                      onEnterSelectionMode(message.id);
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={20} color={theme.text} />
+                    <Text style={[styles.menuText, { color: theme.text }]}>Выбрать</Text>
                   </TouchableOpacity>
                 )}
 

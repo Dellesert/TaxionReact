@@ -5,8 +5,6 @@ import { DateSeparator } from './DateSeparator';
 import { UnreadMessagesBanner } from './UnreadMessagesBanner';
 import { MessageSkeleton } from './MessageSkeleton';
 import { useTheme } from '@hooks/useTheme';
-import { useChatStore } from '@store/chatStore';
-import { useAuthStore } from '@store/authStore';
 
 type MessageListItem =
   | { type: 'message'; data: any }
@@ -25,6 +23,7 @@ interface MessageListComponentProps {
   insetsBottom: number;
   listRef: React.RefObject<FlatList<any> | null>;
   highlightedMessageId: number | null;
+  initialScrollIndex?: number;
   onContentSizeChange: () => void;
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
@@ -40,6 +39,12 @@ interface MessageListComponentProps {
   onReplyPress: (messageId: number) => void;
   onPollPress: (pollId: number) => void;
   onTaskPress?: (taskId: number) => void;
+  selectionMode?: boolean;
+  selectedMessages?: Set<number>;
+  onEnterSelectionMode?: (messageId: number) => void;
+  onToggleMessageSelection?: (messageId: number) => void;
+  chatType?: 'private' | 'group' | 'channel';
+  userRole?: 'owner' | 'admin' | 'member';
 }
 
 /**
@@ -58,6 +63,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   insetsBottom,
   listRef,
   highlightedMessageId,
+  initialScrollIndex,
   onContentSizeChange,
   onScroll,
   onViewableItemsChanged,
@@ -73,10 +79,14 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   onReplyPress,
   onPollPress,
   onTaskPress,
+  selectionMode = false,
+  selectedMessages = new Set(),
+  onEnterSelectionMode,
+  onToggleMessageSelection,
+  chatType,
+  userRole,
 }) => {
   const { theme } = useTheme();
-  const getChatById = useChatStore((state) => state.getChatById);
-  const currentUser = useAuthStore((state) => state.user);
 
   // Показываем skeleton'ы если сообщения еще не загружены
   const showSkeletons = isLoading && messageListItems.length === 0;
@@ -96,6 +106,16 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       ref={listRef}
       data={messageListItems}
       extraData={messagesKey}
+      initialScrollIndex={initialScrollIndex}
+      getItemLayout={(data, index) => {
+        // Приблизительная высота элемента для оптимизации
+        const averageItemHeight = 80;
+        return {
+          length: averageItemHeight,
+          offset: averageItemHeight * index,
+          index,
+        };
+      }}
       renderItem={({ item, index }) => {
         // Рендер разделителя даты
         if (item.type === 'date') {
@@ -105,18 +125,15 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         // Рендер сообщения
         const message = item.data;
 
-        const shouldShowBanner = index === firstUnreadIndex && unreadCount > 0 && showUnreadBanner;
-
-        // Получаем роль пользователя в этом чате
-        const currentChat = getChatById(chatId);
-        const currentMember = currentChat?.members?.find(m => m.user_id === currentUser?.id);
-        const userRole = currentMember?.role || 'member';
+        // Показываем встроенный баннер при наличии непрочитанных
+        // firstUnreadIndex - это индекс самого СТАРОГО непрочитанного сообщения (где должен быть баннер)
+        const shouldShowInlineBanner = index === firstUnreadIndex && unreadCount >= 1 && showUnreadBanner;
 
         return (
           <>
             <MessageItem
               message={message}
-              chatType={currentChat?.type}
+              chatType={chatType}
               onReply={onReply}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -130,8 +147,12 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
               onTaskPress={onTaskPress}
               isHighlighted={message.id === highlightedMessageId}
               userRole={userRole}
+              selectionMode={selectionMode}
+              isSelected={selectedMessages.has(message.id)}
+              onEnterSelectionMode={onEnterSelectionMode}
+              onToggleSelection={onToggleMessageSelection}
             />
-            {shouldShowBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
+            {shouldShowInlineBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
           </>
         );
       }}
@@ -151,15 +172,19 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       onViewableItemsChanged={onViewableItemsChanged}
       viewabilityConfig={viewabilityConfig}
       onScrollToIndexFailed={(info) => {
+        const averageHeight = info.averageItemLength || 100;
+        const offset = averageHeight * info.index;
+        listRef.current?.scrollToOffset({ offset, animated: false });
+
         setTimeout(() => {
           if (info.index < messageListItems.length) {
             listRef.current?.scrollToIndex({
               index: info.index,
-              animated: true,
-              viewPosition: 0.5,
+              animated: false,
+              viewPosition: 0.2,
             });
           }
-        }, 100);
+        }, 300);
       }}
       ListFooterComponent={
         isLoadingMore ? (

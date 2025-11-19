@@ -16,7 +16,9 @@ import {
   ActivityIndicator,
   Image,
   Animated,
+  Keyboard,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
@@ -43,6 +45,10 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [passkeySupported, setPasskeySupported] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Ref для поля пароля (для фокуса при нажатии Enter)
+  const passwordInputRef = useRef<TextInput>(null);
 
   // Анимация для логотипа (fade in)
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -169,6 +175,9 @@ const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     console.log('Login button clicked!', { email, password });
+
+    // Скрываем клавиатуру перед входом (особенно важно для iOS)
+    Keyboard.dismiss();
 
     if (!email || !password) {
       notification.showError('Заполните все поля');
@@ -349,25 +358,48 @@ const LoginScreen: React.FC = () => {
                 autoCapitalize="none"
                 autoComplete="email"
                 editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  // Фокус на поле пароля при нажатии Enter
+                  passwordInputRef.current?.focus();
+                }}
+                blurOnSubmit={false}
               />
 
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.backgroundSecondary,
-                    color: theme.text,
-                    borderColor: theme.border,
-                  }
-                ]}
-                placeholder="Пароль"
-                placeholderTextColor={theme.inputPlaceholder}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="password"
-                editable={!isLoading}
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  ref={passwordInputRef}
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      color: theme.text,
+                      borderColor: theme.border,
+                    }
+                  ]}
+                  placeholder="Пароль"
+                  placeholderTextColor={theme.inputPlaceholder}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                  editable={!isLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={24}
+                    color={theme.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
                 style={styles.forgotPassword}
@@ -478,6 +510,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+  },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+    marginBottom: 16,
+  },
+  passwordInput: {
+    paddingRight: 50,
+    marginBottom: 0,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
   forgotPassword: {
     alignSelf: 'flex-end',

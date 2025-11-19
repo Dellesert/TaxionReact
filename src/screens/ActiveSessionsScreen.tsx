@@ -159,9 +159,9 @@ export default function ActiveSessionsScreen() {
 
     // Parse user agent to get device info
     // Check for custom app User-Agent format: "AppName/Version (Platform; DeviceName; OS Version)"
-    const customAppMatch = userAgent.match(/\(([^;]+);([^;]+);/);
+    const customAppMatch = userAgent.match(/\(([^;]+);\s*([^;]+);\s*([^)]+)\)/);
     if (customAppMatch) {
-      const platform = customAppMatch[1].trim(); // iPhone or Android
+      const platform = customAppMatch[1].trim(); // iPhone, iPad, or Android
       const deviceName = customAppMatch[2].trim();
       return `${platform} (${deviceName})`;
     }

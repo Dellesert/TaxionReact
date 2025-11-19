@@ -626,30 +626,33 @@ const TaskListScreen: React.FC = () => {
     tabsContainer: {
       flexDirection: 'row',
       marginTop: 0,
-      paddingTop: 4,
+      paddingTop: 8,
+      paddingBottom: 8,
+      paddingHorizontal: 4,
       borderTopWidth: 1,
       borderTopColor: theme.border,
       borderBottomWidth: 0,
+      gap: 6,
     },
     tab: {
       flex: 1,
-      paddingTop: 4,
-      paddingBottom: 5,
-      paddingHorizontal: 4,
+      paddingVertical: 8,
+      paddingHorizontal: 6,
       alignItems: 'center',
       justifyContent: 'center',
-      borderBottomWidth: 3,
-      borderBottomColor: 'transparent',
       minHeight: 44,
+      backgroundColor: 'transparent',
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
     },
     tabActive: {
       borderBottomColor: 'transparent',
     },
     tabContent: {
-      flexDirection: 'column',
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 5,
+      gap: 6,
       width: '100%',
     },
     tabTopRow: {
@@ -664,23 +667,23 @@ const TaskListScreen: React.FC = () => {
       gap: 4,
     },
     tabLabel: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: '600',
       color: theme.textSecondary,
       textAlign: 'center',
     },
     tabCountContainer: {
-      minWidth: 24,
-      height: 24,
-      borderRadius: 12,
+      minWidth: 22,
+      height: 22,
+      borderRadius: 11,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 8,
+      paddingHorizontal: 6,
     },
     tabCount: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '700',
-      lineHeight: 14,
+      lineHeight: 13,
     },
     taskList: {
       paddingTop: 12,
@@ -883,6 +886,9 @@ const TaskListScreen: React.FC = () => {
               {statusTabs.map((tab) => {
                 const count = getTotalForStatus(tab.key);
                 const isActive = activeTab === tab.key;
+                const { width: screenWidth } = Dimensions.get('window');
+                const isNarrowScreen = screenWidth < 380;
+
                 return (
                   <TouchableOpacity
                     key={tab.key}
@@ -891,53 +897,47 @@ const TaskListScreen: React.FC = () => {
                       isActive && { ...styles.tabActive, borderBottomColor: tab.color },
                     ]}
                     onPress={() => switchToTab(tab.key)}
+                    activeOpacity={0.7}
                   >
                     <View style={styles.tabContent}>
-                      {/* Текст всегда отображается */}
-                      <Text
-                        style={[
-                          styles.tabLabel,
-                          {
-                            color: isActive ? tab.color : theme.textSecondary,
-                            fontWeight: isActive ? '700' : '600',
-                            fontSize: 11,
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {tab.label}
-                      </Text>
+                      {/* Название - на узких экранах показывается только на активной вкладке */}
+                      {(isActive || !isNarrowScreen) && (
+                        <Text
+                          style={[
+                            styles.tabLabel,
+                            {
+                              color: isActive ? tab.color : theme.textSecondary,
+                              fontWeight: isActive ? '700' : '600',
+                            },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {tab.label}
+                        </Text>
+                      )}
 
-                      {/* Нижняя строка: иконка + число */}
-                      <View style={styles.tabTopRow}>
-                        <Ionicons
-                          name={tab.icon as any}
-                          size={isActive ? 22 : 20}
-                          color={isActive ? tab.color : theme.textSecondary}
-                        />
-
-                        {count > 0 && (
-                          <View
+                      {/* Количество */}
+                      {count > 0 && (
+                        <View
+                          style={[
+                            styles.tabCountContainer,
+                            {
+                              backgroundColor: isActive ? tab.color : theme.backgroundTertiary,
+                            },
+                          ]}
+                        >
+                          <Text
                             style={[
-                              styles.tabCountContainer,
+                              styles.tabCount,
                               {
-                                backgroundColor: isActive ? tab.color : theme.backgroundTertiary,
+                                color: isActive ? '#FFFFFF' : theme.textTertiary,
                               },
                             ]}
                           >
-                            <Text
-                              style={[
-                                styles.tabCount,
-                                {
-                                  color: isActive ? '#FFFFFF' : theme.textTertiary,
-                                },
-                              ]}
-                            >
-                              {count}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
+                            {count}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </TouchableOpacity>
                 );
