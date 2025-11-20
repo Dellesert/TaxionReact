@@ -69,7 +69,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
     },
     modal: {
       backgroundColor: theme.backgroundSecondary,
-      shadowColor: theme.text,
+      shadowColor: '#000',
     },
     title: {
       color: theme.text,

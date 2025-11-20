@@ -75,24 +75,30 @@ const NotificationSettingsScreen: React.FC = () => {
     header: {
       backgroundColor: theme.backgroundSecondary,
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingTop: Platform.OS === 'ios' ? 0 : 20,
+      paddingBottom: 16,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      justifyContent: 'space-between',
     },
     backButton: {
-      padding: 4,
+      padding: 8,
     },
     headerTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
+      fontSize: 18,
+      fontWeight: '600',
       color: theme.text,
+      flex: 1,
+      textAlign: 'center',
+    },
+    headerRight: {
+      width: 40,
     },
     scrollContent: {
       padding: 12,
-      paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 80 : 32,
+      paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 100 : 32,
     },
     section: {
       backgroundColor: theme.backgroundSecondary,
@@ -185,32 +191,26 @@ const NotificationSettingsScreen: React.FC = () => {
   });
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={dynamicStyles.header}>
-        <TouchableOpacity
-          style={dynamicStyles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>Настройки уведомлений</Text>
-      </View>
+    <View style={dynamicStyles.container}>
+      <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+        {/* Header */}
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity
+            style={dynamicStyles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.primary} />
+          </TouchableOpacity>
+          <Text style={dynamicStyles.headerTitle}>Настройки уведомлений</Text>
+          <View style={dynamicStyles.headerRight} />
+        </View>
+      </SafeAreaView>
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Info Box */}
-        <View style={dynamicStyles.infoBox}>
-          <Ionicons name="information-circle" size={20} color="#3B82F6" />
-          <Text style={dynamicStyles.infoText}>
-            Настройте, какие уведомления вы хотите получать. Изменения сохраняются автоматически.
-          </Text>
-        </View>
-
         {/* Основные каналы */}
         <View style={dynamicStyles.section}>
           <View style={dynamicStyles.sectionHeader}>
@@ -491,7 +491,7 @@ const NotificationSettingsScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

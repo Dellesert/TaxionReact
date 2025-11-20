@@ -283,6 +283,8 @@ const ProfileScreen: React.FC = () => {
       flex: 1,
       backgroundColor: theme.primary,
     },
+    scrollContent: {
+    },
     header: {
       backgroundColor: theme.backgroundSecondary,
       paddingHorizontal: 16,
@@ -447,7 +449,7 @@ const ProfileScreen: React.FC = () => {
     },
     versionInfo: {
       alignItems: 'center',
-      paddingBottom: 32,
+      paddingBottom: 150,
       paddingTop: 8,
     },
     versionText: {
@@ -459,8 +461,14 @@ const ProfileScreen: React.FC = () => {
   });
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+    <View style={dynamicStyles.container}>
+      <SafeAreaView style={{ backgroundColor: theme.primary }} edges={['top']}>
+      </SafeAreaView>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={dynamicStyles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* User Info */}
         <View style={dynamicStyles.userInfoSection}>
           <Avatar style={dynamicStyles.userAvatar} imageUrl={user.avatar} name={user.name || user.email} size={100} />
@@ -638,7 +646,7 @@ const ProfileScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -53,23 +53,32 @@ export default function AboutScreen() {
     header: {
       backgroundColor: theme.backgroundSecondary,
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingTop: Platform.OS === 'ios' ? 0 : 20,
+      paddingBottom: 16,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
     },
     backButton: {
-      marginRight: 12,
-      padding: 4,
+      padding: 8,
     },
     headerTitle: {
-      fontSize: 20,
-      fontWeight: '700',
+      fontSize: 18,
+      fontWeight: '600',
       color: theme.text,
+      flex: 1,
+      textAlign: 'center',
+    },
+    headerRight: {
+      width: 40,
     },
     content: {
       flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 100 : 32,
     },
     logoSection: {
       alignItems: 'center',
@@ -119,7 +128,7 @@ export default function AboutScreen() {
     sectionHeader: {
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: isDark ? theme.background : theme.backgroundSecondary,
+      backgroundColor: theme.backgroundSecondary,
     },
     sectionTitle: {
       fontSize: 12,
@@ -191,19 +200,26 @@ export default function AboutScreen() {
   });
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={dynamicStyles.header}>
+    <View style={dynamicStyles.container}>
+      <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+        {/* Header */}
+        <View style={dynamicStyles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
           style={dynamicStyles.backButton}
+          onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={28} color={theme.primary} />
+          <Ionicons name="arrow-back" size={24} color={theme.primary} />
         </TouchableOpacity>
         <Text style={dynamicStyles.headerTitle}>О приложении</Text>
-      </View>
+        <View style={dynamicStyles.headerRight} />
+        </View>
+      </SafeAreaView>
 
-      <ScrollView style={dynamicStyles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={dynamicStyles.content}
+        contentContainerStyle={dynamicStyles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Logo Section */}
         <View style={dynamicStyles.logoSection}>
           <View style={dynamicStyles.logoContainer}>
@@ -304,6 +320,6 @@ export default function AboutScreen() {
           <Text style={dynamicStyles.copyrightText}>Все права защищены</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
