@@ -17,6 +17,7 @@ import CreateEventModal from '@components/calendar/CreateEventModal';
 import { EventDetailModal } from '@components/calendar/EventDetailModal';
 import { ScreenHeader } from '@components/common/ScreenHeader';
 import { MonthCalendarView } from '@components/calendar/MonthCalendarView';
+import { NotificationBell } from '@components/common/NotificationBell';
 import { mockGetEvents, isMockMode } from '@utils/mockData';
 import { useTheme } from '@hooks/useTheme';
 import { useNotification } from '@contexts/NotificationContext';
@@ -235,7 +236,9 @@ const CalendarScreen: React.FC = () => {
           <>
             {/* Title Row with Add Button */}
             <View style={styles.headerTop}>
-              <View style={styles.headerLeft} />
+              <View style={styles.headerLeft}>
+                <NotificationBell />
+              </View>
               <Text style={[styles.headerTitle, { color: theme.text }]}>Календарь</Text>
 
               {/* Add Button */}

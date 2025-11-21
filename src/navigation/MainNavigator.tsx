@@ -10,12 +10,14 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { useChatStore } from '@store/chatStore';
+import { useNotificationStore } from '@store/notificationStore';
 import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
 import PollNavigator from './PollNavigator';
 import AdminNavigator from './AdminNavigator';
 import ProfileNavigator from './ProfileNavigator';
+import NotificationNavigator from './NotificationNavigator';
 import CalendarScreen from '@screens/calendar/CalendarScreen';
 import { AnimatedTabBar } from '@components/navigation/AnimatedTabBar';
 
@@ -128,6 +130,7 @@ const MainNavigator: React.FC = () => {
         component={ProfileNavigator}
         options={{ tabBarLabel: 'Настройки' }}
       />
+     
       <Tab.Screen
         name="Admin"
         component={AdminNavigator}

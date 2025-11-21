@@ -22,6 +22,7 @@ import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withSpring, withTi
 import { TaskItem } from '@components/task/TaskItem';
 import { TaskSkeleton } from '@components/task/TaskSkeleton';
 import { ScreenHeader } from '@components/common/ScreenHeader';
+import { NotificationBell } from '@components/common/NotificationBell';
 import type { Task, TaskStatus } from '../../types/task.types';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
@@ -783,7 +784,7 @@ const TaskListScreen: React.FC = () => {
     filterMenu: {
       position: 'absolute',
       top: 60,
-      left: 16,
+      right: 16,
       minWidth: 180,
       borderRadius: 12,
       padding: 8,
@@ -819,7 +820,14 @@ const TaskListScreen: React.FC = () => {
           <>
             {/* Header Row */}
             <View style={styles.headerRow}>
-              <View style={[styles.headerLeft, styles.headerActions]}>
+              <View style={styles.headerLeft}>
+                {/* Notification Bell */}
+                <NotificationBell />
+              </View>
+
+              <Text style={styles.title}>Задачи</Text>
+
+              <View style={[styles.headerRight, styles.headerActions]}>
                 {/* Filter Button with indicator */}
                 <TouchableOpacity
                   onPress={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
@@ -828,11 +836,7 @@ const TaskListScreen: React.FC = () => {
                   <Ionicons name="filter" size={24} color={theme.error} />
                   {filter !== 'all' && <View style={styles.filterIndicator} />}
                 </TouchableOpacity>
-              </View>
 
-              <Text style={styles.title}>Задачи</Text>
-
-              <View style={[styles.headerRight, styles.headerActions]}>
                 {/* Search Button */}
                 <TouchableOpacity
                   onPress={() => setIsSearchVisible(!isSearchVisible)}

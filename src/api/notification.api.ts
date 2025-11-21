@@ -31,31 +31,45 @@ export const getNotifications = async (
     offset: pagination?.offset || PAGINATION.DEFAULT_OFFSET,
   };
 
-  const response = await api.get<ApiResponse<PaginatedResponse<Notification>>>(
+  const response = await api.get<{
+    notifications: Notification[];
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  }>(
     API_ENDPOINTS.NOTIFICATION.LIST,
     { params }
   );
-  return response.data.data;
+
+  // Transform backend response to match PaginatedResponse format
+  return {
+    data: response.data.notifications,
+    total: response.data.total,
+    limit: response.data.limit,
+    offset: response.data.offset,
+    hasMore: response.data.has_more,
+  };
 };
 
 /**
  * Get unread notifications count
  */
 export const getUnreadCount = async (): Promise<number> => {
-  const response = await api.get<ApiResponse<{ count: number }>>(
+  const response = await api.get<{ unread_count: number }>(
     API_ENDPOINTS.NOTIFICATION.UNREAD_COUNT
   );
-  return response.data.data.count;
+  return response.data.unread_count;
 };
 
 /**
  * Get notification by ID
  */
 export const getNotification = async (id: number): Promise<Notification> => {
-  const response = await api.get<ApiResponse<Notification>>(
+  const response = await api.get<{ notification: Notification }>(
     API_ENDPOINTS.NOTIFICATION.BY_ID(id)
   );
-  return response.data.data;
+  return response.data.notification;
 };
 
 /**
@@ -115,10 +129,10 @@ export const searchNotifications = async (
  * Get notification preferences
  */
 export const getNotificationPreferences = async (): Promise<NotificationPreferences> => {
-  const response = await api.get<ApiResponse<NotificationPreferences>>(
+  const response = await api.get<{ preferences: NotificationPreferences }>(
     API_ENDPOINTS.NOTIFICATION.PREFERENCES
   );
-  return response.data.data;
+  return response.data.preferences;
 };
 
 /**

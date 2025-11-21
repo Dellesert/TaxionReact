@@ -20,6 +20,7 @@ import { ChatItem } from '@components/chat/ChatItem';
 import { ChatListSkeleton } from '@components/chat/ChatListSkeleton';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
 import { ScreenHeader } from '@components/common/ScreenHeader';
+import { NotificationBell } from '@components/common/NotificationBell';
 import { useTheme } from '@hooks/useTheme';
 import { Chat, ChatType } from '../../types/chat.types';
 import { websocketService } from '@services/websocket.service';
@@ -610,13 +611,10 @@ const ChatListScreen: React.FC = () => {
           <>
             {/* Header Row */}
             <View style={[styles.headerRow, { marginTop: isEditMode ? 10 : 0 },{marginBottom: isEditMode ? 6 : -4 }]}>
-              {/* Левая кнопка - Изменить / Готово */}
-              <TouchableOpacity
-                onPress={toggleEditMode}
-                style={styles.editButton}
-              >
-                <Text style={[styles.editButtonText, { color: theme.error }]}>{isEditMode ? "Готово" : "Изм."}</Text>
-              </TouchableOpacity>
+              {/* Левая кнопка - Уведомления */}
+              <View style={styles.headerLeft}>
+                <NotificationBell />
+              </View>
 
               {/* Центр - Заголовок или статус подключения */}
               {isConnected === false ? (
@@ -625,17 +623,30 @@ const ChatListScreen: React.FC = () => {
                 <Text style={[styles.headerTitle, { color: theme.text }]}>Чаты</Text>
               )}
 
-              {/* Правые кнопки - Поиск + Добавить */}
+              {/* Правые кнопки - Меню (3 точки) + Поиск + Добавить */}
               <View style={[styles.headerRight, styles.headerActions]}>
                 {!isEditMode ? (
-                  <TouchableOpacity
-                    onPress={() => setIsSearchVisible(!isSearchVisible)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color={theme.error} />
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity
+                      onPress={toggleEditMode}
+                      style={styles.iconButton}
+                    >
+                      <Ionicons name="ellipsis-vertical" size={24} color={theme.error} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setIsSearchVisible(!isSearchVisible)}
+                      style={styles.iconButton}
+                    >
+                      <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color={theme.error} />
+                    </TouchableOpacity>
+                  </>
                 ) : (
-                  <View style={styles.iconButton} />
+                  <TouchableOpacity
+                    onPress={toggleEditMode}
+                    style={styles.editButton}
+                  >
+                    <Text style={[styles.editButtonText, { color: theme.error }]}>Готово</Text>
+                  </TouchableOpacity>
                 )}
                 {!isEditMode ? (
                   <TouchableOpacity onPress={handleNewChat} style={styles.addButton}>
@@ -849,6 +860,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: 'center',
+  },
+  headerLeft: {
+    width: 100,
+    justifyContent: 'flex-start',
   },
   editButton: {
     width: 100,

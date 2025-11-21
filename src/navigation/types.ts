@@ -69,6 +69,12 @@ export type ProfileStackParamList = {
   ActiveSessions: undefined;
   PasskeyManagement: undefined;
   About: undefined;
+  NotificationSettings: undefined;
+};
+
+// Notification Stack
+export type NotificationStackParamList = {
+  NotificationList: undefined;
 };
 
 // Main Tab Navigator
@@ -77,6 +83,7 @@ export type MainTabParamList = {
   Tasks: NavigatorScreenParams<TaskStackParamList>;
   Calendar: undefined;
   Polls: NavigatorScreenParams<PollStackParamList>;
+  Notifications: NavigatorScreenParams<NotificationStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
   Admin: NavigatorScreenParams<AdminStackParamList>;
 };

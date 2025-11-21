@@ -19,6 +19,7 @@ import { Poll, PollStatus } from '../../types/poll.types';
 import { PollItem } from '@components/poll/PollItem';
 import { PollSkeleton } from '@components/poll/PollSkeleton';
 import { ScreenHeader } from '@components/common/ScreenHeader';
+import { NotificationBell } from '@components/common/NotificationBell';
 import * as pollApi from '@api/poll.api';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
@@ -237,7 +238,13 @@ const PollListScreen: React.FC = () => {
         customContent={
           <>
             <View style={styles.headerRow}>
-              <View style={[styles.headerLeft, styles.headerActions]}>
+              <View style={styles.headerLeft}>
+                <NotificationBell />
+              </View>
+
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Опросы</Text>
+
+              <View style={[styles.headerRight, styles.headerActions]}>
                 {/* Filter Button with indicator */}
                 <TouchableOpacity
                   onPress={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
@@ -246,11 +253,7 @@ const PollListScreen: React.FC = () => {
                   <Ionicons name="filter" size={24} color={theme.error} />
                   {filter !== 'active' && <View style={styles.filterIndicator} />}
                 </TouchableOpacity>
-              </View>
 
-              <Text style={[styles.headerTitle, { color: theme.text }]}>Опросы</Text>
-
-              <View style={[styles.headerRight, styles.headerActions]}>
                 {/* Search Button */}
                 <TouchableOpacity
                   onPress={() => setIsSearchVisible(!isSearchVisible)}
@@ -554,7 +557,7 @@ const styles = StyleSheet.create({
   filterMenu: {
     position: 'absolute',
     top: 60,
-    left: 16,
+    right: 16,
     minWidth: 180,
     borderRadius: 12,
     padding: 8,

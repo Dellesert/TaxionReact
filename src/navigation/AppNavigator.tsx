@@ -19,6 +19,7 @@ import NotificationListScreen from '@screens/notification/NotificationListScreen
 import ActiveSessionsScreen from '@screens/ActiveSessionsScreen';
 import PasskeyManagementScreen from '@screens/PasskeyManagementScreen';
 import AboutScreen from '@screens/AboutScreen';
+import { InAppNotificationContainer } from '@components/common/InAppNotificationContainer';
 import * as Linking from 'expo-linking';
 
 export type RootStackParamList = {
@@ -193,6 +194,7 @@ const AppNavigator: React.FC = () => {
           </>
         )}
       </Stack.Navigator>
+      {isAuthenticated && <InAppNotificationContainer />}
     </NavigationContainer>
   );
 };

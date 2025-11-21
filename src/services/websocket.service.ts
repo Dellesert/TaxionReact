@@ -5,6 +5,8 @@
 
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
+import { useNotificationStore } from '@store/notificationStore';
+import { useInAppNotificationStore } from '@store/inAppNotificationStore';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import * as chatApi from '@api/chat.api';
@@ -19,6 +21,8 @@ type WSMessageType =
   | 'member_add' | 'member_remove' | 'member_update'
   // Presence
   | 'user_join' | 'user_leave' | 'user_presence'
+  // Notifications
+  | 'notification:new'
   // System
   | 'error' | 'pong' | 'ping';
 
@@ -600,6 +604,21 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           // Update timestamp and process
           this.lastPresenceUpdate.set(userId, now);
           chatStore.handleUserPresence(message.data);
+          break;
+
+        case 'notification:new':
+          // Handle new notification in real-time
+          const notificationStore = useNotificationStore.getState();
+          const inAppNotificationStore = useInAppNotificationStore.getState();
+          console.log('🔔 Received new notification:', message.data);
+
+          if (message.data) {
+            // Add notification to the beginning of the list
+            notificationStore.handleNewNotification(message.data);
+
+            // Show toast notification
+            inAppNotificationStore.showNotification(message.data);
+          }
           break;
 
         case 'ping':

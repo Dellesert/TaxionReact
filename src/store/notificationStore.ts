@@ -45,12 +45,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
    */
   loadNotifications: async (refresh = false) => {
     try {
+      console.log('📬 Loading notifications...');
       set({ isLoading: true, error: null });
 
       const response = await notificationApi.getNotifications(
         {},
         { limit: NOTIFICATIONS_PER_PAGE, offset: 0 }
       );
+
+      console.log('✅ Notifications loaded:', response.data.length, 'items');
+      console.log('First notification:', response.data[0]);
 
       set({
         notifications: response.data,
@@ -61,6 +65,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       // Also load unread count
       get().loadUnreadCount();
     } catch (error: any) {
+      console.error('❌ Failed to load notifications:', error);
       set({
         error: error.message || 'Failed to load notifications',
         isLoading: false,
@@ -210,10 +215,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
    * Handle new notification from push/WebSocket
    */
   handleNewNotification: (notification: Notification) => {
-    set((state) => ({
-      notifications: [notification, ...state.notifications],
-      unreadCount: state.unreadCount + 1,
-    }));
+    console.log('✅ [NotificationStore] handleNewNotification called:', notification.id, notification.title);
+    set((state) => {
+      const newUnreadCount = state.unreadCount + 1;
+      console.log('📊 [NotificationStore] Updating state - new unread count:', newUnreadCount);
+      return {
+        notifications: [notification, ...state.notifications],
+        unreadCount: newUnreadCount,
+      };
+    });
   },
 
   /**

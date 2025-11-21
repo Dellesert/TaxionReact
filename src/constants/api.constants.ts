@@ -214,4 +214,5 @@ export const WS_EVENTS = {
   USER_ONLINE: 'user:online',
   USER_OFFLINE: 'user:offline',
   USER_STATUS_CHANGE: 'user:status:change',
+  NOTIFICATION_NEW: 'notification:new',
 } as const;
