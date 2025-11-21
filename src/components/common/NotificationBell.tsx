@@ -30,7 +30,7 @@ export const NotificationBell: React.FC = () => {
           <Ionicons
             name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
             size={24}
-            color={theme.text}
+            color={theme.primary}
           />
           {unreadCount > 0 && (
             <View style={[styles.badge, { backgroundColor: theme.primary, borderColor: theme.card }]}>
