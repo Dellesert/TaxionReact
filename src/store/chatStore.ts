@@ -121,7 +121,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
   currentTab: 'all',
   totalChats: 0,
-  hasMoreChats: false,
+  hasMoreChats: true,
   activeChat: null,
   messages: {},
   isLoading: false,
@@ -181,23 +181,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
       regularChats = await Promise.all(regularChats.map(enrichChatWithUsers));
 
       // Update tab data
-      set(state => ({
-        tabs: {
-          ...state.tabs,
-          [tabName]: {
-            pinnedChats,
-            regularChats,
-            offset: limit,
-            hasMore: regularResponse.hasMore,
-            loaded: true,
-          }
-        },
-        currentTab: tabName,
-        chats: [...pinnedChats, ...regularChats],
-        hasMoreChats: regularResponse.hasMore,
-        totalChats: regularResponse.total,
-        isLoading: false,
-      }));
+      set(state => {
+        // Только обновляем currentTab, chats и hasMoreChats если загружаем текущий активный таб
+        const isCurrentTab = state.currentTab === tabName;
+
+        const updates: any = {
+          tabs: {
+            ...state.tabs,
+            [tabName]: {
+              pinnedChats,
+              regularChats,
+              offset: limit,
+              hasMore: regularResponse.hasMore,
+              loaded: true,
+            }
+          },
+          isLoading: false,
+        };
+
+        // Обновляем chats и hasMoreChats только для текущего таба
+        if (isCurrentTab) {
+          updates.currentTab = tabName;
+          updates.chats = [...pinnedChats, ...regularChats];
+          updates.hasMoreChats = regularResponse.hasMore;
+          updates.totalChats = regularResponse.total;
+        }
+
+        return updates;
+      });
 
       // No need to join chats - WebSocket delivers events via personal user channel
     } catch (error: any) {
@@ -830,11 +841,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
   pinChat: async (chatId: number) => {
     try {
       await chatApi.toggleChatPinned(chatId, true);
-      set((state) => ({
-        chats: state.chats.map((chat) =>
-          chat.id === chatId ? { ...chat, is_pinned: true } : chat
-        ),
-      }));
+      set((state) => {
+        // Обновляем табы - перемещаем чат из regularChats в pinnedChats
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+
+          // Ищем чат в regularChats
+          const chatIndex = tab.regularChats.findIndex(c => c.id === chatId);
+          if (chatIndex !== -1) {
+            const chat = { ...tab.regularChats[chatIndex], is_pinned: true };
+            const newRegularChats = tab.regularChats.filter(c => c.id !== chatId);
+            const newPinnedChats = [chat, ...tab.pinnedChats];
+
+            updatedTabs[tabKey as TabName] = {
+              ...tab,
+              pinnedChats: newPinnedChats,
+              regularChats: newRegularChats,
+            };
+          }
+        });
+
+        // Обновляем chats для текущего таба
+        const currentTabData = updatedTabs[state.currentTab];
+        const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+        return {
+          tabs: updatedTabs,
+          chats: updatedChats,
+        };
+      });
     } catch (error: any) {
       set({ error: error.message || 'Failed to pin chat' });
       throw error;
@@ -844,12 +881,61 @@ export const useChatStore = create<ChatState>((set, get) => ({
   unpinChat: async (chatId: number) => {
     try {
       await chatApi.toggleChatPinned(chatId, false);
-      set((state) => ({
-        chats: state.chats.map((chat) =>
-          chat.id === chatId ? { ...chat, is_pinned: false } : chat
-        ),
-      }));
+      set((state) => {
+        console.log(`[Store] unpinChat called for chatId: ${chatId}, currentTab: ${state.currentTab}`);
+
+        // Обновляем табы - перемещаем чат из pinnedChats в regularChats
+        const updatedTabs = { ...state.tabs };
+        let chatFound = false;
+
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+
+          // Ищем чат в pinnedChats
+          const chatIndex = tab.pinnedChats.findIndex(c => c.id === chatId);
+          if (chatIndex !== -1) {
+            chatFound = true;
+            console.log(`[Store] Chat ${chatId} found in tab "${tabKey}" pinnedChats`);
+
+            const chat = { ...tab.pinnedChats[chatIndex], is_pinned: false };
+            const newPinnedChats = tab.pinnedChats.filter(c => c.id !== chatId);
+            const newRegularChats = [chat, ...tab.regularChats];
+
+            // Сортируем regularChats по времени последнего сообщения
+            const sortedRegularChats = newRegularChats.sort((a, b) => {
+              const timeA = a.last_message?.created_at || a.created_at || '';
+              const timeB = b.last_message?.created_at || b.created_at || '';
+              return new Date(timeB).getTime() - new Date(timeA).getTime();
+            });
+
+            updatedTabs[tabKey as TabName] = {
+              ...tab,
+              pinnedChats: newPinnedChats,
+              regularChats: sortedRegularChats,
+            };
+
+            console.log(`[Store] Tab "${tabKey}" updated - pinned: ${newPinnedChats.length}, regular: ${sortedRegularChats.length}`);
+          }
+        });
+
+        if (!chatFound) {
+          console.warn(`[Store] Chat ${chatId} NOT found in any pinnedChats!`);
+        }
+
+        // Обновляем chats для текущего таба
+        const currentTabData = updatedTabs[state.currentTab];
+        const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+        console.log(`[Store] Current tab "${state.currentTab}" - total chats: ${updatedChats.length} (pinned: ${currentTabData.pinnedChats.length}, regular: ${currentTabData.regularChats.length})`);
+
+        return {
+          tabs: updatedTabs,
+          chats: updatedChats,
+        };
+      });
     } catch (error: any) {
+      console.error('[Store] Failed to unpin chat:', error);
       set({ error: error.message || 'Failed to unpin chat' });
       throw error;
     }
@@ -891,11 +977,88 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const newFavoriteStatus = !chat.is_favorite;
       await chatApi.toggleChatFavorite(chatId, newFavoriteStatus);
 
-      set((state) => ({
-        chats: state.chats.map((c) =>
-          c.id === chatId ? { ...c, is_favorite: newFavoriteStatus } : c
-        ),
-      }));
+      set((state) => {
+        // Helper function to update chat in list
+        const updateChatFavorite = (c: Chat) =>
+          c.id === chatId ? { ...c, is_favorite: newFavoriteStatus } : c;
+
+        // Обновляем табы
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+
+          // Для таба 'favorite' нужно добавить/удалить чат
+          if (tabKey === 'favorite') {
+            if (newFavoriteStatus) {
+              // Добавляем в favorite, если там ещё нет
+              const chatInPinned = tab.pinnedChats.find(c => c.id === chatId);
+              const chatInRegular = tab.regularChats.find(c => c.id === chatId);
+
+              if (!chatInPinned && !chatInRegular) {
+                // Нужно загрузить чат и добавить его
+                // Для упрощения, ищем чат в других табах
+                const foundChat = Object.keys(state.tabs).find(otherTabKey => {
+                  const otherTab = state.tabs[otherTabKey as TabName];
+                  return otherTab.pinnedChats.find(c => c.id === chatId) ||
+                         otherTab.regularChats.find(c => c.id === chatId);
+                });
+
+                if (foundChat) {
+                  const otherTab = state.tabs[foundChat as TabName];
+                  const chatData = otherTab.pinnedChats.find(c => c.id === chatId) ||
+                                   otherTab.regularChats.find(c => c.id === chatId);
+
+                  if (chatData) {
+                    const updatedChat = { ...chatData, is_favorite: true };
+                    if (updatedChat.is_pinned) {
+                      updatedTabs.favorite = {
+                        ...tab,
+                        pinnedChats: [updatedChat, ...tab.pinnedChats],
+                      };
+                    } else {
+                      updatedTabs.favorite = {
+                        ...tab,
+                        regularChats: [updatedChat, ...tab.regularChats],
+                      };
+                    }
+                  }
+                }
+              } else {
+                // Чат уже в favorite, просто обновляем флаг
+                updatedTabs.favorite = {
+                  ...tab,
+                  pinnedChats: tab.pinnedChats.map(updateChatFavorite),
+                  regularChats: tab.regularChats.map(updateChatFavorite),
+                };
+              }
+            } else {
+              // Удаляем из favorite
+              updatedTabs.favorite = {
+                ...tab,
+                pinnedChats: tab.pinnedChats.filter(c => c.id !== chatId),
+                regularChats: tab.regularChats.filter(c => c.id !== chatId),
+              };
+            }
+          } else {
+            // Для остальных табов просто обновляем флаг
+            updatedTabs[tabKey as TabName] = {
+              ...tab,
+              pinnedChats: tab.pinnedChats.map(updateChatFavorite),
+              regularChats: tab.regularChats.map(updateChatFavorite),
+            };
+          }
+        });
+
+        // Обновляем chats для текущего таба
+        const currentTabData = updatedTabs[state.currentTab];
+        const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+        return {
+          tabs: updatedTabs,
+          chats: updatedChats,
+        };
+      });
     } catch (error: any) {
       set({ error: error.message || 'Failed to toggle favorite' });
       throw error;

@@ -92,6 +92,9 @@ const ChatListScreen: React.FC = () => {
       // Load current tab first (highest priority)
       await loadTabData('all');
 
+      // Разрешаем подгрузку после успешной загрузки первого таба
+      setCanLoadMore(true);
+
       // Then load other tabs in background for instant switching
       // Use setTimeout to not block the UI
       setTimeout(() => {
@@ -409,7 +412,7 @@ const ChatListScreen: React.FC = () => {
 
   const handleRenameChat = async (chatId: number, newName: string) => {
     try {
-      await updateChat(chatId, newName);
+      await updateChat(chatId, { name: newName });
     } catch (error) {
       console.error('Failed to rename chat:', error);
     }
@@ -426,12 +429,21 @@ const ChatListScreen: React.FC = () => {
   const handleTogglePinned = async (chatId: number) => {
     try {
       const chat = chats.find(c => c.id === chatId);
-      if (!chat) return;
+      if (!chat) {
+        console.warn('[ChatList] handleTogglePinned: chat not found', chatId);
+        return;
+      }
+
+      console.log('[ChatList] handleTogglePinned called for chat', chatId, 'is_pinned:', chat.is_pinned);
 
       if (chat.is_pinned) {
+        console.log('[ChatList] Calling unpinChat...');
         await unpinChat(chatId);
+        console.log('[ChatList] unpinChat completed');
       } else {
+        console.log('[ChatList] Calling pinChat...');
         await pinChat(chatId);
+        console.log('[ChatList] pinChat completed');
       }
     } catch (error) {
       console.error('Failed to toggle pin:', error);
@@ -474,6 +486,8 @@ const ChatListScreen: React.FC = () => {
     const tabData = tabs[filterKey];
     const tabChatsFromStore = [...tabData.pinnedChats, ...tabData.regularChats];
 
+    console.log(`[ChatList] renderFilterContent for tab "${filterKey}" - pinned: ${tabData.pinnedChats.length}, regular: ${tabData.regularChats.length}, total: ${tabChatsFromStore.length}`);
+
     // Backend now handles filtering and sorting
     // Here we only apply client-side search if a query is present
     const tabChats = tabChatsFromStore.filter((chat) => {
@@ -502,8 +516,18 @@ const ChatListScreen: React.FC = () => {
             }
             contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
             onEndReached={() => {
+              console.log('[ChatList] onEndReached triggered:', {
+                canLoadMore,
+                hasMoreChats,
+                isLoadingMore,
+                currentTab: chatFilter,
+                tabHasMore: tabs[chatFilter]?.hasMore,
+              });
               if (canLoadMore && hasMoreChats && !isLoadingMore) {
+                console.log('[ChatList] Loading more chats...');
                 loadMoreChats();
+              } else {
+                console.log('[ChatList] Blocked from loading more');
               }
             }}
             onEndReachedThreshold={0.3}
