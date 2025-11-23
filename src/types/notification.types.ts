@@ -18,6 +18,13 @@ export type NotificationType =
 // Notification Priority
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
+// Notification Sender Interface
+export interface NotificationSender {
+  id: number;
+  name: string;
+  avatar_url?: string;
+}
+
 // Notification Interface
 export interface Notification {
   id: number;
@@ -32,6 +39,13 @@ export interface Notification {
   image_url?: string;
   created_at: ISODateString;
   read_at?: ISODateString;
+  updated_at?: ISODateString;
+
+  // Message-specific fields
+  message_count?: number; // Number of grouped messages
+  sender_id?: number;
+  sender?: NotificationSender;
+  group_key?: string;
 }
 
 // Notification Preferences Interface

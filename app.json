@@ -22,7 +22,16 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
         "NSCameraUsageDescription": "Tachyon нужен доступ к камере для съемки и отправки фотографий",
-        "NSPhotoLibraryAddUsageDescription": "Tachyon нужен доступ для сохранения изображений в вашу галерею"
+        "NSPhotoLibraryAddUsageDescription": "Tachyon нужен доступ для сохранения изображений в вашу галерею",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoads": false,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
       }
     },
     "android": {

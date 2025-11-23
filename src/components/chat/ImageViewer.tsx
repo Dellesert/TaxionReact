@@ -1,12 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, View, StyleSheet, TouchableOpacity, Text, Platform, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
-import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
+import { GestureDetector, GestureHandlerRootView, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -31,11 +30,22 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   initialIndex = 0,
   onClose
 }) => {
-  const { theme } = useTheme();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const screenWidth = Dimensions.get('window').width;
+
+  // Значения для свайпа между изображениями
   const translateX = useSharedValue(0);
+
+  // Значения для zoom и pan
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const focalX = useSharedValue(0);
+  const focalY = useSharedValue(0);
+  const translateXZoom = useSharedValue(0);
+  const translateYZoom = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
 
   useEffect(() => {
     const loadSessionId = async () => {
@@ -45,13 +55,29 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     loadSessionId();
   }, []);
 
-  // Сброс индекса при открытии
+  // Сброс индекса и зума при открытии
   useEffect(() => {
     if (visible) {
       setCurrentIndex(initialIndex);
       translateX.value = 0;
+      scale.value = 1;
+      savedScale.value = 1;
+      translateXZoom.value = 0;
+      translateYZoom.value = 0;
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
     }
   }, [visible, initialIndex]);
+
+  // Сброс зума при смене изображения
+  useEffect(() => {
+    scale.value = withTiming(1, { duration: 200 });
+    savedScale.value = 1;
+    translateXZoom.value = withTiming(0, { duration: 200 });
+    translateYZoom.value = withTiming(0, { duration: 200 });
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+  }, [currentIndex]);
 
   // Обработка клавиатуры для веба
   useEffect(() => {
@@ -70,6 +96,9 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     }
   }, [visible, currentIndex, imageUrls.length]);
 
+  const currentImageUrl = imageUrls[currentIndex];
+  const hasMultipleImages = imageUrls.length > 1;
+
   const handleNext = () => {
     if (currentIndex < imageUrls.length - 1) {
       setCurrentIndex((prev) => prev + 1);
@@ -84,14 +113,49 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     }
   };
 
-  const onGestureEvent = (event: any) => {
-    translateX.value = event.nativeEvent.translationX;
-  };
+  // Жест pinch для зума
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((event) => {
+      scale.value = savedScale.value * event.scale;
+    })
+    .onEnd(() => {
+      // Ограничиваем минимальный и максимальный зум
+      if (scale.value < 1) {
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+        translateXZoom.value = withSpring(0);
+        translateYZoom.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else if (scale.value > 4) {
+        scale.value = withSpring(4);
+        savedScale.value = 4;
+      } else {
+        savedScale.value = scale.value;
+      }
+    });
 
-  const onHandlerStateChange = (event: any) => {
-    if (event.nativeEvent.state === State.END) {
-      const { translationX, velocityX } = event.nativeEvent;
+  // Жест pan для перемещения увеличенного изображения
+  const panGestureZoom = Gesture.Pan()
+    .enabled(savedScale.value > 1)
+    .onUpdate((event) => {
+      translateXZoom.value = savedTranslateX.value + event.translationX;
+      translateYZoom.value = savedTranslateY.value + event.translationY;
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateXZoom.value;
+      savedTranslateY.value = translateYZoom.value;
+    });
+
+  // Жест для переключения между изображениями (свайп)
+  const panGestureSwipe = Gesture.Pan()
+    .enabled(hasMultipleImages && savedScale.value <= 1)
+    .onUpdate((event) => {
+      translateX.value = event.translationX;
+    })
+    .onEnd((event) => {
       const threshold = screenWidth * 0.3;
+      const { translationX, velocityX } = event;
 
       if (translationX < -threshold || velocityX < -500) {
         // Свайп влево - следующее изображение
@@ -111,17 +175,43 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         // Возврат в исходное положение
         translateX.value = withSpring(0);
       }
-    }
-  };
+    });
+
+  // Двойной тап для зума
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (scale.value > 1) {
+        // Если увеличено - вернуть в исходное состояние
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+        translateXZoom.value = withSpring(0);
+        translateYZoom.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else {
+        // Если не увеличено - увеличить
+        scale.value = withSpring(2.5);
+        savedScale.value = 2.5;
+      }
+    });
+
+  // Композиция жестов
+  const composedGesture = Gesture.Simultaneous(
+    Gesture.Race(doubleTap, Gesture.Simultaneous(pinchGesture, panGestureZoom)),
+    panGestureSwipe
+  );
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateX: translateX.value }],
+      transform: [
+        { translateX: translateX.value },
+        { translateX: translateXZoom.value },
+        { translateY: translateYZoom.value },
+        { scale: scale.value },
+      ],
     };
   });
-
-  const currentImageUrl = imageUrls[currentIndex];
-  const hasMultipleImages = imageUrls.length > 1;
 
   // Не отображаем модалку если нет изображений
   if (!visible || imageUrls.length === 0) {
@@ -148,11 +238,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             )}
 
             <Pressable style={styles.imagePressable} onPress={onClose}>
-              <PanGestureHandler
-                onGestureEvent={onGestureEvent}
-                onHandlerStateChange={onHandlerStateChange}
-                enabled={hasMultipleImages}
-              >
+              <GestureDetector gesture={composedGesture}>
                 <Animated.View style={[styles.imageViewerContainer, animatedStyle]}>
                   {currentImageUrl && (
                     <Image
@@ -169,7 +255,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                     />
                   )}
                 </Animated.View>
-              </PanGestureHandler>
+              </GestureDetector>
             </Pressable>
 
             {/* Кнопка закрытия */}

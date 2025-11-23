@@ -3,7 +3,7 @@
  * Компонент аватара пользователя
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, ReactNode } from 'react';
 import { View, Text, StyleSheet, ViewStyle, Platform, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useAuthStore } from '@store/authStore';
@@ -18,6 +18,8 @@ interface AvatarProps {
   style?: ViewStyle;
   onPress?: () => void;
   userId?: number;
+  badge?: ReactNode; // Custom badge component to show in bottom-right corner
+  badgeStyle?: ViewStyle;
 }
 
 const Avatar: React.FC<AvatarProps> = ({
@@ -29,6 +31,8 @@ const Avatar: React.FC<AvatarProps> = ({
   style,
   onPress,
   userId,
+  badge,
+  badgeStyle,
 }) => {
   const [imageError, setImageError] = useState(false);
   const sessionId = useAuthStore((state) => state.sessionId);
@@ -129,6 +133,18 @@ const Avatar: React.FC<AvatarProps> = ({
           ]}
         />
       )}
+
+      {badge && (
+        <View
+          style={[
+            styles.badge,
+            statusPosition,
+            badgeStyle,
+          ]}
+        >
+          {badge}
+        </View>
+      )}
     </>
   );
 
@@ -171,6 +187,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  badge: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

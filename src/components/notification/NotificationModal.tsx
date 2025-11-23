@@ -13,12 +13,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
-  Animated,
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from 'react-native-reanimated';
 import { useNotificationStore } from '@store/notificationStore';
 import NotificationItem from '@components/common/NotificationItem';
 import { Notification } from '@types/notification.types';
@@ -35,7 +36,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const slideAnim = React.useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const translateY = useSharedValue(SCREEN_HEIGHT);
+  const isDragging = useSharedValue(false);
 
   const {
     notifications,
@@ -51,20 +53,54 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   useEffect(() => {
     if (visible) {
       loadNotifications();
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 11,
-      }).start();
+      translateY.value = withSpring(0, {
+        damping: 20,
+        stiffness: 90,
+      });
     } else {
-      Animated.timing(slideAnim, {
-        toValue: SCREEN_HEIGHT,
+      translateY.value = withTiming(SCREEN_HEIGHT, {
         duration: 250,
-        useNativeDriver: true,
-      }).start();
+      });
     }
   }, [visible]);
+
+  const handleClose = () => {
+    onClose();
+  };
+
+  // Pan gesture for swipe to dismiss
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      isDragging.value = true;
+    })
+    .onUpdate((event) => {
+      // Only allow dragging down
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+      }
+    })
+    .onEnd((event) => {
+      isDragging.value = false;
+      const shouldClose = event.translationY > 100 || event.velocityY > 500;
+
+      if (shouldClose) {
+        // Close modal
+        translateY.value = withTiming(SCREEN_HEIGHT, {
+          duration: 250,
+        });
+        runOnJS(handleClose)();
+      } else {
+        // Snap back
+        translateY.value = withSpring(0, {
+          damping: 20,
+          stiffness: 90,
+        });
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   const handleRefresh = useCallback(() => {
     loadNotifications(true);
@@ -175,54 +211,56 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
           activeOpacity={1}
           onPress={onClose}
         />
-        <Animated.View
-          style={[
-            styles.container,
-            {
-              backgroundColor: theme.background,
-              transform: [{ translateY: slideAnim }],
-              paddingBottom: insets.bottom || 20,
-            },
-          ]}
-        >
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: theme.border }]}>
-            <View style={[styles.dragHandle, { backgroundColor: theme.textTertiary }]} />
-            <View style={styles.headerContent}>
-              <Text style={[styles.title, { color: theme.text }]}>Уведомления</Text>
-              {unreadCount > 0 && (
-                <TouchableOpacity
-                  onPress={handleMarkAllAsRead}
-                  style={styles.markAllButton}
-                >
-                  <Ionicons name="checkmark-done" size={24} color={theme.primary} />
-                </TouchableOpacity>
-              )}
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={[
+              styles.container,
+              animatedStyle,
+              {
+                backgroundColor: theme.background,
+                paddingBottom: insets.bottom || 20,
+              },
+            ]}
+          >
+            {/* Header with drag handle */}
+            <View style={[styles.header, { borderBottomColor: theme.border }]}>
+              <View style={[styles.dragHandle, { backgroundColor: theme.textTertiary }]} />
+              <View style={styles.headerContent}>
+                <Text style={[styles.title, { color: theme.text }]}>Уведомления</Text>
+                {unreadCount > 0 && (
+                  <TouchableOpacity
+                    onPress={handleMarkAllAsRead}
+                    style={styles.markAllButton}
+                  >
+                    <Ionicons name="checkmark-done" size={24} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </View>
 
-          {/* List */}
-          <FlatList
-            data={notifications}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id.toString()}
-            ListEmptyComponent={renderEmpty}
-            ListFooterComponent={renderFooter}
-            refreshControl={
-              <RefreshControl
-                refreshing={isLoading && notifications.length === 0}
-                onRefresh={handleRefresh}
-                colors={[theme.primary]}
-                tintColor={theme.primary}
-              />
-            }
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.5}
-            contentContainerStyle={
-              notifications.length === 0 ? styles.emptyListContainer : styles.listContent
-            }
-          />
-        </Animated.View>
+            {/* List */}
+            <FlatList
+              data={notifications}
+              renderItem={renderItem}
+              keyExtractor={(item) => item.id.toString()}
+              ListEmptyComponent={renderEmpty}
+              ListFooterComponent={renderFooter}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isLoading && notifications.length === 0}
+                  onRefresh={handleRefresh}
+                  colors={[theme.primary]}
+                  tintColor={theme.primary}
+                />
+              }
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.5}
+              contentContainerStyle={
+                notifications.length === 0 ? styles.emptyListContainer : styles.listContent
+              }
+            />
+          </Animated.View>
+        </GestureDetector>
       </View>
     </Modal>
   );
@@ -251,8 +289,8 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 12,
   },
   header: {
     borderBottomWidth: 1,

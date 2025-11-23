@@ -10,6 +10,7 @@ import { Notification, NotificationType } from '@types/notification.types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useTheme } from '@hooks/useTheme';
+import { Avatar } from '@components/common/Avatar';
 
 interface NotificationItemProps {
   notification: Notification;
@@ -144,10 +145,23 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       activeOpacity={0.7}
     >
       <View style={styles.content}>
-        {/* Иконка */}
-        <View style={[styles.iconContainer, { backgroundColor: iconColor }]}>
-          <Ionicons name={iconName} size={20} color="#FFFFFF" />
-        </View>
+        {/* Avatar with badge */}
+        {notification.sender ? (
+          <View style={styles.avatarWrapper}>
+            <Avatar
+              name={notification.sender.name}
+              imageUrl={notification.sender.avatar_url}
+              size={48}
+            />
+            <View style={[styles.badge, { backgroundColor: theme.background }]}>
+              <Ionicons name={iconName} size={12} color={iconColor} />
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.iconContainer, { backgroundColor: iconColor }]}>
+            <Ionicons name={iconName} size={24} color="#FFFFFF" />
+          </View>
+        )}
 
         {/* Контент */}
         <View style={styles.textContainer}>
@@ -157,11 +171,11 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
               { color: theme.text },
               !notification.is_read && styles.unreadTitle,
             ]}
-            numberOfLines={1}
+            numberOfLines={2}
           >
             {notification.title}
           </Text>
-          <Text style={[styles.message, { color: theme.textSecondary }]} numberOfLines={2}>
+          <Text style={[styles.message, { color: theme.textSecondary }]} numberOfLines={3}>
             {notification.message}
           </Text>
           <Text style={[styles.time, { color: theme.textTertiary }]}>{timeAgo}</Text>
@@ -183,14 +197,19 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    gap: 12,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    width: 48,
+    height: 48,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   textContainer: {
     flex: 1,
@@ -217,6 +236,16 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginLeft: 8,
     marginTop: 6,
+  },
+  badge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

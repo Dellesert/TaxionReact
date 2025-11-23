@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
 import { useThemeStore } from './src/store/themeStore';
+import { useNotificationStore } from './src/store/notificationStore';
 import { websocketService } from './src/services/websocket.service';
 import { NotificationProvider } from './src/contexts/NotificationContext';
 import { ActionModalProvider } from './src/contexts/ActionModalContext';
@@ -74,6 +75,7 @@ export default function App() {
   const loadTheme = useThemeStore((state) => state.loadTheme);
   const initSystemThemeListener = useThemeStore((state) => state.initSystemThemeListener);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const loadUnreadCount = useNotificationStore((state) => state.loadUnreadCount);
 
   useEffect(() => {
     // Initialize auth state and theme on app start
@@ -93,6 +95,8 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated) {
       websocketService.connect();
+      // Load unread notification count when user is authenticated
+      loadUnreadCount();
     } else {
       websocketService.disconnect();
     }
@@ -119,6 +123,9 @@ export default function App() {
           console.log('🔌 WebSocket disconnected - reconnecting...');
           await websocketService.reconnect();
         }
+
+        // Reload unread notification count when app becomes active
+        loadUnreadCount();
       }
 
       appState = nextAppState;

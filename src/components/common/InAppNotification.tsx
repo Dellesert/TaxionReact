@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 import { Notification, NotificationType } from '@types/notification.types';
+import { Avatar } from '@components/common/Avatar';
 
 interface InAppNotificationProps {
   notification: Notification;
@@ -148,10 +149,23 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
         onPress={handlePress}
         activeOpacity={0.8}
       >
-        {/* Icon */}
-        <View style={[styles.iconContainer, { backgroundColor: iconColor + '20' }]}>
-          <Ionicons name={iconName} size={24} color={iconColor} />
-        </View>
+        {/* Avatar or Icon */}
+        {notification.sender ? (
+          <View style={styles.avatarWrapper}>
+            <Avatar
+              name={notification.sender.name}
+              imageUrl={notification.sender.avatar_url}
+              size={40}
+            />
+            <View style={[styles.badge, { backgroundColor }]}>
+              <Ionicons name={iconName} size={10} color={iconColor} />
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.iconContainer, { backgroundColor: iconColor + '20' }]}>
+            <Ionicons name={iconName} size={24} color={iconColor} />
+          </View>
+        )}
 
         {/* Content */}
         <View style={styles.textContainer}>
@@ -201,6 +215,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
   },
+  avatarWrapper: {
+    position: 'relative',
+    width: 40,
+    height: 40,
+    marginRight: 12,
+  },
   iconContainer: {
     width: 40,
     height: 40,
@@ -208,6 +228,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+  },
+  badge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   textContainer: {
     flex: 1,
