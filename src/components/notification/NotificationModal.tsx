@@ -129,7 +129,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
             screen: 'Chat',
             params: { chatId: notification.data.chat_id },
           } as never);
-        } else if (notification.type === 'task' && notification.data?.task_id) {
+        } else if ((notification.type === 'task' || notification.type === 'reminder') && notification.data?.task_id) {
           navigation.navigate('TaskDetail' as never, { taskId: notification.data.task_id } as never);
         } else if (notification.type === 'poll' && notification.data?.poll_id) {
           navigation.navigate('Polls' as never, {

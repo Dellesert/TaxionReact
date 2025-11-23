@@ -35,6 +35,8 @@ const getNotificationIcon = (type: NotificationType): keyof typeof Ionicons.glyp
       return 'heart';
     case 'system':
       return 'information-circle';
+    case 'reminder':
+      return 'alarm';
     default:
       return 'notifications';
   }
@@ -57,6 +59,8 @@ const getNotificationColor = (type: NotificationType): string => {
       return '#EF4444'; // Red
     case 'system':
       return '#6B7280'; // Gray
+    case 'reminder':
+      return '#F59E0B'; // Amber (same as poll)
     default:
       return '#3B82F6';
   }
@@ -83,6 +87,8 @@ const getBackgroundColorLight = (type: NotificationType, isRead: boolean): strin
       return '#FEF2F2'; // Red-50
     case 'system':
       return '#F9FAFB'; // Gray-50
+    case 'reminder':
+      return '#FFFBEB'; // Amber-50 (same as poll)
     default:
       return '#EFF6FF';
   }
@@ -109,6 +115,8 @@ const getBackgroundColorDark = (type: NotificationType, isRead: boolean): string
       return '#7F1D1D'; // Red-900
     case 'system':
       return '#374151'; // Gray-700
+    case 'reminder':
+      return '#78350F'; // Amber-900 (same as poll)
     default:
       return '#1E3A8A';
   }

@@ -13,7 +13,8 @@ export type NotificationType =
   | 'poll'
   | 'system'
   | 'mention'
-  | 'reaction';
+  | 'reaction'
+  | 'reminder';
 
 // Notification Priority
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';

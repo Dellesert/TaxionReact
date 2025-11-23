@@ -41,6 +41,8 @@ const getNotificationIcon = (type: NotificationType): keyof typeof Ionicons.glyp
       return 'heart';
     case 'system':
       return 'information-circle';
+    case 'reminder':
+      return 'alarm';
     default:
       return 'notifications';
   }
@@ -63,6 +65,8 @@ const getNotificationColor = (type: NotificationType): string => {
       return '#EC4899'; // Pink
     case 'system':
       return '#6B7280'; // Gray
+    case 'reminder':
+      return '#F59E0B'; // Amber (same as poll)
     default:
       return '#3B82F6';
   }
