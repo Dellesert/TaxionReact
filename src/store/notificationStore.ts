@@ -79,20 +79,36 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   loadMoreNotifications: async () => {
     const { notifications, hasMore, isLoading } = get();
 
+    console.log('🔄 loadMoreNotifications called:', {
+      currentCount: notifications.length,
+      hasMore,
+      isLoading
+    });
+
     if (!hasMore || isLoading) {
+      console.log('⛔ Early return:', { hasMore, isLoading });
       return;
     }
 
     try {
       set({ isLoading: true, error: null });
 
+      const offset = notifications.length;
+      console.log('📡 Fetching notifications with offset:', offset);
+
       const response = await notificationApi.getNotifications(
         {},
         {
           limit: NOTIFICATIONS_PER_PAGE,
-          offset: notifications.length,
+          offset: offset,
         }
       );
+
+      console.log('✅ Received notifications:', {
+        newCount: response.data.length,
+        totalNow: notifications.length + response.data.length,
+        hasMore: response.hasMore,
+      });
 
       set({
         notifications: [...notifications, ...response.data],
@@ -100,6 +116,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         isLoading: false,
       });
     } catch (error: any) {
+      console.error('❌ Failed to load more notifications:', error);
       set({
         error: error.message || 'Failed to load more notifications',
         isLoading: false,

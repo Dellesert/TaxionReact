@@ -107,10 +107,14 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   }, [loadNotifications]);
 
   const handleLoadMore = useCallback(() => {
+    console.log('📊 handleLoadMore called:', { isLoading, hasMore, notificationsCount: notifications.length });
     if (!isLoading && hasMore) {
+      console.log('✅ Loading more notifications...');
       loadMoreNotifications();
+    } else {
+      console.log('⛔ Skipping load:', { isLoading, hasMore });
     }
-  }, [isLoading, hasMore, loadMoreNotifications]);
+  }, [isLoading, hasMore, loadMoreNotifications, notifications.length]);
 
   const handleNotificationPress = useCallback(
     (notification: Notification) => {
@@ -130,10 +134,13 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
             params: { chatId: notification.data.chat_id },
           } as never);
         } else if ((notification.type === 'task' || notification.type === 'reminder') && notification.data?.task_id) {
-          navigation.navigate('TaskDetail' as never, { taskId: notification.data.task_id } as never);
+          navigation.navigate('Tasks' as never, {
+            screen: 'TaskDetail',
+            params: { taskId: notification.data.task_id },
+          } as never);
         } else if (notification.type === 'poll' && notification.data?.poll_id) {
           navigation.navigate('Polls' as never, {
-            screen: 'PollDetails',
+            screen: 'PollDetail',
             params: { pollId: notification.data.poll_id },
           } as never);
         } else if (notification.type === 'calendar' && notification.data?.event_id) {
@@ -211,18 +218,18 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
           activeOpacity={1}
           onPress={onClose}
         />
-        <GestureDetector gesture={panGesture}>
-          <Animated.View
-            style={[
-              styles.container,
-              animatedStyle,
-              {
-                backgroundColor: theme.background,
-                paddingBottom: insets.bottom || 20,
-              },
-            ]}
-          >
-            {/* Header with drag handle */}
+        <Animated.View
+          style={[
+            styles.container,
+            animatedStyle,
+            {
+              backgroundColor: theme.background,
+              paddingBottom: insets.bottom || 20,
+            },
+          ]}
+        >
+          {/* Header with drag handle */}
+          <GestureDetector gesture={panGesture}>
             <View style={[styles.header, { borderBottomColor: theme.border }]}>
               <View style={[styles.dragHandle, { backgroundColor: theme.textTertiary }]} />
               <View style={styles.headerContent}>
@@ -237,30 +244,38 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
                 )}
               </View>
             </View>
+          </GestureDetector>
 
-            {/* List */}
-            <FlatList
-              data={notifications}
-              renderItem={renderItem}
-              keyExtractor={(item) => item.id.toString()}
-              ListEmptyComponent={renderEmpty}
-              ListFooterComponent={renderFooter}
-              refreshControl={
-                <RefreshControl
-                  refreshing={isLoading && notifications.length === 0}
-                  onRefresh={handleRefresh}
-                  colors={[theme.primary]}
-                  tintColor={theme.primary}
-                />
-              }
-              onEndReached={handleLoadMore}
-              onEndReachedThreshold={0.5}
-              contentContainerStyle={
-                notifications.length === 0 ? styles.emptyListContainer : styles.listContent
-              }
-            />
-          </Animated.View>
-        </GestureDetector>
+          {/* List */}
+          <FlatList
+            data={notifications}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id.toString()}
+            ListEmptyComponent={renderEmpty}
+            ListFooterComponent={renderFooter}
+            refreshControl={
+              <RefreshControl
+                refreshing={isLoading && notifications.length === 0}
+                onRefresh={handleRefresh}
+                colors={[theme.primary]}
+                tintColor={theme.primary}
+              />
+            }
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.3}
+            onScroll={(e) => {
+              console.log('📜 Scroll event:', {
+                contentHeight: e.nativeEvent.contentSize.height,
+                layoutHeight: e.nativeEvent.layoutMeasurement.height,
+                offsetY: e.nativeEvent.contentOffset.y,
+              });
+            }}
+            scrollEventThrottle={400}
+            contentContainerStyle={
+              notifications.length === 0 ? styles.emptyListContainer : styles.listContent
+            }
+          />
+        </Animated.View>
       </View>
     </Modal>
   );
