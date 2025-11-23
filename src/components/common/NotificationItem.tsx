@@ -3,19 +3,21 @@
  * Компонент для отображения одного уведомления
  */
 
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Notification, NotificationType } from '@types/notification.types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useTheme } from '@hooks/useTheme';
 import { Avatar } from '@components/common/Avatar';
+import { Swipeable } from 'react-native-gesture-handler';
 
 interface NotificationItemProps {
   notification: Notification;
   onPress?: (notification: Notification) => void;
   onMarkAsRead?: (id: number) => void;
+  onDelete?: (id: number) => void;
 }
 
 // Иконки для разных типов уведомлений
@@ -126,8 +128,10 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   onPress,
   onMarkAsRead,
+  onDelete,
 }) => {
   const { theme, isDark } = useTheme();
+  const swipeableRef = useRef<Swipeable>(null);
   const iconName = getNotificationIcon(notification.type);
   const iconColor = getNotificationColor(notification.type);
   const backgroundColor = isDark
@@ -141,6 +145,10 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
     onPress?.(notification);
   };
 
+  const handleDelete = () => {
+    onDelete?.(notification.id);
+  };
+
   const timeAgo = formatDistanceToNow(new Date(notification.created_at), {
     addSuffix: true,
     locale: ru,
@@ -150,12 +158,33 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   const isGrouped = notification.data?.task_ids && notification.data.task_ids.length > 1;
   const taskCount = notification.data?.task_count || notification.message_count;
 
+  const renderRightActions = () => {
+    return (
+      <View style={styles.swipeAction}>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={handleDelete}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
+          <Text style={styles.deleteButtonText}>Удалить</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
-    <TouchableOpacity
-      style={[styles.container, { backgroundColor, borderBottomColor: theme.border }]}
-      onPress={handlePress}
-      activeOpacity={0.7}
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={onDelete ? renderRightActions : undefined}
+      overshootRight={false}
+      friction={2}
     >
+      <TouchableOpacity
+        style={[styles.container, { backgroundColor, borderBottomColor: theme.border }]}
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
       <View style={styles.content}>
         {/* Avatar with badge */}
         {notification.sender ? (
@@ -208,7 +237,8 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
         {/* Индикатор непрочитанного */}
         {!notification.is_read && <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />}
       </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Swipeable>
   );
 };
 
@@ -303,6 +333,24 @@ const styles = StyleSheet.create({
   countTextIcon: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  swipeAction: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });
 

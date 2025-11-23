@@ -179,3 +179,17 @@ export const getNotificationTasks = async (notificationId: number): Promise<{
   }>(`/notifications/${notificationId}/tasks`);
   return response.data;
 };
+
+/**
+ * Delete single notification
+ */
+export const deleteNotification = async (id: number): Promise<void> => {
+  await api.delete(API_ENDPOINTS.NOTIFICATION.DELETE(id));
+};
+
+/**
+ * Delete all notifications
+ */
+export const deleteAllNotifications = async (): Promise<void> => {
+  await api.delete(API_ENDPOINTS.NOTIFICATION.DELETE_ALL);
+};

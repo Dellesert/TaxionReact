@@ -168,6 +168,8 @@ export const API_ENDPOINTS = {
     MARK_READ: (id: number) => `/notifications/${id}/read`,
     MARK_MULTIPLE_READ: '/notifications/read',
     MARK_ALL_READ: '/notifications/read-all',
+    DELETE: (id: number) => `/notifications/${id}`,
+    DELETE_ALL: '/notifications',
     STATS: '/notifications/stats',
     SEARCH: '/notifications/search',
     PREFERENCES: '/notifications/preferences',

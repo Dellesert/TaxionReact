@@ -25,6 +25,8 @@ interface NotificationState {
   markAsRead: (notificationId: number) => Promise<void>;
   markMultipleAsRead: (notificationIds: number[]) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (notificationId: number) => Promise<void>;
+  deleteAllNotifications: () => Promise<void>;
   handleNewNotification: (notification: Notification) => void;
   clearError: () => void;
 }
@@ -209,6 +211,45 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       }));
     } catch (error: any) {
       set({ error: error.message || 'Failed to mark all as read' });
+    }
+  },
+
+  /**
+   * Delete single notification
+   */
+  deleteNotification: async (notificationId: number) => {
+    try {
+      await notificationApi.deleteNotification(notificationId);
+
+      set((state) => {
+        const deletedNotif = state.notifications.find((n) => n.id === notificationId);
+        const wasUnread = deletedNotif && !deletedNotif.is_read;
+
+        return {
+          notifications: state.notifications.filter((notif) => notif.id !== notificationId),
+          unreadCount: wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount,
+        };
+      });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to delete notification' });
+      throw error;
+    }
+  },
+
+  /**
+   * Delete all notifications
+   */
+  deleteAllNotifications: async () => {
+    try {
+      await notificationApi.deleteAllNotifications();
+
+      set({
+        notifications: [],
+        unreadCount: 0,
+      });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to delete all notifications' });
+      throw error;
     }
   },
 

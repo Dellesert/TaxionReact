@@ -40,6 +40,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
     loadMoreNotifications,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
     unreadCount,
   } = useNotificationStore();
 
@@ -119,15 +121,24 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
     markAllAsRead();
   }, [markAllAsRead]);
 
+  const handleDeleteAll = useCallback(() => {
+    deleteAllNotifications();
+  }, [deleteAllNotifications]);
+
+  const handleDeleteNotification = useCallback((id: number) => {
+    deleteNotification(id);
+  }, [deleteNotification]);
+
   const renderItem = useCallback(
     ({ item }: { item: Notification }) => (
       <NotificationItem
         notification={item}
         onPress={handleNotificationPress}
         onMarkAsRead={markAsRead}
+        onDelete={handleDeleteNotification}
       />
     ),
-    [handleNotificationPress, markAsRead]
+    [handleNotificationPress, markAsRead, handleDeleteNotification]
   );
 
   const renderEmpty = () => {
@@ -190,10 +201,17 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
             <Ionicons name="close" size={28} color="#EF4444" />
           </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>Уведомления</Text>
-          {unreadCount > 0 ? (
-            <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="checkmark-done" size={24} color={theme.primary} />
-            </TouchableOpacity>
+          {notifications.length > 0 ? (
+            <View style={styles.headerActions}>
+              {unreadCount > 0 && (
+                <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.headerActionButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="checkmark-done" size={24} color={theme.primary} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={handleDeleteAll} style={styles.headerActionButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="trash-outline" size={24} color="#EF4444" />
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={styles.placeholder} />
           )}
@@ -236,18 +254,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
+    position: 'relative',
   },
   closeButton: {
     padding: 8,
     width: 44,
+    zIndex: 1,
   },
   title: {
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
     fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
+    paddingHorizontal: 60,
   },
-  markAllButton: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 1,
+    marginLeft: 'auto',
+  },
+  headerActionButton: {
     padding: 8,
     width: 44,
     alignItems: 'center',

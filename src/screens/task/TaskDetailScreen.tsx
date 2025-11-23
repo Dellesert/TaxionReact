@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
   Dimensions,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -139,6 +140,7 @@ const TaskDetailScreen: React.FC = () => {
   const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
 
   // Activities state
   const [activities, setActivities] = useState<TaskActivity[]>([]);
@@ -194,6 +196,35 @@ const TaskDetailScreen: React.FC = () => {
 
     return () => subscription?.remove();
   }, []);
+
+  // Handle keyboard show/hide for iOS with animation
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        Animated.timing(keyboardHeightAnim, {
+          toValue: e.endCoordinates.height,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e) => {
+        Animated.timing(keyboardHeightAnim, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, [keyboardHeightAnim]);
 
   useEffect(() => {
     loadTask();
@@ -2765,7 +2796,18 @@ const TaskDetailScreen: React.FC = () => {
 
         {/* Fixed Comment Input at Bottom - for Comments Tab */}
         {task.status !== 'done' && !isDelegatedByMe && activeTab === 'comments' && (
-          <View style={[styles.fixedCommentInputContainer, { backgroundColor: theme.background, borderTopColor: theme.border, bottom: insets.bottom + 80 }]}>
+          <Animated.View style={[
+            styles.fixedCommentInputContainer,
+            {
+              backgroundColor: theme.background,
+              borderTopColor: theme.border,
+              bottom: keyboardHeightAnim.interpolate({
+                inputRange: [0, 350],
+                outputRange: [insets.bottom + 80, 350],
+                extrapolateRight: 'extend',
+              }),
+            }
+          ]}>
             <TextInput
               style={[styles.commentInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
               placeholder="Написать комментарий..."
@@ -2793,7 +2835,7 @@ const TaskDetailScreen: React.FC = () => {
                 />
               )}
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
 
         {/* Share Task Modal */}
