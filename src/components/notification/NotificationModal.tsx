@@ -107,14 +107,10 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   }, [loadNotifications]);
 
   const handleLoadMore = useCallback(() => {
-    console.log('📊 handleLoadMore called:', { isLoading, hasMore, notificationsCount: notifications.length });
     if (!isLoading && hasMore) {
-      console.log('✅ Loading more notifications...');
       loadMoreNotifications();
-    } else {
-      console.log('⛔ Skipping load:', { isLoading, hasMore });
     }
-  }, [isLoading, hasMore, loadMoreNotifications, notifications.length]);
+  }, [isLoading, hasMore, loadMoreNotifications]);
 
   const handleNotificationPress = useCallback(
     (notification: Notification) => {
@@ -263,14 +259,6 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
             }
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.3}
-            onScroll={(e) => {
-              console.log('📜 Scroll event:', {
-                contentHeight: e.nativeEvent.contentSize.height,
-                layoutHeight: e.nativeEvent.layoutMeasurement.height,
-                offsetY: e.nativeEvent.contentOffset.y,
-              });
-            }}
-            scrollEventThrottle={400}
             contentContainerStyle={
               notifications.length === 0 ? styles.emptyListContainer : styles.listContent
             }
