@@ -33,7 +33,16 @@ export interface Notification {
   type: NotificationType;
   title: string;
   message: string;
-  data?: Record<string, unknown>; // Additional payload data
+  data?: {
+    chat_id?: number;
+    task_id?: number;
+    task_ids?: number[]; // For grouped task notifications
+    task_count?: number; // Number of tasks in group
+    poll_id?: number;
+    event_id?: number;
+    category?: string; // e.g., "overdue", "no_progress", etc.
+    [key: string]: unknown;
+  };
   is_read: boolean;
   priority: NotificationPriority;
   action_url?: string; // Deep link URL
@@ -41,12 +50,13 @@ export interface Notification {
   created_at: ISODateString;
   read_at?: ISODateString;
   updated_at?: ISODateString;
+  related_type?: string; // Type of related entity (e.g., "task", "message")
 
-  // Message-specific fields
+  // Grouping fields
   message_count?: number; // Number of grouped messages
   sender_id?: number;
   sender?: NotificationSender;
-  group_key?: string;
+  group_key?: string; // Key for grouping notifications
 }
 
 // Notification Preferences Interface

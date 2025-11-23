@@ -136,6 +136,10 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
   // Используем непрозрачный фон в зависимости от темы
   const backgroundColor = isDark ? '#1F2937' : '#FFFFFF';
 
+  // Check if this is a grouped notification (multiple tasks)
+  const isGrouped = notification.data?.task_ids && notification.data.task_ids.length > 1;
+  const taskCount = notification.data?.task_count || notification.message_count;
+
   return (
     <Animated.View
       style={[
@@ -164,10 +168,22 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
             <View style={[styles.badge, { backgroundColor }]}>
               <Ionicons name={iconName} size={10} color={iconColor} />
             </View>
+            {/* Count badge for grouped notifications */}
+            {isGrouped && taskCount && taskCount > 1 && (
+              <View style={[styles.countBadge, { backgroundColor: iconColor }]}>
+                <Text style={styles.countText}>{taskCount}</Text>
+              </View>
+            )}
           </View>
         ) : (
           <View style={[styles.iconContainer, { backgroundColor: iconColor + '20' }]}>
             <Ionicons name={iconName} size={24} color={iconColor} />
+            {/* Count badge for grouped notifications without sender */}
+            {isGrouped && taskCount && taskCount > 1 && (
+              <View style={[styles.countBadgeIcon, { backgroundColor }]}>
+                <Text style={[styles.countTextIcon, { color: iconColor }]}>{taskCount}</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -244,6 +260,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  countBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  countText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  countBadgeIcon: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  countTextIcon: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   textContainer: {
     flex: 1,

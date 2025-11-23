@@ -13,19 +13,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
-  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from 'react-native-reanimated';
 import { useNotificationStore } from '@store/notificationStore';
 import NotificationItem from '@components/common/NotificationItem';
 import { Notification } from '@types/notification.types';
 import { useTheme } from '@hooks/useTheme';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface NotificationModalProps {
   visible: boolean;
@@ -36,8 +31,6 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const translateY = useSharedValue(SCREEN_HEIGHT);
-  const isDragging = useSharedValue(false);
 
   const {
     notifications,
@@ -53,54 +46,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   useEffect(() => {
     if (visible) {
       loadNotifications();
-      translateY.value = withSpring(0, {
-        damping: 20,
-        stiffness: 90,
-      });
-    } else {
-      translateY.value = withTiming(SCREEN_HEIGHT, {
-        duration: 250,
-      });
     }
   }, [visible]);
-
-  const handleClose = () => {
-    onClose();
-  };
-
-  // Pan gesture for swipe to dismiss
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      isDragging.value = true;
-    })
-    .onUpdate((event) => {
-      // Only allow dragging down
-      if (event.translationY > 0) {
-        translateY.value = event.translationY;
-      }
-    })
-    .onEnd((event) => {
-      isDragging.value = false;
-      const shouldClose = event.translationY > 100 || event.velocityY > 500;
-
-      if (shouldClose) {
-        // Close modal
-        translateY.value = withTiming(SCREEN_HEIGHT, {
-          duration: 250,
-        });
-        runOnJS(handleClose)();
-      } else {
-        // Snap back
-        translateY.value = withSpring(0, {
-          damping: 20,
-          stiffness: 90,
-        });
-      }
-    });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
 
   const handleRefresh = useCallback(() => {
     loadNotifications(true);
@@ -129,11 +76,32 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
             screen: 'Chat',
             params: { chatId: notification.data.chat_id },
           } as never);
-        } else if ((notification.type === 'task' || notification.type === 'reminder') && notification.data?.task_id) {
-          navigation.navigate('Tasks' as never, {
-            screen: 'TaskDetail',
-            params: { taskId: notification.data.task_id },
-          } as never);
+        } else if ((notification.type === 'task' || notification.type === 'reminder')) {
+          // Check for grouped notifications (multiple tasks)
+          if (notification.data?.task_ids && notification.data.task_ids.length > 1) {
+            // For grouped notifications, go to task list with filter
+            // TODO: Implement task list filtering by IDs or category
+            console.log('Grouped notification:', notification.data.task_ids);
+            navigation.navigate('Tasks' as never, {
+              screen: 'TaskList',
+              params: {
+                filterCategory: notification.data.category,
+                taskIds: notification.data.task_ids
+              },
+            } as never);
+          } else if (notification.data?.task_id) {
+            // Single task notification
+            navigation.navigate('Tasks' as never, {
+              screen: 'TaskDetail',
+              params: { taskId: notification.data.task_id },
+            } as never);
+          } else if (notification.data?.task_ids && notification.data.task_ids.length === 1) {
+            // Single task in array format
+            navigation.navigate('Tasks' as never, {
+              screen: 'TaskDetail',
+              params: { taskId: notification.data.task_ids[0] },
+            } as never);
+          }
         } else if (notification.type === 'poll' && notification.data?.poll_id) {
           navigation.navigate('Polls' as never, {
             screen: 'PollDetail',
@@ -203,114 +171,89 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   return (
     <Modal
       visible={visible}
-      transparent
-      animationType="none"
+      animationType="slide"
       onRequestClose={onClose}
-      statusBarTranslucent
+      presentationStyle="fullScreen"
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity
-          style={[styles.backdrop, { backgroundColor: theme.overlay }]}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-        <Animated.View
-          style={[
-            styles.container,
-            animatedStyle,
-            {
-              backgroundColor: theme.background,
-              paddingBottom: insets.bottom || 20,
-            },
-          ]}
-        >
-          {/* Header with drag handle */}
-          <GestureDetector gesture={panGesture}>
-            <View style={[styles.header, { borderBottomColor: theme.border }]}>
-              <View style={[styles.dragHandle, { backgroundColor: theme.textTertiary }]} />
-              <View style={styles.headerContent}>
-                <Text style={[styles.title, { color: theme.text }]}>Уведомления</Text>
-                {unreadCount > 0 && (
-                  <TouchableOpacity
-                    onPress={handleMarkAllAsRead}
-                    style={styles.markAllButton}
-                  >
-                    <Ionicons name="checkmark-done" size={24} color={theme.primary} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          </GestureDetector>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.background,
+            paddingTop: insets.top,
+          },
+        ]}
+      >
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="close" size={28} color="#EF4444" />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: theme.text }]}>Уведомления</Text>
+          {unreadCount > 0 ? (
+            <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="checkmark-done" size={24} color={theme.primary} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.placeholder} />
+          )}
+        </View>
 
-          {/* List */}
-          <FlatList
-            data={notifications}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id.toString()}
-            ListEmptyComponent={renderEmpty}
-            ListFooterComponent={renderFooter}
-            refreshControl={
-              <RefreshControl
-                refreshing={isLoading && notifications.length === 0}
-                onRefresh={handleRefresh}
-                colors={[theme.primary]}
-                tintColor={theme.primary}
-              />
-            }
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.3}
-            contentContainerStyle={
-              notifications.length === 0 ? styles.emptyListContainer : styles.listContent
-            }
-          />
-        </Animated.View>
+        {/* List */}
+        <FlatList
+          data={notifications}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading && notifications.length === 0}
+              onRefresh={handleRefresh}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
+            />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+          contentContainerStyle={
+            notifications.length === 0 ? styles.emptyListContainer : styles.listContent
+          }
+        />
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
   container: {
-    maxHeight: SCREEN_HEIGHT * 0.85,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  dragHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 12,
+    flex: 1,
   },
   header: {
-    borderBottomWidth: 1,
-    paddingBottom: 12,
-  },
-  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  closeButton: {
+    padding: 8,
+    width: 44,
   },
   title: {
+    flex: 1,
     fontSize: 20,
     fontWeight: '600',
+    textAlign: 'center',
   },
   markAllButton: {
     padding: 8,
+    width: 44,
+    alignItems: 'center',
+  },
+  placeholder: {
+    width: 44,
   },
   listContent: {
     paddingTop: 8,

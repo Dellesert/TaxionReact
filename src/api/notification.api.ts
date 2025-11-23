@@ -163,3 +163,19 @@ export const registerPushToken = async (data: PushTokenDto): Promise<void> => {
 export const unregisterPushToken = async (token: string): Promise<void> => {
   await api.delete('/notifications/push-token', { data: { token } });
 };
+
+/**
+ * Get tasks from grouped notification
+ */
+export const getNotificationTasks = async (notificationId: number): Promise<{
+  task_ids: number[];
+  task_count: number;
+  category?: string;
+}> => {
+  const response = await api.get<{
+    task_ids: number[];
+    task_count: number;
+    category?: string;
+  }>(`/notifications/${notificationId}/tasks`);
+  return response.data;
+};

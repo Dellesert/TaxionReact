@@ -146,6 +146,10 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
     locale: ru,
   });
 
+  // Check if this is a grouped notification (multiple tasks)
+  const isGrouped = notification.data?.task_ids && notification.data.task_ids.length > 1;
+  const taskCount = notification.data?.task_count || notification.message_count;
+
   return (
     <TouchableOpacity
       style={[styles.container, { backgroundColor, borderBottomColor: theme.border }]}
@@ -164,10 +168,22 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
             <View style={[styles.badge, { backgroundColor: theme.background }]}>
               <Ionicons name={iconName} size={12} color={iconColor} />
             </View>
+            {/* Count badge for grouped notifications */}
+            {isGrouped && taskCount && taskCount > 1 && (
+              <View style={[styles.countBadge, { backgroundColor: iconColor }]}>
+                <Text style={styles.countText}>{taskCount}</Text>
+              </View>
+            )}
           </View>
         ) : (
           <View style={[styles.iconContainer, { backgroundColor: iconColor }]}>
             <Ionicons name={iconName} size={24} color="#FFFFFF" />
+            {/* Count badge for grouped notifications without sender */}
+            {isGrouped && taskCount && taskCount > 1 && (
+              <View style={[styles.countBadgeIcon, { backgroundColor: theme.background }]}>
+                <Text style={[styles.countTextIcon, { color: iconColor }]}>{taskCount}</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -254,6 +270,39 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  countBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  countText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  countBadgeIcon: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  countTextIcon: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
 

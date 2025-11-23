@@ -25,7 +25,10 @@ export type ChatStackParamList = {
 
 // Task Stack
 export type TaskStackParamList = {
-  TaskList: undefined;
+  TaskList: {
+    filterCategory?: string;
+    taskIds?: number[];
+  } | undefined;
   CreateTask: undefined;
   TaskDetail: {
     taskId: number;
