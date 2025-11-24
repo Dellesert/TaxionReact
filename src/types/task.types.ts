@@ -46,7 +46,8 @@ export type TaskActivityAction =
   | 'subtask_created'
   | 'subtask_status_changed'
   | 'progress_updated'
-  | 'task_deleted';
+  | 'task_deleted'
+  | 'task_emergency_completed';
 
 // Task Comment Interface
 export interface TaskComment {
@@ -66,6 +67,7 @@ export interface TaskUserInfo {
   email: string;
   position?: string;
   avatar?: string;
+  delegator_id?: number; // For delegation chain
 }
 
 // Task Activity Interface
@@ -92,6 +94,7 @@ export interface TaskAttachment {
   file_name: string;
   file_path: string;
   file_type: string;
+  mime_type?: string;
   file_size: number;
   created_at: ISODateString;
 }
@@ -146,6 +149,7 @@ export interface Task {
   parent_task_id?: number;
   parent_task?: Task;
   subtasks?: Task[];
+  subtask_count?: number;
 
   // NEW: Delegation fields
   created_by_user_id?: number;

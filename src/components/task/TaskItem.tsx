@@ -292,7 +292,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const renderDelegationChain = () => {
     // Priority: use delegation_chain if available
     if (task.delegation_chain && task.delegation_chain.length > 0) {
-      console.log('✅ Showing delegation chain:', task.delegation_chain);
       return (
         <View style={styles.delegationChain}>
           <View style={styles.avatarChain}>

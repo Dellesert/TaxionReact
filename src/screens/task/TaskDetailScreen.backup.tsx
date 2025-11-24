@@ -1,0 +1,3202 @@
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  ActivityIndicator,
+  Animated,
+  Platform,
+  Modal,
+  Dimensions,
+  Keyboard,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { Task, TaskComment, TaskActivity, TaskAttachment } from '../../types/task.types';
+import { User } from '../../types/user.types';
+import * as taskApi from '@api/task.api';
+import { Loading } from '@components/common/Loading';
+import { Avatar } from '@components/common/Avatar';
+import { UserProfileModal } from '@components/common/UserProfileModal';
+import { ScreenHeader } from '@components/common/ScreenHeader';
+import { TaskDetailSkeleton } from '@components/task/TaskDetailSkeleton';
+import { useTheme } from '@hooks/useTheme';
+import { useAuthStore } from '@store/authStore';
+import { useTaskPermissions } from '@hooks/useTaskPermissions';
+import { useActionModal } from '@contexts/ActionModalContext';
+import { useNotification } from '@contexts/NotificationContext';
+import { getUser } from '@api/user.api';
+import { getOrCreateDirectChat } from '@api/chat.api';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import ShareTaskModal from '@components/task/ShareTaskModal';
+import EditTaskModal from '@components/task/EditTaskModal';
+import { CreateSubtaskModal } from '@components/task/CreateSubtaskModal';
+import { TaskSubtasksList } from '@components/task/TaskSubtasksList';
+import { DelegateTaskModal } from '@components/task/DelegateTaskModal';
+import { TaskChecklistsView } from '@components/task/TaskChecklistsView';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import FileViewer from 'react-native-file-viewer';
+import * as Linking from 'expo-linking';
+import * as secureStorage from '@utils/secureStorage';
+import { STORAGE_KEYS } from '@constants/app.constants';
+import { fileApi } from '@api/fileApi';
+import { getFileIcon, decodeFileName } from '@utils/file.utils';
+
+type TaskDetailRouteParams = {
+  taskId: string;
+};
+
+/**
+ * Helper function to display user name or "Я" if it's current user
+ */
+const getUserDisplayName = (userName: string, userId: number, currentUserId: number | undefined): string => {
+  return currentUserId && userId === currentUserId ? 'Я' : userName;
+};
+
+/**
+ * Check if user can edit task
+ * Creator (delegator) always has edit rights even if task is delegated
+ */
+const canEditTask = (task: Task | null, userId: number | undefined, userRole: string | undefined): boolean => {
+  if (!task || !userId) return false;
+
+  // Admins and super admins can edit any task
+  if (userRole === 'admin' || userRole === 'super_admin') return true;
+
+  // Creator (who delegated) can always edit
+  if (task.created_by === userId) return true;
+
+  // Task is done - no one can edit except admins
+  if (task.status === 'done') return false;
+
+  return false;
+};
+
+const canDeleteTask = (task: Task | null, userId: number | undefined, userRole: string | undefined): boolean => {
+  if (!task || !userId) return false;
+
+  // Only super admin and task creator can delete
+  if (userRole === 'super_admin') return true;
+  if (task.created_by === userId) return true;
+
+  return false;
+};
+
+/**
+ * Check if user has access to view task (includes assignees and delegation chain)
+ */
+const canViewTask = (task: Task | null, userId: number | undefined): boolean => {
+  if (!task || !userId) return false;
+
+  // Creator always has access
+  if (task.created_by === userId) return true;
+
+  // Assignees have access
+  if (task.assignees) {
+    for (const assignee of task.assignees) {
+      if (assignee.id === userId) return true;
+    }
+  }
+
+  // Users in delegation chain have access
+  if (task.delegation_chain && Array.isArray(task.delegation_chain)) {
+    for (const delegator of task.delegation_chain) {
+      // Check both delegator_id and id fields (API may return different formats)
+      if (delegator.delegator_id === userId || delegator.id === userId) return true;
+    }
+  }
+
+  return false;
+};
+
+const TaskDetailScreen: React.FC = () => {
+  const route = useRoute<RouteProp<{ params: TaskDetailRouteParams }, 'params'>>();
+  const navigation = useNavigation();
+  const { taskId } = route.params;
+  const { theme, isDark } = useTheme();
+  const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  const { showConfirm } = useActionModal();
+  const { showSuccess, showError } = useNotification();
+
+  // Check if screen is narrow (phone in portrait)
+  const [isNarrowScreen, setIsNarrowScreen] = useState(Dimensions.get('window').width < 460);
+
+  const [task, setTask] = useState<Task | null>(null);
+  const [comments, setComments] = useState<TaskComment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [isSendingComment, setIsSendingComment] = useState(false);
+  const [commentsOffset, setCommentsOffset] = useState(0);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
+  const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
+
+  // Activities state
+  const [activities, setActivities] = useState<TaskActivity[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+
+  // Subtasks state
+  const [subtasks, setSubtasks] = useState<Task[]>([]);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'overview' | 'attachments' | 'comments' | 'history'>('overview');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  // Subtask modal state
+  const [showSubtaskModal, setShowSubtaskModal] = useState(false);
+
+  // Delegate modal state
+  const [showDelegateModal, setShowDelegateModal] = useState(false);
+
+  // Action menu state
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const actionMenuBackgroundOpacity = useRef(new Animated.Value(0)).current;
+  const actionMenuSlideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+
+  // Attachments state
+  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
+  // User profile modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
+  // Scroll animation - disabled due to performance issues
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Track if this is the first focus to avoid reloading on initial mount
+  const isFirstFocus = useRef(true);
+
+  // Get permissions for current task using the new hook
+  const permissions = useTaskPermissions(task);
+
+  // Update screen width on resize
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setIsNarrowScreen(window.width < 460);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  // Handle keyboard show/hide for iOS with animation
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        Animated.timing(keyboardHeightAnim, {
+          toValue: e.endCoordinates.height,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e) => {
+        Animated.timing(keyboardHeightAnim, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, [keyboardHeightAnim]);
+
+  useEffect(() => {
+    loadTask();
+    loadComments();
+    loadAttachments();
+  }, [taskId]);
+
+  // Load activities when history tab is opened
+  useEffect(() => {
+    if (activeTab === 'history' && activities.length === 0) {
+      loadActivities();
+    }
+  }, [activeTab]);
+
+  // Animate action menu
+  useEffect(() => {
+    if (showActionMenu) {
+      Animated.parallel([
+        Animated.timing(actionMenuBackgroundOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(actionMenuSlideAnim, {
+          toValue: 0,
+          damping: 25,
+          stiffness: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(actionMenuBackgroundOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(actionMenuSlideAnim, {
+          toValue: Dimensions.get('window').height,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showActionMenu]);
+
+  // Reload task and subtasks when screen gains focus (e.g., coming back from subtask detail)
+  useFocusEffect(
+    useCallback(() => {
+      // Skip reload on first focus (initial mount)
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+
+      // Reload task silently when returning to this screen
+      loadTaskSilently();
+    }, [taskId])
+  );
+
+  // Silent reload without showing loading indicator
+  const loadTaskSilently = async () => {
+    try {
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTask(taskIdNum);
+
+      // Load checklists for the task
+      try {
+        const checklists = await taskApi.getTaskChecklists(taskIdNum);
+        response.checklists = checklists;
+      } catch (error: any) {
+        console.error('Failed to load checklists:', error);
+        response.checklists = [];
+      }
+
+      setTask(response);
+
+      // Load subtasks if this is a parent task
+      if (response.subtask_count && response.subtask_count > 0) {
+        loadSubtasks(taskIdNum);
+      }
+    } catch (error: any) {
+      console.error('Failed to silently reload task:', error);
+      // Don't show error alert for silent reloads
+    }
+  };
+
+  const loadTask = async () => {
+    try {
+      setIsLoading(true);
+      setAccessDenied(false);
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTask(taskIdNum);
+
+      // If this is a subtask, ALWAYS load delegation chain from parent task (override subtask's own chain)
+      if (response.parent_task_id) {
+        try {
+          const parentDelegationChain = await taskApi.getDelegationChain(response.parent_task_id);
+          if (parentDelegationChain && parentDelegationChain.length > 0) {
+            response.delegation_chain = parentDelegationChain;
+          }
+        } catch (error) {
+          console.error('Failed to load parent delegation chain:', error);
+        }
+      }
+
+      // Load checklists for the task
+      try {
+        const checklists = await taskApi.getTaskChecklists(taskIdNum);
+        response.checklists = checklists;
+      } catch (error: any) {
+        console.error('Failed to load checklists:', error);
+        response.checklists = [];
+      }
+
+      setTask(response);
+
+      // Load subtasks if this is a parent task
+      if (response.subtask_count && response.subtask_count > 0) {
+        loadSubtasks(taskIdNum);
+      }
+    } catch (error: any) {
+      console.error('Failed to load task:', error);
+      // Check if it's a 403 error (access denied)
+      if (error.status === 403) {
+        setAccessDenied(true);
+      } else {
+        showError('Не удалось загрузить задачу');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadSubtasks = async (parentTaskId: number) => {
+    try {
+      const subtasksData = await taskApi.getSubtasks(parentTaskId);
+      setSubtasks(subtasksData);
+    } catch (error) {
+      console.error('Failed to load subtasks:', error);
+    }
+  };
+
+  const loadComments = async () => {
+    try {
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTaskComments(taskIdNum, 20, 0);
+      setComments(response.comments);
+      setCommentsOffset(20);
+      setHasMoreComments(response.hasMore);
+    } catch (error) {
+      console.error('Failed to load comments:', error);
+    }
+  };
+
+  const loadActivities = async () => {
+    try {
+      setIsLoadingActivities(true);
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTaskActivities(taskIdNum, 50, 0);
+      setActivities(response.activities || []);
+    } catch (error) {
+      console.error('Failed to load activities:', error);
+    } finally {
+      setIsLoadingActivities(false);
+    }
+  };
+
+  // Silent reload of activities without showing loading indicator
+  const loadActivitiesSilently = async () => {
+    try {
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTaskActivities(taskIdNum, 50, 0);
+      setActivities(response.activities || []);
+    } catch (error) {
+      console.error('Failed to silently reload activities:', error);
+      // Don't show error alert for silent reloads
+    }
+  };
+
+  const loadMoreComments = async () => {
+    if (isLoadingMoreComments || !hasMoreComments) return;
+
+    try {
+      setIsLoadingMoreComments(true);
+      const taskIdNum = Number(taskId);
+      const response = await taskApi.getTaskComments(taskIdNum, 20, commentsOffset);
+      setComments([...comments, ...response.comments]);
+      setCommentsOffset(commentsOffset + response.comments.length);
+      setHasMoreComments(response.hasMore);
+    } catch (error) {
+      console.error('Failed to load more comments:', error);
+    } finally {
+      setIsLoadingMoreComments(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: Task['status']) => {
+    if (!task) return;
+
+    // Check if trying to complete or submit for review with incomplete subtasks
+    if ((newStatus === 'done' || newStatus === 'review') && !areAllSubtasksCompleted()) {
+      const action = newStatus === 'done' ? 'завершить задачу' : 'сдать на проверку';
+      showError(`Невозможно ${action}. Пожалуйста, завершите все подзадачи перед тем, как продолжить.`);
+      return;
+    }
+
+    // Check if trying to complete or submit for review with incomplete checklist items
+    if ((newStatus === 'done' || newStatus === 'review') && !areAllChecklistItemsCompleted()) {
+      const action = newStatus === 'done' ? 'завершить задачу' : 'сдать на проверку';
+      showError(`Невозможно ${action}. Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.`);
+      return;
+    }
+
+    try {
+      const taskIdNum = Number(taskId);
+      await taskApi.updateTask(taskIdNum, { status: newStatus });
+      setTask({ ...task, status: newStatus });
+      loadActivitiesSilently(); // Reload activities to show the status change
+    } catch (error) {
+      showError('Не удалось обновить статус');
+    }
+  };
+
+  const handleEmergencyComplete = () => {
+    showConfirm(
+      'Аварийное завершение',
+      'Вы собираетесь завершить просроченную задачу в аварийном режиме. Это действие будет зафиксировано в истории задачи.\n\nПродолжить?',
+      async () => {
+        try {
+          const taskIdNum = Number(taskId);
+          await taskApi.emergencyCompleteTask(taskIdNum);
+          showSuccess('Задача завершена в аварийном режиме');
+          loadTaskSilently(); // Reload task to update status
+          loadActivitiesSilently(); // Reload activities to show the emergency completion
+        } catch (error: any) {
+          showError(`Не удалось завершить задачу: ${error.message || error}`);
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Завершить',
+        cancelText: 'Отмена',
+        destructive: true,
+      }
+    );
+  };
+
+  const handleDeleteTask = () => {
+    showConfirm(
+      'Удалить задачу?',
+      'Вы уверены, что хотите удалить эту задачу? Это действие нельзя отменить.',
+      async () => {
+        try {
+          const taskIdNum = Number(taskId);
+          await taskApi.deleteTask(taskIdNum);
+          showSuccess('Задача удалена');
+          navigation.goBack();
+        } catch (error) {
+          showError(`Не удалось удалить задачу: ${error.message || error}`);
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        destructive: true,
+      }
+    );
+  };
+
+  const handleSendComment = async () => {
+    if (!newComment.trim() || isSendingComment) return;
+
+    try {
+      setIsSendingComment(true);
+      const taskIdNum = Number(taskId);
+      await taskApi.addTaskComment(taskIdNum, { content: newComment });
+      setNewComment('');
+      await loadComments();
+      await loadActivitiesSilently(); // Reload activities to show the comment
+    } catch (error) {
+      showError('Не удалось отправить комментарий');
+    } finally {
+      setIsSendingComment(false);
+    }
+  };
+
+  const handleEditComment = (comment: TaskComment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.content);
+  };
+
+  const handleSaveEditComment = async (commentId: number) => {
+    if (!editingCommentText.trim()) return;
+
+    try {
+      await taskApi.updateComment(commentId, editingCommentText);
+      setEditingCommentId(null);
+      setEditingCommentText('');
+      await loadComments();
+      await loadActivitiesSilently(); // Reload activities to show the comment update
+    } catch (error) {
+      showError('Не удалось обновить комментарий');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleDeleteComment = (commentId: number) => {
+    showConfirm(
+      'Удалить комментарий?',
+      'Это действие нельзя отменить.',
+      async () => {
+        try {
+          await taskApi.deleteComment(commentId);
+          await loadComments();
+          await loadActivitiesSilently(); // Reload activities to show the comment deletion
+          showSuccess('Комментарий удалён');
+        } catch (error) {
+          showError('Не удалось удалить комментарий');
+        }
+      },
+      undefined,
+      {
+        confirmText: 'Удалить',
+        cancelText: 'Отмена',
+        destructive: true,
+      }
+    );
+  };
+
+  const handleShareTask = async (chatId: number) => {
+    console.log('Share task to chat:', chatId);
+    // TODO: Implement task sharing
+    showSuccess('Задача отправлена в чат');
+  };
+
+  // Load attachments
+  const loadAttachments = async () => {
+    try {
+      setIsLoadingAttachments(true);
+      const taskIdNum = Number(taskId);
+      const data = await taskApi.getTaskAttachments(taskIdNum);
+
+      // Load user info for each attachment if not provided by backend
+      const attachmentsWithUsers = await Promise.all(
+        data.map(async (attachment) => {
+          if (!attachment.uploaded_by && attachment.uploaded_by_user_id) {
+            try {
+              const user = await getUser(attachment.uploaded_by_user_id);
+              return {
+                ...attachment,
+                uploaded_by: {
+                  id: user.id,
+                  name: user.name,
+                  email: user.email,
+                  avatar: user.avatar,
+                  position: user.position,
+                },
+              };
+            } catch (error) {
+              console.error(`Failed to load user ${attachment.uploaded_by_user_id}:`, error);
+              return attachment;
+            }
+          }
+          return attachment;
+        })
+      );
+
+      setAttachments(attachmentsWithUsers);
+    } catch (error) {
+      console.error('Error loading attachments:', error);
+    } finally {
+      setIsLoadingAttachments(false);
+    }
+  };
+
+  // Handle file picker
+  const handlePickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const file = result.assets[0];
+      await handleUploadFile(file);
+    } catch (error) {
+      console.error('Error picking file:', error);
+      showError('Не удалось выбрать файл');
+    }
+  };
+
+  // Upload file
+  const handleUploadFile = async (file: any) => {
+    try {
+      setIsUploadingAttachment(true);
+      const taskIdNum = Number(taskId);
+
+      console.log('📎 Uploading file:', {
+        name: file.name,
+        uri: file.uri,
+        mimeType: file.mimeType,
+        size: file.size,
+      });
+
+      // Step 1: Upload file to file-service (like in chats)
+      const fileToUpload = {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType || 'application/octet-stream',
+      };
+
+      console.log('📤 Step 1: Uploading to file-service...');
+      // Mark task files as public so all task participants can access them
+      const uploadedFile = await fileApi.uploadFile(fileToUpload, 'attachment', undefined, true);
+      console.log('✅ File uploaded to file-service:', uploadedFile);
+
+      // Step 2: Attach file to task using file_id
+      console.log('📤 Step 2: Attaching to task...');
+      const result = await taskApi.attachFileToTask(taskIdNum, uploadedFile.id);
+      console.log('✅ File attached to task:', result);
+
+      showSuccess('Файл загружен');
+      await loadAttachments();
+      await loadTaskSilently();
+      await loadActivitiesSilently(); // Reload activities to show the file attachment
+    } catch (error: any) {
+      console.error('❌ Error uploading file:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      showError(error.message || 'Не удалось загрузить файл');
+    } finally {
+      setIsUploadingAttachment(false);
+    }
+  };
+
+  // Delete attachment
+  // Open/download attachment
+  const handleOpenAttachment = async (attachment: TaskAttachment) => {
+    try {
+      // Extract file ID from file_path (e.g., "/files/11" -> "11")
+      const fileId = attachment.file_path.split('/').pop();
+      if (!fileId) {
+        showError('Неверный путь к файлу');
+        return;
+      }
+
+      console.log('📥 Opening file:', {
+        fileName: attachment.file_name,
+        fileId,
+      });
+
+      // Get session ID
+      const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      if (!sessionId) {
+        showError('Не авторизован');
+        return;
+      }
+
+      // Use fileApi to get file info first
+      const file = await fileApi.getFileById(Number(fileId));
+
+      // For web: create download link with session ID in header using fetch + blob
+      if (Platform.OS === 'web') {
+        const downloadUrl = fileApi.getDownloadUrl(file.file_name);
+        const response = await fetch(downloadUrl, {
+          headers: {
+            'X-Session-ID': sessionId,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ошибка загрузки: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = attachment.file_name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        // For mobile: download file and open with FileViewer
+        const downloadUrl = fileApi.getDownloadUrl(file.file_name);
+
+        // Decode filename and create safe filename
+        const originalFileName = decodeURIComponent(attachment.file_name);
+        const fileExtension = originalFileName.split('.').pop() || '';
+        const safeFileName = `file_${Date.now()}.${fileExtension}`;
+        const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
+
+        console.log('📥 Downloading to:', fileUri);
+
+        const downloadResult = await FileSystem.downloadAsync(
+          downloadUrl,
+          fileUri,
+          {
+            headers: {
+              'X-Session-ID': sessionId,
+            },
+          }
+        );
+
+        console.log('✅ Downloaded:', downloadResult.uri);
+
+        // Open file with native viewer
+        try {
+          await FileViewer.open(downloadResult.uri, {
+            displayName: originalFileName,
+            showOpenWithDialog: true,
+            showAppsSuggestions: true,
+          });
+        } catch (viewerError: any) {
+          // If FileViewer fails, fallback to sharing
+          console.log('FileViewer failed, falling back to sharing:', viewerError);
+          const isAvailable = await Sharing.isAvailableAsync();
+
+          if (isAvailable) {
+            await Sharing.shareAsync(downloadResult.uri, {
+              UTI: attachment.mime_type,
+              mimeType: attachment.mime_type,
+            });
+          } else {
+            showSuccess(`Файл скачан:\n${originalFileName}`);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('❌ Error opening file:', error);
+      showError(error.message || 'Не удалось открыть файл');
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: number) => {
+    try {
+      console.log('🗑️ Deleting attachment:', attachmentId);
+      await taskApi.deleteAttachment(attachmentId);
+      console.log('✅ Attachment deleted successfully');
+      showSuccess('Файл удалён');
+      await loadAttachments();
+      await loadTaskSilently();
+      await loadActivitiesSilently(); // Reload activities to show the file deletion
+    } catch (error: any) {
+      console.error('❌ Error deleting attachment:', error);
+      showError(error.message || 'Не удалось удалить файл');
+    }
+  };
+
+  if (isLoading) {
+    return <TaskDetailSkeleton />;
+  }
+
+  // Show access denied screen if 403 error
+  if (accessDenied) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.card }} edges={['top']}>
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
+          {/* Header */}
+          <View style={{
+            backgroundColor: theme.card,
+            paddingTop: 12,
+            paddingBottom: 16,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+          }}>
+            <TouchableOpacity
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: theme.backgroundTertiary,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="chevron-back" size={24} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Access Denied Content */}
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+            <Ionicons name="lock-closed" size={64} color={theme.textTertiary} />
+            <Text style={{ fontSize: 24, fontWeight: '700', color: theme.text, marginTop: 24, textAlign: 'center' }}>
+              Приватная задача
+            </Text>
+            <Text style={{ fontSize: 16, color: theme.textSecondary, marginTop: 12, textAlign: 'center', lineHeight: 24 }}>
+              Эта задача является приватной. Вы не имеете доступа к её просмотру.
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: theme.primary,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 12,
+                marginTop: 32
+              }}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Вернуться назад</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!task) {
+    return <Loading text="Загрузка задачи..." fullScreen />;
+  }
+
+  // Check if task is delegated BY current user (user delegated it to someone else)
+  // BUT creator (delegator) should still be able to edit
+  // Only show readonly mode if user delegated task BUT is not the original creator
+  const isDelegatedByMe = user &&
+    task.delegated_from_user_id === user.id &&
+    task.created_by !== user.id;
+
+  // Priority config
+  const priorityConfig = {
+    low: { label: 'Низкий', color: '#10B981' },
+    medium: { label: 'Средний', color: '#F59E0B' },
+    high: { label: 'Высокий', color: '#F97316' },
+    critical: { label: 'Критичный', color: '#EF4444' },
+  }[task.priority];
+
+  // Status config
+  const statusConfig = {
+    new: { label: 'Новая', color: '#F59E0B' },
+    viewed: { label: 'Просмотрена', color: '#6B7280' },
+    in_progress: { label: 'В работе', color: '#3B82F6' },
+    review: { label: 'На проверке', color: '#8B5CF6' },
+    done: { label: 'Выполнена', color: '#10B981' },
+    cancelled: { label: 'Отменена', color: '#EF4444' },
+  }[task.status];
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+      position: 'relative',
+    },
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.card,
+    },
+    scrollContent: {
+      // paddingBottom is set inline based on insets and activeTab
+    },
+    // Task title (now in content)
+    taskTitle: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: theme.text,
+      lineHeight: 32,
+      marginBottom: 16,
+      letterSpacing: -0.5,
+    },
+    // Progress container
+    progressContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 16,
+      backgroundColor: theme.backgroundSecondary,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    progressBar: {
+      flex: 1,
+      height: 10,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+      borderRadius: 5,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+    },
+    progressFill: {
+      height: '100%',
+      borderRadius: 4,
+    },
+    progressText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+      minWidth: 45,
+      textAlign: 'right',
+    },
+    delegatedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f3e8ff',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      alignSelf: 'flex-start',
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : '#e9d5ff',
+    },
+    delegatedBadgeText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: isDark ? '#c4b5fd' : '#8b5cf6',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    // Assignee and deadline row
+    infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    assigneeContainer: {
+      flex: 1,
+      marginRight: 12,
+    },
+    delegationChainContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    delegationIcon: {
+      marginRight: 2,
+    },
+    assigneeText: {
+      fontSize: 14,
+      fontWeight: '500',
+      flexShrink: 1,
+    },
+    deadlineText: {
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    // Card with rounded corners
+    card: {
+      backgroundColor: theme.background,
+      flex: 1,
+      overflow: 'hidden',
+    },
+    // Tabs
+    tabsContainer: {
+      flexDirection: 'row',
+      backgroundColor: theme.card,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      paddingHorizontal: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 2,
+      alignItems: 'center',
+      borderBottomWidth: 3,
+      borderBottomColor: 'transparent',
+    },
+    activeTab: {
+      borderBottomColor: theme.primary,
+    },
+    tabText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.textTertiary,
+    },
+    activeTabText: {
+      color: theme.primary,
+      fontWeight: '700',
+    },
+    // Tab content
+    tabContent: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    content: {
+      flex: 1,
+      padding: 16,
+    },
+    // Description section
+    descriptionContainer: {
+      marginBottom: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    descriptionHeader: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    descriptionLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+      textTransform: 'uppercase',
+    },
+    descriptionContent: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    descriptionText: {
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: '500',
+    },
+    descriptionCollapsed: {
+      maxHeight: 44,
+      overflow: 'hidden',
+    },
+    expandButton: {
+      marginTop: 8,
+      alignSelf: 'flex-start',
+    },
+    descriptionFooter: {
+      paddingHorizontal: 12,
+      paddingTop: 12,
+      paddingBottom: 10,
+      marginTop: 4,
+      borderTopWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    descriptionFooterLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flex: 1,
+    },
+    priorityBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    priorityText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    taskDetailProgressBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    taskDetailProgressText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    descriptionAssigneeContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    descriptionAssigneeName: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    assigneeName: {
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    expandButtonText: {
+      fontSize: 14,
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    // Completion badge
+    completionBadge: {
+      backgroundColor: '#10B981',
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      shadowColor: '#10B981',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    completionIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    completionContent: {
+      flex: 1,
+    },
+    completionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      marginBottom: 4,
+    },
+    completionDate: {
+      fontSize: 14,
+      color: '#FFFFFF',
+      opacity: 0.9,
+    },
+    // Fixed Action Buttons at Bottom
+    fixedActionsContainer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      backgroundColor: theme.card,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 5,
+    },
+    fixedActionButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    primaryFixedButton: {
+      backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      shadowOpacity: 0.3,
+    },
+    secondaryFixedButton: {
+      backgroundColor: theme.backgroundSecondary,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+    },
+    disabledButton: {
+      backgroundColor: '#9CA3AF',
+      opacity: 0.6,
+    },
+    fixedActionButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    primaryFixedButtonText: {
+      color: '#FFFFFF',
+    },
+    secondaryFixedButtonText: {
+      color: theme.text,
+    },
+    // Checklists section
+    checklistProgressIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.backgroundSecondary,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+      marginTop: 16,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    checklistProgressText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    checklistsSection: {
+      marginBottom: 8,
+    },
+    // Subtasks section
+    subtasksSection: {
+      marginBottom: 16,
+    },
+    // Attachments section
+    attachmentsSection: {
+      marginTop: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 12,
+      letterSpacing: -0.3,
+    },
+    loadingAttachments: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 12,
+    },
+    loadingAttachmentsText: {
+      fontSize: 14,
+      color: '#6b7280',
+    },
+    attachmentsList: {
+      gap: 8,
+      marginBottom: 12,
+    },
+    attachmentItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 10,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    attachmentDetails: {
+      flex: 1,
+    },
+    attachmentName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    attachmentMeta: {
+      fontSize: 12,
+      color: '#6b7280',
+    },
+    attachmentMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    attachmentUploader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    attachmentUploaderName: {
+      fontSize: 11,
+      color: '#9ca3af',
+    },
+    addAttachmentButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 14,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)',
+      borderStyle: 'dashed',
+      marginTop: 8,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.03)',
+    },
+    addAttachmentText: {
+      fontSize: 14,
+      color: theme.primary,
+      fontWeight: '600',
+      marginLeft: 8,
+    },
+    noAttachmentsText: {
+      fontSize: 14,
+      color: '#9ca3af',
+      fontStyle: 'italic',
+      textAlign: 'center',
+    },
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+    },
+    emptyStateText: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      marginTop: 12,
+      textAlign: 'center',
+      paddingVertical: 16,
+    },
+    clickable: {
+      color: theme.primary,
+    },
+    assignees: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    overdueText: {
+      color: theme.error,
+      fontWeight: '600',
+    },
+    commentInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+      marginBottom: 12,
+    },
+    fixedCommentInputContainer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      borderTopWidth: 1,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+    },
+    commentInput: {
+      flex: 1,
+      backgroundColor: theme.input,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 15,
+      minHeight: 44,
+      maxHeight: 100,
+      color: theme.text,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    sendButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    commentItem: {
+      flexDirection: 'row',
+      marginBottom: 16,
+      gap: 12,
+    },
+    commentAvatar: {
+      marginRight: 12,
+    },
+    commentContent: {
+      flex: 1,
+      minWidth: 0,
+    },
+    commentHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 6,
+    },
+    commentAuthor: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      flexShrink: 1,
+    },
+    commentDate: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      flexShrink: 0,
+    },
+    commentText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      lineHeight: 20,
+      marginTop: 2,
+    },
+    emptyComments: {
+      fontSize: 14,
+      color: theme.textTertiary,
+      textAlign: 'center',
+      paddingVertical: 20,
+    },
+    loadMore: {
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    loadMoreText: {
+      fontSize: 14,
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    // Activity history styles
+    activityLoadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 40,
+    },
+    activityLoadingText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginTop: 12,
+    },
+    activitiesContainer: {
+      flex: 1,
+    },
+    dateSeparator: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)',
+      borderRadius: 8,
+      marginBottom: 12,
+      marginTop: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: theme.primary,
+    },
+    dateSeparatorText: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: theme.text,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+    },
+    activityItem: {
+      flexDirection: 'row',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 12,
+      marginBottom: 8,
+      gap: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.03,
+      shadowRadius: 1,
+      elevation: 1,
+      alignItems: 'flex-start',
+    },
+    activityIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+    },
+    activityAvatarContainer: {
+      position: 'relative',
+      width: 36,
+      height: 36,
+      marginTop: 2,
+    },
+    activityIconBadge: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: theme.backgroundSecondary,
+    },
+    activityContent: {
+      flex: 1,
+      justifyContent: 'flex-start',
+      minHeight: 36,
+    },
+    activityText: {
+      fontSize: 14,
+      color: theme.text,
+      lineHeight: 20,
+    },
+    activityTime: {
+      fontSize: 11,
+      color: theme.textTertiary,
+      fontWeight: '600',
+      paddingTop: 4,
+      minWidth: 40,
+      textAlign: 'right',
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+    },
+    emptyStateText: {
+      fontSize: 15,
+      color: theme.textTertiary,
+      marginTop: 12,
+      textAlign: 'center',
+    },
+    accessDeniedContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+      paddingHorizontal: 32,
+    },
+    accessDeniedText: {
+      fontSize: 15,
+      color: theme.textTertiary,
+      marginTop: 12,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+  });
+
+  // Helper function to get activity icon
+  const getActivityIcon = (activity: TaskActivity): any => {
+    const actionType = activity.action_type;
+
+    // Special case: if status changed to 'done', show green checkmark
+    if ((actionType === 'task_status_changed' || actionType === 'subtask_status_changed') &&
+        activity.new_value === 'done') {
+      return 'checkmark-circle';
+    }
+
+    if (actionType === 'task_created') return 'add-circle-outline';
+    if (actionType === 'task_status_changed') return 'swap-horizontal-outline';
+    if (actionType === 'task_assigned') return 'person-add-outline';
+    if (actionType === 'task_delegated') return 'git-branch-outline';
+    if (actionType === 'task_viewed') return 'eye-outline';
+    if (actionType === 'comment_added') return 'chatbubble-outline';
+    if (actionType === 'attachment_added') return 'attach-outline';
+    if (actionType === 'attachment_deleted') return 'trash-outline';
+    if (actionType === 'checklist_added') return 'checkmark-done-outline';
+    if (actionType.includes('checklist_item')) return 'checkbox-outline';
+    if (actionType === 'subtask_created') return 'git-branch-outline';
+    if (actionType === 'subtask_status_changed') return 'git-commit-outline';
+    if (actionType === 'task_updated_title') return 'create-outline';
+    if (actionType === 'task_updated_description') return 'document-text-outline';
+    if (actionType === 'task_updated_priority') return 'flag-outline';
+    if (actionType === 'task_updated_due_date') return 'calendar-outline';
+    if (actionType === 'progress_updated') return 'bar-chart-outline';
+    if (actionType === 'task_emergency_completed') return 'warning-outline';
+    return 'ellipse-outline';
+  };
+
+  // Helper function to get activity icon color
+  const getActivityIconColor = (activity: TaskActivity): string => {
+    const actionType = activity.action_type;
+
+    // Green for completed tasks
+    if ((actionType === 'task_status_changed' || actionType === 'subtask_status_changed') &&
+        activity.new_value === 'done') {
+      return '#10B981';
+    }
+
+    // Color by action type
+    switch (actionType) {
+      case 'task_created':
+      case 'subtask_created':
+      case 'checklist_added':
+      case 'checklist_item_completed':
+        return '#10B981'; // Green
+      case 'task_status_changed':
+      case 'progress_updated':
+        return '#3B82F6'; // Blue
+      case 'task_assigned':
+      case 'task_updated_title':
+      case 'task_updated_description':
+        return '#8B5CF6'; // Purple
+      case 'task_delegated':
+      case 'task_updated_priority':
+        return '#F59E0B'; // Orange
+      case 'comment_added':
+      case 'task_updated_due_date':
+        return '#06B6D4'; // Cyan
+      case 'attachment_added':
+        return '#EC4899'; // Pink
+      case 'attachment_deleted':
+      case 'task_deleted':
+        return '#EF4444'; // Red
+      case 'task_emergency_completed':
+        return '#F59E0B'; // Orange (warning color)
+      case 'task_viewed':
+      case 'checklist_item_uncompleted':
+        return '#94A3B8'; // Gray
+      default:
+        return '#6B7280'; // Default gray
+    }
+  };
+
+  // Helper function to convert status to Russian
+  const getStatusInRussian = (status: string): string => {
+    const statusMap: { [key: string]: string } = {
+      'new': 'Новая',
+      'viewed': 'Просмотрена',
+      'in_progress': 'В работе',
+      'review': 'На проверке',
+      'done': 'Завершена',
+      'cancelled': 'Отменена',
+    };
+    return statusMap[status] || status;
+  };
+
+  // Helper function to get activity description in Russian with formatting
+  const getActivityDescription = (activity: TaskActivity): React.JSX.Element => {
+    // Use user name from user object if available, otherwise use user_id
+    const userName = activity.user?.name || (activity.user_id ? `Пользователь #${activity.user_id}` : 'Система');
+
+    // Determine if this is about a subtask (task_id is different from current task)
+    const taskTitle = activity.task_title || '';
+
+    // Helper to render bold text
+    const Bold = ({ children }: { children: React.ReactNode }) => (
+      <Text style={{ fontWeight: '600', color: theme.text }}>{children}</Text>
+    );
+
+    // Helper to render subtask badge
+    const SubtaskBadge = () => taskTitle ? (
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(139, 92, 246, 0.12)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        marginTop: 8,
+        alignSelf: 'flex-start',
+        gap: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 92, 246, 0.2)',
+      }}>
+        <Ionicons name="git-branch-outline" size={14} color="#8B5CF6" />
+        <Text style={{
+          fontSize: 12,
+          color: '#8B5CF6',
+          fontWeight: '600',
+          letterSpacing: 0.2,
+        }}>
+          {taskTitle}
+        </Text>
+      </View>
+    ) : null;
+
+    switch (activity.action_type) {
+      case 'task_created':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> создал(а) задачу
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_status_changed': {
+        const oldStatus = getStatusInRussian(activity.old_value || '');
+        const newStatus = getStatusInRussian(activity.new_value || '');
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил(а) статус: <Bold>{oldStatus}</Bold> → <Bold>{newStatus}</Bold>
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      }
+      case 'task_assigned': {
+        let assigneeInfo: React.JSX.Element | null = null;
+
+        // Try to get assignees from activity.assignees first
+        if (activity.assignees && activity.assignees.length > 0) {
+          const hasCurrentUser = activity.assignees.some(a => user && a.id === user.id);
+          const otherAssignees = activity.assignees
+            .filter(a => !(user && a.id === user.id))
+            .map(a => a.name);
+
+          let assigneeText = '';
+          if (hasCurrentUser && otherAssignees.length > 0) {
+            assigneeText = `вас и ${otherAssignees.join(', ')}`;
+          } else if (hasCurrentUser) {
+            assigneeText = 'вас';
+          } else {
+            assigneeText = otherAssignees.join(', ');
+          }
+
+          assigneeInfo = <Text> на <Bold>{assigneeText}</Bold></Text>;
+        } else if (activity.new_value) {
+          // Try to extract user ID from "User 29" format
+          const userIdMatch = activity.new_value.match(/User (\d+)/);
+          if (userIdMatch && task?.assignees) {
+            const userId = parseInt(userIdMatch[1], 10);
+            const assignee = task.assignees.find(a => a.id === userId);
+            if (assignee) {
+              const isCurrentUser = user && assignee.id === user.id;
+              const assigneeText = isCurrentUser ? 'вас' : assignee.name;
+              assigneeInfo = <Text> на <Bold>{assigneeText}</Bold></Text>;
+            } else {
+              // User not found in task.assignees, show as is
+              assigneeInfo = <Text> на <Bold>{activity.new_value}</Bold></Text>;
+            }
+          } else {
+            // No match or no assignees, show as is
+            assigneeInfo = <Text> на <Bold>{activity.new_value}</Bold></Text>;
+          }
+        }
+
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> назначил(а) задачу{assigneeInfo}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      }
+      case 'task_delegated': {
+        let assigneeInfo: React.JSX.Element | null = null;
+
+        // Try to get assignees from activity.assignees first
+        if (activity.assignees && activity.assignees.length > 0) {
+          const hasCurrentUser = activity.assignees.some(a => user && a.id === user.id);
+          const otherAssignees = activity.assignees
+            .filter(a => !(user && a.id === user.id))
+            .map(a => a.name);
+
+          let assigneeText = '';
+          if (hasCurrentUser && otherAssignees.length > 0) {
+            assigneeText = `вас и ${otherAssignees.join(', ')}`;
+          } else if (hasCurrentUser) {
+            assigneeText = 'вас';
+          } else {
+            assigneeText = otherAssignees.join(', ');
+          }
+
+          assigneeInfo = <Text> на <Bold>{assigneeText}</Bold></Text>;
+        } else if (activity.new_value) {
+          // Try to extract user ID from "User 29" format
+          const userIdMatch = activity.new_value.match(/User (\d+)/);
+          if (userIdMatch && task?.assignees) {
+            const userId = parseInt(userIdMatch[1], 10);
+            const assignee = task.assignees.find(a => a.id === userId);
+            if (assignee) {
+              const isCurrentUser = user && assignee.id === user.id;
+              const assigneeText = isCurrentUser ? 'вас' : assignee.name;
+              assigneeInfo = <Text> на <Bold>{assigneeText}</Bold></Text>;
+            } else {
+              // User not found in task.assignees, show as is
+              assigneeInfo = <Text> на <Bold>{activity.new_value}</Bold></Text>;
+            }
+          } else {
+            // No match or no assignees, show as is
+            assigneeInfo = <Text> на <Bold>{activity.new_value}</Bold></Text>;
+          }
+        }
+
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> переназначил(а) задачу{assigneeInfo}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      }
+      case 'task_viewed':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> ознакомился(лась) с задачей
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'comment_added':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> добавил(а) комментарий
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'attachment_added':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> добавил(а) файл: <Bold>{activity.new_value}</Bold>
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'attachment_deleted':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> удалил(а) файл: <Bold>{activity.old_value}</Bold>
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'checklist_added':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> добавил(а) чек-лист
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'checklist_item_completed':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> отметил(а) пункт чек-листа
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'checklist_item_uncompleted':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> снял(а) отметку с пункта чек-листа
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'subtask_created': {
+        // Get assignee names
+        let assigneeInfo: React.JSX.Element | null = null;
+        if (activity.assignees && activity.assignees.length > 0) {
+          const hasCurrentUser = activity.assignees.some(a => user && a.id === user.id);
+          const otherAssignees = activity.assignees
+            .filter(a => !(user && a.id === user.id))
+            .map(a => a.name);
+
+          let assigneeText = '';
+          if (hasCurrentUser && otherAssignees.length > 0) {
+            assigneeText = `вас и ${otherAssignees.join(', ')}`;
+          } else if (hasCurrentUser) {
+            assigneeText = 'вас';
+          } else {
+            assigneeText = otherAssignees.join(', ');
+          }
+
+          assigneeInfo = <Text> для <Bold>{assigneeText}</Bold></Text>;
+        }
+        return (
+          <Text style={styles.activityText}>
+            <Bold>{userName}</Bold> создал(а) подзадачу: <Bold>{activity.new_value}</Bold>{assigneeInfo}
+          </Text>
+        );
+      }
+      case 'subtask_status_changed': {
+        const oldStatus = getStatusInRussian(activity.old_value || '');
+        const newStatus = getStatusInRussian(activity.new_value || '');
+        return (
+          <Text style={styles.activityText}>
+            <Bold>{userName}</Bold> изменил(а) статус подзадачи: <Bold>{oldStatus}</Bold> → <Bold>{newStatus}</Bold>
+          </Text>
+        );
+      }
+      case 'task_updated_title':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил(а) название
+              {activity.new_value && (
+                <>
+                  {activity.old_value && (
+                    <Text style={{ color: '#9ca3af' }}>{'\n'}"{activity.old_value}" → </Text>
+                  )}
+                  <Text>{activity.old_value ? '' : ': '}<Bold>{activity.new_value}</Bold></Text>
+                </>
+              )}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_updated_description':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил(а) описание
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_updated_priority':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил(а) приоритет
+              {activity.new_value && (
+                <>
+                  {activity.old_value && (
+                    <Text>: <Text style={{ color: '#9ca3af' }}>{activity.old_value}</Text> → </Text>
+                  )}
+                  <Text>{activity.old_value ? '' : ': '}<Bold>{activity.new_value}</Bold></Text>
+                </>
+              )}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_updated_due_date':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> изменил(а) дедлайн
+              {activity.new_value && (
+                <>
+                  {activity.old_value && (
+                    <Text>: <Text style={{ color: '#9ca3af' }}>{activity.old_value}</Text> → </Text>
+                  )}
+                  <Text>{activity.old_value ? '' : ': '}<Bold>{activity.new_value}</Bold></Text>
+                </>
+              )}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'progress_updated':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> обновил(а) прогресс
+              {activity.new_value && <Text>: <Bold>{activity.new_value}%</Bold></Text>}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      case 'task_emergency_completed':
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> аварийно завершил(а) задачу
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+      default:
+        if (activity.action_type.startsWith('task_updated_')) {
+          const field = activity.action_type.replace('task_updated_', '');
+          return (
+            <>
+              <Text style={styles.activityText}>
+                <Bold>{userName}</Bold> обновил(а) {field}
+              </Text>
+              <SubtaskBadge />
+            </>
+          );
+        }
+        return (
+          <>
+            <Text style={styles.activityText}>
+              <Bold>{userName}</Bold> выполнил(а) действие: {activity.action_type}
+            </Text>
+            <SubtaskBadge />
+          </>
+        );
+    }
+  };
+
+  // Check if all subtasks are completed
+  const areAllSubtasksCompleted = (): boolean => {
+    if (!subtasks || subtasks.length === 0) {
+      return true; // No subtasks, so all are "completed"
+    }
+    return subtasks.every(subtask => subtask.status === 'done');
+  };
+
+  // Check if all checklist items are completed
+  const areAllChecklistItemsCompleted = (): boolean => {
+    if (!task?.checklists || task.checklists.length === 0) {
+      return true; // No checklists, so all are "completed"
+    }
+
+    // Get all items from all checklists
+    const allItems = task.checklists.flatMap(checklist => checklist.items);
+
+    if (allItems.length === 0) {
+      return true; // No items, so all are "completed"
+    }
+
+    return allItems.every(item => item.is_completed);
+  };
+
+  // Check if current user is the task creator
+  const isCreator = user?.id === task.created_by;
+
+  // Get task action button text based on status
+  const getActionButtonText = () => {
+    if (task.status === 'new') return 'Начать';
+    if (task.status === 'in_progress') {
+      // Check if all subtasks are completed
+      if (!areAllSubtasksCompleted()) {
+        return 'Завершите подзадачи';
+      }
+      // Check if all checklist items are completed
+      if (!areAllChecklistItemsCompleted()) {
+        return 'Завершите чек-листы';
+      }
+      // Creator can complete directly, assignee submits for review
+      return isCreator ? 'Завершить' : 'Сдать на проверку';
+    }
+    if (task.status === 'review') return 'На проверке';
+    return 'Завершена';
+  };
+
+  const handleTaskAction = async () => {
+    if (task.status === 'new') {
+      await handleStatusChange('in_progress');
+    } else if (task.status === 'in_progress') {
+      // Check if all subtasks are completed
+      if (!areAllSubtasksCompleted()) {
+        const action = isCreator ? 'завершить задачу' : 'сдать на проверку';
+        showError(`Невозможно ${action}. Пожалуйста, завершите все подзадачи перед тем, как продолжить.`);
+        return;
+      }
+      // Check if all checklist items are completed
+      if (!areAllChecklistItemsCompleted()) {
+        const action = isCreator ? 'завершить задачу' : 'сдать на проверку';
+        showError(`Невозможно ${action}. Пожалуйста, завершите все пункты чек-листов перед тем, как продолжить.`);
+        return;
+      }
+      // Creator completes directly, assignee submits for review
+      await handleStatusChange(isCreator ? 'done' : 'review');
+    }
+  };
+
+  // Handle user profile press
+  const handleUserPress = (userId: number) => {
+    setSelectedUserId(userId);
+    setShowProfileModal(true);
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.container}>
+        {/* Header Section */}
+        <View style={{ borderBottomWidth: 1, borderBottomColor: theme.border }}>
+          <ScreenHeader
+            title="Задача"
+            leftButton={{
+              icon: 'close',
+              color: theme.error,
+              onPress: () => navigation.goBack(),
+            }}
+            rightButton={
+              (permissions.can_edit ||
+               permissions.can_delegate ||
+               permissions.can_create_subtasks ||
+               permissions.can_emergency_complete ||
+               permissions.can_delete)
+                ? {
+                    icon: 'ellipsis-horizontal',
+                    onPress: () => setShowActionMenu(true),
+                  }
+                : undefined
+            }
+            showDivider={false}
+            withShadow={false}
+            containerStyle={{ paddingTop: 14, paddingBottom: 14 }}
+          />
+        </View>
+
+        {/* Card with Tabs */}
+        <View style={styles.card}>
+          {/* Tabs */}
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
+              onPress={() => setActiveTab('overview')}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={activeTab === 'overview' ? 20 : 18}
+                  color={activeTab === 'overview' ? theme.primary : theme.textTertiary}
+                />
+                {(activeTab === 'overview' || !isNarrowScreen) && (
+                  <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
+                    Обзор
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'attachments' && styles.activeTab]}
+              onPress={() => setActiveTab('attachments')}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name="attach-outline"
+                  size={activeTab === 'attachments' ? 20 : 18}
+                  color={activeTab === 'attachments' ? theme.primary : theme.textTertiary}
+                />
+                {(activeTab === 'attachments' || !isNarrowScreen) && (
+                  <Text style={[styles.tabText, activeTab === 'attachments' && styles.activeTabText]}>
+                    Вложения
+                  </Text>
+                )}
+                {attachments.length > 0 && (
+                  <View
+                    style={{
+                      backgroundColor: activeTab === 'attachments' ? theme.primary : theme.backgroundTertiary,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 11,
+                      minWidth: 22,
+                      height: 22,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: activeTab === 'attachments' ? '#FFFFFF' : theme.textTertiary,
+                      }}
+                    >
+                      {attachments.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'comments' && styles.activeTab]}
+              onPress={() => setActiveTab('comments')}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={activeTab === 'comments' ? 20 : 18}
+                  color={activeTab === 'comments' ? theme.primary : theme.textTertiary}
+                />
+                {(activeTab === 'comments' || !isNarrowScreen) && (
+                  <Text style={[styles.tabText, activeTab === 'comments' && styles.activeTabText]}>
+                    Комментарии
+                  </Text>
+                )}
+                {comments.length > 0 && (
+                  <View
+                    style={{
+                      backgroundColor: activeTab === 'comments' ? theme.primary : theme.backgroundTertiary,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 11,
+                      minWidth: 22,
+                      height: 22,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: activeTab === 'comments' ? '#FFFFFF' : theme.textTertiary,
+                      }}
+                    >
+                      {comments.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+              onPress={() => setActiveTab('history')}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name="time-outline"
+                  size={activeTab === 'history' ? 20 : 18}
+                  color={activeTab === 'history' ? theme.primary : theme.textTertiary}
+                />
+                {(activeTab === 'history' || !isNarrowScreen) && (
+                  <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+                    История
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Tab Content */}
+          <ScrollView
+            style={styles.tabContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingBottom: activeTab === 'comments' && !isDelegatedByMe && task.status !== 'done'
+                  ? insets.bottom + 170
+                  : insets.bottom + 100
+              }
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {activeTab === 'overview' ? (
+              <View style={styles.content}>
+                {/* Delegated Badge */}
+                {isDelegatedByMe && (
+                  <View style={styles.delegatedBadge}>
+                    <Ionicons name="eye-outline" size={16} color="#8b5cf6" />
+                    <Text style={styles.delegatedBadgeText}>Только просмотр</Text>
+                  </View>
+                )}
+
+                {/* Task Title and Info Card - show ONLY if no checklists */}
+                {(!task.checklists || task.checklists.length === 0) && (
+                  <View style={styles.descriptionContainer}>
+                    {/* Header */}
+                    <View style={[styles.descriptionHeader, { borderBottomColor: theme.border }]}>
+                      <Text style={[styles.descriptionLabel, { color: theme.text }]}>{task.title}</Text>
+                    </View>
+
+                    {/* Content - show description if exists */}
+                    {task.description && (
+                      <View style={styles.descriptionContent}>
+                        <Text
+                          style={[
+                            styles.descriptionText,
+                            { color: theme.textSecondary },
+                            !isDescriptionExpanded && styles.descriptionCollapsed,
+                          ]}
+                          numberOfLines={isDescriptionExpanded ? undefined : 2}
+                        >
+                          {task.description}
+                        </Text>
+                        {task.description.length > 80 && (
+                          <TouchableOpacity
+                            style={styles.expandButton}
+                            onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                          >
+                            <Text style={[styles.expandButtonText, { color: theme.primary }]}>
+                              {isDescriptionExpanded ? 'Свернуть' : 'Раскрыть'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Footer with priority, progress, and assignee */}
+                    {(task.priority || (task.assignees && task.assignees.length > 0) || (!subtasks || subtasks.length === 0)) && (
+                      <View style={[styles.descriptionFooter, { borderTopColor: theme.border }]}>
+                        <View style={styles.descriptionFooterLeft}>
+                          {/* Priority Badge */}
+                          {task.priority && (
+                            <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.color + '20' }]}>
+                              <Text style={[styles.priorityText, { color: priorityConfig.color }]}>
+                                {priorityConfig.label}
+                              </Text>
+                            </View>
+                          )}
+
+                          {/* Progress Badge - for tasks without subtasks (always show) */}
+                          {(!subtasks || subtasks.length === 0) && (
+                            <View style={styles.taskDetailProgressBadge}>
+                              <Ionicons name="stats-chart-outline" size={14} color={theme.textSecondary} />
+                              <Text style={[styles.taskDetailProgressText, { color: theme.textSecondary }]}>
+                                {task.progress_percentage}%
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Assignee - Right */}
+                        {task.assignees && task.assignees.length > 0 && (
+                          <TouchableOpacity
+                            style={styles.descriptionAssigneeContainer}
+                            onPress={() => handleUserPress(task.assignees![0].id)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.descriptionAssigneeName, { color: theme.textSecondary }]}>
+                              {getUserDisplayName(task.assignees[0].name, task.assignees[0].id, user?.id)}
+                            </Text>
+                            <Avatar
+                              name={task.assignees[0].name}
+                              imageUrl={task.assignees[0].avatar}
+                              size={22}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Checklists Section - show for all who have access */}
+                {permissions.can_view && (
+                  <View style={styles.checklistsSection}>
+                    <TaskChecklistsView
+                      key={task.id}
+                      taskId={task.id}
+                      taskTitle={task.title}
+                      assigneeName={task.assignees && task.assignees.length > 0 ? task.assignees[0].name : undefined}
+                      assigneeAvatar={task.assignees && task.assignees.length > 0 ? task.assignees[0].avatar : undefined}
+                      assigneeId={task.assignees && task.assignees.length > 0 ? task.assignees[0].id : undefined}
+                      priority={task.priority}
+                      dueDate={task.due_date}
+                      onChecklistChanged={() => {
+                        loadTaskSilently(); // Reload task to update progress
+                        loadActivitiesSilently(); // Reload activities to show the checklist changes
+                      }}
+                      onAssigneePress={handleUserPress}
+                      canEdit={permissions.can_edit && task.status !== 'done'}
+                      canToggleOnly={permissions.can_check_items && !permissions.can_edit && task.status !== 'done'}
+                      readOnly={isDelegatedByMe || task.status === 'done'}
+                    />
+                  </View>
+                )}
+
+                {/* Completion Badge - shown when task is done */}
+                {task.status === 'done' && (
+                  <View style={styles.completionBadge}>
+                    <View style={styles.completionIcon}>
+                      <Ionicons name="checkmark-circle" size={32} color="#FFFFFF" />
+                    </View>
+                    <View style={styles.completionContent}>
+                      <Text style={styles.completionTitle}>Задача завершена</Text>
+                      <Text style={styles.completionDate}>
+                        {task.updated_at
+                          ? format(new Date(task.updated_at), 'dd MMMM yyyy, HH:mm', { locale: ru })
+                          : 'Дата неизвестна'}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Subtasks Section - show for all who have access, readonly for assignees */}
+                {task.status !== 'done' && permissions.can_view_subtasks && (
+                  <View style={styles.subtasksSection}>
+                    <TaskSubtasksList
+                      parentTaskId={task.id}
+                      parentTaskProgress={task.progress_percentage}
+                      onSubtaskPress={(subtask) => {
+                        // @ts-ignore
+                        navigation.push('TaskDetail', { taskId: subtask.id.toString() });
+                      }}
+                      onSubtaskCreated={() => {
+                        loadTaskSilently(); // Reload task to update progress
+                        loadActivitiesSilently(); // Reload activities to show the subtask creation
+                      }}
+                      // Show create button only for users with permission
+                      onCreateSubtaskPress={
+                        permissions.can_create_subtasks
+                          ? () => setShowSubtaskModal(true)
+                          : undefined
+                      }
+                      // Readonly for users who can view but not edit
+                      readOnly={!permissions.can_edit}
+                    />
+                  </View>
+                )}
+
+
+              </View>
+            ) : activeTab === 'attachments' ? (
+              // Attachments Tab
+              <View style={styles.content}>
+                {/* Display existing attachments or "no attachments" message */}
+                {isLoadingAttachments ? (
+                  <View style={styles.loadingAttachments}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                    <Text style={styles.loadingAttachmentsText}>Загрузка вложений...</Text>
+                  </View>
+                ) : attachments.length > 0 ? (
+                  <View style={styles.attachmentsList}>
+                    {attachments.map((attachment) => {
+                      const fileIcon = getFileIcon(attachment.file_type || '', attachment.file_name);
+
+                      // Check if user can delete this attachment
+                      const canDelete = !isDelegatedByMe &&
+                                       task.status !== 'done' &&
+                                       user &&
+                                       attachment.uploaded_by_user_id === user.id;
+
+                      const handleAttachmentLongPress = () => {
+                        if (!canDelete) return;
+
+                        showConfirm(
+                          'Удалить файл?',
+                          `Вы уверены, что хотите удалить "${decodeFileName(attachment.file_name)}"?`,
+                          async () => await handleDeleteAttachment(attachment.id),
+                          undefined,
+                          {
+                            confirmText: 'Удалить',
+                            cancelText: 'Отмена',
+                            destructive: true,
+                          }
+                        );
+                      };
+
+                      return (
+                        <TouchableOpacity
+                          key={attachment.id}
+                          style={styles.attachmentItem}
+                          onPress={() => handleOpenAttachment(attachment)}
+                          onLongPress={handleAttachmentLongPress}
+                          activeOpacity={0.7}
+                          delayLongPress={500}
+                        >
+                          <Ionicons name={fileIcon as any} size={20} color={theme.primary} />
+                          <View style={styles.attachmentDetails}>
+                            <Text style={styles.attachmentName} numberOfLines={1}>
+                              {decodeFileName(attachment.file_name)}
+                            </Text>
+                            <View style={styles.attachmentMetaRow}>
+                              <Text style={styles.attachmentMeta}>
+                                {(attachment.file_size / 1024).toFixed(1)} KB • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: ru })}
+                              </Text>
+                              {attachment.uploaded_by && (
+                                <View style={styles.attachmentUploader}>
+                                  <Text style={styles.attachmentUploaderName} numberOfLines={1}>
+                                    {getUserDisplayName(attachment.uploaded_by.name, attachment.uploaded_by.id, user?.id)}
+                                  </Text>
+                                  <Avatar
+                                    name={attachment.uploaded_by.name}
+                                    imageUrl={attachment.uploaded_by.avatar}
+                                    size={20}
+                                  />
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={styles.emptyStateContainer}>
+                    <Ionicons name="document-outline" size={48} color={theme.textTertiary} />
+                    <Text style={styles.emptyStateText}>Нет вложений</Text>
+                  </View>
+                )}
+
+                {/* Add Attachment Button - only if not delegated and task not done */}
+                {!isDelegatedByMe && task.status !== 'done' && (
+                  <TouchableOpacity
+                    style={styles.addAttachmentButton}
+                    onPress={handlePickFile}
+                    disabled={isUploadingAttachment}
+                  >
+                    {isUploadingAttachment ? (
+                      <>
+                        <ActivityIndicator size="small" color={theme.primary} />
+                        <Text style={styles.addAttachmentText}>Загрузка...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="add-circle" size={24} color={theme.primary} />
+                        <Text style={styles.addAttachmentText}>Добавить файл</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : activeTab === 'comments' ? (
+              // Comments Tab
+              <View style={styles.content}>
+                {/* Comments List */}
+                {comments.length > 0 ? (
+                  <>
+                    {comments.map((comment) => {
+                      const isMyComment = user?.id === comment.user_id;
+                      const isEditing = editingCommentId === comment.id;
+
+                      return (
+                        <View key={comment.id} style={styles.commentItem}>
+                          <TouchableOpacity
+                            onPress={() => comment.user && handleUserPress(comment.user.id)}
+                            activeOpacity={0.7}
+                          >
+                            <Avatar
+                              name={comment.user?.name || 'User'}
+                              imageUrl={comment.user?.avatar}
+                              size={36}
+                            />
+                          </TouchableOpacity>
+                          <View style={styles.commentContent}>
+                            <View style={styles.commentHeader}>
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <TouchableOpacity
+                                  onPress={() => comment.user && handleUserPress(comment.user.id)}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.commentAuthor} numberOfLines={1}>
+                                    {comment.user ? getUserDisplayName(comment.user.name, comment.user.id, user?.id) : 'Пользователь'}
+                                  </Text>
+                                </TouchableOpacity>
+                                <Text style={styles.commentDate}>
+                                  {format(new Date(comment.created_at), 'dd MMM, HH:mm', { locale: ru })}
+                                </Text>
+                              </View>
+                              {isMyComment && !isEditing && (
+                                <View style={{ flexDirection: 'row', gap: 4, marginLeft: 8 }}>
+                                  <TouchableOpacity
+                                    onPress={() => handleEditComment(comment)}
+                                    style={{ padding: 4 }}
+                                  >
+                                    <Ionicons name="create-outline" size={16} color={theme.primary} />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    onPress={() => handleDeleteComment(comment.id)}
+                                    style={{ padding: 4 }}
+                                  >
+                                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                                  </TouchableOpacity>
+                                </View>
+                              )}
+                            </View>
+                            {isEditing ? (
+                              <View style={{ marginTop: 8 }}>
+                                <TextInput
+                                  style={[styles.commentInput, { marginBottom: 8 }]}
+                                  value={editingCommentText}
+                                  onChangeText={setEditingCommentText}
+                                  multiline
+                                  maxLength={1000}
+                                  autoFocus
+                                />
+                                <View style={{ flexDirection: 'row', gap: 8 }}>
+                                  <TouchableOpacity
+                                    style={{
+                                      flex: 1,
+                                      backgroundColor: theme.primary,
+                                      paddingVertical: 8,
+                                      paddingHorizontal: 12,
+                                      borderRadius: 8,
+                                      alignItems: 'center',
+                                    }}
+                                    onPress={() => handleSaveEditComment(comment.id)}
+                                  >
+                                    <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Сохранить</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={{
+                                      flex: 1,
+                                      backgroundColor: theme.backgroundSecondary,
+                                      paddingVertical: 8,
+                                      paddingHorizontal: 12,
+                                      borderRadius: 8,
+                                      alignItems: 'center',
+                                      borderWidth: 1,
+                                      borderColor: theme.border,
+                                    }}
+                                    onPress={handleCancelEdit}
+                                  >
+                                    <Text style={{ color: theme.text, fontWeight: '600' }}>Отмена</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            ) : (
+                              <Text style={styles.commentText}>{comment.content}</Text>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+
+                    {/* Load More Button */}
+                    {hasMoreComments && (
+                      <TouchableOpacity
+                        style={styles.loadMore}
+                        onPress={loadMoreComments}
+                        disabled={isLoadingMoreComments}
+                      >
+                        {isLoadingMoreComments ? (
+                          <ActivityIndicator size="small" color={theme.primary} />
+                        ) : (
+                          <Text style={styles.loadMoreText}>Загрузить еще</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.emptyStateContainer}>
+                    <Ionicons name="chatbubbles-outline" size={48} color={theme.textTertiary} />
+                    <Text style={styles.emptyStateText}>
+                      {isDelegatedByMe || task.status === 'done'
+                        ? 'Нет комментариев'
+                        : 'Будьте первым, кто оставит комментарий'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              // History Tab (Activities)
+              <View style={styles.content}>
+                {/* History is available to everyone who can view the task */}
+                {permissions.can_view ? (
+                  <>
+                    {isLoadingActivities ? (
+                      <View style={styles.activityLoadingContainer}>
+                        <ActivityIndicator size="large" color={theme.primary} />
+                        <Text style={styles.activityLoadingText}>Загрузка истории...</Text>
+                      </View>
+                    ) : activities.length > 0 ? (
+                      <View style={styles.activitiesContainer}>
+                        {/* Group activities by date */}
+                        {(() => {
+                          const groupedActivities: { [key: string]: TaskActivity[] } = {};
+                          activities.forEach((activity) => {
+                            const dateKey = format(new Date(activity.created_at), 'dd.MM.yyyy');
+                            if (!groupedActivities[dateKey]) {
+                              groupedActivities[dateKey] = [];
+                            }
+                            groupedActivities[dateKey].push(activity);
+                          });
+
+                          return Object.entries(groupedActivities).map(([date, dateActivities]) => (
+                            <View key={date}>
+                              {/* Date Separator */}
+                              <View style={styles.dateSeparator}>
+                                <Text style={styles.dateSeparatorText}>{date}</Text>
+                              </View>
+
+                              {/* Activities for this date */}
+                              {dateActivities.map((activity) => (
+                                <View key={activity.id} style={styles.activityItem}>
+                                  <View style={styles.activityAvatarContainer}>
+                                    <Avatar
+                                      userId={activity.user?.id}
+                                      name={activity.user?.name || 'Система'}
+                                      imageUrl={activity.user?.avatar}
+                                      size={36}
+                                      onPress={() => activity.user && handleUserPress(activity.user.id)}
+                                    />
+                                    <View style={styles.activityIconBadge}>
+                                      <Ionicons
+                                        name={getActivityIcon(activity)}
+                                        size={12}
+                                        color={getActivityIconColor(activity)}
+                                      />
+                                    </View>
+                                  </View>
+                                  <View style={styles.activityContent}>
+                                    <View style={{ flex: 1 }}>
+                                      {getActivityDescription(activity)}
+                                    </View>
+                                  </View>
+                                  <Text style={styles.activityTime}>
+                                    {format(new Date(activity.created_at), 'HH:mm')}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          ));
+                        })()}
+                      </View>
+                    ) : (
+                      <View style={styles.emptyState}>
+                        <Ionicons name="time-outline" size={48} color={theme.textTertiary} />
+                        <Text style={styles.emptyStateText}>История пока пуста</Text>
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  // Access denied (should rarely happen if permissions are correct)
+                  <View style={styles.accessDeniedContainer}>
+                    <Ionicons name="lock-closed-outline" size={48} color={theme.textTertiary} />
+                    <Text style={styles.accessDeniedText}>
+                      История недоступна
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* Fixed Action Buttons at Bottom */}
+        {task.status !== 'done' && !isDelegatedByMe && activeTab === 'overview' && permissions.can_change_status && (
+          <View style={[styles.fixedActionsContainer, { bottom: insets.bottom + 80 }]}>
+            {/* Start/Submit Button - for new or in_progress tasks */}
+            {(task.status === 'new' || task.status === 'in_progress') && (
+              <TouchableOpacity
+                style={[
+                  styles.fixedActionButton,
+                  styles.primaryFixedButton,
+                  (task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted())) && styles.disabledButton
+                ]}
+                onPress={handleTaskAction}
+                disabled={task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted())}
+              >
+                <Ionicons
+                  name={task.status === 'in_progress' && (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) ? 'alert-circle-outline' : 'play-circle-outline'}
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
+                  {getActionButtonText()}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Review Buttons - for creator when task is in review */}
+            {task.status === 'review' && task.created_by === user?.id && (
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.fixedActionButton,
+                    styles.secondaryFixedButton,
+                  ]}
+                  onPress={() => handleStatusChange('in_progress')}
+                >
+                  <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
+                  <Text style={[styles.fixedActionButtonText, styles.secondaryFixedButtonText]}>
+                    Вернуть
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.fixedActionButton,
+                    styles.primaryFixedButton,
+                    (!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) && styles.disabledButton
+                  ]}
+                  onPress={() => handleStatusChange('done')}
+                  disabled={!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()}
+                >
+                  <Ionicons
+                    name={(!areAllSubtasksCompleted() || !areAllChecklistItemsCompleted()) ? 'alert-circle-outline' : 'checkmark-circle-outline'}
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                  <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
+                    {!areAllSubtasksCompleted() ? 'Завершите подзадачи' : !areAllChecklistItemsCompleted() ? 'Завершите чек-листы' : 'Принять'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Fixed Comment Input at Bottom - for Comments Tab */}
+        {task.status !== 'done' && !isDelegatedByMe && activeTab === 'comments' && (
+          <Animated.View style={[
+            styles.fixedCommentInputContainer,
+            {
+              backgroundColor: theme.background,
+              borderTopColor: theme.border,
+              bottom: keyboardHeightAnim.interpolate({
+                inputRange: [0, 350],
+                outputRange: [insets.bottom + 80, 350],
+                extrapolateRight: 'extend',
+              }),
+            }
+          ]}>
+            <TextInput
+              style={[styles.commentInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              placeholder="Написать комментарий..."
+              placeholderTextColor={theme.textTertiary}
+              value={newComment}
+              onChangeText={setNewComment}
+              multiline
+              maxLength={1000}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                { backgroundColor: newComment.trim() ? theme.primary : theme.backgroundTertiary }
+              ]}
+              onPress={handleSendComment}
+              disabled={!newComment.trim() || isSendingComment}
+            >
+              {isSendingComment ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons
+                  name="send"
+                  size={20}
+                  color={newComment.trim() ? '#FFFFFF' : theme.textTertiary}
+                />
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Share Task Modal */}
+        {task && (
+          <ShareTaskModal
+            visible={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            task={task}
+            onShare={handleShareTask}
+          />
+        )}
+
+        {/* Edit Task Modal */}
+        {task && (
+          <EditTaskModal
+            visible={showEditModal}
+            task={task}
+            onClose={() => setShowEditModal(false)}
+            onTaskUpdated={(updatedTask) => {
+              loadTaskSilently(); // Reload task to get updated checklists
+              loadActivitiesSilently(); // Reload activities to show the task update
+              setShowEditModal(false);
+            }}
+          />
+        )}
+
+        {/* Create Subtask Modal - only for users with permission */}
+        {task && permissions.can_create_subtasks && (
+          <CreateSubtaskModal
+            visible={showSubtaskModal}
+            parentTaskId={task.id}
+            onClose={() => setShowSubtaskModal(false)}
+            onSubtaskCreated={() => {
+              setShowSubtaskModal(false);
+              loadTaskSilently(); // Reload task to update progress
+              loadActivitiesSilently(); // Reload activities to show the subtask creation
+            }}
+          />
+        )}
+
+        {/* Delegate Task Modal - only for department heads and admins */}
+        {task && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'department_head') && (
+          <DelegateTaskModal
+            visible={showDelegateModal}
+            taskId={task.id}
+            onClose={() => setShowDelegateModal(false)}
+            onDelegated={() => {
+              console.log('✅ onDelegated called, reloading task...');
+              setShowDelegateModal(false);
+              loadTaskSilently(); // Reload task to update delegation chain
+              loadActivitiesSilently(); // Reload activities to show the delegation
+              showSuccess('Задача успешно делегирована');
+            }}
+          />
+        )}
+
+        {/* User Profile Modal */}
+        <UserProfileModal
+          visible={showProfileModal}
+          userId={selectedUserId}
+          onClose={() => {
+            setShowProfileModal(false);
+            setSelectedUserId(null);
+          }}
+          onOpenChat={async (userId) => {
+            try {
+              console.log('💬 Opening chat with user:', userId);
+              const chat = await getOrCreateDirectChat(userId);
+              console.log('✅ Got chat:', chat.id);
+              setShowProfileModal(false);
+              // Navigate to chat - need to get root navigation
+              const rootNavigation = navigation.getParent();
+              if (rootNavigation) {
+                // @ts-ignore
+                rootNavigation.navigate('Chats', {
+                  screen: 'Chat',
+                  params: { chatId: chat.id },
+                });
+              }
+            } catch (error: any) {
+              console.error('❌ Error opening chat:', error);
+              showError(error.message || 'Не удалось открыть чат');
+            }
+          }}
+        />
+
+        {/* Action Menu Modal */}
+        <Modal
+          visible={showActionMenu}
+          transparent
+          animationType="none"
+          onRequestClose={() => setShowActionMenu(false)}
+        >
+          <Animated.View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              justifyContent: 'flex-end',
+              opacity: actionMenuBackgroundOpacity,
+            }}
+          >
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={1}
+              onPress={() => setShowActionMenu(false)}
+            />
+            <Animated.View
+              style={{
+                backgroundColor: theme.card,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+                paddingTop: 8,
+                transform: [{ translateY: actionMenuSlideAnim }],
+              }}
+              onStartShouldSetResponder={() => true}
+            >
+              {/* Handle Bar */}
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <View
+                  style={{
+                    width: 40,
+                    height: 4,
+                    backgroundColor: theme.border,
+                    borderRadius: 2,
+                  }}
+                />
+              </View>
+
+              {/* Menu Items */}
+              <View style={{ paddingHorizontal: 16 }}>
+                {/* Edit Task Option */}
+                {permissions.can_edit && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      setShowEditModal(true);
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={20} color="#3b82f6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 2 }}>
+                        Редактировать
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Изменить детали задачи
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Delegate Task Option */}
+                {permissions.can_delegate && task.status !== 'done' && task.status !== 'cancelled' && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      setShowDelegateModal(true);
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f5f3ff',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="git-branch-outline" size={20} color="#8b5cf6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 2 }}>
+                        Передать задачу
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Назначить другого исполнителя
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Add Subtask Option */}
+                {permissions.can_create_subtasks && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      setShowSubtaskModal(true);
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 2 }}>
+                        Добавить подзадачу
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Разбить задачу на этапы
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Emergency Complete Option */}
+                {permissions.can_emergency_complete && task.status !== 'done' && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      handleEmergencyComplete();
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="warning-outline" size={20} color="#f59e0b" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#f59e0b', marginBottom: 2 }}>
+                        Аварийное завершение
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Завершить просроченную задачу
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Delete Task Option */}
+                {permissions.can_delete && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: theme.backgroundSecondary,
+                      marginBottom: 8,
+                    }}
+                    onPress={() => {
+                      setShowActionMenu(false);
+                      handleDeleteTask();
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#ef4444', marginBottom: 2 }}>
+                        Удалить задачу
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                        Это действие нельзя отменить
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Cancel Button */}
+                <TouchableOpacity
+                  style={{
+                    alignItems: 'center',
+                    paddingVertical: 14,
+                    marginTop: 8,
+                  }}
+                  onPress={() => setShowActionMenu(false)}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: theme.textSecondary }}>
+                    Отмена
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </Animated.View>
+        </Modal>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+export default TaskDetailScreen;

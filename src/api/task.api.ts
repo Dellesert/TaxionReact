@@ -90,8 +90,6 @@ export const getTasks = async (
     );
 
     if (delegatedTasks.length > 0) {
-      console.log(`📋 Loading delegation chains for ${delegatedTasks.length} delegated tasks...`);
-
       // Load delegation chains in parallel
       await Promise.all(
         delegatedTasks.map(async (task) => {
