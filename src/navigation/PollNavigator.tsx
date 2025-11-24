@@ -9,7 +9,6 @@ import { useTheme } from '@hooks/useTheme';
 import { PollStackParamList } from './types';
 import PollListScreen from '@screens/poll/PollListScreen';
 import PollDetailScreen from '@screens/poll/PollDetailScreen';
-import EditPollScreen from '@screens/poll/EditPollScreen';
 import PollVotersScreen from '@screens/poll/PollVotersScreen';
 
 const Stack = createNativeStackNavigator<PollStackParamList>();
@@ -55,13 +54,6 @@ const PollNavigator: React.FC = () => {
             title: params?.pollTitle || 'Опрос', // Используем переданный pollTitle или 'Опрос' по умолчанию
             headerBackTitle: '',
           };
-        }}
-      />
-      <Stack.Screen
-        name="EditPoll"
-        component={EditPollScreen}
-        options={{
-          headerShown: false,
         }}
       />
       <Stack.Screen

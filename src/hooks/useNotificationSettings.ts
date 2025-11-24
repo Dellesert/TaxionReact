@@ -87,6 +87,11 @@ export const useNotificationSettings = () => {
         newSettings.digestFrequency = firstPref.digest_frequency ?? null;
       }
 
+      // Сбрасываем каналы в false перед проверкой
+      newSettings.push = false;
+      newSettings.email = false;
+      newSettings.sms = false;
+
       prefs.forEach((pref) => {
         // Проверяем, включены ли каналы хотя бы для одного типа
         if (pref.push_enabled) newSettings.push = true;
