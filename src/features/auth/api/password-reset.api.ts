@@ -1,4 +1,4 @@
-import axios from '@api/axios.config';
+import axios from '@shared/api/axios.config';
 
 export interface RequestPasswordResetRequest {
   email: string;

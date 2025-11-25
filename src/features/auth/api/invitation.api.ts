@@ -3,7 +3,7 @@
  * API клиент для работы с приглашениями
  */
 
-import api from '@api/axios.config';
+import api from '@shared/api/axios.config';
 
 export interface ValidateInvitationResponse {
   email: string;

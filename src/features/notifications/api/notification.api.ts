@@ -3,7 +3,7 @@
  * API клиент для работы с уведомлениями
  */
 
-import api from '@api/axios.config';
+import api from '@shared/api/axios.config';
 import { API_ENDPOINTS, PAGINATION } from '@shared/constants/api.constants';
 import {
   Notification,

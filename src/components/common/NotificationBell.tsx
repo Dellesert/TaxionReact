@@ -8,7 +8,7 @@ import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { useTheme } from '@shared/hooks/useTheme';
-import { NotificationModal } from '@components/notification/NotificationModal';
+import { NotificationModal } from '@/features/notifications/components/NotificationModal';
 
 export const NotificationBell: React.FC = () => {
   const { theme } = useTheme();

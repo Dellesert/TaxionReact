@@ -3,7 +3,7 @@
  * API клиент для работы с пользователями и департаментами
  */
 
-import api from './axios.config';
+import api from '../shared/api/axios.config';
 import { API_ENDPOINTS, API_BASE_URL, PAGINATION } from '@shared/constants/api.constants';
 import {
   User,

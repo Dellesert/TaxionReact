@@ -3,7 +3,7 @@
  * API клиент для работы с задачами и проектами
  */
 
-import api from '@api/axios.config';
+import api from '@shared/api/axios.config';
 import { API_ENDPOINTS, PAGINATION, API_BASE_URL } from '@shared/constants/api.constants';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';

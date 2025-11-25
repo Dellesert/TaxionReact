@@ -23,7 +23,7 @@ export const getDefaultDeviceName = (): string => {
 export const checkPasskeySupport = async (): Promise<boolean> => {
   try {
     // Use the imported function from passkeyUtils
-    const { isPasskeySupported } = await import('./passkeyUtils');
+    const { isPasskeySupported } = await import('@shared/utils/passkeyUtils');
     return await isPasskeySupported();
   } catch (error) {
     return false;

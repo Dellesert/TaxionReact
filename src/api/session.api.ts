@@ -3,7 +3,7 @@
  * API для управления активными сессиями (устройствами)
  */
 
-import api from './axios.config';
+import api from '../shared/api/axios.config';
 import type { GetSessionsResponse } from '../types/user.types';
 
 const BASE_URL = '/sessions';
