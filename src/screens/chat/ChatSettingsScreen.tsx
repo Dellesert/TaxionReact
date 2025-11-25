@@ -1,303 +1,120 @@
 /**
  * Chat Settings Screen
- * Экран настроек чата
+ * Экран настроек чата (Refactored)
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { ChatStackParamList } from '@navigation/types';
-import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
 import { ConfirmDialog } from '@components/common/ConfirmDialog';
 import { InputDialog } from '@components/common/InputDialog';
 import { ActionSheet, ActionSheetOption } from '@components/common/ActionSheet';
-import { fileApi } from '@api/fileApi';
-import { Avatar } from '@components/common/Avatar';
-import { User, ChatMember } from '@/types/user.types';
-import * as userApi from '@api/user.api';
-import * as chatApi from '@api/chat.api';
 import UserSelectorModal from '@components/common/UserSelectorModal';
 import { ChatDetailTabs, TabType } from '@components/chat/ChatDetailTabs';
 import { ParticipantsTab } from '@components/chat/ParticipantsTab';
 import { AttachmentsTab } from '@components/chat/AttachmentsTab';
+
+// Hooks
+import { useChatSettingsData } from '@hooks/useChatSettingsData';
+import { useChatMembers } from '@hooks/useChatMembers';
+import { useChatSettingsActions } from '@hooks/useChatSettingsActions';
+import { useChatAvatar } from '@hooks/useChatAvatar';
+
+// Components
+import { ChatSettingsHeader } from './components/ChatSettingsHeader';
+import { PrivateChatInfo } from './components/PrivateChatInfo';
+import { GroupChatInfo } from './components/GroupChatInfo';
+import { QuickAction } from './components/QuickActions';
+
+// Utils
+import {
+  getCreatorId,
+  isUserChatCreator,
+  getMemberRole,
+  canUserManageMembers,
+} from '@utils/chatSettingsHelpers';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ChatSettings'>;
 
 const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const { chatId, chatName } = route.params;
   const { theme } = useTheme();
-  const { showError } = useNotification();
   const currentUser = useAuthStore((state) => state.user);
-  const getChatById = useChatStore((state) => state.getChatById);
-  const deleteChat = useChatStore((state) => state.deleteChat);
-  const leaveChat = useChatStore((state) => state.leaveChat);
-  const updateChat = useChatStore((state) => state.updateChat);
-  const clearChatHistory = useChatStore((state) => state.clearChatHistory);
 
+  // Custom Hooks
+  const { chat, otherUser, departmentName } = useChatSettingsData(chatId, currentUser?.id);
+  const { members, isLoadingMembers, addMembers, removeMember, updateMemberRole } = useChatMembers(
+    chatId,
+    chat?.type
+  );
+  const { deleteChat, leaveChat, renameChat, clearHistory } = useChatSettingsActions(chatId);
+  const { isUploadingAvatar, changeAvatar } = useChatAvatar(chatId);
+
+  // Local State - Dialog visibility
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
   const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [otherUser, setOtherUser] = useState<User | null>(null);
-  const [departmentName, setDepartmentName] = useState<string>('');
 
-  // Members management
-  const [members, setMembers] = useState<ChatMember[]>([]);
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  // Members management state
   const [showAddMembersModal, setShowAddMembersModal] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
-  const [isAddingMembers, setIsAddingMembers] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [userToRemove, setUserToRemove] = useState<{ id: number; name: string } | null>(null);
   const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
-  const [roleChangeData, setRoleChangeData] = useState<{ userId: number; userName: string; currentRole: string; newRole: string } | null>(null);
+  const [roleChangeData, setRoleChangeData] = useState<{
+    userId: number;
+    userName: string;
+    currentRole: string;
+    newRole: string;
+  } | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<{ userId: number; userName: string; role: string } | null>(null);
+  const [selectedMember, setSelectedMember] = useState<{
+    userId: number;
+    userName: string;
+    role: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('participants');
 
-  const [chat, setChat] = useState(getChatById(chatId));
-  const [isLoadingChat, setIsLoadingChat] = useState(false);
-
-  // Загрузка чата если не найден в store
-  useEffect(() => {
-    const loadChat = async () => {
-      const chatFromStore = getChatById(chatId);
-
-      if (chatFromStore) {
-        setChat(chatFromStore);
-        return;
-      }
-
-      // Если чат не найден в store, загружаем через API
-      try {
-        setIsLoadingChat(true);
-        const fetchedChat = await chatApi.getChat(chatId);
-        setChat(fetchedChat);
-      } catch (error) {
-        console.error(`Failed to load chat ${chatId}:`, error);
-      } finally {
-        setIsLoadingChat(false);
-      }
-    };
-
-    loadChat();
-  }, [chatId]);
-
-  const creatorId = chat?.created_by || chat?.creator_id;
-  const isCreator = currentUser && creatorId === currentUser.id;
-
-  // Определяем роль текущего пользователя в чате
-  const currentUserRole = members.find(m => m.user_id === currentUser?.id)?.role;
-  const isAdmin = currentUserRole === 'admin';
+  // Permissions
+  const creatorId = getCreatorId(chat);
+  const isCreator = isUserChatCreator(currentUser?.id, creatorId);
+  const currentUserRole = getMemberRole(members, currentUser?.id);
   const isOwner = currentUserRole === 'owner';
-  const canManageMembers = isOwner || isAdmin;
+  const canManageMembers = canUserManageMembers(currentUserRole);
 
-  // Функция для перевода системной роли на русский
-  const getSystemRoleLabel = (role: string): string => {
-    switch (role) {
-      case 'admin':
-        return 'Администратор';
-      case 'manager':
-        return 'Менеджер';
-      case 'employee':
-        return 'Сотрудник';
-      default:
-        return role;
-    }
-  };
-
-  // Функция для перевода роли в чате на русский
-  const getChatRoleLabel = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'Владелец';
-      case 'admin':
-        return 'Администратор';
-      default:
-        return ''; // Don't show label for regular members
-    }
-  };
-
-  // Цвет роли в чате
-  const getChatRoleColor = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return '#E94444';
-      case 'admin':
-        return theme.primary;
-      default:
-        return theme.textSecondary;
-    }
-  };
-
-  // Функция для форматирования времени последнего посещения
-  const getLastSeenText = (status: string, lastActiveAt?: string): string => {
-    if (status === 'online') {
-      return 'В сети';
-    }
-
-    if (!lastActiveAt) {
-      return 'Был(а) давно';
-    }
-
-    const lastActive = new Date(lastActiveAt);
-    const now = new Date();
-    const diffMs = now.getTime() - lastActive.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) {
-      return 'Только что';
-    } else if (diffMins < 60) {
-      return `Был(а) ${diffMins} мин. назад`;
-    } else if (diffHours < 24) {
-      return `Был(а) ${diffHours} ч. назад`;
-    } else if (diffDays === 1) {
-      return 'Был(а) вчера';
-    } else if (diffDays < 7) {
-      return `Был(а) ${diffDays} дн. назад`;
-    } else {
-      return 'Был(а) давно';
-    }
-  };
-
-  // Загрузка данных собеседника для личного чата
-  useEffect(() => {
-    const loadOtherUser = async () => {
-      console.log('🔍 Loading other user for private chat...', {
-        chatType: chat?.type,
-        hasMembers: !!chat?.members,
-        members: chat?.members,
-        currentUserId: currentUser?.id,
-      });
-
-      if (chat?.type === 'private' && chat.members && currentUser) {
-        // Найти ID собеседника (не текущего пользователя)
-        // members - это массив объектов вида {id, chat_id, user_id, role, ...}
-        const otherMember = chat.members.find((member: any) => member.user_id !== currentUser.id);
-        const otherUserId = otherMember?.user_id;
-
-        console.log('👤 Found other member:', otherMember);
-        console.log('👤 Found other user ID:', otherUserId);
-
-        if (otherUserId) {
-          try {
-            const user = await userApi.getUser(otherUserId);
-            console.log('✅ Loaded other user:', user);
-            console.log('✅ User department:', user.department);
-            console.log('✅ User department_id:', user.department_id);
-            setOtherUser(user);
-
-            // Если есть department_id, но нет объекта department, загружаем отдельно
-            if (user.department_id && !user.department) {
-              try {
-                console.log('🏢 Loading department separately:', user.department_id);
-                const dept = await userApi.getDepartment(user.department_id);
-                console.log('🏢 Department loaded:', dept);
-                if (dept && dept.name) {
-                  setDepartmentName(dept.name);
-                }
-              } catch (error) {
-                console.error('❌ Failed to load department:', error);
-              }
-            } else if (user.department?.name) {
-              // Если department уже есть в объекте user
-              setDepartmentName(user.department.name);
-            }
-          } catch (error) {
-            console.error('❌ Failed to load other user:', error);
-          }
-        } else {
-          console.warn('⚠️ Could not find other user ID in members');
-        }
-      }
-    };
-
-    loadOtherUser();
-  }, [chat, currentUser]);
-
-  // Загрузка участников для групповых чатов
-  useEffect(() => {
-    if (chat?.type === 'group') {
-      loadMembers();
-    }
-  }, [chat?.type, chatId]);
-
-  // Установка начальной вкладки в зависимости от типа чата
+  // Set initial tab based on chat type
   useEffect(() => {
     if (chat?.type === 'private') {
-      // Для личных чатов показываем только вложения
       setActiveTab('attachments');
     } else if (chat?.type === 'group') {
-      // Для групповых чатов по умолчанию показываем участников
       setActiveTab('participants');
     }
   }, [chat?.type]);
 
-  const loadMembers = async () => {
-    try {
-      setIsLoadingMembers(true);
-      const chatMembers = await chatApi.getChatMembers(chatId);
-
-      // Загружаем информацию о пользователях
-      if (chatMembers && chatMembers.length > 0) {
-        const userIds = chatMembers.map((m) => m.user_id);
-        const usersData = await userApi.getUsers({ ids: userIds }, { limit: 100, offset: 0 });
-        const users = usersData.data || [];
-
-        // Объединяем данные участников с данными пользователей
-        const membersWithUsers = chatMembers.map((member) => ({
-          ...member,
-          user: users.find((u) => u.id === member.user_id),
-        }));
-
-        setMembers(membersWithUsers);
-      } else {
-        setMembers([]);
-      }
-    } catch (error) {
-      console.error('Failed to load members:', error);
-    } finally {
-      setIsLoadingMembers(false);
-    }
+  // Handlers
+  const handleSearchMessages = () => {
+    // TODO: Implement message search
   };
 
   const handleAddMembers = async () => {
-    if (selectedUserIds.length === 0) {
-      showError('Выберите хотя бы одного участника');
-      return;
-    }
+    if (selectedUserIds.length === 0) return;
 
     try {
-      setIsAddingMembers(true);
-
-      // Добавляем участников по одному
-      for (const userId of selectedUserIds) {
-        await chatApi.addChatMember(chatId, userId);
-      }
+      await addMembers(selectedUserIds);
       setShowAddMembersModal(false);
       setSelectedUserIds([]);
-
-      // Перезагружаем список участников
-      await loadMembers();
-    } catch (error: any) {
-      console.error('❌ Failed to add members:', error);
-      showError(error.message || 'Не удалось добавить участников');
-    } finally {
-      setIsAddingMembers(false);
+    } catch (error) {
+      console.error('Failed to add members:', error);
     }
   };
 
-  const handleRemoveMember = async (userId: number, userName: string) => {
+  const handleRemoveMember = (userId: number, userName: string) => {
     setUserToRemove({ id: userId, name: userName });
     setShowRemoveDialog(true);
   };
@@ -306,26 +123,17 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!userToRemove) return;
 
     try {
-      await chatApi.removeChatMember(chatId, userToRemove.id);
+      await removeMember(userToRemove.id);
       setShowRemoveDialog(false);
       setUserToRemove(null);
-
-      // Перезагружаем список участников
-      await loadMembers();
-    } catch (error: any) {
-      console.error('❌ Failed to remove member:', error);
-      showError(error.message || 'Не удалось удалить участника');
+    } catch (error) {
+      console.error('Failed to remove member:', error);
     }
   };
 
-  const handleToggleAdmin = async (userId: number, userName: string, currentRole: string) => {
+  const handleToggleAdmin = (userId: number, userName: string, currentRole: string) => {
     const newRole = currentRole === 'admin' ? 'member' : 'admin';
-    setRoleChangeData({
-      userId,
-      userName,
-      currentRole,
-      newRole,
-    });
+    setRoleChangeData({ userId, userName, currentRole, newRole });
     setShowRoleChangeDialog(true);
   };
 
@@ -333,22 +141,12 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!roleChangeData) return;
 
     try {
-      await chatApi.updateChatMemberRole(chatId, roleChangeData.userId, roleChangeData.newRole as 'admin' | 'member');
-      const action = roleChangeData.newRole === 'admin' ? 'назначен администратором' : 'снят с должности администратора';
+      await updateMemberRole(roleChangeData.userId, roleChangeData.newRole as 'admin' | 'member');
       setShowRoleChangeDialog(false);
       setRoleChangeData(null);
-
-      // Перезагружаем список участников
-      await loadMembers();
-    } catch (error: any) {
-      console.error('❌ Failed to update member role:', error);
-      showError(error.message || 'Не удалось изменить роль участника');
+    } catch (error) {
+      console.error('Failed to update member role:', error);
     }
-  };
-
-  const cancelRoleChange = () => {
-    setShowRoleChangeDialog(false);
-    setRoleChangeData(null);
   };
 
   const handleOpenActionMenu = (userId: number, userName: string, role: string) => {
@@ -373,471 +171,177 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  const handleDeleteChat = async (clearHistory: boolean = false) => {
-    try {
-      await deleteChat(chatId, clearHistory);
-      setShowDeleteDialog(false);
-      // Возвращаемся к списку чатов
-      navigation.navigate('ChatList');
-    } catch (error) {
-      console.error('Failed to delete chat:', error);
-    }
-  };
-
-  const handleLeaveChat = async (clearHistory: boolean = false) => {
-    try {
-      await leaveChat(chatId);
-      setShowLeaveDialog(false);
-      // Возвращаемся к списку чатов
-      navigation.navigate('ChatList');
-    } catch (error) {
-      console.error('Failed to leave chat:', error);
-    }
-  };
-
-  const handleRenameChat = async (newName: string) => {
-    try {
-      await updateChat(chatId, { name: newName });
-      setShowRenameDialog(false);
-      // Обновляем заголовок в навигации
-      navigation.setParams({ chatName: newName });
-    } catch (error) {
-      console.error('Failed to rename chat:', error);
-    }
-  };
-
-  // Create delete/leave action options based on chat type and user role
+  // Delete/Leave action options based on chat type and user role
   const deleteActionOptions = useMemo((): ActionSheetOption[] => {
     if (chat?.type === 'private') {
-      // For private chats: delete with or without clearing history
       return [
         {
           label: 'Удалить',
-          onPress: () => handleDeleteChat(false),
+          onPress: () => deleteChat(false),
         },
         {
           label: 'Удалить и очистить историю',
-          onPress: () => handleDeleteChat(true),
+          onPress: () => deleteChat(true),
           destructive: true,
         },
       ];
     } else if (chat?.type === 'group') {
       if (isOwner) {
-        // Owner can delete for all
         return [
           {
             label: 'Удалить для всех',
-            onPress: () => handleDeleteChat(false),
+            onPress: () => deleteChat(false),
             destructive: true,
           },
           {
             label: 'Удалить для всех и очистить историю',
-            onPress: () => handleDeleteChat(true),
+            onPress: () => deleteChat(true),
             destructive: true,
           },
         ];
       } else {
-        // Non-owner members can leave
         return [
           {
             label: 'Покинуть чат',
-            onPress: () => handleLeaveChat(false),
-          },
-          {
-            label: 'Покинуть и очистить историю',
-            onPress: () => handleLeaveChat(true),
-            destructive: true,
+            onPress: () => leaveChat(),
           },
         ];
       }
     }
     return [];
-  }, [chat?.type, isOwner]);
+  }, [chat?.type, isOwner, deleteChat, leaveChat]);
 
-  const handleSearchMessages = () => {
-    // TODO: Реализовать поиск по сообщениям
-  };
+  // Quick actions for private chat
+  const privateQuickActions: QuickAction[] = useMemo(
+    () => [
+      {
+        icon: 'search-outline',
+        label: 'Поиск',
+        onPress: handleSearchMessages,
+      },
+      {
+        icon: 'trash-bin-outline',
+        label: 'Очистить',
+        onPress: () => setShowClearHistoryDialog(true),
+      },
+      {
+        icon: 'trash-outline',
+        label: 'Удалить',
+        onPress: () => setShowDeleteActionSheet(true),
+        color: theme.error || '#FF3B30',
+      },
+    ],
+    [theme.error]
+  );
 
-  const handleClearHistory = async () => {
-    try {
-      await clearChatHistory(chatId);
-      setShowClearHistoryDialog(false);
-      // Navigate back to chat to show empty state
-      navigation.goBack();
-    } catch (error) {
-      console.error('Failed to clear history:', error);
-      showError('Не удалось очистить историю');
+  // Quick actions for group chat
+  const groupQuickActions: QuickAction[] = useMemo(() => {
+    const actions: QuickAction[] = [];
+
+    if (isCreator) {
+      actions.push({
+        icon: 'camera-outline',
+        label: isUploadingAvatar ? 'Загрузка...' : 'Фото',
+        onPress: changeAvatar,
+        disabled: isUploadingAvatar,
+      });
+      actions.push({
+        icon: 'create-outline',
+        label: 'Название',
+        onPress: () => setShowRenameDialog(true),
+      });
     }
-  };
 
-  const handleChangeAvatar = async () => {
-    try {
-      if (Platform.OS === 'web') {
-        // Web implementation using file input
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
+    actions.push({
+      icon: 'search-outline',
+      label: 'Поиск',
+      onPress: handleSearchMessages,
+    });
 
-        input.onchange = async (e: Event) => {
-          const target = e.target as HTMLInputElement;
-          const file = target.files?.[0];
-          if (!file) return;
-
-          // Validate file size (max 5MB)
-          if (file.size > 5 * 1024 * 1024) {
-            showError('Размер файла не должен превышать 5 МБ');
-            return;
-          }
-
-          // Validate file type
-          if (!file.type.startsWith('image/')) {
-            showError('Пожалуйста, выберите изображение');
-            return;
-          }
-
-          setIsUploadingAvatar(true);
-
-          try {
-            console.log('📤 Uploading chat avatar...');
-
-            // Upload file to file-service as PUBLIC file
-            const uploadedFile = await fileApi.uploadFile(file, 'avatar', undefined, true);
-            console.log('✅ Avatar uploaded:', uploadedFile);
-
-            // Use public file URL
-            const avatarUrl = fileApi.getPublicFileUrl(uploadedFile.file_name);
-            console.log('📸 Public Avatar URL:', avatarUrl);
-
-            // Update chat with new avatar URL
-            await updateChat(chatId, { avatar: avatarUrl });
-            console.log('✅ Chat updated with new avatar');
-          } catch (error) {
-            console.error('❌ Failed to upload chat avatar:', error);
-            showError('Не удалось обновить изображение. Попробуйте снова.');
-          } finally {
-            setIsUploadingAvatar(false);
-          }
-        };
-
-        input.click();
-      } else {
-        // Mobile implementation using expo-image-picker
-        console.log('📸 Requesting media library permissions...');
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-        if (!permission.granted) {
-          showError('Нужно разрешение для доступа к галерее');
-          return;
-        }
-
-        console.log('📸 Opening image picker...');
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.8,
-        });
-
-        if (result.canceled || !result.assets || result.assets.length === 0) {
-          console.log('📸 Image picker cancelled');
-          return;
-        }
-
-        const asset = result.assets[0];
-
-        // Validate file size (max 5MB) if available
-        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-          showError('Размер файла не должен превышать 5 МБ');
-          return;
-        }
-
-        setIsUploadingAvatar(true);
-
-        try {
-          console.log('📤 Uploading chat avatar from mobile...');
-
-          // Create file object for mobile
-          const file = {
-            uri: asset.uri,
-            name: asset.fileName || `avatar_${Date.now()}.jpg`,
-            type: asset.type === 'image' ? 'image/jpeg' : asset.mimeType || 'image/jpeg',
-          };
-
-          // Upload file to file-service as PUBLIC file
-          const uploadedFile = await fileApi.uploadFile(file, 'avatar', undefined, true);
-          console.log('✅ Avatar uploaded:', uploadedFile);
-
-          // Use public file URL
-          const avatarUrl = fileApi.getPublicFileUrl(uploadedFile.file_name);
-          console.log('📸 Public Avatar URL:', avatarUrl);
-
-          // Update chat with new avatar URL
-          await updateChat(chatId, { avatar: avatarUrl });
-          console.log('✅ Chat updated with new avatar');
-
-        } catch (error) {
-          console.error('❌ Failed to upload chat avatar:', error);
-          showError('Не удалось обновить изображение. Попробуйте снова.');
-        } finally {
-          setIsUploadingAvatar(false);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error opening file picker:', error);
-      showError('Не удалось открыть выбор файла');
+    if (!isCreator) {
+      actions.push({
+        icon: 'exit-outline',
+        label: 'Покинуть',
+        onPress: () => setShowDeleteActionSheet(true),
+        color: theme.error || '#FF3B30',
+      });
+    } else {
+      actions.push({
+        icon: 'trash-outline',
+        label: 'Удалить',
+        onPress: () => setShowDeleteActionSheet(true),
+        color: theme.error || '#FF3B30',
+      });
     }
-  };
+
+    return actions;
+  }, [isCreator, isUploadingAvatar, changeAvatar, theme.error]);
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.backgroundSecondary, // Цвет заголовка распространяется на область Dynamic Island
-    },
-    header: {
       backgroundColor: theme.backgroundSecondary,
-      borderBottomColor: theme.border,
     },
-    headerTitle: {
-      color: theme.text,
-    },
-    section: {
-      backgroundColor: theme.backgroundSecondary,
-      borderTopColor: theme.border,
-      borderBottomColor: theme.border,
-    },
-    option: {
-      borderBottomColor: theme.border,
-    },
-    optionText: {
-      color: theme.text,
-    },
-    dangerText: {
-      color: theme.error || '#FF3B30',
+    divider: {
+      backgroundColor: theme.border,
     },
   });
 
   return (
-    <SafeAreaView style={[styles.container, dynamicStyles.container]} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={[styles.header, dynamicStyles.header]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Ionicons name="chevron-back" size={28} color={theme.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>
-          Настройки чата
-        </Text>
-        <View style={styles.backButton} />
-      </View>
+    <SafeAreaView
+      style={[styles.container, dynamicStyles.container]}
+      edges={['top', 'left', 'right']}
+    >
+      <ChatSettingsHeader onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Аватар и имя для личного чата (только просмотр) */}
+        {/* Private chat info */}
         {chat?.type === 'private' && otherUser && (
-          <View style={[styles.avatarSection, dynamicStyles.section]}>
-            <View style={styles.avatarContainer}>
-              <Avatar
-                imageUrl={otherUser.avatar}
-                name={otherUser.name || otherUser.email}
-                size={100}
-              />
-            </View>
-            <Text style={[styles.userFullName, { color: theme.text }]}>
-              {otherUser.name || 'Пользователь'}
-            </Text>
-            {otherUser.position && (
-              <Text style={[styles.userPosition, { color: theme.textSecondary }]}>
-                {otherUser.position}
-              </Text>
-            )}
-            {departmentName && (
-              <Text style={[styles.userDepartment, { color: theme.textSecondary }]}>
-                {departmentName}
-              </Text>
-            )}
-            {otherUser.role && (
-              <View style={[styles.userRoleBadge, { backgroundColor: theme.primary + '20' }]}>
-                <Text style={[styles.userRole, { color: theme.primary }]}>
-                  {getSystemRoleLabel(otherUser.role)}
-                </Text>
-              </View>
-            )}
-            <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-              {otherUser.email}
-            </Text>
-            <Text style={[styles.userLastSeen, { color: otherUser.status === 'online' ? theme.success || '#34C759' : theme.textTertiary }]}>
-              {getLastSeenText(otherUser.status, otherUser.last_active_at)}
-            </Text>
-
-            {/* Быстрые действия для личного чата */}
-            <View style={styles.quickActionsContainer}>
-              {/* Поиск */}
-              <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={handleSearchMessages}
-              >
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="search-outline" size={24} color={theme.primary} />
-                </View>
-                <Text style={[styles.quickActionText, { color: theme.text }]}>
-                  Поиск
-                </Text>
-              </TouchableOpacity>
-
-              {/* Очистить историю */}
-              <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={() => setShowClearHistoryDialog(true)}
-              >
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="trash-bin-outline" size={24} color={theme.primary} />
-                </View>
-                <Text style={[styles.quickActionText, { color: theme.text }]}>
-                  Очистить
-                </Text>
-              </TouchableOpacity>
-
-              {/* Удалить чат */}
-              <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={() => setShowDeleteActionSheet(true)}
-              >
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="trash-outline" size={24} color={theme.error || '#FF3B30'} />
-                </View>
-                <Text style={[styles.quickActionText, { color: theme.error || '#FF3B30' }]}>
-                  Удалить
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <PrivateChatInfo
+            user={otherUser}
+            departmentName={departmentName}
+            quickActions={privateQuickActions}
+          />
         )}
 
-        {/* Аватар и быстрые действия для групповых чатов */}
+        {/* Group chat info */}
         {chat?.type === 'group' && (
-          <View style={[styles.groupInfoSection, dynamicStyles.section]}>
-            <View style={styles.avatarContainer}>
-              <Avatar
-                imageUrl={chat?.avatar}
-                name={chatName || 'Группа'}
-                size={100}
-              />
-            </View>
-            <Text style={[styles.chatName, { color: theme.text }]}>
-              {chatName || 'Группа'}
-            </Text>
-            <Text style={[styles.membersCount, { color: theme.textSecondary }]}>
-              {members.length} {members.length === 1 ? 'участник' : members.length < 5 ? 'участника' : 'участников'}
-            </Text>
-
-            {/* Быстрые действия */}
-            <View style={styles.quickActionsContainer}>
-              {/* Изменить фото - только для создателя */}
-              {isCreator && (
-                <TouchableOpacity
-                  style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={handleChangeAvatar}
-                  disabled={isUploadingAvatar}
-                >
-                  <View style={styles.quickActionIcon}>
-                    <Ionicons name="camera-outline" size={24} color={theme.primary} />
-                  </View>
-                  <Text style={[styles.quickActionText, { color: theme.text }]}>
-                    {isUploadingAvatar ? 'Загрузка...' : 'Фото'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Переименовать - только для создателя */}
-              {isCreator && (
-                <TouchableOpacity
-                  style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => setShowRenameDialog(true)}
-                >
-                  <View style={styles.quickActionIcon}>
-                    <Ionicons name="create-outline" size={24} color={theme.primary} />
-                  </View>
-                  <Text style={[styles.quickActionText, { color: theme.text }]}>
-                    Название
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Поиск */}
-              <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={handleSearchMessages}
-              >
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="search-outline" size={24} color={theme.primary} />
-                </View>
-                <Text style={[styles.quickActionText, { color: theme.text }]}>
-                  Поиск
-                </Text>
-              </TouchableOpacity>
-
-              {/* Покинуть/Удалить чат */}
-              {!isCreator ? (
-                <TouchableOpacity
-                  style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => setShowDeleteActionSheet(true)}
-                >
-                  <View style={styles.quickActionIcon}>
-                    <Ionicons name="exit-outline" size={24} color={theme.error || '#FF3B30'} />
-                  </View>
-                  <Text style={[styles.quickActionText, { color: theme.error || '#FF3B30' }]}>
-                    Покинуть
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => setShowDeleteActionSheet(true)}
-                >
-                  <View style={styles.quickActionIcon}>
-                    <Ionicons name="trash-outline" size={24} color={theme.error || '#FF3B30'} />
-                  </View>
-                  <Text style={[styles.quickActionText, { color: theme.error || '#FF3B30' }]}>
-                    Удалить
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+          <GroupChatInfo
+            chatName={chatName || ''}
+            chatAvatar={chat?.avatar}
+            membersCount={members.length}
+            quickActions={groupQuickActions}
+          />
         )}
 
+        {/* Divider */}
+        <View style={[styles.divider, dynamicStyles.divider]} />
 
-
-        {/* Разделитель перед вкладками */}
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-        {/* Вкладки (Участники и Вложения для групповых чатов, только Вложения для личных) */}
+        {/* Tabs */}
         <ChatDetailTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
           showParticipants={chat?.type === 'group'}
         />
 
-        {/* Контент вкладок */}
+        {/* Tab Content */}
         {activeTab === 'participants' && chat?.type === 'group' && (
           <ParticipantsTab
             members={members}
             isLoading={isLoadingMembers}
             currentUserId={currentUser?.id}
             creatorId={creatorId}
-            currentUserRole={currentUserRole}
+            currentUserRole={
+              currentUserRole as 'owner' | 'admin' | 'member' | undefined
+            }
             onAddMembers={canManageMembers ? () => setShowAddMembersModal(true) : undefined}
             onMemberPress={handleOpenActionMenu}
           />
         )}
 
-        {activeTab === 'attachments' && (
-          <AttachmentsTab chatId={chatId} />
-        )}
-
+        {activeTab === 'attachments' && <AttachmentsTab chatId={chatId} />}
       </ScrollView>
 
-      {/* Модальное окно добавления участников */}
+      {/* Add Members Modal */}
       {showAddMembersModal && (
         <UserSelectorModal
           visible={showAddMembersModal}
@@ -849,18 +353,21 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
           onSelectionChange={setSelectedUserIds}
           multiSelect={true}
           title="Добавить участников"
-          excludeUserIds={members.map(m => m.user_id)}
+          excludeUserIds={members.map((m) => m.user_id)}
           onDone={handleAddMembers}
         />
       )}
 
-      {/* Action menu modal */}
+      {/* Action Menu */}
       <ActionSheet
         visible={showActionMenu}
         title={selectedMember?.userName || ''}
         options={[
           {
-            label: selectedMember?.role === 'admin' ? 'Снять права администратора' : 'Назначить администратором',
+            label:
+              selectedMember?.role === 'admin'
+                ? 'Снять права администратора'
+                : 'Назначить администратором',
             onPress: () => {
               if (selectedMember) {
                 handleMenuAction('changeRole');
@@ -880,31 +387,31 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         onCancel={handleCloseActionMenu}
       />
 
-      {/* Диалог удаления */}
+      {/* Delete Dialog */}
       <ConfirmDialog
         visible={showDeleteDialog}
         title="Удалить чат"
         message={`Вы уверены, что хотите удалить чат "${chatName}"? Это действие нельзя отменить.`}
         confirmText="Удалить"
         cancelText="Отмена"
-        onConfirm={handleDeleteChat}
+        onConfirm={() => deleteChat(false)}
         onCancel={() => setShowDeleteDialog(false)}
         destructive
       />
 
-      {/* Диалог выхода */}
+      {/* Leave Dialog */}
       <ConfirmDialog
         visible={showLeaveDialog}
         title="Покинуть чат"
         message={`Вы уверены, что хотите покинуть чат "${chatName}"?`}
         confirmText="Покинуть"
         cancelText="Отмена"
-        onConfirm={handleLeaveChat}
+        onConfirm={() => leaveChat()}
         onCancel={() => setShowLeaveDialog(false)}
         destructive
       />
 
-      {/* Диалог переименования */}
+      {/* Rename Dialog */}
       <InputDialog
         visible={showRenameDialog}
         title="Переименовать чат"
@@ -912,11 +419,11 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         initialValue={chatName || ''}
         confirmText="Сохранить"
         cancelText="Отмена"
-        onConfirm={handleRenameChat}
+        onConfirm={renameChat}
         onCancel={() => setShowRenameDialog(false)}
       />
 
-      {/* Confirm remove member dialog */}
+      {/* Remove Member Dialog */}
       <ConfirmDialog
         visible={showRemoveDialog}
         title="Удалить участника"
@@ -931,30 +438,39 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         destructive
       />
 
-      {/* Confirm role change dialog */}
+      {/* Role Change Dialog */}
       <ConfirmDialog
         visible={showRoleChangeDialog}
         title="Изменить роль"
         message={
           roleChangeData
-            ? `Вы уверены, что хотите ${roleChangeData.newRole === 'admin' ? 'назначить' : 'снять'} ${roleChangeData.userName} ${roleChangeData.newRole === 'admin' ? 'администратором' : 'с должности администратора'}?`
+            ? `Вы уверены, что хотите ${
+                roleChangeData.newRole === 'admin' ? 'назначить' : 'снять'
+              } ${roleChangeData.userName} ${
+                roleChangeData.newRole === 'admin'
+                  ? 'администратором'
+                  : 'с должности администратора'
+              }?`
             : ''
         }
         confirmText="Подтвердить"
         cancelText="Отмена"
         onConfirm={confirmRoleChange}
-        onCancel={cancelRoleChange}
+        onCancel={() => {
+          setShowRoleChangeDialog(false);
+          setRoleChangeData(null);
+        }}
         destructive={false}
       />
 
-      {/* Диалог очистки истории */}
+      {/* Clear History Dialog */}
       <ConfirmDialog
         visible={showClearHistoryDialog}
         title="Очистить историю"
         message="Вы уверены, что хотите очистить всю историю сообщений? Это действие нельзя отменить."
         confirmText="Очистить"
         cancelText="Отмена"
-        onConfirm={handleClearHistory}
+        onConfirm={clearHistory}
         onCancel={() => setShowClearHistoryDialog(false)}
         destructive
       />
@@ -977,244 +493,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
-  },
-  avatarSection: {
-    paddingVertical: 24,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-  },
-  avatarContainer: {
-    marginBottom: 16,
-  },
-  changeAvatarButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 8,
-  },
-  changeAvatarText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  section: {
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-  },
-  optionText: {
-    flex: 1,
-    fontSize: 16,
-    marginLeft: 12,
-  },
-  userFullName: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginTop: 12,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  userPosition: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  userDepartment: {
-    fontSize: 14,
-    marginTop: 4,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  userRoleBadge: {
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    alignSelf: 'center',
-  },
-  userRole: {
-    fontSize: 11,
-    textAlign: 'center',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  userEmail: {
-    fontSize: 14,
-    marginTop: 16,
-    textAlign: 'center',
-    opacity: 0.8,
-  },
-  userLastSeen: {
-    fontSize: 13,
-    marginTop: 8,
-    marginBottom: 4,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  // Members section styles
-  membersSection: {
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-  },
-  membersSectionHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  membersSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  memberItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  memberDetails: {
-    flex: 1,
-  },
-  memberNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  memberName: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  memberRole: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  menuButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48,
-  },
-  floatingButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  floatingButton: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  floatingButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Group info section styles
-  groupInfoSection: {
-    paddingVertical: 24,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-  },
-  // Quick actions styles
-  quickActionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 20,
-    paddingHorizontal: 16,
-    width: '100%',
-    gap: 12,
-  },
-  quickActionButton: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  quickActionIcon: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionText: {
-    fontSize: 11,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  chatName: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  membersCount: {
-    fontSize: 14,
-    marginTop: 4,
-    textAlign: 'center',
-  },
   divider: {
     height: 1,
     marginVertical: 0,
-  },
-  sectionMarginTop: {
-    marginTop: 8,
-  },
-  privateActionsSection: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
   },
 });
 

@@ -1,34 +1,33 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Platform, Keyboard } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { View, StyleSheet, Keyboard } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { ChatStackParamList } from '@navigation/types';
-import { MessageInput } from '@components/chat/MessageInput';
-import { ChatMembersModal } from '@components/chat/ChatMembersModal';
-import { ForwardMessageModal } from '@components/chat/ForwardMessageModal';
-import { PinnedMessageBanner } from '@components/chat/PinnedMessageBanner';
-import { FloatingDateHeader } from '@components/chat/FloatingDateHeader';
-import { ScrollToBottomButton } from '@components/chat/ScrollToBottomButton';
-import { MessageListComponent } from '@components/chat/MessageListComponent';
-import { ChatHeader } from '@components/chat/ChatHeader';
-import { SelectionModeToolbar } from '@components/chat/SelectionModeToolbar';
-import PollDetailModal from '@components/poll/PollDetailModal';
 import { useTheme } from '@hooks/useTheme';
 import { useChatMessages } from '@hooks/useChatMessages';
 import { useChatActions } from '@hooks/useChatActions';
 import { useChatScroll } from '@hooks/useChatScroll';
+import { useChatScreenState } from '@hooks/useChatScreenState';
+import { useSelectionMode } from '@hooks/useSelectionMode';
+import { useChatNavigation } from '@hooks/useChatNavigation';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@store/chatStore';
 import { useAuthStore } from '@store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion, getUserStatusText } from '@utils/chatUtils';
-import type { Chat } from '@/types/chat.types';
+import { ChatScreenContent } from './components/ChatScreenContent';
+import { ChatModals } from './components/ChatModals';
+import {
+  canDeleteForEveryone as checkCanDeleteForEveryone,
+  getUserRoleInChat,
+  isUserAdmin,
+  getTypingUserNames,
+} from '@utils/chatScreenHelpers';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
 
 /**
- * Рефакторенный экран чата - разделен на компоненты и хуки
+ * Refactored Chat Screen - Clean and modular
  */
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const { chatId, chatName, unreadCount: routeUnreadCount } = route.params;
@@ -36,27 +35,51 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
-  // Фиксированная высота инпута - НЕ меняем чтобы избежать пересчета layout
+  // Fixed input height
   const inputHeight = 72;
-  const [membersModalVisible, setMembersModalVisible] = useState(false);
-  const [showUnreadBanner, setShowUnreadBanner] = useState(true);
-  const [isConnected, setIsConnected] = useState(websocketService.isConnected());
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [isLayoutReady, setIsLayoutReady] = useState(false);
-  const [contentReady, setContentReady] = useState(false);
-  const [pollModalVisible, setPollModalVisible] = useState(false);
-  const [selectedPollId, setSelectedPollId] = useState<number | null>(null);
-  const [ignoreReadReceipts, setIgnoreReadReceipts] = useState(true); // Игнорируем read_receipts до первого скролла
-  const [initialUnreadCount, setInitialUnreadCount] = useState(0); // Запоминаем начальное количество непрочитанных
-  const [savedUnreadCount, setSavedUnreadCount] = useState(0); // Сохраняем unread_count ДО WebSocket
-  const [selectionMode, setSelectionMode] = useState(false); // Режим множественного выбора
-  const [selectedMessages, setSelectedMessages] = useState<Set<number>>(new Set()); // Выбранные сообщения
-  const [chatData, setChatData] = useState<Chat | null>(null); // Данные чата
-  const [isLoadingChat, setIsLoadingChat] = useState(false); // Загружается ли чат
 
+  // Custom hooks for state management
+  const {
+    membersModalVisible,
+    setMembersModalVisible,
+    pollModalVisible,
+    setPollModalVisible,
+    selectedPollId,
+    setSelectedPollId,
+    isConnected,
+    setIsConnected,
+    isLayoutReady,
+    setIsLayoutReady,
+    contentReady,
+    setContentReady,
+    keyboardHeight,
+    setKeyboardHeight,
+    showUnreadBanner,
+    setShowUnreadBanner,
+    ignoreReadReceipts,
+    setIgnoreReadReceipts,
+    initialUnreadCount,
+    setInitialUnreadCount,
+    savedUnreadCount,
+    setSavedUnreadCount,
+    chatData,
+    setChatData,
+    setIsLoadingChat,
+    resetChatState,
+  } = useChatScreenState();
 
-  // Хуки
-  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } = useChatMessages(chatIdNum, ignoreReadReceipts, savedUnreadCount);
+  const {
+    selectionMode,
+    selectedMessages,
+    handleEnterSelectionMode,
+    handleExitSelectionMode,
+    handleToggleMessageSelection,
+    handleBulkDelete,
+  } = useSelectionMode();
+
+  // Data hooks
+  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } =
+    useChatMessages(chatIdNum, ignoreReadReceipts, savedUnreadCount);
 
   const {
     editingMessage,
@@ -92,7 +115,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     initialScrollIndex,
     isScrollingToUnread,
     handleScroll,
-    handleLoadMore,
     handleContentSizeChange,
     handleScrollToBottom,
     handleReplyPress: scrollToMessage,
@@ -103,18 +125,21 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
 
   // Store
-  const isLoading = useChatStore((state) => state.isLoading);
-  const loadMessages = useChatStore((state) => state.loadMessages);
-  const getChatById = useChatStore((state) => state.getChatById);
-  const setActiveChat = useChatStore((state) => state.setActiveChat);
-  const markChatAsRead = useChatStore((state) => state.markChatAsRead);
-  const setError = useChatStore((state) => state.set);
-  const typingUsers = useChatStore((state) => state.typingUsers);
-  const getPinnedMessages = useChatStore((state) => state.getPinnedMessages);
+  const {
+    isLoading,
+    loadMessages,
+    getChatById,
+    setActiveChat,
+    markChatAsRead,
+    typingUsers,
+    getPinnedMessages,
+    set: setError,
+    chats,
+  } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
 
-  const chatFromStore = useChatStore((state) => state.chats.find(c => c.id === chatIdNum));
-  const chat = chatData || chatFromStore; // Используем загруженные данные или данные из store
+  const chatFromStore = chats.find((c) => c.id === chatIdNum);
+  const chat = chatData || chatFromStore;
 
   // Загрузка чата если не найден в store
   useEffect(() => {
@@ -140,50 +165,29 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     loadChat();
   }, [chatIdNum, chatFromStore]);
 
-  // Роль текущего пользователя в чате
-  const currentUserRole = useMemo(() => {
-    return chat?.members?.find(m => m.user_id === currentUser?.id)?.role || 'member';
-  }, [chat?.members, currentUser?.id]);
+  // Computed values
+  const currentUserRole = useMemo(
+    () => getUserRoleInChat(chat, currentUser?.id),
+    [chat, currentUser?.id]
+  );
 
-  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
+  const isAdmin = useMemo(() => isUserAdmin(currentUserRole), [currentUserRole]);
 
-  // Проверка: может ли пользователь удалить выбранные сообщения для всех
-  const canDeleteForEveryone = useMemo(() => {
-    if (!chat || selectedMessages.size === 0) return false;
+  const canDeleteForEveryone = useMemo(
+    () =>
+      checkCanDeleteForEveryone(chat || null, selectedMessages, messages, currentUser?.id, isAdmin),
+    [chat, selectedMessages, messages, currentUser?.id, isAdmin]
+  );
 
-    // Для личных чатов: можно удалить для всех только свои сообщения
-    if (chat.type === 'private') {
-      return Array.from(selectedMessages).every(messageId => {
-        const message = messages.find(m => m.id === messageId);
-        return message && message.sender_id === currentUser?.id;
-      });
-    }
+  const typingUserNames = useMemo(
+    () => getTypingUserNames(typingUsers[chatIdNum] || [], currentUser?.id),
+    [typingUsers, chatIdNum, currentUser]
+  );
 
-    // Для групповых чатов и каналов
-    // Админы и владельцы могут удалять любые сообщения
-    if (isAdmin) {
-      return true;
-    }
-
-    // Обычные участники могут удалять только свои сообщения
-    return Array.from(selectedMessages).every(messageId => {
-      const message = messages.find(m => m.id === messageId);
-      return message && message.sender_id === currentUser?.id;
-    });
-  }, [chat, selectedMessages, messages, currentUser?.id, isAdmin]);
-
-  // Печатающие пользователи
-  const typingUserNames = useMemo(() => {
-    const typing = typingUsers[chatIdNum] || [];
-    return typing
-      .filter(t => t.user_id !== currentUser?.id)
-      .map(t => t.user?.name || t.user?.email?.split('@')[0] || `User ${t.user_id}`);
-  }, [typingUsers, chatIdNum, currentUser]);
-
-  // Закрепленные сообщения
-  const pinnedMessages = useMemo(() => {
-    return getPinnedMessages(chatIdNum);
-  }, [chatIdNum, messages, getPinnedMessages]);
+  const pinnedMessages = useMemo(
+    () => getPinnedMessages(chatIdNum),
+    [chatIdNum, messages, getPinnedMessages]
+  );
 
   // Управление клавиатурой
   useEffect(() => {
@@ -224,76 +228,22 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Настройка заголовка
-  useEffect(() => {
-    const displayName = chat ? getChatDisplayName(chat, currentUser?.id) : (chatName || 'Чат');
-    const displayAvatar = chat ? getChatDisplayAvatar(chat, currentUser?.id) : undefined;
-    const companion = chat ? getPersonalChatCompanion(chat, currentUser?.id) : null;
-    const statusText = companion ? getUserStatusText(companion) : '';
-    const isPrivateChat = chat?.type === 'private';
-    const membersText = chat && chat.type === 'group' && chat.members
-      ? `${chat.members.length} участников`
-      : '';
+  // Navigation and header setup
+  useChatNavigation({
+    chatId: chatIdNum,
+    chatName,
+    chat,
+    currentUserId: currentUser?.id,
+    typingUserNames,
+    isConnected,
+  });
 
-    // Формируем текст печати для заголовка
-    let typingText = '';
-    if (typingUserNames.length > 0) {
-      if (isPrivateChat) {
-        // В личном чате просто "печатает..." без имени
-        typingText = 'печатает...';
-      } else {
-        // В групповом чате показываем имя
-        if (typingUserNames.length === 1) {
-          typingText = `${typingUserNames[0]} печатает...`;
-        } else {
-          typingText = `${typingUserNames[0]} и ещё ${typingUserNames.length - 1} печатают...`;
-        }
-      }
-    }
-
-    // Финальный текст статуса: приоритет у typing
-    const finalStatusText = typingText || (isPrivateChat ? statusText : membersText);
-
-    const handleHeaderPress = () => {
-      navigation.navigate('ChatSettings', {
-        chatId: chatIdNum,
-        chatName: displayName,
-      });
-    };
-
-    navigation.setOptions({
-      headerLeft: () => <ChatHeader.Left onBackPress={() => navigation.goBack()} />,
-      headerTitle: () => (
-        <ChatHeader.Title
-          displayName={displayName}
-          statusText={finalStatusText}
-          membersText={membersText}
-          isPrivateChat={isPrivateChat}
-          isConnected={isConnected}
-          onHeaderPress={handleHeaderPress}
-        />
-      ),
-      headerTitleAlign: 'center',
-      headerRight: () => (
-        <ChatHeader.Right
-          displayAvatar={displayAvatar}
-          displayName={displayName}
-          onHeaderPress={handleHeaderPress}
-        />
-      ),
-    });
-  }, [chatName, navigation, isConnected, chatIdNum, chat, currentUser, typingUserNames]);
-
-  // Инициализация чата
+  // Chat initialization
   useEffect(() => {
     resetScroll();
-    setShowUnreadBanner(true);
-    setIgnoreReadReceipts(true);
-    setInitialUnreadCount(0);
+    resetChatState();
 
     const chat = getChatById(chatIdNum);
-
-    // Используем unread_count из store или из параметров навигации
     const unreadCountToSave = chat?.unread_count ?? routeUnreadCount ?? 0;
     setSavedUnreadCount(unreadCountToSave);
 
@@ -303,33 +253,27 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
     loadMessages(chatIdNum).catch((error) => {
       console.error(`Failed to load messages for chat ${chatIdNum}:`, error);
-      if (error?.status === 403) {
-        // No access to chat
-      }
     });
 
+    // WebSocket connection
     const connectWebSocket = async () => {
       if (!websocketService.isConnected()) {
         const token = (await AsyncStorage.getItem('jwtToken')) || '';
         if (token) {
           await websocketService.connect(token);
-          await new Promise<void>(resolve => setTimeout(resolve, 500));
+          await new Promise<void>((resolve) => setTimeout(resolve, 500));
         } else {
           setError({ error: 'No authentication token found' });
           return;
         }
       }
-
-      // WebSocket is already connected and subscribed to user's personal channel
-      // Events will arrive automatically - no need to join/leave specific chats
     };
     connectWebSocket();
 
     return () => {
       setActiveChat(null);
-      // No need to leave chat - events are delivered via personal channel
     };
-  }, [chatIdNum]);
+  }, [chatIdNum, resetScroll, resetChatState, getChatById, routeUnreadCount, setSavedUnreadCount, setActiveChat, loadMessages, setError]);
 
   // Запоминаем начальное количество непрочитанных при первой загрузке
   useEffect(() => {
@@ -366,6 +310,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, hasReachedBottom, keyboardHeight, showUnreadBanner]);
 
+  // Event handlers
   const handleTyping = (isTyping: boolean) => {
     if (websocketService.isConnected() && getChatById(chatIdNum)) {
       websocketService.sendTyping(chatIdNum, isTyping);
@@ -380,7 +325,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleTaskPress = (taskId: number) => {
     const rootNavigation = navigation.getParent();
     if (rootNavigation) {
-      rootNavigation.navigate('TaskDetail', { taskId, fromChat: true });
+      rootNavigation.navigate('TaskDetail' as never, { taskId, fromChat: true } as never);
     }
   };
 
@@ -392,210 +337,100 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     handleReplyPressWithHighlight(messageId);
   };
 
-  // Обработчики для режима множественного выбора
-  const handleEnterSelectionMode = (messageId: number) => {
-    setSelectionMode(true);
-    setSelectedMessages(new Set([messageId]));
+  const onBulkDelete = async (deleteFor: 'everyone' | 'me') => {
+    await handleBulkDelete(deleteFor, handleDelete);
   };
 
-  const handleExitSelectionMode = () => {
-    setSelectionMode(false);
-    setSelectedMessages(new Set());
-  };
-
-  const handleToggleMessageSelection = (messageId: number) => {
-    setSelectedMessages((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(messageId)) {
-        newSet.delete(messageId);
-      } else {
-        newSet.add(messageId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleBulkDelete = async (deleteFor: 'everyone' | 'me') => {
-    if (selectedMessages.size === 0) return;
-
-    try {
-      const messageIds = Array.from(selectedMessages);
-
-      // Импортируем функцию массового удаления
-      const { bulkDeleteMessages } = await import('@api/chat.api');
-
-      // Вызываем массовое удаление
-      await bulkDeleteMessages(messageIds, deleteFor);
-
-      // Локально обновляем состояние для каждого удаленного сообщения
-      if (deleteFor === 'everyone') {
-        // При удалении для всех сервер отправит WebSocket события
-        // handleMessageDelete будет вызван автоматически
-      } else {
-        // При удалении для себя обновляем локально
-        messageIds.forEach(messageId => {
-          handleDelete(messageId, deleteFor);
-        });
-      }
-
-      handleExitSelectionMode();
-    } catch (error: any) {
-      console.error('Failed to delete messages:', error);
-      // TODO: Показать уведомление об ошибке
-    }
-  };
-
-  const dynamicStyles = StyleSheet.create({
-    container: {
-      backgroundColor: theme.background,
-    },
-  });
-
-  // Не показываем UI пока layout не готов (избегаем прыжков)
+  // UI state
   if (!isLayoutReady) {
-    return <View style={[styles.container, dynamicStyles.container]} />;
+    return <View style={[styles.container, { backgroundColor: theme.background }]} />;
   }
 
-  // Скрываем контент во время плавного скролла к непрочитанным
   const shouldShowContent = contentReady && !isScrollingToUnread;
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
-      {/* Floating sticky date header */}
-      <FloatingDateHeader dateLabel={currentDateLabel} visible={showDateHeader && shouldShowContent} />
-
-      <View style={styles.flex1}>
-        {shouldShowContent ? (
-          <>
-            {/* Баннер закрепленных сообщений */}
-            {pinnedMessages.length > 0 && (
-              <PinnedMessageBanner
-                pinnedMessages={pinnedMessages}
-                chatType={chat?.type}
-                currentUserRole={currentUserRole}
-                onPress={handlePinnedMessagePress}
-                onUnpin={handleUnpin}
-              />
-            )}
-
-            {/* Список сообщений - flex: 1 чтобы занимал все оставшееся место */}
-            <View style={{ flex: 1 }}>
-              <MessageListComponent
-            chatId={chatIdNum}
-            messageListItems={messageListItems}
-            messagesKey={messagesKey}
-            firstUnreadIndex={firstUnreadIndex}
-            unreadCount={unreadCount}
-            showUnreadBanner={showUnreadBanner}
-            isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
-            inputHeight={inputHeight}
-            insetsBottom={insets.bottom}
-            listRef={listRef}
-            highlightedMessageId={highlightedMessageId}
-            initialScrollIndex={initialScrollIndex}
-            onContentSizeChange={handleContentSizeChange}
-            onScroll={handleScroll}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig.current}
-            onReply={handleReply}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onRestore={handleRestore}
-            onDeletePermanent={handleDeletePermanent}
-            onPin={handlePin}
-            onUnpin={handleUnpin}
-            onForward={handleForward}
-            onReplyPress={handleReplyPressWithHighlight}
-            onPollPress={handlePollPress}
-            onTaskPress={handleTaskPress}
-            selectionMode={selectionMode}
-            selectedMessages={selectedMessages}
-            onEnterSelectionMode={handleEnterSelectionMode}
-            onToggleMessageSelection={handleToggleMessageSelection}
-            chatType={chat?.type}
-            userRole={currentUserRole}
-          />
-
-              {/* Кнопка scroll to bottom - абсолютное позиционирование */}
-              <ScrollToBottomButton visible={showScrollToBottom} onPress={handleScrollToBottom} />
-            </View>
-
-            {/* Панель ввода или панель режима выбора - обычный layout внизу */}
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  marginBottom: keyboardHeight,
-                  // Убираем paddingBottom так как tab bar теперь absolute
-                  backgroundColor: theme.backgroundSecondary,
-                }
-              ]}
-            >
-              {selectionMode ? (
-                <SelectionModeToolbar
-                  selectedCount={selectedMessages.size}
-                  onCancel={handleExitSelectionMode}
-                  onDelete={handleBulkDelete}
-                  canDeleteForEveryone={canDeleteForEveryone}
-                />
-              ) : (
-                <MessageInput
-                  onSend={handleSendMessage}
-                  onTyping={handleTyping}
-                  editingMessage={editingMessage}
-                  onCancelEdit={() => setEditingMessage(null)}
-                  replyingToMessage={replyingToMessage}
-                  onCancelReply={() => setReplyingToMessage(null)}
-                  onFilesSelected={(fileIds) => setSelectedFileIds(prev => [...prev, ...fileIds])}
-                  selectedFileIds={selectedFileIds}
-                  onRemoveFile={(fileId) => setSelectedFileIds(prev => prev.filter(id => id !== fileId))}
-                />
-              )}
-            </View>
-          </>
-        ) : (
-          // Показываем пустой экран пока контент не готов
-          <View style={{ flex: 1, backgroundColor: theme.background }} />
-        )}
-      </View>
-
-      {/* Модалки */}
-      <ChatMembersModal
-        visible={membersModalVisible}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <ChatScreenContent
         chatId={chatIdNum}
-        onClose={() => setMembersModalVisible(false)}
-        isCreator={currentUser?.id === chat?.creator_id}
+        messageListItems={messageListItems}
+        messagesKey={messagesKey}
+        firstUnreadIndex={firstUnreadIndex}
+        unreadCount={unreadCount}
+        showUnreadBanner={showUnreadBanner}
+        isLoading={isLoading}
+        isLoadingMore={isLoadingMore}
+        inputHeight={inputHeight}
+        insetsBottom={insets.bottom}
+        listRef={listRef}
+        highlightedMessageId={highlightedMessageId}
+        initialScrollIndex={initialScrollIndex}
+        onContentSizeChange={handleContentSizeChange}
+        onScroll={handleScroll}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig.current}
+        onReply={handleReply}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onRestore={handleRestore}
+        onDeletePermanent={handleDeletePermanent}
+        onPin={handlePin}
+        onUnpin={handleUnpin}
+        onForward={handleForward}
+        onReplyPress={handleReplyPressWithHighlight}
+        onPollPress={handlePollPress}
+        onTaskPress={handleTaskPress}
+        selectionMode={selectionMode}
+        selectedMessages={selectedMessages}
+        onEnterSelectionMode={handleEnterSelectionMode}
+        onToggleMessageSelection={handleToggleMessageSelection}
+        chatType={chat?.type}
+        userRole={currentUserRole}
+        pinnedMessages={pinnedMessages}
+        currentUserRole={currentUserRole}
+        currentDateLabel={currentDateLabel}
+        showDateHeader={showDateHeader}
+        showScrollToBottom={showScrollToBottom}
+        isScrollingToUnread={isScrollingToUnread}
+        keyboardHeight={keyboardHeight}
+        onSendMessage={handleSendMessage}
+        onTyping={handleTyping}
+        editingMessage={editingMessage}
+        onCancelEdit={() => setEditingMessage(null)}
+        replyingToMessage={replyingToMessage}
+        onCancelReply={() => setReplyingToMessage(null)}
+        selectedFileIds={selectedFileIds}
+        onFilesSelected={(fileIds) => setSelectedFileIds((prev) => [...prev, ...fileIds])}
+        onRemoveFile={(fileId) => setSelectedFileIds((prev) => prev.filter((id) => id !== fileId))}
+        onScrollToBottom={handleScrollToBottom}
+        onPinnedMessagePress={handlePinnedMessagePress}
+        onBulkDelete={onBulkDelete}
+        onExitSelectionMode={handleExitSelectionMode}
+        canDeleteForEveryone={canDeleteForEveryone}
+        shouldShowContent={shouldShowContent}
+      />
+
+      <ChatModals
+        chatId={chatIdNum}
+        currentUserId={currentUser?.id}
         creatorId={chat?.creator_id}
+        membersModalVisible={membersModalVisible}
+        onCloseMembersModal={() => setMembersModalVisible(false)}
+        forwardingMessage={forwardingMessage}
+        onCloseForwardModal={() => setForwardingMessage(null)}
+        onForwardToChat={handleForwardToChat}
+        pollModalVisible={pollModalVisible}
+        selectedPollId={selectedPollId}
+        onClosePollModal={() => {
+          setPollModalVisible(false);
+          setSelectedPollId(null);
+        }}
       />
-
-      <ForwardMessageModal
-        visible={!!forwardingMessage}
-        message={forwardingMessage}
-        onClose={() => setForwardingMessage(null)}
-        onForward={handleForwardToChat}
-      />
-
-      {selectedPollId && (
-        <PollDetailModal
-          visible={pollModalVisible}
-          pollId={selectedPollId}
-          onClose={() => {
-            setPollModalVisible(false);
-            setSelectedPollId(null);
-          }}
-        />
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  flex1: { flex: 1 },
-  inputWrapper: {
-    // Явно задаем что этот view НЕ должен менять свою позицию
-  },
 });
 
 export default ChatScreen;
