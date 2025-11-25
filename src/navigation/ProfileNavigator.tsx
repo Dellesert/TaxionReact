@@ -12,11 +12,11 @@ import NotificationSettingsScreen from '@/features/profile/screens/NotificationS
 import ActiveSessionsScreen from '@/features/profile/screens/ActiveSessionsScreen';
 import PasskeyManagementScreen from '@/features/profile/screens/PasskeyManagementScreen';
 import AboutScreen from '@/features/profile/screens/AboutScreen';
-import AnalyticsHubScreen from '@screens/admin/AnalyticsHubScreen';
-import MetricsAnalyticsScreen from '@screens/admin/MetricsAnalyticsScreen';
-import PerformanceAnalyticsScreen from '@screens/admin/PerformanceAnalyticsScreen';
-import DepartmentsAnalyticsScreen from '@screens/admin/DepartmentsAnalyticsScreen';
-import SecurityAnalyticsScreen from '@screens/admin/SecurityAnalyticsScreen';
+import AnalyticsHubScreen from '@/features/admin/screens/AnalyticsHubScreen';
+import MetricsAnalyticsScreen from '@/features/admin/screens/MetricsAnalyticsScreen';
+import PerformanceAnalyticsScreen from '@/features/admin/screens/PerformanceAnalyticsScreen';
+import DepartmentsAnalyticsScreen from '@/features/admin/screens/DepartmentsAnalyticsScreen';
+import SecurityAnalyticsScreen from '@/features/admin/screens/SecurityAnalyticsScreen';
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
