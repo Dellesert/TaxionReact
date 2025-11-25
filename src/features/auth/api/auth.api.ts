@@ -3,7 +3,7 @@
  * API клиент для аутентификации и авторизации
  */
 
-import api from './axios.config';
+import api from '@api/axios.config';
 import { API_ENDPOINTS } from '@constants/api.constants';
 import {
   LoginDto,
@@ -25,8 +25,8 @@ import {
   PasskeyListResponse,
   UpdatePasskeyDto,
   Passkey,
-} from '../types/user.types';
-import { ApiResponse } from '../types/common.types';
+} from '../../../types/user.types';
+import { ApiResponse } from '../../../types/common.types';
 
 /**
  * Login user

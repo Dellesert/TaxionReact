@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
-import * as authApi from '@api/auth.api';
+import * as authApi from '../api/auth.api';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import { useAuthStore } from '@store/authStore';
 import { useNotification } from '@contexts/NotificationContext';
 import { extractErrorCode, ErrorCode, isSuperAdminWebOnly } from '@utils/errorUtils';
-import type { ApiError } from 'common.types';
-import { joinCode, isSuperAdmin } from '@utils/twoFactorHelpers';
+import type { ApiError } from '../../../types/common.types';
+import { joinCode, isSuperAdmin } from '../utils/twoFactorHelpers';
 
 interface Use2FAVerificationReturn {
   isLoading: boolean;

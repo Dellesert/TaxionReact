@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@hooks/useTheme';
-import { formatExpiryTime } from '@utils/passwordResetHelpers';
+import { formatExpiryTime } from '../utils/passwordResetHelpers';
 
 interface ResetPasswordHeaderProps {
   email: string;

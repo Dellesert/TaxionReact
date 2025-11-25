@@ -10,11 +10,11 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { useActionModal } from '@contexts/ActionModalContext';
 import { useTheme } from '@hooks/useTheme';
-import { useTokenValidation } from '@hooks/useTokenValidation';
-import { useResetPasswordAction } from '@hooks/useResetPasswordAction';
-import { ResetPasswordHeader } from './components/ResetPasswordHeader';
-import { ResetPasswordForm } from './components/ResetPasswordForm';
-import { TokenValidationStates } from './components/TokenValidationStates';
+import { useTokenValidation } from '../hooks/useTokenValidation';
+import { useResetPasswordAction } from '../hooks/useResetPasswordAction';
+import { ResetPasswordHeader } from '../components/ResetPasswordHeader';
+import { ResetPasswordForm } from '../components/ResetPasswordForm';
+import { TokenValidationStates } from '../components/TokenValidationStates';
 
 type ResetPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
 type ResetPasswordScreenRouteProp = RouteProp<AuthStackParamList, 'ResetPassword'>;

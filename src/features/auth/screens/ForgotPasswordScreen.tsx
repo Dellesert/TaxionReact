@@ -10,12 +10,12 @@ import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { useActionModal } from '@contexts/ActionModalContext';
 import { useTheme } from '@hooks/useTheme';
-import { usePasswordReset } from '@hooks/usePasswordReset';
-import { validateResetCode } from '@utils/passwordResetHelpers';
-import { ForgotPasswordHeader } from './components/ForgotPasswordHeader';
-import { EmailRequestForm } from './components/EmailRequestForm';
-import { ManualCodeForm } from './components/ManualCodeForm';
-import { PasswordResetSuccess } from './components/PasswordResetSuccess';
+import { usePasswordReset } from '../hooks/usePasswordReset';
+import { validateResetCode } from '../utils/passwordResetHelpers';
+import { ForgotPasswordHeader } from '../components/ForgotPasswordHeader';
+import { EmailRequestForm } from '../components/EmailRequestForm';
+import { ManualCodeForm } from '../components/ManualCodeForm';
+import { PasswordResetSuccess } from '../components/PasswordResetSuccess';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 

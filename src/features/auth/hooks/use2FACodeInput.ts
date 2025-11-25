@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { TextInput } from 'react-native';
-import { extractNumericInput, splitCode, createEmptyCode } from '@utils/twoFactorHelpers';
+import { extractNumericInput, splitCode, createEmptyCode } from '../utils/twoFactorHelpers';
 
 interface Use2FACodeInputReturn {
   code: string[];

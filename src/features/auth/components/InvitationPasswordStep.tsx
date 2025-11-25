@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { InvitationData } from '../../../utils/invitationHelpers';
+import { InvitationData } from '../utils/invitationHelpers';
 import { InvitationInfoBox } from './InvitationInfoBox';
 import { useTheme } from '@hooks/useTheme';
 

@@ -3,7 +3,7 @@
  * Centralized export of all API clients
  */
 
-export * as authApi from './auth.api';
+export * as authApi from '../features/auth/api/auth.api';
 export * as userApi from './user.api';
 export * as chatApi from './chat.api';
 export * as taskApi from './task.api';

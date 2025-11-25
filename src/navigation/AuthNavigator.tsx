@@ -5,11 +5,11 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import LoginScreen from '@screens/auth/LoginScreen';
-import TwoFactorScreen from '@screens/auth/TwoFactorScreen';
-import AcceptInvitationScreen from '@screens/auth/AcceptInvitationScreen';
-import ResetPasswordScreen from '@screens/auth/ResetPasswordScreen';
-import ForgotPasswordScreen from '@screens/auth/ForgotPasswordScreen';
+import LoginScreen from '@/features/auth/screens/LoginScreen';
+import TwoFactorScreen from '@/features/auth/screens/TwoFactorScreen';
+import AcceptInvitationScreen from '@/features/auth/screens/AcceptInvitationScreen';
+import ResetPasswordScreen from '@/features/auth/screens/ResetPasswordScreen';
+import ForgotPasswordScreen from '@/features/auth/screens/ForgotPasswordScreen';
 
 export type AuthStackParamList = {
   Login: undefined;

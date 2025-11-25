@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import * as secureStorage from '@utils/secureStorage';
 import { User, LoginDto, RegisterDto } from '../types/user.types';
 import { STORAGE_KEYS } from '@constants/app.constants';
-import * as authApi from '@api/auth.api';
+import * as authApi from '@/features/auth/api/auth.api';
 import * as userApi from '@api/user.api';
 import { isMockMode, mockLogin, mockRegister } from '@utils/mockData';
 import { websocketService } from '@services/websocket.service';

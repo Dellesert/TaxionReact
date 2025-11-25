@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { isPasskeySupported, authenticateWithPasskey, formatPasskeyError } from '../utils/passkeyUtils';
-import { isSuperAdminWebOnly } from '../utils/errorUtils';
-import type { ApiError } from '../types/common.types';
-import { useAuth } from './useAuth';
+import { isPasskeySupported, authenticateWithPasskey, formatPasskeyError } from '@utils/passkeyUtils';
+import { isSuperAdminWebOnly } from '@utils/errorUtils';
+import type { ApiError } from '../../../types/common.types';
+import { useAuth } from '@hooks/useAuth';
 
 interface UsePasskeyAuthReturn {
   isPasskeyLoading: boolean;
@@ -67,8 +67,8 @@ export const usePasskeyAuth = (
       }
 
       // 5. Save session to storage
-      const secureStorage = await import('../utils/secureStorage');
-      const { STORAGE_KEYS } = await import('../constants/app.constants');
+      const secureStorage = await import('@utils/secureStorage');
+      const { STORAGE_KEYS } = await import('@constants/app.constants');
 
       if (loginResponse.session?.session_id) {
         console.log('💾 Saving session ID to storage...');

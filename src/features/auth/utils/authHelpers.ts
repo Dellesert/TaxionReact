@@ -2,8 +2,8 @@
  * Helper functions for authentication
  */
 
-import { extractErrorCode, ErrorCode, isSuperAdminWebOnly } from './errorUtils';
-import type { ApiError } from '../types/common.types';
+import { extractErrorCode, ErrorCode, isSuperAdminWebOnly } from '@utils/errorUtils';
+import type { ApiError } from '../../../types/common.types';
 
 /**
  * Check if error indicates 2FA is not enabled

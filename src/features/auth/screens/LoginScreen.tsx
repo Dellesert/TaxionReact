@@ -9,15 +9,15 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { useAuth } from '@hooks/useAuth';
-import { useLoginForm } from '@hooks/useLoginForm';
-import { usePasskeyAuth } from '@hooks/usePasskeyAuth';
-import { usePasswordAuth } from '@hooks/usePasswordAuth';
+import { useLoginForm } from '../hooks/useLoginForm';
+import { usePasskeyAuth } from '../hooks/usePasskeyAuth';
+import { usePasswordAuth } from '../hooks/usePasswordAuth';
 import { useNotification } from '@contexts/NotificationContext';
 import { useTheme } from '@hooks/useTheme';
-import { LoginLogo } from './components/LoginLogo';
-import { LoginForm } from './components/LoginForm';
-import { AlternativeLoginMethods } from './components/AlternativeLoginMethods';
-import type { ApiError } from '../../types/common.types';
+import { LoginLogo } from '../components/LoginLogo';
+import { LoginForm } from '../components/LoginForm';
+import { AlternativeLoginMethods } from '../components/AlternativeLoginMethods';
+import type { ApiError } from '../../../types/common.types';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
