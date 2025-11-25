@@ -13,7 +13,6 @@ import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import ChatDetailScreen from '@screens/chat/ChatDetailScreen';
 import TaskDetailScreen from '@screens/task/TaskDetailScreen';
-import EventDetailScreen from '@screens/calendar/EventDetailScreen';
 import PollDetailScreen from '@screens/poll/PollDetailScreen';
 import NotificationListScreen from '@screens/notification/NotificationListScreen';
 import ActiveSessionsScreen from '@screens/profile/ActiveSessionsScreen';
@@ -137,16 +136,7 @@ const AppNavigator: React.FC = () => {
                 animation: 'slide_from_right',
               }}
             />
-            <Stack.Screen
-              name="EventDetail"
-              component={EventDetailScreen}
-              options={{
-                headerShown: true,
-                headerTitle: 'Событие',
-                headerBackTitle: 'Назад',
-                animation: 'slide_from_right',
-              }}
-            />
+            
             <Stack.Screen
               name="PollDetail"
               component={PollDetailScreen}
