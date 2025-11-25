@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Poll } from '../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 
 interface PollItemProps {
   poll: Poll;

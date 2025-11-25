@@ -6,7 +6,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 import { formatMembersCount } from '../utils/chatSettingsFormatters';
 import { QuickActions, QuickAction } from './QuickActions';
 

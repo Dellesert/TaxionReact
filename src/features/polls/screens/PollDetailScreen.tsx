@@ -21,7 +21,7 @@ import { usePollPermissions } from '../hooks/usePollPermissions';
 import { PollDetailSkeleton } from '../components/PollDetailSkeleton';
 import SharePollModal from '../components/SharePollModal';
 import EditPollModal from '../components/EditPollModal';
-import { UserProfileModal } from '@components/common/UserProfileModal';
+import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { PollHeader } from '../components/PollHeader';
 import { PollInfo } from '../components/PollInfo';
 import { PollVotingUI } from '../components/PollVotingUI';

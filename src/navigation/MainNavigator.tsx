@@ -19,7 +19,7 @@ import AdminNavigator from './AdminNavigator';
 import ProfileNavigator from './ProfileNavigator';
 import NotificationNavigator from './NotificationNavigator';
 import CalendarScreen from '@/features/calendar/screens/CalendarScreen';
-import { AnimatedTabBar } from '@components/navigation/AnimatedTabBar';
+import { AnimatedTabBar } from '@shared/components/navigation/AnimatedTabBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 

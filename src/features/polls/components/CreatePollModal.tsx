@@ -27,8 +27,8 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as pollApi from '../api/poll.api';
 import { PollType, PollVisibility, CreatePollDto } from '../types/poll.types';
-import UserSelector from '@components/common/UserSelector';
-import DatePickerModal from '@components/common/DatePickerModal';
+import UserSelector from '@shared/components/common/UserSelector';
+import DatePickerModal from '@shared/components/common/DatePickerModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

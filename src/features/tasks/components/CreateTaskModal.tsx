@@ -24,8 +24,8 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { TaskPriority, CreateTaskDto } from '../types/task.types';
-import UserSelector from '@components/common/UserSelector';
-import DatePickerModal from '@components/common/DatePickerModal';
+import UserSelector from '@shared/components/common/UserSelector';
+import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 

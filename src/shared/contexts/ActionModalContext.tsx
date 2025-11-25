@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { ActionModal } from '@components/common/ActionModal';
+import { ActionModal } from '@shared/components/common/ActionModal';
 import { ActionModalOptions, ActionModalButton } from '@types/modal.types';
 
 interface ActionModalContextValue {

@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Notification, NotificationType } from '@types/notification.types';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 
 interface InAppNotificationProps {
   notification: Notification;

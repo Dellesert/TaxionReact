@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { ActionModal } from '@components/common/ActionModal';
+import { ActionModal } from '@shared/components/common/ActionModal';
 
 interface SelectionModeToolbarProps {
   selectedCount: number;

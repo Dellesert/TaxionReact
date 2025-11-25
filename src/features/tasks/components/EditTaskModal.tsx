@@ -22,8 +22,8 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Task, TaskPriority, TaskChecklist } from '../types/task.types';
 import * as taskApi from '../api/task.api';
-import UserSelector from '@components/common/UserSelector';
-import DatePickerModal from '@components/common/DatePickerModal';
+import UserSelector from '@shared/components/common/UserSelector';
+import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 

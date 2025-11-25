@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@shared/store/notificationStore';
-import NotificationItem from '@components/common/NotificationItem';
+import NotificationItem from '@shared/components/common/NotificationItem';
 import { Notification } from '../../../types/notification.types';
 import { useTheme } from '@shared/hooks/useTheme';
 

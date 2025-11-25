@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskComment } from '../types/task.types';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 import { useTheme } from '@shared/hooks/useTheme';
 import { getUserDisplayName } from '../utils/taskHelpers';
 import { format } from 'date-fns';

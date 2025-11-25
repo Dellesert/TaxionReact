@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Chat } from '../types/chat.types';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion } from '../utils/chatUtils';
-import { ActionSheet, ActionSheetOption } from '@components/common/ActionSheet';
+import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
 
 interface ChatItemProps {
   chat: Chat;

@@ -23,7 +23,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as pollApi from '../api/poll.api';
 import { Poll, PollVisibility } from '../types/poll.types';
-import DatePickerModal from '@components/common/DatePickerModal';
+import DatePickerModal from '@shared/components/common/DatePickerModal';
 
 interface EditPollModalProps {
   visible: boolean;

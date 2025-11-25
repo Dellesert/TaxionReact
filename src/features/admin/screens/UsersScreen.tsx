@@ -19,7 +19,7 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 
 const UsersScreen: React.FC = () => {
   const navigation = useNavigation();

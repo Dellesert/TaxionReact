@@ -15,7 +15,7 @@ import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
-import Avatar from '@components/common/Avatar';
+import Avatar from '@shared/components/common/Avatar';
 
 interface UserPickerProps {
   selectedUserIds: number[];

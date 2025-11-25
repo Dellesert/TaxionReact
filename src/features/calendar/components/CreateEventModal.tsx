@@ -27,8 +27,8 @@ import { useAuthStore } from '@shared/store/authStore';
 import { CreateEventDto, Event } from '../types/calendar.types';
 import * as calendarApi from '../api/calendar.api';
 import * as userApi from '@api/user.api';
-import UserSelector from '@components/common/UserSelector';
-import DatePickerModal from '@components/common/DatePickerModal';
+import UserSelector from '@shared/components/common/UserSelector';
+import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 

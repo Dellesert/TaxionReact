@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { NotificationBell } from '@components/common/NotificationBell';
+import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface CalendarHeaderProps {

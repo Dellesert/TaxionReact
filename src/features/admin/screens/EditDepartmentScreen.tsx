@@ -18,8 +18,8 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import * as userApi from '@api/user.api';
 import { Department, User } from '@/types/user.types';
-import { Avatar } from '@components/common/Avatar';
-import UserSelectorModal from '@components/common/UserSelectorModal';
+import { Avatar } from '@shared/components/common/Avatar';
+import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { AdminStackParamList } from '@navigation/types';
 
 type EditDepartmentRouteProp = RouteProp<AdminStackParamList, 'EditDepartment'>;

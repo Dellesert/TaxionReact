@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
-import Toast, { ToastType, ToastProps } from '@components/ui/Toast';
+import Toast, { ToastType, ToastProps } from '@shared/components/ui/Toast';
 import { ApiError } from '@types/common.types';
 import { formatApiError, extractRequestId } from '@shared/utils/errorUtils';
 

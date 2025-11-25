@@ -10,7 +10,7 @@ import { Notification, NotificationType } from '@types/notification.types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useTheme } from '@shared/hooks/useTheme';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 import { Swipeable } from 'react-native-gesture-handler';
 
 interface NotificationItemProps {

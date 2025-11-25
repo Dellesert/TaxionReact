@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenHeader } from '@components/common/ScreenHeader';
-import { NotificationBell } from '@components/common/NotificationBell';
+import { ScreenHeader } from '@shared/components/common/ScreenHeader';
+import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { TaskFilter } from '../utils/taskListHelpers';
 import { TaskSearchBar } from './TaskSearchBar';

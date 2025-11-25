@@ -26,7 +26,7 @@ import { updateProfile } from '@api/user.api';
 import { useAuthStore } from '@shared/store/authStore';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import DatePickerModal from '@components/common/DatePickerModal';
+import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 

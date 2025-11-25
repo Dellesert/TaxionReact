@@ -8,8 +8,8 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIn
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { Avatar } from '@components/common/Avatar';
-import { User } from '../../types/user.types';
+import { Avatar } from '@shared/components/common/Avatar';
+import { User } from '@/types/user.types';
 import { getUserById } from '@api/user.api';
 
 interface UserProfileModalProps {

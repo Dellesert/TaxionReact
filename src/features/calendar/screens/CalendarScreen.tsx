@@ -5,7 +5,7 @@ import { Event } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/EventListSkeleton';
 import CreateEventModal from '../components/CreateEventModal';
 import { EventDetailModal } from '../components/EventDetailModal';
-import { ScreenHeader } from '@components/common/ScreenHeader';
+import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { MonthCalendarView } from '../components/MonthCalendarView';
 import { CalendarHeader } from '../components/CalendarHeader';
 import { CalendarDateNavigation } from '../components/CalendarDateNavigation';

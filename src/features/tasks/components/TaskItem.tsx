@@ -11,7 +11,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 
 // Circular Progress Indicator Component
 const ProgressIndicator: React.FC<{

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Event, EventParticipantStatus } from '../types/calendar.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
-import { Avatar } from '@components/common/Avatar';
+import { Avatar } from '@shared/components/common/Avatar';
 
 interface EventItemProps {
   event: Event;

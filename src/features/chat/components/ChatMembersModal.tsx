@@ -28,8 +28,8 @@ import { getUsers } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@shared/utils/mockData';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
-import { ConfirmDialog } from '@components/common/ConfirmDialog';
-import Avatar from '@components/common/Avatar';
+import { ConfirmDialog } from '@shared/components/common/ConfirmDialog';
+import Avatar from '@shared/components/common/Avatar';
 
 interface ChatMembersModalProps {
   visible: boolean;

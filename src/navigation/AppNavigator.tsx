@@ -18,7 +18,7 @@ import NotificationListScreen from '@/features/notifications/screens/Notificatio
 import ActiveSessionsScreen from '@/features/profile/screens/ActiveSessionsScreen';
 import PasskeyManagementScreen from '@/features/profile/screens/PasskeyManagementScreen';
 import AboutScreen from '@/features/profile/screens/AboutScreen';
-import { InAppNotificationContainer } from '@components/common/InAppNotificationContainer';
+import { InAppNotificationContainer } from '@shared/components/common/InAppNotificationContainer';
 import * as Linking from 'expo-linking';
 
 export type RootStackParamList = {

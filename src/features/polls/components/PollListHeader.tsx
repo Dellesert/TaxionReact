@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Animated as RNAnimated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { ScreenHeader } from '@components/common/ScreenHeader';
-import { NotificationBell } from '@components/common/NotificationBell';
+import { ScreenHeader } from '@shared/components/common/ScreenHeader';
+import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { PollFilter } from '../utils/pollListHelpers';
 
 interface PollListHeaderProps {

@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar } from '@components/common/Avatar';
-import { ConnectionStatus } from '@components/common/ConnectionStatus';
+import { Avatar } from '@shared/components/common/Avatar';
+import { ConnectionStatus } from '@shared/components/common/ConnectionStatus';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface ChatHeaderProps {

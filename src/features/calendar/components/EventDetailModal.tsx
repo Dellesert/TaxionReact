@@ -21,8 +21,8 @@ import { Event, EventParticipantStatus } from '../types/calendar.types';
 import * as calendarApi from '../api/calendar.api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Avatar } from '@components/common/Avatar';
-import { UserProfileModal } from '@components/common/UserProfileModal';
+import { Avatar } from '@shared/components/common/Avatar';
+import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import CreateEventModal from './CreateEventModal';
 

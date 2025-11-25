@@ -17,8 +17,8 @@ import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar } from '@components/common/Avatar';
-import { UserProfileModal } from '@components/common/UserProfileModal';
+import { Avatar } from '@shared/components/common/Avatar';
+import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { useNavigation } from '@react-navigation/native';
 
 // Simple Progress Indicator Component (no SVG)
