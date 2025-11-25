@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, FlatList, ActivityIndicator, RefreshControl, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, ActivityIndicator, RefreshControl, StyleSheet, Dimensions, Platform } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { TaskItem } from '../components/TaskItem';
@@ -153,9 +154,10 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
         ) : tabTotal === 0 ? (
           <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={false} />
         ) : (
-          <FlatList
+          <FlashList
             data={tabTasks}
             keyExtractor={(item) => item.id.toString()}
+            estimatedItemSize={100}
             renderItem={({ item }) => {
               const subtasks = subtasksCache[item.id];
 

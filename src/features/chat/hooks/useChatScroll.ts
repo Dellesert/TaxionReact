@@ -16,27 +16,66 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
-  const scrollToEndOnce = useRef(false);
   const lastOldestMessageId = useRef<number | null>(null);
-  const hasScrolledToUnread = useRef(false);
   const [initialScrollIndex, setInitialScrollIndex] = useState<number | undefined>(undefined);
-  const [isScrollingToUnread, setIsScrollingToUnread] = useState(false); // Новое состояние для плавной анимации
+  const [isScrollingToUnread, setIsScrollingToUnread] = useState(false);
+  const [scrollSessionKey, setScrollSessionKey] = useState(0);
+  const lastScrollOffset = useRef<number>(0);
+  const shouldRestoreScroll = useRef<boolean>(false);
 
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
 
-  // Вычисляем initialScrollIndex один раз при монтировании
+  // Загружаем сохраненную позицию скролла при входе в чат
+  useEffect(() => {
+    const loadScrollPosition = async () => {
+      try {
+        const savedPosition = await AsyncStorage.getItem(`chat_scroll_offset_${chatId}`);
+        if (savedPosition) {
+          const offset = parseFloat(savedPosition);
+          lastScrollOffset.current = offset;
+          shouldRestoreScroll.current = true;
+          console.log(`📜 [Scroll] Chat ${chatId}: Загружена сохраненная позиция offset=${offset}`);
+        }
+      } catch (error) {
+        console.warn('Failed to load scroll position:', error);
+      }
+    };
+
+    loadScrollPosition();
+  }, [chatId]);
+
+  // Вычисляем initialScrollIndex при появлении сообщений или смене чата
   useEffect(() => {
     if (messages.length > 0 && initialScrollIndex === undefined) {
+      const targetIndex = (firstUnreadIndex !== -1 && unreadCount >= 1)
+        ? firstUnreadIndex
+        : messages.length - 1;
+
       if (firstUnreadIndex !== -1 && unreadCount >= 1) {
-        console.log(`📜 [Scroll] Chat ${chatId}: Обнаружено ${unreadCount} непрочитанных, индекс самого старого: ${firstUnreadIndex}, всего сообщений: ${messages.length}`);
-        setInitialScrollIndex(firstUnreadIndex);
-        // НЕ скрываем UI - просто показываем сразу
-        setIsScrollingToUnread(false);
+        console.log(`📜 [Scroll] Chat ${chatId}: Обнаружено ${unreadCount} непрочитанных, устанавливаем initialScrollIndex=${firstUnreadIndex}`);
+        setHasReachedBottom(false);
       } else {
-        console.log(`📜 [Scroll] Chat ${chatId}: Нет непрочитанных, показываем низ списка`);
-        setInitialScrollIndex(0);
-        setIsScrollingToUnread(false);
+        console.log(`📜 [Scroll] Chat ${chatId}: Нет непрочитанных, устанавливаем initialScrollIndex=${messages.length - 1}`);
+        setHasReachedBottom(true);
       }
+
+      // FlashList автоматически использует этот индекс для начальной позиции
+      setInitialScrollIndex(targetIndex);
+
+      // Небольшая задержка перед установкой initialScrolled, чтобы список успел отрендериться
+      setTimeout(() => {
+        setInitialScrolled(true);
+
+        // Восстанавливаем сохраненную позицию скролла, если она есть
+        if (shouldRestoreScroll.current && lastScrollOffset.current > 0) {
+          console.log(`📜 [Scroll] Chat ${chatId}: Восстанавливаем позицию offset=${lastScrollOffset.current}`);
+          listRef.current?.scrollToOffset({
+            offset: lastScrollOffset.current,
+            animated: false,
+          });
+          shouldRestoreScroll.current = false;
+        }
+      }, 100);
     }
   }, [messages.length, firstUnreadIndex, unreadCount, initialScrollIndex, chatId]);
 
@@ -44,9 +83,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const handleScroll = useCallback((event: any) => {
     const { contentOffset } = event.nativeEvent;
 
-    // Проверяем достигли ли мы самого нового сообщения (низа)
-    // contentOffset.y близок к 0 означает что мы внизу (так как список inverted)
-    const isAtBottom = contentOffset.y < 50;
+    // Сохраняем текущую позицию скролла
+    lastScrollOffset.current = contentOffset.y;
+
+    // Для инвертированного списка (inverted=true):
+    // contentOffset.y близок к 0 означает что мы внизу (последние сообщения)
+    // contentOffset.y отрицательный или близкий к 0
+    const isAtBottom = contentOffset.y <= 50;
 
     if (isAtBottom) {
       setHasReachedBottom(true);
@@ -85,56 +128,29 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [chatId, messages, initialScrolled, isLoadingMore, hasMoreMessages, loadMoreMessages]);
 
-  // Обработчик изменения размера контента
+  // Обработчик изменения размера контента - теперь только для сохранения позиции
   const handleContentSizeChange = useCallback(() => {
-    if (!scrollToEndOnce.current && messages.length > 0) {
-      scrollToEndOnce.current = true;
-
-      // Проверяем, нужен ли скролл к непрочитанным
-      const needsScrollToUnread = firstUnreadIndex !== -1 && unreadCount >= 1;
-
-      if (needsScrollToUnread) {
-        // НЕ скрываем UI - оставляем видимым
-        console.log(`📜 [Scroll] Chat ${chatId}: Начинаем позиционирование к непрочитанным (index: ${firstUnreadIndex})`);
-        hasScrolledToUnread.current = true;
-        setHasReachedBottom(false);
-
-        // Сохраняем позицию для будущего использования
-        AsyncStorage.setItem(
-          `chat_scroll_position_${chatId}`,
-          JSON.stringify({ unreadIndex: firstUnreadIndex, timestamp: Date.now() })
-        ).catch(err => console.warn('Failed to save scroll position:', err));
-
-        // Используем небольшую задержку для гарантии рендера списка
-        setTimeout(() => {
-          console.log(`📜 [Scroll] Chat ${chatId}: Скроллим к индексу ${firstUnreadIndex}`);
-
-          // Для инвертированного списка используем scrollToIndex
-          // viewPosition: 0 = элемент вверху экрана (нужен для того чтобы баннер был виден)
-          listRef.current?.scrollToIndex({
-            index: firstUnreadIndex,
-            animated: false,  // Без анимации!
-            viewPosition: 0.2, // 20% от верха экрана - баннер будет чуть ниже верхнего края
-          });
-
-          // UI уже видим, просто отмечаем что скролл завершен
-          console.log(`📜 [Scroll] Chat ${chatId}: Скролл завершен`);
-          setInitialScrolled(true);
-        }, 100);
-      } else {
-        // Нет непрочитанных - сразу показываем UI внизу списка
-        console.log(`📜 [Scroll] Chat ${chatId}: Нет непрочитанных в handleContentSizeChange, показываем UI`);
-        setHasReachedBottom(true);
-        setInitialScrolled(true);
-      }
+    // Сохраняем позицию непрочитанных для восстановления
+    if (initialScrolled && firstUnreadIndex !== -1 && unreadCount >= 1) {
+      AsyncStorage.setItem(
+        `chat_scroll_position_${chatId}`,
+        JSON.stringify({ unreadIndex: firstUnreadIndex, timestamp: Date.now() })
+      ).catch(err => console.warn('Failed to save scroll position:', err));
     }
-  }, [messages.length, firstUnreadIndex, unreadCount, chatId]);
+  }, [initialScrolled, firstUnreadIndex, unreadCount, chatId]);
 
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    // Для инвертированного списка с прямым порядком [старые → новые]:
+    // Последний индекс = последнее сообщение (показывается внизу)
+    if (messages.length > 0) {
+      listRef.current?.scrollToIndex({
+        index: messages.length - 1,
+        animated: true,
+      });
+    }
     setHasReachedBottom(true);
-  }, []);
+  }, [messages.length]);
 
   // Скролл к конкретному сообщению
   const handleReplyPress = useCallback((messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
@@ -172,15 +188,31 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     viewAreaCoveragePercentThreshold: 50,
   });
 
+  // Сохраняем позицию скролла при выходе из чата
+  useEffect(() => {
+    return () => {
+      // Сохраняем позицию при размонтировании
+      if (lastScrollOffset.current > 0) {
+        AsyncStorage.setItem(
+          `chat_scroll_offset_${chatId}`,
+          lastScrollOffset.current.toString()
+        ).catch(err => console.warn('Failed to save scroll offset:', err));
+        console.log(`📜 [Scroll] Chat ${chatId}: Сохранена позиция offset=${lastScrollOffset.current}`);
+      }
+    };
+  }, [chatId]);
+
   // Сброс состояния при смене чата
   const resetScroll = useCallback(() => {
     setHasMoreMessages(true);
     setInitialScrolled(false);
     setHasReachedBottom(false);
-    scrollToEndOnce.current = false;
     lastOldestMessageId.current = null;
-    hasScrolledToUnread.current = false;
     setInitialScrollIndex(undefined);
+    setIsScrollingToUnread(false);
+    setShowScrollToBottom(false);
+    setShowDateHeader(false);
+    setScrollSessionKey(prev => prev + 1); // Увеличиваем ключ для форсирования ремонтирования FlashList
   }, []);
 
   return {
@@ -194,6 +226,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     hasReachedBottom,
     initialScrollIndex,
     isScrollingToUnread, // Возвращаем новый флаг для управления видимостью UI
+    scrollSessionKey, // Возвращаем ключ сеанса для FlashList
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,

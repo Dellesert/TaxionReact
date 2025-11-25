@@ -322,4 +322,19 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MessageItem;
+// Оптимизация: используем React.memo для предотвращения лишних ре-рендеров
+export default React.memo(MessageItem, (prevProps, nextProps) => {
+  // Сравниваем только критичные поля для производительности
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.content === nextProps.message.content &&
+    prevProps.message.is_edited === nextProps.message.is_edited &&
+    prevProps.message.is_deleted === nextProps.message.is_deleted &&
+    prevProps.message.is_pinned === nextProps.message.is_pinned &&
+    prevProps.message.reactions?.length === nextProps.message.reactions?.length &&
+    prevProps.message.read_by?.length === nextProps.message.read_by?.length &&
+    prevProps.isHighlighted === nextProps.isHighlighted &&
+    prevProps.selectionMode === nextProps.selectionMode &&
+    prevProps.isSelected === nextProps.isSelected
+  );
+});

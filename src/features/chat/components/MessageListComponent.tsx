@@ -1,5 +1,6 @@
 import React from 'react';
-import { FlatList, View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { MessageItem } from './MessageItem';
 import { DateSeparator } from './DateSeparator';
 import { UnreadMessagesBanner } from './UnreadMessagesBanner';
@@ -21,9 +22,10 @@ interface MessageListComponentProps {
   isLoadingMore: boolean;
   inputHeight: number;
   insetsBottom: number;
-  listRef: React.RefObject<FlatList<any> | null>;
+  listRef: React.RefObject<FlashList<any> | null>;
   highlightedMessageId: number | null;
   initialScrollIndex?: number;
+  scrollSessionKey: number;
   onContentSizeChange: () => void;
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
@@ -64,6 +66,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   listRef,
   highlightedMessageId,
   initialScrollIndex,
+  scrollSessionKey,
   onContentSizeChange,
   onScroll,
   onViewableItemsChanged,
@@ -102,20 +105,13 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   }
 
   return (
-    <FlatList
+    <FlashList
+      key={`chat-${chatId}-session-${scrollSessionKey}`}
       ref={listRef}
       data={messageListItems}
       extraData={messagesKey}
+      estimatedItemSize={80}
       initialScrollIndex={initialScrollIndex}
-      getItemLayout={(data, index) => {
-        // Приблизительная высота элемента для оптимизации
-        const averageItemHeight = 80;
-        return {
-          length: averageItemHeight,
-          offset: averageItemHeight * index,
-          index,
-        };
-      }}
       renderItem={({ item, index }) => {
         // Рендер разделителя даты
         if (item.type === 'date') {
@@ -161,7 +157,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       }
       contentContainerStyle={[
         styles.messagesList,
-        { paddingTop: inputHeight + insetsBottom },
+        { paddingBottom: inputHeight + insetsBottom },
       ]}
       inverted={true}
       keyboardShouldPersistTaps="handled"

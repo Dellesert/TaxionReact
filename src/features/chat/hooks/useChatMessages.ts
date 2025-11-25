@@ -10,10 +10,13 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
   const currentUser = useAuthStore((state) => state.user);
   const chat = useChatStore((state) => state.chats.find(c => c.id === chatId));
 
-  // Инвертируем массив для inverted FlatList [новые -> старые]
+  // Массив сообщений в прямом порядке для inverted списка [старые -> новые]
+  // inverted={true} переворачивает ВИЗУАЛЬНО, поэтому:
+  // - индекс 0 (старое сообщение) показывается ВВЕРХУ
+  // - последний индекс (новое сообщение) показывается ВНИЗУ
   const messages = useMemo(() => {
     const msgs = allMessages[chatId] || [];
-    return [...msgs].reverse();
+    return [...msgs]; // Прямой порядок: старые → новые
   }, [allMessages, chatId]);
 
   // Создаем список элементов для отображения (только сообщения)
@@ -75,9 +78,13 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
       }
     }
 
-    // В инвертированном списке: index 0 = самое новое, большой индекс = самое старое
-    // Для скролла нужен lastIndex (самое старое непрочитанное)
-    return { firstUnreadIndex: lastIndex, unreadCount: count };
+    // В инвертированном списке с прямым порядком данных [старые → новые]:
+    // index 0 = самое старое сообщение (показывается ВВЕРХУ экрана)
+    // большой индекс = самое новое сообщение (показывается ВНИЗУ экрана)
+    // firstIndex = первое встреченное непрочитанное (меньший индекс, старое)
+    // lastIndex = последнее встреченное непрочитанное (больший индекс, новое)
+    // Для скролла к баннеру "непрочитанные" нужен firstIndex (самое старое непрочитанное)
+    return { firstUnreadIndex: firstIndex, unreadCount: count };
   }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount, chatId]);
 
   return {

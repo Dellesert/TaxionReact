@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Message } from '../types/chat.types';
 import { formatTime } from '../utils/message.utils';
@@ -12,7 +13,7 @@ import { formatTime } from '../utils/message.utils';
 interface MessagesListProps {
   messages: Message[];
   currentUserId: number | undefined;
-  flatListRef: React.RefObject<FlatList | null>;
+  flatListRef: React.RefObject<FlashList<Message> | null>;
   onReact: (messageId: number, emoji: string) => Promise<void>;
   onLongPress: (message: Message) => void;
   onEndReached: () => void;
@@ -59,11 +60,12 @@ export const MessagesList: React.FC<MessagesListProps> = ({
   };
 
   return (
-    <FlatList
+    <FlashList
       ref={flatListRef}
       data={messages}
       keyExtractor={(item) => String(item.id)}
       renderItem={renderItem}
+      estimatedItemSize={80}
       inverted
       contentContainerStyle={styles.listContent}
       onEndReached={onEndReached}

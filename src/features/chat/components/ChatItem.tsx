@@ -23,7 +23,7 @@ interface ChatItemProps {
   isSelected?: boolean;
 }
 
-export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, onMarkAsRead, onDelete, onToggleFavorite, onTogglePinned, isEditMode, isSelected }) => {
+const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, onMarkAsRead, onDelete, onToggleFavorite, onTogglePinned, isEditMode, isSelected }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -556,4 +556,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
+});
+
+// Оптимизация: используем React.memo для предотвращения лишних ре-рендеров
+export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.chat.id === nextProps.chat.id &&
+    prevProps.chat.last_message?.id === nextProps.chat.last_message?.id &&
+    prevProps.chat.last_message?.content === nextProps.chat.last_message?.content &&
+    prevProps.chat.unread_count === nextProps.chat.unread_count &&
+    prevProps.chat.is_pinned === nextProps.chat.is_pinned &&
+    prevProps.chat.is_favorite === nextProps.chat.is_favorite &&
+    prevProps.chat.is_muted === nextProps.chat.is_muted &&
+    prevProps.isEditMode === nextProps.isEditMode &&
+    prevProps.isSelected === nextProps.isSelected
+  );
 });

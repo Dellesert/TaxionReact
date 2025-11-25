@@ -4,7 +4,8 @@
  */
 
 import React, { useCallback } from 'react';
-import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, StyleSheet, RefreshControl } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import NotificationItem from '@shared/components/common/NotificationItem';
 import ScreenHeader from '@shared/components/common/ScreenHeader';
@@ -74,9 +75,10 @@ const NotificationListScreen: React.FC = () => {
         }
       />
 
-      <FlatList
+      <FlashList
         data={notifications}
         renderItem={renderItem}
+        estimatedItemSize={90}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}

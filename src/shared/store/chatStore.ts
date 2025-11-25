@@ -48,7 +48,7 @@ interface ChatState {
   leaveChat: (chatId: number) => Promise<void>;
   removeChatMember: (chatId: number, userId: number) => Promise<void>;
   loadMessages: (chatId: number) => Promise<void>;
-  loadMoreMessages: (chatId: number, beforeMessageId: number) => Promise<void>;
+  loadMoreMessages: (chatId: number, beforeMessageId: number) => Promise<number>;
   setActiveChat: (chat: Chat | null) => void;
   sendMessage: (chatId: number, content: string, replyToId?: number, fileIds?: number[], extraData?: any) => Promise<void>;
   updateMessage: (messageId: number, content: string) => Promise<void>;

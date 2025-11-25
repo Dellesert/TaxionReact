@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, Platform, StyleSheet, Dimensions } from 'react-native';
+import { View, RefreshControl, ActivityIndicator, Platform, StyleSheet, Dimensions } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -114,10 +115,11 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
           ) : tabChats.length === 0 ? (
             <ChatEmptyState />
           ) : (
-            <FlatList
+            <FlashList
               data={tabChats}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderChatItem}
+              estimatedItemSize={72}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
@@ -145,7 +147,6 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
                   </View>
                 ) : null
               }
-              removeClippedSubviews={true}
               maxToRenderPerBatch={10}
               updateCellsBatchingPeriod={50}
               initialNumToRender={15}

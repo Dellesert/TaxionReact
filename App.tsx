@@ -28,8 +28,8 @@ LogBox.ignoreLogs([
   'dismiss',
 ]);
 
-// Optionally, ignore all logs
-LogBox.ignoreAllLogs();
+// ВАЖНО: LogBox.ignoreAllLogs() удален для отслеживания реальных ошибок в разработке
+// В production используйте условие: if (!__DEV__) LogBox.ignoreAllLogs();
 
 // Подавление ошибки dismiss в Android DateTimePicker
 // Это известная проблема в библиотеке @react-native-community/datetimepicker
@@ -39,11 +39,19 @@ if (Platform.OS === 'android') {
   const originalConsoleError = console.error;
   console.error = (...args) => {
     const errorMessage = args[0]?.toString() || '';
-    // Подавляем только конкретную ошибку dismiss
-    if (errorMessage.includes('Cannot read property \'dismiss\' of undefined') ||
-        errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')') ||
-        errorMessage.includes('dismiss') && errorMessage.includes('undefined')) {
-      return; // Игнорируем эту ошибку
+    const errorStack = args[1]?.stack?.toString() || '';
+
+    // Подавляем только конкретную ошибку dismiss из DateTimePicker
+    // Более строгая проверка для предотвращения скрытия других ошибок
+    const isDismissError = (
+      (errorMessage.includes('Cannot read property \'dismiss\'') ||
+       errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')')) &&
+      (errorMessage.includes('DateTimePicker') || errorStack.includes('DateTimePicker') ||
+       errorStack.includes('RNDateTimePicker'))
+    );
+
+    if (isDismissError) {
+      return; // Игнорируем только ошибку DateTimePicker
     }
     originalConsoleError(...args);
   };
@@ -55,14 +63,18 @@ if (Platform.OS === 'android') {
     const errorStack = error?.stack || '';
 
     // Подавляем только конкретную ошибку dismiss из DateTimePicker
-    if (errorMessage.includes('Cannot read property \'dismiss\'') ||
-        errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')') ||
-        errorMessage.includes('dismiss') && errorMessage.includes('undefined') ||
-        errorStack.includes('DateTimePicker') ||
-        errorStack.includes('RNDateTimePicker')) {
+    // Более строгая проверка - обе условия должны совпадать
+    const isDismissError = (
+      (errorMessage.includes('Cannot read property \'dismiss\'') ||
+       errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')')) &&
+      (errorStack.includes('DateTimePicker') || errorStack.includes('RNDateTimePicker'))
+    );
+
+    if (isDismissError) {
       console.log('[Suppressed] DateTimePicker dismiss error (harmless)');
-      return; // Игнорируем эту ошибку
+      return; // Игнорируем только эту конкретную ошибку
     }
+
     // Все остальные ошибки обрабатываются как обычно
     if (originalErrorHandler) {
       originalErrorHandler(error, isFatal);

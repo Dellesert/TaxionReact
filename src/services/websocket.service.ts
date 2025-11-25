@@ -3,6 +3,7 @@
  * Управляет WebSocket соединением для real-time общения
  */
 
+import { z } from 'zod';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotificationStore } from '@shared/store/notificationStore';
@@ -34,6 +35,15 @@ interface WSMessage {
   timestamp?: string;
 }
 
+// Схема валидации WebSocket сообщений
+const WSMessageSchema = z.object({
+  type: z.string(),
+  chat_id: z.number().optional(), // Optional для системных сообщений
+  user_id: z.number().optional(),
+  data: z.any(),
+  timestamp: z.string().optional(),
+});
+
 class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
@@ -47,6 +57,8 @@ class WebSocketService {
   // Deduplicate user_presence events
   private lastPresenceUpdate: Map<number, number> = new Map(); // user_id -> timestamp
   private presenceDebounceMs = 1000; // Ignore duplicates within 1 second
+  private maxPresenceMapSize = 1000; // Maximum entries before cleanup
+  private presenceCleanupAgeMs = 300000; // Clean entries older than 5 minutes
 
   /**
    * Connect to WebSocket server
@@ -130,6 +142,33 @@ class WebSocketService {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
+  }
+
+  /**
+   * Clean up old presence update records to prevent memory leaks
+   */
+  private cleanupPresenceMap(): void {
+    // Only cleanup if map is getting large
+    if (this.lastPresenceUpdate.size < this.maxPresenceMapSize) {
+      return;
+    }
+
+    const now = Date.now();
+    const entriesToDelete: number[] = [];
+
+    // Find old entries
+    for (const [userId, timestamp] of this.lastPresenceUpdate) {
+      if (now - timestamp > this.presenceCleanupAgeMs) {
+        entriesToDelete.push(userId);
+      }
+    }
+
+    // Delete old entries
+    entriesToDelete.forEach(userId => {
+      this.lastPresenceUpdate.delete(userId);
+    });
+
+    console.log(`🧹 Cleaned ${entriesToDelete.length} old presence entries. Map size: ${this.lastPresenceUpdate.size}`);
   }
 
   /**
@@ -311,6 +350,16 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
    */
   private async processMessage(message: WSMessage): Promise<void> {
     try {
+      // Валидация структуры сообщения
+      const validationResult = WSMessageSchema.safeParse(message);
+      if (!validationResult.success) {
+        console.error('❌ Invalid WebSocket message structure:', {
+          message,
+          errors: validationResult.error.errors,
+        });
+        return; // Пропускаем невалидные сообщения
+      }
+
       console.log('📨 WebSocket received:', message);
 
       const chatStore = useChatStore.getState();
@@ -603,6 +652,10 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
           // Update timestamp and process
           this.lastPresenceUpdate.set(userId, now);
+
+          // Clean up old entries if map is getting too large
+          this.cleanupPresenceMap();
+
           chatStore.handleUserPresence(message.data);
           break;
 

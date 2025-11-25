@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, FlatList, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Poll } from '../types/poll.types';
 import { PollItem } from '../components/PollItem';
 import { PollSkeleton } from '../components/PollSkeleton';
@@ -59,9 +60,10 @@ export const PollListContent: React.FC<PollListContentProps> = ({
 
   // List
   return (
-    <FlatList
+    <FlashList
       data={polls}
       keyExtractor={(item) => item.id.toString()}
+      estimatedItemSize={150}
       renderItem={({ item }) => <PollItem poll={item} onPress={onPollPress} />}
       contentContainerStyle={styles.listContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
