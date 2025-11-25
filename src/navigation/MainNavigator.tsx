@@ -18,7 +18,7 @@ import PollNavigator from './PollNavigator';
 import AdminNavigator from './AdminNavigator';
 import ProfileNavigator from './ProfileNavigator';
 import NotificationNavigator from './NotificationNavigator';
-import CalendarScreen from '@screens/calendar/CalendarScreen';
+import CalendarScreen from '@/features/calendar/screens/CalendarScreen';
 import { AnimatedTabBar } from '@components/navigation/AnimatedTabBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();

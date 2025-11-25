@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { CalendarView } from '../../../types/calendar.types';
-import { getViewLabel } from '../../../utils/calendarHelpers';
+import { CalendarView } from '../types/calendar.types';
+import { getViewLabel } from '../utils/calendarHelpers';
 import { useTheme } from '@hooks/useTheme';
 
 interface CalendarViewSelectorProps {

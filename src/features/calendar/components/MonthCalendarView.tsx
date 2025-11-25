@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Event } from '../../types/calendar.types';
+import { Event } from '../types/calendar.types';
 import { useTheme } from '@hooks/useTheme';
 import {
   startOfMonth,

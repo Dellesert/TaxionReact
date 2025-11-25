@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Event } from '../../types/calendar.types';
-import { EventListSkeleton } from '@components/calendar/EventListSkeleton';
-import CreateEventModal from '@components/calendar/CreateEventModal';
-import { EventDetailModal } from '@components/calendar/EventDetailModal';
+import { Event } from '../types/calendar.types';
+import { EventListSkeleton } from '../components/EventListSkeleton';
+import CreateEventModal from '../components/CreateEventModal';
+import { EventDetailModal } from '../components/EventDetailModal';
 import { ScreenHeader } from '@components/common/ScreenHeader';
-import { MonthCalendarView } from '@components/calendar/MonthCalendarView';
-import { CalendarHeader } from './components/CalendarHeader';
-import { CalendarDateNavigation } from './components/CalendarDateNavigation';
-import { CalendarViewSelector } from './components/CalendarViewSelector';
-import { CalendarEventsList } from './components/CalendarEventsList';
-import { CalendarEmptyState } from './components/CalendarEmptyState';
+import { MonthCalendarView } from '../components/MonthCalendarView';
+import { CalendarHeader } from '../components/CalendarHeader';
+import { CalendarDateNavigation } from '../components/CalendarDateNavigation';
+import { CalendarViewSelector } from '../components/CalendarViewSelector';
+import { CalendarEventsList } from '../components/CalendarEventsList';
+import { CalendarEmptyState } from '../components/CalendarEmptyState';
 import { useTheme } from '@hooks/useTheme';
 import { useNotification } from '@contexts/NotificationContext';
-import { useCalendarData } from '@hooks/useCalendarData';
-import { useCalendarNavigation } from '@hooks/useCalendarNavigation';
-import { formatDateRangeText, groupEventsByDate } from '@utils/calendarHelpers';
-import * as calendarApi from '@api/calendar.api';
+import { useCalendarData } from '../hooks/useCalendarData';
+import { useCalendarNavigation } from '../hooks/useCalendarNavigation';
+import { formatDateRangeText, groupEventsByDate } from '../utils/calendarHelpers';
+import * as calendarApi from '../api/calendar.api';
 
 const CalendarScreen: React.FC = () => {
   const { theme } = useTheme();

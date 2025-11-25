@@ -3,7 +3,7 @@
  * API клиент для работы с календарем и событиями
  */
 
-import api from './axios.config';
+import api from '@api/axios.config';
 import { API_ENDPOINTS } from '@constants/api.constants';
 import {
   Event,
@@ -17,7 +17,7 @@ import {
   EventListFilters,
   CalendarParams,
 } from '../types/calendar.types';
-import { ApiResponse } from '../types/common.types';
+import { ApiResponse } from '../../../types/common.types';
 
 // ============= Event Operations =============
 

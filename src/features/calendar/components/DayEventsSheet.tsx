@@ -10,7 +10,7 @@ import {
   Dimensions,
   Animated
 } from 'react-native';
-import { Event } from '../../types/calendar.types';
+import { Event } from '../types/calendar.types';
 import { useTheme } from '@hooks/useTheme';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';

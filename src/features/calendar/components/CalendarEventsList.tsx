@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, SectionList, RefreshControl } from 'react-native';
-import { Event } from '../../../types/calendar.types';
-import { EventSection } from '../../../utils/calendarHelpers';
-import { EventItem } from '@components/calendar/EventItem';
+import { Event } from '../types/calendar.types';
+import { EventSection } from '../utils/calendarHelpers';
+import { EventItem } from '../components/EventItem';
 import { useTheme } from '@hooks/useTheme';
 
 interface CalendarEventsListProps {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Event, EventParticipantStatus } from '../../types/calendar.types';
+import { Event, EventParticipantStatus } from '../types/calendar.types';
 import { useTheme } from '@hooks/useTheme';
 import { useAuthStore } from '@store/authStore';
 import { Avatar } from '@components/common/Avatar';
