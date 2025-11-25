@@ -4,7 +4,7 @@
  */
 
 import { Notification } from '@/types/notification.types';
-import { NotificationPriority } from '@api/notificationPreferences.api';
+import { NotificationPriority } from '../api/notificationPreferences.api';
 
 // ===== Notification List Helpers =====
 

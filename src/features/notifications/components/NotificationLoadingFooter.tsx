@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { shouldShowLoadingFooter } from '@utils/notificationHelpers';
+import { shouldShowLoadingFooter } from '../utils/notificationHelpers';
 
 interface NotificationLoadingFooterProps {
   hasMore: boolean;

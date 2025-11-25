@@ -19,7 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@store/notificationStore';
 import NotificationItem from '@components/common/NotificationItem';
-import { Notification } from '@types/notification.types';
+import { Notification } from '../../../types/notification.types';
 import { useTheme } from '@hooks/useTheme';
 
 interface NotificationModalProps {

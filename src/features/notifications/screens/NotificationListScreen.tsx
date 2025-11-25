@@ -11,15 +11,15 @@ import ScreenHeader from '@components/common/ScreenHeader';
 import { Notification } from '@/types/notification.types';
 
 // Custom Hooks
-import { useNotificationListData } from '@hooks/useNotificationListData';
-import { useNotificationListActions } from '@hooks/useNotificationListActions';
+import { useNotificationListData } from '../hooks/useNotificationListData';
+import { useNotificationListActions } from '../hooks/useNotificationListActions';
 
 // Components
 import { NotificationEmptyState } from './components/NotificationEmptyState';
 import { NotificationLoadingFooter } from './components/NotificationLoadingFooter';
 
 // Utils
-import { shouldShowMarkAllButton, isNotificationListEmpty } from '@utils/notificationHelpers';
+import { shouldShowMarkAllButton, isNotificationListEmpty } from '../utils/notificationHelpers';
 
 const NotificationListScreen: React.FC = () => {
   const { markAsRead } = useNotificationStore();

@@ -3,7 +3,7 @@
  * API клиент для работы с уведомлениями
  */
 
-import api from './axios.config';
+import api from '@api/axios.config';
 import { API_ENDPOINTS, PAGINATION } from '@constants/api.constants';
 import {
   Notification,
@@ -13,8 +13,8 @@ import {
   NotificationListFilters,
   NotificationStats,
   PushTokenDto,
-} from '../types/notification.types';
-import { ApiResponse, PaginatedResponse, PaginationParams } from '../types/common.types';
+} from '../../../types/notification.types';
+import { ApiResponse, PaginatedResponse, PaginationParams } from '../../../types/common.types';
 
 // ============= Notification Operations =============
 

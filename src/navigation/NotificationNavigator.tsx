@@ -6,7 +6,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NotificationStackParamList } from './types';
-import NotificationListScreen from '@screens/notification/NotificationListScreen';
+import NotificationListScreen from '@/features/notifications/screens/NotificationListScreen';
 
 const Stack = createNativeStackNavigator<NotificationStackParamList>();
 

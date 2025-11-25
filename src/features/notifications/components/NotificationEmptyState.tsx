@@ -6,7 +6,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getEmptyStateText } from '@utils/notificationFormatters';
+import { getEmptyStateText } from '../utils/notificationFormatters';
 
 interface NotificationEmptyStateProps {
   isLoading: boolean;

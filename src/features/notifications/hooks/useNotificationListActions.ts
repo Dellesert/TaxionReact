@@ -10,8 +10,8 @@ import { Notification } from '@/types/notification.types';
 import {
   getNavigationScreenByType,
   getNavigationParams,
-} from '@utils/notificationFormatters';
-import { canLoadMore } from '@utils/notificationHelpers';
+} from '../utils/notificationFormatters';
+import { canLoadMore } from '../utils/notificationHelpers';
 
 interface UseNotificationListActionsReturn {
   handleRefresh: () => void;

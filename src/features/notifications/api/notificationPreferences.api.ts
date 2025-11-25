@@ -2,7 +2,7 @@
  * API для работы с настройками уведомлений пользователя
  */
 
-import api from './axios.config';
+import api from '@api/axios.config';
 
 export type NotificationType = 'message' | 'task' | 'calendar' | 'system' | 'mention' | 'poll' | 'reminder' | 'announce';
 export type NotificationPriority = 'low' | 'medium' | 'high' | 'critical';

@@ -5,7 +5,7 @@ import {
   updateUserPreference,
   NotificationType,
   NotificationPriority,
-} from '@api/notificationPreferences.api';
+} from '../api/notificationPreferences.api';
 
 export interface NotificationSettings {
   // Основные каналы
