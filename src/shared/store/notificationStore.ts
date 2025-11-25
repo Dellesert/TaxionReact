@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { Notification, NotificationPreferences } from '@types/notification.types';
-import * as notificationApi from '@api/notification.api';
+import * as notificationApi from '@/features/notifications/api/notification.api';
 
 interface NotificationState {
   // State

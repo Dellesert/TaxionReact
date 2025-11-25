@@ -4,14 +4,14 @@
  */
 
 import { create } from 'zustand';
-import { Task, TaskStatus, UpdateTaskDto, CreateTaskDto } from '../types/task.types';
+import { Task, TaskStatus, UpdateTaskDto, CreateTaskDto } from '@/features/tasks/types/task.types';
 import {
   getTasks,
   getTask,
   createTask,
   updateTask as apiUpdateTask,
   deleteTask
-} from '@api/task.api';
+} from '@/features/tasks/api/task.api';
 
 interface TaskStore {
   tasks: Task[];

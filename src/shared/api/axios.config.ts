@@ -10,8 +10,8 @@ import Constants from 'expo-constants';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { API_BASE_URL, HTTP_STATUS, TIMEOUTS } from '@shared/constants/api.constants';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import { ApiError, ApiResponse } from '../types/common.types';
-import { RefreshTokenResponse } from '../types/user.types';
+import { ApiError, ApiResponse } from '@/types/common.types';
+import { RefreshTokenResponse } from '@/types/user.types';
 
 /**
  * Generate User-Agent string based on platform

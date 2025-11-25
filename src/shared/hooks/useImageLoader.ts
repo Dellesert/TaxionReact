@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { replaceLocalhostWithIP, isImageFile } from '@shared/utils/message.utils';
+import { replaceLocalhostWithIP, isImageFile } from '@/features/chat/utils/message.utils';
 
 interface Attachment {
   id: number;

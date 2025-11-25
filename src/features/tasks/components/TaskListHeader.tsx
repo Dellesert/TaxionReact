@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@components/common/ScreenHeader';
 import { NotificationBell } from '@components/common/NotificationBell';
 import { useTheme } from '@shared/hooks/useTheme';
-import type { TaskFilter } from '../../../utils/taskListHelpers';
+import type { TaskFilter } from '../utils/taskListHelpers';
 import { TaskSearchBar } from './TaskSearchBar';
 
 interface TaskListHeaderProps {

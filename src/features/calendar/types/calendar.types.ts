@@ -3,8 +3,8 @@
  * Типы для работы с календарем и событиями
  */
 
-import { ISODateString } from './common.types';
-import { User } from './user.types';
+import { ISODateString } from '@/types/common.types';
+import { User } from '@/types/user.types';
 
 // Event Types
 export type EventType = 'personal' | 'meeting' | 'deadline';

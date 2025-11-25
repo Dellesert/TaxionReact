@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Task, TaskStatus } from '../types/task.types';
 import { getSubtasks, updateTaskStatus } from '../api/task.api';
-import { getOrCreateDirectChat } from '@api/chat.api';
+import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Ionicons } from '@expo/vector-icons';

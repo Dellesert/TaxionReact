@@ -12,12 +12,12 @@ import { useTheme } from '@shared/hooks/useTheme';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import ChatDetailScreen from '@/features/chat/screens/ChatDetailScreen';
-import TaskDetailScreen from '@screens/task/TaskDetailScreen';
-import PollDetailScreen from '@screens/poll/PollDetailScreen';
-import NotificationListScreen from '@screens/notification/NotificationListScreen';
-import ActiveSessionsScreen from '@screens/profile/ActiveSessionsScreen';
-import PasskeyManagementScreen from '@screens/profile/PasskeyManagementScreen';
-import AboutScreen from '@/screens/profile/AboutScreen';
+import TaskDetailScreen from '@/features/tasks/screens/TaskDetailScreen';
+import PollDetailScreen from '@/features/polls/screens/PollDetailScreen';
+import NotificationListScreen from '@/features/notifications/screens/NotificationListScreen';
+import ActiveSessionsScreen from '@/features/profile/screens/ActiveSessionsScreen';
+import PasskeyManagementScreen from '@/features/profile/screens/PasskeyManagementScreen';
+import AboutScreen from '@/features/profile/screens/AboutScreen';
 import { InAppNotificationContainer } from '@components/common/InAppNotificationContainer';
 import * as Linking from 'expo-linking';
 

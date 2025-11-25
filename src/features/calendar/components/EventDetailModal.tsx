@@ -23,7 +23,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';
-import { getOrCreateDirectChat } from '@api/chat.api';
+import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import CreateEventModal from './CreateEventModal';
 
 interface EventDetailModalProps {

@@ -22,13 +22,13 @@ import { PollDetailSkeleton } from '../components/PollDetailSkeleton';
 import SharePollModal from '../components/SharePollModal';
 import EditPollModal from '../components/EditPollModal';
 import { UserProfileModal } from '@components/common/UserProfileModal';
-import { PollHeader } from '@screens/poll/components/PollHeader';
-import { PollInfo } from '@screens/poll/components/PollInfo';
-import { PollVotingUI } from '@screens/poll/components/PollVotingUI';
-import { PollResults } from '@screens/poll/components/PollResults';
-import { PollActionButtons } from '@screens/poll/components/PollActionButtons';
-import { PollErrorState } from '@screens/poll/components/PollErrorState';
-import { getOrCreateDirectChat } from '@api/chat.api';
+import { PollHeader } from '../components/PollHeader';
+import { PollInfo } from '../components/PollInfo';
+import { PollVotingUI } from '../components/PollVotingUI';
+import { PollResults } from '../components/PollResults';
+import { PollActionButtons } from '../components/PollActionButtons';
+import { PollErrorState } from '../components/PollErrorState';
+import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { isSystemAdmin, shouldShowResults, shouldShowVotingUI } from '../utils/pollHelpers';
 
 type PollStackParamList = {

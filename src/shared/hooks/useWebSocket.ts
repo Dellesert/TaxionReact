@@ -15,8 +15,8 @@ import {
   WsMessageDeletePayload,
   WsTypingPayload,
   WsUserStatusPayload,
-} from '../types/chat.types';
-import { Notification } from '../types/notification.types';
+} from '@/features/chat/types/chat.types';
+import { Notification } from '@/types/notification.types';
 
 interface UseWebSocketReturn {
   socket: Socket | null;

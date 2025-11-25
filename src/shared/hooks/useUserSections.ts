@@ -6,8 +6,8 @@
 import { useMemo } from 'react';
 import { User } from '@/types/user.types';
 import { useAuthStore } from '@shared/store/authStore';
-import { sortUsers } from '@shared/utils/createChatHelpers';
-import { formatDepartmentName } from '@shared/utils/createChatFormatters';
+import { sortUsers } from '@/features/chat/utils/createChatHelpers';
+import { formatDepartmentName } from '@/features/chat/utils/createChatFormatters';
 
 export interface UserSection {
   title: string;

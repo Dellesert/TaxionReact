@@ -3,7 +3,7 @@
  */
 
 import { User, TokenPair } from '@types/user.types';
-import { Chat, Message } from '@types/chat.types';
+import { Chat, Message } from '@/features/chat/types/chat.types';
 
 const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 
@@ -497,7 +497,7 @@ export const mockGetMessages = async (chatId: string): Promise<Message[]> => {
 };
 
 // Mock Tasks
-import { Task } from '@types/task.types';
+import { Task } from '@/features/tasks/types/task.types';
 
 export const MOCK_TASKS: Task[] = [
   {
@@ -645,7 +645,7 @@ export const mockGetTask = async (taskId: number): Promise<Task> => {
 };
 
 // Mock Calendar Events
-import { Event } from '@types/calendar.types';
+import { Event } from '@/features/calendar/types/calendar.types';
 
 const today = new Date();
 const tomorrow = new Date(today);
@@ -757,7 +757,7 @@ export const mockGetEvents = async (): Promise<Event[]> => {
 };
 
 // Mock Polls
-import { Poll } from '@types/poll.types';
+import { Poll } from '@/features/polls/types/poll.types';
 
 export const MOCK_POLLS: Poll[] = [
   {

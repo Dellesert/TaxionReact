@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import * as authApi from '@/features/auth/api/auth.api';
-import { registerPasskey, formatPasskeyError } from '../utils/passkeyUtils';
+import { registerPasskey, formatPasskeyError } from '@shared/utils/passkeyUtils';
 import { getDefaultDeviceName } from '../utils/passkeyHelpers';
 import { getDeletePasskeyMessage } from '../utils/passkeyFormatters';
 import type { Passkey } from '../../../types/user.types';

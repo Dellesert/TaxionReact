@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { TaskActivity, Task } from '@/types/task.types';
+import { TaskActivity, Task } from '@/features/tasks/types/task.types';
 
 /**
  * Get activity icon name

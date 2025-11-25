@@ -177,7 +177,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
       if (contentType === 'checklist' && checklistItems.length > 0 && createdSubtask.id) {
         try {
           // Check if checklist was created by the backend
-          const { getTaskChecklists, createChecklist, createChecklistItem } = await import('../../api/task.api');
+          const { getTaskChecklists, createChecklist, createChecklistItem } = await import('../api/task.api');
           const existingChecklists = await getTaskChecklists(createdSubtask.id);
 
           // Only create if no checklists exist

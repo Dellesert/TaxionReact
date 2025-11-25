@@ -15,8 +15,8 @@ import { useNotificationListData } from '../hooks/useNotificationListData';
 import { useNotificationListActions } from '../hooks/useNotificationListActions';
 
 // Components
-import { NotificationEmptyState } from './components/NotificationEmptyState';
-import { NotificationLoadingFooter } from './components/NotificationLoadingFooter';
+import { NotificationEmptyState } from '../components/NotificationEmptyState';
+import { NotificationLoadingFooter } from '../components/NotificationLoadingFooter';
 
 // Utils
 import { shouldShowMarkAllButton, isNotificationListEmpty } from '../utils/notificationHelpers';

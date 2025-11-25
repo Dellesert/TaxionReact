@@ -3,8 +3,8 @@
  * Типы для работы с задачами и проектами
  */
 
-import { ISODateString } from './common.types';
-import { User } from './user.types';
+import { ISODateString } from '@/types/common.types';
+import { User } from '@/types/user.types';
 
 // Task Status
 export type TaskStatus = 'new' | 'viewed' | 'in_progress' | 'review' | 'done' | 'cancelled';

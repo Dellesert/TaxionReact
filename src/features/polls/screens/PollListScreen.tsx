@@ -11,9 +11,9 @@ import { usePollListFilters } from '../hooks/usePollListFilters';
 import { PollStackParamList } from '@navigation/types';
 import CreatePollModal from '../components/CreatePollModal';
 import EditPollModal from '../components/EditPollModal';
-import { PollListHeader } from '@screens/poll/components/PollListHeader';
-import { PollListContent } from '@screens/poll/components/PollListContent';
-import { PollFilterMenu } from '@screens/poll/components/PollFilterMenu';
+import { PollListHeader } from '../components/PollListHeader';
+import { PollListContent } from '../components/PollListContent';
+import { PollFilterMenu } from '../components/PollFilterMenu';
 import { canUserCreatePoll, filterPollsByStatus } from '../utils/pollListHelpers';
 
 type PollListScreenNavigationProp = NativeStackNavigationProp<

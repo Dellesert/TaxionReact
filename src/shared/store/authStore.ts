@@ -8,7 +8,7 @@
 
 import { create } from 'zustand';
 import * as secureStorage from '@shared/utils/secureStorage';
-import { User, LoginDto, RegisterDto } from '../types/user.types';
+import { User, LoginDto, RegisterDto } from '@/types/user.types';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import * as authApi from '@/features/auth/api/auth.api';
 import * as userApi from '@api/user.api';

@@ -3,8 +3,8 @@
  * Типы для работы с опросами
  */
 
-import { ISODateString } from './common.types';
-import { User } from './user.types';
+import { ISODateString } from '@/types/common.types';
+import { User } from '@/types/user.types';
 
 // Poll Types
 export type PollType = 'single_choice' | 'multiple_choice' | 'ranking' | 'rating' | 'open_text';

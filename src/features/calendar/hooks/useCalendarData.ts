@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Event, CalendarView } from '../types/calendar.types';
 import { getDateRangeForView } from '../utils/calendarHelpers';
-import { mockGetEvents, isMockMode } from '../utils/mockData';
+import { mockGetEvents, isMockMode } from '@shared/utils/mockData';
 import * as calendarApi from '../api/calendar.api';
 
 interface UseCalendarDataReturn {

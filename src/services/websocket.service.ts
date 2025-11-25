@@ -9,7 +9,7 @@ import { useNotificationStore } from '@shared/store/notificationStore';
 import { useInAppNotificationStore } from '@shared/store/inAppNotificationStore';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import * as chatApi from '@api/chat.api';
+import * as chatApi from '@/features/chat/api/chat.api';
 
 type WSMessageType =
   // Messages

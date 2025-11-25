@@ -20,7 +20,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
-import { Chat } from '@/types/chat.types';
+import { Chat } from '@/features/chat/types/chat.types';
 import { Task } from '../types/task.types';
 
 interface ShareTaskModalProps {

@@ -10,16 +10,16 @@ export * from './common.types';
 export * from './user.types';
 
 // Chat types
-export * from './chat.types';
+export * from '../features/chat/types/chat.types';
 
 // Task types
-export * from './task.types';
+export * from '../features/tasks/types/task.types';
 
 // Calendar types
-export * from './calendar.types';
+export * from '../features/calendar/types/calendar.types';
 
 // Poll types
-export * from './poll.types';
+export * from '../features/polls/types/poll.types';
 
 // Notification types
 export * from './notification.types';

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Poll } from '../types/poll.types';
 import * as pollApi from '../api/poll.api';
-import * as chatApi from '@api/chat.api';
+import * as chatApi from '@/features/chat/api/chat.api';
 
 interface UsePollActionsReturn {
   isPublishing: boolean;

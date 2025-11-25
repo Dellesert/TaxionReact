@@ -164,7 +164,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       if (contentType === 'checklist' && checklistItems.length > 0 && createdTask.id) {
         try {
           // Check if checklist was created by the backend
-          const taskApi = await import('@api/task.api');
+          const taskApi = await import('@/features/tasks/api/task.api');
           const existingChecklists = await taskApi.getTaskChecklists(createdTask.id);
 
           // Only create if no checklists exist

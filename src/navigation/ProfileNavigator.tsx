@@ -11,7 +11,7 @@ import ChangePasswordScreen from '@/features/profile/screens/ChangePasswordScree
 import NotificationSettingsScreen from '@/features/profile/screens/NotificationSettingsScreen';
 import ActiveSessionsScreen from '@/features/profile/screens/ActiveSessionsScreen';
 import PasskeyManagementScreen from '@/features/profile/screens/PasskeyManagementScreen';
-import AboutScreen from '@/screens/profile/AboutScreen';
+import AboutScreen from '@/features/profile/screens/AboutScreen';
 import AnalyticsHubScreen from '@screens/admin/AnalyticsHubScreen';
 import MetricsAnalyticsScreen from '@screens/admin/MetricsAnalyticsScreen';
 import PerformanceAnalyticsScreen from '@screens/admin/PerformanceAnalyticsScreen';

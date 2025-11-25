@@ -15,8 +15,8 @@ import { TaskListHeader } from '../components/TaskListHeader';
 import { TaskStatusTabs } from '../components/TaskStatusTabs';
 import { TaskListContent } from '../components/TaskListContent';
 import { TaskFilterMenu } from '../components/TaskFilterMenu';
-import type { StatusTab } from '../../utils/taskListHelpers';
-import { TASKS_PER_PAGE } from '../../utils/taskListHelpers';
+import type { StatusTab } from '../utils/taskListHelpers';
+import { TASKS_PER_PAGE } from '../utils/taskListHelpers';
 
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
 

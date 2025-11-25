@@ -6,12 +6,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { usePollVotersData } from '../hooks/usePollVotersData';
-import { PollVotersHeader } from '@screens/poll/components/PollVotersHeader';
-import { PollVotersControls } from '@screens/poll/components/PollVotersControls';
-import { PollVoterCard } from '@screens/poll/components/PollVoterCard';
-import { PollVotersByOption } from '@screens/poll/components/PollVotersByOption';
-import { PollVotersEmptyState } from '@screens/poll/components/PollVotersEmptyState';
-import { PollErrorState } from '@screens/poll/components/PollErrorState';
+import { PollVotersHeader } from '../components/PollVotersHeader';
+import { PollVotersControls } from '../components/PollVotersControls';
+import { PollVoterCard } from '../components/PollVoterCard';
+import { PollVotersByOption } from '../components/PollVotersByOption';
+import { PollVotersEmptyState } from '../components/PollVotersEmptyState';
+import { PollErrorState } from '../components/PollErrorState';
 
 type PollStackParamList = {
   PollList: undefined;

@@ -6,10 +6,10 @@ import { TaskItem } from '../components/TaskItem';
 import { TaskSkeleton } from '../components/TaskSkeleton';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { Task } from '../types/task.types';
-import type { StatusTab, TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus } from '../../../hooks/useTaskListData';
+import type { StatusTab, TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus } from '../hooks/useTaskListData';
 import { TaskListEmptyState } from './TaskListEmptyState';
 import { ExpandAllSubtasksButton } from './ExpandAllSubtasksButton';
-import { getTasksWithSubtasks, STATUS_TABS_ORDER } from '../../../utils/taskListHelpers';
+import { getTasksWithSubtasks, STATUS_TABS_ORDER } from '../utils/taskListHelpers';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 

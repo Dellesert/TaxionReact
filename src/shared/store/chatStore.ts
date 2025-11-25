@@ -4,8 +4,8 @@
  */
 
 import { create } from 'zustand';
-import { Chat, Message, TypingIndicator, MessageType } from '../types/chat.types';
-import * as chatApi from '@api/chat.api';
+import { Chat, Message, TypingIndicator, MessageType } from '@/features/chat/types/chat.types';
+import * as chatApi from '@/features/chat/api/chat.api';
 import { getUser } from '@api/user.api';
 import { isMockMode, mockGetChats, mockGetMessages } from '@shared/utils/mockData';
 import { useAuthStore } from '@shared/store/authStore';
