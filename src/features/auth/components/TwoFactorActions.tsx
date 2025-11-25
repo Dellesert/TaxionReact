@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface TwoFactorActionsProps {
   isCodeComplete: boolean;

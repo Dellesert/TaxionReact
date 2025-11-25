@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@components/common/Avatar';
 import { User } from '@/types/user.types';
 import { getSystemRoleLabel, getLastSeenText } from '../utils/chatSettingsFormatters';

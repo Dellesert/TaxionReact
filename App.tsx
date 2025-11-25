@@ -8,12 +8,12 @@ import React, { useEffect } from 'react';
 import { LogBox, AppState, AppStateStatus, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppNavigator from './src/navigation/AppNavigator';
-import { useAuthStore } from './src/store/authStore';
-import { useThemeStore } from './src/store/themeStore';
-import { useNotificationStore } from './src/store/notificationStore';
+import { useAuthStore } from './src/shared/store/authStore';
+import { useThemeStore } from './src/shared/store/themeStore';
+import { useNotificationStore } from './src/shared/store/notificationStore';
 import { websocketService } from './src/services/websocket.service';
-import { NotificationProvider } from './src/contexts/NotificationContext';
-import { ActionModalProvider } from './src/contexts/ActionModalContext';
+import { NotificationProvider } from './src/shared/contexts/NotificationContext';
+import { ActionModalProvider } from './src/shared/contexts/ActionModalContext';
 
 // Добавляем типы для ErrorUtils (глобальная переменная React Native)
 declare const ErrorUtils: {

@@ -10,9 +10,9 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useChatStore } from '@store/chatStore';
-import { useAuthStore } from '@store/authStore';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useChatStore } from '@shared/store/chatStore';
+import { useAuthStore } from '@shared/store/authStore';
 import { Chat, Message } from '../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
 import { getChatDisplayName, getChatDisplayAvatar } from '../utils/chatUtils';

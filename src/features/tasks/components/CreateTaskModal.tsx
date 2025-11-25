@@ -19,10 +19,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTaskStore } from '@store/taskStore';
-import { useAuthStore } from '@store/authStore';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTaskStore } from '@shared/store/taskStore';
+import { useAuthStore } from '@shared/store/authStore';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { TaskPriority, CreateTaskDto } from '../types/task.types';
 import UserSelector from '@components/common/UserSelector';
 import DatePickerModal from '@components/common/DatePickerModal';

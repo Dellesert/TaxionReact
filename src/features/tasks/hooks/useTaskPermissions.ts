@@ -5,7 +5,7 @@
 
 import { useMemo } from 'react';
 import { Task, TaskPermissions } from '../types/task.types';
-import { useAuthStore } from '@store/authStore';
+import { useAuthStore } from '@shared/store/authStore';
 
 // Default permissions (no access)
 const DEFAULT_PERMISSIONS: TaskPermissions = {

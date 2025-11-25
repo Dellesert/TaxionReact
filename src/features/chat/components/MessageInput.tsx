@@ -7,7 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { FileAttachmentPicker } from './FileAttachmentPicker';
 
 interface MessageInputProps {

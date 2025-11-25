@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, Pressable, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface DeleteMessageModalProps {
   visible: boolean;

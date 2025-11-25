@@ -3,8 +3,8 @@
  * Хук для работы с темой приложения
  */
 
-import { useThemeStore } from '@store/themeStore';
-import { Theme, ThemeMode } from '@constants/theme.constants';
+import { useThemeStore } from '@shared/store/themeStore';
+import { Theme, ThemeMode } from '@shared/constants/theme.constants';
 
 interface UseThemeReturn {
   theme: Theme;

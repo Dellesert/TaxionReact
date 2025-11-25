@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 export const ChecklistSkeleton: React.FC = () => {
   const { theme } = useTheme();

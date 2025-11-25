@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from 'react';
-import { useNotificationStore } from '@store/notificationStore';
+import { useNotificationStore } from '@shared/store/notificationStore';
 
 interface UseNotificationListDataReturn {
   notifications: any[];

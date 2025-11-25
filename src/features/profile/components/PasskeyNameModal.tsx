@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TextInput, Modal, TouchableOpacity } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface PasskeyNameModalProps {
   visible: boolean;

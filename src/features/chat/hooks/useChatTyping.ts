@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from 'react';
-import { useTypingIndicator } from '@hooks/useWebSocket';
+import { useTypingIndicator } from '@shared/hooks/useWebSocket';
 import { useTypingIndicator as useTypingUsers } from '../hooks/useTypingIndicator';
 
 interface UseChatTypingReturn {

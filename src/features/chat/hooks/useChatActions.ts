@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useChatStore } from '@store/chatStore';
-import { useAuthStore } from '@store/authStore';
+import { useChatStore } from '@shared/store/chatStore';
+import { useAuthStore } from '@shared/store/authStore';
 import { getChatDisplayName } from '../utils/chatUtils';
 
 /**

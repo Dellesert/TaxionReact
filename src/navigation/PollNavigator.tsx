@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { PollStackParamList } from './types';
 import PollListScreen from '@/features/polls/screens/PollListScreen';
 import PollDetailScreen from '@/features/polls/screens/PollDetailScreen';

@@ -7,9 +7,9 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import * as secureStorage from '@utils/secureStorage';
-import { API_BASE_URL, HTTP_STATUS, TIMEOUTS } from '@constants/api.constants';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { API_BASE_URL, HTTP_STATUS, TIMEOUTS } from '@shared/constants/api.constants';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { ApiError, ApiResponse } from '../types/common.types';
 import { RefreshTokenResponse } from '../types/user.types';
 

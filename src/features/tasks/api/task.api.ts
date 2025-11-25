@@ -4,9 +4,9 @@
  */
 
 import api from '@api/axios.config';
-import { API_ENDPOINTS, PAGINATION, API_BASE_URL } from '@constants/api.constants';
-import * as secureStorage from '@utils/secureStorage';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import { API_ENDPOINTS, PAGINATION, API_BASE_URL } from '@shared/constants/api.constants';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import {
   Task,
   Project,

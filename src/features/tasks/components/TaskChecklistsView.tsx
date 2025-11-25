@@ -28,10 +28,10 @@ import {
   deleteChecklistItem,
 } from '../api/task.api';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useAuthStore } from '@store/authStore';
-import { useActionModal } from '@contexts/ActionModalContext';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useAuthStore } from '@shared/store/authStore';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { ChecklistSkeleton } from './ChecklistSkeleton';
 
 interface TaskChecklistsViewProps {

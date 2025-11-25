@@ -7,8 +7,8 @@ import { useState, useCallback } from 'react';
 import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { fileApi } from '@api/fileApi';
-import { useChatStore } from '@store/chatStore';
-import { useNotification } from '@contexts/NotificationContext';
+import { useChatStore } from '@shared/store/chatStore';
+import { useNotification } from '@shared/contexts/NotificationContext';
 
 interface UseChatAvatarReturn {
   isUploadingAvatar: boolean;

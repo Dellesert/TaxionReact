@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useChatStore } from '@store/chatStore';
+import { useChatStore } from '@shared/store/chatStore';
 import * as chatApi from '../api/chat.api';
 import * as userApi from '@api/user.api';
 import { User } from '@/types/user.types';

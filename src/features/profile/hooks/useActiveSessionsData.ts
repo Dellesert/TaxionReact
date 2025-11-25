@@ -5,9 +5,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { useNotification } from '@contexts/NotificationContext';
-import * as secureStorage from '@utils/secureStorage';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import * as sessionApi from '@api/session.api';
 import type { ActiveSession } from '../../../types/user.types';
 

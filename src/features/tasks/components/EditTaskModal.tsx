@@ -18,8 +18,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { Task, TaskPriority, TaskChecklist } from '../types/task.types';
 import * as taskApi from '../api/task.api';
 import UserSelector from '@components/common/UserSelector';

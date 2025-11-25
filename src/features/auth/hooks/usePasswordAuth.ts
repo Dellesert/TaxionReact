@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Keyboard } from 'react-native';
-import { useAuth } from '@hooks/useAuth';
+import { useAuth } from '@shared/hooks/useAuth';
 import {
   validateLoginFields,
   is2FANotEnabledError,
@@ -10,7 +10,7 @@ import {
   isAccountDeactivatedError,
   isInvalidCredentialsError,
 } from '../utils/authHelpers';
-import { extractErrorCode } from '@utils/errorUtils';
+import { extractErrorCode } from '@shared/utils/errorUtils';
 import type { ApiError } from '../../../types/common.types';
 
 interface UsePasswordAuthReturn {

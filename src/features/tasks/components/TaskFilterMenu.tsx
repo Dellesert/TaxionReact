@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import type { TaskFilter } from '../../../utils/taskListHelpers';
 import { FILTER_CHIPS } from '../../../utils/taskListHelpers';
 

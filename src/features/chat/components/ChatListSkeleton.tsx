@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, FlatList } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 export const ChatListSkeleton: React.FC = () => {
   const { theme } = useTheme();

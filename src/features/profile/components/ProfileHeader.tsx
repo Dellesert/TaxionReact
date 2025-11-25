@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { User } from '@/types/user.types';
 import { getRoleIcon, getRoleIconColor } from '../utils/profileHelpers';
 

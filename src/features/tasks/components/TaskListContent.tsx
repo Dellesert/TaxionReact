@@ -4,7 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { TaskItem } from '../components/TaskItem';
 import { TaskSkeleton } from '../components/TaskSkeleton';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import type { Task } from '../types/task.types';
 import type { StatusTab, TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus } from '../../../hooks/useTaskListData';
 import { TaskListEmptyState } from './TaskListEmptyState';

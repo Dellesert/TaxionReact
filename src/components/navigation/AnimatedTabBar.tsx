@@ -8,8 +8,8 @@ import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useChatStore } from '@store/chatStore';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useChatStore } from '@shared/store/chatStore';
 
 export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
   state,

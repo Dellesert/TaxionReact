@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { useAuthStore } from '@store/authStore';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
-import { useActionModal } from '@contexts/ActionModalContext';
+import { useAuthStore } from '@shared/store/authStore';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
 
 /**
  * Hook for managing profile actions (logout, theme change, etc.)

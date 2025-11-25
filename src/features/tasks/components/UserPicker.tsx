@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { User } from '../../types/user.types';
 import { getUsers } from '../../api/user.api';
 import { useAuthStore } from '../../store/authStore';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import Avatar from '@components/common/Avatar';
 
 interface UserPickerProps {

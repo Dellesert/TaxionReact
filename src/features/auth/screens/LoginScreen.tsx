@@ -8,12 +8,12 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
-import { useAuth } from '@hooks/useAuth';
+import { useAuth } from '@shared/hooks/useAuth';
 import { useLoginForm } from '../hooks/useLoginForm';
 import { usePasskeyAuth } from '../hooks/usePasskeyAuth';
 import { usePasswordAuth } from '../hooks/usePasswordAuth';
-import { useNotification } from '@contexts/NotificationContext';
-import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
 import { LoginLogo } from '../components/LoginLogo';
 import { LoginForm } from '../components/LoginForm';
 import { AlternativeLoginMethods } from '../components/AlternativeLoginMethods';

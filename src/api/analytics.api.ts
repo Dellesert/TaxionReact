@@ -3,7 +3,7 @@
  * API для получения аналитики и статистики (только для администраторов)
  */
 
-import api from './axios.config';
+import api from '../shared/api/axios.config';
 
 // ============================================================================
 // TYPES & INTERFACES

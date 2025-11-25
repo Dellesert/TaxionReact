@@ -7,7 +7,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import UserSelectorModal from './UserSelectorModal';

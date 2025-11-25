@@ -9,9 +9,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ChatStackParamList } from '@navigation/types';
-import { useActionModal } from '@contexts/ActionModalContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { ScreenHeader } from '@components/common/ScreenHeader';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { Chat, ChatType } from '../types/chat.types';
 import { websocketService } from '@services/websocket.service';
 

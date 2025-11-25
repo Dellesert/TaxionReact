@@ -17,14 +17,14 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { ChatType } from '../types/chat.types';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { User } from '@/types/user.types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 // Hooks
 import { useCreateChatData } from '../hooks/useCreateChatData';
 import { useCreateChatActions } from '../hooks/useCreateChatActions';
-import { useUserSections } from '@hooks/useUserSections';
+import { useUserSections } from '@shared/hooks/useUserSections';
 
 // Components
 import { CreateChatHeader } from '../components/CreateChatHeader';

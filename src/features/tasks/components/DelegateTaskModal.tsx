@@ -18,9 +18,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { delegateTask } from '../api/task.api';
 import { getUsers } from '@/api/user.api';
 import { User } from '@/types/user.types';
-import { useTheme } from '@hooks/useTheme';
-import { useAuthStore } from '@store/authStore';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useAuthStore } from '@shared/store/authStore';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import Avatar from '@components/common/Avatar';
 
 interface DelegateTaskModalProps {

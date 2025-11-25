@@ -21,9 +21,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
-import { useAuthStore } from '@store/authStore';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useAuthStore } from '@shared/store/authStore';
 import { CreateEventDto, Event } from '../types/calendar.types';
 import * as calendarApi from '../api/calendar.api';
 import * as userApi from '@api/user.api';

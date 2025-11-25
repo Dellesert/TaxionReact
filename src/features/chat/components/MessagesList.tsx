@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { Message } from '../types/chat.types';
 import { formatTime } from '../utils/message.utils';
 

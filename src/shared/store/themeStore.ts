@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Appearance, ColorSchemeName } from 'react-native';
-import { ThemeMode, Theme, themes } from '@constants/theme.constants';
+import { ThemeMode, Theme, themes } from '@shared/constants/theme.constants';
 
 interface ThemeState {
   mode: ThemeMode;

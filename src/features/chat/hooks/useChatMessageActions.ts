@@ -5,9 +5,9 @@
 
 import { useCallback, useRef } from 'react';
 import { FlatList } from 'react-native';
-import { useChatStore } from '@store/chatStore';
-import { useNotification } from '@contexts/NotificationContext';
-import { useActionModal } from '@contexts/ActionModalContext';
+import { useChatStore } from '@shared/store/chatStore';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { Message } from '../types/chat.types';
 import { getMessageActionOptions } from '../utils/chatDetailFormatters';
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import type { StatusTab, TotalsByStatus } from '../../../hooks/useTaskListData';
 import { STATUS_TABS } from '../../../utils/taskListHelpers';
 

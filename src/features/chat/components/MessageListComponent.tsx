@@ -4,7 +4,7 @@ import { MessageItem } from './MessageItem';
 import { DateSeparator } from './DateSeparator';
 import { UnreadMessagesBanner } from './UnreadMessagesBanner';
 import { MessageSkeleton } from './MessageSkeleton';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 type MessageListItem =
   | { type: 'message'; data: any }

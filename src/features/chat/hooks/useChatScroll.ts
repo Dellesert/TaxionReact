@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { FlatList } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useChatStore } from '@store/chatStore';
-import { getDateLabel } from '@utils/dateHelpers';
+import { useChatStore } from '@shared/store/chatStore';
+import { getDateLabel } from '@shared/utils/dateHelpers';
 
 /**
  * Хук для управления скроллом в чате

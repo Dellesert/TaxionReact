@@ -6,9 +6,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
-import { isMockMode, mockGetUsers } from '@utils/mockData';
-import { useNotification } from '@contexts/NotificationContext';
-import { useAuthStore } from '@store/authStore';
+import { isMockMode, mockGetUsers } from '@shared/utils/mockData';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useAuthStore } from '@shared/store/authStore';
 import {
   filterOutCurrentUser,
   filterOutAdmins,

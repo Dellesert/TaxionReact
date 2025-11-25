@@ -19,15 +19,15 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { User } from '../../../types/user.types';
 import { ChatMember } from '../types/chat.types';
 import { getChatMembers, addChatMembers, updateChatMemberRole } from '../api/chat.api';
 import { getUsers } from '@api/user.api';
-import { isMockMode, mockGetUsers } from '@utils/mockData';
-import { useChatStore } from '@store/chatStore';
-import { useAuthStore } from '@store/authStore';
+import { isMockMode, mockGetUsers } from '@shared/utils/mockData';
+import { useChatStore } from '@shared/store/chatStore';
+import { useAuthStore } from '@shared/store/authStore';
 import { ConfirmDialog } from '@components/common/ConfirmDialog';
 import Avatar from '@components/common/Avatar';
 

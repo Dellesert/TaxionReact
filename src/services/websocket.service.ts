@@ -3,12 +3,12 @@
  * Управляет WebSocket соединением для real-time общения
  */
 
-import { useChatStore } from '@store/chatStore';
-import { useAuthStore } from '@store/authStore';
-import { useNotificationStore } from '@store/notificationStore';
-import { useInAppNotificationStore } from '@store/inAppNotificationStore';
-import * as secureStorage from '@utils/secureStorage';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import { useChatStore } from '@shared/store/chatStore';
+import { useAuthStore } from '@shared/store/authStore';
+import { useNotificationStore } from '@shared/store/notificationStore';
+import { useInAppNotificationStore } from '@shared/store/inAppNotificationStore';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import * as chatApi from '@api/chat.api';
 
 type WSMessageType =

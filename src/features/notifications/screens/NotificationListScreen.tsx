@@ -5,7 +5,7 @@
 
 import React, { useCallback } from 'react';
 import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
-import { useNotificationStore } from '@store/notificationStore';
+import { useNotificationStore } from '@shared/store/notificationStore';
 import NotificationItem from '@components/common/NotificationItem';
 import ScreenHeader from '@components/common/ScreenHeader';
 import { Notification } from '@/types/notification.types';

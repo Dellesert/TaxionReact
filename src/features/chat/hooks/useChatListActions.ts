@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useChatStore } from '@store/chatStore';
+import { useChatStore } from '@shared/store/chatStore';
 
 /**
  * Custom hook for chat list actions (delete, pin, mark as read, favorite, etc.)

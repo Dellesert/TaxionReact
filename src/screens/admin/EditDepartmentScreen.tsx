@@ -12,10 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useTheme } from '@hooks/useTheme';
-import { useAuthStore } from '@store/authStore';
-import { useNotification } from '@contexts/NotificationContext';
-import { useActionModal } from '@contexts/ActionModalContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useAuthStore } from '@shared/store/authStore';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
 import * as userApi from '@api/user.api';
 import { Department, User } from '@/types/user.types';
 import { Avatar } from '@components/common/Avatar';

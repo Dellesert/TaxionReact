@@ -23,10 +23,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { useAuthStore } from '@store/authStore';
+import { useAuthStore } from '@shared/store/authStore';
 import { Avatar } from '@components/common/Avatar';
-import { useActionModal } from '@contexts/ActionModalContext';
-import { useNotification } from '@contexts/NotificationContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useNotification } from '@shared/contexts/NotificationContext';
 
 interface TaskAttachmentsListProps {
   taskId: number;

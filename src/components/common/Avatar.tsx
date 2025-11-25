@@ -6,8 +6,8 @@
 import React, { useState, useMemo, ReactNode } from 'react';
 import { View, Text, StyleSheet, ViewStyle, Platform, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { useAuthStore } from '@store/authStore';
-import { API_BASE_URL } from '@constants/api.constants';
+import { useAuthStore } from '@shared/store/authStore';
+import { API_BASE_URL } from '@shared/constants/api.constants';
 
 interface AvatarProps {
   name?: string;

@@ -2,7 +2,7 @@
  * Helper functions for authentication
  */
 
-import { extractErrorCode, ErrorCode, isSuperAdminWebOnly } from '@utils/errorUtils';
+import { extractErrorCode, ErrorCode, isSuperAdminWebOnly } from '@shared/utils/errorUtils';
 import type { ApiError } from '../../../types/common.types';
 
 /**

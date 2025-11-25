@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, SectionList, RefreshControl } from 'react-nativ
 import { Event } from '../types/calendar.types';
 import { EventSection } from '../utils/calendarHelpers';
 import { EventItem } from '../components/EventItem';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface CalendarEventsListProps {
   sections: EventSection[];

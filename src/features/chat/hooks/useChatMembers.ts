@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChatMember } from '@/types/user.types';
 import * as chatApi from '../api/chat.api';
 import * as userApi from '@api/user.api';
-import { useNotification } from '@contexts/NotificationContext';
+import { useNotification } from '@shared/contexts/NotificationContext';
 
 interface UseChatMembersReturn {
   members: ChatMember[];

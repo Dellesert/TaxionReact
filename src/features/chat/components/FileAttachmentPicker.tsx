@@ -14,8 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { fileApi, FileUploadResponse } from '@api/fileApi';
-import { useTheme } from '@hooks/useTheme';
-import { useActionModal } from '@contexts/ActionModalContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
 
 interface FileAttachmentPickerProps {
   onFilesSelected: (fileIds: number[]) => void;

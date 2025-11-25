@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Animated as RNAnimated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { ScreenHeader } from '@components/common/ScreenHeader';
 import { NotificationBell } from '@components/common/NotificationBell';
 import { PollFilter } from '../utils/pollListHelpers';

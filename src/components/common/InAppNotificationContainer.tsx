@@ -8,8 +8,8 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { InAppNotification } from './InAppNotification';
-import { useInAppNotificationStore } from '@store/inAppNotificationStore';
-import { useNotificationStore } from '@store/notificationStore';
+import { useInAppNotificationStore } from '@shared/store/inAppNotificationStore';
+import { useNotificationStore } from '@shared/store/notificationStore';
 
 export const InAppNotificationContainer: React.FC = () => {
   const navigation = useNavigation<any>();

@@ -6,7 +6,7 @@
 import React from 'react';
 import { View, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
-import { useAuthStore } from '@store/authStore';
+import { useAuthStore } from '@shared/store/authStore';
 import { Loading } from '@components/common/Loading';
 import { MessageInput } from '../components/MessageInput';
 

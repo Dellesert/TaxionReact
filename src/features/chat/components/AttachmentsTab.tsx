@@ -19,13 +19,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import FileViewer from 'react-native-file-viewer';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { Attachment } from '../types/chat.types';
 import * as chatApi from '../api/chat.api';
 import { ImageViewer } from './ImageViewer';
-import * as secureStorage from '@utils/secureStorage';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { replaceLocalhostWithIP } from '../utils/message.utils';
 import { decodeFileName } from '../utils/file.utils';
 

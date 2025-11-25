@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useChatStore } from '@store/chatStore';
+import { useChatStore } from '@shared/store/chatStore';
 import { Platform } from 'react-native';
 import { ChatFilter, FILTER_TABS_ORDER } from '../utils/chatHelpers';
 

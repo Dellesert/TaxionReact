@@ -4,7 +4,7 @@
  */
 
 import api from '@api/axios.config';
-import { API_ENDPOINTS, PAGINATION } from '@constants/api.constants';
+import { API_ENDPOINTS, PAGINATION } from '@shared/constants/api.constants';
 import {
   Chat,
   Message,

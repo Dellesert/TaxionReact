@@ -5,8 +5,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import FileViewer from 'react-native-file-viewer';
 import { Platform } from 'react-native';
-import * as secureStorage from '@utils/secureStorage';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { fileApi } from '@api/fileApi';
 import { getUser } from '@api/user.api';
 

@@ -1,13 +1,13 @@
 import { useState, useCallback } from 'react';
 import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useAuthStore } from '@store/authStore';
-import { useNotification } from '@contexts/NotificationContext';
-import { useActionModal } from '@contexts/ActionModalContext';
+import { useAuthStore } from '@shared/store/authStore';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { fileApi } from '@api/fileApi';
 import { updateAvatar } from '@api/user.api';
-import * as secureStorage from '@utils/secureStorage';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { validateAvatarFile } from '../utils/profileHelpers';
 
 /**

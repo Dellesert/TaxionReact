@@ -5,10 +5,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '@store/authStore';
-import { useChatStore } from '@store/chatStore';
-import { useNotificationStore } from '@store/notificationStore';
-import { WS_URL, WS_EVENTS } from '@constants/api.constants';
+import { useAuthStore } from '@shared/store/authStore';
+import { useChatStore } from '@shared/store/chatStore';
+import { useNotificationStore } from '@shared/store/notificationStore';
+import { WS_URL, WS_EVENTS } from '@shared/constants/api.constants';
 import {
   WsMessageNewPayload,
   WsMessageUpdatePayload,

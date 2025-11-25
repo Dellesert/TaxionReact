@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Notification, NotificationType } from '@types/notification.types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@components/common/Avatar';
 import { Swipeable } from 'react-native-gesture-handler';
 

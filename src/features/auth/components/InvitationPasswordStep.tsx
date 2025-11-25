@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator 
 import { Ionicons } from '@expo/vector-icons';
 import { InvitationData } from '../utils/invitationHelpers';
 import { InvitationInfoBox } from './InvitationInfoBox';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface InvitationPasswordStepProps {
   invitationData: InvitationData | null;

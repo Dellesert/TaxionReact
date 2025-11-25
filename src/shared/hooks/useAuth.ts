@@ -3,7 +3,7 @@
  * Custom hook для работы с аутентификацией
  */
 
-import { useAuthStore } from '@store/authStore';
+import { useAuthStore } from '@shared/store/authStore';
 
 /**
  * Hook для работы с аутентификацией

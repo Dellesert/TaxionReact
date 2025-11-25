@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { TaskStackParamList } from './types';
 import TaskListScreen from '@/features/tasks/screens/TaskListScreen';
 import TaskDetailScreen from '@/features/tasks/screens/TaskDetailScreen';

@@ -6,10 +6,10 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { Chat } from '../types/chat.types';
 import { getChatDisplayName, getChatDisplayAvatar } from '../utils/chatUtils';
-import { useAuthStore } from '@store/authStore';
+import { useAuthStore } from '@shared/store/authStore';
 
 interface FavoriteChatsProps {
   chats: Chat[];

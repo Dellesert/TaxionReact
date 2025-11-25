@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, ActivityIndicator, Platform } from 'react-native';
 import { websocketService } from '@services/websocket.service';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface ConnectionStatusProps {
   compact?: boolean; // Компактный режим для отображения в header

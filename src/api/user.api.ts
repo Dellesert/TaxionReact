@@ -4,7 +4,7 @@
  */
 
 import api from './axios.config';
-import { API_ENDPOINTS, API_BASE_URL, PAGINATION } from '@constants/api.constants';
+import { API_ENDPOINTS, API_BASE_URL, PAGINATION } from '@shared/constants/api.constants';
 import {
   User,
   UpdateProfileDto,

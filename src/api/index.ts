@@ -9,6 +9,6 @@ export * as chatApi from '../features/chat/api/chat.api';
 export * as taskApi from '../features/tasks/api/task.api';
 export * as calendarApi from '../features/calendar/api/calendar.api';
 export * as pollApi from '../features/polls/api/poll.api';
-export * as notificationApi from './notification.api';
+export * as notificationApi from '../features/notifications/api/notification.api';
 
-export { default as api } from './axios.config';
+export { default as api } from '../shared/api/axios.config';

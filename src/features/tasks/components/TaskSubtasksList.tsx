@@ -14,8 +14,8 @@ import {
 import { Task, TaskStatus } from '../types/task.types';
 import { getSubtasks, updateTaskStatus } from '../api/task.api';
 import { getOrCreateDirectChat } from '@api/chat.api';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
 import { UserProfileModal } from '@components/common/UserProfileModal';

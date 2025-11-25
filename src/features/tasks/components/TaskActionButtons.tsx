@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task } from '../types/task.types';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { getActionButtonText } from '../utils/taskHelpers';
 
 interface TaskActionButtonsProps {

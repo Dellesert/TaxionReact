@@ -8,7 +8,7 @@ import { View, StyleSheet, ScrollView, Platform, Text, TouchableOpacity } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 // Custom Hooks
 import { useAboutActions } from '../hooks/useAboutActions';

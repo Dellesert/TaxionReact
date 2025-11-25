@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 interface StickyUnreadBannerProps {

@@ -5,7 +5,7 @@ import { Task, TaskPermissions } from '../types/task.types';
 import { TaskChecklistsView } from '../components/TaskChecklistsView';
 import { TaskSubtasksList } from '../components/TaskSubtasksList';
 import { Avatar } from '@components/common/Avatar';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { getUserDisplayName, getPriorityConfig } from '../utils/taskHelpers';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';

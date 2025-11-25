@@ -13,10 +13,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
-import { useActionModal } from '@contexts/ActionModalContext';
-import { useAuthStore } from '@store/authStore';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useAuthStore } from '@shared/store/authStore';
 import { Event, EventParticipantStatus } from '../types/calendar.types';
 import * as calendarApi from '../api/calendar.api';
 import { format } from 'date-fns';

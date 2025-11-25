@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Modal, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { ChatType } from '../types/chat.types';
 
 interface ChatCreateMenuProps {

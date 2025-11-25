@@ -6,8 +6,8 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNotificationStore } from '@store/notificationStore';
-import { useTheme } from '@hooks/useTheme';
+import { useNotificationStore } from '@shared/store/notificationStore';
+import { useTheme } from '@shared/hooks/useTheme';
 import { NotificationModal } from '@components/notification/NotificationModal';
 
 export const NotificationBell: React.FC = () => {

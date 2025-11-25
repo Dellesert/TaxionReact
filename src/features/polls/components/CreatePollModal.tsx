@@ -22,9 +22,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
-import { useAuthStore } from '@store/authStore';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useAuthStore } from '@shared/store/authStore';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import * as pollApi from '../api/poll.api';
 import { PollType, PollVisibility, CreatePollDto } from '../types/poll.types';
 import UserSelector from '@components/common/UserSelector';

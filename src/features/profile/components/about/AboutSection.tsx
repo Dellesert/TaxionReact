@@ -5,7 +5,7 @@
 
 import React, { ReactNode } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface AboutSectionProps {
   title: string;

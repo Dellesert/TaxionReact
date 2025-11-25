@@ -1,6 +1,6 @@
-import { API_BASE_URL } from '../constants/api.constants';
-import * as secureStorage from '../utils/secureStorage';
-import { STORAGE_KEYS } from '../constants/app.constants';
+import { API_BASE_URL } from '../shared/constants/api.constants';
+import * as secureStorage from '../shared/utils/secureStorage';
+import { STORAGE_KEYS } from '../shared/constants/app.constants';
 
 export interface FileUploadResponse {
   id: number;

@@ -15,7 +15,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { ActionModalProps, ActionModalButton } from '@types/modal.types';
 

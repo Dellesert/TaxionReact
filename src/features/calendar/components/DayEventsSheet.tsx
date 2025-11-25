@@ -11,7 +11,7 @@ import {
   Animated
 } from 'react-native';
 import { Event } from '../types/calendar.types';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';

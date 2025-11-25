@@ -6,7 +6,7 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { ChatStackParamList } from './types';
 import ChatListScreen from '@/features/chat/screens/ChatListScreen';
 import CreateChatScreen from '@/features/chat/screens/CreateChatScreen';

@@ -8,8 +8,8 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 're
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
-import { useActionModal } from '@contexts/ActionModalContext';
-import { useTheme } from '@hooks/useTheme';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useTheme } from '@shared/hooks/useTheme';
 import { usePasswordReset } from '../hooks/usePasswordReset';
 import { validateResetCode } from '../utils/passwordResetHelpers';
 import { ForgotPasswordHeader } from '../components/ForgotPasswordHeader';

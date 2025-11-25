@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { InvitationData, getRoleLabel } from '../utils/invitationHelpers';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface InvitationInfoBoxProps {
   data: InvitationData;

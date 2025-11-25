@@ -7,8 +7,8 @@ import { create } from 'zustand';
 import { Chat, Message, TypingIndicator, MessageType } from '../types/chat.types';
 import * as chatApi from '@api/chat.api';
 import { getUser } from '@api/user.api';
-import { isMockMode, mockGetChats, mockGetMessages } from '@utils/mockData';
-import { useAuthStore } from '@store/authStore';
+import { isMockMode, mockGetChats, mockGetMessages } from '@shared/utils/mockData';
+import { useAuthStore } from '@shared/store/authStore';
 import { websocketService } from '@services/websocket.service';
 
 // Tab data structure for caching

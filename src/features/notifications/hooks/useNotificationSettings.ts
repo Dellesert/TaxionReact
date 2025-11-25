@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNotification } from '@contexts/NotificationContext';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import {
   getUserPreferences,
   updateUserPreference,

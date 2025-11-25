@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Animated as RNAnimated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface ChatSearchBarProps {
   isVisible: boolean;

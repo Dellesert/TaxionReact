@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform, Activit
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { useNotificationSettings } from '@/features/notifications/hooks/useNotificationSettings';
 import { ProfileMenuSection } from '../components/ProfileMenuSection';
 import { NotificationSettingItem } from '../components/notification/NotificationSettingItem';

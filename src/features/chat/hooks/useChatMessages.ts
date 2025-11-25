@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useChatStore } from '@store/chatStore';
-import { useAuthStore } from '@store/authStore';
+import { useChatStore } from '@shared/store/chatStore';
+import { useAuthStore } from '@shared/store/authStore';
 
 /**
  * Хук для работы с сообщениями чата

@@ -9,9 +9,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { TaskAttachment } from '../types/task.types';
 import { Avatar } from '@components/common/Avatar';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { getUserDisplayName } from '../utils/taskHelpers';
-import { getFileIcon, decodeFileName } from '@utils/file.utils';
+import { getFileIcon, decodeFileName } from '@shared/utils/file.utils';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 

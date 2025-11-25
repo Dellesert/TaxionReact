@@ -8,8 +8,8 @@ import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated } from
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
-import { useNotification } from '@contexts/NotificationContext';
-import { useTheme } from '@hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
 import { useInvitationValidation } from '../hooks/useInvitationValidation';
 import { useInvitationAcceptance } from '../hooks/useInvitationAcceptance';
 import { getStepSubtitle } from '../utils/invitationHelpers';

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationBell } from '@components/common/NotificationBell';
 import { ConnectionStatus } from '@components/common/ConnectionStatus';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface ChatListHeaderProps {
   isEditMode: boolean;

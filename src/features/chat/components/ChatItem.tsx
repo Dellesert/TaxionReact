@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'reac
 import { BlurView } from 'expo-blur';
 import { Chat } from '../types/chat.types';
 import { Avatar } from '@components/common/Avatar';
-import { useTheme } from '@hooks/useTheme';
-import { useAuthStore } from '@store/authStore';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useAuthStore } from '@shared/store/authStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';

@@ -3,7 +3,7 @@ import { View, FlatList, ActivityIndicator, RefreshControl, StyleSheet } from 'r
 import { Poll } from '../types/poll.types';
 import { PollItem } from '../components/PollItem';
 import { PollSkeleton } from '../components/PollSkeleton';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { PollListEmptyState } from './PollListEmptyState';
 import { PollListErrorState } from './PollListErrorState';
 

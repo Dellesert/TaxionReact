@@ -7,7 +7,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Toast, { ToastType, ToastProps } from '@components/ui/Toast';
 import { ApiError } from '@types/common.types';
-import { formatApiError, extractRequestId } from '@utils/errorUtils';
+import { formatApiError, extractRequestId } from '@shared/utils/errorUtils';
 
 interface NotificationItem extends Omit<ToastProps, 'onHide'> {
   id: string;

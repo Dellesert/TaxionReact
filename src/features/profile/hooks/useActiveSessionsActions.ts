@@ -5,8 +5,8 @@
 
 import { Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useNotification } from '@contexts/NotificationContext';
-import { useActionModal } from '@contexts/ActionModalContext';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
 import * as sessionApi from '@api/session.api';
 import { getDeleteSessionMessage, getDeleteAllOtherMessage } from '../utils/activeSessionsFormatters';
 import { getOtherSessionsCount } from '../utils/activeSessionsHelpers';

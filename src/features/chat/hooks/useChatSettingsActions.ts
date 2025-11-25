@@ -4,8 +4,8 @@
  */
 
 import { useCallback } from 'react';
-import { useChatStore } from '@store/chatStore';
-import { useNotification } from '@contexts/NotificationContext';
+import { useChatStore } from '@shared/store/chatStore';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChatStackParamList } from '@navigation/types';

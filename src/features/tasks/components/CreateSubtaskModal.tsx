@@ -18,12 +18,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNotification } from '@contexts/NotificationContext';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { CreateTaskDto, TaskPriority, TaskAttachment } from '../types/task.types';
 import { createSubtask, getTaskAttachments } from '../api/task.api';
 import UserSelector from '@components/common/UserSelector';
 import DatePickerModal from '@components/common/DatePickerModal';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 

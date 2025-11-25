@@ -6,7 +6,7 @@ import { ScrollToBottomButton } from '../components/ScrollToBottomButton';
 import { MessageListComponent } from '../components/MessageListComponent';
 import { MessageInput } from '../components/MessageInput';
 import { SelectionModeToolbar } from '../components/SelectionModeToolbar';
-import { useTheme } from '@hooks/useTheme';
+import { useTheme } from '@shared/hooks/useTheme';
 import type { Message, Chat } from '../types/chat.types';
 
 interface ChatScreenContentProps {

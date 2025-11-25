@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, StyleProp, TextStyle, Linking } from 'react-native';
-import { useTheme } from '@hooks/useTheme';
-import { useNotification } from '@contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useNotification } from '@shared/contexts/NotificationContext';
 
 interface LinkifiedTextProps {
   text: string;

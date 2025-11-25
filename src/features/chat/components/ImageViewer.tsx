@@ -3,8 +3,8 @@ import { Modal, Pressable, View, StyleSheet, TouchableOpacity, Text, Platform, D
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import * as secureStorage from '@utils/secureStorage';
-import { STORAGE_KEYS } from '@constants/app.constants';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { GestureDetector, GestureHandlerRootView, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,

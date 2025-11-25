@@ -5,7 +5,7 @@
 
 import { useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { useNotificationStore } from '@store/notificationStore';
+import { useNotificationStore } from '@shared/store/notificationStore';
 import { Notification } from '@/types/notification.types';
 import {
   getNavigationScreenByType,
