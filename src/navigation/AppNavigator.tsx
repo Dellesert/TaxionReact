@@ -16,9 +16,9 @@ import TaskDetailScreen from '@screens/task/TaskDetailScreen';
 import EventDetailScreen from '@screens/calendar/EventDetailScreen';
 import PollDetailScreen from '@screens/poll/PollDetailScreen';
 import NotificationListScreen from '@screens/notification/NotificationListScreen';
-import ActiveSessionsScreen from '@screens/ActiveSessionsScreen';
-import PasskeyManagementScreen from '@screens/PasskeyManagementScreen';
-import AboutScreen from '@screens/AboutScreen';
+import ActiveSessionsScreen from '@screens/profile/ActiveSessionsScreen';
+import PasskeyManagementScreen from '@screens/profile/PasskeyManagementScreen';
+import AboutScreen from '@/screens/profile/AboutScreen';
 import { InAppNotificationContainer } from '@components/common/InAppNotificationContainer';
 import * as Linking from 'expo-linking';
 
