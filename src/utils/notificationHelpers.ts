@@ -1,8 +1,46 @@
 /**
- * Notification settings helper functions
+ * Notification Helpers
+ * Вспомогательные функции для работы с уведомлениями
  */
 
+import { Notification } from '@/types/notification.types';
 import { NotificationPriority } from '@api/notificationPreferences.api';
+
+// ===== Notification List Helpers =====
+
+/**
+ * Проверка, следует ли показывать кнопку "Отметить все как прочитанное"
+ */
+export const shouldShowMarkAllButton = (unreadCount: number): boolean => {
+  return unreadCount > 0;
+};
+
+/**
+ * Проверка, следует ли загружать еще уведомлений
+ */
+export const canLoadMore = (isLoading: boolean, hasMore: boolean): boolean => {
+  return !isLoading && hasMore;
+};
+
+/**
+ * Проверка, пустой ли список уведомлений
+ */
+export const isNotificationListEmpty = (notifications: Notification[]): boolean => {
+  return notifications.length === 0;
+};
+
+/**
+ * Проверка, нужно ли показывать футер загрузки
+ */
+export const shouldShowLoadingFooter = (
+  hasMore: boolean,
+  notificationsCount: number,
+  isLoading: boolean
+): boolean => {
+  return hasMore && notificationsCount > 0 && isLoading;
+};
+
+// ===== Notification Settings Helpers =====
 
 /**
  * Format hour number to time string (HH:00)

@@ -304,7 +304,12 @@ const TaskDetailScreen: React.FC = () => {
         try {
           await handleDeleteTask();
           showSuccess('Задача удалена');
-          navigation.goBack();
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            // @ts-ignore
+            navigation.navigate('Main', { screen: 'Tasks' });
+          }
         } catch (error) {
           showError('Не удалось удалить задачу');
         }
@@ -321,7 +326,14 @@ const TaskDetailScreen: React.FC = () => {
 
   // Access denied state
   if (accessDenied) {
-    return <TaskAccessDenied onGoBack={() => navigation.goBack()} />;
+    return <TaskAccessDenied onGoBack={() => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        // @ts-ignore
+        navigation.navigate('Main', { screen: 'Tasks' });
+      }
+    }} />;
   }
 
   // No task loaded
@@ -339,7 +351,14 @@ const TaskDetailScreen: React.FC = () => {
             leftButton={{
               icon: 'close',
               color: theme.error,
-              onPress: () => navigation.goBack(),
+              onPress: () => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  // @ts-ignore
+                  navigation.navigate('Main', { screen: 'Tasks' });
+                }
+              },
             }}
             rightButton={
               permissions.can_edit ||

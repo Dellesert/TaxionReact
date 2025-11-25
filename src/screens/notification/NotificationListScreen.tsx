@@ -1,85 +1,35 @@
 /**
- * Notification List Screen
+ * Notification List Screen (Refactored)
  * Экран со списком уведомлений
  */
 
-import React, { useEffect, useCallback } from 'react';
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  RefreshControl,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useCallback } from 'react';
+import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { useNotificationStore } from '@store/notificationStore';
 import NotificationItem from '@components/common/NotificationItem';
 import ScreenHeader from '@components/common/ScreenHeader';
-import { Notification } from '@types/notification.types';
+import { Notification } from '@/types/notification.types';
+
+// Custom Hooks
+import { useNotificationListData } from '@hooks/useNotificationListData';
+import { useNotificationListActions } from '@hooks/useNotificationListActions';
+
+// Components
+import { NotificationEmptyState } from './components/NotificationEmptyState';
+import { NotificationLoadingFooter } from './components/NotificationLoadingFooter';
+
+// Utils
+import { shouldShowMarkAllButton, isNotificationListEmpty } from '@utils/notificationHelpers';
 
 const NotificationListScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const { markAsRead } = useNotificationStore();
 
-  const {
-    notifications,
-    isLoading,
-    hasMore,
-    loadNotifications,
-    loadMoreNotifications,
-    markAsRead,
-    markAllAsRead,
-    unreadCount,
-  } = useNotificationStore();
+  // Custom Hooks
+  const { notifications, isLoading, hasMore, unreadCount } = useNotificationListData();
+  const { handleRefresh, handleLoadMore, handleNotificationPress, handleMarkAllAsRead } =
+    useNotificationListActions(isLoading, hasMore);
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  const handleRefresh = useCallback(() => {
-    loadNotifications(true);
-  }, [loadNotifications]);
-
-  const handleLoadMore = useCallback(() => {
-    if (!isLoading && hasMore) {
-      loadMoreNotifications();
-    }
-  }, [isLoading, hasMore, loadMoreNotifications]);
-
-  const handleNotificationPress = useCallback(
-    (notification: Notification) => {
-      // Отмечаем как прочитанное
-      if (!notification.is_read) {
-        markAsRead(notification.id);
-      }
-
-      // Переходим на соответствующий экран в зависимости от типа
-      if (notification.type === 'message' && notification.data?.chat_id) {
-        navigation.navigate('Chats' as never, {
-          screen: 'Chat',
-          params: { chatId: notification.data.chat_id },
-        } as never);
-      } else if (notification.type === 'task' && notification.data?.task_id) {
-        navigation.navigate('TaskDetail' as never, { taskId: notification.data.task_id } as never);
-      } else if (notification.type === 'poll' && notification.data?.poll_id) {
-        navigation.navigate('Polls' as never, {
-          screen: 'PollDetails',
-          params: { pollId: notification.data.poll_id },
-        } as never);
-      } else if (notification.type === 'calendar' && notification.data?.event_id) {
-        navigation.navigate('Calendar' as never);
-      }
-      // Добавьте другие типы по необходимости
-    },
-    [markAsRead, navigation]
-  );
-
-  const handleMarkAllAsRead = useCallback(() => {
-    markAllAsRead();
-  }, [markAllAsRead]);
-
+  // Render notification item
   const renderItem = useCallback(
     ({ item }: { item: Notification }) => (
       <NotificationItem
@@ -91,56 +41,36 @@ const NotificationListScreen: React.FC = () => {
     [handleNotificationPress, markAsRead]
   );
 
-  const renderEmpty = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-        </View>
-      );
-    }
+  // Render empty state
+  const renderEmpty = useCallback(
+    () => <NotificationEmptyState isLoading={isLoading} />,
+    [isLoading]
+  );
 
-    return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="notifications-off-outline" size={64} color="#D1D5DB" />
-        <Text style={styles.emptyText}>Нет уведомлений</Text>
-        <Text style={styles.emptySubtext}>
-          Здесь будут отображаться ваши уведомления
-        </Text>
-      </View>
-    );
-  };
-
-  const renderFooter = () => {
-    if (!hasMore || notifications.length === 0) {
-      return null;
-    }
-
-    if (isLoading) {
-      return (
-        <View style={styles.footer}>
-          <ActivityIndicator size="small" color="#3B82F6" />
-        </View>
-      );
-    }
-
-    return null;
-  };
+  // Render loading footer
+  const renderFooter = useCallback(
+    () => (
+      <NotificationLoadingFooter
+        hasMore={hasMore}
+        notificationsCount={notifications.length}
+        isLoading={isLoading}
+      />
+    ),
+    [hasMore, notifications.length, isLoading]
+  );
 
   return (
     <View style={styles.container}>
       <ScreenHeader
         title="Уведомления"
-        showBack
-        rightComponent={
-          unreadCount > 0 ? (
-            <TouchableOpacity
-              onPress={handleMarkAllAsRead}
-              style={styles.markAllButton}
-            >
-              <Ionicons name="checkmark-done" size={24} color="#3B82F6" />
-            </TouchableOpacity>
-          ) : undefined
+        rightButton={
+          shouldShowMarkAllButton(unreadCount)
+            ? {
+                icon: 'checkmark-done',
+                color: '#3B82F6',
+                onPress: handleMarkAllAsRead,
+              }
+            : undefined
         }
       />
 
@@ -152,7 +82,7 @@ const NotificationListScreen: React.FC = () => {
         ListFooterComponent={renderFooter}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading && notifications.length === 0}
+            refreshing={isLoading && isNotificationListEmpty(notifications)}
             onRefresh={handleRefresh}
             colors={['#3B82F6']}
             tintColor="#3B82F6"
@@ -160,9 +90,7 @@ const NotificationListScreen: React.FC = () => {
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        contentContainerStyle={
-          notifications.length === 0 ? styles.emptyListContainer : undefined
-        }
+        contentContainerStyle={isNotificationListEmpty(notifications) ? styles.emptyListContainer : undefined}
       />
     </View>
   );
@@ -175,31 +103,6 @@ const styles = StyleSheet.create({
   },
   emptyListContainer: {
     flexGrow: 1,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  footer: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  markAllButton: {
-    padding: 8,
   },
 });
 
