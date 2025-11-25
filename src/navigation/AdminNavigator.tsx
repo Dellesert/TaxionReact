@@ -1,9 +1,9 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AdminStackParamList } from './types';
-import DepartmentsScreen from '@screens/admin/DepartmentsScreen';
-import EditDepartmentScreen from '@screens/admin/EditDepartmentScreen';
-import UsersScreen from '@screens/admin/UsersScreen';
+import DepartmentsScreen from '@/features/admin/screens/DepartmentsScreen';
+import EditDepartmentScreen from '@/features/admin/screens/EditDepartmentScreen';
+import UsersScreen from '@/features/admin/screens/UsersScreen';
 
 const Stack = createNativeStackNavigator<AdminStackParamList>();
 
