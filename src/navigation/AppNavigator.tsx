@@ -11,7 +11,7 @@ import { useAuth } from '@hooks/useAuth';
 import { useTheme } from '@hooks/useTheme';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
-import ChatDetailScreen from '@screens/chat/ChatDetailScreen';
+import ChatDetailScreen from '@/features/chat/screens/ChatDetailScreen';
 import TaskDetailScreen from '@screens/task/TaskDetailScreen';
 import PollDetailScreen from '@screens/poll/PollDetailScreen';
 import NotificationListScreen from '@screens/notification/NotificationListScreen';

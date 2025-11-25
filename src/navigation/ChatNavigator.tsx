@@ -8,10 +8,10 @@ import { Platform } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '@hooks/useTheme';
 import { ChatStackParamList } from './types';
-import ChatListScreen from '@screens/chat/ChatListScreen';
-import CreateChatScreen from '@screens/chat/CreateChatScreen';
-import ChatScreen from '@screens/chat/ChatScreen';
-import ChatSettingsScreen from '@screens/chat/ChatSettingsScreen';
+import ChatListScreen from '@/features/chat/screens/ChatListScreen';
+import CreateChatScreen from '@/features/chat/screens/CreateChatScreen';
+import ChatScreen from '@/features/chat/screens/ChatScreen';
+import ChatSettingsScreen from '@/features/chat/screens/ChatSettingsScreen';
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
 

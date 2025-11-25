@@ -1,0 +1,502 @@
+/**
+ * Chat Settings Screen
+ * Экран настроек чата (Refactored)
+ */
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ChatStackParamList } from '@navigation/types';
+import { useAuthStore } from '@store/authStore';
+import { useTheme } from '@hooks/useTheme';
+import { ConfirmDialog } from '@components/common/ConfirmDialog';
+import { InputDialog } from '@components/common/InputDialog';
+import { ActionSheet, ActionSheetOption } from '@components/common/ActionSheet';
+import UserSelectorModal from '@components/common/UserSelectorModal';
+import { ChatDetailTabs, TabType } from '../components/ChatDetailTabs';
+import { ParticipantsTab } from '../components/ParticipantsTab';
+import { AttachmentsTab } from '../components/AttachmentsTab';
+
+// Hooks
+import { useChatSettingsData } from '../hooks/useChatSettingsData';
+import { useChatMembers } from '../hooks/useChatMembers';
+import { useChatSettingsActions } from '../hooks/useChatSettingsActions';
+import { useChatAvatar } from '../hooks/useChatAvatar';
+
+// Components
+import { ChatSettingsHeader } from '../components/ChatSettingsHeader';
+import { PrivateChatInfo } from '../components/PrivateChatInfo';
+import { GroupChatInfo } from '../components/GroupChatInfo';
+import { QuickAction } from '../components/QuickActions';
+
+// Utils
+import {
+  getCreatorId,
+  isUserChatCreator,
+  getMemberRole,
+  canUserManageMembers,
+} from '../utils/chatSettingsHelpers';
+
+type Props = NativeStackScreenProps<ChatStackParamList, 'ChatSettings'>;
+
+const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { chatId, chatName } = route.params;
+  const { theme } = useTheme();
+  const currentUser = useAuthStore((state) => state.user);
+
+  // Custom Hooks
+  const { chat, otherUser, departmentName } = useChatSettingsData(chatId, currentUser?.id);
+  const { members, isLoadingMembers, addMembers, removeMember, updateMemberRole } = useChatMembers(
+    chatId,
+    chat?.type
+  );
+  const { deleteChat, leaveChat, renameChat, clearHistory } = useChatSettingsActions(chatId);
+  const { isUploadingAvatar, changeAvatar } = useChatAvatar(chatId);
+
+  // Local State - Dialog visibility
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
+  const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
+
+  // Members management state
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<{ id: number; name: string } | null>(null);
+  const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
+  const [roleChangeData, setRoleChangeData] = useState<{
+    userId: number;
+    userName: string;
+    currentRole: string;
+    newRole: string;
+  } | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<{
+    userId: number;
+    userName: string;
+    role: string;
+  } | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('participants');
+
+  // Permissions
+  const creatorId = getCreatorId(chat);
+  const isCreator = isUserChatCreator(currentUser?.id, creatorId);
+  const currentUserRole = getMemberRole(members, currentUser?.id);
+  const isOwner = currentUserRole === 'owner';
+  const canManageMembers = canUserManageMembers(currentUserRole);
+
+  // Set initial tab based on chat type
+  useEffect(() => {
+    if (chat?.type === 'private') {
+      setActiveTab('attachments');
+    } else if (chat?.type === 'group') {
+      setActiveTab('participants');
+    }
+  }, [chat?.type]);
+
+  // Handlers
+  const handleSearchMessages = () => {
+    // TODO: Implement message search
+  };
+
+  const handleAddMembers = async () => {
+    if (selectedUserIds.length === 0) return;
+
+    try {
+      await addMembers(selectedUserIds);
+      setShowAddMembersModal(false);
+      setSelectedUserIds([]);
+    } catch (error) {
+      console.error('Failed to add members:', error);
+    }
+  };
+
+  const handleRemoveMember = (userId: number, userName: string) => {
+    setUserToRemove({ id: userId, name: userName });
+    setShowRemoveDialog(true);
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!userToRemove) return;
+
+    try {
+      await removeMember(userToRemove.id);
+      setShowRemoveDialog(false);
+      setUserToRemove(null);
+    } catch (error) {
+      console.error('Failed to remove member:', error);
+    }
+  };
+
+  const handleToggleAdmin = (userId: number, userName: string, currentRole: string) => {
+    const newRole = currentRole === 'admin' ? 'member' : 'admin';
+    setRoleChangeData({ userId, userName, currentRole, newRole });
+    setShowRoleChangeDialog(true);
+  };
+
+  const confirmRoleChange = async () => {
+    if (!roleChangeData) return;
+
+    try {
+      await updateMemberRole(roleChangeData.userId, roleChangeData.newRole as 'admin' | 'member');
+      setShowRoleChangeDialog(false);
+      setRoleChangeData(null);
+    } catch (error) {
+      console.error('Failed to update member role:', error);
+    }
+  };
+
+  const handleOpenActionMenu = (userId: number, userName: string, role: string) => {
+    setSelectedMember({ userId, userName, role });
+    setShowActionMenu(true);
+  };
+
+  const handleCloseActionMenu = () => {
+    setShowActionMenu(false);
+    setSelectedMember(null);
+  };
+
+  const handleMenuAction = (action: 'changeRole' | 'remove') => {
+    if (!selectedMember) return;
+
+    handleCloseActionMenu();
+
+    if (action === 'changeRole') {
+      handleToggleAdmin(selectedMember.userId, selectedMember.userName, selectedMember.role);
+    } else if (action === 'remove') {
+      handleRemoveMember(selectedMember.userId, selectedMember.userName);
+    }
+  };
+
+  // Delete/Leave action options based on chat type and user role
+  const deleteActionOptions = useMemo((): ActionSheetOption[] => {
+    if (chat?.type === 'private') {
+      return [
+        {
+          label: 'Удалить',
+          onPress: () => deleteChat(false),
+        },
+        {
+          label: 'Удалить и очистить историю',
+          onPress: () => deleteChat(true),
+          destructive: true,
+        },
+      ];
+    } else if (chat?.type === 'group') {
+      if (isOwner) {
+        return [
+          {
+            label: 'Удалить для всех',
+            onPress: () => deleteChat(false),
+            destructive: true,
+          },
+          {
+            label: 'Удалить для всех и очистить историю',
+            onPress: () => deleteChat(true),
+            destructive: true,
+          },
+        ];
+      } else {
+        return [
+          {
+            label: 'Покинуть чат',
+            onPress: () => leaveChat(),
+          },
+        ];
+      }
+    }
+    return [];
+  }, [chat?.type, isOwner, deleteChat, leaveChat]);
+
+  // Quick actions for private chat
+  const privateQuickActions: QuickAction[] = useMemo(
+    () => [
+      {
+        icon: 'search-outline',
+        label: 'Поиск',
+        onPress: handleSearchMessages,
+      },
+      {
+        icon: 'trash-bin-outline',
+        label: 'Очистить',
+        onPress: () => setShowClearHistoryDialog(true),
+      },
+      {
+        icon: 'trash-outline',
+        label: 'Удалить',
+        onPress: () => setShowDeleteActionSheet(true),
+        color: theme.error || '#FF3B30',
+      },
+    ],
+    [theme.error]
+  );
+
+  // Quick actions for group chat
+  const groupQuickActions: QuickAction[] = useMemo(() => {
+    const actions: QuickAction[] = [];
+
+    if (isCreator) {
+      actions.push({
+        icon: 'camera-outline',
+        label: isUploadingAvatar ? 'Загрузка...' : 'Фото',
+        onPress: changeAvatar,
+        disabled: isUploadingAvatar,
+      });
+      actions.push({
+        icon: 'create-outline',
+        label: 'Название',
+        onPress: () => setShowRenameDialog(true),
+      });
+    }
+
+    actions.push({
+      icon: 'search-outline',
+      label: 'Поиск',
+      onPress: handleSearchMessages,
+    });
+
+    if (!isCreator) {
+      actions.push({
+        icon: 'exit-outline',
+        label: 'Покинуть',
+        onPress: () => setShowDeleteActionSheet(true),
+        color: theme.error || '#FF3B30',
+      });
+    } else {
+      actions.push({
+        icon: 'trash-outline',
+        label: 'Удалить',
+        onPress: () => setShowDeleteActionSheet(true),
+        color: theme.error || '#FF3B30',
+      });
+    }
+
+    return actions;
+  }, [isCreator, isUploadingAvatar, changeAvatar, theme.error]);
+
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      backgroundColor: theme.backgroundSecondary,
+    },
+    divider: {
+      backgroundColor: theme.border,
+    },
+  });
+
+  return (
+    <SafeAreaView
+      style={[styles.container, dynamicStyles.container]}
+      edges={['top', 'left', 'right']}
+    >
+      <ChatSettingsHeader onBack={() => navigation.goBack()} />
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Private chat info */}
+        {chat?.type === 'private' && otherUser && (
+          <PrivateChatInfo
+            user={otherUser}
+            departmentName={departmentName}
+            quickActions={privateQuickActions}
+          />
+        )}
+
+        {/* Group chat info */}
+        {chat?.type === 'group' && (
+          <GroupChatInfo
+            chatName={chatName || ''}
+            chatAvatar={chat?.avatar}
+            membersCount={members.length}
+            quickActions={groupQuickActions}
+          />
+        )}
+
+        {/* Divider */}
+        <View style={[styles.divider, dynamicStyles.divider]} />
+
+        {/* Tabs */}
+        <ChatDetailTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          showParticipants={chat?.type === 'group'}
+        />
+
+        {/* Tab Content */}
+        {activeTab === 'participants' && chat?.type === 'group' && (
+          <ParticipantsTab
+            members={members}
+            isLoading={isLoadingMembers}
+            currentUserId={currentUser?.id}
+            creatorId={creatorId}
+            currentUserRole={
+              currentUserRole as 'owner' | 'admin' | 'member' | undefined
+            }
+            onAddMembers={canManageMembers ? () => setShowAddMembersModal(true) : undefined}
+            onMemberPress={handleOpenActionMenu}
+          />
+        )}
+
+        {activeTab === 'attachments' && <AttachmentsTab chatId={chatId} />}
+      </ScrollView>
+
+      {/* Add Members Modal */}
+      {showAddMembersModal && (
+        <UserSelectorModal
+          visible={showAddMembersModal}
+          onClose={() => {
+            setShowAddMembersModal(false);
+            setSelectedUserIds([]);
+          }}
+          selectedUserIds={selectedUserIds}
+          onSelectionChange={setSelectedUserIds}
+          multiSelect={true}
+          title="Добавить участников"
+          excludeUserIds={members.map((m) => m.user_id)}
+          onDone={handleAddMembers}
+        />
+      )}
+
+      {/* Action Menu */}
+      <ActionSheet
+        visible={showActionMenu}
+        title={selectedMember?.userName || ''}
+        options={[
+          {
+            label:
+              selectedMember?.role === 'admin'
+                ? 'Снять права администратора'
+                : 'Назначить администратором',
+            onPress: () => {
+              if (selectedMember) {
+                handleMenuAction('changeRole');
+              }
+            },
+          },
+          {
+            label: 'Удалить из чата',
+            onPress: () => {
+              if (selectedMember) {
+                handleMenuAction('remove');
+              }
+            },
+            destructive: true,
+          },
+        ]}
+        onCancel={handleCloseActionMenu}
+      />
+
+      {/* Delete Dialog */}
+      <ConfirmDialog
+        visible={showDeleteDialog}
+        title="Удалить чат"
+        message={`Вы уверены, что хотите удалить чат "${chatName}"? Это действие нельзя отменить.`}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={() => deleteChat(false)}
+        onCancel={() => setShowDeleteDialog(false)}
+        destructive
+      />
+
+      {/* Leave Dialog */}
+      <ConfirmDialog
+        visible={showLeaveDialog}
+        title="Покинуть чат"
+        message={`Вы уверены, что хотите покинуть чат "${chatName}"?`}
+        confirmText="Покинуть"
+        cancelText="Отмена"
+        onConfirm={() => leaveChat()}
+        onCancel={() => setShowLeaveDialog(false)}
+        destructive
+      />
+
+      {/* Rename Dialog */}
+      <InputDialog
+        visible={showRenameDialog}
+        title="Переименовать чат"
+        placeholder="Введите новое название"
+        initialValue={chatName || ''}
+        confirmText="Сохранить"
+        cancelText="Отмена"
+        onConfirm={renameChat}
+        onCancel={() => setShowRenameDialog(false)}
+      />
+
+      {/* Remove Member Dialog */}
+      <ConfirmDialog
+        visible={showRemoveDialog}
+        title="Удалить участника"
+        message={`Вы уверены, что хотите удалить ${userToRemove?.name} из чата?`}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmRemoveMember}
+        onCancel={() => {
+          setShowRemoveDialog(false);
+          setUserToRemove(null);
+        }}
+        destructive
+      />
+
+      {/* Role Change Dialog */}
+      <ConfirmDialog
+        visible={showRoleChangeDialog}
+        title="Изменить роль"
+        message={
+          roleChangeData
+            ? `Вы уверены, что хотите ${
+                roleChangeData.newRole === 'admin' ? 'назначить' : 'снять'
+              } ${roleChangeData.userName} ${
+                roleChangeData.newRole === 'admin'
+                  ? 'администратором'
+                  : 'с должности администратора'
+              }?`
+            : ''
+        }
+        confirmText="Подтвердить"
+        cancelText="Отмена"
+        onConfirm={confirmRoleChange}
+        onCancel={() => {
+          setShowRoleChangeDialog(false);
+          setRoleChangeData(null);
+        }}
+        destructive={false}
+      />
+
+      {/* Clear History Dialog */}
+      <ConfirmDialog
+        visible={showClearHistoryDialog}
+        title="Очистить историю"
+        message="Вы уверены, что хотите очистить всю историю сообщений? Это действие нельзя отменить."
+        confirmText="Очистить"
+        cancelText="Отмена"
+        onConfirm={clearHistory}
+        onCancel={() => setShowClearHistoryDialog(false)}
+        destructive
+      />
+
+      {/* Delete/Leave ActionSheet */}
+      <ActionSheet
+        visible={showDeleteActionSheet}
+        title={chat?.type === 'private' ? 'Удалить чат' : isOwner ? 'Удалить чат' : 'Покинуть чат'}
+        options={deleteActionOptions}
+        onCancel={() => setShowDeleteActionSheet(false)}
+      />
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 0,
+  },
+});
+
+export default ChatSettingsScreen;
