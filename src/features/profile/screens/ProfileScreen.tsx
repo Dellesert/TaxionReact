@@ -4,12 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '@store/authStore';
 import { useTheme } from '@hooks/useTheme';
-import { useProfileAvatar } from '@hooks/useProfileAvatar';
-import { useProfileActions } from '@hooks/useProfileActions';
-import { ProfileHeader } from './components/ProfileHeader';
-import { ProfileMenuSection } from './components/ProfileMenuSection';
-import { ProfileMenuItem } from './components/ProfileMenuItem';
-import { getThemeLabel, isAdmin } from '@utils/profileHelpers';
+import { useProfileAvatar } from '../hooks/useProfileAvatar';
+import { useProfileActions } from '../hooks/useProfileActions';
+import { ProfileHeader } from '../components/ProfileHeader';
+import { ProfileMenuSection } from '../components/ProfileMenuSection';
+import { ProfileMenuItem } from '../components/ProfileMenuItem';
+import { getThemeLabel, isAdmin } from '../utils/profileHelpers';
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();

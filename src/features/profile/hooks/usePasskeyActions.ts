@@ -7,11 +7,11 @@ import { useState } from 'react';
 import { Platform } from 'react-native';
 import { useNotification } from '@contexts/NotificationContext';
 import { useActionModal } from '@contexts/ActionModalContext';
-import * as authApi from '@api/auth.api';
-import { registerPasskey, formatPasskeyError } from '@utils/passkeyUtils';
-import { getDefaultDeviceName } from '@utils/passkeyHelpers';
-import { getDeletePasskeyMessage } from '@utils/passkeyFormatters';
-import type { Passkey } from '@types/user.types';
+import * as authApi from '@/features/auth/api/auth.api';
+import { registerPasskey, formatPasskeyError } from '../utils/passkeyUtils';
+import { getDefaultDeviceName } from '../utils/passkeyHelpers';
+import { getDeletePasskeyMessage } from '../utils/passkeyFormatters';
+import type { Passkey } from '../../../types/user.types';
 
 export const usePasskeyActions = (
   passkeySupported: boolean,

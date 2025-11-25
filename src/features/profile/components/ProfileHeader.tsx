@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@components/common/Avatar';
 import { useTheme } from '@hooks/useTheme';
 import { User } from '@/types/user.types';
-import { getRoleIcon, getRoleIconColor } from '@utils/profileHelpers';
+import { getRoleIcon, getRoleIconColor } from '../utils/profileHelpers';
 
 interface ProfileHeaderProps {
   user: User;

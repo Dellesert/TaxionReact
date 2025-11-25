@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import type { Passkey } from '@types/user.types';
+import type { Passkey } from '../../../types/user.types';
 
 export const usePasskeyModal = () => {
   const [showNameModal, setShowNameModal] = useState(false);

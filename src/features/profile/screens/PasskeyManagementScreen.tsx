@@ -9,14 +9,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@hooks/useTheme';
-import { usePasskeyData } from '@hooks/usePasskeyData';
-import { usePasskeyActions } from '@hooks/usePasskeyActions';
-import { usePasskeyModal } from '@hooks/usePasskeyModal';
-import { PasskeyCard } from './components/PasskeyCard';
-import { PasskeyEmptyState } from './components/PasskeyEmptyState';
-import { PasskeyInfoCard } from './components/PasskeyInfoCard';
-import { PasskeyNameModal } from './components/PasskeyNameModal';
-import { AddPasskeyButton } from './components/AddPasskeyButton';
+import { usePasskeyData } from '../hooks/usePasskeyData';
+import { usePasskeyActions } from '../hooks/usePasskeyActions';
+import { usePasskeyModal } from '../hooks/usePasskeyModal';
+import { PasskeyCard } from '../components/PasskeyCard';
+import { PasskeyEmptyState } from '../components/PasskeyEmptyState';
+import { PasskeyInfoCard } from '../components/PasskeyInfoCard';
+import { PasskeyNameModal } from '../components/PasskeyNameModal';
+import { AddPasskeyButton } from '../components/AddPasskeyButton';
 
 const PasskeyManagementScreen: React.FC = () => {
   const navigation = useNavigation();

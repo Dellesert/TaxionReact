@@ -8,7 +8,7 @@ import { fileApi } from '@api/fileApi';
 import { updateAvatar } from '@api/user.api';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
-import { validateAvatarFile } from '@utils/profileHelpers';
+import { validateAvatarFile } from '../utils/profileHelpers';
 
 /**
  * Hook for managing profile avatar upload

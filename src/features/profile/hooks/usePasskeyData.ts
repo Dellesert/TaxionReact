@@ -5,9 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { useNotification } from '@contexts/NotificationContext';
-import * as authApi from '@api/auth.api';
-import { isPasskeySupported } from '@utils/passkeyUtils';
-import type { Passkey } from '@types/user.types';
+import * as authApi from '@/features/auth/api/auth.api';
+import { isPasskeySupported } from '../utils/passkeyUtils';
+import type { Passkey } from '../../../types/user.types';
 
 export const usePasskeyData = () => {
   const { showError } = useNotification();

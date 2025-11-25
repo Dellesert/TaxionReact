@@ -7,8 +7,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
-import { getDeviceInfo, getDeviceIcon, isCurrentSession } from '@utils/activeSessionsHelpers';
-import { formatSessionDate } from '@utils/activeSessionsFormatters';
+import { getDeviceInfo, getDeviceIcon, isCurrentSession } from '../utils/activeSessionsHelpers';
+import { formatSessionDate } from '../utils/activeSessionsFormatters';
 import type { ActiveSession } from '../../../types/user.types';
 
 interface SessionCardProps {

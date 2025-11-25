@@ -11,15 +11,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
 
 // Custom Hooks
-import { useAboutActions } from '@hooks/useAboutActions';
+import { useAboutActions } from '../hooks/useAboutActions';
 
 // Components
-import { AboutLogo } from './components/about/AboutLogo';
-import { AboutSection } from './components/about/AboutSection';
-import { AboutFeatureItem } from './components/about/AboutFeatureItem';
-import { AboutInfoRow } from './components/about/AboutInfoRow';
-import { AboutContactLink } from './components/about/AboutContactLink';
-import { AboutFooter } from './components/about/AboutFooter';
+import { AboutLogo } from '../components/about/AboutLogo';
+import { AboutSection } from '../components/about/AboutSection';
+import { AboutFeatureItem } from '../components/about/AboutFeatureItem';
+import { AboutInfoRow } from '../components/about/AboutInfoRow';
+import { AboutContactLink } from '../components/about/AboutContactLink';
+import { AboutFooter } from '../components/about/AboutFooter';
 
 // Utils
 import {
@@ -30,8 +30,8 @@ import {
   APP_DESCRIPTION,
   APP_FEATURES,
   CONTACT_LINKS,
-} from '@utils/aboutConstants';
-import { formatVersionText, formatCopyrightText, getPlatformName } from '@utils/aboutHelpers';
+} from '../utils/aboutConstants';
+import { formatVersionText, formatCopyrightText, getPlatformName } from '../utils/aboutHelpers';
 
 export default function AboutScreen() {
   const navigation = useNavigation();

@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
-import { NotificationPriority } from '@api/notificationPreferences.api';
-import { getPriorityLabel, getPriorityOptions } from '@utils/notificationHelpers';
+import { NotificationPriority } from '@/features/notifications/api/notificationPreferences.api';
+import { getPriorityLabel, getPriorityOptions } from '@/features/notifications/utils/notificationHelpers';
 
 interface PriorityPickerModalProps {
   visible: boolean;

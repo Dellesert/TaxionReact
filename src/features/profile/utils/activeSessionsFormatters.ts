@@ -6,7 +6,7 @@
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { getDeviceInfo, getOtherSessionsCount, getDeviceCountText } from './activeSessionsHelpers';
-import type { ActiveSession } from '../types/user.types';
+import type { ActiveSession } from '../../../types/user.types';
 
 /**
  * Format date string to readable format

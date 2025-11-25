@@ -5,7 +5,7 @@
 
 import { useCallback } from 'react';
 import { Linking } from 'react-native';
-import { WEBSITE_URL, SUPPORT_EMAIL } from '@utils/aboutConstants';
+import { WEBSITE_URL, SUPPORT_EMAIL } from '../utils/aboutConstants';
 
 interface UseAboutActionsReturn {
   handleOpenWebsite: () => Promise<void>;

@@ -8,9 +8,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '@contexts/NotificationContext';
 import { useActionModal } from '@contexts/ActionModalContext';
 import * as sessionApi from '@api/session.api';
-import { getDeleteSessionMessage, getDeleteAllOtherMessage } from '@utils/activeSessionsFormatters';
-import { getOtherSessionsCount } from '@utils/activeSessionsHelpers';
-import type { ActiveSession } from '../types/user.types';
+import { getDeleteSessionMessage, getDeleteAllOtherMessage } from '../utils/activeSessionsFormatters';
+import { getOtherSessionsCount } from '../utils/activeSessionsHelpers';
+import type { ActiveSession } from '../../../types/user.types';
 
 export const useActiveSessionsActions = (
   currentSessionId: string | null,

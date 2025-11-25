@@ -17,12 +17,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@hooks/useTheme';
-import { useActiveSessionsData } from '@hooks/useActiveSessionsData';
-import { useActiveSessionsActions } from '@hooks/useActiveSessionsActions';
-import { SessionCard } from './components/SessionCard';
-import { SessionsEmptyState } from './components/SessionsEmptyState';
-import { LogoutAllButton } from './components/LogoutAllButton';
-import type { ActiveSession } from '../../types/user.types';
+import { useActiveSessionsData } from '../hooks/useActiveSessionsData';
+import { useActiveSessionsActions } from '../hooks/useActiveSessionsActions';
+import { SessionCard } from '../components/SessionCard';
+import { SessionsEmptyState } from '../components/SessionsEmptyState';
+import { LogoutAllButton } from '../components/LogoutAllButton';
+import type { ActiveSession } from '../../../types/user.types';
 
 export default function ActiveSessionsScreen() {
   const navigation = useNavigation();

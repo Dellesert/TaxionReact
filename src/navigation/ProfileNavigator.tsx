@@ -5,12 +5,12 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ProfileScreen from '@screens/profile/ProfileScreen';
-import EditProfileScreen from '@screens/profile/EditProfileScreen';
-import ChangePasswordScreen from '@screens/profile/ChangePasswordScreen';
-import NotificationSettingsScreen from '@screens/profile/NotificationSettingsScreen';
-import ActiveSessionsScreen from '@screens/profile/ActiveSessionsScreen';
-import PasskeyManagementScreen from '@screens/profile/PasskeyManagementScreen';
+import ProfileScreen from '@/features/profile/screens/ProfileScreen';
+import EditProfileScreen from '@/features/profile/screens/EditProfileScreen';
+import ChangePasswordScreen from '@/features/profile/screens/ChangePasswordScreen';
+import NotificationSettingsScreen from '@/features/profile/screens/NotificationSettingsScreen';
+import ActiveSessionsScreen from '@/features/profile/screens/ActiveSessionsScreen';
+import PasskeyManagementScreen from '@/features/profile/screens/PasskeyManagementScreen';
 import AboutScreen from '@/screens/profile/AboutScreen';
 import AnalyticsHubScreen from '@screens/admin/AnalyticsHubScreen';
 import MetricsAnalyticsScreen from '@screens/admin/MetricsAnalyticsScreen';

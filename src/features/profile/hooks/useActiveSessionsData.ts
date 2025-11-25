@@ -9,7 +9,7 @@ import { useNotification } from '@contexts/NotificationContext';
 import * as secureStorage from '@utils/secureStorage';
 import { STORAGE_KEYS } from '@constants/app.constants';
 import * as sessionApi from '@api/session.api';
-import type { ActiveSession } from '../types/user.types';
+import type { ActiveSession } from '../../../types/user.types';
 
 export const useActiveSessionsData = () => {
   const { showError } = useNotification();
