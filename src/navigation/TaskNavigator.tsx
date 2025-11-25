@@ -7,8 +7,8 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '@hooks/useTheme';
 import { TaskStackParamList } from './types';
-import TaskListScreen from '@screens/task/TaskListScreen';
-import TaskDetailScreen from '@screens/task/TaskDetailScreen';
+import TaskListScreen from '@/features/tasks/screens/TaskListScreen';
+import TaskDetailScreen from '@/features/tasks/screens/TaskDetailScreen';
 
 const Stack = createNativeStackNavigator<TaskStackParamList>();
 
