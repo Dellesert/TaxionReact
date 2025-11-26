@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   Modal,
   View,
@@ -37,11 +37,17 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
   onDelete,
 }) => {
   const { theme, isDark } = useTheme();
+  const [modalVisible, setModalVisible] = useState(false);
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
 
   useEffect(() => {
     if (visible) {
+      setModalVisible(true);
+      // Reset animation values before starting
+      backgroundOpacity.setValue(0);
+      slideAnim.setValue(Dimensions.get('window').height);
+
       Animated.parallel([
         Animated.timing(backgroundOpacity, {
           toValue: 1,
@@ -55,7 +61,7 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
           useNativeDriver: true,
         }),
       ]).start();
-    } else {
+    } else if (modalVisible) {
       Animated.parallel([
         Animated.timing(backgroundOpacity, {
           toValue: 0,
@@ -67,9 +73,41 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
           duration: 250,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        setModalVisible(false);
+      });
     }
   }, [visible]);
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(backgroundOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: Dimensions.get('window').height,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
+
+  const handleMenuItemPress = (onPress: () => void) => {
+    // Immediately hide modal without animation
+    setModalVisible(false);
+    // Call onClose and action immediately
+    onClose();
+    // Use requestAnimationFrame to ensure modal is unmounted before action
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        onPress();
+      });
+    });
+  };
 
   const renderMenuItem = (
     icon: string,
@@ -81,10 +119,7 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
   ) => (
     <TouchableOpacity
       style={[styles.menuItem, { backgroundColor: theme.backgroundSecondary }]}
-      onPress={() => {
-        onClose();
-        onPress();
-      }}
+      onPress={() => handleMenuItemPress(onPress)}
     >
       <View
         style={[
@@ -115,10 +150,10 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
 
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       transparent
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <Animated.View
         style={[
@@ -131,7 +166,7 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
         <TouchableOpacity
           style={{ flex: 1 }}
           activeOpacity={1}
-          onPress={onClose}
+          onPress={handleClose}
         />
         <Animated.View
           style={[
@@ -206,11 +241,16 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
               )}
 
             {/* Cancel Button */}
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-              <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>
-                Отмена
-              </Text>
-            </TouchableOpacity>
+            <View style={[styles.cancelSection, { borderTopColor: theme.border }]}>
+              <TouchableOpacity
+                style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
+                onPress={handleClose}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.text }]}>
+                  Отмена
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Animated.View>
       </Animated.View>
@@ -268,10 +308,15 @@ const styles = StyleSheet.create({
   menuSubtitle: {
     fontSize: 13,
   },
+  cancelSection: {
+    borderTopWidth: 1,
+    marginTop: 16,
+    paddingTop: 16,
+  },
   cancelButton: {
     alignItems: 'center',
-    paddingVertical: 14,
-    marginTop: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
   },
   cancelButtonText: {
     fontSize: 16,

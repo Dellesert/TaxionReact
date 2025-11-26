@@ -12,6 +12,15 @@ export const useTaskData = (taskId: string) => {
   const [accessDenied, setAccessDenied] = useState(false);
   const isFirstFocus = useRef(true);
 
+  const loadSubtasks = useCallback(async (parentTaskId: number) => {
+    try {
+      const subtasksData = await taskApi.getSubtasks(parentTaskId);
+      setSubtasks(subtasksData);
+    } catch (error) {
+      console.error('Failed to load subtasks:', error);
+    }
+  }, []);
+
   const loadTask = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -57,7 +66,7 @@ export const useTaskData = (taskId: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [taskId]);
+  }, [taskId, loadSubtasks]);
 
   const loadTaskSilently = useCallback(async () => {
     try {
@@ -75,23 +84,12 @@ export const useTaskData = (taskId: string) => {
 
       setTask(response);
 
-      // Load subtasks if this is a parent task
-      if (response.subtask_count && response.subtask_count > 0) {
-        loadSubtasks(taskIdNum);
-      }
+      // Always load subtasks to ensure fresh data
+      await loadSubtasks(taskIdNum);
     } catch (error: any) {
       console.error('Failed to silently reload task:', error);
     }
-  }, [taskId]);
-
-  const loadSubtasks = useCallback(async (parentTaskId: number) => {
-    try {
-      const subtasksData = await taskApi.getSubtasks(parentTaskId);
-      setSubtasks(subtasksData);
-    } catch (error) {
-      console.error('Failed to load subtasks:', error);
-    }
-  }, []);
+  }, [taskId, loadSubtasks]);
 
   return {
     task,

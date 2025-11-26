@@ -65,6 +65,7 @@ const TaskDetailScreen: React.FC = () => {
     isFirstFocus,
     loadTask,
     loadTaskSilently,
+    loadSubtasks,
   } = useTaskData(taskId);
 
   const {
@@ -514,10 +515,11 @@ const TaskDetailScreen: React.FC = () => {
                 visible={showSubtaskModal}
                 parentTaskId={task.id}
                 onClose={() => setShowSubtaskModal(false)}
-                onSubtaskCreated={() => {
+                onSubtaskCreated={async (subtaskId) => {
                   setShowSubtaskModal(false);
-                  loadTaskSilently();
-                  loadActivitiesSilently();
+                  // Reload task data (this will also load subtasks)
+                  await loadTaskSilently();
+                  await loadActivitiesSilently();
                 }}
               />
             )}

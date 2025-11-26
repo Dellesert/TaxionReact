@@ -162,6 +162,7 @@ const ProgressIndicator: React.FC<{
 interface TaskSubtasksListProps {
   parentTaskId: number;
   parentTaskProgress: number; // 0-100, from backend's progress_percentage field
+  subtaskCount?: number; // Number of subtasks, used to trigger reload
   onSubtaskPress?: (subtask: Task) => void;
   onSubtaskCreated?: () => void;
   onCreateSubtaskPress?: () => void;
@@ -210,6 +211,7 @@ const formatDeadline = (dateString: string) => {
 export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   parentTaskId,
   parentTaskProgress,
+  subtaskCount,
   onSubtaskPress,
   onSubtaskCreated,
   onCreateSubtaskPress,
@@ -429,7 +431,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
 
   useEffect(() => {
     loadSubtasks();
-  }, [parentTaskId]);
+  }, [parentTaskId, parentTaskProgress, subtaskCount]);
 
   const handleStatusToggle = async (subtask: Task) => {
     try {

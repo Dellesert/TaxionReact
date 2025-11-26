@@ -3,7 +3,7 @@
  * Модальное окно для делегирования задачи
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   SectionList,
   StyleSheet,
   ActivityIndicator,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { delegateTask } from '../api/task.api';
@@ -47,10 +49,50 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // Animation values
+  const backgroundOpacity = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
 
   useEffect(() => {
     if (visible) {
+      setModalVisible(true);
+      // Reset animation values before starting
+      backgroundOpacity.setValue(0);
+      slideAnim.setValue(Dimensions.get('window').height);
+
+      // Animate both background and content together
+      Animated.parallel([
+        Animated.timing(backgroundOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
       loadUsers();
+    } else if (modalVisible) {
+      // Animate out together
+      Animated.parallel([
+        Animated.timing(backgroundOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: Dimensions.get('window').height,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false);
+      });
     }
   }, [visible]);
 
@@ -187,6 +229,8 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   const handleReset = () => {
     setSearchQuery('');
     setSelectedUserId(null);
+    backgroundOpacity.setValue(0);
+    slideAnim.setValue(Dimensions.get('window').height);
   };
 
   const handleClose = () => {
@@ -287,13 +331,21 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
 
   return (
     <Modal
-      visible={visible}
-      animationType="slide"
+      visible={modalVisible}
+      animationType="none"
       transparent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+      <Animated.View style={[styles.modalOverlay, { opacity: backgroundOpacity }]}>
+        <Animated.View
+          style={[
+            styles.modalContainer,
+            {
+              backgroundColor: theme.background,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           {/* Header */}
           <View
             style={[
@@ -415,8 +467,8 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 };

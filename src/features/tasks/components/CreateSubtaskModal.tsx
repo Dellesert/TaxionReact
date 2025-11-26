@@ -31,7 +31,7 @@ interface CreateSubtaskModalProps {
   visible: boolean;
   parentTaskId: number;
   onClose: () => void;
-  onSubtaskCreated?: () => void;
+  onSubtaskCreated?: (subtaskId: number) => void;
 }
 
 type TaskContentType = 'checklist' | 'description' | 'none';
@@ -201,8 +201,13 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
       // Показываем уведомление об успешном создании
       showSuccess('Подзадача успешно создана');
 
-      onSubtaskCreated?.();
+      // Close modal first, then trigger data reload
       handleClose();
+
+      // Call the callback after closing to trigger data reload
+      if (onSubtaskCreated) {
+        await onSubtaskCreated(createdSubtask.id);
+      }
     } catch (error: any) {
       console.error('Failed to create subtask:', error);
       showError(error.message || 'Не удалось создать подзадачу');

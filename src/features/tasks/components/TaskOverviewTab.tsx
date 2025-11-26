@@ -247,6 +247,7 @@ export const TaskOverviewTab: React.FC<TaskOverviewTabProps> = ({
           <TaskSubtasksList
             parentTaskId={task.id}
             parentTaskProgress={task.progress_percentage}
+            subtaskCount={task.subtask_count}
             onSubtaskPress={onSubtaskPress}
             onSubtaskCreated={onSubtaskCreated}
             onCreateSubtaskPress={
