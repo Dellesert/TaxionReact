@@ -67,10 +67,10 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
               </View>
 
               {/* Search Button */}
-              <TouchableOpacity onPress={onSearchToggle} style={styles.iconButton}>
+              <TouchableOpacity onPress={onSearchToggle} style={[styles.iconButton, styles.searchButton]}>
                 <Ionicons
                   name={isSearchVisible ? 'close' : 'search'}
-                  size={24}
+                  size={22}
                   color={theme.error}
                 />
               </TouchableOpacity>
@@ -157,6 +157,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  searchButton: {
+    marginLeft: 4,
   },
   filterIndicator: {
     position: 'absolute',

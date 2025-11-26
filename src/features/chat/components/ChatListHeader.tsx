@@ -50,10 +50,10 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
             <TouchableOpacity onPress={onToggleEditMode} style={styles.iconButton}>
               <Ionicons name="ellipsis-vertical" size={24} color={theme.error} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={onToggleSearch} style={styles.iconButton}>
+            <TouchableOpacity onPress={onToggleSearch} style={[styles.iconButton, styles.searchButton]}>
               <Ionicons
                 name={isSearchVisible ? 'close' : 'search'}
-                size={24}
+                size={22}
                 color={theme.error}
               />
             </TouchableOpacity>
@@ -118,5 +118,8 @@ const styles = StyleSheet.create({
     padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  searchButton: {
+    marginLeft: 4,
   },
 });

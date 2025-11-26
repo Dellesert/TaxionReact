@@ -80,6 +80,9 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
       justifyContent: 'center',
       alignItems: 'center',
     },
+    searchButton: {
+      marginLeft: 4,
+    },
     filterIndicator: {
       position: 'absolute',
       top: 2,
@@ -118,11 +121,11 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
               {/* Search Button */}
               <TouchableOpacity
                 onPress={onSearchToggle}
-                style={styles.iconButton}
+                style={[styles.iconButton, styles.searchButton]}
               >
                 <Ionicons
                   name={isSearchVisible ? 'close' : 'search'}
-                  size={24}
+                  size={22}
                   color={theme.error}
                 />
               </TouchableOpacity>

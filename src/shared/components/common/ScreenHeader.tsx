@@ -160,9 +160,11 @@ const styles = StyleSheet.create({
   shadow: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 4,
+    borderBottomWidth: 0,
+    borderBottomColor: 'transparent',
   },
   headerRow: {
     flexDirection: 'row',
