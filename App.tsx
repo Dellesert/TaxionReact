@@ -15,6 +15,17 @@ import { websocketService } from './src/services/websocket.service';
 import { NotificationProvider } from '@shared/contexts/NotificationContext';
 import { ActionModalProvider } from '@shared/contexts/ActionModalContext';
 
+// Отключаем строгий режим Reanimated для уменьшения количества warnings
+if (typeof global !== 'undefined') {
+  (global as any)._WORKLET = false;
+  // Отключаем strict mode для Reanimated
+  if ((global as any).__reanimatedLoggerConfig) {
+    (global as any).__reanimatedLoggerConfig.strict = false;
+  } else {
+    (global as any).__reanimatedLoggerConfig = { strict: false };
+  }
+}
+
 // Добавляем типы для ErrorUtils (глобальная переменная React Native)
 declare const ErrorUtils: {
   setGlobalHandler: (handler: (error: Error, isFatal: boolean) => void) => void;
@@ -26,6 +37,8 @@ LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
   // Проблема dismiss в DateTimePicker - известный баг библиотеки, не влияет на работу
   'dismiss',
+  // Reanimated warnings - отключаем в strict mode выше
+  '[Reanimated]',
 ]);
 
 // ВАЖНО: LogBox.ignoreAllLogs() удален для отслеживания реальных ошибок в разработке

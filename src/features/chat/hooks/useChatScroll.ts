@@ -41,7 +41,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           const offset = parseFloat(savedPosition);
           lastScrollOffset.current = offset;
           shouldRestoreScroll.current = true;
-          console.log(`📜 [Scroll] Chat ${chatId}: Загружена сохраненная позиция offset=${offset}`);
         }
       } catch (error) {
         console.warn('Failed to load scroll position:', error);
@@ -59,10 +58,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         : messages.length - 1;
 
       if (firstUnreadIndex !== -1 && unreadCount >= 1) {
-        console.log(`📜 [Scroll] Chat ${chatId}: Обнаружено ${unreadCount} непрочитанных, устанавливаем initialScrollIndex=${firstUnreadIndex}`);
         setHasReachedBottom(false);
       } else {
-        console.log(`📜 [Scroll] Chat ${chatId}: Нет непрочитанных, устанавливаем initialScrollIndex=${messages.length - 1}`);
         setHasReachedBottom(true);
       }
 
@@ -77,7 +74,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
         // Восстанавливаем сохраненную позицию скролла, если она есть
         if (shouldRestoreScroll.current && lastScrollOffset.current > 0) {
-          console.log(`📜 [Scroll] Chat ${chatId}: Восстанавливаем позицию offset=${lastScrollOffset.current}`);
           listRef.current?.scrollToOffset({
             offset: lastScrollOffset.current,
             animated: false,
@@ -88,7 +84,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         // Даем время на автоматический скролл к непрочитанным, после чего разрешаем отслеживание
         setTimeout(() => {
           canTrackUserScroll.current = true;
-          console.log(`📜 [Scroll] Chat ${chatId}: Разрешено отслеживание намеренного скролла пользователя`);
         }, 500);
       }, 100);
     }
@@ -117,36 +112,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     const isNearTop = distanceFromTop <= 500; // Увеличен порог до 500px
 
     // Если пользователь близко к верху и есть еще сообщения - загружаем
-    if (isNearTop) {
-      // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
-      const oldestMessage = messages[0];
-
-      console.log(`🔍 [Scroll] Chat ${chatId}: Близко к верху`, {
-        distanceFromTop,
-        initialScrolled,
-        isLoadingMore,
-        hasMoreMessages,
-        messagesLength: messages.length,
-        oldestMessageId: oldestMessage?.id,
-        lastLoadedId: lastOldestMessageId.current,
-        canLoad: initialScrolled && !isLoadingMore && hasMoreMessages && messages.length > 0,
-      });
-    }
-
     if (isNearTop && initialScrolled && !isLoadingMore && hasMoreMessages && messages.length > 0) {
       // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
       const oldestMessage = messages[0];
 
-      if (oldestMessage) {
-        if (lastOldestMessageId.current === null) {
-          console.log(`📜 [Scroll] Chat ${chatId}: Первая загрузка старых сообщений от ID ${oldestMessage.id}`);
-          handleLoadMoreRef.current?.();
-        } else if (lastOldestMessageId.current !== oldestMessage.id) {
-          console.log(`📜 [Scroll] Chat ${chatId}: Запускаем загрузку старых сообщений от ID ${oldestMessage.id}`);
-          handleLoadMoreRef.current?.();
-        } else {
-          console.log(`⏭️ [Scroll] Chat ${chatId}: Пропускаем - уже загружали от ID ${oldestMessage.id}`);
-        }
+      if (oldestMessage && lastOldestMessageId.current !== oldestMessage.id) {
+        handleLoadMoreRef.current?.();
       }
     }
 
@@ -163,7 +134,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // 2. Пользователь уже уходил от низа (hasScrolledAwayFromBottom) - это гарантирует намеренность
       if (initialScrolled && canTrackUserScroll.current && hasScrolledAwayFromBottom.current) {
         setUserScrolledToBottom(true);
-        console.log(`📜 [Scroll] Chat ${chatId}: Пользователь намеренно проскроллил вниз`);
       }
       setShowScrollToBottom(false);
       setShowDateHeader(false);
@@ -177,37 +147,22 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // Пользователь ушел от низа
       if (initialScrolled && canTrackUserScroll.current) {
         hasScrolledAwayFromBottom.current = true;
-        console.log(`📜 [Scroll] Chat ${chatId}: Пользователь ушел от низа`);
       }
     }
   }, [initialScrolled, chatId, isLoadingMore, hasMoreMessages, messages]);
 
   // Подгружаем старые сообщения
   const handleLoadMore = useCallback(async () => {
-    // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
-    console.log(`🔄 [LoadMore] Chat ${chatId}: Вызвана функция загрузки`, {
-      initialScrolled,
-      isLoadingMore,
-      messagesLength: messages.length,
-      hasMoreMessages,
-      oldestMessageId: messages[0]?.id,
-      lastOldestMessageId: lastOldestMessageId.current,
-    });
-
     // Ранние проверки для оптимизации
     if (!initialScrolled || isLoadingMore || messages.length === 0 || !hasMoreMessages) {
-      console.log(`⏸️ [LoadMore] Chat ${chatId}: Пропускаем - не выполнены начальные условия`);
       return;
     }
 
     // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
     const oldestMessage = messages[0];
     if (!oldestMessage || lastOldestMessageId.current === oldestMessage.id) {
-      console.log(`⏸️ [LoadMore] Chat ${chatId}: Пропускаем - сообщение уже загружалось или не найдено`);
       return;
     }
-
-    console.log(`🔄 [LoadMore] Chat ${chatId}: Загрузка старых сообщений от ID ${oldestMessage.id}`);
 
     // Устанавливаем ID до начала загрузки для предотвращения дублирования
     lastOldestMessageId.current = oldestMessage.id;
@@ -215,14 +170,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     try {
       const addedCount = await loadMoreMessages(chatId, oldestMessage.id);
-      console.log(`✅ [LoadMore] Chat ${chatId}: Загружено ${addedCount} сообщений`);
 
       if (addedCount === 0) {
         setHasMoreMessages(false);
-        console.log(`🏁 [LoadMore] Chat ${chatId}: Достигнут конец истории`);
       }
     } catch (error) {
-      console.error(`❌ [LoadMore] Chat ${chatId}: Ошибка:`, error);
+      console.error(`Failed to load more messages for chat ${chatId}:`, error);
       // Сбрасываем ID при ошибке, чтобы можно было повторить попытку
       lastOldestMessageId.current = null;
     } finally {
@@ -270,12 +223,10 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           );
           if (firstNewMsgIndex !== -1) {
             setFirstNewMessageIndex(firstNewMsgIndex);
-            console.log(`📬 [Scroll] Chat ${chatId}: Первое новое сообщение на индексе ${firstNewMsgIndex}`);
           }
         }
 
         setNewMessagesCount(prev => prev + newFromOthers);
-        console.log(`📬 [Scroll] Chat ${chatId}: Получено ${newFromOthers} новых сообщений от других пользователей`);
       }
     }
 
@@ -287,7 +238,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Проверяем, есть ли новые непрочитанные сообщения
     if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
       // Если есть новые непрочитанные - скроллим к первому новому
-      console.log(`📜 [Scroll] Chat ${chatId}: Скролл к новым непрочитанным сообщениям (индекс ${firstNewMessageIndex})`);
       listRef.current?.scrollToIndex({
         index: firstNewMessageIndex,
         animated: true,
@@ -297,7 +247,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // Счетчик обнулится когда пользователь доскроллит до низа
     } else {
       // Если новых непрочитанных нет - скроллим в самый низ
-      console.log(`📜 [Scroll] Chat ${chatId}: Скролл в самый низ`);
       // Для инвертированного списка:
       // offset=0 = самый верх (старые сообщения)
       // большой offset = самый низ (новые сообщения)
@@ -383,14 +332,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           `chat_scroll_offset_${chatId}`,
           lastScrollOffset.current.toString()
         ).catch(err => console.warn('Failed to save scroll offset:', err));
-        console.log(`📜 [Scroll] Chat ${chatId}: Сохранена позиция offset=${lastScrollOffset.current}`);
       }
     };
   }, [chatId]);
 
   // Сброс состояния при смене чата
   const resetScroll = useCallback(() => {
-    console.log(`🔄 [Scroll] Сброс состояния скролла (resetScroll вызван)`);
     setHasMoreMessages(true);
     setInitialScrolled(false);
     setHasReachedBottom(false);
@@ -407,7 +354,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     setShowScrollToBottom(false);
     setShowDateHeader(false);
     setScrollSessionKey(prev => prev + 1); // Увеличиваем ключ для форсирования ремонтирования FlashList
-    console.log(`✅ [Scroll] Состояние скролла сброшено, lastOldestMessageId=${lastOldestMessageId.current}`);
   }, []);
 
   return {

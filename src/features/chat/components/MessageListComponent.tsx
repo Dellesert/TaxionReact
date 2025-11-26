@@ -93,11 +93,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  // Логируем, что onLoadMore передан
-  React.useEffect(() => {
-    console.log(`📋 [MessageListComponent] Chat ${chatId}: onLoadMore is ${typeof onLoadMore === 'function' ? 'defined' : 'undefined'}`);
-  }, [chatId, onLoadMore]);
-
   // Показываем skeleton'ы если сообщения еще не загружены
   const showSkeletons = isLoading && messageListItems.length === 0;
 

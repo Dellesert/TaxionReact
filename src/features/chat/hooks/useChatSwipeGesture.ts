@@ -95,9 +95,10 @@ export const useChatSwipeGesture = (
    * Update translateX when filter changes externally
    */
   const updateTranslateX = (filter: ChatFilter) => {
+    const newIndex = FILTER_TABS_ORDER.indexOf(filter);
+    currentTabIndex.value = withTiming(newIndex, { duration: 250 });
+
     if (Platform.OS === 'ios') {
-      const newIndex = FILTER_TABS_ORDER.indexOf(filter);
-      currentTabIndex.value = withTiming(newIndex, { duration: 250 });
       translateX.value = withTiming(-newIndex * SCREEN_WIDTH, { duration: 300 });
     }
   };
