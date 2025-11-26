@@ -16,6 +16,12 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
   // - последний индекс (новое сообщение) показывается ВНИЗУ
   const messages = useMemo(() => {
     const msgs = allMessages[chatId] || [];
+    // Логирование для отладки порядка сообщений
+    if (msgs.length >= 3) {
+      console.warn(`🔍🔍🔍 [Messages Order] First 3: [0]=${msgs[0]?.id}, [1]=${msgs[1]?.id}, [2]=${msgs[2]?.id}`);
+      console.warn(`🔍🔍🔍 [Messages Order] Last 3: [-3]=${msgs[msgs.length-3]?.id}, [-2]=${msgs[msgs.length-2]?.id}, [-1]=${msgs[msgs.length-1]?.id}`);
+      console.warn(`🔍🔍🔍 [Messages Order] Timestamps: first=${msgs[0]?.created_at}, last=${msgs[msgs.length-1]?.created_at}`);
+    }
     return [...msgs]; // Прямой порядок: старые → новые
   }, [allMessages, chatId]);
 
@@ -36,8 +42,7 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
       return { firstUnreadIndex: -1, unreadCount: 0 };
     }
 
-    let firstIndex = -1; // Самое новое непрочитанное (наименьший индекс)
-    let lastIndex = -1;  // Самое старое непрочитанное (наибольший индекс)
+    let firstUnreadIndex = -1; // Индекс первого непрочитанного (перед которым показывать баннер)
     let count = 0;
 
     if (ignoreReadReceipts) {
@@ -46,45 +51,54 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
       const targetUnreadCount = savedUnreadCount > 0 ? savedUnreadCount : (chat?.unread_count || 0);
 
       if (targetUnreadCount > 0) {
-        let foundUnread = 0;
-        // Идем с начала (самые новые сообщения)
-        for (let i = 0; i < messages.length && foundUnread < targetUnreadCount; i++) {
+        // Идем с конца массива (самые новые) к началу (старые)
+        // Ищем последние targetUnreadCount сообщений от других пользователей
+        for (let i = messages.length - 1; i >= 0; i--) {
           const message = messages[i];
           if (message.sender_id !== currentUser.id) {
-            if (firstIndex === -1) {
-              firstIndex = i;
-            }
-            lastIndex = i;
-            foundUnread++;
+            // Это непрочитанное сообщение
+            firstUnreadIndex = i; // Обновляем индекс (самое старое непрочитанное)
             count++;
+
+            if (count >= targetUnreadCount) {
+              break; // Нашли все непрочитанные
+            }
           }
         }
       }
     } else {
       // Нормальный режим - проверяем read_receipts
-      for (let i = 0; i < messages.length; i++) {
+      // Идем с конца (новые) к началу (старые), чтобы найти самое старое непрочитанное
+      for (let i = messages.length - 1; i >= 0; i--) {
         const message = messages[i];
         const readReceipts = message.read_receipts || [];
         const hasReadReceipt = readReceipts.some((receipt) => receipt.user_id === currentUser.id);
         const isUnread = message.sender_id !== currentUser.id && !hasReadReceipt;
 
         if (isUnread) {
-          if (firstIndex === -1) {
-            firstIndex = i;
-          }
-          lastIndex = i;
+          firstUnreadIndex = i; // Обновляем (самое старое непрочитанное)
           count++;
         }
       }
     }
 
     // В инвертированном списке с прямым порядком данных [старые → новые]:
-    // index 0 = самое старое сообщение (показывается ВВЕРХУ экрана)
+    // index 0 = самое старое сообщение (показывается ВВЕРХУ экрана из-за inverted)
     // большой индекс = самое новое сообщение (показывается ВНИЗУ экрана)
-    // firstIndex = первое встреченное непрочитанное (меньший индекс, старое)
-    // lastIndex = последнее встреченное непрочитанное (больший индекс, новое)
-    // Для скролла к баннеру "непрочитанные" нужен firstIndex (самое старое непрочитанное)
-    return { firstUnreadIndex: firstIndex, unreadCount: count };
+    //
+    // Баннер "непрочитанные" должен показываться ПЕРЕД первым непрочитанным,
+    // т.е. перед самым старым непрочитанным сообщением
+    //
+    // Поиск идет с конца к началу, чтобы найти самое старое непрочитанное (наименьший индекс)
+
+    if (count > 0) {
+      console.warn(`🔍🔍🔍 [Unread] count=${count}, firstUnreadIndex=${firstUnreadIndex}`);
+      if (firstUnreadIndex >= 0 && messages[firstUnreadIndex]) {
+        console.warn(`🔍🔍🔍 [Unread] Message at firstUnreadIndex: id=${messages[firstUnreadIndex].id}, timestamp=${messages[firstUnreadIndex].created_at}`);
+      }
+    }
+
+    return { firstUnreadIndex, unreadCount: count };
   }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount, chatId]);
 
   return {

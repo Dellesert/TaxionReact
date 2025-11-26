@@ -127,6 +127,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 
         return (
           <>
+            {shouldShowInlineBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
             <MessageItem
               message={message}
               chatType={chatType}
@@ -148,7 +149,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
               onEnterSelectionMode={onEnterSelectionMode}
               onToggleSelection={onToggleMessageSelection}
             />
-            {shouldShowInlineBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
           </>
         );
       }}
