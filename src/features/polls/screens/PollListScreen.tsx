@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Poll } from '../types/poll.types';
+import { Poll, PollStatus } from '../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { usePollListData } from '../hooks/usePollListData';
@@ -32,7 +32,8 @@ const PollListScreen: React.FC = () => {
   const [editingPollId, setEditingPollId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
-  const isFirstMount = useRef(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const isFirstRender = useRef(true);
 
   // Custom hooks
   const {
@@ -50,68 +51,44 @@ const PollListScreen: React.FC = () => {
     hasMore,
     isLoading,
     isLoadingMore,
-    refreshing,
     error,
-    canLoadMore,
-    lastLoadedCount,
     loadPolls,
     handleRefresh,
     handleLoadMore,
-  } = usePollListData(filter, searchQuery);
+  } = usePollListData();
 
   // Permissions
   const canCreatePoll = canUserCreatePoll(currentUser?.role);
 
-  // Client-side filtered polls
-  const displayedPolls = searchQuery.trim()
-    ? polls
-    : filterPollsByStatus(polls, filter);
-
-  // Load polls on mount and filter change
-  useEffect(() => {
-    loadPolls();
+  // Server returns polls with vote priority (un-voted first, voted last)
+  // We need to load enough data to show all polls matching the filter
+  const getFilters = useCallback(() => {
+    return filter !== 'all' ? { status: filter as PollStatus } : undefined;
   }, [filter]);
 
-  // Reload polls when search query changes (with debounce)
+  // Server already filters by status, no need for client-side filtering
+  const displayedPolls = polls;
+
+  // Load polls on mount
   useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
+    loadPolls(getFilters(), searchQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reload when filter or search changes (skip first render)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
       return;
     }
 
     const timer = setTimeout(() => {
-      loadPolls();
-    }, 500);
+      loadPolls(getFilters(), searchQuery);
+    }, searchQuery ? 500 : 0); // Debounce only for search
+
     return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Auto-load more polls if filtered results are too few
-  useEffect(() => {
-    const filtered = filterPollsByStatus(polls, filter);
-
-    if (
-      filtered.length < 10 &&
-      hasMore &&
-      !isLoading &&
-      !isLoadingMore &&
-      canLoadMore
-    ) {
-      console.log(`📊 Filtered polls (${filtered.length}) < 10, loading more...`);
-      handleLoadMore();
-    }
-  }, [polls, filter, hasMore, isLoading, isLoadingMore, canLoadMore]);
-
-  // Reload polls when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      if (polls.length > 0) {
-        lastLoadedCount.current = polls.length;
-        loadPolls(false, polls.length);
-      } else {
-        loadPolls();
-      }
-    }, [filter])
-  );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, searchQuery]);
 
   // Handlers
   const handlePollPress = (poll: Poll) => {
@@ -125,11 +102,21 @@ const PollListScreen: React.FC = () => {
   };
 
   const handlePollCreated = () => {
-    loadPolls();
+    loadPolls(getFilters(), searchQuery);
   };
 
   const handlePollUpdated = () => {
-    loadPolls();
+    loadPolls(getFilters(), searchQuery);
+  };
+
+  const handleRefreshWrapper = async () => {
+    setRefreshing(true);
+    await handleRefresh(getFilters(), searchQuery);
+    setRefreshing(false);
+  };
+
+  const handleLoadMoreWrapper = () => {
+    handleLoadMore(getFilters(), searchQuery);
   };
 
   const handleSearchChange = (text: string) => {
@@ -169,11 +156,10 @@ const PollListScreen: React.FC = () => {
           refreshing={refreshing}
           error={error}
           hasMore={hasMore}
-          canLoadMore={canLoadMore}
           onPollPress={handlePollPress}
-          onRefresh={handleRefresh}
-          onLoadMore={handleLoadMore}
-          onRetry={() => loadPolls()}
+          onRefresh={handleRefreshWrapper}
+          onLoadMore={handleLoadMoreWrapper}
+          onRetry={() => loadPolls(getFilters(), searchQuery)}
         />
       </View>
 

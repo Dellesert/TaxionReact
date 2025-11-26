@@ -1,7 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Poll, PollStatus } from '../types/poll.types';
 import * as pollApi from '../api/poll.api';
-import { PollFilter, deduplicatePolls } from '../utils/pollListHelpers';
 
 const POLLS_PER_PAGE = 50;
 
@@ -11,83 +10,42 @@ interface UsePollListDataReturn {
   hasMore: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
-  refreshing: boolean;
   error: string | null;
-  canLoadMore: boolean;
-  lastLoadedCount: React.MutableRefObject<number>;
-  loadPolls: (append?: boolean, customLimit?: number) => Promise<void>;
-  handleRefresh: () => Promise<void>;
-  handleLoadMore: () => Promise<void>;
-  setCanLoadMore: (value: boolean) => void;
+  loadPolls: (filters?: { status?: PollStatus }, searchQuery?: string) => Promise<void>;
+  handleRefresh: (filters?: { status?: PollStatus }, searchQuery?: string) => Promise<void>;
+  handleLoadMore: (filters?: { status?: PollStatus }, searchQuery?: string) => Promise<void>;
 }
 
 /**
  * Custom hook for managing poll list data loading
+ * Simplified to match task list behavior
  */
-export const usePollListData = (
-  filter: PollFilter,
-  searchQuery: string
-): UsePollListDataReturn => {
+export const usePollListData = (): UsePollListDataReturn => {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [canLoadMore, setCanLoadMore] = useState(false);
-  const lastLoadedCount = useRef(0);
 
   const loadPolls = useCallback(
-    async (append: boolean = false, customLimit?: number) => {
+    async (filters?: { status?: PollStatus }, searchQuery?: string) => {
       try {
-        if (!append) {
-          setIsLoading(true);
-          setCanLoadMore(false);
-        }
+        setIsLoading(true);
         setError(null);
-
-        const offset = append ? polls.length : 0;
-        const limit = customLimit || POLLS_PER_PAGE;
 
         let response;
 
         // Use server search if search query exists
-        if (searchQuery.trim()) {
-          console.log('🔍 Searching polls with query:', searchQuery.trim());
-          response = await pollApi.searchPolls(searchQuery.trim(), limit, offset);
-          console.log('🔍 Search results:', response.polls.length, 'polls');
+        if (searchQuery && searchQuery.trim()) {
+          response = await pollApi.searchPolls(searchQuery.trim(), POLLS_PER_PAGE, 0);
         } else {
-          // Form filters based on selected filter
-          const filters =
-            filter !== 'all' ? { status: filter as PollStatus } : undefined;
-          console.log('📋 Loading polls with filters:', filters);
-          response = await pollApi.getPolls(filters, limit, offset);
-          console.log('📋 Loaded:', response.polls.length, 'polls');
+          response = await pollApi.getPolls(filters, POLLS_PER_PAGE, 0);
         }
 
-        if (append) {
-          // Deduplicate in case backend hasn't restarted with the fix
-          const updatedPolls = deduplicatePolls(polls, response.polls);
-          setPolls(updatedPolls);
-          setTotal(response.total);
-          setHasMore(response.hasMore);
-        } else {
-          // Always use fresh data from server when updating
-          setPolls(response.polls);
-          setHasMore(response.hasMore);
-          setTotal(response.total);
-
-          // If loaded more than one page, allow loading more immediately
-          if (customLimit && customLimit > POLLS_PER_PAGE) {
-            setCanLoadMore(true);
-          }
-        }
-
-        // Allow loading more after initial load
-        if (!append && !customLimit) {
-          setTimeout(() => setCanLoadMore(true), 500);
-        }
+        setPolls(response.polls);
+        setTotal(response.total);
+        setHasMore(response.hasMore);
       } catch (error: any) {
         console.error('Failed to load polls:', error);
         setError(error.message || 'Failed to load polls');
@@ -95,23 +53,47 @@ export const usePollListData = (
         setIsLoading(false);
       }
     },
-    [filter, searchQuery, polls]
+    []
   );
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setCanLoadMore(false);
-    await loadPolls(false);
-    setRefreshing(false);
-  }, [loadPolls]);
+  const handleRefresh = useCallback(
+    async (filters?: { status?: PollStatus }, searchQuery?: string) => {
+      await loadPolls(filters, searchQuery);
+    },
+    [loadPolls]
+  );
 
-  const handleLoadMore = useCallback(async () => {
-    if (!hasMore || isLoadingMore) return;
+  const handleLoadMore = useCallback(
+    async (filters?: { status?: PollStatus }, searchQuery?: string) => {
+      if (!hasMore || isLoadingMore || isLoading) {
+        return;
+      }
 
-    setIsLoadingMore(true);
-    await loadPolls(true);
-    setIsLoadingMore(false);
-  }, [hasMore, isLoadingMore, loadPolls]);
+      try {
+        setIsLoadingMore(true);
+
+        let response;
+        const offset = polls.length;
+
+        // Use server search if search query exists
+        if (searchQuery && searchQuery.trim()) {
+          response = await pollApi.searchPolls(searchQuery.trim(), POLLS_PER_PAGE, offset);
+        } else {
+          response = await pollApi.getPolls(filters, POLLS_PER_PAGE, offset);
+        }
+
+        // Append new polls
+        setPolls(prevPolls => [...prevPolls, ...response.polls]);
+        setTotal(response.total);
+        setHasMore(response.hasMore);
+      } catch (error: any) {
+        console.error('Failed to load more polls:', error);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    },
+    [hasMore, isLoadingMore, isLoading, polls.length]
+  );
 
   return {
     polls,
@@ -119,13 +101,9 @@ export const usePollListData = (
     hasMore,
     isLoading,
     isLoadingMore,
-    refreshing,
     error,
-    canLoadMore,
-    lastLoadedCount,
     loadPolls,
     handleRefresh,
     handleLoadMore,
-    setCanLoadMore,
   };
 };

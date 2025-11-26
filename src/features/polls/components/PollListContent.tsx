@@ -15,7 +15,6 @@ interface PollListContentProps {
   refreshing: boolean;
   error: string | null;
   hasMore: boolean;
-  canLoadMore: boolean;
   onPollPress: (poll: Poll) => void;
   onRefresh: () => void;
   onLoadMore: () => void;
@@ -29,13 +28,29 @@ export const PollListContent: React.FC<PollListContentProps> = ({
   refreshing,
   error,
   hasMore,
-  canLoadMore,
   onPollPress,
   onRefresh,
   onLoadMore,
   onRetry,
 }) => {
   const { theme } = useTheme();
+  const [canLoadMore, setCanLoadMore] = React.useState(false);
+
+  // Reset canLoadMore when new data is loading
+  React.useEffect(() => {
+    if (isLoading) {
+      setCanLoadMore(false);
+    }
+  }, [isLoading]);
+
+  // Enable load more after initial load completes
+  React.useEffect(() => {
+    if (!isLoading && !isLoadingMore && polls.length > 0) {
+      // Wait a bit before allowing load more to prevent immediate trigger
+      const timer = setTimeout(() => setCanLoadMore(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, isLoadingMore, polls.length]);
 
   // Error state
   if (error) {
@@ -68,11 +83,11 @@ export const PollListContent: React.FC<PollListContentProps> = ({
       contentContainerStyle={styles.listContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       onEndReached={() => {
-        if (canLoadMore && hasMore && !isLoadingMore) {
+        if (hasMore && !isLoadingMore && !isLoading && canLoadMore) {
           onLoadMore();
         }
       }}
-      onEndReachedThreshold={0.3}
+      onEndReachedThreshold={0.5}
       ListFooterComponent={
         isLoadingMore && hasMore ? (
           <View style={styles.loadMoreContainer}>
