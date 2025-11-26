@@ -31,6 +31,7 @@ const TaskListScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<StatusTab>('new');
   const [expandAllSubtasks, setExpandAllSubtasks] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
 
   const isFirstRender = useRef(true);
 
@@ -181,13 +182,10 @@ const TaskListScreen: React.FC = () => {
         onSearchChange={setSearchQuery}
         onNewTask={handleNewTask}
         canCreateTask={canCreateTask}
-      />
-
-      {/* Status Tabs */}
-      <TaskStatusTabs
         activeTab={activeTab}
         totals={totals}
         onTabChange={setActiveTab}
+        onFilterButtonLayout={setFilterButtonPosition}
       />
 
       {/* Content with swipe navigation */}
@@ -218,6 +216,7 @@ const TaskListScreen: React.FC = () => {
         currentFilter={filter}
         onFilterChange={handleFilterChange2}
         onClose={closeFilterMenu}
+        buttonPosition={filterButtonPosition}
       />
 
       {/* Create Task Modal */}

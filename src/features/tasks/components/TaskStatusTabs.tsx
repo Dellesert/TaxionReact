@@ -22,9 +22,8 @@ export const TaskStatusTabs: React.FC<TaskStatusTabsProps> = ({
   const styles = StyleSheet.create({
     tabsContainer: {
       flexDirection: 'row',
-      marginTop: 0,
-      paddingTop: 8,
-      paddingBottom: 8,
+      marginTop: 12,
+      paddingTop: 4,
       paddingHorizontal: 4,
       borderTopWidth: 1,
       borderTopColor: theme.border,
@@ -37,7 +36,6 @@ export const TaskStatusTabs: React.FC<TaskStatusTabsProps> = ({
       paddingHorizontal: 6,
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 44,
       backgroundColor: 'transparent',
       borderBottomWidth: 2,
       borderBottomColor: 'transparent',

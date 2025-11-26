@@ -17,6 +17,7 @@ interface PollListHeaderProps {
   onSearchClear: () => void;
   onFilterPress: () => void;
   onCreatePress: () => void;
+  onFilterButtonLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
 }
 
 export const PollListHeader: React.FC<PollListHeaderProps> = ({
@@ -30,8 +31,19 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
   onSearchClear,
   onFilterPress,
   onCreatePress,
+  onFilterButtonLayout,
 }) => {
   const { theme } = useTheme();
+  const filterButtonRef = React.useRef<View>(null);
+
+  const handleFilterPress = () => {
+    if (onFilterButtonLayout && filterButtonRef.current) {
+      filterButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
+        onFilterButtonLayout({ x: pageX, y: pageY, width, height });
+      });
+    }
+    onFilterPress();
+  };
 
   return (
     <ScreenHeader
@@ -47,10 +59,12 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
 
             <View style={[styles.headerRight, styles.headerActions]}>
               {/* Filter Button with indicator */}
-              <TouchableOpacity onPress={onFilterPress} style={styles.iconButton}>
-                <Ionicons name="filter" size={24} color={theme.error} />
-                {filter !== 'active' && <View style={styles.filterIndicator} />}
-              </TouchableOpacity>
+              <View ref={filterButtonRef} collapsable={false}>
+                <TouchableOpacity onPress={handleFilterPress} style={styles.iconButton}>
+                  <Ionicons name="filter" size={24} color={theme.error} />
+                  {filter !== 'active' && <View style={[styles.filterIndicator, { backgroundColor: theme.primary }]} />}
+                </TouchableOpacity>
+              </View>
 
               {/* Search Button */}
               <TouchableOpacity onPress={onSearchToggle} style={styles.iconButton}>
@@ -118,7 +132,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   headerLeft: {
     width: 100,
@@ -139,7 +153,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   iconButton: {
-    padding: 4,
+    paddingHorizontal: 4,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -151,7 +165,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#E94444',
   },
   animatedSearchContainer: {
     overflow: 'hidden',

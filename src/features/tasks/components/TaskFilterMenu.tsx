@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { TaskFilter } from '../utils/taskListHelpers';
@@ -10,6 +10,7 @@ interface TaskFilterMenuProps {
   currentFilter: TaskFilter;
   onFilterChange: (filter: TaskFilter) => void;
   onClose: () => void;
+  buttonPosition?: { x: number; y: number; width: number; height: number };
 }
 
 export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
@@ -17,6 +18,7 @@ export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
   currentFilter,
   onFilterChange,
   onClose,
+  buttonPosition,
 }) => {
   const { theme } = useTheme();
 
@@ -25,6 +27,11 @@ export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
     onClose();
   };
 
+  // Calculate menu position based on button position
+  const menuTop = buttonPosition
+    ? buttonPosition.y + buttonPosition.height + (Platform.OS === 'ios' ? 4 : 8)
+    : 60;
+
   const styles = StyleSheet.create({
     modalOverlay: {
       flex: 1,
@@ -32,7 +39,7 @@ export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
     },
     filterMenu: {
       position: 'absolute',
-      top: 60,
+      top: menuTop,
       right: 16,
       minWidth: 180,
       borderRadius: 12,

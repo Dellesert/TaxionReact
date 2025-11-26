@@ -31,6 +31,7 @@ const PollListScreen: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPollId, setEditingPollId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   const isFirstMount = useRef(true);
 
   // Custom hooks
@@ -156,6 +157,7 @@ const PollListScreen: React.FC = () => {
         onSearchClear={handleSearchClear}
         onFilterPress={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
         onCreatePress={handleCreatePoll}
+        onFilterButtonLayout={setFilterButtonPosition}
       />
 
       {/* Content */}
@@ -181,6 +183,7 @@ const PollListScreen: React.FC = () => {
         currentFilter={filter}
         onClose={() => setIsFilterMenuVisible(false)}
         onFilterSelect={setFilter}
+        buttonPosition={filterButtonPosition}
       />
 
       {/* Create Poll Modal */}
