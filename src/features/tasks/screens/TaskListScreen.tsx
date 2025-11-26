@@ -11,6 +11,7 @@ import CreateTaskModal from '../components/CreateTaskModal';
 import { useTaskListData } from '../hooks/useTaskListData';
 import { useTaskListFilters } from '../hooks/useTaskListFilters';
 import { useSubtasksCache } from '../hooks/useSubtasksCache';
+import { useTaskSwipeGesture } from '../hooks/useTaskSwipeGesture';
 import { TaskListHeader } from '../components/TaskListHeader';
 import { TaskStatusTabs } from '../components/TaskStatusTabs';
 import { TaskListContent } from '../components/TaskListContent';
@@ -66,6 +67,17 @@ const TaskListScreen: React.FC = () => {
     }
   });
 
+  // Handler for tab change
+  const handleTabChange = useCallback((tab: StatusTab) => {
+    setActiveTab(tab);
+  }, []);
+
+  // Swipe gesture hook
+  const { translateX, swipeGesture, updateTranslateX } = useTaskSwipeGesture(
+    activeTab,
+    handleTabChange
+  );
+
   // Store the actual filter change handler in ref
   handleFilterChangeRef.current = () => {
     loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks);
@@ -89,6 +101,11 @@ const TaskListScreen: React.FC = () => {
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation]);
+
+  // Update translateX when activeTab changes (for smooth animation on tab click)
+  useEffect(() => {
+    updateTranslateX(activeTab);
+  }, [activeTab, updateTranslateX]);
 
   // Handlers
   const handleRefresh = useCallback(async () => {
@@ -186,11 +203,12 @@ const TaskListScreen: React.FC = () => {
           expandAllSubtasks={expandAllSubtasks}
           refreshing={refreshing}
           searchQuery={searchQuery}
+          translateX={translateX}
+          swipeGesture={swipeGesture}
           onTaskPress={handleTaskPress}
           onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}
           onExpandAllToggle={handleExpandAllToggle}
-          onTabChange={setActiveTab}
         />
       </View>
 

@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, ActivityIndicator, RefreshControl, StyleSheet, Dimensions, Platform } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, SharedValue } from 'react-native-reanimated';
 import { TaskItem } from '../components/TaskItem';
 import { TaskSkeleton } from '../components/TaskSkeleton';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -25,11 +25,12 @@ interface TaskListContentProps {
   expandAllSubtasks: boolean;
   refreshing: boolean;
   searchQuery: string;
+  translateX: SharedValue<number>;
+  swipeGesture: any;
   onTaskPress: (task: Task) => void;
   onLoadMore: (status: StatusTab) => void;
   onRefresh: () => void;
   onExpandAllToggle: () => void;
-  onTabChange: (tab: StatusTab) => void;
 }
 
 export const TaskListContent: React.FC<TaskListContentProps> = ({
@@ -43,81 +44,14 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
   expandAllSubtasks,
   refreshing,
   searchQuery,
+  translateX,
+  swipeGesture,
   onTaskPress,
   onLoadMore,
   onRefresh,
   onExpandAllToggle,
-  onTabChange,
 }) => {
   const { theme } = useTheme();
-
-  // Animation for tab transitions (slide with Reanimated)
-  const translateX = useSharedValue(0);
-  const isSwipingHorizontally = useSharedValue(false);
-  const currentTabIndex = useSharedValue(STATUS_TABS_ORDER.indexOf(activeTab));
-
-  const resetSwipeFlag = () => {
-    setTimeout(() => {
-      isSwipingHorizontally.value = false;
-    }, 100);
-  };
-
-  // Initialize translateX based on active tab
-  React.useEffect(() => {
-    if (Platform.OS === 'ios') {
-      const currentIndex = STATUS_TABS_ORDER.indexOf(activeTab);
-      currentTabIndex.value = currentIndex;
-      translateX.value = -currentIndex * SCREEN_WIDTH;
-    }
-  }, [activeTab]);
-
-  const swipeGesture = Gesture.Pan()
-    .enabled(Platform.OS === 'ios')
-    .maxPointers(1)
-    .onBegin(() => {
-      'worklet';
-      isSwipingHorizontally.value = false;
-    })
-    .onUpdate((event) => {
-      'worklet';
-      const absX = Math.abs(event.translationX);
-      const absY = Math.abs(event.translationY);
-
-      if (absX > absY || absX > 3) {
-        isSwipingHorizontally.value = true;
-        const baseOffset = -currentTabIndex.value * SCREEN_WIDTH;
-        translateX.value = baseOffset + event.translationX;
-      }
-    })
-    .onEnd((event) => {
-      'worklet';
-      const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
-      const VELOCITY_THRESHOLD = 500;
-      const currentIndex = currentTabIndex.value;
-
-      const shouldSwitchTab = Math.abs(event.translationX) > SWIPE_THRESHOLD || Math.abs(event.velocityX) > VELOCITY_THRESHOLD;
-
-      let targetIndex = currentIndex;
-
-      if (shouldSwitchTab && event.translationX > 0 && currentIndex > 0) {
-        targetIndex = currentIndex - 1;
-      } else if (shouldSwitchTab && event.translationX < 0 && currentIndex < 3) {
-        targetIndex = currentIndex + 1;
-      }
-
-      const targetOffset = -targetIndex * SCREEN_WIDTH;
-      translateX.value = withTiming(targetOffset, {
-        duration: 250,
-      }, () => {
-        currentTabIndex.value = targetIndex;
-      });
-
-      if (targetIndex !== currentIndex) {
-        runOnJS(onTabChange)(STATUS_TABS_ORDER[targetIndex]);
-      }
-
-      runOnJS(resetSwipeFlag)();
-    });
 
   const animatedContentStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
