@@ -7,7 +7,7 @@ import { getDateLabel } from '@shared/utils/dateHelpers';
 /**
  * Хук для управления скроллом в чате
  */
-export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex: number, unreadCount: number) => {
+export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex: number, unreadCount: number, currentUserId?: number) => {
   const listRef = useRef<FlatList<any>>(null);
   const [initialScrolled, setInitialScrolled] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -17,9 +17,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
   const [userScrolledToBottom, setUserScrolledToBottom] = useState(false); // Флаг намеренного скролла
+  const [newMessagesCount, setNewMessagesCount] = useState(0); // Количество новых сообщений ниже текущей позиции
+  const [firstNewMessageIndex, setFirstNewMessageIndex] = useState<number>(-1); // Индекс первого нового непрочитанного сообщения
   const canTrackUserScroll = useRef(false); // Разрешение отслеживать скролл пользователя
   const hasScrolledAwayFromBottom = useRef(false); // Пользователь уже уходил от низа
   const lastOldestMessageId = useRef<number | null>(null);
+  const lastVisibleMessageIndex = useRef<number>(-1); // Индекс последнего видимого сообщения
+  const previousMessagesLength = useRef<number>(0); // Предыдущее количество сообщений для отслеживания новых
   const [initialScrollIndex, setInitialScrollIndex] = useState<number | undefined>(undefined);
   const [isScrollingToUnread, setIsScrollingToUnread] = useState(false);
   const [scrollSessionKey, setScrollSessionKey] = useState(0);
@@ -64,6 +68,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       // FlashList автоматически использует этот индекс для начальной позиции
       setInitialScrollIndex(targetIndex);
+      // Инициализируем счетчик предыдущих сообщений
+      previousMessagesLength.current = messages.length;
 
       // Небольшая задержка перед установкой initialScrolled, чтобы список успел отрендериться
       setTimeout(() => {
@@ -115,6 +121,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       }
       setShowScrollToBottom(false);
       setShowDateHeader(false);
+      // Обнуляем счетчик новых сообщений при достижении низа
+      setNewMessagesCount(0);
+      setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
     } else {
       setHasReachedBottom(false);
       setShowScrollToBottom(true);
@@ -164,19 +173,74 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [initialScrolled, firstUnreadIndex, unreadCount, chatId]);
 
+  // Отслеживаем новые сообщения от других пользователей когда пользователь не внизу
+  useEffect(() => {
+    // Пропускаем при первой инициализации или если пользователь уже внизу
+    if (!initialScrolled || hasReachedBottom || messages.length === 0) {
+      previousMessagesLength.current = messages.length;
+      return;
+    }
+
+    // Проверяем, появились ли новые сообщения
+    const newMessagesAdded = messages.length - previousMessagesLength.current;
+
+    if (newMessagesAdded > 0 && currentUserId) {
+      // Проверяем новые сообщения (они добавляются в конец массива)
+      const newMessages = messages.slice(previousMessagesLength.current);
+
+      // Считаем только сообщения от других пользователей
+      const newFromOthers = newMessages.filter(msg => msg.sender_id !== currentUserId).length;
+
+      if (newFromOthers > 0) {
+        // Если это первое новое сообщение - запоминаем его индекс
+        if (firstNewMessageIndex === -1) {
+          const firstNewMsgIndex = messages.findIndex((msg, idx) =>
+            idx >= previousMessagesLength.current && msg.sender_id !== currentUserId
+          );
+          if (firstNewMsgIndex !== -1) {
+            setFirstNewMessageIndex(firstNewMsgIndex);
+            console.log(`📬 [Scroll] Chat ${chatId}: Первое новое сообщение на индексе ${firstNewMsgIndex}`);
+          }
+        }
+
+        setNewMessagesCount(prev => prev + newFromOthers);
+        console.log(`📬 [Scroll] Chat ${chatId}: Получено ${newFromOthers} новых сообщений от других пользователей`);
+      }
+    }
+
+    previousMessagesLength.current = messages.length;
+  }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId, messages, firstNewMessageIndex]);
+
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(() => {
-    // Для инвертированного списка:
-    // offset=0 = самый верх (старые сообщения)
-    // большой offset = самый низ (новые сообщения)
-    // Нужно скроллить к большому offset - используем очень большое число
-    listRef.current?.scrollToOffset({
-      offset: 999999,
-      animated: true,
-    });
-    setHasReachedBottom(true);
-    setUserScrolledToBottom(true); // Пользователь намеренно проскроллил вниз
-  }, [messages.length]);
+    // Проверяем, есть ли новые непрочитанные сообщения
+    if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
+      // Если есть новые непрочитанные - скроллим к первому новому
+      console.log(`📜 [Scroll] Chat ${chatId}: Скролл к новым непрочитанным сообщениям (индекс ${firstNewMessageIndex})`);
+      listRef.current?.scrollToIndex({
+        index: firstNewMessageIndex,
+        animated: true,
+        viewPosition: 0.5, // Показываем в центре экрана
+      });
+      // Не обнуляем счетчик сразу - дадим пользователю прочитать
+      // Счетчик обнулится когда пользователь доскроллит до низа
+    } else {
+      // Если новых непрочитанных нет - скроллим в самый низ
+      console.log(`📜 [Scroll] Chat ${chatId}: Скролл в самый низ`);
+      // Для инвертированного списка:
+      // offset=0 = самый верх (старые сообщения)
+      // большой offset = самый низ (новые сообщения)
+      // Нужно скроллить к большому offset - используем очень большое число
+      listRef.current?.scrollToOffset({
+        offset: 999999,
+        animated: true,
+      });
+      setHasReachedBottom(true);
+      setUserScrolledToBottom(true); // Пользователь намеренно проскроллил вниз
+      setNewMessagesCount(0); // Обнуляем счетчик новых сообщений
+      setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
+    }
+  }, [messages.length, newMessagesCount, firstNewMessageIndex, chatId]);
 
   // Скролл к конкретному сообщению
   const handleReplyPress = useCallback((messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
@@ -196,7 +260,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [messages]);
 
-  // Обработчик видимых элементов для sticky date header
+  // Обработчик видимых элементов для sticky date header и подсчета новых сообщений
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       const visibleMessages = viewableItems.filter((item: any) => item.item.type === 'message');
@@ -206,6 +270,31 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         const message = topVisibleItem.item.data;
         const dateLabel = getDateLabel(message.created_at);
         setCurrentDateLabel(dateLabel);
+      }
+
+      // Находим индекс самого нового видимого сообщения (наибольший индекс)
+      if (visibleMessages.length > 0) {
+        const indices = visibleMessages
+          .map((item: any) => item.index)
+          .filter((idx: number) => idx !== null && idx !== undefined);
+
+        if (indices.length > 0) {
+          const maxVisibleIndex = Math.max(...indices);
+          lastVisibleMessageIndex.current = maxVisibleIndex;
+
+          // Подсчитываем новые сообщения ниже видимой области
+          // (все сообщения от других пользователей, которые пользователь еще не видел)
+          let newBelowCount = 0;
+          for (let i = maxVisibleIndex + 1; i < messages.length; i++) {
+            const message = messages[i];
+            // Считаем все сообщения от других пользователей как новые
+            // (если они ниже видимой области - значит пользователь их не видел)
+            if (currentUserId && message.sender_id !== currentUserId) {
+              newBelowCount++;
+            }
+          }
+          setNewMessagesCount(newBelowCount);
+        }
       }
     }
   }).current;
@@ -234,9 +323,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     setInitialScrolled(false);
     setHasReachedBottom(false);
     setUserScrolledToBottom(false); // Сбрасываем флаг намеренного скролла
+    setNewMessagesCount(0); // Сбрасываем счетчик новых сообщений
+    setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
     canTrackUserScroll.current = false; // Запрещаем отслеживание до следующей инициализации
     hasScrolledAwayFromBottom.current = false; // Сбрасываем флаг ухода от низа
     lastOldestMessageId.current = null;
+    lastVisibleMessageIndex.current = -1;
+    previousMessagesLength.current = 0; // Сбрасываем счетчик предыдущих сообщений
     setInitialScrollIndex(undefined);
     setIsScrollingToUnread(false);
     setShowScrollToBottom(false);
@@ -254,6 +347,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     hasMoreMessages,
     hasReachedBottom,
     userScrolledToBottom, // Возвращаем флаг намеренного скролла
+    newMessagesCount, // Возвращаем количество новых сообщений ниже видимой области
     initialScrollIndex,
     isScrollingToUnread, // Возвращаем новый флаг для управления видимостью UI
     scrollSessionKey, // Возвращаем ключ сеанса для FlashList

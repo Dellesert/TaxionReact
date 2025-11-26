@@ -61,6 +61,7 @@ interface ChatScreenContentProps {
   currentDateLabel: string;
   showDateHeader: boolean;
   showScrollToBottom: boolean;
+  newMessagesCount: number;
   isScrollingToUnread: boolean;
   keyboardHeight: number;
 
@@ -127,6 +128,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   currentDateLabel,
   showDateHeader,
   showScrollToBottom,
+  newMessagesCount,
   isScrollingToUnread,
   keyboardHeight,
   onSendMessage,
@@ -205,7 +207,11 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             userRole={userRole}
           />
 
-          <ScrollToBottomButton visible={showScrollToBottom} onPress={onScrollToBottom} />
+          <ScrollToBottomButton
+            visible={showScrollToBottom}
+            onPress={onScrollToBottom}
+            unreadCount={newMessagesCount}
+          />
         </View>
 
         <View

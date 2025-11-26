@@ -77,6 +77,20 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     handleBulkDelete,
   } = useSelectionMode();
 
+  // Store - получаем currentUser в самом начале
+  const {
+    isLoading,
+    loadMessages,
+    getChatById,
+    setActiveChat,
+    markChatAsRead,
+    typingUsers,
+    getPinnedMessages,
+    set: setError,
+    chats,
+  } = useChatStore();
+  const currentUser = useAuthStore((state) => state.user);
+
   // Data hooks
   const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } =
     useChatMessages(chatIdNum, ignoreReadReceipts, savedUnreadCount);
@@ -113,6 +127,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     isLoadingMore,
     hasReachedBottom,
     userScrolledToBottom,
+    newMessagesCount,
     initialScrollIndex,
     isScrollingToUnread,
     scrollSessionKey,
@@ -123,22 +138,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     onViewableItemsChanged,
     viewabilityConfig,
     resetScroll,
-  } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount);
-
-
-  // Store
-  const {
-    isLoading,
-    loadMessages,
-    getChatById,
-    setActiveChat,
-    markChatAsRead,
-    typingUsers,
-    getPinnedMessages,
-    set: setError,
-    chats,
-  } = useChatStore();
-  const currentUser = useAuthStore((state) => state.user);
+  } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount, currentUser?.id);
 
   const chatFromStore = chats.find((c) => c.id === chatIdNum);
   const chat = chatData || chatFromStore;
@@ -402,6 +402,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         currentDateLabel={currentDateLabel}
         showDateHeader={showDateHeader}
         showScrollToBottom={showScrollToBottom}
+        newMessagesCount={newMessagesCount}
         isScrollingToUnread={isScrollingToUnread}
         keyboardHeight={keyboardHeight}
         onSendMessage={handleSendMessage}

@@ -1,11 +1,12 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface ScrollToBottomButtonProps {
   visible: boolean;
   onPress: () => void;
+  unreadCount?: number;
 }
 
 /**
@@ -14,6 +15,7 @@ interface ScrollToBottomButtonProps {
 export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
   visible,
   onPress,
+  unreadCount = 0,
 }) => {
   const { theme } = useTheme();
 
@@ -26,6 +28,13 @@ export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
       activeOpacity={0.7}
     >
       <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
+      {unreadCount > 0 && (
+        <View style={[styles.badge, { backgroundColor: '#FF3B30' }]}>
+          <Text style={styles.badgeText}>
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -46,5 +55,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     zIndex: 999,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
 });
