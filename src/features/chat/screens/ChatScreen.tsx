@@ -92,7 +92,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     setForwardingMessage,
     selectedFileIds,
     setSelectedFileIds,
-    handleSendMessage,
+    handleSendMessage: originalHandleSendMessage,
     handleReply,
     handleEdit,
     handleDelete,
@@ -112,6 +112,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     showDateHeader,
     isLoadingMore,
     hasReachedBottom,
+    userScrolledToBottom,
     initialScrollIndex,
     isScrollingToUnread,
     scrollSessionKey,
@@ -291,9 +292,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [initialScrolled, ignoreReadReceipts, hasReachedBottom, keyboardHeight]);
 
-  // Отметить как прочитанное и скрыть баннер
+  // Отметить как прочитанное и скрыть баннер только когда пользователь намеренно проскроллил вниз
   useEffect(() => {
-    if (messages.length > 0 && initialScrolled && (hasReachedBottom || keyboardHeight > 0)) {
+    if (messages.length > 0 && initialScrolled && userScrolledToBottom) {
       const markReadTimer = setTimeout(async () => {
         try {
           await markChatAsRead(chatIdNum);
@@ -309,7 +310,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       }, 500);
       return () => clearTimeout(markReadTimer);
     }
-  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, hasReachedBottom, keyboardHeight, showUnreadBanner]);
+  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, userScrolledToBottom, showUnreadBanner]);
 
   // Event handlers
   const handleTyping = (isTyping: boolean) => {
@@ -340,6 +341,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const onBulkDelete = async (deleteFor: 'everyone' | 'me') => {
     await handleBulkDelete(deleteFor, handleDelete);
+  };
+
+  // Обертка для handleSendMessage с автоматическим скроллом вниз
+  const handleSendMessage = async (content: string, replyToId?: number) => {
+    await originalHandleSendMessage(content, replyToId);
+    // После отправки сообщения скроллим вниз
+    setTimeout(() => {
+      handleScrollToBottom();
+    }, 100);
   };
 
   // UI state

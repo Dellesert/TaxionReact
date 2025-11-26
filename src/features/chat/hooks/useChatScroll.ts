@@ -16,6 +16,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
+  const [userScrolledToBottom, setUserScrolledToBottom] = useState(false); // Флаг намеренного скролла
+  const canTrackUserScroll = useRef(false); // Разрешение отслеживать скролл пользователя
+  const hasScrolledAwayFromBottom = useRef(false); // Пользователь уже уходил от низа
   const lastOldestMessageId = useRef<number | null>(null);
   const [initialScrollIndex, setInitialScrollIndex] = useState<number | undefined>(undefined);
   const [isScrollingToUnread, setIsScrollingToUnread] = useState(false);
@@ -75,6 +78,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           });
           shouldRestoreScroll.current = false;
         }
+
+        // Даем время на автоматический скролл к непрочитанным, после чего разрешаем отслеживание
+        setTimeout(() => {
+          canTrackUserScroll.current = true;
+          console.log(`📜 [Scroll] Chat ${chatId}: Разрешено отслеживание намеренного скролла пользователя`);
+        }, 500);
       }, 100);
     }
   }, [messages.length, firstUnreadIndex, unreadCount, initialScrollIndex, chatId]);
@@ -96,14 +105,27 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     if (isAtBottom) {
       setHasReachedBottom(true);
+      // Отмечаем, что пользователь намеренно проскроллил вниз
+      // только если:
+      // 1. Прошло достаточно времени после инициализации (canTrackUserScroll)
+      // 2. Пользователь уже уходил от низа (hasScrolledAwayFromBottom) - это гарантирует намеренность
+      if (initialScrolled && canTrackUserScroll.current && hasScrolledAwayFromBottom.current) {
+        setUserScrolledToBottom(true);
+        console.log(`📜 [Scroll] Chat ${chatId}: Пользователь намеренно проскроллил вниз`);
+      }
       setShowScrollToBottom(false);
       setShowDateHeader(false);
     } else {
       setHasReachedBottom(false);
       setShowScrollToBottom(true);
       setShowDateHeader(true);
+      // Пользователь ушел от низа
+      if (initialScrolled && canTrackUserScroll.current) {
+        hasScrolledAwayFromBottom.current = true;
+        console.log(`📜 [Scroll] Chat ${chatId}: Пользователь ушел от низа`);
+      }
     }
-  }, []);
+  }, [initialScrolled, chatId]);
 
   // Подгружаем старые сообщения
   const handleLoadMore = useCallback(async () => {
@@ -153,6 +175,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       animated: true,
     });
     setHasReachedBottom(true);
+    setUserScrolledToBottom(true); // Пользователь намеренно проскроллил вниз
   }, [messages.length]);
 
   // Скролл к конкретному сообщению
@@ -210,6 +233,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     setHasMoreMessages(true);
     setInitialScrolled(false);
     setHasReachedBottom(false);
+    setUserScrolledToBottom(false); // Сбрасываем флаг намеренного скролла
+    canTrackUserScroll.current = false; // Запрещаем отслеживание до следующей инициализации
+    hasScrolledAwayFromBottom.current = false; // Сбрасываем флаг ухода от низа
     lastOldestMessageId.current = null;
     setInitialScrollIndex(undefined);
     setIsScrollingToUnread(false);
@@ -227,6 +253,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isLoadingMore,
     hasMoreMessages,
     hasReachedBottom,
+    userScrolledToBottom, // Возвращаем флаг намеренного скролла
     initialScrollIndex,
     isScrollingToUnread, // Возвращаем новый флаг для управления видимостью UI
     scrollSessionKey, // Возвращаем ключ сеанса для FlashList
