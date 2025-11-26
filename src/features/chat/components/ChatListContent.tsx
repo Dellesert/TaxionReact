@@ -70,12 +70,13 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
    * Render single chat item
    */
   const renderChatItem = useCallback(
-    ({ item }: { item: Chat }) => (
+    ({ item, index }: { item: Chat; index: number }) => (
       <ChatItem
         chat={item}
         onPress={onChatPress}
         isSelected={selectedChats.includes(item.id)}
         isEditMode={isEditMode}
+        itemIndex={index}
         onToggleFavorite={() => onToggleFavorite(item.id)}
         onTogglePinned={() => onTogglePinned(item.id)}
         onMarkAsRead={() => onMarkAsRead(item.id)}
@@ -125,18 +126,10 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
               }
               contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
               onEndReached={() => {
-                console.log('[ChatListContent] onEndReached triggered:', {
-                  canLoadMore,
-                  hasMoreChats,
-                  isLoadingMore,
-                  currentTab: chatFilter,
-                  tabHasMore: tabs[chatFilter]?.hasMore,
-                });
+               
                 if (canLoadMore && hasMoreChats && !isLoadingMore) {
-                  console.log('[ChatListContent] Loading more chats...');
                   onLoadMore();
                 } else {
-                  console.log('[ChatListContent] Blocked from loading more');
                 }
               }}
               onEndReachedThreshold={0.3}

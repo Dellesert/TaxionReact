@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { ConnectionStatus } from '@shared/components/common/ConnectionStatus';
@@ -24,11 +24,32 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  // Простая анимация fade для кнопок в header
+  const buttonOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Простая плавная анимация без bounce и scale
+    Animated.sequence([
+      // Сначала скрываем текущие кнопки
+      Animated.timing(buttonOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      // Затем показываем новые кнопки
+      Animated.timing(buttonOpacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isEditMode, buttonOpacity]);
+
   return (
     <View
       style={[
         styles.headerRow,
-        { marginTop: isEditMode ? 10 : 0, marginBottom: isEditMode ? 6 : -4 },
+        { marginTop: isEditMode ? 0 : 0, marginBottom: isEditMode ? -4 : -4 },
       ]}
     >
       {/* Left - Notifications */}
@@ -46,7 +67,9 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
       {/* Right - Actions */}
       <View style={[styles.headerRight, styles.headerActions]}>
         {!isEditMode ? (
-          <>
+          <Animated.View style={[
+            styles.buttonGroup,
+          ]}>
             <TouchableOpacity onPress={onToggleEditMode} style={styles.iconButton}>
               <Ionicons name="ellipsis-vertical" size={24} color={theme.error} />
             </TouchableOpacity>
@@ -57,16 +80,20 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
                 color={theme.error}
               />
             </TouchableOpacity>
-          </>
+          </Animated.View>
         ) : (
-          <TouchableOpacity onPress={onToggleEditMode} style={styles.editButton}>
-            <Text style={[styles.editButtonText, { color: theme.error }]}>Готово</Text>
-          </TouchableOpacity>
+          <Animated.View >
+            <TouchableOpacity onPress={onToggleEditMode} style={styles.editButton}>
+              <Text style={[styles.editButtonText, { color: theme.error }]}>Готово</Text>
+            </TouchableOpacity>
+          </Animated.View>
         )}
         {!isEditMode ? (
-          <TouchableOpacity onPress={onNewChat} style={styles.addButton}>
-            <Ionicons name="add" size={30} color={theme.primary} />
-          </TouchableOpacity>
+          <Animated.View >
+            <TouchableOpacity onPress={onNewChat} style={styles.addButton}>
+              <Ionicons name="add" size={30} color={theme.primary} />
+            </TouchableOpacity>
+          </Animated.View>
         ) : (
           <View style={styles.addButton} />
         )}
@@ -93,11 +120,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   editButton: {
-    width: 100,
     paddingHorizontal: 4,
   },
   editButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '400',
   },
   addButton: {
@@ -121,5 +147,10 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     marginLeft: 4,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 });

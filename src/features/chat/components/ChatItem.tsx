@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Chat } from '../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -21,13 +21,42 @@ interface ChatItemProps {
   onTogglePinned?: (chatId: number) => void;
   isEditMode?: boolean;
   isSelected?: boolean;
+  itemIndex?: number;
 }
 
-const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress, onMarkAsRead, onDelete, onToggleFavorite, onTogglePinned, isEditMode, isSelected }) => {
+const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRead, onDelete, onToggleFavorite, onTogglePinned, isEditMode, isSelected, itemIndex = 0 }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
+
+  // Простая плавная анимация без bounce эффекта
+  const checkboxAnimation = useRef(new Animated.Value(isEditMode ? 1 : 0)).current;
+
+  const checkboxTranslateX = checkboxAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-32, 0], // Выезжает слева
+  });
+
+  const checkboxOpacity = checkboxAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  // Анимация сдвига контента чата для освобождения места под чекбокс
+  const contentTranslateX = checkboxAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 8], // 24px чекбокс + 8px margin
+  });
+
+  // Запускаем плавную анимацию при изменении isEditMode
+  useEffect(() => {
+    Animated.timing(checkboxAnimation, {
+      toValue: isEditMode ? 1 : 0,
+      duration: 250, // Плавная анимация 250ms
+      useNativeDriver: true,
+    }).start();
+  }, [isEditMode, checkboxAnimation]);
 
   const getChatName = () => {
     return getChatDisplayName(chat, currentUser?.id);
@@ -208,9 +237,15 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress
         onLongPress={handleLongPress}
         activeOpacity={0.7}
       >
-        {/* Чекбокс в режиме редактирования */}
+        {/* Анимированный чекбокс в режиме редактирования */}
         {isEditMode && (
-          <View style={styles.checkboxContainer}>
+          <Animated.View style={[
+            styles.checkboxContainer,
+            {
+              opacity: checkboxOpacity,
+              transform: [{ translateX: checkboxTranslateX }],
+            }
+          ]}>
             <View style={[
               styles.checkbox,
               { borderColor: theme.border },
@@ -218,21 +253,30 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress
             ]}>
               {isSelected && <Ionicons name="checkmark" size={18} color="#FFF" />}
             </View>
-          </View>
+          </Animated.View>
         )}
 
-        <View style={styles.avatarContainer}>
-          <Avatar
-            imageUrl={getChatAvatar()}
-            name={getChatName()}
-            size={50}
-          />
-          {getCompanionOnlineStatus() && (
-            <View style={[styles.onlineIndicator, { borderColor: theme.backgroundSecondary }]} />
-          )}
-        </View>
+        {/* Анимированный контент чата */}
+        <Animated.View
+          style={[
+            styles.chatContent,
+            {
+              transform: [{ translateX: contentTranslateX }]
+            }
+          ]}
+        >
+          <View style={styles.avatarContainer}>
+            <Avatar
+              imageUrl={getChatAvatar()}
+              name={getChatName()}
+              size={50}
+            />
+            {getCompanionOnlineStatus() && (
+              <View style={[styles.onlineIndicator, { borderColor: theme.backgroundSecondary }]} />
+            )}
+          </View>
 
-        <View style={styles.content}>
+          <View style={styles.content}>
           <View style={styles.header}>
             <Text style={[styles.name, dynamicStyles.name]} numberOfLines={1}>
               {getChatName()}
@@ -318,6 +362,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress
             </View>
           </View>
         </View>
+        </Animated.View>
       </TouchableOpacity>
 
       {/* Контекстное меню */}
@@ -420,8 +465,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   checkboxContainer: {
-    marginRight: 12,
+    width: 24,
+    marginRight: 8,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   checkbox: {
     width: 24,
@@ -430,6 +477,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  chatContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   avatarContainer: {
     position: 'relative',
