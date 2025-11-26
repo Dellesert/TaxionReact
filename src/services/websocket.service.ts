@@ -482,7 +482,34 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'message_delete':
-          chatStore.handleMessageDelete(message.data.message_id, message.chat_id);
+          // Backend now sends full message object with is_deleted=true and content=""
+          if (message.data.id !== undefined) {
+            // New format - full message object
+            const deletedMessage = {
+              id: message.data.id,
+              chat_id: message.chat_id || message.data.chat_id,
+              sender_id: message.data.sender_id,
+              content: message.data.content || '', // Should be empty from backend
+              message_type: message.data.message_type || message.data.type || 'text',
+              is_edited: message.data.is_edited || false,
+              is_pinned: message.data.is_pinned || false,
+              is_deleted: true, // Always true for delete event
+              attachments: message.data.attachments || [],
+              reactions: message.data.reactions || [],
+              read_by: message.data.read_by || [],
+              read_receipts: message.data.read_receipts || [],
+              created_at: message.data.created_at || new Date().toISOString(),
+              updated_at: message.data.updated_at || new Date().toISOString(),
+              deleted_at: message.data.deleted_at || new Date().toISOString(),
+              reply_to_id: message.data.reply_to_id,
+              reply_to: message.data.reply_to,
+              sender: message.data.sender,
+            };
+            chatStore.handleMessageUpdate(deletedMessage); // Use handleMessageUpdate for full message
+          } else if (message.data.message_id !== undefined) {
+            // Old format - fallback for backward compatibility
+            chatStore.handleMessageDelete(message.data.message_id, message.chat_id);
+          }
           break;
 
         case 'typing':

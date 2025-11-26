@@ -26,6 +26,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const lastOldestMessageId = useRef<number | null>(null);
   const lastVisibleMessageIndex = useRef<number>(-1); // Индекс последнего видимого сообщения
   const previousMessagesLength = useRef<number>(0); // Предыдущее количество сообщений для отслеживания новых
+  const previousLastMessageId = useRef<number | null>(null); // ID последнего сообщения из предыдущего состояния
   const [initialScrollIndex, setInitialScrollIndex] = useState<number | undefined>(undefined);
   const [isScrollingToUnread, setIsScrollingToUnread] = useState(false);
   const [scrollSessionKey, setScrollSessionKey] = useState(0);
@@ -202,25 +203,56 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Отслеживаем новые сообщения от других пользователей когда пользователь не внизу
   useEffect(() => {
+    console.log(`🔍 [useEffect] Trigger: initialScrolled=${initialScrolled}, hasReachedBottom=${hasReachedBottom}, messages.length=${messages.length}`);
+
     // Пропускаем при первой инициализации или если пользователь уже внизу
     if (!initialScrolled || hasReachedBottom || messages.length === 0) {
       previousMessagesLength.current = messages.length;
+      // Сохраняем ID последнего сообщения
+      if (messages.length > 0) {
+        previousLastMessageId.current = messages[messages.length - 1].id;
+      }
+      console.log(`🔍 [useEffect] Skipping (not scrolled or at bottom)`);
       return;
     }
 
     // Проверяем, появились ли новые сообщения
     const newMessagesAdded = messages.length - previousMessagesLength.current;
+    console.log(`🔍 [useEffect] messages.length changed: ${previousMessagesLength.current} -> ${messages.length}, diff: ${newMessagesAdded}`);
 
     // ВАЖНО: обрабатываем только если длина массива УВЕЛИЧИЛАСЬ (реально добавились новые сообщения)
     // Если длина осталась прежней - это просто обновление существующего сообщения (например, pin/unpin)
     if (newMessagesAdded > 0 && currentUserId) {
-      // Проверяем новые сообщения (они добавляются в конец массива)
-      const newMessages = messages.slice(previousMessagesLength.current);
+      // Проверяем, куда добавились сообщения - в начало (старые) или в конец (новые)
+      // Старые сообщения добавляются в НАЧАЛО массива, новые - в КОНЕЦ
 
-      // Считаем только сообщения от других пользователей
+      // ПРОСТАЯ И НАДЕЖНАЯ ПРОВЕРКА:
+      // Сравниваем ID текущего последнего сообщения с сохраненным ID предыдущего последнего
+      const currentLastMessage = messages[messages.length - 1];
+      const currentLastId = currentLastMessage.id;
+
+      // Если ID последнего сообщения НЕ изменился - значит добавились старые в начало
+      if (previousLastMessageId.current !== null && currentLastId === previousLastMessageId.current) {
+        console.log(`🔍 [useEffect] Last message ID unchanged (${currentLastId}) - old messages loaded from history`);
+        console.log(`🔍 [useEffect] Ignoring ${newMessagesAdded} old messages`);
+        previousMessagesLength.current = messages.length;
+        previousLastMessageId.current = currentLastId;
+        return;
+      }
+
+      // ID последнего изменился - это новые real-time сообщения в конце
+      console.log(`🔍 [useEffect] Last message ID changed: ${previousLastMessageId.current} -> ${currentLastId}`);
+      console.log(`🔍 [useEffect] New real-time messages detected`);
+
+      // Это новые сообщения в конце массива
+      const newMessages = messages.slice(previousMessagesLength.current);
       const newFromOthers = newMessages.filter(msg => msg.sender_id !== currentUserId).length;
 
+      console.log(`🔍 [useEffect] New real-time messages: ${newMessages.length}, from others: ${newFromOthers}`);
+
       if (newFromOthers > 0) {
+        console.log(`⚠️ [useEffect] Adding ${newFromOthers} real-time messages to counter`);
+
         // Если это первое новое сообщение - запоминаем его индекс
         if (firstNewMessageIndex === -1) {
           const firstNewMsgIndex = messages.findIndex((msg, idx) =>
@@ -231,8 +263,14 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           }
         }
 
-        setNewMessagesCount(prev => prev + newFromOthers);
+        setNewMessagesCount(prev => {
+          console.log(`⚠️ [useEffect] newMessagesCount: ${prev} -> ${prev + newFromOthers}`);
+          return prev + newFromOthers;
+        });
       }
+
+      // Обновляем сохраненный ID последнего сообщения
+      previousLastMessageId.current = currentLastId;
     }
 
     // Обновляем previousMessagesLength только если длина РЕАЛЬНО изменилась
@@ -288,7 +326,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [messages]);
 
-  // Обработчик видимых элементов для sticky date header и подсчета новых сообщений
+  // Обработчик видимых элементов для sticky date header
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       const visibleMessages = viewableItems.filter((item: any) => item.item.type === 'message');
@@ -309,19 +347,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         if (indices.length > 0) {
           const maxVisibleIndex = Math.max(...indices);
           lastVisibleMessageIndex.current = maxVisibleIndex;
-
-          // Подсчитываем новые сообщения ниже видимой области
-          // (все сообщения от других пользователей, которые пользователь еще не видел)
-          let newBelowCount = 0;
-          for (let i = maxVisibleIndex + 1; i < messages.length; i++) {
-            const message = messages[i];
-            // Считаем все сообщения от других пользователей как новые
-            // (если они ниже видимой области - значит пользователь их не видел)
-            if (currentUserId && message.sender_id !== currentUserId) {
-              newBelowCount++;
-            }
-          }
-          setNewMessagesCount(newBelowCount);
         }
       }
     }
@@ -357,6 +382,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     lastOldestMessageId.current = null;
     lastVisibleMessageIndex.current = -1;
     previousMessagesLength.current = 0; // Сбрасываем счетчик предыдущих сообщений
+    previousLastMessageId.current = null; // Сбрасываем сохраненный ID последнего сообщения
     setInitialScrollIndex(undefined);
     setIsScrollingToUnread(false);
     setShowScrollToBottom(false);

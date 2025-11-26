@@ -1382,13 +1382,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   handleMessageDelete: (messageId: number, chatId: number) => {
-    // Вместо удаления сообщения, помечаем его как удалённое
+    // Вместо удаления сообщения, помечаем его как удалённое И очищаем контент
     set((state) => ({
       messages: {
         ...state.messages,
         [chatId]: (state.messages[chatId] || []).map((msg) =>
           msg.id === messageId
-            ? { ...msg, is_deleted: true, deleted_at: new Date().toISOString() }
+            ? {
+                ...msg,
+                is_deleted: true,
+                content: '', // Очищаем контент для всех пользователей
+                deleted_at: new Date().toISOString()
+              }
             : msg
         ),
       },
