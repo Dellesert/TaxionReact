@@ -17,7 +17,6 @@ import {
   AddReactionDto,
   SearchMessagesParams,
   GetMessagesParams,
-  ChatListFilters,
 } from '../types/chat.types';
 import { ApiResponse, PaginatedResponse } from '../../../types/common.types';
 

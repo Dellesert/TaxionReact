@@ -26,7 +26,6 @@ import {
   UpdatePasskeyDto,
   Passkey,
 } from '../../../types/user.types';
-import { ApiResponse } from '../../../types/common.types';
 
 /**
  * Login user
