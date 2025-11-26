@@ -211,6 +211,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Проверяем, появились ли новые сообщения
     const newMessagesAdded = messages.length - previousMessagesLength.current;
 
+    // ВАЖНО: обрабатываем только если длина массива УВЕЛИЧИЛАСЬ (реально добавились новые сообщения)
+    // Если длина осталась прежней - это просто обновление существующего сообщения (например, pin/unpin)
     if (newMessagesAdded > 0 && currentUserId) {
       // Проверяем новые сообщения (они добавляются в конец массива)
       const newMessages = messages.slice(previousMessagesLength.current);
@@ -233,8 +235,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       }
     }
 
-    previousMessagesLength.current = messages.length;
-  }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId, messages, firstNewMessageIndex]);
+    // Обновляем previousMessagesLength только если длина РЕАЛЬНО изменилась
+    if (messages.length !== previousMessagesLength.current) {
+      previousMessagesLength.current = messages.length;
+    }
+  }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId, firstNewMessageIndex]); // Убрали messages из зависимостей - отслеживаем только изменение длины
 
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(() => {

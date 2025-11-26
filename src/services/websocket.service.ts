@@ -458,7 +458,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           const editedMessage = {
             id: message.data?.id || message.data?.message_id,
             chat_id: message.chat_id || message.data?.chat_id,
-            sender_id: message.user_id || message.data?.sender_id,
+            sender_id: message.data?.sender_id, // Важно: используем sender_id из data, а не user_id (который содержит ID того, кто сделал действие)
             content: message.data?.content || '',
             message_type: message.data?.message_type || message.data?.type || 'text',
             is_edited: message.data?.is_edited || false,
@@ -467,6 +467,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             attachments: message.data?.attachments || [],
             reactions: message.data?.reactions || [],
             read_by: message.data?.read_by || [],
+            read_receipts: message.data?.read_receipts || [], // ВАЖНО: сохраняем read_receipts для корректного определения прочитанных сообщений
             created_at: message.data?.created_at || new Date().toISOString(),
             updated_at: message.data?.updated_at || new Date().toISOString(),
             edited_at: message.data?.edited_at,
@@ -475,7 +476,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             sender: message.data?.sender,
             deleted_by: message.data?.deleted_by,
             deleted_at: message.data?.deleted_at,
-            poll_data: message.data?.poll_data, // ADDED: Include poll_data from WebSocket
+            poll_data: message.data?.poll_data, // Include poll_data from WebSocket
           };
           chatStore.handleMessageUpdate(editedMessage);
           break;
