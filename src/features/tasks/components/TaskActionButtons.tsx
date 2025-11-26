@@ -101,7 +101,7 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
     canChangeStatus
   ) {
     return (
-      <View style={[styles.fixedActionsContainer, { backgroundColor: theme.card, borderTopColor: theme.border, bottom: bottomInset + 80 }]}>
+      <View style={[styles.fixedActionsContainer, { bottom: bottomInset + 80 }]}>
         {/* Start/Submit Button - for new or in_progress tasks */}
         {(task.status === 'new' || task.status === 'in_progress') && (
           <TouchableOpacity
@@ -200,16 +200,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    borderTopWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 10,
     flexDirection: 'row',
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
   },
   fixedActionButton: {
     flex: 1,
