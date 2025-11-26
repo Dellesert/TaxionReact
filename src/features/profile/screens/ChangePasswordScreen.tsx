@@ -94,14 +94,11 @@ const ChangePasswordScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={theme.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Изменить пароль</Text>
-        <View style={styles.headerRight} />
+        <View style={{ width: 40 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -267,21 +264,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 0 : 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
   },
   backButton: {
-    padding: 4,
-    width: 40,
+    padding: 8,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     flex: 1,
+    textAlign: 'center',
     textAlign: 'center',
   },
   headerRight: {

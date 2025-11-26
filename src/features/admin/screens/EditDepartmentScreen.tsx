@@ -186,21 +186,23 @@ const EditDepartmentScreen: React.FC = () => {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование отдела</Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={isSaving}
-            style={[styles.saveButton, { opacity: isSaving ? 0.5 : 1 }]}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color={theme.primary} />
-            ) : (
-              <Ionicons name="checkmark" size={24} color={theme.primary} />
-            )}
-          </TouchableOpacity>
+          <View style={{ width: 40, alignItems: 'flex-end' }}>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isSaving}
+              style={{ opacity: isSaving ? 0.5 : 1 }}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Ionicons name="checkmark" size={24} color={theme.primary} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
@@ -320,21 +322,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 0 : 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
   },
   backButton: {
-    padding: 4,
+    padding: 8,
   },
   headerTitle: {
-    flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    marginLeft: 12,
+    flex: 1,
+    textAlign: 'center',
   },
   saveButton: {
     padding: 4,

@@ -73,31 +73,28 @@ const MetricsAnalyticsScreen: React.FC = () => {
       backgroundColor: isDark ? theme.background : '#F3F4F6',
     },
     header: {
-      backgroundColor: theme.backgroundSecondary,
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingTop: Platform.OS === 'ios' ? 0 : 20,
+      paddingBottom: 16,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      borderBottomColor: theme.border,
+      backgroundColor: theme.backgroundSecondary,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
     },
     backButton: {
-      position: 'absolute',
-      left: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    backButtonText: {
-      fontSize: 16,
-      color: theme.primary,
-      fontWeight: '600',
+      padding: 8,
     },
     headerTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
+      fontSize: 18,
+      fontWeight: '600',
       color: theme.text,
+      flex: 1,
+      textAlign: 'center',
+    },
+    headerRight: {
+      width: 40,
     },
     scrollContent: {
       padding: 16,
@@ -214,13 +211,11 @@ const MetricsAnalyticsScreen: React.FC = () => {
       <View style={dynamicStyles.container}>
         <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
           <View style={dynamicStyles.header}>
-            <TouchableOpacity
-              style={dynamicStyles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="chevron-back" size={24} color={theme.primary} />
+            <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color={theme.primary} />
             </TouchableOpacity>
             <Text style={dynamicStyles.headerTitle}>Основные показатели</Text>
+            <View style={dynamicStyles.headerRight} />
           </View>
         </SafeAreaView>
         <View style={dynamicStyles.loadingContainer}>
@@ -235,13 +230,11 @@ const MetricsAnalyticsScreen: React.FC = () => {
     <View style={dynamicStyles.container}>
       <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
         <View style={dynamicStyles.header}>
-          <TouchableOpacity
-            style={dynamicStyles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back" size={24} color={theme.primary} />
+          <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
-          <Text style={dynamicStyles.headerTitle}>📊 Основные показатели</Text>
+          <Text style={dynamicStyles.headerTitle}>Основные показатели</Text>
+          <View style={dynamicStyles.headerRight} />
         </View>
       </SafeAreaView>
 

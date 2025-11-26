@@ -125,16 +125,15 @@ const DepartmentsScreen: React.FC = () => {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Profile' as any)}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Profile' as any)}>
+            <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Управление отделами</Text>
-          <TouchableOpacity onPress={() => setShowCreateModal(true)} style={styles.addButton}>
-            <Ionicons name="add" size={28} color={theme.primary} />
-          </TouchableOpacity>
+          <View style={styles.addButton}>
+            <TouchableOpacity onPress={() => setShowCreateModal(true)}>
+              <Ionicons name="add" size={28} color={theme.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -262,24 +261,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 0 : 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
   },
   backButton: {
-    padding: 4,
+    padding: 8,
   },
   headerTitle: {
-    flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    marginLeft: 12,
+    flex: 1,
+    textAlign: 'center',
   },
   addButton: {
-    padding: 4,
+    width: 40,
+    alignItems: 'flex-end',
   },
   searchContainer: {
     flexDirection: 'row',
