@@ -81,15 +81,18 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Обработчик скролла
   const handleScroll = useCallback((event: any) => {
-    const { contentOffset } = event.nativeEvent;
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
 
     // Сохраняем текущую позицию скролла
     lastScrollOffset.current = contentOffset.y;
 
     // Для инвертированного списка (inverted=true):
-    // contentOffset.y близок к 0 означает что мы внизу (последние сообщения)
-    // contentOffset.y отрицательный или близкий к 0
-    const isAtBottom = contentOffset.y <= 50;
+    // offset.y = 0 означает самый верх (старые сообщения)
+    // большой offset.y означает самый низ (новые сообщения)
+    // Проверяем расстояние от низа
+    // Порог 500px ≈ 5 сообщений (среднее сообщение ~100px)
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    const isAtBottom = distanceFromBottom <= 500;
 
     if (isAtBottom) {
       setHasReachedBottom(true);
@@ -141,14 +144,14 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(() => {
-    // Для инвертированного списка с прямым порядком [старые → новые]:
-    // Последний индекс = последнее сообщение (показывается внизу)
-    if (messages.length > 0) {
-      listRef.current?.scrollToIndex({
-        index: messages.length - 1,
-        animated: true,
-      });
-    }
+    // Для инвертированного списка:
+    // offset=0 = самый верх (старые сообщения)
+    // большой offset = самый низ (новые сообщения)
+    // Нужно скроллить к большому offset - используем очень большое число
+    listRef.current?.scrollToOffset({
+      offset: 999999,
+      animated: true,
+    });
     setHasReachedBottom(true);
   }, [messages.length]);
 
