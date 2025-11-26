@@ -3,7 +3,7 @@
  * Управление данными чата и сообщениями
  */
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useChatStore } from '@shared/store/chatStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { isValidChatId, shouldShowLoading } from '../utils/chatDetailHelpers';
@@ -19,11 +19,16 @@ export const useChatDetailData = (chatId: number): UseChatDetailDataReturn => {
   const { showError } = useNotification();
   const hasLoadedRef = useRef(false);
 
-  // Zustand selectors
-  const loadMessages = useChatStore((state) => state.loadMessages);
-  const chats = useChatStore((state) => state.chats);
-  const isLoading = useChatStore((state) => state.isLoading);
-  const chatMessages = useChatStore((state) => state.messages[chatId] || []);
+  // Оптимизация: используем один селектор с мемоизацией для получения всех данных
+  // Это снижает количество подписок и ре-рендеров
+  const { loadMessages, chats, isLoading, chatMessages } = useChatStore(
+    useCallback((state) => ({
+      loadMessages: state.loadMessages,
+      chats: state.chats,
+      isLoading: state.isLoading,
+      chatMessages: state.messages[chatId] || [],
+    }), [chatId])
+  );
 
   // Memoized chat object
   const chat = useMemo(

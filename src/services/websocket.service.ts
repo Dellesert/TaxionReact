@@ -60,6 +60,12 @@ class WebSocketService {
   private maxPresenceMapSize = 1000; // Maximum entries before cleanup
   private presenceCleanupAgeMs = 300000; // Clean entries older than 5 minutes
 
+  // Message batching для оптимизации производительности
+  private messageQueue: WSMessage[] = [];
+  private batchTimeout: NodeJS.Timeout | null = null;
+  private readonly BATCH_DELAY = 50; // Батчим сообщения за 50ms
+  private readonly MAX_BATCH_SIZE = 20; // Максимум 20 сообщений в батче
+
   /**
    * Connect to WebSocket server
    */
@@ -114,6 +120,13 @@ class WebSocketService {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
+
+    // Очищаем батч сообщений
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+      this.batchTimeout = null;
+    }
+    this.messageQueue = [];
 
     if (this.ws) {
       this.ws.close();
@@ -336,12 +349,58 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
         }
       }
 
-      // Process each message
+      // Process each message with batching
       for (const message of messages) {
-        await this.processMessage(message);
+        this.queueMessage(message);
       }
     } catch (error) {
       console.error('❌ Error handling WebSocket message:', error);
+    }
+  }
+
+  /**
+   * Queue message for batched processing
+   * Группирует сообщения для обработки пакетами, снижая нагрузку на UI
+   */
+  private queueMessage(message: WSMessage): void {
+    this.messageQueue.push(message);
+
+    // Если достигли максимального размера батча, обрабатываем немедленно
+    if (this.messageQueue.length >= this.MAX_BATCH_SIZE) {
+      this.processBatch();
+      return;
+    }
+
+    // Иначе устанавливаем таймер для батчинга
+    if (!this.batchTimeout) {
+      this.batchTimeout = setTimeout(() => {
+        this.processBatch();
+      }, this.BATCH_DELAY);
+    }
+  }
+
+  /**
+   * Process batched messages
+   * Обрабатывает накопленные сообщения одним пакетом
+   */
+  private async processBatch(): Promise<void> {
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+      this.batchTimeout = null;
+    }
+
+    if (this.messageQueue.length === 0) {
+      return;
+    }
+
+    const batch = [...this.messageQueue];
+    this.messageQueue = [];
+
+    console.log(`📦 Processing batch of ${batch.length} messages`);
+
+    // Обрабатываем сообщения последовательно
+    for (const message of batch) {
+      await this.processMessage(message);
     }
   }
 

@@ -15,7 +15,7 @@ interface ThemeState {
   setTheme: (mode: ThemeMode) => void;
   toggleTheme: () => void;
   loadTheme: () => Promise<void>;
-  initSystemThemeListener: () => void;
+  initSystemThemeListener: () => { remove: () => void };
 }
 
 const THEME_STORAGE_KEY = 'app_theme_mode';
