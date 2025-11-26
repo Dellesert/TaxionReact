@@ -132,6 +132,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     isScrollingToUnread,
     scrollSessionKey,
     handleScroll,
+    handleLoadMore,
     handleContentSizeChange,
     handleScrollToBottom,
     handleReplyPress: scrollToMessage,
@@ -380,6 +381,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onScroll={handleScroll}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig.current}
+        onLoadMore={handleLoadMore}
         onReply={handleReply}
         onEdit={handleEdit}
         onDelete={handleDelete}

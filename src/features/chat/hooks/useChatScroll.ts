@@ -94,6 +94,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [messages.length, firstUnreadIndex, unreadCount, initialScrollIndex, chatId]);
 
+  // Ref для handleLoadMore чтобы избежать циклической зависимости
+  const handleLoadMoreRef = useRef<() => Promise<void>>();
+
   // Обработчик скролла
   const handleScroll = useCallback((event: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -102,8 +105,51 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     lastScrollOffset.current = contentOffset.y;
 
     // Для инвертированного списка (inverted=true):
-    // offset.y = 0 означает самый верх (старые сообщения)
-    // большой offset.y означает самый низ (новые сообщения)
+    // offset.y начинается с отрицательных значений или малых при старте
+    // при скролле ВВЕРХ (к старым сообщениям) offset.y уменьшается
+    // при скролле ВНИЗ (к новым сообщениям) offset.y увеличивается
+
+    // Расстояние от верхнего края контента
+    const distanceFromTop = contentOffset.y;
+
+    // Для инвертированного списка проверяем близость к верхней границе
+    // Когда пользователь скроллит вверх к старым сообщениям, offset.y становится маленьким или отрицательным
+    const isNearTop = distanceFromTop <= 500; // Увеличен порог до 500px
+
+    // Если пользователь близко к верху и есть еще сообщения - загружаем
+    if (isNearTop) {
+      // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
+      const oldestMessage = messages[0];
+
+      console.log(`🔍 [Scroll] Chat ${chatId}: Близко к верху`, {
+        distanceFromTop,
+        initialScrolled,
+        isLoadingMore,
+        hasMoreMessages,
+        messagesLength: messages.length,
+        oldestMessageId: oldestMessage?.id,
+        lastLoadedId: lastOldestMessageId.current,
+        canLoad: initialScrolled && !isLoadingMore && hasMoreMessages && messages.length > 0,
+      });
+    }
+
+    if (isNearTop && initialScrolled && !isLoadingMore && hasMoreMessages && messages.length > 0) {
+      // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
+      const oldestMessage = messages[0];
+
+      if (oldestMessage) {
+        if (lastOldestMessageId.current === null) {
+          console.log(`📜 [Scroll] Chat ${chatId}: Первая загрузка старых сообщений от ID ${oldestMessage.id}`);
+          handleLoadMoreRef.current?.();
+        } else if (lastOldestMessageId.current !== oldestMessage.id) {
+          console.log(`📜 [Scroll] Chat ${chatId}: Запускаем загрузку старых сообщений от ID ${oldestMessage.id}`);
+          handleLoadMoreRef.current?.();
+        } else {
+          console.log(`⏭️ [Scroll] Chat ${chatId}: Пропускаем - уже загружали от ID ${oldestMessage.id}`);
+        }
+      }
+    }
+
     // Проверяем расстояние от низа
     // Порог 500px ≈ 5 сообщений (среднее сообщение ~100px)
     const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
@@ -134,33 +180,58 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         console.log(`📜 [Scroll] Chat ${chatId}: Пользователь ушел от низа`);
       }
     }
-  }, [initialScrolled, chatId]);
+  }, [initialScrolled, chatId, isLoadingMore, hasMoreMessages, messages]);
 
   // Подгружаем старые сообщения
   const handleLoadMore = useCallback(async () => {
+    // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
+    console.log(`🔄 [LoadMore] Chat ${chatId}: Вызвана функция загрузки`, {
+      initialScrolled,
+      isLoadingMore,
+      messagesLength: messages.length,
+      hasMoreMessages,
+      oldestMessageId: messages[0]?.id,
+      lastOldestMessageId: lastOldestMessageId.current,
+    });
+
+    // Ранние проверки для оптимизации
     if (!initialScrolled || isLoadingMore || messages.length === 0 || !hasMoreMessages) {
+      console.log(`⏸️ [LoadMore] Chat ${chatId}: Пропускаем - не выполнены начальные условия`);
       return;
     }
 
-    const oldestMessage = messages[messages.length - 1];
+    // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
+    const oldestMessage = messages[0];
     if (!oldestMessage || lastOldestMessageId.current === oldestMessage.id) {
+      console.log(`⏸️ [LoadMore] Chat ${chatId}: Пропускаем - сообщение уже загружалось или не найдено`);
       return;
     }
 
+    console.log(`🔄 [LoadMore] Chat ${chatId}: Загрузка старых сообщений от ID ${oldestMessage.id}`);
+
+    // Устанавливаем ID до начала загрузки для предотвращения дублирования
     lastOldestMessageId.current = oldestMessage.id;
     setIsLoadingMore(true);
 
     try {
       const addedCount = await loadMoreMessages(chatId, oldestMessage.id);
+      console.log(`✅ [LoadMore] Chat ${chatId}: Загружено ${addedCount} сообщений`);
+
       if (addedCount === 0) {
         setHasMoreMessages(false);
+        console.log(`🏁 [LoadMore] Chat ${chatId}: Достигнут конец истории`);
       }
     } catch (error) {
-      console.error('Failed to load more messages:', error);
+      console.error(`❌ [LoadMore] Chat ${chatId}: Ошибка:`, error);
+      // Сбрасываем ID при ошибке, чтобы можно было повторить попытку
+      lastOldestMessageId.current = null;
     } finally {
       setIsLoadingMore(false);
     }
   }, [chatId, messages, initialScrolled, isLoadingMore, hasMoreMessages, loadMoreMessages]);
+
+  // Сохраняем ссылку на handleLoadMore для использования в handleScroll
+  handleLoadMoreRef.current = handleLoadMore;
 
   // Обработчик изменения размера контента - теперь только для сохранения позиции
   const handleContentSizeChange = useCallback(() => {
@@ -319,6 +390,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Сброс состояния при смене чата
   const resetScroll = useCallback(() => {
+    console.log(`🔄 [Scroll] Сброс состояния скролла (resetScroll вызван)`);
     setHasMoreMessages(true);
     setInitialScrolled(false);
     setHasReachedBottom(false);
@@ -335,6 +407,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     setShowScrollToBottom(false);
     setShowDateHeader(false);
     setScrollSessionKey(prev => prev + 1); // Увеличиваем ключ для форсирования ремонтирования FlashList
+    console.log(`✅ [Scroll] Состояние скролла сброшено, lastOldestMessageId=${lastOldestMessageId.current}`);
   }, []);
 
   return {

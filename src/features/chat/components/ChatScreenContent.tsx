@@ -31,6 +31,7 @@ interface ChatScreenContentProps {
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
   viewabilityConfig: any;
+  onLoadMore: () => void;
   onReply: (message: Message) => void;
   onEdit: (message: Message) => void;
   onDelete: (messageId: number, deleteFor: 'everyone' | 'me') => Promise<void>;
@@ -106,6 +107,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   onScroll,
   onViewableItemsChanged,
   viewabilityConfig,
+  onLoadMore,
   onReply,
   onEdit,
   onDelete,
@@ -188,6 +190,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             onScroll={onScroll}
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={viewabilityConfig}
+            onLoadMore={onLoadMore}
             onReply={onReply}
             onEdit={onEdit}
             onDelete={onDelete}

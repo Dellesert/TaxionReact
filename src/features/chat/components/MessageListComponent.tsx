@@ -22,7 +22,7 @@ interface MessageListComponentProps {
   isLoadingMore: boolean;
   inputHeight: number;
   insetsBottom: number;
-  listRef: React.RefObject<FlashList<any> | null>;
+  listRef: React.RefObject<any>;
   highlightedMessageId: number | null;
   initialScrollIndex?: number;
   scrollSessionKey: number;
@@ -30,6 +30,7 @@ interface MessageListComponentProps {
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
   viewabilityConfig: any;
+  onLoadMore: () => void; // Добавлено для загрузки старых сообщений
   onReply: (message: any) => void;
   onEdit: (message: any) => void;
   onDelete: (messageId: number, deleteFor: 'everyone' | 'me') => void;
@@ -71,6 +72,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   onScroll,
   onViewableItemsChanged,
   viewabilityConfig,
+  onLoadMore,
   onReply,
   onEdit,
   onDelete,
@@ -91,6 +93,11 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  // Логируем, что onLoadMore передан
+  React.useEffect(() => {
+    console.log(`📋 [MessageListComponent] Chat ${chatId}: onLoadMore is ${typeof onLoadMore === 'function' ? 'defined' : 'undefined'}`);
+  }, [chatId, onLoadMore]);
+
   // Показываем skeleton'ы если сообщения еще не загружены
   const showSkeletons = isLoading && messageListItems.length === 0;
 
@@ -105,12 +112,13 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   }
 
   return (
+    // @ts-ignore - FlashList типы могут быть устаревшими
     <FlashList
       key={`chat-${chatId}-session-${scrollSessionKey}`}
       ref={listRef}
       data={messageListItems}
       extraData={messagesKey}
-      estimatedItemSize={80}
+      estimatedItemSize={100}
       initialScrollIndex={initialScrollIndex}
       renderItem={({ item, index }) => {
         // Рендер разделителя даты
@@ -167,7 +175,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       scrollEventThrottle={16}
       onViewableItemsChanged={onViewableItemsChanged}
       viewabilityConfig={viewabilityConfig}
-      onScrollToIndexFailed={(info) => {
+      onScrollToIndexFailed={(info: any) => {
         const averageHeight = info.averageItemLength || 100;
         const offset = averageHeight * info.index;
         listRef.current?.scrollToOffset({ offset, animated: false });
