@@ -392,6 +392,11 @@ export const getMessages = async (
       is_pinned: msg.is_pinned || false,
     };
 
+    // Добавляем sender если пришел от бэкенда
+    if (msg.sender) {
+      message.sender = msg.sender;
+    }
+
     // Parse poll_data if it's a JSON string
     if ((msg as any).poll_data && typeof (msg as any).poll_data === 'string') {
       try {

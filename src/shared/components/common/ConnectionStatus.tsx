@@ -28,7 +28,6 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
         const isConnected = websocketService.isConnected();
         if (isConnected) {
           if (status !== 'connected') {
-            console.log('🟢 WebSocket just connected');
             setStatus('connected');
           }
         } else {
@@ -54,14 +53,12 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
     }
 
     // Когда подключено - сразу скрываем без задержки
-    console.log('🟢 WebSocket connected, hiding status immediately');
     setShouldShow(false);
   }, [status, fadeAnim]);
 
   // В компактном режиме - показываем только если НЕ подключено И shouldShow = true
   if (compact) {
     if (status === 'connected' || !shouldShow) {
-      console.log('✅ Not showing status - connected or shouldShow=false');
       return null;
     }
   }

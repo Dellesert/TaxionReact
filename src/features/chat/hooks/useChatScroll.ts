@@ -6,6 +6,8 @@ import { getDateLabel } from '@shared/utils/dateHelpers';
 
 /**
  * Хук для управления скроллом в чате
+ *
+ * ОПТИМИЗАЦИЯ: Мемоизация селекторов для снижения ре-рендеров
  */
 export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex: number, unreadCount: number, currentUserId?: number) => {
   const listRef = useRef<FlatList<any>>(null);
@@ -30,6 +32,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const lastScrollOffset = useRef<number>(0);
   const shouldRestoreScroll = useRef<boolean>(false);
 
+  // Оптимизация: функции в Zustand стабильны и не меняются
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
 
   // Загружаем сохраненную позицию скролла при входе в чат

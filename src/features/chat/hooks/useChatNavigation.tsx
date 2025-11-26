@@ -33,10 +33,27 @@ export const useChatNavigation = ({
   const navigation = useNavigation();
 
   // Calculate header values
-  const displayName = useMemo(
-    () => (chat ? getChatDisplayName(chat, currentUserId) : chatName || 'Чат'),
-    [chat, currentUserId, chatName]
-  );
+  const displayName = useMemo(() => {
+    // Always use chatName from route params as fallback to show immediately
+    if (!chat) {
+      return chatName || 'Чат';
+    }
+
+    // Get the computed name from chat object
+    const computedName = getChatDisplayName(chat, currentUserId);
+
+    // For private chats, only use computed name if members are loaded
+    if (chat.type === 'private' && (!chat.members || chat.members.length === 0)) {
+      return chatName || computedName;
+    }
+
+    // If computed name is generic fallback, prefer route param
+    if (computedName === 'Без названия' && chatName) {
+      return chatName;
+    }
+
+    return computedName;
+  }, [chat, currentUserId, chatName]);
 
   const displayAvatar = useMemo(
     () => (chat ? getChatDisplayAvatar(chat, currentUserId) : undefined),

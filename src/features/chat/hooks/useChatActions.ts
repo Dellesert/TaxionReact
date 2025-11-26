@@ -5,6 +5,8 @@ import { getChatDisplayName } from '../utils/chatUtils';
 
 /**
  * Хук для обработки действий с сообщениями в чате
+ *
+ * ОПТИМИЗАЦИЯ: Извлекает функции из store (они стабильны и не меняются)
  */
 export const useChatActions = (chatId: number) => {
   const [editingMessage, setEditingMessage] = useState<any | null>(null);
@@ -13,6 +15,7 @@ export const useChatActions = (chatId: number) => {
   const [forwardingMessage, setForwardingMessage] = useState<any | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
 
+  // Оптимизация: извлекаем функции напрямую (они стабильны в Zustand)
   const sendMessage = useChatStore((state) => state.sendMessage);
   const updateMessage = useChatStore((state) => state.updateMessage);
   const deleteMessageForUser = useChatStore((state) => state.deleteMessageForUser);

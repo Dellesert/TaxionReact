@@ -43,58 +43,50 @@ export const ChatHeader = {
   }: Omit<ChatHeaderProps, 'displayAvatar' | 'onBackPress'>) => {
     const { theme } = useTheme();
 
+    // Determine what to show as subtitle
+    let subtitle = '';
+    if (!isConnected) {
+      subtitle = 'Подключение...';
+    } else if (isPrivateChat && statusText) {
+      subtitle = statusText;
+    } else if (!isPrivateChat && membersText) {
+      subtitle = membersText;
+    }
+
     return (
       <TouchableOpacity
         onPress={onHeaderPress}
         activeOpacity={0.7}
         style={{ maxWidth: 220 }}
       >
-        {isConnected ? (
-          <View style={{ alignItems: 'center', width: '100%' }}>
+        <View style={{ alignItems: 'center', width: '100%' }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '600',
+              color: theme.text,
+              maxWidth: '100%',
+            }}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {displayName}
+          </Text>
+          {subtitle && (
             <Text
               style={{
-                fontSize: 18,
-                fontWeight: '600',
-                color: theme.text,
+                fontSize: 12,
+                color: !isConnected ? theme.textSecondary : theme.textSecondary,
+                marginTop: 2,
                 maxWidth: '100%',
               }}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {displayName}
+              {subtitle}
             </Text>
-            {isPrivateChat && statusText && (
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: theme.textSecondary,
-                  marginTop: 2,
-                  maxWidth: '100%',
-                }}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {statusText}
-              </Text>
-            )}
-            {!isPrivateChat && membersText && (
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: theme.textSecondary,
-                  marginTop: 2,
-                  maxWidth: '100%',
-                }}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {membersText}
-              </Text>
-            )}
-          </View>
-        ) : (
-          <ConnectionStatus compact />
-        )}
+          )}
+        </View>
       </TouchableOpacity>
     );
   },

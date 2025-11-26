@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Keyboard } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -77,18 +77,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     handleBulkDelete,
   } = useSelectionMode();
 
-  // Store - получаем currentUser в самом начале
-  const {
-    isLoading,
-    loadMessages,
-    getChatById,
-    setActiveChat,
-    markChatAsRead,
-    typingUsers,
-    getPinnedMessages,
-    set: setError,
-    chats,
-  } = useChatStore();
+  // Store - оптимизированные селекторы
+  const isLoading = useChatStore((state) => state.isLoading);
+  const loadMessages = useChatStore((state) => state.loadMessages);
+  const getChatById = useChatStore((state) => state.getChatById);
+  const setActiveChat = useChatStore((state) => state.setActiveChat);
+  const markChatAsRead = useChatStore((state) => state.markChatAsRead);
+  const typingUsers = useChatStore((state) => state.typingUsers);
+  const getPinnedMessages = useChatStore((state) => state.getPinnedMessages);
+  const setError = useChatStore((state) => state.set);
+  const chats = useChatStore((state) => state.chats);
   const currentUser = useAuthStore((state) => state.user);
 
   // Data hooks
@@ -166,7 +164,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     };
 
     loadChat();
-  }, [chatIdNum, chatFromStore]);
+  }, [chatIdNum, chatFromStore, setChatData, setIsLoadingChat]);
 
   // Computed values
   const currentUserRole = useMemo(
@@ -187,9 +185,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     [typingUsers, chatIdNum, currentUser]
   );
 
+  // Оптимизация: стабилизация зависимостей useMemo - getPinnedMessages вызывается напрямую
   const pinnedMessages = useMemo(
-    () => getPinnedMessages(chatIdNum),
-    [chatIdNum, messages, getPinnedMessages]
+    () => useChatStore.getState().getPinnedMessages(chatIdNum),
+    [chatIdNum, messages] // Только стабильные зависимости
   );
 
   // Управление клавиатурой
@@ -223,8 +222,12 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }, [])
   );
 
-  // Проверка подключения
+  // Проверка начального статуса подключения + периодические обновления
   useEffect(() => {
+    // Сразу проверяем статус при монтировании
+    setIsConnected(websocketService.isConnected());
+
+    // Затем проверяем каждую секунду для быстрого обновления UI
     const interval = setInterval(() => {
       setIsConnected(websocketService.isConnected());
     }, 1000);
@@ -241,7 +244,30 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     isConnected,
   });
 
-  // Chat initialization
+  // Оптимизация: useCallback для стабилизации WebSocket подключения
+  const connectWebSocket = useCallback(async () => {
+    const startTime = Date.now();
+    if (!websocketService.isConnected()) {
+      const token = (await AsyncStorage.getItem('jwtToken')) || '';
+      if (token) {
+        await websocketService.connect(token);
+        // Обновляем статус подключения сразу после успешного подключения
+        const connected = websocketService.isConnected();
+        setIsConnected(connected);
+        const elapsed = Date.now() - startTime;
+        console.log(`[ChatScreen] WebSocket connection took ${elapsed}ms, connected: ${connected}`);
+      } else {
+        setError({ error: 'No authentication token found' });
+        return;
+      }
+    } else {
+      // Если уже подключены, обновляем статус
+      setIsConnected(true);
+      console.log('[ChatScreen] WebSocket already connected');
+    }
+  }, [setError]);
+
+  // Chat initialization - уменьшен массив зависимостей
   useEffect(() => {
     resetScroll();
     resetChatState();
@@ -259,24 +285,12 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     });
 
     // WebSocket connection
-    const connectWebSocket = async () => {
-      if (!websocketService.isConnected()) {
-        const token = (await AsyncStorage.getItem('jwtToken')) || '';
-        if (token) {
-          await websocketService.connect(token);
-          await new Promise<void>((resolve) => setTimeout(resolve, 500));
-        } else {
-          setError({ error: 'No authentication token found' });
-          return;
-        }
-      }
-    };
     connectWebSocket();
 
     return () => {
       setActiveChat(null);
     };
-  }, [chatIdNum, resetScroll, resetChatState, getChatById, routeUnreadCount, setSavedUnreadCount, setActiveChat, loadMessages, setError]);
+  }, [chatIdNum, connectWebSocket]); // Значительно уменьшен массив зависимостей!
 
   // Запоминаем начальное количество непрочитанных при первой загрузке
   useEffect(() => {

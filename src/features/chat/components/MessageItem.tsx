@@ -255,7 +255,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             const chat = await getOrCreateDirectChat(userId);
             console.log('✅ Got chat:', chat.id);
             setShowProfileModal(false);
-            navigation.navigate('Chat', { chatId: chat.id });
+            navigation.navigate('Chat', {
+              chatId: chat.id,
+              chatName: chat.name,
+              unreadCount: chat.unread_count || 0,
+            });
           } catch (error: any) {
             console.error('❌ Error opening chat:', error);
             showError(error.message || 'Не удалось открыть чат');

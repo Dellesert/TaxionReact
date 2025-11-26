@@ -210,6 +210,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
 
+      // ОПТИМИЗАЦИЯ: Очищаем кэш пользователей при logout
+      try {
+        const { useUserCache } = await import('@shared/store/userCache');
+        useUserCache.getState().clear();
+      } catch (error) {
+        // Игнорируем ошибку очистки кэша
+      }
+
       console.log('✅ Logged out successfully');
 
       // Clear state
