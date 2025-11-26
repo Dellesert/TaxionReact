@@ -94,7 +94,7 @@ export const MessagesList: React.FC<MessagesListProps> = ({
       data={messages}
       keyExtractor={(item) => String(item.id)}
       renderItem={renderItem}
-      estimatedItemSize={80}
+      estimatedItemHeight={80}
       inverted
       contentContainerStyle={styles.listContent}
       onEndReached={onEndReached}

@@ -28,14 +28,12 @@ const EditDepartmentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<EditDepartmentRouteProp>();
   const { theme } = useTheme();
-  const { user: currentUser } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
   const { departmentId } = route.params;
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [department, setDepartment] = useState<Department | null>(null);
   const [departmentUsers, setDepartmentUsers] = useState<User[]>([]);
 
   const [name, setName] = useState('');

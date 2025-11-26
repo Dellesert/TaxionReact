@@ -113,7 +113,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       ref={listRef}
       data={messageListItems}
       extraData={messagesKey}
-      estimatedItemSize={100}
+      estimatedItemHeight={100}
       initialScrollIndex={initialScrollIndex}
       renderItem={({ item, index }) => {
         // Рендер разделителя даты

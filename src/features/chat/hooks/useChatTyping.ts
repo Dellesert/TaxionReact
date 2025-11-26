@@ -1,11 +1,13 @@
 /**
  * Custom Hook: useChatTyping
  * Управление индикатором печати
+ *
+ * ОПТИМИЗАЦИЯ: Использует websocketService вместо socket.io-client
  */
 
 import { useCallback } from 'react';
-import { useTypingIndicator } from '@shared/hooks/useWebSocket';
-import { useTypingIndicator as useTypingUsers } from '../hooks/useTypingIndicator';
+import { useTypingIndicator } from '../hooks/useTypingIndicator';
+import { websocketService } from '@services/websocket.service';
 
 interface UseChatTypingReturn {
   typingUsers: string[];
@@ -13,13 +15,13 @@ interface UseChatTypingReturn {
 }
 
 export const useChatTyping = (chatId: number): UseChatTypingReturn => {
-  const { sendTypingStart } = useTypingIndicator(chatId);
-  const { startTyping, typingUsers } = useTypingUsers(String(chatId));
+  const { startTyping, typingUsers } = useTypingIndicator(String(chatId));
 
   const handleTyping = useCallback(() => {
     startTyping();
-    sendTypingStart();
-  }, [startTyping, sendTypingStart]);
+    // Отправляем событие typing через WebSocket
+    websocketService.sendTyping(chatId, true);
+  }, [startTyping, chatId]);
 
   return {
     typingUsers,

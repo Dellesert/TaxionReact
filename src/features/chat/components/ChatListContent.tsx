@@ -119,7 +119,7 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
               data={tabChats}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderChatItem}
-              estimatedItemSize={72}
+              estimatedItemHeight={72}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }

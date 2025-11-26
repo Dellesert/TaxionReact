@@ -4,10 +4,21 @@
  */
 
 // API Response Types
+// Гибкий тип для различных форматов ответов от бэкенда
 export interface ApiResponse<T> {
-  data: T;
+  data?: T;              // Стандартный формат: { data: T }
+  profile?: T;           // Альтернативный формат для profile endpoints
+  user?: T;              // Альтернативный формат для user endpoints
+  users?: T[];           // Для списков пользователей
+  department?: T;        // Для департаментов
+  departments?: T[];     // Для списков департаментов
+  chat?: T;              // Для чатов
+  chats?: T[];           // Для списков чатов
+  members?: T[];         // Для членов чата
   message?: string;
-  success: boolean;
+  success?: boolean;
+  // Для случаев когда T возвращается напрямую (без обертки)
+  [key: string]: any;
 }
 
 // Field validation error
@@ -47,9 +58,11 @@ export interface PaginationParams {
 export interface PaginatedResponse<T> {
   data?: T[];
   messages?: T[];
-  total: number;
-  limit: number;
-  offset: number;
+  users?: T[];           // Для пагинированных списков пользователей
+  chats?: T[];           // Для пагинированных списков чатов
+  total?: number;
+  limit?: number;
+  offset?: number;
   hasMore?: boolean;
   has_more?: boolean;
 }

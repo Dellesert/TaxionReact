@@ -123,7 +123,7 @@ const UsersScreen: React.FC = () => {
 
   const updateUserRole = async (user: User, newRole: UserRole) => {
     try {
-      const result = await userApi.updateUserRole(user.id, newRole);
+      await userApi.updateUserRole(user.id, newRole);
       showSuccess(`Роль пользователя изменена на "${getRoleLabel(newRole)}"`);
       loadUsers();
     } catch (error: any) {

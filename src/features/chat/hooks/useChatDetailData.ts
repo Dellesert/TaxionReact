@@ -48,35 +48,8 @@ export const useChatDetailData = (chatId: number): UseChatDetailDataReturn => {
     }
   }, [chatId, loadMessages, showError]);
 
-  // ОПТИМИЗАЦИЯ: Предзагрузка пользователей после загрузки сообщений
-  // Вместо 50 отдельных запросов - загружаем батчем в кэш
-  // ВАЖНО: Если бэкенд возвращает sender - эта логика не будет использоваться!
-  useEffect(() => {
-    if (chatMessages.length > 0) {
-      // Импортируем кэш пользователей динамически
-      import('@shared/store/userCache').then(({ useUserCache }) => {
-        // Собираем все уникальные ID пользователей, которые нужно загрузить
-        const userIds = new Set<number>();
-
-        chatMessages.forEach((message) => {
-          // Добавляем sender_id если sender не пришел с бэкенда
-          if (message.sender_id && !message.sender) {
-            userIds.add(message.sender_id);
-          }
-
-          // Добавляем reply sender_id если есть
-          if (message.reply_to?.sender_id && !message.reply_to?.sender) {
-            userIds.add(message.reply_to.sender_id);
-          }
-        });
-
-        // Предзагружаем пользователей батчем (только если sender отсутствует)
-        if (userIds.size > 0) {
-          useUserCache.getState().preloadUsers(Array.from(userIds));
-        }
-      });
-    }
-  }, [chatMessages, chatId]);
+  // ОПТИМИЗАЦИЯ: Удалена предзагрузка пользователей
+  // Backend теперь всегда возвращает sender в сообщениях, поэтому кэш не нужен
 
   const shouldShowLoadingScreen = shouldShowLoading(isLoading, chatMessages.length);
 

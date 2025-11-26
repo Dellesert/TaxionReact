@@ -78,7 +78,7 @@ const NotificationListScreen: React.FC = () => {
       <FlashList
         data={notifications}
         renderItem={renderItem}
-        estimatedItemSize={90}
+        estimatedItemHeight={90}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}

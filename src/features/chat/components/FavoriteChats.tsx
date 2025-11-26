@@ -57,10 +57,10 @@ export const FavoriteChats: React.FC<FavoriteChatsProps> = ({ chats, onChatPress
                     <Ionicons name="person" size={24} color={theme.primary} />
                   </View>
                 )}
-                {(chat.unread_count ?? 0) > 0 && (
+                {!!chat.unread_count && chat.unread_count > 0 && (
                   <View style={[styles.badge, { backgroundColor: theme.error }]}>
                     <Text style={styles.badgeText}>
-                      {(chat.unread_count ?? 0) > 99 ? '99+' : chat.unread_count}
+                      {chat.unread_count > 99 ? '99+' : String(chat.unread_count)}
                     </Text>
                   </View>
                 )}

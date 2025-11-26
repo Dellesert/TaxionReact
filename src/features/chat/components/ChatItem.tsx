@@ -308,10 +308,10 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onLongPress
               {chat.is_muted && (
                 <Ionicons name="notifications-off" size={16} color={theme.textTertiary} style={styles.muteIcon} />
               )}
-              {chat.unread_count > 0 && (
+              {!!chat.unread_count && chat.unread_count > 0 && (
                 <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]}>
                   <Text style={styles.unreadText}>
-                    {chat.unread_count > 99 ? '99+' : chat.unread_count}
+                    {chat.unread_count > 99 ? '99+' : String(chat.unread_count)}
                   </Text>
                 </View>
               )}

@@ -1,0 +1,404 @@
+src/api/user.api.ts(75,3): error TS2322: Type 'User | undefined' is not assignable to type 'User'.
+  Type 'undefined' is not assignable to type 'User'.
+src/api/user.api.ts(130,7): error TS2322: Type 'PaginatedResponse<User>[]' is not assignable to type 'User[]'.
+  Type 'PaginatedResponse<User>' is missing the following properties from type 'User': id, email, name, role, and 5 more.
+src/api/user.api.ts(163,3): error TS2322: Type 'User | undefined' is not assignable to type 'User'.
+  Type 'undefined' is not assignable to type 'User'.
+src/api/user.api.ts(223,5): error TS2322: Type 'Department[][]' is not assignable to type 'Department[]'.
+  Type 'Department[]' is missing the following properties from type 'Department': id, name, created_at, updated_at
+src/api/user.api.ts(255,3): error TS2322: Type 'Department | undefined' is not assignable to type 'Department'.
+  Type 'undefined' is not assignable to type 'Department'.
+src/api/user.api.ts(269,3): error TS2322: Type 'Department | undefined' is not assignable to type 'Department'.
+  Type 'undefined' is not assignable to type 'Department'.
+src/api/user.api.ts(286,33): error TS2339: Property 'users' does not exist on type 'User[]'.
+src/api/user.api.ts(288,37): error TS2339: Property 'users' does not exist on type 'User[]'.
+src/api/user.api.ts(294,5): error TS2322: Type 'User[][]' is not assignable to type 'User[]'.
+  Type 'User[]' is missing the following properties from type 'User': id, email, name, role, and 5 more.
+src/features/admin/screens/DepartmentsScreen.tsx(129,48): error TS2769: No overload matches this call.
+  Argument of type '[any]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(options: never): void', gave the following error.
+    Argument of type 'any' is not assignable to parameter of type 'never'.
+src/features/admin/screens/EditDepartmentScreen.tsx(16,1): error TS6133: 'useAuthStore' is declared but its value is never read.
+src/features/admin/screens/EditDepartmentScreen.tsx(20,10): error TS6133: 'Department' is declared but its value is never read.
+src/features/admin/screens/EditDepartmentScreen.tsx(54,7): error TS2552: Cannot find name 'setDepartment'. Did you mean 'departmentId'?
+src/features/admin/screens/UsersScreen.tsx(58,16): error TS2345: Argument of type 'User[] | undefined' is not assignable to parameter of type 'SetStateAction<User[]>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<User[]>'.
+src/features/admin/screens/UsersScreen.tsx(182,48): error TS2769: No overload matches this call.
+  Argument of type '[any]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(options: never): void', gave the following error.
+    Argument of type 'any' is not assignable to parameter of type 'never'.
+src/features/auth/api/auth.api.ts(29,1): error TS6133: 'ApiResponse' is declared but its value is never read.
+src/features/auth/components/CodeInputGrid.tsx(27,11): error TS2322: Type '(ref: TextInput | null) => TextInput | null' is not assignable to type 'Ref<TextInput> | undefined'.
+  Type '(ref: TextInput | null) => TextInput | null' is not assignable to type '(instance: TextInput | null) => void | (() => VoidOrUndefinedOnly)'.
+    Type 'TextInput | null' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+      Type 'null' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+src/features/calendar/api/calendar.api.ts(73,3): error TS2322: Type 'Event | undefined' is not assignable to type 'Event'.
+  Type 'undefined' is not assignable to type 'Event'.
+src/features/calendar/api/calendar.api.ts(90,3): error TS2322: Type 'Event[] | undefined' is not assignable to type 'Event[]'.
+  Type 'undefined' is not assignable to type 'Event[]'.
+src/features/calendar/api/calendar.api.ts(100,3): error TS2322: Type 'Event[] | undefined' is not assignable to type 'Event[]'.
+  Type 'undefined' is not assignable to type 'Event[]'.
+src/features/calendar/api/calendar.api.ts(111,3): error TS2322: Type 'ConflictResponse | undefined' is not assignable to type 'ConflictResponse'.
+  Type 'undefined' is not assignable to type 'ConflictResponse'.
+src/features/calendar/api/calendar.api.ts(127,3): error TS2322: Type 'Event | undefined' is not assignable to type 'Event'.
+  Type 'undefined' is not assignable to type 'Event'.
+src/features/calendar/api/calendar.api.ts(151,3): error TS2322: Type 'Event | undefined' is not assignable to type 'Event'.
+  Type 'undefined' is not assignable to type 'Event'.
+src/features/calendar/api/calendar.api.ts(167,3): error TS2322: Type 'Event | undefined' is not assignable to type 'Event'.
+  Type 'undefined' is not assignable to type 'Event'.
+src/features/calendar/components/CreateEventModal.tsx(207,32): error TS18048: 'usersResponse.data' is possibly 'undefined'.
+src/features/calendar/components/CreateEventModal.tsx(217,30): error TS18048: 'usersResponse.data' is possibly 'undefined'.
+src/features/calendar/components/EventDetailModal.tsx(10,3): error TS6133: 'Platform' is declared but its value is never read.
+src/features/calendar/components/EventDetailModal.tsx(42,18): error TS6133: 'isDark' is declared but its value is never read.
+src/features/calendar/components/EventDetailModal.tsx(141,9): error TS6133: 'statusBadge' is declared but its value is never read.
+src/features/calendar/components/EventItem.tsx(18,9): error TS6133: 'getEventIcon' is declared but its value is never read.
+src/features/calendar/components/MonthCalendarView.tsx(13,3): error TS6133: 'isSameDay' is declared but its value is never read.
+src/features/calendar/components/MonthCalendarView.tsx(16,1): error TS6133: 'ru' is declared but its value is never read.
+src/features/calendar/components/MonthCalendarView.tsx(31,3): error TS6133: 'onDatePress' is declared but its value is never read.
+src/features/chat/api/chat.api.ts(20,3): error TS6133: 'ChatListFilters' is declared but its value is never read.
+src/features/chat/api/chat.api.ts(60,41): error TS2339: Property 'type' does not exist on type 'Message'.
+src/features/chat/api/chat.api.ts(136,41): error TS2339: Property 'type' does not exist on type 'Message'.
+src/features/chat/api/chat.api.ts(183,38): error TS2339: Property 'chat' does not exist on type 'Chat'.
+src/features/chat/api/chat.api.ts(184,26): error TS2339: Property 'chat' does not exist on type 'Chat'.
+src/features/chat/api/chat.api.ts(302,5): error TS2322: Type 'ChatMember[][]' is not assignable to type 'ChatMember[]'.
+  Type 'ChatMember[]' is missing the following properties from type 'ChatMember': id, chat_id, user_id, role, and 2 more.
+src/features/chat/api/chat.api.ts(324,3): error TS2322: Type 'Chat | undefined' is not assignable to type 'Chat'.
+  Type 'undefined' is not assignable to type 'Chat'.
+src/features/chat/api/chat.api.ts(481,3): error TS2322: Type 'Message | undefined' is not assignable to type 'Message'.
+  Type 'undefined' is not assignable to type 'Message'.
+src/features/chat/api/chat.api.ts(516,9): error TS6133: 'response' is declared but its value is never read.
+src/features/chat/api/chat.api.ts(536,3): error TS2322: Type 'PaginatedResponse<Message> | undefined' is not assignable to type 'PaginatedResponse<Message>'.
+  Type 'undefined' is not assignable to type 'PaginatedResponse<Message>'.
+src/features/chat/api/chat.api.ts(549,3): error TS2322: Type 'Message | undefined' is not assignable to type 'Message'.
+  Type 'undefined' is not assignable to type 'Message'.
+src/features/chat/api/chat.api.ts(559,3): error TS2322: Type 'Message | undefined' is not assignable to type 'Message'.
+  Type 'undefined' is not assignable to type 'Message'.
+src/features/chat/components/AttachmentsTab.tsx(30,1): error TS6133: 'decodeFileName' is declared but its value is never read.
+src/features/chat/components/AttachmentsTab.tsx(378,51): error TS6133: 'index' is declared but its value is never read.
+src/features/chat/components/ChatHeader.tsx(5,1): error TS6133: 'ConnectionStatus' is declared but its value is never read.
+src/features/chat/components/ChatItem.tsx(26,70): error TS6133: 'onLongPress' is declared but its value is never read.
+src/features/chat/components/ChatItem.tsx(144,18): error TS2339: Property 'isDark' does not exist on type 'Theme'.
+src/features/chat/components/ChatListContent.tsx(122,15): error TS2322: Type '{ data: Chat[]; keyExtractor: (item: Chat) => string; renderItem: ({ item }: { item: Chat; }) => Element; estimatedItemHeight: number; refreshControl: Element; ... 8 more ...; getItemLayout: (_data: any, index: any) => { ...; }; }' is not assignable to type 'IntrinsicAttributes & FlashListProps<Chat> & { ref?: Ref<FlashListRef<Chat>> | undefined; }'.
+  Property 'estimatedItemHeight' does not exist on type 'IntrinsicAttributes & FlashListProps<Chat> & { ref?: Ref<FlashListRef<Chat>> | undefined; }'.
+src/features/chat/components/ChatListContent.tsx(154,31): error TS7006: Parameter '_data' implicitly has an 'any' type.
+src/features/chat/components/ChatListContent.tsx(154,38): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/features/chat/components/ChatMembersModal.tsx(17,3): error TS6133: 'Platform' is declared but its value is never read.
+src/features/chat/components/ChatMembersModal.tsx(18,3): error TS6133: 'StatusBar' is declared but its value is never read.
+src/features/chat/components/ChatMembersModal.tsx(20,10): error TS6133: 'SafeAreaView' is declared but its value is never read.
+src/features/chat/components/ChatMembersModal.tsx(46,3): error TS6133: 'isCreator' is declared but its value is never read.
+src/features/chat/components/ChatMembersModal.tsx(325,9): error TS6133: 'getInitials' is declared but its value is never read.
+src/features/chat/components/ChatMembersModal.tsx(333,9): error TS6133: 'getStatusColor' is declared but its value is never read.
+src/features/chat/components/ChatMembersModal.tsx(614,80): error TS2339: Property 'userItemSelected' does not exist on type '{ container: { flex: number; }; header: { flexDirection: "row"; alignItems: "center"; justifyContent: "space-between"; paddingHorizontal: number; paddingVertical: number; borderBottomWidth: number; }; ... 39 more ...; sectionHeaderCount: { ...; }; }'.
+src/features/chat/components/ChatMembersModal.tsx(636,86): error TS2339: Property 'checkboxSelected' does not exist on type '{ container: { flex: number; }; header: { flexDirection: "row"; alignItems: "center"; justifyContent: "space-between"; paddingHorizontal: number; paddingVertical: number; borderBottomWidth: number; }; ... 39 more ...; sectionHeaderCount: { ...; }; }'.
+src/features/chat/components/ChatMembersModal.tsx(672,55): error TS2339: Property 'addButtonDisabled' does not exist on type '{ container: { flex: number; }; header: { flexDirection: "row"; alignItems: "center"; justifyContent: "space-between"; paddingHorizontal: number; paddingVertical: number; borderBottomWidth: number; }; ... 39 more ...; sectionHeaderCount: { ...; }; }'.
+src/features/chat/components/ChatScreenContent.tsx(10,24): error TS6196: 'Chat' is declared but never used.
+src/features/chat/components/ChatScreenContent.tsx(134,3): error TS6133: 'isScrollingToUnread' is declared but its value is never read.
+src/features/chat/components/ChatScreenContent.tsx(166,13): error TS2322: Type 'string | undefined' is not assignable to type '"group" | "channel" | "private" | undefined'.
+  Type 'string' is not assignable to type '"group" | "channel" | "private" | undefined'.
+src/features/chat/components/ChatScreenContent.tsx(167,13): error TS2322: Type 'string' is not assignable to type '"admin" | "owner" | "member" | undefined'.
+src/features/chat/components/ChatScreenContent.tsx(187,13): error TS2322: Type 'number | null' is not assignable to type 'number | undefined'.
+  Type 'null' is not assignable to type 'number | undefined'.
+src/features/chat/components/ChatScreenContent.tsx(209,13): error TS2322: Type 'string | undefined' is not assignable to type '"group" | "channel" | "private" | undefined'.
+  Type 'string' is not assignable to type '"group" | "channel" | "private" | undefined'.
+src/features/chat/components/ChatScreenContent.tsx(210,13): error TS2322: Type 'string' is not assignable to type '"admin" | "owner" | "member" | undefined'.
+src/features/chat/components/FavoriteChats.tsx(39,56): error TS2345: Argument of type 'User | null' is not assignable to parameter of type 'number | undefined'.
+  Type 'null' is not assignable to type 'number | undefined'.
+src/features/chat/components/FavoriteChats.tsx(40,56): error TS2345: Argument of type 'User | null' is not assignable to parameter of type 'number | undefined'.
+  Type 'null' is not assignable to type 'number | undefined'.
+src/features/chat/components/FileAttachmentPicker.tsx(201,37): error TS7006: Parameter 'file' implicitly has an 'any' type.
+src/features/chat/components/ImageViewer.tsx(43,9): error TS6133: 'focalX' is declared but its value is never read.
+src/features/chat/components/ImageViewer.tsx(44,9): error TS6133: 'focalY' is declared but its value is never read.
+src/features/chat/components/ImageViewer.tsx(83,13): error TS7030: Not all code paths return a value.
+src/features/chat/components/LinkifiedText.tsx(33,9): error TS6133: 'remainingText' is declared but its value is never read.
+src/features/chat/components/MessageAttachments.tsx(36,3): error TS6133: 'imageUrls' is declared but its value is never read.
+src/features/chat/components/MessageAttachments.tsx(59,19): error TS7030: Not all code paths return a value.
+src/features/chat/components/MessageBubble.tsx(1,17): error TS6133: 'useRef' is declared but its value is never read.
+src/features/chat/components/MessageBubble.tsx(52,9): error TS6133: 'isForwarded' is declared but its value is never read.
+src/features/chat/components/MessageItem.tsx(20,1): error TS6133: 'getUser' is declared but its value is never read.
+src/features/chat/components/MessageItem.tsx(57,3): error TS6133: 'onDeletePermanent' is declared but its value is never read.
+src/features/chat/components/MessageItem.tsx(66,3): error TS6133: 'chatMemberIds' is declared but its value is never read.
+src/features/chat/components/MessageItem.tsx(85,19): error TS2339: Property 'setSender' does not exist on type '{ sender: User | null; replySender: User | null; }'.
+src/features/chat/components/MessageItem.tsx(85,19): error TS6133: 'setSender' is declared but its value is never read.
+src/features/chat/components/MessageItem.tsx(93,48): error TS6133: 'x' is declared but its value is never read.
+src/features/chat/components/MessageItem.tsx(93,54): error TS6133: 'width' is declared but its value is never read.
+src/features/chat/components/MessageItem.tsx(93,61): error TS6133: 'height' is declared but its value is never read.
+src/features/chat/components/MessageItem.tsx(177,11): error TS2322: Type '(() => void) | undefined' is not assignable to type '() => void'.
+  Type 'undefined' is not assignable to type '() => void'.
+src/features/chat/components/MessageItem.tsx(182,11): error TS2322: Type 'RefObject<View | null>' is not assignable to type 'RefObject<View>'.
+  Type 'View | null' is not assignable to type 'View'.
+    Type 'null' is not assignable to type 'NativeMethods & ViewComponent'.
+      Type 'null' is not assignable to type 'NativeMethods'.
+src/features/chat/components/MessageItem.tsx(370,47): error TS2339: Property 'user_id' does not exist on type 'number'.
+src/features/chat/components/MessageItem.tsx(371,47): error TS2339: Property 'user_id' does not exist on type 'number'.
+src/features/chat/components/MessageListComponent.tsx(75,3): error TS6133: 'onLoadMore' is declared but its value is never read.
+src/features/chat/components/MessageListComponent.tsx(116,7): error TS2322: Type '{ key: string; ref: RefObject<any>; data: MessageListItem[]; extraData: string; estimatedItemHeight: number; initialScrollIndex: number | undefined; renderItem: ({ item, index }: ListRenderItemInfo<...>) => Element; ... 11 more ...; ListFooterComponent: Element | null; }' is not assignable to type 'IntrinsicAttributes & FlashListProps<MessageListItem> & { ref?: Ref<FlashListRef<MessageListItem>> | undefined; }'.
+  Property 'estimatedItemHeight' does not exist on type 'IntrinsicAttributes & FlashListProps<MessageListItem> & { ref?: Ref<FlashListRef<MessageListItem>> | undefined; }'.
+src/features/chat/components/MessageSkeleton.tsx(45,46): error TS2322: Type '{ alignSelf: string; backgroundColor: string; opacity: Animated.AnimatedInterpolation<string | number>; }' is not assignable to type 'false | "" | RegisteredStyle<ViewStyle> | Value | WithAnimatedObject<ViewStyle> | AnimatedInterpolation<string | number> | WithAnimatedArray<...> | readonly (false | ... 6 more ... | undefined)[] | null | undefined'.
+  Type '{ alignSelf: string; backgroundColor: string; opacity: Animated.AnimatedInterpolation<string | number>; }' is not assignable to type 'WithAnimatedObject<ViewStyle>'.
+    Types of property 'alignSelf' are incompatible.
+      Type 'string' is not assignable to type '"auto" | "center" | "flex-start" | "flex-end" | "stretch" | "baseline" | Value | AnimatedInterpolation<string | number> | undefined'.
+src/features/chat/components/MessagesList.tsx(16,32): error TS2749: 'FlashList' refers to a value, but is being used as a type here. Did you mean 'typeof FlashList'?
+src/features/chat/components/MessagesList.tsx(97,7): error TS2322: Type '{ ref: RefObject<any>; data: Message[]; keyExtractor: (item: Message) => string; renderItem: ({ item }: { item: Message; }) => Element; estimatedItemHeight: number; ... 6 more ...; drawDistance: number; }' is not assignable to type 'IntrinsicAttributes & FlashListProps<Message> & { ref?: Ref<FlashListRef<Message>> | undefined; }'.
+  Property 'estimatedItemHeight' does not exist on type 'IntrinsicAttributes & FlashListProps<Message> & { ref?: Ref<FlashListRef<Message>> | undefined; }'.
+src/features/chat/components/PollMessageCard.tsx(17,70): error TS6133: 'onPress' is declared but its value is never read.
+src/features/chat/components/PollMessageCard.tsx(58,9): error TS6133: 'isEnded' is declared but its value is never read.
+src/features/chat/components/PrivateChatInfo.tsx(72,44): error TS2339: Property 'last_active_at' does not exist on type 'User'.
+src/features/chat/components/StickyUnreadBanner.tsx(42,26): error TS2339: Property 'textPrimary' does not exist on type 'Theme'.
+src/features/chat/components/TaskMessageCard.tsx(17,70): error TS6133: 'onPress' is declared but its value is never read.
+src/features/chat/hooks/useChatMembers.ts(7,10): error TS2305: Module '"@/types/user.types"' has no exported member 'ChatMember'.
+src/features/chat/hooks/useChatMembers.ts(36,52): error TS2353: Object literal may only specify known properties, and 'ids' does not exist in type 'UserListFilters'.
+src/features/chat/hooks/useChatScroll.ts(96,29): error TS2554: Expected 1 arguments, but got 0.
+src/features/chat/hooks/useTypingIndicator.ts(9,36): error TS6133: 'chatId' is declared but its value is never read.
+src/features/chat/hooks/useTypingIndicator.ts(10,23): error TS6133: 'setTypingUsers' is declared but its value is never read.
+src/features/chat/screens/ChatDetailScreen.tsx(48,13): error TS2322: Type '{ children: Element; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+  Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+src/features/chat/screens/ChatDetailScreen.tsx(57,7): error TS2322: Type '{ children: Element[]; behavior: "height" | "padding"; className: string; keyboardVerticalOffset: number; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<KeyboardAvoidingView> & Readonly<KeyboardAvoidingViewProps>'.
+  Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<KeyboardAvoidingView> & Readonly<KeyboardAvoidingViewProps>'.
+src/features/chat/screens/ChatScreen.tsx(87,9): error TS6133: 'getPinnedMessages' is declared but its value is never read.
+src/features/chat/screens/ChatScreen.tsx(253,40): error TS2554: Expected 0 arguments, but got 1.
+src/features/chat/screens/ChatScreen.tsx(311,13): error TS7030: Not all code paths return a value.
+src/features/chat/screens/ChatScreen.tsx(345,31): error TS2345: Argument of type '[never, never]' is not assignable to parameter of type 'never'.
+src/features/chat/screens/ChatScreen.tsx(392,9): error TS2322: Type 'number | undefined' is not assignable to type 'number | null'.
+  Type 'undefined' is not assignable to type 'number | null'.
+src/features/chat/screens/ChatScreen.tsx(418,9): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/features/chat/types/chat.types.ts(115,3): error TS2300: Duplicate identifier 'avatar'.
+src/features/chat/types/chat.types.ts(116,3): error TS2300: Duplicate identifier 'avatar'.
+src/features/chat/utils/chatUtils.ts(22,31): error TS2339: Property 'full_name' does not exist on type 'User'.
+src/features/notifications/api/notification.api.ts(103,3): error TS2322: Type 'NotificationStats | undefined' is not assignable to type 'NotificationStats'.
+  Type 'undefined' is not assignable to type 'NotificationStats'.
+src/features/notifications/api/notification.api.ts(123,3): error TS2322: Type 'PaginatedResponse<Notification> | undefined' is not assignable to type 'PaginatedResponse<Notification>'.
+  Type 'undefined' is not assignable to type 'PaginatedResponse<Notification>'.
+src/features/notifications/api/notification.api.ts(148,3): error TS2322: Type 'NotificationPreferences | undefined' is not assignable to type 'NotificationPreferences'.
+  Type 'undefined' is not assignable to type 'NotificationPreferences'.
+src/features/notifications/components/NotificationModal.tsx(77,31): error TS2345: Argument of type '[never, never]' is not assignable to parameter of type 'never'.
+src/features/notifications/components/NotificationModal.tsx(87,33): error TS2345: Argument of type '[never, never]' is not assignable to parameter of type 'never'.
+src/features/notifications/components/NotificationModal.tsx(96,33): error TS2345: Argument of type '[never, never]' is not assignable to parameter of type 'never'.
+src/features/notifications/components/NotificationModal.tsx(102,33): error TS2345: Argument of type '[never, never]' is not assignable to parameter of type 'never'.
+src/features/notifications/components/NotificationModal.tsx(108,31): error TS2345: Argument of type '[never, never]' is not assignable to parameter of type 'never'.
+src/features/notifications/components/NotificationModal.tsx(112,20): error TS2367: This comparison appears to be unintentional because the types '"system" | "message" | "event" | "poll" | "mention" | "reaction"' and '"calendar"' have no overlap.
+src/features/notifications/screens/NotificationListScreen.tsx(81,9): error TS2322: Type '{ data: any[]; renderItem: ({ item }: { item: Notification; }) => Element; estimatedItemHeight: number; keyExtractor: (item: Notification) => string; ListEmptyComponent: () => Element; ... 4 more ...; contentContainerStyle: { ...; } | undefined; }' is not assignable to type 'IntrinsicAttributes & FlashListProps<Notification> & { ref?: Ref<FlashListRef<Notification>> | undefined; }'.
+  Property 'estimatedItemHeight' does not exist on type 'IntrinsicAttributes & FlashListProps<Notification> & { ref?: Ref<FlashListRef<Notification>> | undefined; }'.
+src/features/polls/api/poll.api.ts(20,1): error TS6133: 'ApiResponse' is declared but its value is never read.
+src/features/polls/components/CreatePollModal.tsx(158,9): error TS2353: Object literal may only specify known properties, and 'participant_ids' does not exist in type 'CreatePollDto'.
+src/features/polls/components/EditPollModal.tsx(25,16): error TS6133: 'PollVisibility' is declared but its value is never read.
+src/features/polls/components/EditPollModal.tsx(339,66): error TS2367: This comparison appears to be unintentional because the types '"cancelled" | "draft" | "closed" | "archived" | undefined' and '"completed"' have no overlap.
+src/features/polls/components/EditPollModal.tsx(342,20): error TS2339: Property 'votes_count' does not exist on type 'Poll'.
+src/features/polls/components/EditPollModal.tsx(346,40): error TS2339: Property 'votes_count' does not exist on type 'Poll'.
+src/features/polls/components/PollItem.tsx(18,9): error TS6133: 'getStatusColor' is declared but its value is never read.
+src/features/polls/components/PollItem.tsx(31,9): error TS6133: 'getStatusText' is declared but its value is never read.
+src/features/polls/components/PollItem.tsx(46,9): error TS6133: 'getTypeIcon' is declared but its value is never read.
+src/features/polls/components/PollItem.tsx(63,9): error TS6133: 'getTypeText' is declared but its value is never read.
+src/features/polls/components/PollListContent.tsx(66,7): error TS2322: Type '{ data: Poll[]; keyExtractor: (item: Poll) => string; estimatedItemSize: number; renderItem: ({ item }: ListRenderItemInfo<Poll>) => Element; ... 4 more ...; ListFooterComponent: Element | null; }' is not assignable to type 'IntrinsicAttributes & FlashListProps<Poll> & { ref?: Ref<FlashListRef<Poll>> | undefined; }'.
+  Property 'estimatedItemSize' does not exist on type 'IntrinsicAttributes & FlashListProps<Poll> & { ref?: Ref<FlashListRef<Poll>> | undefined; }'.
+src/features/polls/components/SharePollModal.tsx(274,17): error TS2339: Property 'question' does not exist on type 'Poll'.
+src/features/polls/components/SharePollModal.tsx(276,21): error TS2339: Property 'question' does not exist on type 'Poll'.
+src/features/profile/hooks/useActiveSessionsActions.ts(75,11): error TS6133: 'otherCount' is declared but its value is never read.
+src/features/profile/hooks/usePasskeyActions.ts(106,47): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/features/profile/hooks/useProfileActions.ts(50,35): error TS2345: Argument of type '"system"' is not assignable to parameter of type 'ThemeMode'.
+src/features/tasks/api/task.api.ts(23,3): error TS6133: 'TaskActivity' is declared but its value is never read.
+src/features/tasks/api/task.api.ts(267,3): error TS2322: Type 'TaskStats | undefined' is not assignable to type 'TaskStats'.
+  Type 'undefined' is not assignable to type 'TaskStats'.
+src/features/tasks/api/task.api.ts(668,3): error TS2322: Type 'Project[] | undefined' is not assignable to type 'Project[]'.
+  Type 'undefined' is not assignable to type 'Project[]'.
+src/features/tasks/api/task.api.ts(676,3): error TS2322: Type 'Project | undefined' is not assignable to type 'Project'.
+  Type 'undefined' is not assignable to type 'Project'.
+src/features/tasks/api/task.api.ts(684,3): error TS2322: Type 'Project | undefined' is not assignable to type 'Project'.
+  Type 'undefined' is not assignable to type 'Project'.
+src/features/tasks/api/task.api.ts(695,3): error TS2322: Type 'Project | undefined' is not assignable to type 'Project'.
+  Type 'undefined' is not assignable to type 'Project'.
+src/features/tasks/api/task.api.ts(712,3): error TS2322: Type 'Task[] | undefined' is not assignable to type 'Task[]'.
+  Type 'undefined' is not assignable to type 'Task[]'.
+src/features/tasks/components/TaskChecklistsView.tsx(11,3): error TS6133: 'TextInput' is declared but its value is never read.
+src/features/tasks/components/TaskChecklistsView.tsx(12,3): error TS6133: 'ActivityIndicator' is declared but its value is never read.
+src/features/tasks/components/TaskChecklistsView.tsx(61,9): error TS6133: 'innerSize' is declared but its value is never read.
+src/features/tasks/components/TaskChecklistsView.tsx(272,9): error TS6133: 'handleCreateChecklist' is declared but its value is never read.
+src/features/tasks/components/TaskChecklistsView.tsx(289,9): error TS6133: 'handleDeleteChecklist' is declared but its value is never read.
+src/features/tasks/components/TaskChecklistsView.tsx(312,9): error TS6133: 'handleAddItem' is declared but its value is never read.
+src/features/tasks/components/TaskChecklistsView.tsx(354,9): error TS6133: 'handleDeleteItem' is declared but its value is never read.
+src/features/tasks/components/TaskListContent.tsx(160,13): error TS2322: Type '{ data: Task[]; keyExtractor: (item: Task) => string; estimatedItemSize: number; renderItem: ({ item }: ListRenderItemInfo<Task>) => Element; ... 4 more ...; ListFooterComponent: Element | null; }' is not assignable to type 'IntrinsicAttributes & FlashListProps<Task> & { ref?: Ref<FlashListRef<Task>> | undefined; }'.
+  Property 'estimatedItemSize' does not exist on type 'IntrinsicAttributes & FlashListProps<Task> & { ref?: Ref<FlashListRef<Task>> | undefined; }'.
+src/features/tasks/components/TaskSubtasksList.tsx(182,7): error TS6133: 'STATUS_LABELS' is declared but its value is never read.
+src/features/tasks/components/TaskSubtasksList.tsx(192,7): error TS6133: 'formatDeadline' is declared but its value is never read.
+src/features/tasks/components/TaskSubtasksList.tsx(216,3): error TS6133: 'readOnly' is declared but its value is never read.
+src/features/tasks/components/TaskSubtasksList.tsx(434,9): error TS6133: 'handleStatusToggle' is declared but its value is never read.
+src/features/tasks/components/UserPicker.tsx(33,9): error TS6133: 'theme' is declared but its value is never read.
+src/features/tasks/hooks/useTaskListData.ts(128,65): error TS18048: 'response.total' is possibly 'undefined'.
+src/features/tasks/screens/TaskListScreen.tsx(50,33): error TS2554: Expected 1 arguments, but got 0.
+src/navigation/AppNavigator.tsx(7,45): error TS6133: 'DarkTheme' is declared but its value is never read.
+src/navigation/ChatNavigator.tsx(66,11): error TS2353: Object literal may only specify known properties, and 'headerBackTitleVisible' does not exist in type 'NativeStackNavigationOptions | ((props: { route: RouteProp<ChatStackParamList, "Chat">; navigation: NativeStackNavigationProp<ChatStackParamList, "Chat", undefined>; theme: Theme; }) => NativeStackNavigationOptions)'.
+src/navigation/MainNavigator.tsx(13,1): error TS6133: 'useNotificationStore' is declared but its value is never read.
+src/navigation/MainNavigator.tsx(20,1): error TS6133: 'NotificationNavigator' is declared but its value is never read.
+src/navigation/MainNavigator.tsx(38,7): error TS2322: Type '{ children: Element[]; initialRouteName: "Chats"; sceneContainerStyle: { backgroundColor: string; }; tabBar: (props: BottomTabBarProps) => Element; screenOptions: ({ route }: { ...; }) => { ...; }; }' is not assignable to type 'IntrinsicAttributes & Omit<BottomTabNavigatorProps, "id" | "children" | "layout" | "initialRouteName" | "screenListeners" | "screenOptions" | "screenLayout" | "UNSTABLE_router"> & DefaultRouterOptions<...> & { ...; } & { ...; }'.
+  Property 'sceneContainerStyle' does not exist on type 'IntrinsicAttributes & Omit<BottomTabNavigatorProps, "id" | "children" | "layout" | "initialRouteName" | "screenListeners" | "screenOptions" | "screenLayout" | "UNSTABLE_router"> & DefaultRouterOptions<...> & { ...; } & { ...; }'.
+src/navigation/MainNavigator.tsx(44,40): error TS6133: 'size' is declared but its value is never read.
+src/services/websocket.service.ts(308,22): error TS6133: 'event' is declared but its value is never read.
+src/services/websocket.service.ts(417,42): error TS2339: Property 'errors' does not exist on type 'ZodError<{ type: string; data: any; chat_id?: number | undefined; user_id?: number | undefined; timestamp?: string | undefined; }>'.
+src/services/websocket.service.ts(656,19): error TS6198: All destructured elements are unused.
+src/shared/api/axios.config.ts(13,20): error TS6133: 'ApiResponse' is declared but its value is never read.
+src/shared/api/axios.config.ts(14,1): error TS6133: 'RefreshTokenResponse' is declared but its value is never read.
+src/shared/components/common/ActionModal.tsx(20,53): error TS6137: Cannot import type declaration files. Consider importing 'modal.types' instead of '@types/modal.types'.
+src/shared/components/common/ActionSheet.tsx(2,59): error TS6133: 'Platform' is declared but its value is never read.
+src/shared/components/common/Avatar.tsx(7,45): error TS6133: 'Platform' is declared but its value is never read.
+src/shared/components/common/Avatar.tsx(33,3): error TS6133: 'userId' is declared but its value is never read.
+src/shared/components/common/Avatar.tsx(38,51): error TS2339: Property 'sessionId' does not exist on type 'AuthState'.
+src/shared/components/common/ConnectionStatus.tsx(7,63): error TS6133: 'Platform' is declared but its value is never read.
+src/shared/components/common/ConnectionStatus.tsx(66,27): error TS7030: Not all code paths return a value.
+src/shared/components/common/ConnectionStatus.tsx(89,16): error TS7030: Not all code paths return a value.
+src/shared/components/common/ConnectionStatus.tsx(108,72): error TS18048: 'config' is possibly 'undefined'.
+src/shared/components/common/ConnectionStatus.tsx(118,70): error TS18048: 'config' is possibly 'undefined'.
+src/shared/components/common/DatePickerModal.tsx(1,36): error TS6133: 'useState' is declared but its value is never read.
+src/shared/components/common/DatePickerModal.tsx(213,46): error TS2339: Property 'isDark' does not exist on type 'Theme'.
+src/shared/components/common/InAppNotification.tsx(17,48): error TS6137: Cannot import type declaration files. Consider importing 'notification.types' instead of '@types/notification.types'.
+src/shared/components/common/NotificationItem.tsx(7,52): error TS6133: 'Animated' is declared but its value is never read.
+src/shared/components/common/NotificationItem.tsx(9,48): error TS6137: Cannot import type declaration files. Consider importing 'notification.types' instead of '@types/notification.types'.
+src/shared/components/common/UserProfileModal.tsx(62,9): error TS6133: 'formatDate' is declared but its value is never read.
+src/shared/components/common/UserProfileModal.tsx(293,22): error TS2551: Property 'department_name' does not exist on type 'User'. Did you mean 'department'?
+src/shared/components/common/UserProfileModal.tsx(299,29): error TS2551: Property 'department_name' does not exist on type 'User'. Did you mean 'department'?
+src/shared/components/common/UserSelectorModal.tsx(253,9): error TS6133: 'getInitials' is declared but its value is never read.
+src/shared/components/common/UserSelectorModal.tsx(262,9): error TS6133: 'getStatusColor' is declared but its value is never read.
+src/shared/components/navigation/AnimatedTabBar.tsx(29,52): error TS2538: Type 'undefined' cannot be used as an index type.
+src/shared/components/navigation/AnimatedTabBar.tsx(104,29): error TS2339: Property 'tabBarTestID' does not exist on type 'BottomTabNavigationOptions'.
+src/shared/components/ui/Toast.tsx(29,3): error TS6133: 'id' is declared but its value is never read.
+src/shared/contexts/ActionModalContext.tsx(8,55): error TS6137: Cannot import type declaration files. Consider importing 'modal.types' instead of '@types/modal.types'.
+src/shared/contexts/NotificationContext.tsx(9,26): error TS6137: Cannot import type declaration files. Consider importing 'common.types' instead of '@types/common.types'.
+src/shared/contexts/NotificationContext.tsx(10,26): error TS6133: 'extractRequestId' is declared but its value is never read.
+src/shared/store/authStore.session.ts(15,33): error TS6133: 'mockRegister' is declared but its value is never read.
+src/shared/store/authStore.session.ts(119,28): error TS2339: Property 'auth_mode' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'auth_mode' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.session.ts(120,32): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.session.ts(121,36): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.session.ts(121,67): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.session.ts(125,20): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.session.ts(129,20): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.session.ts(167,13): error TS6133: 'response' is declared but its value is never read.
+src/shared/store/authStore.ts(15,33): error TS6133: 'mockRegister' is declared but its value is never read.
+src/shared/store/authStore.ts(61,17): error TS6133: 'user' is declared but its value is never read.
+src/shared/store/authStore.ts(113,28): error TS2339: Property 'auth_mode' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'auth_mode' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.ts(114,32): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.ts(115,36): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.ts(115,67): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.ts(126,20): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.ts(130,20): error TS2339: Property 'session' does not exist on type 'LoginResponse | { user: User; tokens: TokenPair; }'.
+  Property 'session' does not exist on type '{ user: User; tokens: TokenPair; }'.
+src/shared/store/authStore.ts(168,13): error TS6133: 'response' is declared but its value is never read.
+src/shared/store/chatStore.ts(7,42): error TS6133: 'MessageType' is declared but its value is never read.
+src/shared/store/chatStore.ts(12,1): error TS6133: 'websocketService' is declared but its value is never read.
+src/shared/store/chatStore.ts(263,45): error TS2353: Object literal may only specify known properties, and 'currentFilter' does not exist in type 'ChatState | Partial<ChatState>'.
+src/shared/store/chatStore.ts(265,36): error TS2339: Property 'currentFilter' does not exist on type 'ChatState'.
+src/shared/store/chatStore.ts(1467,20): error TS6133: 'chatId' is declared but its value is never read.
+src/shared/store/chatStore.ts(1467,36): error TS6133: 'userId' is declared but its value is never read.
+src/shared/store/chatStore.ts(1471,21): error TS6133: 'chatId' is declared but its value is never read.
+src/shared/store/chatStore.ts(1471,37): error TS6133: 'userId' is declared but its value is never read.
+src/shared/store/inAppNotificationStore.ts(7,30): error TS6137: Cannot import type declaration files. Consider importing 'notification.types' instead of '@types/notification.types'.
+src/shared/store/notificationStore.ts(7,55): error TS6137: Cannot import type declaration files. Consider importing 'notification.types' instead of '@types/notification.types'.
+src/shared/store/notificationStore.ts(48,29): error TS6133: 'refresh' is declared but its value is never read.
+src/shared/store/notificationStore.ts(58,46): error TS18048: 'response.data' is possibly 'undefined'.
+src/shared/store/notificationStore.ts(59,42): error TS18048: 'response.data' is possibly 'undefined'.
+src/shared/store/notificationStore.ts(100,46): error TS2488: Type 'Notification[] | undefined' must have a '[Symbol.iterator]()' method that returns an iterator.
+src/shared/store/themeStore.ts(31,7): error TS2367: This comparison appears to be unintentional because the types 'ThemeMode' and '"system"' have no overlap.
+src/shared/store/themeStore.ts(38,3): error TS2322: Type '"system"' is not assignable to type 'ThemeMode'.
+src/shared/store/themeStore.ts(61,9): error TS2367: This comparison appears to be unintentional because the types 'ThemeMode' and '"system"' have no overlap.
+src/shared/store/themeStore.ts(66,7): error TS2322: Type '"system"' is not assignable to type 'ThemeMode'.
+src/shared/store/themeStore.ts(78,44): error TS2345: Argument of type '"system" | "light" | "dark"' is not assignable to parameter of type 'ThemeMode'.
+  Type '"system"' is not assignable to type 'ThemeMode'.
+src/shared/store/themeStore.ts(79,15): error TS2322: Type '"system" | "light" | "dark"' is not assignable to type 'ThemeMode | undefined'.
+  Type '"system"' is not assignable to type 'ThemeMode | undefined'.
+src/shared/store/themeStore.ts(82,44): error TS2345: Argument of type '"system"' is not assignable to parameter of type 'ThemeMode'.
+src/shared/store/themeStore.ts(83,15): error TS2322: Type '"system"' is not assignable to type 'ThemeMode | undefined'.
+src/shared/store/themeStore.ts(91,42): error TS2345: Argument of type '"system"' is not assignable to parameter of type 'ThemeMode'.
+src/shared/store/themeStore.ts(92,13): error TS2322: Type '"system"' is not assignable to type 'ThemeMode | undefined'.
+src/shared/store/themeStore.ts(103,11): error TS2367: This comparison appears to be unintentional because the types 'ThemeMode' and '"system"' have no overlap.
+src/shared/utils/errorUtils.ts(6,56): error TS6137: Cannot import type declaration files. Consider importing 'common.types' instead of '@types/common.types'.
+src/shared/utils/mockData.ts(5,33): error TS6137: Cannot import type declaration files. Consider importing 'user.types' instead of '@types/user.types'.
+src/shared/utils/mockData.ts(10,14): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "employee"; status: "online"; department_id: number; department: { id: number; name: string; created_at: string; updated_at: string; }; ... 4 more ...; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(38,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "employee"; status: "online"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(52,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "employee"; status: "online"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(66,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "employee"; status: "online"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(80,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "department_head"; status: "busy"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(94,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "employee"; status: "away"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(108,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "employee"; status: "online"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(122,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "admin"; status: "online"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(136,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "employee"; status: "offline"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(150,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "employee"; status: "online"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(164,3): error TS2741: Property 'two_factor_enabled' is missing in type '{ id: number; email: string; name: string; avatar: string; role: "department_head"; status: "busy"; department_id: number; position: string; phone: string; is_active: true; created_at: string; updated_at: string; }' but required in type 'User'.
+src/shared/utils/mockData.ts(249,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(250,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(274,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(275,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(300,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(301,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(326,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(327,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(329,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(333,7): error TS2322: Type '"user"' is not assignable to type 'UserRole'.
+src/shared/utils/mockData.ts(346,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(347,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(357,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(358,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(360,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(364,7): error TS2322: Type '"user"' is not assignable to type 'UserRole'.
+src/shared/utils/mockData.ts(377,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(378,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(388,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(389,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(391,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(395,7): error TS2322: Type '"user"' is not assignable to type 'UserRole'.
+src/shared/utils/mockData.ts(408,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(409,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(419,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(420,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(422,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(426,7): error TS2322: Type '"user"' is not assignable to type 'UserRole'.
+src/shared/utils/mockData.ts(439,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(440,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(442,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(446,7): error TS2322: Type '"user"' is not assignable to type 'UserRole'.
+src/shared/utils/mockData.ts(459,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(460,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(470,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(471,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(473,7): error TS2322: Type 'string' is not assignable to type 'number'.
+src/shared/utils/mockData.ts(477,7): error TS2322: Type '"user"' is not assignable to type 'UserRole'.
+src/shared/utils/mockData.ts(496,40): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/shared/utils/mockData.ts(514,5): error TS2561: Object literal may only specify known properties, but 'comments_count' does not exist in type 'Task'. Did you mean to write 'comment_count'?
+src/shared/utils/mockData.ts(529,5): error TS2561: Object literal may only specify known properties, but 'comments_count' does not exist in type 'Task'. Did you mean to write 'comment_count'?
+src/shared/utils/mockData.ts(538,5): error TS2322: Type '"todo"' is not assignable to type 'TaskStatus'.
+src/shared/utils/mockData.ts(539,5): error TS2322: Type '"urgent"' is not assignable to type 'TaskPriority'.
+src/shared/utils/mockData.ts(560,5): error TS2561: Object literal may only specify known properties, but 'comments_count' does not exist in type 'Task'. Did you mean to write 'comment_count'?
+src/shared/utils/mockData.ts(569,5): error TS2322: Type '"todo"' is not assignable to type 'TaskStatus'.
+src/shared/utils/mockData.ts(589,5): error TS2561: Object literal may only specify known properties, but 'comments_count' does not exist in type 'Task'. Did you mean to write 'comment_count'?
+src/shared/utils/mockData.ts(598,5): error TS2322: Type '"todo"' is not assignable to type 'TaskStatus'.
+src/shared/utils/mockData.ts(599,5): error TS2322: Type '"urgent"' is not assignable to type 'TaskPriority'.
+src/shared/utils/mockData.ts(620,5): error TS2561: Object literal may only specify known properties, but 'comments_count' does not exist in type 'Task'. Did you mean to write 'comment_count'?
+src/shared/utils/mockData.ts(775,55): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(776,46): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(777,54): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(798,55): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(799,49): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(800,51): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(821,39): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(822,39): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(823,39): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(824,40): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(825,40): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(846,62): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(847,47): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(848,49): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(849,48): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(870,46): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(871,45): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/mockData.ts(872,56): error TS2353: Object literal may only specify known properties, and 'order' does not exist in type 'PollOption'.
+src/shared/utils/passkeyUtils.ts(28,10): error TS6133: 'arrayBufferToBase64url' is declared but its value is never read.
+src/shared/utils/passkeyUtils.ts(57,7): error TS2774: This condition will always return true since this function is always defined. Did you mean to call it instead?
