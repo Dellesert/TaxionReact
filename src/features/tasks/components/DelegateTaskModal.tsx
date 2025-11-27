@@ -3,7 +3,7 @@
  * Модальное окно для делегирования задачи
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,16 +13,15 @@ import {
   SectionList,
   StyleSheet,
   ActivityIndicator,
-  Animated,
-  Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { delegateTask } from '../api/task.api';
 import { getUsers } from '@/api/user.api';
 import { User } from '@/types/user.types';
-import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTheme } from '@shared/hooks/useTheme';
 import Avatar from '@shared/components/common/Avatar';
 
 interface DelegateTaskModalProps {
@@ -49,53 +48,16 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Animation values
-  const backgroundOpacity = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
-
+  // Load users when modal opens
   useEffect(() => {
-    if (visible) {
-      setModalVisible(true);
-      // Reset animation values before starting
-      backgroundOpacity.setValue(0);
-      slideAnim.setValue(Dimensions.get('window').height);
-
-      // Animate both background and content together
-      Animated.parallel([
-        Animated.timing(backgroundOpacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
+    if (visible && users.length === 0) {
       loadUsers();
-    } else if (modalVisible) {
-      // Animate out together
-      Animated.parallel([
-        Animated.timing(backgroundOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: Dimensions.get('window').height,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setModalVisible(false);
-      });
     }
   }, [visible]);
 
+  // Group users by department when users or search query changes
   useEffect(() => {
     groupUsersByDepartment();
   }, [searchQuery, users]);
@@ -103,15 +65,15 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   const loadUsers = async () => {
     try {
       setIsLoadingUsers(true);
+      setError(null);
 
       if (!currentUser) {
-        showError('Пользователь не авторизован');
+        setError('Пользователь не авторизован');
         setIsLoadingUsers(false);
         return;
       }
 
       // Use server-side filtering for task assignment
-      // This automatically handles role-based filtering
       const filters: any = {
         is_active: true,
         for_task_assignment: true,
@@ -124,11 +86,22 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
         (user) => user.id !== currentUser.id
       );
 
+      // Sort users: department heads first, then by name
+      availableUsers.sort((a, b) => {
+        const aIsDeptHead = a.role === 'department_head';
+        const bIsDeptHead = b.role === 'department_head';
+
+        if (aIsDeptHead && !bIsDeptHead) return -1;
+        if (!aIsDeptHead && bIsDeptHead) return 1;
+
+        return a.name.localeCompare(b.name);
+      });
+
       console.log('👥 Loaded available users for delegation:', availableUsers);
       setUsers(availableUsers);
-    } catch (error) {
-      console.error('Error loading users:', error);
-      showError('Не удалось загрузить список пользователей');
+    } catch (err: any) {
+      console.error('Error loading users:', err);
+      setError(err.message || 'Не удалось загрузить список пользователей');
     } finally {
       setIsLoadingUsers(false);
     }
@@ -152,13 +125,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
     const departmentMap = new Map<string, User[]>();
     const noDepartmentUsers: User[] = [];
 
-    // Filter out admins/super admins and group by department
     filteredUsers.forEach((user) => {
-      // Skip admins and super admins
-      if (user.role === 'admin' || user.role === 'super_admin') {
-        return;
-      }
-
       if (user.department) {
         const deptName = user.department.name;
         if (!departmentMap.has(deptName)) {
@@ -226,18 +193,6 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
     setSections(newSections);
   };
 
-  const handleReset = () => {
-    setSearchQuery('');
-    setSelectedUserId(null);
-    backgroundOpacity.setValue(0);
-    slideAnim.setValue(Dimensions.get('window').height);
-  };
-
-  const handleClose = () => {
-    handleReset();
-    onClose();
-  };
-
   const handleDelegate = async () => {
     if (!selectedUserId) {
       showError('Выберите пользователя для делегирования');
@@ -247,7 +202,8 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
     try {
       setIsLoading(true);
       await delegateTask(taskId, { to_user_id: selectedUserId });
-      handleReset();
+      setSearchQuery('');
+      setSelectedUserId(null);
       onDelegated?.();
       onClose();
     } catch (error) {
@@ -265,261 +221,218 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
       <TouchableOpacity
         style={[
           styles.userItem,
-          { backgroundColor: theme.card },
+          { backgroundColor: theme.card, borderBottomColor: theme.border },
           isSelected && {
-            backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff',
+            backgroundColor: isDark ? 'rgba(233, 68, 68, 0.2)' : '#FEF2F2',
           },
         ]}
         onPress={() => setSelectedUserId(item.id)}
         disabled={isLoading}
       >
-        <Avatar
-          name={item.name}
-          imageUrl={item.avatar}
-          size={44}
-          status={item.status}
-          showStatus={true}
-        />
-
         <View style={styles.userInfo}>
-          <View style={styles.userNameContainer}>
-            <Text style={[styles.userName, { color: theme.text }]}>
-              {item.name}
-            </Text>
-            {item.role === 'department_head' && (
-              <Ionicons
-                name="shield-checkmark"
-                size={16}
-                color="#F59E0B"
-                style={{ marginLeft: 4 }}
-              />
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatar}
+            size={40}
+            status={item.status}
+            showStatus={true}
+          />
+          <View style={styles.userDetails}>
+            <View style={styles.userNameContainer}>
+              <Text style={[styles.userName, { color: theme.text }]}>{item.name}</Text>
+              {item.role === 'department_head' && (
+                <Ionicons
+                  name="shield-checkmark"
+                  size={16}
+                  color="#F59E0B"
+                  style={{ marginLeft: 4 }}
+                />
+              )}
+            </View>
+            {item.position && (
+              <Text style={[styles.userPosition, { color: theme.textSecondary }]}>{item.position}</Text>
+            )}
+            {item.department && (
+              <Text style={[styles.userDepartment, { color: theme.textTertiary }]}>{item.department.name}</Text>
             )}
           </View>
-          <Text
-            style={[styles.userPosition, { color: theme.textSecondary }]}
-            numberOfLines={1}
-          >
-            {item.position || item.email}
-          </Text>
-          {item.department && (
-            <Text
-              style={[styles.userDepartment, { color: theme.textTertiary }]}
-              numberOfLines={1}
-            >
-              {item.department.name}
-            </Text>
+        </View>
+        <View style={styles.checkboxContainer}>
+          {isSelected ? (
+            <Ionicons name="checkmark-circle" size={24} color="#E94444" />
+          ) : (
+            <Ionicons name="ellipse-outline" size={24} color={theme.border} />
           )}
         </View>
-
-        {isSelected && (
-          <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
-        )}
       </TouchableOpacity>
-    );
-  };
-
-  const renderEmptyState = () => {
-    return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="search-outline" size={48} color={theme.textTertiary} />
-        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-          {searchQuery ? 'Пользователи не найдены' : 'Список пользователей пуст'}
-        </Text>
-      </View>
     );
   };
 
   return (
     <Modal
-      visible={modalVisible}
-      animationType="none"
-      transparent={true}
-      onRequestClose={handleClose}
+      visible={visible}
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+      onRequestClose={onClose}
     >
-      <Animated.View style={[styles.modalOverlay, { opacity: backgroundOpacity }]}>
-        <Animated.View
-          style={[
-            styles.modalContainer,
-            {
-              backgroundColor: theme.background,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          {/* Header */}
-          <View
-            style={[
-              styles.header,
-              {
-                backgroundColor: theme.card,
-                borderBottomColor: theme.border,
-              },
-            ]}
+      <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+        {/* Modal Header */}
+        <View style={[styles.modalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeButton}
+            disabled={isLoading}
           >
-            <Text style={[styles.headerTitle, { color: theme.text }]}>
-              Делегировать задачу
-            </Text>
-            <TouchableOpacity onPress={handleClose} disabled={isLoading}>
-              <Ionicons name="close" size={24} color={theme.textSecondary} />
+            <Ionicons name="close" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.modalTitle, { color: theme.text }]}>Делегировать задачу</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Ionicons
+            name="search"
+            size={20}
+            color={theme.textTertiary}
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Поиск по имени, email или должности..."
+            placeholderTextColor={theme.textTertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            editable={!isLoading}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              style={styles.searchClearButton}
+            >
+              <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
-          </View>
-
-          {/* Search */}
-          <View
-            style={[
-              styles.searchContainer,
-              {
-                backgroundColor: theme.card,
-                borderBottomColor: theme.border,
-              },
-            ]}
-          >
-            <Ionicons name="search" size={20} color={theme.textTertiary} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Поиск по имени, должности или email..."
-              placeholderTextColor={theme.textTertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              editable={!isLoading}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* User List */}
-          {isLoadingUsers ? (
-            <View style={styles.emptyContainer}>
-              <ActivityIndicator size="large" color="#3b82f6" />
-              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                Загрузка пользователей...
-              </Text>
-            </View>
-          ) : sections.length === 0 ? (
-            renderEmptyState()
-          ) : (
-            <SectionList
-              sections={sections}
-              renderItem={renderUserItem}
-              renderSectionHeader={({ section }) => (
-                <View
-                  style={[
-                    styles.sectionHeader,
-                    { backgroundColor: theme.background },
-                  ]}
-                >
-                  <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-                    {section.title}
-                  </Text>
-                </View>
-              )}
-              keyExtractor={(item) => item.id.toString()}
-              style={styles.list}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={true}
-              stickySectionHeadersEnabled={true}
-              nestedScrollEnabled={true}
-            />
           )}
+        </View>
 
-          {/* Footer */}
-          <View
-            style={[
-              styles.footer,
-              {
-                backgroundColor: theme.card,
-                borderTopColor: theme.border,
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={[
-                styles.button,
-                styles.buttonCancel,
-                { backgroundColor: isDark ? theme.border : '#f3f4f6' },
-              ]}
-              onPress={handleClose}
-              disabled={isLoading}
-            >
-              <Text
-                style={[styles.buttonCancelText, { color: theme.textSecondary }]}
-              >
-                Отмена
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.button,
-                styles.buttonDelegate,
-                (isLoading || !selectedUserId) && styles.buttonDisabled,
-              ]}
-              onPress={handleDelegate}
-              disabled={isLoading || !selectedUserId}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.buttonDelegateText}>Делегировать</Text>
-              )}
+        {/* User List */}
+        {isLoadingUsers ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#E94444" />
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Загрузка пользователей...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerContainer}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={[styles.errorText, { color: theme.textSecondary }]}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadUsers}>
+              <Text style={styles.retryButtonText}>Повторить</Text>
             </TouchableOpacity>
           </View>
-        </Animated.View>
-      </Animated.View>
+        ) : sections.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Ionicons name="people-outline" size={48} color={theme.textTertiary} />
+            <Text style={[styles.emptyText, { color: theme.textTertiary }]}>
+              {searchQuery
+                ? 'Пользователи не найдены'
+                : 'Нет доступных пользователей'}
+            </Text>
+          </View>
+        ) : (
+          <SectionList
+            sections={sections}
+            renderItem={renderUserItem}
+            renderSectionHeader={({ section }) => (
+              <View
+                style={[
+                  styles.sectionHeader,
+                  { backgroundColor: theme.background },
+                ]}
+              >
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+                  {section.title}
+                </Text>
+              </View>
+            )}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.listContainer}
+            stickySectionHeadersEnabled={true}
+          />
+        )}
+
+        {/* Footer with Delegate Button */}
+        <View style={[styles.modalFooter, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+          <TouchableOpacity
+            style={[
+              styles.delegateButton,
+              (isLoading || !selectedUserId) && styles.delegateButtonDisabled,
+            ]}
+            onPress={handleDelegate}
+            disabled={isLoading || !selectedUserId}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.delegateButtonText}>Делегировать</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
   modalContainer: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '85%',
-    height: '85%',
-    overflow: 'hidden',
+    flex: 1,
   },
-  header: {
+  modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  headerTitle: {
+  closeButton: {
+    padding: 4,
+    width: 32,
+  },
+  modalTitle: {
     fontSize: 18,
     fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 32,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  searchIcon: {
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
+    paddingVertical: 10,
   },
-  list: {
-    flex: 1,
-    flexGrow: 1,
+  searchClearButton: {
+    padding: 4,
   },
-  listContent: {
+  listContainer: {
     paddingBottom: 16,
-    flexGrow: 1,
   },
   sectionHeader: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 8,
   },
   sectionTitle: {
@@ -531,67 +444,87 @@ const styles = StyleSheet.create({
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 12,
+    borderBottomWidth: 1,
   },
   userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  userDetails: {
     flex: 1,
   },
   userNameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
   },
   userName: {
     fontSize: 15,
     fontWeight: '500',
+    marginBottom: 2,
   },
   userPosition: {
     fontSize: 13,
-    marginBottom: 2,
   },
   userDepartment: {
     fontSize: 12,
   },
-  emptyContainer: {
+  checkboxContainer: {
+    marginLeft: 12,
+  },
+  centerContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     padding: 32,
   },
-  emptyText: {
-    fontSize: 16,
+  loadingText: {
+    fontSize: 14,
     marginTop: 12,
-    textAlign: 'center',
   },
-  footer: {
-    flexDirection: 'row',
-    gap: 12,
-    padding: 20,
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#E94444',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  modalFooter: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
   },
-  button: {
-    flex: 1,
+  delegateButton: {
     paddingVertical: 14,
+    backgroundColor: '#E94444',
     borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  buttonCancel: {},
-  buttonCancelText: {
-    fontSize: 15,
+  delegateButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  delegateButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '600',
-  },
-  buttonDelegate: {
-    backgroundColor: '#3b82f6',
-  },
-  buttonDelegateText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  buttonDisabled: {
-    backgroundColor: '#d1d5db',
   },
 });
