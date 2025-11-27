@@ -161,7 +161,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <Ionicons name="close" size={28} color={theme.error} />
               </TouchableOpacity>
             </View>
-            <Text style={[styles.title, dynamicStyles.title]}>Профиль пользователя</Text>
+            <Text style={[styles.title, dynamicStyles.title]}>Профиль</Text>
             <View style={styles.headerRight} />
           </View>
 

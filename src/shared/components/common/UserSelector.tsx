@@ -44,13 +44,29 @@ const UserSelector: React.FC<UserSelectorProps> = ({
 
   const loadUsers = async () => {
     try {
-      // Фильтр - только активные пользователи, все отделы для задач
+      // Use server-side filtering and sorting
       let filters: any = {
         is_active: true,
-        for_task_assignment: true // Request all users for task assignment
+        exclude_me: true, // Exclude current user on backend
+        exclude_roles: 'admin,super_admin', // Exclude admins for all users
+
+        // Sorting
+        dept_head_first: true, // Department heads first
+        sort_by: 'name', // Sort by name
+        sort_order: 'asc', // Ascending order
+        prioritize_my_dept: true, // My department first
       };
 
+      // For task assignment, use backend filter
+      if (filterForTaskAssignment) {
+        filters.for_task_assignment = true;
+      }
+
       const response = await getUsers(filters, { limit: 100, offset: 0 });
+
+      console.log('👥 Loaded users for selector button:', response.data);
+      console.log('🔍 filterForTaskAssignment:', filterForTaskAssignment);
+
       let usersList: User[] = [];
       if (response && response.data && Array.isArray(response.data)) {
         usersList = response.data;
@@ -58,18 +74,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
         usersList = response;
       }
 
-      // Sort users: department heads first, then others
-      usersList.sort((a, b) => {
-        const aIsDeptHead = a.role === 'department_head';
-        const bIsDeptHead = b.role === 'department_head';
-
-        if (aIsDeptHead && !bIsDeptHead) return -1;
-        if (!aIsDeptHead && bIsDeptHead) return 1;
-
-        // If both are dept heads or both are not, sort by name
-        return a.name.localeCompare(b.name);
-      });
-
+      // Backend now handles all filtering and sorting
       setUsers(usersList);
     } catch (error) {
       console.error('Failed to load users:', error);

@@ -8,12 +8,7 @@ import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@shared/utils/mockData';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { useAuthStore } from '@shared/store/authStore';
-import {
-  filterOutCurrentUser,
-  filterOutAdmins,
-  filterUsersBySearch,
-} from '../utils/createChatHelpers';
+import { useDebounce } from '@shared/hooks/useDebounce';
 import { getLoadUsersErrorMessage } from '../utils/createChatFormatters';
 
 interface UseCreateChatDataReturn {
@@ -27,11 +22,13 @@ interface UseCreateChatDataReturn {
 
 export const useCreateChatData = (): UseCreateChatDataReturn => {
   const { showError } = useNotification();
-  const currentUser = useAuthStore((state) => state.user);
 
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Debounce search query for backend search (300ms delay)
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -44,13 +41,32 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
         usersList = await mockGetUsers();
         console.log(`👥 Loaded ${usersList.length} mock users`);
       } else {
-        console.log('📋 Loading users from API...');
-        console.log('🌐 API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
-        console.log('🔧 Mock mode:', process.env.EXPO_PUBLIC_USE_MOCK_DATA);
+        console.log('📋 Loading users from API with backend filters and search...');
 
-        // Request all users (increase limit if needed), only active users
-        const response = await getUsers({ is_active: true }, { limit: 1000, offset: 0 });
+        // Use server-side filtering, sorting, and search for chats
+        const filters: any = {
+          is_active: true,
+          exclude_me: true, // Exclude current user on backend
+          exclude_roles: 'admin,super_admin', // Exclude admins for all users
+
+          // Backend search (debounced)
+          search: debouncedSearch || undefined,
+
+          // Sorting
+          prioritize_my_dept: true, // My department first
+          dept_head_first: true, // Department heads first within each department
+          sort_by: 'name', // Sort by name
+          sort_order: 'asc', // Ascending order
+        };
+
+        const response = await getUsers(filters, { limit: 1000, offset: 0 });
         console.log('✅ Users API response:', response);
+        console.log('🔍 Search query:', debouncedSearch);
+        console.log('📊 First 5 users:', response.data?.slice(0, 5).map((u: User) => ({
+          name: u.name,
+          dept: u.department?.name,
+          role: u.role
+        })));
 
         // PaginatedResponse has data field with array of users
         if (response && response.data && Array.isArray(response.data)) {
@@ -79,6 +95,7 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
       console.log('📊 Users with departments:', usersList.filter((u) => u.department).length);
       console.log('📊 Users with department_id:', usersList.filter((u) => u.department_id).length);
 
+      // Backend now handles all filtering, sorting, and search
       setUsers(usersList);
     } catch (error: unknown) {
       console.error('❌ Failed to load users:', error);
@@ -89,28 +106,17 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [showError]);
+  }, [debouncedSearch, showError]);
 
-  // Load users on mount
+  // Load users on mount and when debounced search changes
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
 
-  // Filter users
+  // Backend handles search, so filteredUsers is same as users
   const filteredUsers = useMemo(() => {
-    let filtered = users;
-
-    // Filter out current user
-    filtered = filterOutCurrentUser(filtered, currentUser?.id);
-
-    // Hide admins and super_admins
-    filtered = filterOutAdmins(filtered);
-
-    // Apply search query
-    filtered = filterUsersBySearch(filtered, searchQuery);
-
-    return filtered;
-  }, [users, currentUser?.id, searchQuery]);
+    return users;
+  }, [users]);
 
   return {
     users,

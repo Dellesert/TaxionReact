@@ -177,12 +177,26 @@ export interface UpdateDepartmentDto {
 
 // User List Filters
 export interface UserListFilters {
+  // Basic filters
   role?: UserRole;
   department_id?: number;
   status?: UserStatus;
   is_active?: boolean;
   search?: string;
   for_task_assignment?: boolean; // Get all users regardless of current user's department
+
+  // Extended filters
+  exclude_roles?: string; // Comma-separated roles to exclude (e.g., "admin,super_admin")
+  include_roles?: string; // Comma-separated roles to include (e.g., "employee,department_head")
+  only_heads?: boolean; // Show only department heads
+  include_other_dept_heads?: boolean; // For dept heads: own department + other department heads
+  exclude_me?: boolean; // Exclude current user from list
+
+  // Sorting and ordering
+  sort_by?: 'name' | 'email' | 'created_at' | 'department' | 'role'; // Field to sort by
+  sort_order?: 'asc' | 'desc'; // Sort order
+  prioritize_my_dept?: boolean; // My department first
+  dept_head_first?: boolean; // Department heads first within each department
 }
 
 // Two-Factor Authentication Types

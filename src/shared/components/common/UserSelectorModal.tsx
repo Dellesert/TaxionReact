@@ -22,6 +22,7 @@ import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useDebounce } from '@shared/hooks/useDebounce';
 import Avatar from '@shared/components/common/Avatar';
 
 interface UserSelectorModalProps {
@@ -54,23 +55,45 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (visible) {
-      loadUsers();
-    }
-  }, [visible]);
+  // Debounce search query for backend search (300ms delay)
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const loadUsers = async () => {
+  const loadUsers = React.useCallback(async () => {
     try {
       setIsLoading(true);
       const currentUser = useAuthStore.getState().user;
 
-      // Фильтр - только активные пользователи
+      // Use server-side filtering, sorting, and search
       let filters: any = {
         is_active: true,
+        exclude_me: true, // Exclude current user on backend
+        exclude_roles: 'admin,super_admin', // Exclude admins for all users
+
+        // Backend search (debounced)
+        search: debouncedSearch || undefined,
+
+        // Sorting
+        prioritize_my_dept: true, // My department first
+        dept_head_first: true, // Department heads first
+        sort_by: 'name', // Sort by name
+        sort_order: 'asc', // Ascending order
       };
 
+      // For task assignment, use backend filter
+      if (filterForTaskAssignment) {
+        filters.for_task_assignment = true;
+      }
+
       const response = await getUsers(filters, { limit: 100, offset: 0 });
+
+      console.log('👥 Loaded users for selector:', response.data);
+      console.log('🔍 Search query:', debouncedSearch);
+      console.log('🏢 Current user department:', currentUser?.department?.name);
+      console.log('📊 First 5 users:', response.data?.slice(0, 5).map(u => ({
+        name: u.name,
+        dept: u.department?.name,
+        role: u.role
+      })));
 
       let usersList: User[] = [];
       if (response && response.data && Array.isArray(response.data)) {
@@ -79,129 +102,74 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         usersList = response;
       }
 
-      // Фильтруем исключенных пользователей
-      // Обычные сотрудники не должны видеть администраторов
+      // Client-side only: filter out excludeUserIds (passed as prop)
       const filteredUsers = usersList.filter((user) => {
-        // Исключаем текущего пользователя
-        if (user.id === currentUser?.id) return false;
-
-        // Исключаем переданных пользователей
+        // Исключаем переданных пользователей (excludeUserIds prop)
         if (excludeUserIds.includes(user.id)) return false;
-
-        // Если текущий пользователь - обычный сотрудник, исключаем администраторов
-        if (currentUser?.role === 'employee') {
-          if (user.role === 'admin' || user.role === 'super_admin') return false;
-        }
-
-        // Фильтр для назначения задач: только сотрудники своего отдела и руководители других отделов
-        if (filterForTaskAssignment && currentUser?.department_id) {
-          // Включаем пользователей из своего отдела
-          if (user.department_id === currentUser.department_id) {
-            return true;
-          }
-          // Включаем руководителей других отделов
-          if (user.role === 'department_head' && user.department_id !== currentUser.department_id) {
-            return true;
-          }
-          // Исключаем всех остальных
-          return false;
-        }
-
         return true;
       });
 
-      // Sort users: department heads first, then others
-      filteredUsers.sort((a, b) => {
-        const aIsDeptHead = a.role === 'department_head';
-        const bIsDeptHead = b.role === 'department_head';
-
-        if (aIsDeptHead && !bIsDeptHead) return -1;
-        if (!aIsDeptHead && bIsDeptHead) return 1;
-
-        // If both are dept heads or both are not, sort by name
-        return a.name.localeCompare(b.name);
-      });
-
+      // Backend now handles all filtering, sorting, and search
       setUsers(filteredUsers);
     } catch (error) {
       console.error('❌ Failed to load users:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [debouncedSearch, filterForTaskAssignment, excludeUserIds]);
 
-  const filteredUsers = useMemo(() => {
-    if (!searchQuery) return users;
-    const searchText = searchQuery.toLowerCase();
-    return users.filter(
-      (user) =>
-        user.name.toLowerCase().includes(searchText) ||
-        user.email.toLowerCase().includes(searchText) ||
-        user.position?.toLowerCase().includes(searchText)
-    );
-  }, [users, searchQuery]);
+  // Load users when modal opens or when debounced search changes
+  useEffect(() => {
+    if (visible) {
+      loadUsers();
+    }
+  }, [visible, loadUsers]);
 
-  // Группируем пользователей по подразделениям
+  // Группируем пользователей по подразделениям (preserving backend order)
   const userSections = useMemo(() => {
-    const currentUser = useAuthStore.getState().user;
-    const currentUserDepartmentId = currentUser?.department_id;
+    // Group users by department while preserving backend order
+    const departmentMap = new Map<string, User[]>();
+    const noDepartmentUsers: User[] = [];
+    const seenDepartments: string[] = []; // Track order of departments as they appear
 
-    // Группируем пользователей
-    const byDepartment = new Map<number | null, User[]>();
-
-    filteredUsers.forEach((user) => {
-      const deptId = user.department_id || null;
-      if (!byDepartment.has(deptId)) {
-        byDepartment.set(deptId, []);
+    // Backend already handles search, so use users directly
+    users.forEach((user) => {
+      if (user.department) {
+        const deptName = user.department.name;
+        if (!departmentMap.has(deptName)) {
+          departmentMap.set(deptName, []);
+          seenDepartments.push(deptName); // Preserve order from backend
+        }
+        departmentMap.get(deptName)!.push(user);
+      } else {
+        noDepartmentUsers.push(user);
       }
-      byDepartment.get(deptId)!.push(user);
     });
 
+    // Create sections array (preserving backend order)
     const sections: Array<{ title: string; data: User[]; departmentId: number | null }> = [];
 
-    // Сначала добавляем подразделение текущего пользователя
-    if (currentUserDepartmentId && byDepartment.has(currentUserDepartmentId)) {
-      const users = byDepartment.get(currentUserDepartmentId)!;
-      const departmentName = users[0]?.department?.name || 'Мое подразделение';
+    // Add departments in the order they appeared (backend already sorted them)
+    seenDepartments.forEach((deptName) => {
+      const usersInDept = departmentMap.get(deptName)!;
       sections.push({
-        title: departmentName,
-        data: users,
-        departmentId: currentUserDepartmentId,
-      });
-      byDepartment.delete(currentUserDepartmentId);
-    }
-
-    // Затем добавляем остальные подразделения (с названием)
-    const departmentsWithNames: Array<{ id: number; name: string; users: User[] }> = [];
-    byDepartment.forEach((users, deptId) => {
-      if (deptId !== null) {
-        const departmentName = users[0]?.department?.name || `Подразделение ${deptId}`;
-        departmentsWithNames.push({ id: deptId, name: departmentName, users });
-      }
-    });
-
-    // Сортируем по названию
-    departmentsWithNames.sort((a, b) => a.name.localeCompare(b.name));
-    departmentsWithNames.forEach((dept) => {
-      sections.push({
-        title: dept.name,
-        data: dept.users,
-        departmentId: dept.id,
+        title: deptName,
+        data: usersInDept, // Users already sorted by backend (dept_head_first + name)
+        departmentId: usersInDept[0]?.department_id || null,
       });
     });
 
-    // В конце добавляем пользователей без подразделения
-    if (byDepartment.has(null)) {
-      const users = byDepartment.get(null)!;
+    // Add users without department if any
+    if (noDepartmentUsers.length > 0) {
       sections.push({
         title: 'Без подразделения',
-        data: users,
+        data: noDepartmentUsers,
         departmentId: null,
       });
     }
 
     return sections;
-  }, [filteredUsers]);
+  }, [users]);
 
   const toggleUserSelection = (userId: number) => {
     if (multiSelect) {

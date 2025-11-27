@@ -1,13 +1,13 @@
 /**
  * Custom Hook: useUserSections
  * Группировка пользователей по подразделениям
+ *
+ * Backend handles all sorting (prioritize_my_dept, dept_head_first, sort_by name)
+ * This hook only groups users by department while preserving backend order
  */
 
 import { useMemo } from 'react';
 import { User } from '@/types/user.types';
-import { useAuthStore } from '@shared/store/authStore';
-import { sortUsers } from '@/features/chat/utils/createChatHelpers';
-import { formatDepartmentName } from '@/features/chat/utils/createChatFormatters';
 
 export interface UserSection {
   title: string;
@@ -20,72 +20,50 @@ interface UseUserSectionsReturn {
 }
 
 export const useUserSections = (filteredUsers: User[]): UseUserSectionsReturn => {
-  const currentUser = useAuthStore((state) => state.user);
-
   const sections = useMemo(() => {
-    const currentUserDepartmentId = currentUser?.department_id;
+    // Group users by department while preserving backend order
+    const departmentMap = new Map<string, User[]>();
+    const noDepartmentUsers: User[] = [];
+    const seenDepartments: string[] = []; // Track order of departments as they appear
 
-    // Group users by department
-    const byDepartment = new Map<number | null, User[]>();
-
+    // Backend already handles search and sorting, so use filteredUsers directly
     filteredUsers.forEach((user) => {
-      const deptId = user.department_id || null;
-      if (!byDepartment.has(deptId)) {
-        byDepartment.set(deptId, []);
+      if (user.department) {
+        const deptName = user.department.name;
+        if (!departmentMap.has(deptName)) {
+          departmentMap.set(deptName, []);
+          seenDepartments.push(deptName); // Preserve order from backend
+        }
+        departmentMap.get(deptName)!.push(user);
+      } else {
+        noDepartmentUsers.push(user);
       }
-      byDepartment.get(deptId)!.push(user);
     });
 
-    // Sort users within each department
-    byDepartment.forEach((users, key) => {
-      byDepartment.set(key, sortUsers(users));
-    });
-
+    // Create sections array (preserving backend order)
     const result: UserSection[] = [];
 
-    // First, add current user's department
-    if (currentUserDepartmentId && byDepartment.has(currentUserDepartmentId)) {
-      const users = byDepartment.get(currentUserDepartmentId)!;
-      const departmentName = users[0]?.department?.name || 'Мое подразделение';
+    // Add departments in the order they appeared (backend already sorted them)
+    seenDepartments.forEach((deptName) => {
+      const users = departmentMap.get(deptName)!;
       result.push({
-        title: departmentName,
-        data: users,
-        departmentId: currentUserDepartmentId,
-      });
-      byDepartment.delete(currentUserDepartmentId);
-    }
-
-    // Then add other departments (with names)
-    const departmentsWithNames: Array<{ id: number; name: string; users: User[] }> = [];
-    byDepartment.forEach((users, deptId) => {
-      if (deptId !== null) {
-        const departmentName = formatDepartmentName(users[0]?.department?.name, deptId);
-        departmentsWithNames.push({ id: deptId, name: departmentName, users });
-      }
-    });
-
-    // Sort by name
-    departmentsWithNames.sort((a, b) => a.name.localeCompare(b.name));
-    departmentsWithNames.forEach((dept) => {
-      result.push({
-        title: dept.name,
-        data: dept.users,
-        departmentId: dept.id,
+        title: deptName,
+        data: users, // Users already sorted by backend (prioritize_my_dept + dept_head_first + name)
+        departmentId: users[0]?.department_id || null,
       });
     });
 
-    // Finally, add users without department
-    if (byDepartment.has(null)) {
-      const users = byDepartment.get(null)!;
+    // Add users without department if any
+    if (noDepartmentUsers.length > 0) {
       result.push({
         title: 'Без подразделения',
-        data: users,
+        data: noDepartmentUsers,
         departmentId: null,
       });
     }
 
     return result;
-  }, [filteredUsers, currentUser?.department_id]);
+  }, [filteredUsers]);
 
   return { sections };
 };

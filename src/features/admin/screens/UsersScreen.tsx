@@ -17,6 +17,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useDebounce } from '@shared/hooks/useDebounce';
 import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -31,6 +32,46 @@ const UsersScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole | 'all'>('all');
+
+  // Debounce search query for backend search (300ms delay)
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  const loadUsers = React.useCallback(async () => {
+    try {
+      setIsLoading(true);
+
+      // Use server-side sorting and search for admin user management
+      // Show all users (active and inactive, all roles)
+      const filters: any = {
+        // No is_active filter - show both active and inactive users
+        // Backend search (debounced)
+        search: debouncedSearch || undefined,
+
+        // Role filter (from UI dropdown)
+        role: selectedRole !== 'all' ? selectedRole : undefined,
+
+        // Sorting: simple alphabetical order by name
+        sort_by: 'name',
+        sort_order: 'asc',
+      };
+
+      const response = await userApi.getUsers(filters, { limit: 1000, offset: 0 });
+      console.log('👥 Loaded users for admin panel:', response.data);
+      console.log('🔍 Search query:', debouncedSearch);
+      console.log('🎯 Role filter:', selectedRole);
+      console.log('📊 First 5 users:', response.data?.slice(0, 5).map((u: User) => ({
+        name: u.name,
+        role: u.role,
+        is_active: u.is_active
+      })));
+
+      setUsers(response.data);
+    } catch (error: any) {
+      showError('Не удалось загрузить список пользователей');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [debouncedSearch, selectedRole, showError]);
 
   // Check admin access
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
@@ -47,21 +88,10 @@ const UsersScreen: React.FC = () => {
     );
   }
 
+  // Load users when debounced search or selected role changes
   useEffect(() => {
     loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
-    try {
-      setIsLoading(true);
-      const response = await userApi.getUsers({}, { limit: 100, offset: 0 });
-      setUsers(response.data);
-    } catch (error: any) {
-      showError('Не удалось загрузить список пользователей');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [loadUsers]);
 
   const getRoleLabel = (role: UserRole): string => {
     switch (role) {
@@ -163,15 +193,8 @@ const UsersScreen: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
-
-    return matchesSearch && matchesRole;
-  });
+  // Backend now handles all filtering and search
+  const filteredUsers = users;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>

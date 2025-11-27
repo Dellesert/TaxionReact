@@ -17,7 +17,7 @@ import { useChatTyping } from '../hooks/useChatTyping';
 
 // Components
 import { ChatDetailHeader } from '../components/ChatDetailHeader';
-import { MessagesList } from '../components/MessagesList';
+import { MessageListComponent } from '../components/MessageListComponent';
 import { EmptyMessagesState } from '../components/EmptyMessagesState';
 
 type ChatDetailRouteParams = {
@@ -62,13 +62,35 @@ const ChatDetailScreen: React.FC = () => {
       {messages.length === 0 ? (
         <EmptyMessagesState chatName={chat.name} />
       ) : (
-        <MessagesList
-          messages={messages}
-          currentUserId={user?.id}
-          flatListRef={flatListRef}
-          onReact={handleReaction}
-          onLongPress={handleLongPress}
-          onEndReached={handleLoadMore}
+        <MessageListComponent
+          chatId={chatId}
+          messageListItems={messages.map(msg => ({ type: 'message' as const, data: msg }))}
+          messagesKey={`chat-${chatId}`}
+          firstUnreadIndex={-1}
+          unreadCount={0}
+          showUnreadBanner={false}
+          isLoading={false}
+          isLoadingMore={false}
+          inputHeight={60}
+          insetsBottom={0}
+          listRef={flatListRef}
+          highlightedMessageId={null}
+          scrollSessionKey={0}
+          onContentSizeChange={() => {}}
+          onScroll={() => {}}
+          onViewableItemsChanged={null}
+          viewabilityConfig={{}}
+          onLoadMore={handleLoadMore}
+          onReply={() => {}}
+          onEdit={() => {}}
+          onDelete={async () => {}}
+          onRestore={async () => {}}
+          onDeletePermanent={async () => {}}
+          onPin={async () => {}}
+          onUnpin={async () => {}}
+          onForward={() => {}}
+          onReplyPress={() => {}}
+          onPollPress={() => {}}
         />
       )}
 

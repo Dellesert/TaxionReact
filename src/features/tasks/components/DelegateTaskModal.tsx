@@ -1,6 +1,17 @@
 /**
  * Delegate Task Modal Component
  * Модальное окно для делегирования задачи
+ *
+ * Uses server-side filtering and sorting:
+ * - for_task_assignment: Filters users appropriate for task delegation
+ * - exclude_me: Excludes current user from list
+ * - prioritize_my_dept: Shows current user's department first
+ * - dept_head_first: Shows department heads before employees
+ * - sort_by/sort_order: Sorts by name alphabetically
+ *
+ * Client-side only:
+ * - Search filtering (for instant feedback)
+ * - Grouping by department for UI display (preserving backend order)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -22,6 +33,7 @@ import { User } from '@/types/user.types';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useDebounce } from '@shared/hooks/useDebounce';
 import Avatar from '@shared/components/common/Avatar';
 
 interface DelegateTaskModalProps {
@@ -50,19 +62,10 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load users when modal opens
-  useEffect(() => {
-    if (visible && users.length === 0) {
-      loadUsers();
-    }
-  }, [visible]);
+  // Debounce search query for backend search (300ms delay)
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // Group users by department when users or search query changes
-  useEffect(() => {
-    groupUsersByDepartment();
-  }, [searchQuery, users]);
-
-  const loadUsers = async () => {
+  const loadUsers = React.useCallback(async () => {
     try {
       setIsLoadingUsers(true);
       setError(null);
@@ -73,63 +76,67 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
         return;
       }
 
-      // Use server-side filtering for task assignment
+      // Use server-side filtering, sorting, grouping, and search
       const filters: any = {
         is_active: true,
-        for_task_assignment: true,
+        for_task_assignment: true, // Automatically filters appropriate users for task delegation
+        exclude_me: true, // Exclude current user
+
+        // Backend search (debounced)
+        search: debouncedSearch || undefined,
+
+        // Sorting and ordering
+        prioritize_my_dept: true, // My department first
+        dept_head_first: true, // Department heads first within each department
+        sort_by: 'name', // Sort by name
+        sort_order: 'asc', // Ascending order
       };
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
-      // Filter out the current user from the list
-      let availableUsers = (response.data || []).filter(
-        (user) => user.id !== currentUser.id
-      );
-
-      // Sort users: department heads first, then by name
-      availableUsers.sort((a, b) => {
-        const aIsDeptHead = a.role === 'department_head';
-        const bIsDeptHead = b.role === 'department_head';
-
-        if (aIsDeptHead && !bIsDeptHead) return -1;
-        if (!aIsDeptHead && bIsDeptHead) return 1;
-
-        return a.name.localeCompare(b.name);
-      });
-
-      console.log('👥 Loaded available users for delegation:', availableUsers);
-      setUsers(availableUsers);
+      console.log('👥 Loaded available users for delegation:', response.data);
+      console.log('🔍 Search query:', debouncedSearch);
+      console.log('🏢 Current user department:', currentUser?.department?.name);
+      console.log('📊 First 5 users:', response.data?.slice(0, 5).map(u => ({
+        name: u.name,
+        dept: u.department?.name,
+        role: u.role
+      })));
+      setUsers(response.data || []);
     } catch (err: any) {
       console.error('Error loading users:', err);
       setError(err.message || 'Не удалось загрузить список пользователей');
     } finally {
       setIsLoadingUsers(false);
     }
-  };
+  }, [debouncedSearch, currentUser]);
+
+  // Load users when modal opens or when debounced search changes
+  useEffect(() => {
+    if (visible) {
+      loadUsers();
+    }
+  }, [visible, loadUsers]);
+
+  // Group users by department when users change
+  useEffect(() => {
+    groupUsersByDepartment();
+  }, [users]);
 
   const groupUsersByDepartment = () => {
-    // Filter users by search query
-    let filteredUsers = users;
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filteredUsers = users.filter(
-        (user) =>
-          user.name.toLowerCase().includes(query) ||
-          user.email.toLowerCase().includes(query) ||
-          user.position?.toLowerCase().includes(query) ||
-          user.department?.name.toLowerCase().includes(query)
-      );
-    }
-
-    // Group users by department
+    // Backend already handles search, so use users directly
+    // Group users by department (preserving backend order)
+    // Backend already sorted by: prioritize_my_dept + dept_head_first + name + search
     const departmentMap = new Map<string, User[]>();
     const noDepartmentUsers: User[] = [];
+    const seenDepartments: string[] = []; // Track order of departments
 
-    filteredUsers.forEach((user) => {
+    users.forEach((user) => {
       if (user.department) {
         const deptName = user.department.name;
         if (!departmentMap.has(deptName)) {
           departmentMap.set(deptName, []);
+          seenDepartments.push(deptName); // Preserve order from backend
         }
         departmentMap.get(deptName)!.push(user);
       } else {
@@ -137,46 +144,15 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
       }
     });
 
-    // Sort users within each department: department heads first, then by name
-    const sortUsersByRole = (a: User, b: User) => {
-      const aIsDeptHead = a.role === 'department_head';
-      const bIsDeptHead = b.role === 'department_head';
-
-      if (aIsDeptHead && !bIsDeptHead) return -1;
-      if (!aIsDeptHead && bIsDeptHead) return 1;
-
-      return a.name.localeCompare(b.name);
-    };
-
-    departmentMap.forEach((users) => users.sort(sortUsersByRole));
-    noDepartmentUsers.sort(sortUsersByRole);
-
-    // Create sections array
+    // Create sections array (preserving backend order)
     const newSections: { title: string; data: User[]; key: string }[] = [];
 
-    // Get current user's department
-    const currentUserDeptName = currentUser?.department?.name;
-
-    // Add current user's department first
-    if (currentUserDeptName && departmentMap.has(currentUserDeptName)) {
-      const myDeptUsers = departmentMap.get(currentUserDeptName)!;
-      newSections.push({
-        title: currentUserDeptName,
-        data: myDeptUsers,
-        key: `dept-${currentUserDeptName}`,
-      });
-      departmentMap.delete(currentUserDeptName);
-    }
-
-    // Add other department sections (sorted alphabetically)
-    const sortedDepartments = Array.from(departmentMap.entries()).sort((a, b) =>
-      a[0].localeCompare(b[0])
-    );
-
-    sortedDepartments.forEach(([deptName, users]) => {
+    // Add departments in the order they appeared (backend already sorted them)
+    seenDepartments.forEach((deptName) => {
+      const users = departmentMap.get(deptName)!;
       newSections.push({
         title: deptName,
-        data: users,
+        data: users, // Users already sorted by backend (dept_head_first + name)
         key: `dept-${deptName}`,
       });
     });
