@@ -100,35 +100,27 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Handle keyboard show - for inverted list
   const handleKeyboardWillShow = useCallback((keyboardHeight: number) => {
-    console.log('🎹 [KEYBOARD] handleKeyboardWillShow called, height:', keyboardHeight, 'listRef.current:', !!listRef.current, 'initialScrolled:', initialScrolled, 'messages.length:', messages.length);
-    // Скроллим вниз на высоту клавиатуры
+    // Скроллим список вниз на высоту клавиатуры после небольшой задержки
+    // чтобы дать время padding начать анимацию
     if (listRef.current && initialScrolled && messages.length > 0) {
-      const currentOffset = lastScrollOffset.current;
-      const newOffset = currentOffset + keyboardHeight;
-      console.log('🚀 [KEYBOARD] Scrolling from offset', currentOffset, 'to', newOffset, '(+', keyboardHeight, ')');
+      setTimeout(() => {
+        const currentOffset = lastScrollOffset.current;
+        const newOffset = currentOffset + keyboardHeight;
 
-      // Попробуем несколько разных методов скролла
-      try {
-        // Метод 1: Прямой доступ к нативному scrollView
-        const scrollView = (listRef.current as any)?.recyclerlistview_unsafe?.scrollComponent?._scrollViewRef;
-        if (scrollView) {
-          console.log('🚀 [KEYBOARD] Using native scrollTo');
-          scrollView.scrollTo({ y: newOffset, animated: true });
-        } else {
-          // Метод 2: Стандартный scrollToOffset
-          console.log('🚀 [KEYBOARD] Using FlashList scrollToOffset');
+        if (listRef.current) {
           listRef.current.scrollToOffset({
             offset: newOffset,
-            animated: true,
+            animated: true, // Используем анимацию для плавности
           });
         }
-      } catch (error) {
-        console.error('❌ [KEYBOARD] Error scrolling:', error);
-      }
-    } else {
-      console.log('❌ [KEYBOARD] NOT scrolling - listRef:', !!listRef.current, 'initialScrolled:', initialScrolled, 'messages.length:', messages.length);
+      }, 100);
     }
   }, [initialScrolled, messages.length]);
+
+  // Handle keyboard animation progress - не используется
+  const handleKeyboardAnimating = useCallback((currentHeight: number, targetHeight: number) => {
+    // Не делаем ничего
+  }, []);
 
   // Handle keyboard hide - for inverted list
   const handleKeyboardWillHide = useCallback(() => {
@@ -504,6 +496,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     handleReplyPress,
     handleKeyboardWillShow,
     handleKeyboardWillHide,
+    handleKeyboardAnimating,
     onViewableItemsChanged,
     viewabilityConfig,
     resetScroll,

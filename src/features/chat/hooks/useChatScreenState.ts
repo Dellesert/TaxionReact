@@ -24,14 +24,17 @@ export const useChatScreenState = () => {
   // Store refs for keyboard animation callbacks
   const onKeyboardShow = useRef<((height: number) => void) | null>(null);
   const onKeyboardHide = useRef<(() => void) | null>(null);
+  const onKeyboardAnimating = useRef<((currentHeight: number, targetHeight: number) => void) | null>(null);
 
   // Function to set keyboard callbacks
   const setKeyboardCallbacks = useCallback((
     onShow: ((height: number) => void) | null,
-    onHide: (() => void) | null
+    onHide: (() => void) | null,
+    onAnimating?: ((currentHeight: number, targetHeight: number) => void) | null
   ) => {
     onKeyboardShow.current = onShow;
     onKeyboardHide.current = onHide;
+    onKeyboardAnimating.current = onAnimating || null;
   }, []);
 
   // Keyboard listeners for handling keyboard show/hide
@@ -40,21 +43,19 @@ export const useChatScreenState = () => {
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (event) => {
         const height = event.endCoordinates.height;
-        console.log('⌨️ [useChatScreenState] Keyboard will show, height:', height, 'callback exists:', !!onKeyboardShow.current);
         setKeyboardHeight(height);
+
+        // Call the callback
+        if (onKeyboardShow.current) {
+          onKeyboardShow.current(height);
+        }
 
         // Start padding animation
         Animated.timing(keyboardHeightAnim, {
           toValue: height,
-          duration: Platform.OS === 'ios' ? event.duration : 250,
+          duration: Platform.OS === 'ios' ? event.duration : 120,
           useNativeDriver: false,
-        }).start(() => {
-          // Call the callback AFTER animation completes
-          if (onKeyboardShow.current) {
-            console.log('⌨️ [useChatScreenState] Calling onKeyboardShow callback after animation with height:', height);
-            onKeyboardShow.current(height);
-          }
-        });
+        }).start();
       }
     );
 
@@ -70,7 +71,7 @@ export const useChatScreenState = () => {
 
         Animated.timing(keyboardHeightAnim, {
           toValue: 0,
-          duration: Platform.OS === 'ios' ? event.duration : 250,
+          duration: Platform.OS === 'ios' ? event.duration : 120,
           useNativeDriver: false,
         }).start();
       }

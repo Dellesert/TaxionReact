@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ActivityIndicator, Animated } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Animated, Platform } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { MessageItem } from './MessageItem';
 import { DateSeparator } from './DateSeparator';
@@ -100,20 +100,15 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   // Показываем skeleton'ы если сообщения еще не загружены
   const showSkeletons = isLoading && messageListItems.length === 0;
 
-  // Базовый отступ внизу списка = высота инпута
-  const baseBottomPadding = inputHeight + insetsBottom + 20;
+  // Базовый отступ внизу списка = высота инпута (статический)
+  // В веб-версии добавляем дополнительный отступ из-за особенностей рендеринга инвертированного списка
+  const baseBottomPadding = inputHeight + insetsBottom + (Platform.OS === 'web' ? 40 : 20);
 
-  // Простой padding без анимации (чтобы скролл работал корректно)
-  const [currentKeyboardHeight, setCurrentKeyboardHeight] = React.useState(0);
-
-  React.useEffect(() => {
-    const listener = keyboardHeightAnim.addListener(({ value }) => {
-      setCurrentKeyboardHeight(value);
-    });
-    return () => keyboardHeightAnim.removeListener(listener);
-  }, [keyboardHeightAnim]);
-
-  const paddingBottom = baseBottomPadding + currentKeyboardHeight;
+  // Вместо анимации padding - анимируем translateY всего списка
+  const animatedTranslateY = keyboardHeightAnim.interpolate({
+    inputRange: [0, 1000],
+    outputRange: [0, -1000], // Двигаем список вверх на высоту клавиатуры
+  });
 
   if (showSkeletons) {
     return (
@@ -126,7 +121,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   }
 
   return (
-    <Animated.View style={{ flex: 1 }}>
+    <Animated.View style={{ flex: 1, transform: [{ translateY: animatedTranslateY }] }}>
       {/* @ts-ignore - FlashList типы могут быть устаревшими */}
       <FlashList
         key={`chat-${chatId}-session-${scrollSessionKey}`}
@@ -186,7 +181,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         }
         contentContainerStyle={[
           styles.messagesList,
-          { paddingBottom },
+          { paddingBottom: baseBottomPadding }, // Статический padding
         ]}
         inverted={true}
         keyboardShouldPersistTaps="handled"

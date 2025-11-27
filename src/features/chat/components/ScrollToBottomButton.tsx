@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, View, Text } from 'react-native';
+import { TouchableOpacity, StyleSheet, View, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   button: {
     position: 'absolute',
     right: 16,
-    bottom: 80,
+    bottom: Platform.OS === 'web' ? 140 : 120, // Поднимаем кнопку выше инпута
     width: 48,
     height: 48,
     borderRadius: 24,
