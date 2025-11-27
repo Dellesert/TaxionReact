@@ -4,7 +4,7 @@
  * Используется в чатах, задачах и опросах
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -54,13 +54,18 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
 
   // Debounce search query for backend search (300ms delay)
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const loadUsers = React.useCallback(async () => {
+  const loadUsers = React.useCallback(async (searchTerm?: string, isInitialLoad = false) => {
     try {
-      setIsLoading(true);
+      // Only show loading spinner on initial load, not during search
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
+
       const currentUser = useAuthStore.getState().user;
 
       // Use server-side filtering, sorting, and search
@@ -70,7 +75,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         exclude_roles: 'admin,super_admin', // Exclude admins for all users
 
         // Backend search (debounced)
-        search: debouncedSearch || undefined,
+        search: searchTerm || undefined,
 
         // Sorting
         prioritize_my_dept: true, // My department first
@@ -87,7 +92,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
       console.log('👥 Loaded users for selector:', response.data);
-      console.log('🔍 Search query:', debouncedSearch);
+      console.log('🔍 Search query:', searchTerm);
       console.log('🏢 Current user department:', currentUser?.department?.name);
       console.log('📊 First 5 users:', response.data?.slice(0, 5).map(u => ({
         name: u.name,
@@ -114,16 +119,58 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     } catch (error) {
       console.error('❌ Failed to load users:', error);
     } finally {
-      setIsLoading(false);
+      if (isInitialLoad) {
+        setIsLoading(false);
+      }
     }
-  }, [debouncedSearch, filterForTaskAssignment, excludeUserIds]);
+  }, [filterForTaskAssignment, excludeUserIds]);
 
-  // Load users when modal opens or when debounced search changes
+  // Load users when modal opens (initial load)
+  const isFirstLoad = React.useRef(true);
   useEffect(() => {
     if (visible) {
-      loadUsers();
+      if (isFirstLoad.current) {
+        loadUsers(undefined, true);
+        isFirstLoad.current = false;
+      } else {
+        loadUsers(undefined, false);
+      }
     }
-  }, [visible, loadUsers]);
+  }, [visible]);
+
+  // Load users when debounced search changes (but not on initial render)
+  const isFirstRender = React.useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (visible) {
+      loadUsers(debouncedSearch, false);
+    }
+  }, [debouncedSearch, loadUsers, visible]);
+
+  // Client-side filtering for instant feedback while waiting for backend
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return users;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return users.filter((user) => {
+      const name = user.name?.toLowerCase() || '';
+      const email = user.email?.toLowerCase() || '';
+      const position = user.position?.toLowerCase() || '';
+      const department = user.department?.name?.toLowerCase() || '';
+
+      return (
+        name.includes(query) ||
+        email.includes(query) ||
+        position.includes(query) ||
+        department.includes(query)
+      );
+    });
+  }, [users, searchQuery]);
 
   // Группируем пользователей по подразделениям (preserving backend order)
   const userSections = useMemo(() => {
@@ -132,8 +179,8 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     const noDepartmentUsers: User[] = [];
     const seenDepartments: string[] = []; // Track order of departments as they appear
 
-    // Backend already handles search, so use users directly
-    users.forEach((user) => {
+    // Use filteredUsers for client-side search results
+    filteredUsers.forEach((user) => {
       if (user.department) {
         const deptName = user.department.name;
         if (!departmentMap.has(deptName)) {
@@ -169,7 +216,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     }
 
     return sections;
-  }, [users]);
+  }, [filteredUsers]);
 
   const toggleUserSelection = (userId: number) => {
     if (multiSelect) {
@@ -217,29 +264,6 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     }
   };
 
-  // Get initials for avatar
-  const getInitials = (name: string) => {
-    const words = name.split(' ');
-    if (words.length >= 2) {
-      return (words[0][0] + words[1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
-
-  // Get status color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online':
-        return '#10B981';
-      case 'busy':
-        return '#EF4444';
-      case 'away':
-        return '#F59E0B';
-      default:
-        return '#9CA3AF';
-    }
-  };
-
   // Get role text in Russian
   const getRoleText = (role: string) => {
     switch (role) {
@@ -256,7 +280,22 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     }
   };
 
-  const renderUserItem = ({ item }: { item: User }) => {
+  // Memoize handlers
+  const handleSearchChange = React.useCallback((text: string) => {
+    setSearchQuery(text);
+  }, []);
+
+  const handleSearchClear = React.useCallback(() => {
+    setSearchQuery('');
+    // Restore focus after clearing
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+  }, []);
+
+  const keyExtractor = React.useCallback((item: User) => item.id.toString(), []);
+
+  const renderUserItem = React.useCallback(({ item }: { item: User }) => {
     const isSelected = selectedUserIds.includes(item.id);
     const isRadioMode = mode === 'radio' || !multiSelect;
 
@@ -298,7 +337,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         )}
       </TouchableOpacity>
     );
-  };
+  }, [selectedUserIds, mode, multiSelect, theme, toggleUserSelection]);
 
   const styles = StyleSheet.create({
     container: {
@@ -532,14 +571,17 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color={theme.textTertiary} />
           <TextInput
+            ref={searchInputRef}
             style={styles.searchInput}
             placeholder="Поиск участников..."
             placeholderTextColor={theme.inputPlaceholder}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchChange}
+            autoCorrect={false}
+            autoCapitalize="none"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={handleSearchClear}>
               <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
           )}
@@ -554,8 +596,13 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         ) : (
           <SectionList
             sections={userSections}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={keyExtractor}
             renderItem={renderUserItem}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            windowSize={21}
+            keyboardShouldPersistTaps="handled"
             renderSectionHeader={({ section }) => {
               if (!multiSelect) {
                 // Radio mode - non-clickable headers

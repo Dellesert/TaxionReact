@@ -15,7 +15,7 @@ interface CreateChatHeaderProps {
   isCreating: boolean;
 }
 
-export const CreateChatHeader: React.FC<CreateChatHeaderProps> = ({
+export const CreateChatHeader: React.FC<CreateChatHeaderProps> = React.memo(({
   onBack,
   onCreateChat,
   canCreate,
@@ -23,7 +23,7 @@ export const CreateChatHeader: React.FC<CreateChatHeaderProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  const dynamicStyles = StyleSheet.create({
+  const dynamicStyles = React.useMemo(() => StyleSheet.create({
     header: {
       backgroundColor: theme.background,
       borderBottomColor: theme.border,
@@ -37,7 +37,7 @@ export const CreateChatHeader: React.FC<CreateChatHeaderProps> = ({
     createButtonDisabled: {
       backgroundColor: theme.backgroundTertiary,
     },
-  });
+  }), [theme]);
 
   return (
     <View style={[styles.header, dynamicStyles.header]}>
@@ -64,7 +64,7 @@ export const CreateChatHeader: React.FC<CreateChatHeaderProps> = ({
       </TouchableOpacity>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   header: {

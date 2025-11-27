@@ -13,14 +13,14 @@ interface ChatNameInputProps {
   maxLength?: number;
 }
 
-export const ChatNameInput: React.FC<ChatNameInputProps> = ({
+export const ChatNameInput: React.FC<ChatNameInputProps> = React.memo(({
   chatName,
   onChangeText,
   maxLength = 50,
 }) => {
   const { theme } = useTheme();
 
-  const dynamicStyles = StyleSheet.create({
+  const dynamicStyles = React.useMemo(() => StyleSheet.create({
     section: {
       backgroundColor: theme.card,
       borderBottomColor: theme.border,
@@ -35,7 +35,7 @@ export const ChatNameInput: React.FC<ChatNameInputProps> = ({
     charCount: {
       color: theme.textTertiary,
     },
-  });
+  }), [theme]);
 
   return (
     <View style={[styles.section, dynamicStyles.section]}>
@@ -55,7 +55,7 @@ export const ChatNameInput: React.FC<ChatNameInputProps> = ({
       </Text>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   section: {

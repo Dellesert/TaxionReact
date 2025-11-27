@@ -3,7 +3,7 @@
  * Управление данными для создания чата (загрузка пользователей)
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import { isMockMode, mockGetUsers } from '@shared/utils/mockData';
@@ -17,7 +17,7 @@ interface UseCreateChatDataReturn {
   isLoading: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  loadUsers: () => Promise<void>;
+  loadUsers: (searchTerm?: string, isInitialLoad?: boolean) => Promise<void>;
 }
 
 export const useCreateChatData = (): UseCreateChatDataReturn => {
@@ -30,9 +30,12 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
   // Debounce search query for backend search (300ms delay)
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (searchTerm?: string, isInitialLoad = false) => {
     try {
-      setIsLoading(true);
+      // Only show loading spinner on initial load, not during search
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
 
       let usersList: User[] = [];
 
@@ -50,7 +53,7 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
           exclude_roles: 'admin,super_admin', // Exclude admins for all users
 
           // Backend search (debounced)
-          search: debouncedSearch || undefined,
+          search: searchTerm || undefined,
 
           // Sorting
           prioritize_my_dept: true, // My department first
@@ -61,7 +64,7 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
 
         const response = await getUsers(filters, { limit: 1000, offset: 0 });
         console.log('✅ Users API response:', response);
-        console.log('🔍 Search query:', debouncedSearch);
+        console.log('🔍 Search query:', searchTerm);
         console.log('📊 First 5 users:', response.data?.slice(0, 5).map((u: User) => ({
           name: u.name,
           dept: u.department?.name,
@@ -104,19 +107,50 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
       const errorMessage = getLoadUsersErrorMessage(err);
       showError(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (isInitialLoad) {
+        setIsLoading(false);
+      }
     }
-  }, [debouncedSearch, showError]);
+  }, [showError]);
 
-  // Load users on mount and when debounced search changes
+  // Load users on mount
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    loadUsers(undefined, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Backend handles search, so filteredUsers is same as users
+  // Load users when debounced search changes (but not on initial render)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    loadUsers(debouncedSearch, false);
+  }, [debouncedSearch, loadUsers]);
+
+  // Backend handles search, but we also do client-side filtering as fallback
+  // This ensures case-insensitive search works even if backend is case-sensitive
   const filteredUsers = useMemo(() => {
-    return users;
-  }, [users]);
+    if (!searchQuery.trim()) {
+      return users;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return users.filter((user) => {
+      const name = user.name?.toLowerCase() || '';
+      const email = user.email?.toLowerCase() || '';
+      const position = user.position?.toLowerCase() || '';
+      const department = user.department?.name?.toLowerCase() || '';
+
+      return (
+        name.includes(query) ||
+        email.includes(query) ||
+        position.includes(query) ||
+        department.includes(query)
+      );
+    });
+  }, [users, searchQuery]);
 
   return {
     users,

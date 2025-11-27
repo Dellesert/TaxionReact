@@ -64,6 +64,15 @@ const CreateChatScreen: React.FC = () => {
 
   const { sections } = useUserSections(filteredUsers);
 
+  // Memoize handlers to prevent recreating on every render
+  const handleSearchChange = React.useCallback((text: string) => {
+    setSearchQuery(text);
+  }, [setSearchQuery]);
+
+  const handleSearchClear = React.useCallback(() => {
+    setSearchQuery('');
+  }, [setSearchQuery]);
+
   // Handlers
   const handleCreateChat = async () => {
     await createChat(chatType, chatName);
@@ -76,7 +85,7 @@ const CreateChatScreen: React.FC = () => {
   const canCreate = canCreateChat(chatType as 'group' | 'private', chatName, selectedUsers);
 
   // Render section header
-  const renderSectionHeader = ({ section }: { section: { title: string; data: User[] } }) => {
+  const renderSectionHeader = React.useCallback(({ section }: { section: { title: string; data: User[] } }) => {
     if (chatType === 'group') {
       const departmentUserIds = section.data.map((u) => u.id);
       const allSelected = areAllUsersSelected(departmentUserIds, selectedUsers);
@@ -136,10 +145,13 @@ const CreateChatScreen: React.FC = () => {
         </Text>
       </View>
     );
-  };
+  }, [chatType, selectedUsers, theme, toggleDepartmentSelection]);
+
+  // Key extractor
+  const keyExtractor = React.useCallback((item: User) => item.id.toString(), []);
 
   // Render user item
-  const renderUserItem = ({ item }: { item: User }) => {
+  const renderUserItem = React.useCallback(({ item }: { item: User }) => {
     const isSelected = selectedUsers.includes(item.id);
     const isPrivateChat = chatType === 'private';
 
@@ -151,17 +163,17 @@ const CreateChatScreen: React.FC = () => {
         onPress={toggleUserSelection}
       />
     );
-  };
+  }, [selectedUsers, chatType, toggleUserSelection]);
 
   // Empty list component
-  const renderEmptyList = () => (
+  const renderEmptyList = React.useCallback(() => (
     <View style={styles.emptyContainer}>
       <Ionicons name="people-outline" size={64} color={theme.border} />
       <Text style={[styles.emptyText, { color: theme.textTertiary }]}>
         Пользователи не найдены
       </Text>
     </View>
-  );
+  ), [theme]);
 
   // Loading component
   if (isLoading) {
@@ -206,19 +218,24 @@ const CreateChatScreen: React.FC = () => {
       {/* Search */}
       <CreateChatSearchBar
         searchQuery={searchQuery}
-        onChangeText={setSearchQuery}
-        onClear={() => setSearchQuery('')}
+        onChangeText={handleSearchChange}
+        onClear={handleSearchClear}
       />
 
       {/* Users List */}
       <SectionList
         sections={sections}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={keyExtractor}
         renderItem={renderUserItem}
         renderSectionHeader={renderSectionHeader}
         contentContainerStyle={styles.listContent}
         stickySectionHeadersEnabled={true}
         ListEmptyComponent={renderEmptyList}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={21}
+        keyboardShouldPersistTaps="handled"
       />
     </SafeAreaView>
   );

@@ -3,7 +3,7 @@
  * Поисковая строка для создания чата
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -14,14 +14,15 @@ interface CreateChatSearchBarProps {
   onClear: () => void;
 }
 
-export const CreateChatSearchBar: React.FC<CreateChatSearchBarProps> = ({
+export const CreateChatSearchBar: React.FC<CreateChatSearchBarProps> = React.memo(({
   searchQuery,
   onChangeText,
   onClear,
 }) => {
   const { theme } = useTheme();
+  const inputRef = useRef<TextInput>(null);
 
-  const dynamicStyles = StyleSheet.create({
+  const dynamicStyles = React.useMemo(() => StyleSheet.create({
     container: {
       backgroundColor: theme.card,
       borderBottomColor: theme.border,
@@ -29,26 +30,37 @@ export const CreateChatSearchBar: React.FC<CreateChatSearchBarProps> = ({
     input: {
       color: theme.text,
     },
-  });
+  }), [theme]);
+
+  const handleClear = React.useCallback(() => {
+    onClear();
+    // Restore focus after clearing
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  }, [onClear]);
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       <Ionicons name="search" size={20} color={theme.textTertiary} />
       <TextInput
+        ref={inputRef}
         style={[styles.input, dynamicStyles.input]}
         placeholder="Поиск участников..."
         placeholderTextColor={theme.inputPlaceholder}
         value={searchQuery}
         onChangeText={onChangeText}
+        autoCorrect={false}
+        autoCapitalize="none"
       />
       {searchQuery.length > 0 && (
-        <TouchableOpacity onPress={onClear}>
+        <TouchableOpacity onPress={handleClear}>
           <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
         </TouchableOpacity>
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

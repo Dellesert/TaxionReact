@@ -12,19 +12,19 @@ interface SelectedUsersCounterProps {
   count: number;
 }
 
-export const SelectedUsersCounter: React.FC<SelectedUsersCounterProps> = ({ count }) => {
+export const SelectedUsersCounter: React.FC<SelectedUsersCounterProps> = React.memo(({ count }) => {
   const { theme } = useTheme();
 
-  if (count === 0) return null;
-
-  const dynamicStyles = StyleSheet.create({
+  const dynamicStyles = React.useMemo(() => StyleSheet.create({
     container: {
       backgroundColor: theme.backgroundSecondary,
     },
     text: {
       color: theme.primary,
     },
-  });
+  }), [theme]);
+
+  if (count === 0) return null;
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
@@ -32,7 +32,7 @@ export const SelectedUsersCounter: React.FC<SelectedUsersCounterProps> = ({ coun
       <Text style={[styles.text, dynamicStyles.text]}>Выбрано: {count}</Text>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

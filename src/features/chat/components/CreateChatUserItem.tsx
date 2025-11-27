@@ -18,7 +18,7 @@ interface CreateChatUserItemProps {
   onPress: (userId: number) => void;
 }
 
-export const CreateChatUserItem: React.FC<CreateChatUserItemProps> = ({
+export const CreateChatUserItem: React.FC<CreateChatUserItemProps> = React.memo(({
   user,
   isSelected,
   isPrivateChat,
@@ -26,7 +26,7 @@ export const CreateChatUserItem: React.FC<CreateChatUserItemProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  const dynamicStyles = StyleSheet.create({
+  const dynamicStyles = React.useMemo(() => StyleSheet.create({
     userItem: {
       backgroundColor: theme.card,
       borderBottomColor: theme.border,
@@ -59,7 +59,7 @@ export const CreateChatUserItem: React.FC<CreateChatUserItemProps> = ({
     radioDot: {
       backgroundColor: theme.primary,
     },
-  });
+  }), [theme]);
 
   return (
     <TouchableOpacity
@@ -127,7 +127,7 @@ export const CreateChatUserItem: React.FC<CreateChatUserItemProps> = ({
       )}
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   userItem: {

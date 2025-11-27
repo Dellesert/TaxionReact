@@ -94,7 +94,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   }, [messages.length, firstUnreadIndex, unreadCount, initialScrollIndex, chatId]);
 
   // Ref для handleLoadMore чтобы избежать циклической зависимости
-  const handleLoadMoreRef = useRef<() => Promise<void>>();
+  const handleLoadMoreRef = useRef<(() => Promise<void>) | undefined>();
 
   // Обработчик скролла
   const handleScroll = useCallback((event: any) => {
@@ -201,18 +201,18 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [initialScrolled, firstUnreadIndex, unreadCount, chatId]);
 
-  // Отслеживаем новые сообщения от других пользователей когда пользователь не внизу
+  // Отслеживаем новые сообщения от других пользователей
   useEffect(() => {
     console.log(`🔍 [useEffect] Trigger: initialScrolled=${initialScrolled}, hasReachedBottom=${hasReachedBottom}, messages.length=${messages.length}`);
 
-    // Пропускаем при первой инициализации или если пользователь уже внизу
-    if (!initialScrolled || hasReachedBottom || messages.length === 0) {
+    // Пропускаем при первой инициализации или если нет сообщений
+    if (!initialScrolled || messages.length === 0) {
       previousMessagesLength.current = messages.length;
       // Сохраняем ID последнего сообщения
       if (messages.length > 0) {
         previousLastMessageId.current = messages[messages.length - 1].id;
       }
-      console.log(`🔍 [useEffect] Skipping (not scrolled or at bottom)`);
+      console.log(`🔍 [useEffect] Skipping (not scrolled or no messages)`);
       return;
     }
 
@@ -251,22 +251,35 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       console.log(`🔍 [useEffect] New real-time messages: ${newMessages.length}, from others: ${newFromOthers}`);
 
       if (newFromOthers > 0) {
-        console.log(`⚠️ [useEffect] Adding ${newFromOthers} real-time messages to counter`);
+        // Если пользователь внизу (нет непрочитанных) - автоматически прокручиваем
+        if (hasReachedBottom && unreadCount === 0) {
+          console.log(`⚠️ [useEffect] User at bottom with no unreads - auto-scrolling down`);
+          // Небольшая задержка для корректного рендера нового сообщения
+          setTimeout(() => {
+            listRef.current?.scrollToOffset({
+              offset: 999999,
+              animated: true,
+            });
+          }, 100);
+        } else {
+          // Если пользователь не внизу - показываем счетчик новых сообщений
+          console.log(`⚠️ [useEffect] Adding ${newFromOthers} real-time messages to counter`);
 
-        // Если это первое новое сообщение - запоминаем его индекс
-        if (firstNewMessageIndex === -1) {
-          const firstNewMsgIndex = messages.findIndex((msg, idx) =>
-            idx >= previousMessagesLength.current && msg.sender_id !== currentUserId
-          );
-          if (firstNewMsgIndex !== -1) {
-            setFirstNewMessageIndex(firstNewMsgIndex);
+          // Если это первое новое сообщение - запоминаем его индекс
+          if (firstNewMessageIndex === -1) {
+            const firstNewMsgIndex = messages.findIndex((msg, idx) =>
+              idx >= previousMessagesLength.current && msg.sender_id !== currentUserId
+            );
+            if (firstNewMsgIndex !== -1) {
+              setFirstNewMessageIndex(firstNewMsgIndex);
+            }
           }
-        }
 
-        setNewMessagesCount(prev => {
-          console.log(`⚠️ [useEffect] newMessagesCount: ${prev} -> ${prev + newFromOthers}`);
-          return prev + newFromOthers;
-        });
+          setNewMessagesCount(prev => {
+            console.log(`⚠️ [useEffect] newMessagesCount: ${prev} -> ${prev + newFromOthers}`);
+            return prev + newFromOthers;
+          });
+        }
       }
 
       // Обновляем сохраненный ID последнего сообщения
@@ -277,7 +290,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     if (messages.length !== previousMessagesLength.current) {
       previousMessagesLength.current = messages.length;
     }
-  }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId, firstNewMessageIndex]); // Убрали messages из зависимостей - отслеживаем только изменение длины
+  }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId, firstNewMessageIndex, unreadCount]); // Добавили unreadCount в зависимости
 
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(() => {
