@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { PinnedMessageBanner } from '../components/PinnedMessageBanner';
 import { FloatingDateHeader } from '../components/FloatingDateHeader';
 import { ScrollToBottomButton } from '../components/ScrollToBottomButton';
@@ -66,6 +66,7 @@ interface ChatScreenContentProps {
   newMessagesCount: number;
   isScrollingToUnread: boolean;
   keyboardHeight: number;
+  keyboardHeightAnim: Animated.Value;
 
   // Input handlers
   onSendMessage: (content: string, replyToId?: number) => Promise<void>;
@@ -135,6 +136,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   newMessagesCount,
   isScrollingToUnread,
   keyboardHeight,
+  keyboardHeightAnim,
   onSendMessage,
   onTyping,
   editingMessage,
@@ -185,6 +187,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             isLoadingMore={isLoadingMore}
             inputHeight={inputHeight}
             insetsBottom={insetsBottom}
+            keyboardHeight={keyboardHeight}
             listRef={listRef}
             highlightedMessageId={highlightedMessageId}
             initialScrollIndex={initialScrollIndex}
@@ -220,11 +223,11 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           />
         </View>
 
-        <View
+        <Animated.View
           style={[
             styles.inputWrapper,
             {
-              marginBottom: keyboardHeight,
+              marginBottom: keyboardHeightAnim,
               backgroundColor: theme.backgroundSecondary,
             },
           ]}
@@ -249,7 +252,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
               onRemoveFile={onRemoveFile}
             />
           )}
-        </View>
+        </Animated.View>
       </View>
     </>
   );

@@ -23,6 +23,7 @@ interface MessageListComponentProps {
   isLoadingMore: boolean;
   inputHeight: number;
   insetsBottom: number;
+  keyboardHeight: number; // Высота клавиатуры для динамического padding
   listRef: React.RefObject<any>;
   highlightedMessageId: number | null;
   initialScrollIndex?: number;
@@ -66,6 +67,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   isLoadingMore,
   inputHeight,
   insetsBottom,
+  keyboardHeight,
   listRef,
   highlightedMessageId,
   initialScrollIndex,
@@ -168,7 +170,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       }
       contentContainerStyle={[
         styles.messagesList,
-        { paddingBottom: inputHeight + insetsBottom },
+        { paddingBottom: 0 + keyboardHeight },
       ]}
       inverted={true}
       keyboardShouldPersistTaps="handled"

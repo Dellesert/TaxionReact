@@ -74,6 +74,7 @@ const ChatDetailScreen: React.FC = () => {
           isLoadingMore={false}
           inputHeight={60}
           insetsBottom={0}
+          keyboardHeight={0}
           listRef={flatListRef}
           highlightedMessageId={null}
           scrollSessionKey={0}

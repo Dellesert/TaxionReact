@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { Animated } from 'react-native';
 import type { Chat } from '../types/chat.types';
 
 /**
@@ -8,6 +9,7 @@ export const useChatScreenState = () => {
   const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [showUnreadBanner, setShowUnreadBanner] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isLayoutReady, setIsLayoutReady] = useState(false);
   const [contentReady, setContentReady] = useState(false);
@@ -45,6 +47,7 @@ export const useChatScreenState = () => {
     // Keyboard state
     keyboardHeight,
     setKeyboardHeight,
+    keyboardHeightAnim,
 
     // Unread and read receipts
     showUnreadBanner,
