@@ -3,8 +3,8 @@
  * Экран деталей чата с сообщениями
  */
 
-import React from 'react';
-import { View, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useRef } from 'react';
+import { View, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useAuthStore } from '@shared/store/authStore';
 import { Loading } from '@shared/components/common/Loading';
@@ -30,6 +30,9 @@ const ChatDetailScreen: React.FC = () => {
   const chatId = Number(chatIdParam);
 
   const user = useAuthStore((state) => state.user);
+
+  // Фиктивный Animated.Value для совместимости (этот экран использует KeyboardAvoidingView)
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
 
   // Custom Hooks
   const { chat, messages, shouldShowLoadingScreen } = useChatDetailData(chatId);
@@ -74,7 +77,7 @@ const ChatDetailScreen: React.FC = () => {
           isLoadingMore={false}
           inputHeight={60}
           insetsBottom={0}
-          keyboardHeight={0}
+          keyboardHeightAnim={keyboardHeightAnim}
           listRef={flatListRef}
           highlightedMessageId={null}
           scrollSessionKey={0}

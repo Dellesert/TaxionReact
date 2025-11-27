@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
-import { Animated } from 'react-native';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Animated, Keyboard, Platform } from 'react-native';
 import type { Chat } from '../types/chat.types';
 
 /**
@@ -20,6 +20,39 @@ export const useChatScreenState = () => {
   const [savedUnreadCount, setSavedUnreadCount] = useState(0);
   const [chatData, setChatData] = useState<Chat | null>(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+
+  // Keyboard listeners for handling keyboard show/hide
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event) => {
+        const height = event.endCoordinates.height;
+        setKeyboardHeight(height);
+        Animated.timing(keyboardHeightAnim, {
+          toValue: height,
+          duration: Platform.OS === 'ios' ? event.duration : 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (event) => {
+        setKeyboardHeight(0);
+        Animated.timing(keyboardHeightAnim, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? event.duration : 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardWillShowListener.remove();
+      keyboardWillHideListener.remove();
+    };
+  }, [keyboardHeightAnim]);
 
   const resetChatState = useCallback(() => {
     setShowUnreadBanner(true);

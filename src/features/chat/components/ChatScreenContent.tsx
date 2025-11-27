@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { PinnedMessageBanner } from '../components/PinnedMessageBanner';
 import { FloatingDateHeader } from '../components/FloatingDateHeader';
@@ -155,6 +155,17 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  // Вычисляем анимированный bottom для input wrapper
+  // Когда клавиатура открывается, поднимаем input вверх
+  const inputWrapperAnimatedStyle = useMemo(() => {
+    return {
+      bottom: keyboardHeightAnim.interpolate({
+        inputRange: [0, 1000],
+        outputRange: [0, 1000],
+      }),
+    };
+  }, [keyboardHeightAnim]);
+
   if (!shouldShowContent) {
     return <View style={styles.hiddenContent} />;
   }
@@ -163,97 +174,95 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
     <>
       <FloatingDateHeader dateLabel={currentDateLabel} visible={showDateHeader} />
 
+      {pinnedMessages.length > 0 && (
+        <PinnedMessageBanner
+          pinnedMessages={pinnedMessages}
+          chatType={chatType}
+          currentUserRole={currentUserRole}
+          onPress={onPinnedMessagePress}
+          onUnpin={onUnpin}
+        />
+      )}
+
       <View style={styles.flex1}>
-        {pinnedMessages.length > 0 && (
-          <PinnedMessageBanner
-            pinnedMessages={pinnedMessages}
-            chatType={chatType}
-            currentUserRole={currentUserRole}
-            onPress={onPinnedMessagePress}
-            onUnpin={onUnpin}
+        <MessageListComponent
+          chatId={chatId}
+          messageListItems={messageListItems}
+          messagesKey={messagesKey}
+          firstUnreadIndex={firstUnreadIndex}
+          unreadCount={unreadCount}
+          showUnreadBanner={showUnreadBanner}
+          initialUnreadCount={initialUnreadCount}
+          isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
+          inputHeight={inputHeight}
+          insetsBottom={insetsBottom}
+          keyboardHeightAnim={keyboardHeightAnim}
+          listRef={listRef}
+          highlightedMessageId={highlightedMessageId}
+          initialScrollIndex={initialScrollIndex}
+          scrollSessionKey={scrollSessionKey}
+          onContentSizeChange={onContentSizeChange}
+          onScroll={onScroll}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          onLoadMore={onLoadMore}
+          onReply={onReply}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onRestore={onRestore}
+          onDeletePermanent={onDeletePermanent}
+          onPin={onPin}
+          onUnpin={onUnpin}
+          onForward={onForward}
+          onReplyPress={onReplyPress}
+          onPollPress={onPollPress}
+          onTaskPress={onTaskPress}
+          selectionMode={selectionMode}
+          selectedMessages={selectedMessages}
+          onEnterSelectionMode={onEnterSelectionMode}
+          onToggleMessageSelection={onToggleMessageSelection}
+          chatType={chatType}
+          userRole={userRole}
+        />
+
+        <ScrollToBottomButton
+          visible={showScrollToBottom}
+          onPress={onScrollToBottom}
+          unreadCount={newMessagesCount}
+        />
+      </View>
+
+      <Animated.View
+        style={[
+          styles.inputWrapper,
+          {
+            backgroundColor: theme.backgroundSecondary,
+          },
+          inputWrapperAnimatedStyle,
+        ]}
+      >
+        {selectionMode ? (
+          <SelectionModeToolbar
+            selectedCount={selectedMessages.size}
+            onCancel={onExitSelectionMode}
+            onDelete={onBulkDelete}
+            canDeleteForEveryone={canDeleteForEveryone}
+          />
+        ) : (
+          <MessageInput
+            onSend={onSendMessage}
+            onTyping={onTyping}
+            editingMessage={editingMessage}
+            onCancelEdit={onCancelEdit}
+            replyingToMessage={replyingToMessage}
+            onCancelReply={onCancelReply}
+            onFilesSelected={onFilesSelected}
+            selectedFileIds={selectedFileIds}
+            onRemoveFile={onRemoveFile}
           />
         )}
-
-        <View style={styles.flex1}>
-          <MessageListComponent
-            chatId={chatId}
-            messageListItems={messageListItems}
-            messagesKey={messagesKey}
-            firstUnreadIndex={firstUnreadIndex}
-            unreadCount={unreadCount}
-            showUnreadBanner={showUnreadBanner}
-            initialUnreadCount={initialUnreadCount}
-            isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
-            inputHeight={inputHeight}
-            insetsBottom={insetsBottom}
-            keyboardHeight={keyboardHeight}
-            listRef={listRef}
-            highlightedMessageId={highlightedMessageId}
-            initialScrollIndex={initialScrollIndex}
-            scrollSessionKey={scrollSessionKey}
-            onContentSizeChange={onContentSizeChange}
-            onScroll={onScroll}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-            onLoadMore={onLoadMore}
-            onReply={onReply}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onRestore={onRestore}
-            onDeletePermanent={onDeletePermanent}
-            onPin={onPin}
-            onUnpin={onUnpin}
-            onForward={onForward}
-            onReplyPress={onReplyPress}
-            onPollPress={onPollPress}
-            onTaskPress={onTaskPress}
-            selectionMode={selectionMode}
-            selectedMessages={selectedMessages}
-            onEnterSelectionMode={onEnterSelectionMode}
-            onToggleMessageSelection={onToggleMessageSelection}
-            chatType={chatType}
-            userRole={userRole}
-          />
-
-          <ScrollToBottomButton
-            visible={showScrollToBottom}
-            onPress={onScrollToBottom}
-            unreadCount={newMessagesCount}
-          />
-        </View>
-
-        <Animated.View
-          style={[
-            styles.inputWrapper,
-            {
-              marginBottom: keyboardHeightAnim,
-              backgroundColor: theme.backgroundSecondary,
-            },
-          ]}
-        >
-          {selectionMode ? (
-            <SelectionModeToolbar
-              selectedCount={selectedMessages.size}
-              onCancel={onExitSelectionMode}
-              onDelete={onBulkDelete}
-              canDeleteForEveryone={canDeleteForEveryone}
-            />
-          ) : (
-            <MessageInput
-              onSend={onSendMessage}
-              onTyping={onTyping}
-              editingMessage={editingMessage}
-              onCancelEdit={onCancelEdit}
-              replyingToMessage={replyingToMessage}
-              onCancelReply={onCancelReply}
-              onFilesSelected={onFilesSelected}
-              selectedFileIds={selectedFileIds}
-              onRemoveFile={onRemoveFile}
-            />
-          )}
-        </Animated.View>
-      </View>
+      </Animated.View>
     </>
   );
 };
@@ -266,6 +275,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inputWrapper: {
-    // Container for input/toolbar
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
 });

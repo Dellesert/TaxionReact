@@ -192,61 +192,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     [chatIdNum, messages] // Только стабильные зависимости
   );
 
-  // Управление клавиатурой с плавной анимацией
-  useEffect(() => {
-    // Используем keyboardWillShow на iOS для синхронизации с анимацией клавиатуры
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const keyboardShow = Keyboard.addListener(showEvent, (e) => {
-      const height = e.endCoordinates.height;
-      // На iOS duration есть в event, на Android нет
-      const duration = Platform.OS === 'ios' ? (e as any).duration || 250 : 250;
-      setKeyboardHeight(height);
-
-      // Анимируем вместе с клавиатурой
-      Animated.timing(keyboardHeightAnim, {
-        toValue: height,
-        duration,
-        useNativeDriver: false, // marginBottom не поддерживает native driver
-      }).start();
-    });
-
-    const keyboardHide = Keyboard.addListener(hideEvent, (e) => {
-      setKeyboardHeight(0);
-      const duration = Platform.OS === 'ios' ? (e as any)?.duration || 250 : 250;
-
-      // Анимируем вместе с клавиатурой
-      Animated.timing(keyboardHeightAnim, {
-        toValue: 0,
-        duration,
-        useNativeDriver: false,
-      }).start();
-    });
-
-    return () => {
-      keyboardShow.remove();
-      keyboardHide.remove();
-    };
-  }, [keyboardHeightAnim, setKeyboardHeight]);
-
-  // Автоматический скролл вниз при открытии клавиатуры
-  useEffect(() => {
-    if (keyboardHeight > 0 && !showScrollToBottom && initialScrolled && Platform.OS === 'ios') {
-      // Задержка чтобы paddingBottom успел примениться и анимация началась
-      const timer = setTimeout(() => {
-        if (listRef.current) {
-          // Используем очень большой offset для inverted списка (самый низ)
-          listRef.current.scrollToOffset?.({
-            offset: 999999,
-            animated: false, // Без анимации чтобы было мгновенно
-          });
-        }
-      }, 50);
-
-      return () => clearTimeout(timer);
-    }
-  }, [keyboardHeight, showScrollToBottom, initialScrolled, listRef]);
 
   // Сразу показываем UI
   useEffect(() => {
