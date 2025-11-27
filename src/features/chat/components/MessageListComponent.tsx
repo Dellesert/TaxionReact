@@ -18,6 +18,7 @@ interface MessageListComponentProps {
   firstUnreadIndex: number;
   unreadCount: number;
   showUnreadBanner: boolean;
+  initialUnreadCount: number; // Количество непрочитанных при входе в чат
   isLoading: boolean;
   isLoadingMore: boolean;
   inputHeight: number;
@@ -60,6 +61,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   firstUnreadIndex,
   unreadCount,
   showUnreadBanner,
+  initialUnreadCount,
   isLoading,
   isLoadingMore,
   inputHeight,
@@ -126,7 +128,13 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 
         // Показываем встроенный баннер при наличии непрочитанных
         // firstUnreadIndex - это индекс самого СТАРОГО непрочитанного сообщения (где должен быть баннер)
-        const shouldShowInlineBanner = index === firstUnreadIndex && unreadCount >= 1 && showUnreadBanner;
+        // ВАЖНО: Не показываем баннер если все непрочитанные - это только новые сообщения (initialUnreadCount === 0)
+        // Это происходит когда пользователь был внизу чата и ему пришли новые сообщения с автоскроллом
+        const shouldShowInlineBanner =
+          index === firstUnreadIndex &&
+          unreadCount >= 1 &&
+          showUnreadBanner &&
+          initialUnreadCount > 0; // Показываем только если при входе были непрочитанные
 
         return (
           <>

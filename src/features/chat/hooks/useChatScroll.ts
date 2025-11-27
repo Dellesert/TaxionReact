@@ -27,6 +27,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const lastVisibleMessageIndex = useRef<number>(-1); // Индекс последнего видимого сообщения
   const previousMessagesLength = useRef<number>(0); // Предыдущее количество сообщений для отслеживания новых
   const previousLastMessageId = useRef<number | null>(null); // ID последнего сообщения из предыдущего состояния
+  const wasAtBottomBeforeNewMessage = useRef<boolean>(true); // Был ли пользователь внизу перед новым сообщением
+  const previousUnreadCount = useRef<number>(0); // Количество непрочитанных до прихода новых сообщений
   const [initialScrollIndex, setInitialScrollIndex] = useState<number | undefined>(undefined);
   const [isScrollingToUnread, setIsScrollingToUnread] = useState(false);
   const [scrollSessionKey, setScrollSessionKey] = useState(0);
@@ -132,6 +134,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     if (isAtBottom) {
       setHasReachedBottom(true);
+      wasAtBottomBeforeNewMessage.current = true; // Запоминаем что пользователь внизу
       // Отмечаем, что пользователь намеренно проскроллил вниз
       // только если:
       // 1. Прошло достаточно времени после инициализации (canTrackUserScroll)
@@ -146,6 +149,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
     } else {
       setHasReachedBottom(false);
+      wasAtBottomBeforeNewMessage.current = false; // Запоминаем что пользователь НЕ внизу
       setShowScrollToBottom(true);
       setShowDateHeader(true);
       // Пользователь ушел от низа
@@ -203,11 +207,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Отслеживаем новые сообщения от других пользователей
   useEffect(() => {
-    console.log(`🔍 [useEffect] Trigger: initialScrolled=${initialScrolled}, hasReachedBottom=${hasReachedBottom}, messages.length=${messages.length}`);
+    console.log(`🔍 [useEffect] Trigger: initialScrolled=${initialScrolled}, hasReachedBottom=${hasReachedBottom}, messages.length=${messages.length}, unreadCount=${unreadCount}`);
 
     // Пропускаем при первой инициализации или если нет сообщений
     if (!initialScrolled || messages.length === 0) {
       previousMessagesLength.current = messages.length;
+      previousUnreadCount.current = unreadCount;
       // Сохраняем ID последнего сообщения
       if (messages.length > 0) {
         previousLastMessageId.current = messages[messages.length - 1].id;
@@ -251,18 +256,50 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       console.log(`🔍 [useEffect] New real-time messages: ${newMessages.length}, from others: ${newFromOthers}`);
 
       if (newFromOthers > 0) {
-        // Если пользователь внизу (нет непрочитанных) - автоматически прокручиваем
-        if (hasReachedBottom && unreadCount === 0) {
-          console.log(`⚠️ [useEffect] User at bottom with no unreads - auto-scrolling down`);
+        // ВАЖНО: Когда приходит новое сообщение от другого пользователя, у него нет read_receipt,
+        // поэтому unreadCount будет включать это новое сообщение.
+        //
+        // Логика: Если до прихода нового сообщения у пользователя не было "старых" непрочитанных,
+        // то нужно сделать автоскролл.
+        //
+        // Пример 1: Был внизу, все прочитано
+        //   - previousUnreadCount = 0
+        //   - приходит 1 новое → unreadCount = 1
+        //   - увеличение = 1, это ОК → автоскролл ✅
+        //
+        // Пример 2: Был внизу, первое сообщение пришло (еще не отправлен read_receipt)
+        //   - previousUnreadCount = 1 (первое новое без read_receipt)
+        //   - приходит 1 новое → unreadCount = 2
+        //   - увеличение = 1, это ОК → автоскролл ✅
+        //
+        // Пример 3: Был вверху, есть старые непрочитанные
+        //   - previousUnreadCount = 5 (старые непрочитанные)
+        //   - приходит 1 новое → unreadCount = 6
+        //   - увеличение = 1, НО wasAtBottom = false → НЕТ автоскролла ❌
+
+        const unreadIncrease = unreadCount - previousUnreadCount.current;
+        const shouldAutoScroll = wasAtBottomBeforeNewMessage.current && unreadIncrease === newMessagesAdded;
+
+        console.log(`📊 [AUTO-SCROLL CHECK] wasAtBottom=${wasAtBottomBeforeNewMessage.current}, prevUnread=${previousUnreadCount.current}, currUnread=${unreadCount}, increase=${unreadIncrease}, newAdded=${newMessagesAdded}, shouldAutoScroll=${shouldAutoScroll}`);
+
+        // Если пользователь был внизу И увеличение непрочитанных = количеству новых - автоматически прокручиваем
+        if (shouldAutoScroll) {
+          console.log(`✅ [AUTO-SCROLL] Conditions met! Auto-scrolling down for ${newFromOthers} new messages`);
           // Небольшая задержка для корректного рендера нового сообщения
           setTimeout(() => {
-            listRef.current?.scrollToOffset({
-              offset: 999999,
-              animated: true,
-            });
+            if (listRef.current) {
+              console.log(`🚀 [AUTO-SCROLL] Executing scrollToOffset`);
+              listRef.current.scrollToOffset({
+                offset: 999999,
+                animated: true,
+              });
+            } else {
+              console.log(`❌ [AUTO-SCROLL] listRef.current is null`);
+            }
           }, 100);
         } else {
           // Если пользователь не внизу - показываем счетчик новых сообщений
+          console.log(`⚠️ [useEffect] NOT auto-scrolling. Reason: wasAtBottom=${wasAtBottomBeforeNewMessage.current}, shouldAutoScroll=${shouldAutoScroll}`);
           console.log(`⚠️ [useEffect] Adding ${newFromOthers} real-time messages to counter`);
 
           // Если это первое новое сообщение - запоминаем его индекс
@@ -290,6 +327,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     if (messages.length !== previousMessagesLength.current) {
       previousMessagesLength.current = messages.length;
     }
+
+    // Обновляем previousUnreadCount после обработки
+    previousUnreadCount.current = unreadCount;
   }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId, firstNewMessageIndex, unreadCount]); // Добавили unreadCount в зависимости
 
   // Скролл к низу по кнопке
@@ -392,6 +432,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
     canTrackUserScroll.current = false; // Запрещаем отслеживание до следующей инициализации
     hasScrolledAwayFromBottom.current = false; // Сбрасываем флаг ухода от низа
+    wasAtBottomBeforeNewMessage.current = true; // По умолчанию считаем что пользователь внизу
+    previousUnreadCount.current = 0; // Сбрасываем счетчик предыдущих непрочитанных
     lastOldestMessageId.current = null;
     lastVisibleMessageIndex.current = -1;
     previousMessagesLength.current = 0; // Сбрасываем счетчик предыдущих сообщений

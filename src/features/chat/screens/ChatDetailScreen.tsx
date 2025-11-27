@@ -69,6 +69,7 @@ const ChatDetailScreen: React.FC = () => {
           firstUnreadIndex={-1}
           unreadCount={0}
           showUnreadBanner={false}
+          initialUnreadCount={0}
           isLoading={false}
           isLoadingMore={false}
           inputHeight={60}

@@ -299,13 +299,17 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [messages.length, ignoreReadReceipts, unreadCount, initialUnreadCount]);
 
-  // Отключаем игнорирование read_receipts после достижения низа или открытия клавиатуры
+  // Отключаем игнорирование read_receipts и скрываем баннер после намеренной прокрутки вниз или открытия клавиатуры
   useEffect(() => {
-    if (initialScrolled && ignoreReadReceipts && (hasReachedBottom || keyboardHeight > 0)) {
+    if (initialScrolled && ignoreReadReceipts && (userScrolledToBottom || keyboardHeight > 0)) {
       setIgnoreReadReceipts(false);
       setInitialUnreadCount(0);
+      // Скрываем баннер при открытии клавиатуры (пользователь начал печатать = прочитал сообщения)
+      if (keyboardHeight > 0 && showUnreadBanner) {
+        setShowUnreadBanner(false);
+      }
     }
-  }, [initialScrolled, ignoreReadReceipts, hasReachedBottom, keyboardHeight]);
+  }, [initialScrolled, ignoreReadReceipts, userScrolledToBottom, keyboardHeight, showUnreadBanner]);
 
   // Отметить как прочитанное и скрыть баннер только когда пользователь намеренно проскроллил вниз
   useEffect(() => {
@@ -361,7 +365,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // Обертка для handleSendMessage с автоматическим скроллом вниз
   const handleSendMessage = async (content: string, replyToId?: number) => {
     await originalHandleSendMessage(content, replyToId);
-    // После отправки сообщения скроллим вниз
+    // После отправки сообщения скроллим вниз и скрываем баннер (пользователь активно участвует в диалоге)
+    if (showUnreadBanner) {
+      setShowUnreadBanner(false);
+    }
     setTimeout(() => {
       handleScrollToBottom();
     }, 100);
@@ -383,6 +390,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         firstUnreadIndex={firstUnreadIndex}
         unreadCount={unreadCount}
         showUnreadBanner={showUnreadBanner}
+        initialUnreadCount={initialUnreadCount}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
         inputHeight={inputHeight}

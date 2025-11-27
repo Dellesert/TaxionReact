@@ -17,6 +17,7 @@ interface ChatScreenContentProps {
   firstUnreadIndex: number;
   unreadCount: number;
   showUnreadBanner: boolean;
+  initialUnreadCount: number;
   isLoading: boolean;
   isLoadingMore: boolean;
   inputHeight: number;
@@ -95,6 +96,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   firstUnreadIndex,
   unreadCount,
   showUnreadBanner,
+  initialUnreadCount,
   isLoading,
   isLoadingMore,
   inputHeight,
@@ -178,6 +180,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             firstUnreadIndex={firstUnreadIndex}
             unreadCount={unreadCount}
             showUnreadBanner={showUnreadBanner}
+            initialUnreadCount={initialUnreadCount}
             isLoading={isLoading}
             isLoadingMore={isLoadingMore}
             inputHeight={inputHeight}
