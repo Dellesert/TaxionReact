@@ -155,14 +155,10 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  // Вычисляем анимированный bottom для input wrapper
-  // Когда клавиатура открывается, поднимаем input вверх
+  // Создаем анимированный стиль для поднятия инпута через bottom
   const inputWrapperAnimatedStyle = useMemo(() => {
     return {
-      bottom: keyboardHeightAnim.interpolate({
-        inputRange: [0, 1000],
-        outputRange: [0, 1000],
-      }),
+      bottom: keyboardHeightAnim,
     };
   }, [keyboardHeightAnim]);
 
@@ -276,8 +272,8 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
+    // bottom задается через анимированный стиль
   },
 });

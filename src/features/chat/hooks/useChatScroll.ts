@@ -96,7 +96,45 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   }, [messages.length, firstUnreadIndex, unreadCount, initialScrollIndex, chatId]);
 
   // Ref для handleLoadMore чтобы избежать циклической зависимости
-  const handleLoadMoreRef = useRef<(() => Promise<void>) | undefined>();
+  const handleLoadMoreRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Handle keyboard show - for inverted list
+  const handleKeyboardWillShow = useCallback((keyboardHeight: number) => {
+    console.log('🎹 [KEYBOARD] handleKeyboardWillShow called, height:', keyboardHeight, 'listRef.current:', !!listRef.current, 'initialScrolled:', initialScrolled, 'messages.length:', messages.length);
+    // Скроллим вниз на высоту клавиатуры
+    if (listRef.current && initialScrolled && messages.length > 0) {
+      const currentOffset = lastScrollOffset.current;
+      const newOffset = currentOffset + keyboardHeight;
+      console.log('🚀 [KEYBOARD] Scrolling from offset', currentOffset, 'to', newOffset, '(+', keyboardHeight, ')');
+
+      // Попробуем несколько разных методов скролла
+      try {
+        // Метод 1: Прямой доступ к нативному scrollView
+        const scrollView = (listRef.current as any)?.recyclerlistview_unsafe?.scrollComponent?._scrollViewRef;
+        if (scrollView) {
+          console.log('🚀 [KEYBOARD] Using native scrollTo');
+          scrollView.scrollTo({ y: newOffset, animated: true });
+        } else {
+          // Метод 2: Стандартный scrollToOffset
+          console.log('🚀 [KEYBOARD] Using FlashList scrollToOffset');
+          listRef.current.scrollToOffset({
+            offset: newOffset,
+            animated: true,
+          });
+        }
+      } catch (error) {
+        console.error('❌ [KEYBOARD] Error scrolling:', error);
+      }
+    } else {
+      console.log('❌ [KEYBOARD] NOT scrolling - listRef:', !!listRef.current, 'initialScrolled:', initialScrolled, 'messages.length:', messages.length);
+    }
+  }, [initialScrolled, messages.length]);
+
+  // Handle keyboard hide - for inverted list
+  const handleKeyboardWillHide = useCallback(() => {
+    // При скрытии клавиатуры также ничего не делаем
+    // Паддинг уменьшится и сообщения вернутся на место
+  }, []);
 
   // Обработчик скролла
   const handleScroll = useCallback((event: any) => {
@@ -464,6 +502,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     handleContentSizeChange,
     handleScrollToBottom,
     handleReplyPress,
+    handleKeyboardWillShow,
+    handleKeyboardWillHide,
     onViewableItemsChanged,
     viewabilityConfig,
     resetScroll,

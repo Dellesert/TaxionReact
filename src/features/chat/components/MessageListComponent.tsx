@@ -100,15 +100,20 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   // Показываем skeleton'ы если сообщения еще не загружены
   const showSkeletons = isLoading && messageListItems.length === 0;
 
-  // Вычисляем базовый отступ для инпута
+  // Базовый отступ внизу списка = высота инпута
   const baseBottomPadding = inputHeight + insetsBottom + 20;
 
-  // Вычисляем анимированный paddingBottom с учетом клавиатуры
-  // Когда клавиатура открыта, добавляем её высоту к базовому отступу
-  const animatedPaddingBottom = keyboardHeightAnim.interpolate({
-    inputRange: [0, 1000],
-    outputRange: [baseBottomPadding, baseBottomPadding + 1000],
-  });
+  // Простой padding без анимации (чтобы скролл работал корректно)
+  const [currentKeyboardHeight, setCurrentKeyboardHeight] = React.useState(0);
+
+  React.useEffect(() => {
+    const listener = keyboardHeightAnim.addListener(({ value }) => {
+      setCurrentKeyboardHeight(value);
+    });
+    return () => keyboardHeightAnim.removeListener(listener);
+  }, [keyboardHeightAnim]);
+
+  const paddingBottom = baseBottomPadding + currentKeyboardHeight;
 
   if (showSkeletons) {
     return (
@@ -181,7 +186,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         }
         contentContainerStyle={[
           styles.messagesList,
-          { paddingBottom: animatedPaddingBottom },
+          { paddingBottom },
         ]}
         inverted={true}
         keyboardShouldPersistTaps="handled"
