@@ -69,13 +69,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isInitializing: false,
             });
           } catch (error) {
-            console.log('⚠️ Session expired, clearing storage');
             await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
             await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
             set({ isInitializing: false });
           }
         } else {
-          console.log('⚠️ No user data in storage');
           // Clear session ID if user data is missing
           await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
           set({ isInitializing: false });
@@ -101,19 +99,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Use mock data if enabled
       if (isMockMode()) {
-        console.log('🔧 Using mock login');
         response = await mockLogin(credentials.email, credentials.password);
       } else {
         response = await authApi.login(credentials);
       }
 
-      console.log('📝 Login response received:', {
-        hasUser: !!response.user,
-        userRole: response.user.role,
-        authMode: response.auth_mode,
-        hasSession: !!response.session,
-        sessionIdPreview: response.session?.session_id ? response.session.session_id.substring(0, 20) + '...' : 'N/A',
-      });
 
       // Блокируем доступ для super_admin - они должны использовать веб-панель
       if (response.user.role === 'super_admin') {
@@ -124,7 +114,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Store session ID in secure storage
       if (response.session?.session_id) {
-        console.log('💾 Saving session ID to storage...');
         await secureStorage.setItemAsync(
           STORAGE_KEYS.SESSION_ID,
           response.session.session_id
@@ -134,12 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Store user data
       await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(response.user));
 
-      console.log('✅ Session data saved successfully!');
-      console.log('🔑 Verifying saved session...');
       const savedSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
-      console.log('✓ Verification:', {
-        sessionIdSaved: !!savedSessionId,
-      });
 
       set({
         user: response.user,
@@ -191,14 +175,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: true });
 
       // Disconnect WebSocket first to update status to offline
-      console.log('🔌 Disconnecting WebSocket...');
       websocketService.disconnect();
 
       // Call logout API to invalidate session on server
       if (!isMockMode()) {
         try {
           await authApi.logout();
-          console.log('✅ Session invalidated on server');
         } catch (error) {
           console.error('Logout API call failed:', error);
         }
@@ -210,7 +192,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
 
-      console.log('✅ Logged out successfully');
 
       // Clear state
       set({

@@ -98,9 +98,6 @@ export const getItemAsync = async (key: string): Promise<string | null> => {
         });
       } else {
         value = await SecureStore.getItemAsync(key);
-        console.log(`🔍 [SecureStorage] Retrieved from SecureStore: ${key}`, {
-          found: !!value,
-        });
       }
     }
 

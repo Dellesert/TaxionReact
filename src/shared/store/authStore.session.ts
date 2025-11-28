@@ -46,7 +46,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    */
   initialize: async () => {
     try {
-      console.log('🔄 Initializing auth from storage (Session mode)...');
       set({ isInitializing: true });
 
       // Migrate from SecureStore to AsyncStorage (for Expo Go compatibility)
@@ -55,17 +54,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Load session ID from secure storage
       const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
 
-      console.log('🔑 Session loaded:', {
-        hasSessionId: !!sessionId,
-        sessionIdPreview: sessionId ? sessionId.substring(0, 20) + '...' : null,
-      });
 
       if (sessionId) {
         // Load user data from storage
         const storedUser = await secureStorage.getItemAsync(STORAGE_KEYS.USER_DATA);
         if (storedUser) {
           const user = JSON.parse(storedUser);
-          console.log('✅ Auth restored from storage:', user.email);
 
           // Verify session is still valid by making an API call
           try {
@@ -76,23 +70,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isInitializing: false,
             });
           } catch (error) {
-            console.log('⚠️ Session expired, clearing storage');
             await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
             await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
             set({ isInitializing: false });
           }
         } else {
-          console.log('⚠️ No user data in storage');
           // Clear session ID if user data is missing
           await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
           set({ isInitializing: false });
         }
       } else {
-        console.log('⚠️ No session ID found in storage');
         set({ isInitializing: false });
       }
     } catch (error) {
-      console.error('❌ Failed to initialize auth:', error);
       set({ isInitializing: false });
     }
   },
@@ -108,18 +98,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Use mock data if enabled
       if (isMockMode()) {
-        console.log('🔧 Using mock login');
         response = await mockLogin(credentials.email, credentials.password);
       } else {
         response = await authApi.login(credentials);
       }
 
-      console.log('📝 Login response received:', {
-        hasUser: !!response.user,
-        authMode: response.auth_mode,
-        hasSession: !!response.session,
-        sessionIdPreview: response.session?.session_id ? response.session.session_id.substring(0, 20) + '...' : 'N/A',
-      });
 
       // Store session ID in secure storage
       if (response.session?.session_id) {
@@ -133,12 +116,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Store user data
       await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(response.user));
 
-      console.log('✅ Session data saved successfully!');
-      console.log('🔑 Verifying saved session...');
       const savedSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
-      console.log('✓ Verification:', {
-        sessionIdSaved: !!savedSessionId,
-      });
 
       set({
         user: response.user,
@@ -190,14 +168,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: true });
 
       // Disconnect WebSocket first to update status to offline
-      console.log('🔌 Disconnecting WebSocket...');
       websocketService.disconnect();
 
       // Call logout API to invalidate session on server
       if (!isMockMode()) {
         try {
           await authApi.logout();
-          console.log('✅ Session invalidated on server');
         } catch (error) {
           console.error('Logout API call failed:', error);
         }
@@ -209,7 +185,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
 
-      console.log('✅ Logged out successfully');
 
       // Clear state
       set({
