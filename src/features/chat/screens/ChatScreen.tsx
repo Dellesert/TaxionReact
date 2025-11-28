@@ -131,6 +131,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     initialScrollIndex,
     isScrollingToUnread,
     scrollSessionKey,
+    isRestoringPosition,
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
@@ -400,6 +401,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         highlightedMessageId={highlightedMessageId}
         initialScrollIndex={initialScrollIndex}
         scrollSessionKey={scrollSessionKey}
+        isRestoringPosition={isRestoringPosition}
         onContentSizeChange={handleContentSizeChange}
         onScroll={handleScroll}
         onViewableItemsChanged={onViewableItemsChanged}

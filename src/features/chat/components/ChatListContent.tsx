@@ -102,9 +102,6 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
       const tabData = tabs[filterKey];
       const tabChatsFromStore = combineTabChats(tabData.pinnedChats, tabData.regularChats);
 
-      console.log(
-        `[ChatListContent] renderFilterContent for tab "${filterKey}" - pinned: ${tabData.pinnedChats.length}, regular: ${tabData.regularChats.length}, total: ${tabChatsFromStore.length}`
-      );
 
       // Apply client-side search filter
       const tabChats = filterChatsBySearch(tabChatsFromStore, searchQuery);
