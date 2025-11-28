@@ -79,7 +79,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ isInitializing: false });
         }
       } else {
-        console.log('⚠️ No session ID found in storage');
         set({ isInitializing: false });
       }
     } catch (error) {
@@ -107,7 +106,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Блокируем доступ для super_admin - они должны использовать веб-панель
       if (response.user.role === 'super_admin') {
-        console.log('🚫 Super admin access blocked - use web dashboard instead');
         set({ isLoading: false, error: 'Super admin access is restricted to web dashboard' });
         throw new Error('Super admin access is restricted to web dashboard. Please use the admin panel.');
       }

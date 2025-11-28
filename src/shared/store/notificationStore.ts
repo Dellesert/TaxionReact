@@ -47,7 +47,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
    */
   loadNotifications: async (refresh = false) => {
     try {
-      console.log('📬 Loading notifications...');
       set({ isLoading: true, error: null });
 
       const response = await notificationApi.getNotifications(
@@ -55,8 +54,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         { limit: NOTIFICATIONS_PER_PAGE, offset: 0 }
       );
 
-      console.log('✅ Notifications loaded:', response.data.length, 'items');
-      console.log('First notification:', response.data[0]);
 
       set({
         notifications: response.data,
@@ -257,10 +254,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
    * Handle new notification from push/WebSocket
    */
   handleNewNotification: (notification: Notification) => {
-    console.log('✅ [NotificationStore] handleNewNotification called:', notification.id, notification.title);
     set((state) => {
       const newUnreadCount = state.unreadCount + 1;
-      console.log('📊 [NotificationStore] Updating state - new unread count:', newUnreadCount);
       return {
         notifications: [notification, ...state.notifications],
         unreadCount: newUnreadCount,

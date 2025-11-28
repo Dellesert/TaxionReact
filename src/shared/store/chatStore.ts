@@ -913,8 +913,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       await chatApi.toggleChatPinned(chatId, false);
       set((state) => {
-        console.log(`[Store] unpinChat called for chatId: ${chatId}, currentTab: ${state.currentTab}`);
-
         // Обновляем табы - перемещаем чат из pinnedChats в regularChats
         const updatedTabs = { ...state.tabs };
         let chatFound = false;
@@ -927,8 +925,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const chatIndex = tab.pinnedChats.findIndex(c => c.id === chatId);
           if (chatIndex !== -1) {
             chatFound = true;
-            console.log(`[Store] Chat ${chatId} found in tab "${tabKey}" pinnedChats`);
-
             const chat = { ...tab.pinnedChats[chatIndex], is_pinned: false };
             const newPinnedChats = tab.pinnedChats.filter(c => c.id !== chatId);
             const newRegularChats = [chat, ...tab.regularChats];
@@ -946,7 +942,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               regularChats: sortedRegularChats,
             };
 
-            console.log(`[Store] Tab "${tabKey}" updated - pinned: ${newPinnedChats.length}, regular: ${sortedRegularChats.length}`);
           }
         });
 
@@ -957,8 +952,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // Обновляем chats для текущего таба
         const currentTabData = updatedTabs[state.currentTab];
         const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
-
-        console.log(`[Store] Current tab "${state.currentTab}" - total chats: ${updatedChats.length} (pinned: ${currentTabData.pinnedChats.length}, regular: ${currentTabData.regularChats.length})`);
 
         return {
           tabs: updatedTabs,
@@ -1163,9 +1156,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                     ...tab,
                     regularChats: [chatWithMessage, ...tab.regularChats],
                   };
-                  console.log(`✅ [ChatStore] Added chat ${chatWithMessage.id} to tab "${tabKey}"`);
                 } else {
-                  console.log(`⏭️ [ChatStore] Chat ${chatWithMessage.id} already exists in tab "${tabKey}", skipping`);
                 }
               }
             });
@@ -1187,9 +1178,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               ? { ...message, delivered_to: [currentUser.id] }
               : { ...message, delivered_to: [] };
             updatedMessagesForChat = [...existingMessages, messageWithDelivery];
-            console.log(`✅ [ChatStore] Added message ${message.id} to new chat ${message.chat_id}`);
           } else {
-            console.log(`⏭️ [ChatStore] Message ${message.id} already exists in new chat ${message.chat_id}, skipping`);
           }
 
           return {
@@ -1218,7 +1207,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const existingMessages = state.messages[message.chat_id] || [];
       const messageExists = existingMessages.some((msg) => msg.id === message.id);
 
-      console.log(`🔍 [ChatStore] Message ${message.id} in chat ${message.chat_id}: exists=${messageExists}, total messages=${existingMessages.length}`);
 
       // Если сообщение уже существует
       if (messageExists) {
@@ -1269,7 +1257,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               last_message: message,
               unread_count: shouldIncrementUnread ? (chat.unread_count || 0) + 1 : chat.unread_count || 0,
             };
-            console.log(`🔄 [ChatStore] Updating chat ${chat.id}: last_message set to msg ${message.id}, unread: ${updatedChat.unread_count}, isOwn: ${isOwnMessage}, isInActive: ${isInActiveChat}`);
             return updatedChat;
           }
           return chat;
@@ -1288,12 +1275,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // Update all tabs that might contain this chat
       const updatedTabs = { ...state.tabs };
       let chatFoundInTabs = false;
-      console.log(`🔍 [ChatStore] Searching for chat ${message.chat_id} in tabs. Current tab: ${state.currentTab}`);
 
       Object.keys(updatedTabs).forEach(tabKey => {
         const tab = updatedTabs[tabKey as TabName];
         if (!tab.loaded) {
-          console.log(`⏭️ [ChatStore] Tab "${tabKey}" not loaded, skipping`);
           return;
         }
 
@@ -1303,8 +1288,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         if (chatInPinned || chatInRegular) {
           chatFoundInTabs = true;
-          console.log(`✅ [ChatStore] Chat ${message.chat_id} found in tab "${tabKey}" (pinned: ${chatInPinned}, regular: ${chatInRegular})`);
-          console.log(`📝 [ChatStore] Updating chat in tab "${tabKey}". Before update:`, tab.regularChats.find(c => c.id === message.chat_id));
         }
 
         // Update pinned chats
@@ -1320,9 +1303,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           regularChats: sortedRegular,
         };
 
-        if (chatInPinned || chatInRegular) {
-          console.log(`✅ [ChatStore] Updated chat in tab "${tabKey}". After update:`, sortedRegular.find(c => c.id === message.chat_id));
-        }
       });
 
       if (!chatFoundInTabs) {

@@ -91,15 +91,6 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
-      console.log('👥 Loaded users for selector:', response.data);
-      console.log('🔍 Search query:', searchTerm);
-      console.log('🏢 Current user department:', currentUser?.department?.name);
-      console.log('📊 First 5 users:', response.data?.slice(0, 5).map(u => ({
-        name: u.name,
-        dept: u.department?.name,
-        role: u.role
-      })));
-
       let usersList: User[] = [];
       if (response && response.data && Array.isArray(response.data)) {
         usersList = response.data;

@@ -64,9 +64,6 @@ const UserSelector: React.FC<UserSelectorProps> = ({
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
-      console.log('👥 Loaded users for selector button:', response.data);
-      console.log('🔍 filterForTaskAssignment:', filterForTaskAssignment);
-
       let usersList: User[] = [];
       if (response && response.data && Array.isArray(response.data)) {
         usersList = response.data;

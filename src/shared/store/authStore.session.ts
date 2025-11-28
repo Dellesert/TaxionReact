@@ -106,7 +106,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Store session ID in secure storage
       if (response.session?.session_id) {
-        console.log('💾 Saving session ID to storage...');
         await secureStorage.setItemAsync(
           STORAGE_KEYS.SESSION_ID,
           response.session.session_id
@@ -178,7 +177,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           console.error('Logout API call failed:', error);
         }
       } else {
-        console.log('🔧 Mock logout - skipping API call');
       }
 
       // Clear session data from secure storage
