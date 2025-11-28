@@ -257,7 +257,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         const connected = websocketService.isConnected();
         setIsConnected(connected);
         const elapsed = Date.now() - startTime;
-        console.log(`[ChatScreen] WebSocket connection took ${elapsed}ms, connected: ${connected}`);
       } else {
         setError({ error: 'No authentication token found' });
         return;
@@ -265,7 +264,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     } else {
       // Если уже подключены, обновляем статус
       setIsConnected(true);
-      console.log('[ChatScreen] WebSocket already connected');
     }
   }, [setError]);
 

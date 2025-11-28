@@ -86,7 +86,6 @@ export const useChatData = () => {
    */
   const handleLoadMore = useCallback(() => {
     if (canLoadMore && hasMoreChats && !isLoadingMore) {
-      console.log('[useChatData] Loading more chats...');
       loadMoreChats();
     }
   }, [canLoadMore, hasMoreChats, isLoadingMore, loadMoreChats]);

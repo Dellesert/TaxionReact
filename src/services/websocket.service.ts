@@ -83,7 +83,6 @@ class WebSocketService {
       const wsBaseUrl = process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:8082';
       const wsUrl = `${wsBaseUrl}/api/v1/ws?session_id=${encodeURIComponent(sessionId)}`;
 
-      console.log('🔌 Connecting to WebSocket (session mode):', wsBaseUrl);
 
       this.ws = new WebSocket(wsUrl);
 
@@ -108,7 +107,6 @@ class WebSocketService {
    * Disconnect from WebSocket
    */
   disconnect(): void {
-    console.log('🔌 Disconnecting WebSocket...');
     this.isIntentionalClose = true;
 
     if (this.heartbeatInterval) {
@@ -181,7 +179,6 @@ class WebSocketService {
       this.lastPresenceUpdate.delete(userId);
     });
 
-    console.log(`🧹 Cleaned ${entriesToDelete.length} old presence entries. Map size: ${this.lastPresenceUpdate.size}`);
   }
 
   /**
@@ -396,7 +393,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
     const batch = [...this.messageQueue];
     this.messageQueue = [];
 
-    console.log(`📦 Processing batch of ${batch.length} messages`);
 
     // Обрабатываем сообщения последовательно
     for (const message of batch) {
@@ -418,8 +414,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
         });
         return; // Пропускаем невалидные сообщения
       }
-
-      console.log('📨 WebSocket received:', message);
 
       const chatStore = useChatStore.getState();
       const authStore = useAuthStore.getState();
@@ -525,23 +519,19 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'user_join':
-          console.log('👋 User joined chat:', message.chat_id);
           chatStore.handleUserJoin(message.chat_id, message.user_id);
           break;
 
         case 'user_leave':
-          console.log('👋 User left chat:', message.chat_id);
           chatStore.handleUserLeave(message.chat_id, message.user_id);
           break;
 
         case 'message_read':
-          console.log('📖 Message read event:', { chatId: message.chat_id, messageId: message.data.message_id, userId: message.user_id });
           chatStore.handleMessageRead(message.chat_id, message.data.message_id, message.user_id);
           break;
 
         case 'chat_update':
           // Handle chat update (e.g., unread_count reset)
-          console.log('💬 Chat update event:', message.data);
           if (message.data.unread_count !== undefined) {
             // Update chat's unread_count directly
             chatStore.set({
@@ -737,7 +727,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
           if (now - lastUpdate < this.presenceDebounceMs) {
             // Skip this duplicate update
-            console.log(`⏭️ Skipping duplicate presence update for user ${userId}`);
             break;
           }
 
@@ -754,7 +743,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           // Handle new notification in real-time
           const notificationStore = useNotificationStore.getState();
           const inAppNotificationStore = useInAppNotificationStore.getState();
-          console.log('🔔 Received new notification:', message.data);
 
           if (message.data) {
             // Add notification to the beginning of the list
@@ -771,7 +759,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         default:
-          console.log('Unknown message type:', message.type);
       }
     } catch (error) {
       console.error('Error handling WebSocket message:', error);
@@ -790,7 +777,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
       // Only log detailed error in development
       if (__DEV__) {
-        console.log('WebSocket error details:', event);
       }
     }
   }
@@ -799,7 +785,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
    * Handle WebSocket close
    */
   private handleClose(event: CloseEvent): void {
-    console.log(`🔌 WebSocket closed: Code ${event.code}, Reason: ${event.reason || 'Unknown'}`);
 
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
@@ -859,7 +844,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
    * Manually trigger reconnection (e.g., from UI retry button)
    */
   reconnect(): void {
-    console.log('🔄 Manual reconnect triggered');
     this.resetReconnectAttempts();
     this.isIntentionalClose = false;
 

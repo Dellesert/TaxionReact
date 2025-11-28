@@ -84,7 +84,6 @@ if (Platform.OS === 'android') {
     );
 
     if (isDismissError) {
-      console.log('[Suppressed] DateTimePicker dismiss error (harmless)');
       return; // Игнорируем только эту конкретную ошибку
     }
 
@@ -142,15 +141,12 @@ export default function App() {
     let appState = AppState.currentState;
 
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      console.log('📱 AppState changed from', appState, 'to', nextAppState);
 
       // When app comes to foreground, reconnect WebSocket if needed
       if (appState.match(/inactive|background/) && nextAppState === 'active' && isAuthenticated) {
-        console.log('🔄 App became active - checking WebSocket connection...');
 
         // Check if WebSocket is still connected
         if (!websocketService.isConnected()) {
-          console.log('🔌 WebSocket disconnected - reconnecting...');
           await websocketService.reconnect();
         }
 
