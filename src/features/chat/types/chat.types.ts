@@ -113,7 +113,6 @@ export interface Chat {
   type: ChatType;
   description?: string;
   avatar?: string;
-  avatar?: string;
   creator_id: number;
   created_by?: number;
   creator?: User;
@@ -187,12 +186,57 @@ export interface SearchMessagesParams {
   offset?: number;
 }
 
-// Get Messages Params
+// Get Messages Params (NEW - cursor-based pagination)
 export interface GetMessagesParams {
   limit?: number;
-  offset?: number;
-  before_message_id?: number;
-  after_message_id?: number;
+  offset?: number; // Deprecated - use cursor-based endpoints instead
+  before_message_id?: number; // Deprecated
+  after_message_id?: number; // Deprecated
+}
+
+// NEW API Response Types
+export interface GetLatestMessagesParams {
+  limit?: number; // default: 30, max: 100
+  include_unread_marker?: boolean; // default: true
+}
+
+export interface UnreadInfo {
+  first_unread_id: number | null; // ID первого непрочитанного
+  unread_count: number; // Количество непрочитанных
+}
+
+export interface GetLatestMessagesResponse {
+  messages: Message[]; // В ХРОНОЛОГИЧЕСКОМ порядке (старые → новые)
+  total: number; // Всего сообщений в чате
+  has_older: boolean; // Есть ли более старые сообщения?
+  unread_info?: UnreadInfo;
+}
+
+export interface GetMessagesBeforeParams {
+  limit?: number; // default: 30, max: 100
+}
+
+export interface GetMessagesBeforeResponse {
+  messages: Message[]; // В хронологическом порядке
+  has_older: boolean;
+  oldest_id?: number; // Cursor для следующего запроса
+}
+
+export interface GetMessageContextParams {
+  before?: number; // default: 15, max: 50
+  after?: number; // default: 15, max: 50
+}
+
+export interface GetMessageContextResponse {
+  messages: Message[]; // В хронологическом порядке
+  target_message_id: number; // ID целевого сообщения
+  has_older: boolean;
+  has_newer: boolean;
+}
+
+export interface MarkChatAsReadResponse {
+  message: string; // "Chat marked as read"
+  marked_count: number; // Количество помеченных сообщений
 }
 
 // Chat List Filters
@@ -217,18 +261,20 @@ export interface OnlineStatus {
   last_seen?: ISODateString;
 }
 
-// WebSocket Events Payloads
+// WebSocket Events Payloads (NEW BACKEND STRUCTURE)
 export interface WsMessageNewPayload {
-  message: Message;
+  message: Message; // ПОЛНЫЙ объект сообщения с content
+  is_latest: boolean; // Флаг для auto-scroll
 }
 
 export interface WsMessageUpdatePayload {
-  message: Message;
+  message: Message; // ПОЛНЫЙ объект сообщения
 }
 
 export interface WsMessageDeletePayload {
   message_id: number;
   chat_id: number;
+  delete_for: 'everyone' | 'me'; // Тип удаления
 }
 
 export interface WsTypingPayload {

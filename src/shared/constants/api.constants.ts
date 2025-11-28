@@ -72,7 +72,13 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/chats/${id}/`,
     DELETE: (id: number) => `/chats/${id}/`,
     JOIN: (id: number) => `/chats/${id}/join`,
-    MESSAGES: (id: number) => `/messages/chat/${id}`,
+    // NEW API endpoints (v1)
+    MESSAGES_LATEST: (id: number) => `/chats/${id}/messages/latest`,
+    MESSAGES_BEFORE: (chatId: number, messageId: number) => `/chats/${chatId}/messages/before/${messageId}`,
+    MESSAGES_CONTEXT: (chatId: number, messageId: number) => `/chats/${chatId}/messages/context/${messageId}`,
+    READ: (id: number) => `/chats/${id}/read`,
+    // DEPRECATED (old endpoints - will be removed)
+    MESSAGES: (id: number) => `/messages/chat/${id}`, // deprecated - use MESSAGES_LATEST
     SEND_MESSAGE: '/messages',
     MEMBERS: (id: number) => `/chats/${id}/members/`,
     ADD_MEMBERS: (id: number) => `/chats/${id}/members/`,
@@ -93,7 +99,7 @@ export const API_ENDPOINTS = {
     ADD_REACTION: (id: number) => `/messages/${id}/reactions`,
     REMOVE_REACTION: (id: number, emoji: string) => `/messages/${id}/reactions/${emoji}`,
     MARK_READ: (id: number) => `/messages/${id}/read`,
-    MARK_CHAT_READ: (chatId: number) => `/messages/chat/${chatId}/read`,
+    MARK_CHAT_READ: (chatId: number) => `/messages/chat/${chatId}/read`, // DEPRECATED - use CHAT.READ
     SEARCH: '/messages/search',
   },
 

@@ -8,7 +8,7 @@ import { MessageAttachments } from './MessageAttachments';
 import PollMessageCard from './PollMessageCard';
 import TaskMessageCard from './TaskMessageCard';
 import { MessageStatus } from './MessageStatus';
-import { formatTime, parseForwardedMessage } from '../utils/message.utils';
+import { formatTime, parseForwardedMessage, getDisplayContent } from '../utils/message.utils';
 import { LinkifiedText } from './LinkifiedText';
 
 interface MessageBubbleProps {
@@ -47,12 +47,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  // ⚠️ ВАЖНО: Фильтруем контент удалённых сообщений!
+  // Бэкенд больше НЕ фильтрует контент в WebSocket
+  const displayContent = getDisplayContent(message, currentUserId);
+
   // Парсим пересланное сообщение
-  const { header: forwardHeader, content: messageContent } = parseForwardedMessage(message.content);
+  const { header: forwardHeader, content: messageContent } = parseForwardedMessage(displayContent);
   const isForwarded = forwardHeader !== null;
 
   // Проверяем, является ли сообщение задачей (встроенной в текст)
-  const taskDataMatch = message.content.match(/\[TASK_DATA\](.*?)\[\/TASK_DATA\]/s);
+  const taskDataMatch = displayContent.match(/\[TASK_DATA\](.*?)\[\/TASK_DATA\]/s);
   const isTaskMessage = taskDataMatch !== null;
   let parsedTaskData = null;
 

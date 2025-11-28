@@ -17,6 +17,13 @@ import {
   AddReactionDto,
   SearchMessagesParams,
   GetMessagesParams,
+  GetLatestMessagesParams,
+  GetLatestMessagesResponse,
+  GetMessagesBeforeParams,
+  GetMessagesBeforeResponse,
+  GetMessageContextParams,
+  GetMessageContextResponse,
+  MarkChatAsReadResponse,
 } from '../types/chat.types';
 import { ApiResponse, PaginatedResponse } from '../../../types/common.types';
 
@@ -509,11 +516,154 @@ export const markMessageRead = async (messageId: number): Promise<void> => {
 };
 
 /**
- * Mark all messages in chat as read
+ * Mark all messages in chat as read (DEPRECATED - use markChatAsReadV2)
  */
 export const markChatAsRead = async (chatId: number): Promise<void> => {
   const response = await api.post(API_ENDPOINTS.MESSAGE.MARK_CHAT_READ(chatId));
 };
+
+// ============= NEW API v1 - Message Operations =============
+
+/**
+ * Get latest messages in chat (NEW API)
+ * Messages are returned in chronological order (oldest → newest)
+ */
+export const getLatestMessages = async (
+  chatId: number,
+  params?: GetLatestMessagesParams
+): Promise<GetLatestMessagesResponse> => {
+  const queryParams = {
+    limit: params?.limit || 30,
+    include_unread_marker: params?.include_unread_marker !== false, // default true
+  };
+
+  const response = await api.get<GetLatestMessagesResponse>(
+    API_ENDPOINTS.CHAT.MESSAGES_LATEST(chatId),
+    { params: queryParams }
+  );
+
+  // Normalize messages to ensure all fields are present
+  const normalizedMessages = response.data.messages.map(msg => normalizeMessage(msg));
+
+  return {
+    messages: normalizedMessages,
+    total: response.data.total,
+    has_older: response.data.has_older,
+    unread_info: response.data.unread_info,
+  };
+};
+
+/**
+ * Get messages before a specific message (cursor-based pagination)
+ * Messages are returned in chronological order (oldest → newest)
+ */
+export const getMessagesBefore = async (
+  chatId: number,
+  messageId: number,
+  params?: GetMessagesBeforeParams
+): Promise<GetMessagesBeforeResponse> => {
+  const queryParams = {
+    limit: params?.limit || 30,
+  };
+
+  const response = await api.get<GetMessagesBeforeResponse>(
+    API_ENDPOINTS.CHAT.MESSAGES_BEFORE(chatId, messageId),
+    { params: queryParams }
+  );
+
+  // Normalize messages
+  const normalizedMessages = response.data.messages.map(msg => normalizeMessage(msg));
+
+  return {
+    messages: normalizedMessages,
+    has_older: response.data.has_older,
+    oldest_id: response.data.oldest_id,
+  };
+};
+
+/**
+ * Get message context (messages around a specific message)
+ * Used for "jump to message" functionality (search, reply, notifications)
+ */
+export const getMessageContext = async (
+  chatId: number,
+  messageId: number,
+  params?: GetMessageContextParams
+): Promise<GetMessageContextResponse> => {
+  const queryParams = {
+    before: params?.before || 15,
+    after: params?.after || 15,
+  };
+
+  const response = await api.get<GetMessageContextResponse>(
+    API_ENDPOINTS.CHAT.MESSAGES_CONTEXT(chatId, messageId),
+    { params: queryParams }
+  );
+
+  // Normalize messages
+  const normalizedMessages = response.data.messages.map(msg => normalizeMessage(msg));
+
+  return {
+    messages: normalizedMessages,
+    target_message_id: response.data.target_message_id,
+    has_older: response.data.has_older,
+    has_newer: response.data.has_newer,
+  };
+};
+
+/**
+ * Mark chat as read (NEW API)
+ * Returns count of messages marked as read
+ */
+export const markChatAsReadV2 = async (chatId: number): Promise<MarkChatAsReadResponse> => {
+  const response = await api.post<MarkChatAsReadResponse>(API_ENDPOINTS.CHAT.READ(chatId));
+  return response.data;
+};
+
+/**
+ * Helper function to normalize message from backend
+ * Ensures all fields match our Message interface
+ */
+function normalizeMessage(msg: any): Message {
+  const message: any = {
+    ...msg,
+    message_type: (msg as any).type || msg.message_type || 'text',
+    attachments: msg.attachments || [],
+    reactions: msg.reactions || [],
+    read_receipts: (msg as any).read_receipts || [],
+    read_by: msg.read_by || [],
+    is_pinned: msg.is_pinned || false,
+  };
+
+  // Add sender if present
+  if (msg.sender) {
+    message.sender = msg.sender;
+  }
+
+  // Parse poll_data if it's a JSON string
+  if ((msg as any).poll_data && typeof (msg as any).poll_data === 'string') {
+    try {
+      message.poll_data = JSON.parse((msg as any).poll_data);
+    } catch (e) {
+      // Ignore parse errors
+    }
+  } else if ((msg as any).poll_data) {
+    message.poll_data = (msg as any).poll_data;
+  }
+
+  // Parse task_data if it's a JSON string
+  if ((msg as any).task_data && typeof (msg as any).task_data === 'string') {
+    try {
+      message.task_data = JSON.parse((msg as any).task_data);
+    } catch (e) {
+      // Ignore parse errors
+    }
+  } else if ((msg as any).task_data) {
+    message.task_data = (msg as any).task_data;
+  }
+
+  return message;
+}
 
 /**
  * Search messages

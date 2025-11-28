@@ -49,6 +49,7 @@ interface ChatState {
   removeChatMember: (chatId: number, userId: number) => Promise<void>;
   loadMessages: (chatId: number) => Promise<void>;
   loadMoreMessages: (chatId: number, beforeMessageId: number) => Promise<number>;
+  jumpToMessage: (chatId: number, messageId: number) => Promise<void>;
   setActiveChat: (chat: Chat | null) => void;
   sendMessage: (chatId: number, content: string, replyToId?: number, fileIds?: number[], extraData?: any) => Promise<void>;
   updateMessage: (messageId: number, content: string) => Promise<void>;
@@ -69,7 +70,7 @@ interface ChatState {
   muteChat: (chatId: number) => Promise<void>;
   unmuteChat: (chatId: number) => Promise<void>;
   toggleFavorite: (chatId: number) => Promise<void>;
-  handleNewMessage: (message: Message) => Promise<void>;
+  handleNewMessage: (message: Message, isLatest?: boolean) => Promise<void>;
   handleMessageUpdate: (message: Message) => void;
   handleMessageDelete: (messageId: number, chatId: number) => void;
   handleChatDelete: (chatId: number) => void;
@@ -511,12 +512,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (isMockMode()) {
         messages = await mockGetMessages(String(chatId));
       } else {
-        // Загружаем только последние 30 сообщений
-        // Старые сообщения будут подгружаться при скролле вверх
-        const limit = 30;
+        // NEW API: Use getLatestMessages (cursor-based pagination)
+        // Messages are returned in chronological order (oldest → newest)
+        const response = await chatApi.getLatestMessages(chatId, {
+          limit: 30,
+          include_unread_marker: true,
+        });
 
-        const response = await chatApi.getMessages(chatId, { limit });
-        messages = (response.messages || response.data || []).reverse();
+        // ✅ Messages are ALREADY in chronological order (oldest → newest)
+        // NO need to reverse!
+        messages = response.messages;
       }
 
       set((state) => ({
@@ -527,18 +532,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
         isLoading: false,
       }));
     } catch (error: any) {
+      console.error(`Failed to load messages for chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to load messages', isLoading: false });
     }
   },
 
   loadMoreMessages: async (chatId: number, beforeMessageId: number) => {
     try {
-      const response = await chatApi.getMessages(chatId, {
+      // NEW API: Use getMessagesBefore (cursor-based pagination)
+      const response = await chatApi.getMessagesBefore(chatId, beforeMessageId, {
         limit: 30,
-        before_message_id: beforeMessageId,
       });
-      const responseMessages = response.messages || response.data || [];
 
+      const responseMessages = response.messages || [];
       let addedCount = 0;
 
       if (responseMessages.length > 0) {
@@ -546,27 +552,52 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const existingMessages = state.messages[chatId] || [];
           const existingIds = new Set(existingMessages.map(m => m.id));
 
-          // Фильтруем дубликаты - добавляем только новые сообщения
-          const newMessages = responseMessages
-            .reverse() // Переворачиваем (от новых к старым -> от старых к новым)
-            .filter(msg => !existingIds.has(msg.id));
+          // Filter duplicates - add only new messages
+          // ✅ Messages are ALREADY in chronological order (oldest → newest)
+          // NO need to reverse!
+          const newMessages = responseMessages.filter(msg => !existingIds.has(msg.id));
 
           addedCount = newMessages.length;
 
           return {
             messages: {
               ...state.messages,
-              [chatId]: [...newMessages, ...existingMessages], // Старые добавляем В НАЧАЛО
+              [chatId]: [...newMessages, ...existingMessages], // Add old messages at the BEGINNING
             },
           };
         });
       }
 
-      // Возвращаем количество НОВЫХ сообщений (не дубликатов) для проверки "больше нет"
+      // Return count of NEW messages (not duplicates) to check if there are more
       return addedCount;
     } catch (error: any) {
+      console.error(`Failed to load more messages for chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to load more messages' });
       return 0;
+    }
+  },
+
+  jumpToMessage: async (chatId: number, messageId: number) => {
+    try {
+      set({ isLoading: true, error: null });
+
+      // NEW API: Get message context (messages around the target message)
+      const response = await chatApi.getMessageContext(chatId, messageId, {
+        before: 20,
+        after: 20,
+      });
+
+      // Replace all messages with the context
+      set((state) => ({
+        messages: {
+          ...state.messages,
+          [chatId]: response.messages,
+        },
+        isLoading: false,
+      }));
+    } catch (error: any) {
+      console.error(`Failed to jump to message ${messageId} in chat ${chatId}:`, error);
+      set({ error: error.message || 'Failed to jump to message', isLoading: false });
     }
   },
 
@@ -803,8 +834,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const chat = get().chats.find((c) => c.id === chatId);
       const unreadCount = chat?.unread_count || 0;
 
-      // Всегда отправляем на сервер
-      await chatApi.markChatAsRead(chatId);
+      // NEW API: Use markChatAsReadV2 (returns marked count)
+      await chatApi.markChatAsReadV2(chatId);
 
       // После успешного запроса обновляем локальный state
       set((state) => {
@@ -1065,13 +1096,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  handleNewMessage: async (message: Message) => {
-    console.log(`📨 [ChatStore] handleNewMessage called for chat ${message.chat_id}, message ${message.id}`);
+  handleNewMessage: async (message: Message, isLatest?: boolean) => {
     const currentUser = useAuthStore.getState().user;
     const isOwnMessage = currentUser && message.sender_id === currentUser.id;
     const activeChat = get().activeChat;
     const isInActiveChat = activeChat && activeChat.id === message.chat_id;
-    console.log(`🔍 [ChatStore] isOwnMessage: ${isOwnMessage}, isInActiveChat: ${isInActiveChat}, currentUser: ${currentUser?.id}, sender: ${message.sender_id}`);
 
     // Проверяем, существует ли чат в любом из загруженных табов
     const state = get();
@@ -1091,11 +1120,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     });
 
-    console.log(`🔍 [ChatStore] Chat ${message.chat_id} exists in current chats array: ${currentChats.some(c => c.id === message.chat_id)}, exists in tabs: ${chatExistsInTabs}`);
-
     // Если чата нет ни в одном табе - загружаем его через API
     if (!chatExistsInTabs) {
-      console.log(`📥 [ChatStore] Chat ${message.chat_id} not in any tabs, fetching from API...`);
 
       try {
         let fetchedChat = await chatApi.getChat(message.chat_id);

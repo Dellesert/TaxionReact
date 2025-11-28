@@ -427,30 +427,34 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
       switch (message.type) {
         case 'new_message':
-          // Construct full message object from WebSocket data
-          const senderId = message.user_id || message.data?.sender_id;
+          // NEW BACKEND STRUCTURE: { message: MessageResponse, is_latest: boolean }
+          const messageData = message.data?.message || message.data; // Support both structures
+          const isLatest = message.data?.is_latest ?? true; // Default to true for backward compatibility
+
+          const senderId = message.user_id || messageData?.sender_id;
           const newMessage = {
-            id: message.data?.id || Date.now(), // temporary ID if not provided
-            chat_id: message.chat_id,
+            id: messageData?.id || Date.now(), // temporary ID if not provided
+            chat_id: message.chat_id || messageData?.chat_id,
             sender_id: senderId,
-            content: message.data?.content || '',
-            message_type: message.data?.message_type || message.data?.type || 'text',
-            is_edited: message.data?.is_edited || false,
-            is_pinned: message.data?.is_pinned || false,
-            is_deleted: message.data?.is_deleted || false,
-            attachments: message.data?.attachments || [],
-            reactions: message.data?.reactions || [],
-            read_by: message.data?.read_by || [],
-            created_at: message.timestamp || message.data?.created_at || new Date().toISOString(),
-            updated_at: message.data?.updated_at || message.timestamp || new Date().toISOString(),
-            reply_to_id: message.data?.reply_to_id,
-            reply_to: message.data?.reply_to,
-            sender: message.data?.sender, // Don't provide fallback - let MessageItem fetch it
+            content: messageData?.content || '', // ✅ BACKEND NOW SENDS FULL CONTENT!
+            message_type: messageData?.message_type || messageData?.type || 'text',
+            is_edited: messageData?.is_edited || false,
+            is_pinned: messageData?.is_pinned || false,
+            is_deleted: messageData?.is_deleted || false, // ⚠️ IMPORTANT: Check this flag!
+            attachments: messageData?.attachments || [],
+            reactions: messageData?.reactions || [],
+            read_by: messageData?.read_by || [],
+            read_receipts: messageData?.read_receipts || [],
+            created_at: message.timestamp || messageData?.created_at || new Date().toISOString(),
+            updated_at: messageData?.updated_at || message.timestamp || new Date().toISOString(),
+            reply_to_id: messageData?.reply_to_id,
+            reply_to: messageData?.reply_to,
+            sender: messageData?.sender, // Don't provide fallback - let MessageItem fetch it
+            status: messageData?.status || 'sent',
           };
 
-          console.log(`📥 [WebSocket] Received new_message for chat ${message.chat_id}, message ${newMessage.id}, sender ${senderId}`);
-          await chatStore.handleNewMessage(newMessage);
-          console.log(`✅ [WebSocket] Processed new_message for chat ${message.chat_id}`);
+          // Pass is_latest flag to the store for auto-scroll logic
+          await chatStore.handleNewMessage(newMessage, isLatest);
           break;
 
         case 'message_edit':

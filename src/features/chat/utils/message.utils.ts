@@ -75,3 +75,29 @@ export const replaceLocalhostWithIP = (url: string): string => {
 
   return replacedUrl;
 };
+
+/**
+ * Получает отображаемый контент сообщения с учётом is_deleted
+ *
+ * ВАЖНО: Бэкенд больше НЕ фильтрует контент удалённых сообщений в WebSocket.
+ * Фронтенд ДОЛЖЕН сам проверять флаг is_deleted перед отображением!
+ *
+ * @param message - Сообщение для обработки
+ * @param currentUserId - ID текущего пользователя
+ * @returns Отображаемый контент сообщения
+ */
+export const getDisplayContent = (message: { content: string; is_deleted: boolean; sender_id: number }, currentUserId: number | undefined): string => {
+  // Если сообщение удалено
+  if (message.is_deleted) {
+    // Если это сообщение от текущего пользователя, показываем контент
+    // (пользователь может видеть свои удалённые сообщения)
+    if (currentUserId !== undefined && message.sender_id === currentUserId) {
+      return message.content;
+    }
+    // Для других пользователей скрываем контент
+    return 'Сообщение удалено';
+  }
+
+  // Сообщение не удалено - возвращаем контент как есть
+  return message.content;
+};
