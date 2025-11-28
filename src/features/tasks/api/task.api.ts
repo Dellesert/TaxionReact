@@ -392,12 +392,10 @@ export const delegateTask = async (
   taskId: number,
   data: DelegateTaskDto
 ): Promise<Task> => {
-  console.log('📤 API: Delegating task:', { taskId, data });
   const response = await api.post<ApiResponse<Task>>(
     `/tasks/${taskId}/delegate`,
     data
   );
-  console.log('📥 API: Delegation response:', response.data);
   return response.data.data || response.data.task || (response.data as any);
 };
 
@@ -463,8 +461,6 @@ export const uploadAttachment = async (
   taskId: number,
   file: File | { uri: string; name: string; type: string }
 ): Promise<TaskAttachment> => {
-  console.log('📤 Uploading to:', `/tasks/${taskId}/attachments`);
-  console.log('📎 File data:', file);
 
   const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
   if (!sessionId) {
@@ -489,12 +485,10 @@ export const uploadAttachment = async (
 
   return new Promise<TaskAttachment>((resolve, reject) => {
     xhr.addEventListener('load', () => {
-      console.log('📥 Response status:', xhr.status);
 
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const response = JSON.parse(xhr.responseText);
-          console.log('✅ Upload success:', response);
           resolve(response);
         } catch (error) {
           console.error('❌ Failed to parse response:', error);
@@ -561,9 +555,7 @@ export const attachFileToTask = async (taskId: number, fileId: number): Promise<
  * Delete attachment
  */
 export const deleteAttachment = async (attachmentId: number): Promise<void> => {
-  console.log('📤 API: Deleting attachment', attachmentId);
   const response = await api.delete(`/attachments/${attachmentId}`);
-  console.log('📥 API: Attachment deleted response:', response.status);
 };
 
 // ============= Task Checklists =============

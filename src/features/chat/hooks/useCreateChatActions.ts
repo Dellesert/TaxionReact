@@ -98,15 +98,7 @@ export const useCreateChatActions = (
         // Get final chat name
         const finalChatName = getFinalChatName(type as 'group' | 'private', name);
 
-        console.log('📝 Creating chat:', {
-          type,
-          name: finalChatName,
-          memberIds: selectedUsers,
-        });
-
         const newChat = await createChatAction(finalChatName, selectedUsers, type as 'group' | 'private');
-
-        console.log('✅ Chat created successfully:', newChat);
 
         // Validate chat ID
         if (!newChat || !newChat.id || isNaN(newChat.id)) {
@@ -115,11 +107,6 @@ export const useCreateChatActions = (
         }
 
         // Navigate to the new chat
-        console.log('🔄 Navigating to chat:', newChat.id);
-        navigation.replace('Chat', {
-          chatId: newChat.id,
-          chatName: newChat.name,
-        });
       } catch (error: unknown) {
         console.error('❌ Failed to create chat:', error);
         const err = error as { message?: string };

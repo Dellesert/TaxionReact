@@ -163,14 +163,6 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
       locale: ru,
     });
 
-    // DEBUG: Log attachment data
-    console.log('🔍 TaskAttachmentsList - Attachment:', {
-      id: item.id,
-      file_name: item.file_name,
-      uploaded_by: item.uploaded_by,
-      uploaded_by_user_id: item.uploaded_by_user_id,
-    });
-
     // Check if current user is the uploader
     const canDelete = currentUser && item.uploaded_by_user_id === currentUser.id;
 

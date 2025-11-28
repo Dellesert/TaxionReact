@@ -426,9 +426,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         }}
         onOpenChat={async (userId) => {
           try {
-            console.log('💬 Opening chat with user:', userId);
             const chat = await getOrCreateDirectChat(userId);
-            console.log('✅ Got chat:', chat.id);
             setShowProfileModal(false);
             onClose(); // Close event detail modal too
             // Navigate to chat - need to get root navigation

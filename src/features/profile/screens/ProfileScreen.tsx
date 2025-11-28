@@ -23,7 +23,6 @@ const ProfileScreen: React.FC = () => {
     const loadProfile = async () => {
       try {
         await refreshUser();
-        console.log('✅ Profile refreshed on mount');
       } catch (error) {
         console.error('❌ Failed to refresh profile:', error);
       }

@@ -205,14 +205,12 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     {
       label: 'Удалить',
       onPress: () => {
-        console.log(`🗑️ ChatItem: Deleting chat ${chat.id} with clearHistory=false`);
         onDelete?.(chat.id, false);
       },
     },
     {
       label: 'Удалить и очистить историю',
       onPress: () => {
-        console.log(`🗑️ ChatItem: Deleting chat ${chat.id} with clearHistory=true`);
         onDelete?.(chat.id, true);
       },
       destructive: true,

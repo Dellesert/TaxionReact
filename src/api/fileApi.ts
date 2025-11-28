@@ -191,22 +191,10 @@ class FileApi {
       throw new Error('Not authenticated');
     }
 
-    console.log('🔐 getFileById request:', {
-      url: `${this.baseUrl}/${fileId}`,
-      hasSessionId: !!sessionId,
-      sessionIdPreview: sessionId ? `${sessionId.substring(0, 20)}...` : 'none',
-    });
-
     const response = await fetch(`${this.baseUrl}/${fileId}`, {
       headers: {
         'X-Session-ID': sessionId,
       },
-    });
-
-    console.log('📥 getFileById response:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
     });
 
     if (!response.ok) {

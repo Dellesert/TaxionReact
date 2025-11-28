@@ -35,15 +35,6 @@ export const useTaskPermissions = (task: Task | null): TaskPermissions => {
       return DEFAULT_PERMISSIONS;
     }
 
-    // Debug logging to check what backend provides
-    console.log('🔍 Task permissions check:', {
-      taskId: task.id,
-      taskTitle: task.title,
-      userId: user.id,
-      assignees: task.assignees,
-      delegationChain: task.delegation_chain,
-      backendPermissions: task.permissions,
-    });
 
     // If backend provides permissions, check if they're valid
     if (task.permissions) {
@@ -53,11 +44,9 @@ export const useTaskPermissions = (task: Task | null): TaskPermissions => {
       if (allFalse) {
         console.warn('⚠️ Backend returned all permissions as false, using client calculation as fallback');
         const calculated = calculateClientPermissions(task, user.id);
-        console.log('📊 Calculated permissions (backend returned all false):', calculated);
         return calculated;
       }
 
-      console.log('✅ Using backend permissions:', task.permissions);
       return task.permissions;
     }
 
@@ -65,7 +54,6 @@ export const useTaskPermissions = (task: Task | null): TaskPermissions => {
     // This should not normally happen if backend is working correctly
     console.warn('⚠️ Task permissions not provided by backend, calculating on client');
     const calculated = calculateClientPermissions(task, user.id);
-    console.log('📊 Calculated permissions:', calculated);
     return calculated;
   }, [task, user]);
 };
@@ -80,15 +68,6 @@ function calculateClientPermissions(task: Task, userId: number): TaskPermissions
   const isInDelegationChain = task.delegation_chain?.some(
     d => d.id === userId
   ) ?? false;
-
-  console.log('🔍 Client permission calculation:', {
-    userId,
-    isCreator,
-    isAssignee,
-    isInDelegationChain,
-    assignees: task.assignees,
-    delegationChain: task.delegation_chain,
-  });
 
   // Creator has full access
   if (isCreator) {

@@ -92,12 +92,10 @@ const PollListScreen: React.FC = () => {
 
   // Handlers
   const handlePollPress = (poll: Poll) => {
-    console.log('Poll pressed:', poll.id);
     navigation.navigate('PollDetail', { pollId: poll.id });
   };
 
   const handleCreatePoll = () => {
-    console.log('Create new poll');
     setShowCreateModal(true);
   };
 

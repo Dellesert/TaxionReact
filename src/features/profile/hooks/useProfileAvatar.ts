@@ -26,27 +26,20 @@ export const useProfileAvatar = () => {
     setIsUploadingAvatar(true);
 
     try {
-      console.log('📤 Uploading avatar...');
-
       // Upload file to file-service as PUBLIC file (no auth required to view)
       const uploadedFile = await fileApi.uploadFile(file, 'avatar', undefined, true);
-      console.log('✅ Avatar uploaded:', uploadedFile);
 
       // Use public file URL (no authentication required)
       const avatarUrl = fileApi.getPublicFileUrl(uploadedFile.file_name);
-      console.log('📸 Public Avatar URL:', avatarUrl);
 
       // Update user profile with new avatar URL
       const updatedUser = await updateAvatar(avatarUrl);
-      console.log('✅ Profile updated with new avatar:', updatedUser);
 
       // Update local user state
       setUser(updatedUser);
-      console.log('✅ User state updated in store');
 
       // Also update stored user data
       await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
-      console.log('✅ User data saved to storage');
 
       showSuccess('Фотография профиля обновлена');
     } catch (error) {

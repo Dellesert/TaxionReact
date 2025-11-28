@@ -83,7 +83,6 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
           if (notification.data?.task_ids && notification.data.task_ids.length > 1) {
             // For grouped notifications, go to task list with filter
             // TODO: Implement task list filtering by IDs or category
-            console.log('Grouped notification:', notification.data.task_ids);
             navigation.navigate('Tasks' as never, {
               screen: 'TaskList',
               params: {

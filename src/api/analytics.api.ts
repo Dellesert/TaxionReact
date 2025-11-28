@@ -151,8 +151,6 @@ export const getDashboardAnalytics = async (
 
     const response = await api.get('/analytics/dashboard', { params });
 
-    console.log('📊 Raw dashboard response:', response.data);
-
     // Handle different response formats
     const data = response.data;
 

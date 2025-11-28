@@ -96,19 +96,15 @@ const EditProfileScreen: React.FC = () => {
       if (position.trim()) updateData.position = position.trim();
       if (birthDate) updateData.birth_date = format(birthDate, 'yyyy-MM-dd');
 
-      console.log('📤 Updating profile with data:', updateData);
 
       const updatedUser = await updateProfile(updateData);
 
-      console.log('✅ Profile updated successfully:', updatedUser);
 
       // Update local user state
       setUser(updatedUser);
 
       // Also update stored user data
       await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
-
-      console.log('💾 User data saved to storage');
 
       showSuccess('Профиль успешно обновлён');
       navigation.goBack();

@@ -49,19 +49,15 @@ export const useChatAvatar = (chatId: number): UseChatAvatarReturn => {
           setIsUploadingAvatar(true);
 
           try {
-            console.log('📤 Uploading chat avatar...');
 
             // Upload file to file-service as PUBLIC file
             const uploadedFile = await fileApi.uploadFile(file, 'avatar', undefined, true);
-            console.log('✅ Avatar uploaded:', uploadedFile);
 
             // Use public file URL
             const avatarUrl = fileApi.getPublicFileUrl(uploadedFile.file_name);
-            console.log('📸 Public Avatar URL:', avatarUrl);
 
             // Update chat with new avatar URL
             await updateChat(chatId, { avatar: avatarUrl });
-            console.log('✅ Chat updated with new avatar');
           } catch (error) {
             console.error('❌ Failed to upload chat avatar:', error);
             showError('Не удалось обновить изображение. Попробуйте снова.');
@@ -73,7 +69,6 @@ export const useChatAvatar = (chatId: number): UseChatAvatarReturn => {
         input.click();
       } else {
         // Mobile implementation using expo-image-picker
-        console.log('📸 Requesting media library permissions...');
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permission.granted) {
@@ -81,7 +76,6 @@ export const useChatAvatar = (chatId: number): UseChatAvatarReturn => {
           return;
         }
 
-        console.log('📸 Opening image picker...');
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
@@ -90,7 +84,6 @@ export const useChatAvatar = (chatId: number): UseChatAvatarReturn => {
         });
 
         if (result.canceled || !result.assets || result.assets.length === 0) {
-          console.log('📸 Image picker cancelled');
           return;
         }
 
@@ -105,8 +98,6 @@ export const useChatAvatar = (chatId: number): UseChatAvatarReturn => {
         setIsUploadingAvatar(true);
 
         try {
-          console.log('📤 Uploading chat avatar from mobile...');
-
           // Create file object for mobile
           const file = {
             uri: asset.uri,
@@ -116,15 +107,12 @@ export const useChatAvatar = (chatId: number): UseChatAvatarReturn => {
 
           // Upload file to file-service as PUBLIC file
           const uploadedFile = await fileApi.uploadFile(file, 'avatar', undefined, true);
-          console.log('✅ Avatar uploaded:', uploadedFile);
 
           // Use public file URL
           const avatarUrl = fileApi.getPublicFileUrl(uploadedFile.file_name);
-          console.log('📸 Public Avatar URL:', avatarUrl);
 
           // Update chat with new avatar URL
           await updateChat(chatId, { avatar: avatarUrl });
-          console.log('✅ Chat updated with new avatar');
         } catch (error) {
           console.error('❌ Failed to upload chat avatar:', error);
           showError('Не удалось обновить изображение. Попробуйте снова.');

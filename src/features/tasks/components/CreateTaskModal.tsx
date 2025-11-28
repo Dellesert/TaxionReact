@@ -169,7 +169,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
           // Only create if no checklists exist
           if (!existingChecklists || existingChecklists.length === 0) {
-            console.log('📋 Creating checklist manually for task:', createdTask.id);
             const newChecklist = await taskApi.createChecklist(createdTask.id, { title: 'Checklist' });
 
             // Add all items to the checklist
@@ -177,7 +176,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               await taskApi.createChecklistItem(newChecklist.id, { title: item });
             }
           } else {
-            console.log('✅ Checklist already created by backend');
           }
         } catch (checklistError) {
           console.error('Error creating checklist:', checklistError);

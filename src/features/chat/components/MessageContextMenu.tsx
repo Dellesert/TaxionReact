@@ -133,7 +133,6 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
       // Проверяем, доступен ли Clipboard API
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(message.content);
-        console.log('Скопировано', 'Текст сообщения скопирован в буфер обмена');
       } else {
         // Fallback для старых браузеров
         const textArea = document.createElement('textarea');

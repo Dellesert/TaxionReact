@@ -61,16 +61,10 @@ export const updateUserPreference = async (
     ...preferences,
   };
 
-  console.log(`📡 API: Updating "${type}"`);
-  console.log('📡 Preferences:', preferences);
-  console.log('📡 Full payload:', payload);
-  console.log('📡 JSON:', JSON.stringify(payload, null, 2));
-
   const response = await api.put<{ preference: UserNotificationPreference }>(
     `/notifications/preferences/${type}`,
     payload
   );
 
-  console.log(`📡 Response for "${type}":`, response.data);
   return response.data.preference;
 };

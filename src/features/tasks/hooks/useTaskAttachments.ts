@@ -63,12 +63,6 @@ export const useTaskAttachments = (taskId: string) => {
       setIsUploadingAttachment(true);
       const taskIdNum = Number(taskId);
 
-      console.log('📎 Uploading file:', {
-        name: file.name,
-        uri: file.uri,
-        mimeType: file.mimeType,
-        size: file.size,
-      });
 
       // Step 1: Upload file to file-service
       const fileToUpload = {
@@ -77,15 +71,11 @@ export const useTaskAttachments = (taskId: string) => {
         type: file.mimeType || 'application/octet-stream',
       };
 
-      console.log('📤 Step 1: Uploading to file-service...');
       // Mark task files as public so all task participants can access them
       const uploadedFile = await fileApi.uploadFile(fileToUpload, 'attachment', undefined, true);
-      console.log('✅ File uploaded to file-service:', uploadedFile);
 
       // Step 2: Attach file to task using file_id
-      console.log('📤 Step 2: Attaching to task...');
       const result = await taskApi.attachFileToTask(taskIdNum, uploadedFile.id);
-      console.log('✅ File attached to task:', result);
 
       await loadAttachments();
     } catch (error: any) {
@@ -104,11 +94,6 @@ export const useTaskAttachments = (taskId: string) => {
       if (!fileId) {
         throw new Error('Неверный путь к файлу');
       }
-
-      console.log('📥 Opening file:', {
-        fileName: attachment.file_name,
-        fileId,
-      });
 
       // Get session ID
       const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
@@ -151,15 +136,11 @@ export const useTaskAttachments = (taskId: string) => {
         const safeFileName = `file_${Date.now()}.${fileExtension}`;
         const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
 
-        console.log('📥 Downloading to:', fileUri);
-
         const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri, {
           headers: {
             'X-Session-ID': sessionId,
           },
         });
-
-        console.log('✅ Downloaded:', downloadResult.uri);
 
         // Open file with native viewer
         try {
@@ -170,7 +151,6 @@ export const useTaskAttachments = (taskId: string) => {
           });
         } catch (viewerError: any) {
           // If FileViewer fails, fallback to sharing
-          console.log('FileViewer failed, falling back to sharing:', viewerError);
           const isAvailable = await Sharing.isAvailableAsync();
 
           if (isAvailable) {
@@ -179,7 +159,6 @@ export const useTaskAttachments = (taskId: string) => {
               mimeType: attachment.mime_type,
             });
           } else {
-            console.log(`Файл скачан: ${originalFileName}`);
           }
         }
       }
@@ -191,9 +170,7 @@ export const useTaskAttachments = (taskId: string) => {
 
   const deleteAttachment = useCallback(async (attachmentId: number) => {
     try {
-      console.log('🗑️ Deleting attachment:', attachmentId);
       await taskApi.deleteAttachment(attachmentId);
-      console.log('✅ Attachment deleted successfully');
       await loadAttachments();
     } catch (error: any) {
       console.error('❌ Error deleting attachment:', error);

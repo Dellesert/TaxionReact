@@ -40,11 +40,8 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
       let usersList: User[] = [];
 
       if (isMockMode()) {
-        console.log('🔧 Using mock users data');
         usersList = await mockGetUsers();
-        console.log(`👥 Loaded ${usersList.length} mock users`);
       } else {
-        console.log('📋 Loading users from API with backend filters and search...');
 
         // Use server-side filtering, sorting, and search for chats
         const filters: any = {
@@ -63,40 +60,24 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
         };
 
         const response = await getUsers(filters, { limit: 1000, offset: 0 });
-        console.log('✅ Users API response:', response);
-        console.log('🔍 Search query:', searchTerm);
-        console.log('📊 First 5 users:', response.data?.slice(0, 5).map((u: User) => ({
-          name: u.name,
-          dept: u.department?.name,
-          role: u.role
-        })));
-
         // PaginatedResponse has data field with array of users
         if (response && response.data && Array.isArray(response.data)) {
           usersList = response.data;
-          console.log('📦 Got users from response.data (array)');
         } else if (response && Array.isArray(response)) {
           usersList = response;
-          console.log('📦 Got users from response (array)');
         } else if (response && 'users' in response && Array.isArray(response.users)) {
           usersList = response.users as User[];
-          console.log('📦 Got users from response.users (array)');
         } else {
           usersList = [];
           console.warn('⚠️ Unexpected response structure:', response);
         }
 
-        console.log(`👥 Found ${usersList.length} users from API`);
-
         if (usersList.length > 0) {
-          console.log('First user sample:', usersList[0]);
         } else {
           console.warn('⚠️ No users found in response');
         }
       }
 
-      console.log('📊 Users with departments:', usersList.filter((u) => u.department).length);
-      console.log('📊 Users with department_id:', usersList.filter((u) => u.department_id).length);
 
       // Backend now handles all filtering, sorting, and search
       setUsers(usersList);

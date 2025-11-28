@@ -193,7 +193,6 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
           });
         } catch (viewerError: any) {
           // If FileViewer fails, fallback to sharing
-          console.log('FileViewer failed, falling back to sharing:', viewerError);
           const isAvailable = await Sharing.isAvailableAsync();
 
           if (isAvailable) {
@@ -202,7 +201,6 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
               mimeType: attachment.mime_type,
             });
           } else {
-            console.log('Успех', `Файл скачан:\n${originalFileName}`);
           }
         }
       }

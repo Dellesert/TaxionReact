@@ -94,14 +94,6 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
 
       const response = await getUsers(filters, { limit: 100, offset: 0 });
 
-      console.log('👥 Loaded available users for delegation:', response.data);
-      console.log('🔍 Search query:', debouncedSearch);
-      console.log('🏢 Current user department:', currentUser?.department?.name);
-      console.log('📊 First 5 users:', response.data?.slice(0, 5).map(u => ({
-        name: u.name,
-        dept: u.department?.name,
-        role: u.role
-      })));
       setUsers(response.data || []);
     } catch (err: any) {
       console.error('Error loading users:', err);

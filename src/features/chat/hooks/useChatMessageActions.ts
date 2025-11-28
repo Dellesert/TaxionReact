@@ -58,22 +58,18 @@ export const useChatMessageActions = (chatId: number): UseChatMessageActionsRetu
 
   // Message action callbacks
   const handleReply = useCallback((message: Message) => {
-    console.log('Reply to', message.id);
     // TODO: Implement reply functionality
   }, []);
 
   const handleForward = useCallback((message: Message) => {
-    console.log('Forward', message.id);
     // TODO: Implement forward functionality
   }, []);
 
   const handleCopy = useCallback((message: Message) => {
-    console.log('Copy', message.content);
     // TODO: Implement copy to clipboard
   }, []);
 
   const handleDelete = useCallback((message: Message) => {
-    console.log('Delete', message.id);
     // TODO: Implement delete functionality
   }, []);
 
@@ -95,7 +91,6 @@ export const useChatMessageActions = (chatId: number): UseChatMessageActionsRetu
   // Load more messages handler
   const handleLoadMore = useCallback(() => {
     // TODO: Implement pagination
-    console.log('Load more messages');
   }, []);
 
   return {

@@ -194,7 +194,6 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
           });
         } catch (viewerError: any) {
           // If FileViewer fails, fallback to sharing
-          console.log('FileViewer failed, falling back to sharing:', viewerError);
           const isAvailable = await Sharing.isAvailableAsync();
 
           if (isAvailable) {
@@ -203,7 +202,6 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               mimeType: attachment.mime_type,
             });
           } else {
-            console.log('Успех', `Файл скачан:\n${originalFileName}`);
           }
         }
       }

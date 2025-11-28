@@ -33,7 +33,6 @@ export const ChatDetailHeader: React.FC<ChatDetailHeaderProps> = ({ chat, typing
 
   const handleHeaderPress = () => {
     // Navigate to chat settings if needed
-    console.log('Navigate to chat settings:', chat.id);
   };
 
   const getSubtitleText = (): string => {

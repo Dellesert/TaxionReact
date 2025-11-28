@@ -182,7 +182,6 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 
           // Only create if no checklists exist
           if (!existingChecklists || existingChecklists.length === 0) {
-            console.log('📋 Creating checklist manually for subtask:', createdSubtask.id);
             const newChecklist = await createChecklist(createdSubtask.id, { title: 'Checklist' });
 
             // Add all items to the checklist
@@ -190,7 +189,6 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
               await createChecklistItem(newChecklist.id, { title: item });
             }
           } else {
-            console.log('✅ Checklist already created by backend');
           }
         } catch (checklistError) {
           console.error('Error creating checklist:', checklistError);

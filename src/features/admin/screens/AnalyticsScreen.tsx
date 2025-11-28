@@ -66,10 +66,6 @@ const AnalyticsScreen: React.FC = () => {
         }),
       ]);
 
-      console.log('📊 Dashboard data:', dashboard);
-      console.log('🏆 Top performers:', performers);
-      console.log('📈 Department stats:', departments);
-      console.log('🔒 Security data:', security);
 
       setDashboardData(dashboard);
       setTopPerformers(performers || []);

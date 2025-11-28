@@ -56,14 +56,6 @@ const UsersScreen: React.FC = () => {
       };
 
       const response = await userApi.getUsers(filters, { limit: 1000, offset: 0 });
-      console.log('👥 Loaded users for admin panel:', response.data);
-      console.log('🔍 Search query:', debouncedSearch);
-      console.log('🎯 Role filter:', selectedRole);
-      console.log('📊 First 5 users:', response.data?.slice(0, 5).map((u: User) => ({
-        name: u.name,
-        role: u.role,
-        is_active: u.is_active
-      })));
 
       setUsers(response.data);
     } catch (error: any) {

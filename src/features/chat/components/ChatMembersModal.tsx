@@ -81,7 +81,6 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     try {
       setIsLoading(true);
       const chatMembers = await getChatMembers(chatId);
-      console.log('👥 Loaded chat members:', chatMembers);
 
       // Загружаем информацию о пользователях
       if (chatMembers && chatMembers.length > 0) {
@@ -100,7 +99,6 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
           user: allUsersList.find((u) => u.id === member.user_id),
         }));
 
-        console.log('👥 Members with user info:', membersWithUsers);
         setMembers(membersWithUsers);
       } else {
         setMembers(chatMembers || []);
@@ -212,12 +210,10 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
 
     try {
       setIsAdding(true);
-      console.log('➕ Adding members:', selectedUsers);
 
       // API ожидает отдельный запрос для каждого пользователя
       // Формат: { user_id: number, role: "member" }
       const addPromises = selectedUsers.map(async (userId) => {
-        console.log(`➕ Adding user ${userId} to chat ${chatId}`);
         const response = await addChatMembers(chatId, {
           user_id: userId,
           role: 'member',
@@ -239,7 +235,6 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   };
 
   const handleRemoveMember = (userId: number, userName: string) => {
-    console.log(`🚫 handleRemoveMember called for user ${userId} (${userName}) in chat ${chatId}`);
     setUserToRemove({ id: userId, name: userName });
     setShowRemoveDialog(true);
   };
@@ -248,9 +243,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     if (!userToRemove) return;
 
     try {
-      console.log(`🚫 Executing removal of user ${userToRemove.id} from chat ${chatId}`);
       await removeChatMember(chatId, userToRemove.id);
-      console.log(`✅ Successfully removed user ${userToRemove.id}`);
       setShowRemoveDialog(false);
       setUserToRemove(null);
       loadMembers();
@@ -267,10 +260,8 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   };
 
   const handleToggleAdmin = (userId: number, userName: string, currentRole: string) => {
-    console.log('🎯 handleToggleAdmin called:', { userId, userName, currentRole });
 
     const newRole = currentRole === 'admin' ? 'member' : 'admin';
-    console.log('🎯 Role change:', { currentRole, newRole });
 
     setRoleChangeData({ userId, userName, currentRole, newRole });
     setShowRoleChangeDialog(true);
@@ -280,9 +271,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
     if (!roleChangeData) return;
 
     try {
-      console.log(`👤 Updating role for user ${roleChangeData.userId} to ${roleChangeData.newRole}`);
       await updateChatMemberRole(chatId, roleChangeData.userId, roleChangeData.newRole as 'admin' | 'member');
-      console.log(`✅ Role updated successfully`);
       setShowRoleChangeDialog(false);
       setRoleChangeData(null);
       loadMembers();
@@ -552,20 +541,6 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       currentUser &&
       item.user_id !== currentUser.id &&
       !(isAdmin && item.role === 'admin'); // Админ не может изменить роль другого админа
-
-    console.log('🔍 Member actions check:', {
-      userId: item.user_id,
-      userName: user.name,
-      currentUserRole,
-      isOwner,
-      isAdmin,
-      canManageMembers,
-      creatorId,
-      currentUserId: currentUser?.id,
-      memberRole: item.role,
-      canRemove,
-      canChangeRole,
-    });
 
     return (
       <View style={[styles.memberItem, dynamicStyles.memberItem]}>

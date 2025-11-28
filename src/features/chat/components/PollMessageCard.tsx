@@ -15,7 +15,6 @@ interface PollMessageCardProps {
 }
 
 const PollMessageCard: React.FC<PollMessageCardProps> = ({ pollData, onPress }) => {
-  console.log('🎴 PollMessageCard rendering with pollData:', pollData);
   const { theme, isDark } = useTheme();
 
   // Определяем иконку в зависимости от типа опроса

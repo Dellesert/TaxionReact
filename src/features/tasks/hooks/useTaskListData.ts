@@ -126,7 +126,6 @@ export const useTaskListData = (): UseTaskListDataReturn => {
 
           // Log warning if all tasks were duplicates
           if (uniqueTasks.length === 0 && updatedTasks.length < response.total && fetchedTasks.length > 0) {
-            console.log(`⚠️ All ${status} tasks were duplicates, user needs to scroll more`);
           }
 
           return { ...prev, [status]: updatedTasks };

@@ -107,22 +107,6 @@ export const useChatListActions = () => {
           return;
         }
 
-        console.log(
-          '[useChatListActions] handleTogglePinned called for chat',
-          chatId,
-          'is_pinned:',
-          chat.is_pinned
-        );
-
-        if (chat.is_pinned) {
-          console.log('[useChatListActions] Calling unpinChat...');
-          await unpinChat(chatId);
-          console.log('[useChatListActions] unpinChat completed');
-        } else {
-          console.log('[useChatListActions] Calling pinChat...');
-          await pinChat(chatId);
-          console.log('[useChatListActions] pinChat completed');
-        }
       } catch (error) {
         console.error('Failed to toggle pin:', error);
         throw error;
