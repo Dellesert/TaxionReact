@@ -7,5 +7,11 @@ export { useAuth } from './useAuth';
 export { useNetworkStatus } from './useNetworkStatus';
 export { useNetworkSync } from './useNetworkSync';
 export { useCachedUser, useUserCacheActions } from './useCachedUser';
+
+// Chat optimizations
 export { useChatPrefetch, useListPrefetch, useScrollPrefetch } from './usePrefetch';
 export { useOptimisticMessage, clearAllPendingMessages } from './useOptimisticMessage';
+
+// Task optimizations
+export { useTaskPrefetch, useTaskListPrefetch, getTaskFromCache, clearAllTaskCache } from './useTaskPrefetch';
+export { useOptimisticTask, clearAllPendingTaskOperations } from './useOptimisticTask';

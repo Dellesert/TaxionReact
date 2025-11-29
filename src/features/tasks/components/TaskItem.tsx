@@ -3,7 +3,7 @@
  * Компонент карточки задачи
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task, TaskPriority } from '../types/task.types';
@@ -12,6 +12,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@shared/components/common/Avatar';
+import { useTaskPrefetch } from '@shared/hooks/useTaskPrefetch';
 
 // Circular Progress Indicator Component
 const ProgressIndicator: React.FC<{
@@ -203,6 +204,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const { theme, isDark } = useTheme();
   const { user: currentUser } = useAuthStore();
   const [expanded, setExpanded] = useState(false);
+
+  // Prefetch hook for preloading task details
+  const { prefetchTaskDelayed } = useTaskPrefetch();
+
+  // Handle press in - start prefetch
+  const handlePressIn = useCallback(() => {
+    prefetchTaskDelayed(task.id);
+  }, [task.id, prefetchTaskDelayed]);
 
   // Use forceExpanded if provided, otherwise use local state
   const isExpanded = forceExpanded || expanded;
@@ -437,6 +446,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             isSubtask && styles.subtaskCard,
           ]}
           onPress={() => onPress(task)}
+          onPressIn={handlePressIn}
           activeOpacity={0.7}
         >
           {/* Priority Badge - горизонтальная лента в правом верхнем углу */}
