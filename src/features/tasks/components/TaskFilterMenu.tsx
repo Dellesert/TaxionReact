@@ -32,47 +32,6 @@ export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
     ? buttonPosition.y + buttonPosition.height + (Platform.OS === 'ios' ? 4 : 8)
     : 60;
 
-  const styles = StyleSheet.create({
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    },
-    filterMenu: {
-      position: 'absolute',
-      top: menuTop,
-      right: 16,
-      minWidth: 180,
-      borderRadius: 12,
-      padding: 8,
-      backgroundColor: theme.card,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 10,
-      elevation: 10,
-    },
-    filterMenuItem: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 14,
-      borderRadius: 8,
-    },
-    filterMenuItemActive: {
-      backgroundColor: theme.backgroundSecondary,
-    },
-    filterMenuItemText: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: theme.text,
-    },
-    filterMenuItemTextActive: {
-      color: theme.primary,
-      fontWeight: '600',
-    },
-  });
-
   return (
     <Modal
       visible={visible}
@@ -85,20 +44,21 @@ export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={styles.filterMenu}>
+        <View style={[styles.filterMenu, { top: menuTop, backgroundColor: theme.card }]}>
           {FILTER_CHIPS.map((chip) => (
             <TouchableOpacity
               key={chip.key}
               style={[
                 styles.filterMenuItem,
-                currentFilter === chip.key && styles.filterMenuItemActive,
+                currentFilter === chip.key && [styles.filterMenuItemActive, { backgroundColor: theme.backgroundSecondary }],
               ]}
               onPress={() => handleFilterSelect(chip.key)}
             >
               <Text
                 style={[
                   styles.filterMenuItemText,
-                  currentFilter === chip.key && styles.filterMenuItemTextActive,
+                  { color: theme.text },
+                  currentFilter === chip.key && { color: theme.primary, fontWeight: '600' },
                 ]}
               >
                 {chip.label}
@@ -113,3 +73,35 @@ export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
     </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  filterMenu: {
+    position: 'absolute',
+    right: 16,
+    minWidth: 180,
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  filterMenuItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  filterMenuItemActive: {},
+  filterMenuItemText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+});

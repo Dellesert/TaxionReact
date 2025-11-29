@@ -81,7 +81,7 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
     const statusTab = getStatusTab(snapshot.status);
 
     useTaskStore.setState((state) => {
-      const tasks = state.tasksByStatus[statusTab];
+      const tasks = state.tasksByStatus[statusTab] || [];
       const taskIndex = tasks.findIndex(t => t.id === taskId);
 
       if (taskIndex === -1) {
@@ -131,8 +131,8 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
 
     // Оптимистично обновляем UI
     useTaskStore.setState((state) => {
-      const oldTasks = state.tasksByStatus[oldStatusTab];
-      const newTasks = state.tasksByStatus[newStatusTab];
+      const oldTasks = state.tasksByStatus[oldStatusTab] || [];
+      const newTasks = state.tasksByStatus[newStatusTab] || [];
 
       // Обновлённая задача
       const updatedTask: Task = {
@@ -195,7 +195,7 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
       // Обновляем store реальными данными
       const finalStatusTab = getStatusTab(updatedTask.status);
       useTaskStore.setState((state) => {
-        const tasks = state.tasksByStatus[finalStatusTab];
+        const tasks = state.tasksByStatus[finalStatusTab] || [];
         const taskIndex = tasks.findIndex(t => t.id === updatedTask.id);
 
         if (taskIndex !== -1) {
@@ -237,7 +237,7 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
 
     // Оптимистично обновляем UI
     useTaskStore.setState((state) => {
-      const tasks = state.tasksByStatus[statusTab];
+      const tasks = state.tasksByStatus[statusTab] || [];
       const taskIndex = tasks.findIndex(t => t.id === task.id);
 
       if (taskIndex === -1) return state;
@@ -279,7 +279,7 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
       // Обновляем store реальными данными
       const finalStatusTab = getStatusTab(updatedTask.status);
       useTaskStore.setState((state) => {
-        const tasks = state.tasksByStatus[finalStatusTab];
+        const tasks = state.tasksByStatus[finalStatusTab] || [];
         const taskIndex = tasks.findIndex(t => t.id === updatedTask.id);
 
         if (taskIndex !== -1) {
@@ -338,11 +338,11 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
     useTaskStore.setState((state) => ({
       tasksByStatus: {
         ...state.tasksByStatus,
-        [statusTab]: [tempTask, ...state.tasksByStatus[statusTab]],
+        [statusTab]: [tempTask, ...(state.tasksByStatus[statusTab] || [])],
       },
       totals: {
         ...state.totals,
-        [statusTab]: state.totals[statusTab] + 1,
+        [statusTab]: (state.totals[statusTab] || 0) + 1,
       },
     }));
 
@@ -352,11 +352,11 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
       useTaskStore.setState((state) => ({
         tasksByStatus: {
           ...state.tasksByStatus,
-          [statusTab]: state.tasksByStatus[statusTab].filter(t => t.id !== tempId),
+          [statusTab]: (state.tasksByStatus[statusTab] || []).filter(t => t.id !== tempId),
         },
         totals: {
           ...state.totals,
-          [statusTab]: Math.max(0, state.totals[statusTab] - 1),
+          [statusTab]: Math.max(0, (state.totals[statusTab] || 0) - 1),
         },
       }));
       onError?.(new Error('Timeout'), tempId);
@@ -375,7 +375,7 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
       const finalStatusTab = getStatusTab(createdTask.status);
       useTaskStore.setState((state) => {
         // Удаляем временную задачу
-        const filteredTasks = state.tasksByStatus[statusTab].filter(t => t.id !== tempId);
+        const filteredTasks = (state.tasksByStatus[statusTab] || []).filter(t => t.id !== tempId);
 
         // Если статус изменился
         if (statusTab !== finalStatusTab) {
@@ -383,7 +383,7 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
             tasksByStatus: {
               ...state.tasksByStatus,
               [statusTab]: filteredTasks,
-              [finalStatusTab]: [createdTask, ...state.tasksByStatus[finalStatusTab]],
+              [finalStatusTab]: [createdTask, ...(state.tasksByStatus[finalStatusTab] || [])],
             },
           };
         }
@@ -408,11 +408,11 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
       useTaskStore.setState((state) => ({
         tasksByStatus: {
           ...state.tasksByStatus,
-          [statusTab]: state.tasksByStatus[statusTab].filter(t => t.id !== tempId),
+          [statusTab]: (state.tasksByStatus[statusTab] || []).filter(t => t.id !== tempId),
         },
         totals: {
           ...state.totals,
-          [statusTab]: Math.max(0, state.totals[statusTab] - 1),
+          [statusTab]: Math.max(0, (state.totals[statusTab] || 0) - 1),
         },
       }));
 
@@ -434,11 +434,11 @@ export const useOptimisticTask = (options: UseOptimisticTaskOptions = {}) => {
     useTaskStore.setState((state) => ({
       tasksByStatus: {
         ...state.tasksByStatus,
-        [statusTab]: state.tasksByStatus[statusTab].filter(t => t.id !== task.id),
+        [statusTab]: (state.tasksByStatus[statusTab] || []).filter(t => t.id !== task.id),
       },
       totals: {
         ...state.totals,
-        [statusTab]: Math.max(0, state.totals[statusTab] - 1),
+        [statusTab]: Math.max(0, (state.totals[statusTab] || 0) - 1),
       },
     }));
 

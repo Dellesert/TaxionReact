@@ -64,11 +64,11 @@ export const useTaskStore = create<TaskCacheStore>()(
       setTasksForStatus: (status: StatusTab, tasks: Task[], total: number) => {
         set((state) => ({
           tasksByStatus: {
-            ...state.tasksByStatus,
+            ...(state.tasksByStatus || initialTasksByStatus),
             [status]: tasks,
           },
           totals: {
-            ...state.totals,
+            ...(state.totals || initialTotals),
             [status]: total,
           },
           lastUpdated: Date.now(),
@@ -77,12 +77,13 @@ export const useTaskStore = create<TaskCacheStore>()(
 
       appendTasksForStatus: (status: StatusTab, tasks: Task[]) => {
         set((state) => {
-          const existingIds = new Set(state.tasksByStatus[status].map(t => t.id));
+          const currentTasks = state.tasksByStatus[status] || [];
+          const existingIds = new Set(currentTasks.map(t => t.id));
           const newTasks = tasks.filter(t => !existingIds.has(t.id));
           return {
             tasksByStatus: {
               ...state.tasksByStatus,
-              [status]: [...state.tasksByStatus[status], ...newTasks],
+              [status]: [...currentTasks, ...newTasks],
             },
             lastUpdated: Date.now(),
           };

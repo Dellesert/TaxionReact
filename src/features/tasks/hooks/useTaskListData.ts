@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import type { Task } from '../types/task.types';
 import type { StatusTab } from '../utils/taskListHelpers';
 import { TASKS_PER_PAGE, removeDuplicateTasks, getTasksWithSubtasks } from '../utils/taskListHelpers';
@@ -61,19 +61,14 @@ export interface UseTaskListDataReturn {
 
 /**
  * Hook for managing task list data
+ * Uses Zustand store directly to avoid setState during render issues
  */
 export const useTaskListData = (): UseTaskListDataReturn => {
-  // Get cached data from store
-  const cachedTasks = useTaskStore((state) => state.tasksByStatus);
-  const cachedTotals = useTaskStore((state) => state.totals);
+  // Get data directly from Zustand store - this prevents setState during render
+  const tasks = useTaskStore((state) => state.tasksByStatus);
+  const totals = useTaskStore((state) => state.totals);
   const setTasksForStatus = useTaskStore((state) => state.setTasksForStatus);
   const appendTasksForStatus = useTaskStore((state) => state.appendTasksForStatus);
-
-  // Tasks by status - initialize from cache
-  const [tasks, setTasks] = useState<TasksByStatus>(cachedTasks);
-
-  // Totals by status - initialize from cache
-  const [totals, setTotals] = useState<TotalsByStatus>(cachedTotals);
 
   // Loading states
   const [loading, setLoading] = useState<LoadingByStatus>({
@@ -91,17 +86,9 @@ export const useTaskListData = (): UseTaskListDataReturn => {
     done: false,
   });
 
-  // Check if we have cached data
-  const hasCachedData = Object.values(cachedTasks).some(arr => arr.length > 0);
-  const [isInitialLoading, setIsInitialLoading] = useState(!hasCachedData);
-
-  // Sync from cache on mount
-  useEffect(() => {
-    if (hasCachedData) {
-      setTasks(cachedTasks);
-      setTotals(cachedTotals);
-    }
-  }, []);
+  // Check if we have cached data - computed from store
+  const hasTasksInStore = Object.values(tasks).some(arr => arr.length > 0);
+  const [isInitialLoading, setIsInitialLoading] = useState(!hasTasksInStore);
 
   const loadTasksByStatus = useCallback(async (
     status: StatusTab,
@@ -126,25 +113,15 @@ export const useTaskListData = (): UseTaskListDataReturn => {
         await onSubtasksLoad(taskIds);
       }
 
-      setTasks(prev => {
-        let updatedTasks: Task[];
-        if (append) {
-          const uniqueTasks = removeDuplicateTasks(prev[status], fetchedTasks);
-          updatedTasks = [...prev[status], ...uniqueTasks];
-
-          // Save to cache (append mode)
-          appendTasksForStatus(status, uniqueTasks);
-
-          return { ...prev, [status]: updatedTasks };
-        } else {
-          updatedTasks = fetchedTasks;
-          // Save to cache (replace mode)
-          setTasksForStatus(status, fetchedTasks, response.total);
-          return { ...prev, [status]: fetchedTasks };
-        }
-      });
-
-      setTotals(prev => ({ ...prev, [status]: response.total }));
+      if (append) {
+        // Get current tasks from store to calculate unique tasks
+        const currentTasks = useTaskStore.getState().tasksByStatus[status] || [];
+        const uniqueTasks = removeDuplicateTasks(currentTasks, fetchedTasks);
+        appendTasksForStatus(status, uniqueTasks);
+      } else {
+        // Replace mode - save to store
+        setTasksForStatus(status, fetchedTasks, response.total ?? 0);
+      }
 
       // Enable load more after initial load
       if (!append) {
@@ -167,7 +144,9 @@ export const useTaskListData = (): UseTaskListDataReturn => {
     onSubtasksLoad?: (taskIds: number[]) => Promise<void>
   ) => {
     try {
-      const hasTasksInCache = Object.values(tasks).some(taskArray => taskArray.length > 0);
+      // Check current store state for tasks
+      const currentTasks = useTaskStore.getState().tasksByStatus;
+      const hasTasksInCache = Object.values(currentTasks).some(taskArray => taskArray.length > 0);
 
       // Show skeleton only if no tasks in cache and not a silent update
       if (!hasTasksInCache && !silentUpdate) {
@@ -185,7 +164,7 @@ export const useTaskListData = (): UseTaskListDataReturn => {
     } finally {
       setIsInitialLoading(false);
     }
-  }, [tasks, loadTasksByStatus]);
+  }, [loadTasksByStatus]);
 
   const resetCanLoadMore = useCallback(() => {
     setCanLoadMore({

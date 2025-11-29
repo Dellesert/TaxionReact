@@ -96,8 +96,10 @@ export const areAllChecklistItemsCompleted = (task: Task | null): boolean => {
     return true; // No checklists, so all are "completed"
   }
 
-  // Get all items from all checklists
-  const allItems = task.checklists.flatMap((checklist) => checklist.items);
+  // Get all items from all checklists, filtering out undefined/null items
+  const allItems = task.checklists
+    .flatMap((checklist) => checklist.items || [])
+    .filter((item): item is NonNullable<typeof item> => item != null);
 
   if (allItems.length === 0) {
     return true; // No items, so all are "completed"

@@ -337,7 +337,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       setChecklists(prev =>
         prev.map(checklist => ({
           ...checklist,
-          items: checklist.items.map(i =>
+          items: (checklist.items || []).map(i =>
             i.id === item.id ? { ...i, is_completed: !i.is_completed } : i
           ),
         }))
@@ -357,7 +357,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
       setChecklists(prev =>
         prev.map(checklist => ({
           ...checklist,
-          items: checklist.items.filter(i => i.id !== item.id),
+          items: (checklist.items || []).filter(i => i.id !== item.id),
         }))
       );
       onChecklistChanged?.();
@@ -399,8 +399,9 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
 
   const renderChecklistItem = ({ item: checklist }: { item: TaskChecklist }) => {
     const progress = getChecklistProgress(checklist);
-    const completedItems = checklist.items.filter(i => i.is_completed).length;
-    const totalItems = checklist.items.length;
+    const items = checklist.items || [];
+    const completedItems = items.filter(i => i.is_completed).length;
+    const totalItems = items.length;
     const isExpanded = expandedChecklists.has(checklist.id);
 
     return (

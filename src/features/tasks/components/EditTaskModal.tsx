@@ -94,7 +94,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
 
       // Flatten all checklist items into a single array for editing
       const allItems = data.flatMap(checklist =>
-        checklist.items.map(item => ({
+        (checklist.items || []).map(item => ({
           id: item.id,
           title: item.title,
           is_completed: item.is_completed,
