@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { View, RefreshControl, ActivityIndicator, Platform, StyleSheet, Dimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -66,6 +66,31 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
+  // Refs for FlashList instances per tab
+  const listRefs = useRef<Record<ChatFilter, FlashList<Chat> | null>>({
+    all: null,
+    private: null,
+    group: null,
+    favorite: null,
+  });
+
+  // Scroll to top helper
+  const scrollToTop = useCallback((filterKey: ChatFilter) => {
+    const listRef = listRefs.current[filterKey];
+    if (listRef) {
+      listRef.scrollToOffset({ offset: 0, animated: true });
+    }
+  }, []);
+
+  // Handle pin toggle with scroll to top
+  const handleTogglePinnedWithScroll = useCallback(async (chatId: number) => {
+    await onTogglePinned(chatId);
+    // Scroll to top after state update completes
+    setTimeout(() => {
+      scrollToTop(chatFilter);
+    }, 150);
+  }, [onTogglePinned, chatFilter, scrollToTop]);
+
   /**
    * Render single chat item
    */
@@ -78,7 +103,7 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
         isEditMode={isEditMode}
         itemIndex={index}
         onToggleFavorite={() => onToggleFavorite(item.id)}
-        onTogglePinned={() => onTogglePinned(item.id)}
+        onTogglePinned={() => handleTogglePinnedWithScroll(item.id)}
         onMarkAsRead={() => onMarkAsRead(item.id)}
         onDelete={onDeleteChat}
       />
@@ -88,7 +113,7 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
       selectedChats,
       onChatPress,
       onToggleFavorite,
-      onTogglePinned,
+      handleTogglePinnedWithScroll,
       onMarkAsRead,
       onDeleteChat,
     ]
@@ -114,6 +139,7 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
             <ChatEmptyState />
           ) : (
             <FlashList
+              ref={(ref) => { listRefs.current[filterKey] = ref; }}
               data={tabChats}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderChatItem}
@@ -123,7 +149,7 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
               }
               contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
               onEndReached={() => {
-               
+
                 if (canLoadMore && hasMoreChats && !isLoadingMore) {
                   onLoadMore();
                 } else {

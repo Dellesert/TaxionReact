@@ -107,6 +107,11 @@ export const useChatListActions = () => {
           return;
         }
 
+        if (chat.is_pinned) {
+          await unpinChat(chatId);
+        } else {
+          await pinChat(chatId);
+        }
       } catch (error) {
         console.error('Failed to toggle pin:', error);
         throw error;
