@@ -25,6 +25,7 @@ interface MessageBubbleProps {
   onReplyPress?: (messageId: number) => void;
   onImagePress: (imageUrl: string) => void;
   messageBubbleRef: React.RefObject<View>;
+  onRetryMessage?: (messageId: number) => void;
 }
 
 /**
@@ -44,6 +45,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onReplyPress,
   onImagePress,
   messageBubbleRef,
+  onRetryMessage,
 }) => {
   const { theme } = useTheme();
 
@@ -252,6 +254,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             message={message}
             isOwnMessage={isOwnMessage}
             currentUserId={currentUserId}
+            onRetry={onRetryMessage}
           />
         )}
       </View>

@@ -89,6 +89,8 @@ export interface Message {
   updated_at: ISODateString;
   edited_at?: ISODateString;
   sending?: boolean; // Локальное поле для индикации отправки
+  failed?: boolean; // Локальное поле - ошибка отправки (оптимистичные обновления)
+  error?: string; // Локальное поле - текст ошибки
   delivered_to?: number[]; // Локальное поле - список user IDs кто получил сообщение через WebSocket
   poll_data?: MessagePollData; // Данные опроса для сообщений типа 'poll'
   task_data?: MessageTaskData; // Данные задачи для сообщений типа 'task'

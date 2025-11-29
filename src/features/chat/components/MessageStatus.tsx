@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Message } from '../types/chat.types';
@@ -8,19 +8,47 @@ interface MessageStatusProps {
   message: Message;
   isOwnMessage: boolean;
   currentUserId?: number;
+  onRetry?: (messageId: number) => void;
+  onDiscard?: (messageId: number) => void;
 }
 
 /**
  * Компонент для отображения статуса сообщения (отправка, доставлено, прочитано)
+ * Поддерживает оптимистичные обновления с показом ошибок и повтором отправки
  */
 export const MessageStatus: React.FC<MessageStatusProps> = ({
   message,
   isOwnMessage,
   currentUserId,
+  onRetry,
+  // onDiscard - может быть использован для кнопки "Отмена" в будущем
 }) => {
   const { theme } = useTheme();
 
   if (!isOwnMessage || message.is_deleted) return null;
+
+  // Если сообщение не удалось отправить
+  if ((message as any).failed) {
+    return (
+      <View style={styles.failedContainer}>
+        <TouchableOpacity
+          onPress={() => onRetry?.(message.id)}
+          style={styles.retryButton}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="alert-circle"
+            size={16}
+            color={theme.error || '#FF3B30'}
+            style={styles.errorIcon}
+          />
+          <Text style={[styles.retryText, { color: theme.error || '#FF3B30' }]}>
+            Повторить
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   // Если сообщение еще отправляется
   if (message.sending) {
@@ -87,5 +115,23 @@ const styles = StyleSheet.create({
   statusIcon: {
     marginLeft: 4,
     transform: [{ translateY: 5 }],
+  },
+  failedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  errorIcon: {
+    marginRight: 4,
+  },
+  retryText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

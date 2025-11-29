@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Chat } from '../types/chat.types';
@@ -10,6 +10,7 @@ import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion } from '../utils/chatUtils';
 import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
+import { useChatPrefetch } from '@shared/hooks/usePrefetch';
 
 interface ChatItemProps {
   chat: Chat;
@@ -29,6 +30,9 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
+
+  // Prefetch hook for preloading chat messages
+  const { prefetchChatDelayed, cancelPrefetch } = useChatPrefetch();
 
   // Простая плавная анимация без bounce эффекта
   const checkboxAnimation = useRef(new Animated.Value(isEditMode ? 1 : 0)).current;
@@ -227,12 +231,27 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     onTogglePinned?.(chat.id);
   };
 
+  // Handle press in - start prefetch
+  const handlePressIn = useCallback(() => {
+    if (!isEditMode) {
+      prefetchChatDelayed(chat.id);
+    }
+  }, [chat.id, isEditMode, prefetchChatDelayed]);
+
+  // Handle press out - cancel prefetch if user didn't navigate
+  const handlePressOut = useCallback(() => {
+    // Don't cancel - let prefetch continue even if touch ends
+    // This ensures data is ready when user taps
+  }, []);
+
   return (
     <>
       <TouchableOpacity
         style={[styles.container, dynamicStyles.container]}
         onPress={() => onPress(chat)}
         onLongPress={handleLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         activeOpacity={0.7}
       >
         {/* Анимированный чекбокс в режиме редактирования */}

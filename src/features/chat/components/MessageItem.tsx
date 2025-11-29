@@ -41,6 +41,7 @@ interface MessageItemProps {
   isSelected?: boolean;
   onEnterSelectionMode?: (messageId: number) => void;
   onToggleSelection?: (messageId: number) => void;
+  onRetryMessage?: (messageId: number) => void;
 }
 
 /**
@@ -68,6 +69,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   isSelected = false,
   onEnterSelectionMode,
   onToggleSelection,
+  onRetryMessage,
 }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
@@ -180,6 +182,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           onReplyPress={onReplyPress}
           onImagePress={handleImagePress}
           messageBubbleRef={messageBubbleRef}
+          onRetryMessage={onRetryMessage}
         />
       </View>
 
@@ -337,7 +340,10 @@ export default React.memo(MessageItem, (prevProps, nextProps) => {
     prevProps.message.is_pinned !== nextProps.message.is_pinned ||
     prevProps.isHighlighted !== nextProps.isHighlighted ||
     prevProps.selectionMode !== nextProps.selectionMode ||
-    prevProps.isSelected !== nextProps.isSelected
+    prevProps.isSelected !== nextProps.isSelected ||
+    // Оптимистичные обновления - проверяем статус отправки
+    (prevProps.message as any).sending !== (nextProps.message as any).sending ||
+    (prevProps.message as any).failed !== (nextProps.message as any).failed
   ) {
     return false;
   }

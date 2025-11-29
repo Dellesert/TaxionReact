@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { getChatDisplayName } from '../utils/chatUtils';
+import { useOptimisticMessage } from '@shared/hooks/useOptimisticMessage';
 
 /**
  * Хук для обработки действий с сообщениями в чате
  *
- * ОПТИМИЗАЦИЯ: Извлекает функции из store (они стабильны и не меняются)
+ * ОПТИМИЗАЦИЯ:
+ * - Извлекает функции из store (они стабильны и не меняются)
+ * - Использует оптимистичные обновления для мгновенного UI response
  */
 export const useChatActions = (chatId: number) => {
   const [editingMessage, setEditingMessage] = useState<any | null>(null);
@@ -27,7 +30,20 @@ export const useChatActions = (chatId: number) => {
   const setError = useChatStore((state) => state.set);
   const currentUser = useAuthStore((state) => state.user);
 
-  const handleSendMessage = async (content: string, replyToId?: number) => {
+  // Оптимистичные сообщения для мгновенного UI response
+  const {
+    sendMessageOptimistic,
+    retryMessage,
+    discardFailedMessage,
+    isOptimisticMessage,
+    getMessageStatus,
+  } = useOptimisticMessage(chatId);
+
+  /**
+   * Отправка сообщения с оптимистичным обновлением
+   * Сообщение появляется мгновенно, затем подтверждается сервером
+   */
+  const handleSendMessage = useCallback(async (content: string, replyToId?: number) => {
     if (!content.trim() && selectedFileIds.length === 0) {
       setError({ error: 'Message content or files are required' });
       return;
@@ -41,21 +57,28 @@ export const useChatActions = (chatId: number) => {
 
     try {
       if (content.startsWith('EDIT:')) {
+        // Редактирование - не используем оптимистичные обновления
         const parts = content.split(':');
         const messageId = parseInt(parts[1]);
         const newContent = parts.slice(2).join(':');
         await updateMessage(messageId, newContent);
         setEditingMessage(null);
       } else {
+        // Отправка нового сообщения - используем оптимистичные обновления
         const fileIdsToSend = selectedFileIds.length > 0 ? selectedFileIds : undefined;
-        await sendMessage(chatId, content.trim(), replyToId, fileIdsToSend);
+
+        // Отправляем с оптимистичным UI
+        await sendMessageOptimistic(content.trim(), replyToId, fileIdsToSend);
+
+        // Очищаем выбранные файлы только при успехе
         setSelectedFileIds([]);
       }
     } catch (error: any) {
       console.error('Failed to send/edit message:', error);
-      setError({ error: error.message || 'Failed to send/edit message' });
+      // Ошибки обрабатываются в useOptimisticMessage
+      // Не показываем дополнительную ошибку
     }
-  };
+  }, [chatId, selectedFileIds, getChatById, updateMessage, sendMessageOptimistic, setError]);
 
   const handleReply = (message: any) => {
     setReplyingToMessage(message);
@@ -67,6 +90,13 @@ export const useChatActions = (chatId: number) => {
 
   const handleDelete = async (messageId: number, deleteFor: 'everyone' | 'me') => {
     try {
+      // Проверяем, является ли сообщение оптимистичным (ещё не отправлено)
+      if (isOptimisticMessage(messageId)) {
+        // Просто удаляем локально
+        discardFailedMessage(messageId);
+        return;
+      }
+
       await deleteMessageForUser(messageId, deleteFor);
     } catch (error: any) {
       console.error('Failed to delete message:', error);
@@ -159,6 +189,23 @@ export const useChatActions = (chatId: number) => {
     }
   };
 
+  /**
+   * Повторная отправка неудачного сообщения
+   */
+  const handleRetryMessage = useCallback(async (messageId: number) => {
+    const success = await retryMessage(messageId);
+    if (!success) {
+      console.error('Failed to retry message:', messageId);
+    }
+  }, [retryMessage]);
+
+  /**
+   * Удаление неудачного сообщения
+   */
+  const handleDiscardFailedMessage = useCallback((messageId: number) => {
+    discardFailedMessage(messageId);
+  }, [discardFailedMessage]);
+
   return {
     editingMessage,
     setEditingMessage,
@@ -180,5 +227,10 @@ export const useChatActions = (chatId: number) => {
     handleUnpin,
     handleForward,
     handleForwardToChat,
+    // Новые функции для оптимистичных сообщений
+    handleRetryMessage,
+    handleDiscardFailedMessage,
+    isOptimisticMessage,
+    getMessageStatus,
   };
 };
