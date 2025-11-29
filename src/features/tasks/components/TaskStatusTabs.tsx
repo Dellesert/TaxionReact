@@ -19,60 +19,8 @@ export const TaskStatusTabs: React.FC<TaskStatusTabsProps> = ({
   const { width: screenWidth } = Dimensions.get('window');
   const isNarrowScreen = screenWidth < 380;
 
-  const styles = StyleSheet.create({
-    tabsContainer: {
-      flexDirection: 'row',
-      marginTop: 12,
-      paddingTop: 4,
-      paddingHorizontal: 4,
-      borderTopWidth: 1,
-      borderTopColor: theme.border,
-      borderBottomWidth: 0,
-      gap: 6,
-    },
-    tab: {
-      flex: 1,
-      paddingVertical: 8,
-      paddingHorizontal: 6,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'transparent',
-      borderBottomWidth: 2,
-      borderBottomColor: 'transparent',
-    },
-    tabActive: {
-      borderBottomColor: 'transparent',
-    },
-    tabContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      width: '100%',
-    },
-    tabLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: theme.textSecondary,
-      textAlign: 'center',
-    },
-    tabCountContainer: {
-      minWidth: 22,
-      height: 22,
-      borderRadius: 11,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 6,
-    },
-    tabCount: {
-      fontSize: 11,
-      fontWeight: '700',
-      lineHeight: 13,
-    },
-  });
-
   return (
-    <View style={styles.tabsContainer}>
+    <View style={[styles.tabsContainer, { borderTopColor: theme.border }]}>
       {STATUS_TABS.map((tab) => {
         const count = totals[tab.key];
         const isActive = activeTab === tab.key;
@@ -133,3 +81,53 @@ export const TaskStatusTabs: React.FC<TaskStatusTabsProps> = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  tabsContainer: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 4,
+    paddingHorizontal: 4,
+    borderTopWidth: 1,
+    borderBottomWidth: 0,
+    gap: 6,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: 'transparent',
+  },
+  tabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    width: '100%',
+  },
+  tabLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  tabCountContainer: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  tabCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 13,
+  },
+});

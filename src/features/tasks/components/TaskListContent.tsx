@@ -130,25 +130,6 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
     );
   };
 
-  const styles = StyleSheet.create({
-    taskList: {
-      paddingTop: 12,
-      paddingBottom: 120,
-    },
-    taskItem: {
-      marginBottom: 12,
-    },
-    loadMoreContainer: {
-      paddingVertical: 12,
-      alignItems: 'center',
-    },
-    horizontalTabsContainer: {
-      flexDirection: 'row',
-      width: SCREEN_WIDTH * 4,
-      height: '100%',
-    },
-  });
-
   return (
     <GestureDetector gesture={swipeGesture}>
       <Animated.View style={[styles.horizontalTabsContainer, animatedContentStyle]}>
@@ -161,3 +142,22 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
     </GestureDetector>
   );
 };
+
+const styles = StyleSheet.create({
+  taskList: {
+    paddingTop: 12,
+    paddingBottom: 120,
+  },
+  taskItem: {
+    marginBottom: 12,
+  },
+  loadMoreContainer: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  horizontalTabsContainer: {
+    flexDirection: 'row',
+    width: SCREEN_WIDTH * 4,
+    height: '100%',
+  },
+});

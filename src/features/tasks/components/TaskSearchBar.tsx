@@ -25,28 +25,6 @@ export const TaskSearchBar: React.FC<TaskSearchBarProps> = ({
     }).start();
   }, [isVisible]);
 
-  const styles = StyleSheet.create({
-    searchContainer: {
-      overflow: 'hidden',
-    },
-    searchInputContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.backgroundTertiary,
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      gap: 8,
-      marginTop: 12,
-      marginBottom: 8,
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: 15,
-      color: theme.text,
-    },
-  });
-
   return (
     <RNAnimated.View
       style={[
@@ -60,10 +38,10 @@ export const TaskSearchBar: React.FC<TaskSearchBarProps> = ({
         },
       ]}
     >
-      <View style={styles.searchInputContainer}>
+      <View style={[styles.searchInputContainer, { backgroundColor: theme.backgroundTertiary }]}>
         <Ionicons name="search" size={20} color={theme.textTertiary} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: theme.text }]}
           placeholder="Поиск..."
           placeholderTextColor={theme.inputPlaceholder}
           value={searchQuery}
@@ -79,3 +57,23 @@ export const TaskSearchBar: React.FC<TaskSearchBarProps> = ({
     </RNAnimated.View>
   );
 };
+
+const styles = StyleSheet.create({
+  searchContainer: {
+    overflow: 'hidden',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+  },
+});

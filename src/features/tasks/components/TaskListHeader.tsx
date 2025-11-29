@@ -50,50 +50,6 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
     onFilterToggle();
   };
 
-  const styles = StyleSheet.create({
-    headerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    headerLeft: {
-      width: 100,
-    },
-    title: {
-      flex: 1,
-      fontSize: 20,
-      fontWeight: '600',
-      color: theme.text,
-      textAlign: 'center',
-    },
-    headerRight: {
-      width: 100,
-      justifyContent: 'flex-end',
-    },
-    headerActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    iconButton: {
-      paddingHorizontal: 4,
-      position: 'relative',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    searchButton: {
-      marginLeft: 4,
-    },
-    filterIndicator: {
-      position: 'absolute',
-      top: 2,
-      right: 2,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: theme.primary,
-    },
-  });
-
   return (
     <ScreenHeader
       title="Задачи"
@@ -104,7 +60,7 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
               <NotificationBell />
             </View>
 
-            <Text style={styles.title}>Задачи</Text>
+            <Text style={[styles.title, { color: theme.text }]}>Задачи</Text>
 
             <View style={[styles.headerRight, styles.headerActions]}>
               {/* Filter Button with indicator */}
@@ -114,7 +70,7 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
                   style={styles.iconButton}
                 >
                   <Ionicons name="filter" size={24} color={theme.error} />
-                  {filter !== 'all' && <View style={styles.filterIndicator} />}
+                  {filter !== 'all' && <View style={[styles.filterIndicator, { backgroundColor: theme.primary }]} />}
                 </TouchableOpacity>
               </View>
 
@@ -157,3 +113,45 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
     />
   );
 };
+
+const styles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    width: 100,
+  },
+  title: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  headerRight: {
+    width: 100,
+    justifyContent: 'flex-end',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconButton: {
+    paddingHorizontal: 4,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchButton: {
+    marginLeft: 4,
+  },
+  filterIndicator: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+});

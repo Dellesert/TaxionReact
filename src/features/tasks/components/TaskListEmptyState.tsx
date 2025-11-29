@@ -14,46 +14,15 @@ export const TaskListEmptyState: React.FC<TaskListEmptyStateProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  const styles = StyleSheet.create({
-    emptyContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 32,
-      backgroundColor: theme.background,
-    },
-    emptyIcon: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: theme.backgroundTertiary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 16,
-    },
-    emptyTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: theme.text,
-      marginBottom: 8,
-    },
-    emptySubtitle: {
-      fontSize: 14,
-      color: theme.textTertiary,
-      textAlign: 'center',
-      lineHeight: 20,
-    },
-  });
-
   return (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIcon}>
+    <View style={[styles.emptyContainer, { backgroundColor: theme.background }]}>
+      <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundTertiary }]}>
         <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
       </View>
-      <Text style={styles.emptyTitle}>
+      <Text style={[styles.emptyTitle, { color: theme.text }]}>
         {searchQuery ? 'Ничего не найдено' : 'Нет задач'}
       </Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
         {searchQuery
           ? 'Попробуйте изменить фильтры или поисковый запрос'
           : isAllEmpty
@@ -63,3 +32,30 @@ export const TaskListEmptyState: React.FC<TaskListEmptyStateProps> = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+});

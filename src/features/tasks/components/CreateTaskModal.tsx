@@ -19,8 +19,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTaskStore } from '@shared/store/taskStore';
 import { useAuthStore } from '@shared/store/authStore';
+import * as taskApi from '../api/task.api';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { TaskPriority, CreateTaskDto } from '../types/task.types';
@@ -45,7 +45,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { createTask } = useTaskStore();
   const { user: currentUser } = useAuthStore();
   const { showSuccess, showError } = useNotification();
 
@@ -158,13 +157,12 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           : undefined,
       };
 
-      const createdTask = await createTask(taskData);
+      const createdTask = await taskApi.createTask(taskData);
 
       // If backend didn't create checklist, create it manually
       if (contentType === 'checklist' && checklistItems.length > 0 && createdTask.id) {
         try {
           // Check if checklist was created by the backend
-          const taskApi = await import('@/features/tasks/api/task.api');
           const existingChecklists = await taskApi.getTaskChecklists(createdTask.id);
 
           // Only create if no checklists exist
@@ -175,7 +173,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             for (const item of checklistItems) {
               await taskApi.createChecklistItem(newChecklist.id, { title: item });
             }
-          } else {
           }
         } catch (checklistError) {
           console.error('Error creating checklist:', checklistError);

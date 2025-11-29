@@ -79,10 +79,12 @@ const TaskListScreen: React.FC = () => {
     handleTabChange
   );
 
-  // Store the actual filter change handler in ref
-  handleFilterChangeRef.current = () => {
-    loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks);
-  };
+  // Store the actual filter change handler in ref (inside useEffect to avoid setState during render)
+  useEffect(() => {
+    handleFilterChangeRef.current = () => {
+      loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks);
+    };
+  }, [loadAllTasks, buildFilters, user?.id, loadSubtasksForMultipleTasks]);
 
   // Initial load on mount
   useEffect(() => {
@@ -158,18 +160,6 @@ const TaskListScreen: React.FC = () => {
 
   const canCreateTask = user?.role !== 'employee';
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    contentContainer: {
-      flex: 1,
-      backgroundColor: theme.background,
-      overflow: 'hidden',
-    },
-  });
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
       {/* Header */}
@@ -189,7 +179,7 @@ const TaskListScreen: React.FC = () => {
       />
 
       {/* Content with swipe navigation */}
-      <View style={styles.contentContainer}>
+      <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
         <TaskListContent
           activeTab={activeTab}
           tasks={tasks}
@@ -228,5 +218,15 @@ const TaskListScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+});
 
 export default TaskListScreen;

@@ -15,22 +15,6 @@ export const ExpandAllSubtasksButton: React.FC<ExpandAllSubtasksButtonProps> = (
 }) => {
   if (count === 0) return null;
 
-  const styles = StyleSheet.create({
-    expandAllButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      gap: 8,
-      backgroundColor: 'transparent',
-    },
-    expandAllText: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: '#6b7280',
-    },
-  });
-
   return (
     <TouchableOpacity
       style={styles.expandAllButton}
@@ -48,3 +32,19 @@ export const ExpandAllSubtasksButton: React.FC<ExpandAllSubtasksButtonProps> = (
     </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  expandAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    backgroundColor: 'transparent',
+  },
+  expandAllText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+});
