@@ -173,13 +173,15 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
       <FloatingDateHeader dateLabel={currentDateLabel} visible={showDateHeader} />
 
       {pinnedMessages.length > 0 && (
-        <PinnedMessageBanner
-          pinnedMessages={pinnedMessages}
-          chatType={chatType}
-          currentUserRole={currentUserRole}
-          onPress={onPinnedMessagePress}
-          onUnpin={onUnpin}
-        />
+        <View style={styles.pinnedMessageWrapper}>
+          <PinnedMessageBanner
+            pinnedMessages={pinnedMessages}
+            chatType={chatType}
+            currentUserRole={currentUserRole}
+            onPress={onPinnedMessagePress}
+            onUnpin={onUnpin}
+          />
+        </View>
       )}
 
       <View style={styles.flex1}>
@@ -272,6 +274,9 @@ const styles = StyleSheet.create({
   },
   hiddenContent: {
     flex: 1,
+  },
+  pinnedMessageWrapper: {
+    zIndex: 10,
   },
   inputWrapper: {
     position: 'absolute',

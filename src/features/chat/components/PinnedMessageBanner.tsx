@@ -211,6 +211,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     minHeight: 60,
+    zIndex: 10,
   },
   content: {
     flexDirection: 'row',
