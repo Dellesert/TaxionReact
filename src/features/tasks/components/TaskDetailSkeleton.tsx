@@ -8,6 +8,90 @@ import { View, StyleSheet, Animated, ScrollView } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+/**
+ * Скелетон только для контента (без header и tabs)
+ * Используется внутри ScrollView когда task ещё не загружен
+ */
+export const TaskContentSkeleton: React.FC = () => {
+  const { theme } = useTheme();
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
+
+  const opacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  const dynamicStyles = {
+    line: {
+      backgroundColor: theme.border,
+      opacity,
+    },
+  };
+
+  return (
+    <View style={styles.scrollContent}>
+      {/* Main card */}
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <Animated.View style={[styles.cardTitle, dynamicStyles.line]} />
+        <Animated.View style={[styles.descLine, styles.descLineLong, dynamicStyles.line]} />
+        <Animated.View style={[styles.descLine, styles.descLineMedium, dynamicStyles.line]} />
+        <Animated.View style={[styles.descLine, styles.descLineShort, dynamicStyles.line]} />
+        <View style={styles.cardFooter}>
+          <Animated.View style={[styles.badge, dynamicStyles.line]} />
+          <Animated.View style={[styles.badge, dynamicStyles.line]} />
+          <Animated.View style={[styles.avatar, dynamicStyles.line]} />
+        </View>
+      </View>
+
+      {/* Checklists skeleton */}
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <Animated.View style={[styles.cardTitle, dynamicStyles.line]} />
+        {[1, 2, 3].map((item) => (
+          <View key={item} style={styles.checklistItem}>
+            <Animated.View style={[styles.checkbox, dynamicStyles.line]} />
+            <Animated.View style={[styles.checklistText, dynamicStyles.line]} />
+          </View>
+        ))}
+      </View>
+
+      {/* Subtasks skeleton */}
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <Animated.View style={[styles.cardTitle, dynamicStyles.line]} />
+        {[1, 2].map((item) => (
+          <View key={item} style={[styles.subtaskItem, { borderBottomColor: theme.border }]}>
+            <View style={styles.subtaskContent}>
+              <Animated.View style={[styles.subtaskTitle, dynamicStyles.line]} />
+              <Animated.View style={[styles.subtaskMeta, dynamicStyles.line]} />
+            </View>
+            <Animated.View style={[styles.subtaskBadge, dynamicStyles.line]} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+/**
+ * Полный скелетон для страницы (с header и tabs)
+ * @deprecated Используйте TaskContentSkeleton внутри основного layout
+ */
 export const TaskDetailSkeleton: React.FC = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();

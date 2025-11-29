@@ -14,6 +14,8 @@ const prefetchInProgress = new Map<number, Promise<Task | null>>();
 
 // Кэш задач по ID для быстрого доступа
 const taskCache = new Map<number, { task: Task; timestamp: number }>();
+// Кэш подзадач по parent_task_id
+const subtasksCache = new Map<number, { subtasks: Task[]; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 минут
 
 interface UseTaskPrefetchOptions {
@@ -86,8 +88,10 @@ export const useTaskPrefetch = (options: UseTaskPrefetchOptions = {}) => {
         if (prefetchSubtasks && task.subtask_count && task.subtask_count > 0) {
           try {
             const subtasks = await taskApi.getSubtasks(taskId);
-            // Кэшируем подзадачи
+            // Кэшируем подзадачи индивидуально
             subtasks.forEach(cacheTask);
+            // Кэшируем список подзадач для parent
+            subtasksCache.set(taskId, { subtasks, timestamp: Date.now() });
           } catch (error) {
             console.warn(`[TaskPrefetch] Failed to prefetch subtasks for task ${taskId}:`, error);
           }
@@ -230,11 +234,23 @@ export const getTaskFromCache = (taskId: number): Task | null => {
 };
 
 /**
+ * Получить подзадачи из глобального кэша
+ */
+export const getSubtasksFromCache = (parentTaskId: number): Task[] | null => {
+  const cached = subtasksCache.get(parentTaskId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.subtasks;
+  }
+  return null;
+};
+
+/**
  * Очистить весь кэш задач (для logout/cleanup)
  */
 export const clearAllTaskCache = () => {
   prefetchedTasks.clear();
   taskCache.clear();
+  subtasksCache.clear();
   prefetchInProgress.clear();
 };
 

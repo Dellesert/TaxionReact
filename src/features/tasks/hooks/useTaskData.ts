@@ -1,16 +1,34 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Task } from '../types/task.types';
 import * as taskApi from '../api/task.api';
+import { getTaskFromCache, getSubtasksFromCache } from '@shared/hooks/useTaskPrefetch';
 
 /**
  * Custom hook for managing task data loading and state
  */
 export const useTaskData = (taskId: string) => {
-  const [task, setTask] = useState<Task | null>(null);
-  const [subtasks, setSubtasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const taskIdNum = Number(taskId);
+
+  // Пробуем получить задачу и подзадачи из кэша prefetch для мгновенного отображения
+  const cachedTask = getTaskFromCache(taskIdNum);
+  const cachedSubtasks = getSubtasksFromCache(taskIdNum);
+
+  const [task, setTask] = useState<Task | null>(cachedTask);
+  const [subtasks, setSubtasks] = useState<Task[]>(cachedSubtasks || []);
+  // Если есть кэш - не показываем loading, иначе показываем
+  const [isLoading, setIsLoading] = useState(!cachedTask);
   const [accessDenied, setAccessDenied] = useState(false);
   const isFirstFocus = useRef(true);
+
+  // Если задача была из кэша - всё равно загружаем свежие данные в фоне
+  const needsBackgroundRefresh = useRef(!!cachedTask);
+
+  // Если задача из кэша имеет подзадачи, но они не в кэше - загружаем их
+  useEffect(() => {
+    if (cachedTask && cachedTask.subtask_count && cachedTask.subtask_count > 0 && !cachedSubtasks) {
+      taskApi.getSubtasks(taskIdNum).then(setSubtasks).catch(console.error);
+    }
+  }, []);
 
   const loadSubtasks = useCallback(async (parentTaskId: number) => {
     try {
@@ -23,9 +41,9 @@ export const useTaskData = (taskId: string) => {
 
   const loadTask = useCallback(async () => {
     try {
-      setIsLoading(true);
+      // Если есть кэшированные данные - не показываем loading (используем ref)
+      setIsLoading(() => needsBackgroundRefresh.current ? false : true);
       setAccessDenied(false);
-      const taskIdNum = Number(taskId);
       const response = await taskApi.getTask(taskIdNum);
 
       // If this is a subtask, ALWAYS load delegation chain from parent task
@@ -50,6 +68,7 @@ export const useTaskData = (taskId: string) => {
       }
 
       setTask(response);
+      needsBackgroundRefresh.current = false;
 
       // Load subtasks if this is a parent task
       if (response.subtask_count && response.subtask_count > 0) {
@@ -66,11 +85,10 @@ export const useTaskData = (taskId: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [taskId, loadSubtasks]);
+  }, [taskIdNum, loadSubtasks]);
 
   const loadTaskSilently = useCallback(async () => {
     try {
-      const taskIdNum = Number(taskId);
       const response = await taskApi.getTask(taskIdNum);
 
       // Load checklists for the task
@@ -89,7 +107,7 @@ export const useTaskData = (taskId: string) => {
     } catch (error: any) {
       console.error('Failed to silently reload task:', error);
     }
-  }, [taskId, loadSubtasks]);
+  }, [taskIdNum, loadSubtasks]);
 
   return {
     task,

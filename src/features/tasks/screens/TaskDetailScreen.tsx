@@ -3,7 +3,7 @@ import { View, ScrollView, Dimensions, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
-import { TaskDetailSkeleton } from '../components/TaskDetailSkeleton';
+import { TaskContentSkeleton } from '../components/TaskDetailSkeleton';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import ShareTaskModal from '../components/ShareTaskModal';
 import EditTaskModal from '../components/EditTaskModal';
@@ -320,11 +320,6 @@ const TaskDetailScreen: React.FC = () => {
     );
   };
 
-  // Loading state
-  if (isLoading) {
-    return <TaskDetailSkeleton />;
-  }
-
   // Access denied state
   if (accessDenied) {
     return <TaskAccessDenied onGoBack={() => {
@@ -337,10 +332,8 @@ const TaskDetailScreen: React.FC = () => {
     }} />;
   }
 
-  // No task loaded
-  if (!task) {
-    return null;
-  }
+  // Флаг для показа контент-скелетона (нет задачи и идёт загрузка)
+  const showContentSkeleton = isLoading && !task;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>
@@ -362,11 +355,13 @@ const TaskDetailScreen: React.FC = () => {
               },
             }}
             rightButton={
-              permissions.can_edit ||
-              permissions.can_delegate ||
-              permissions.can_create_subtasks ||
-              permissions.can_emergency_complete ||
-              permissions.can_delete
+              task && (
+                permissions.can_edit ||
+                permissions.can_delegate ||
+                permissions.can_create_subtasks ||
+                permissions.can_emergency_complete ||
+                permissions.can_delete
+              )
                 ? {
                     icon: 'ellipsis-horizontal',
                     onPress: () => setShowActionMenu(true),
@@ -395,14 +390,18 @@ const TaskDetailScreen: React.FC = () => {
             style={styles.tabContent}
             contentContainerStyle={{
               paddingBottom:
-                activeTab === 'comments' && !isDelegatedByMe && task.status !== 'done'
+                activeTab === 'comments' && !isDelegatedByMe && task?.status !== 'done'
                   ? insets.bottom + 170
                   : insets.bottom + 100,
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {activeTab === 'overview' && (
+            {/* Показываем скелетон если нет задачи */}
+            {showContentSkeleton && <TaskContentSkeleton />}
+
+            {/* Реальный контент когда задача загружена */}
+            {task && activeTab === 'overview' && (
               <TaskOverviewTab
                 task={task}
                 subtasks={subtasks}
@@ -426,7 +425,7 @@ const TaskDetailScreen: React.FC = () => {
               />
             )}
 
-            {activeTab === 'attachments' && (
+            {task && activeTab === 'attachments' && (
               <TaskAttachmentsTab
                 attachments={attachments}
                 isLoading={isLoadingAttachments}
@@ -439,7 +438,7 @@ const TaskDetailScreen: React.FC = () => {
               />
             )}
 
-            {activeTab === 'comments' && (
+            {task && activeTab === 'comments' && (
               <TaskCommentsTab
                 comments={comments}
                 hasMoreComments={hasMoreComments}
@@ -457,7 +456,7 @@ const TaskDetailScreen: React.FC = () => {
               />
             )}
 
-            {activeTab === 'history' && (
+            {task && activeTab === 'history' && (
               <TaskHistoryTab
                 activities={activities}
                 isLoading={isLoadingActivities}
@@ -469,23 +468,25 @@ const TaskDetailScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Fixed Action Buttons */}
-        <TaskActionButtons
-          task={task}
-          activeTab={activeTab}
-          isCreator={isCreator}
-          allSubtasksCompleted={allSubtasksCompleted}
-          allChecklistItemsCompleted={allChecklistItemsCompleted}
-          isDelegatedByMe={isDelegatedByMe}
-          canChangeStatus={permissions.can_change_status}
-          newComment={newComment}
-          isSendingComment={isSendingComment}
-          onNewCommentChange={setNewComment}
-          onSendComment={handleSendComment}
-          onTaskAction={handleTaskAction}
-          onStatusChange={handleStatusChange}
-          bottomInset={insets.bottom}
-        />
+        {/* Fixed Action Buttons - только когда есть task */}
+        {task && (
+          <TaskActionButtons
+            task={task}
+            activeTab={activeTab}
+            isCreator={isCreator}
+            allSubtasksCompleted={allSubtasksCompleted}
+            allChecklistItemsCompleted={allChecklistItemsCompleted}
+            isDelegatedByMe={isDelegatedByMe}
+            canChangeStatus={permissions.can_change_status}
+            newComment={newComment}
+            isSendingComment={isSendingComment}
+            onNewCommentChange={setNewComment}
+            onSendComment={handleSendComment}
+            onTaskAction={handleTaskAction}
+            onStatusChange={handleStatusChange}
+            bottomInset={insets.bottom}
+          />
+        )}
 
         {/* Modals */}
         {task && (
@@ -552,17 +553,19 @@ const TaskDetailScreen: React.FC = () => {
           onOpenChat={handleOpenChat}
         />
 
-        <TaskActionMenu
-          visible={showActionMenu}
-          task={task}
-          permissions={permissions}
-          onClose={() => setShowActionMenu(false)}
-          onEdit={() => setShowEditModal(true)}
-          onDelegate={() => setShowDelegateModal(true)}
-          onAddSubtask={() => setShowSubtaskModal(true)}
-          onEmergencyComplete={handleEmergencyCompleteConfirm}
-          onDelete={handleDeleteTaskConfirm}
-        />
+        {task && (
+          <TaskActionMenu
+            visible={showActionMenu}
+            task={task}
+            permissions={permissions}
+            onClose={() => setShowActionMenu(false)}
+            onEdit={() => setShowEditModal(true)}
+            onDelegate={() => setShowDelegateModal(true)}
+            onAddSubtask={() => setShowSubtaskModal(true)}
+            onEmergencyComplete={handleEmergencyCompleteConfirm}
+            onDelete={handleDeleteTaskConfirm}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

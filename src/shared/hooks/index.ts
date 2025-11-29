@@ -13,5 +13,9 @@ export { useChatPrefetch, useListPrefetch, useScrollPrefetch } from './usePrefet
 export { useOptimisticMessage, clearAllPendingMessages } from './useOptimisticMessage';
 
 // Task optimizations
-export { useTaskPrefetch, useTaskListPrefetch, getTaskFromCache, clearAllTaskCache } from './useTaskPrefetch';
+export { useTaskPrefetch, useTaskListPrefetch, getTaskFromCache, getSubtasksFromCache, clearAllTaskCache } from './useTaskPrefetch';
 export { useOptimisticTask, clearAllPendingTaskOperations } from './useOptimisticTask';
+
+// Poll optimizations
+export { usePollPrefetch, usePollListPrefetch, getPollFromCache, clearAllPollCache } from './usePollPrefetch';
+export { useOptimisticPoll, clearAllPendingPollOperations } from './useOptimisticPoll';

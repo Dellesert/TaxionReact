@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Poll } from '../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { Avatar } from '@shared/components/common/Avatar';
+import { usePollPrefetch } from '@shared/hooks/usePollPrefetch';
 
 interface PollItemProps {
   poll: Poll;
@@ -14,6 +15,17 @@ interface PollItemProps {
 export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
   const { theme } = useTheme();
   const { user } = useAuthStore();
+  const { prefetchPollDelayed, cancelPrefetch } = usePollPrefetch();
+
+  // Предзагрузка при касании (до нажатия)
+  const handlePressIn = useCallback(() => {
+    prefetchPollDelayed(poll.id);
+  }, [poll.id, prefetchPollDelayed]);
+
+  // Отмена предзагрузки при отмене касания
+  const handlePressOut = useCallback(() => {
+    cancelPrefetch();
+  }, [cancelPrefetch]);
 
   const getStatusColor = () => {
     switch (poll.status) {
@@ -138,6 +150,8 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
     <TouchableOpacity
       style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}
       onPress={() => onPress(poll)}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       activeOpacity={0.7}
     >
       {/* Header with Title */}
