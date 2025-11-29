@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Event, EventParticipantStatus } from '../types/calendar.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { Avatar } from '@shared/components/common/Avatar';
+import { useEventPrefetch } from '@shared/hooks/useEventPrefetch';
 
 interface EventItemProps {
   event: Event;
@@ -14,6 +15,17 @@ interface EventItemProps {
 export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
   const { theme } = useTheme();
   const { user } = useAuthStore();
+  const { prefetchEventDelayed, cancelPrefetch } = useEventPrefetch();
+
+  // Предзагрузка при касании (до нажатия)
+  const handlePressIn = useCallback(() => {
+    prefetchEventDelayed(event.id);
+  }, [event.id, prefetchEventDelayed]);
+
+  // Отмена предзагрузки при отмене касания
+  const handlePressOut = useCallback(() => {
+    cancelPrefetch();
+  }, [cancelPrefetch]);
 
   const getEventIcon = () => {
     switch (event.type) {
@@ -62,6 +74,8 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
     <TouchableOpacity
       style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}
       onPress={() => onPress(event)}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       activeOpacity={0.7}
     >
       {/* Color indicator */}

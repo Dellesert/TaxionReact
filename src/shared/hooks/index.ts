@@ -19,3 +19,7 @@ export { useOptimisticTask, clearAllPendingTaskOperations } from './useOptimisti
 // Poll optimizations
 export { usePollPrefetch, usePollListPrefetch, getPollFromCache, clearAllPollCache } from './usePollPrefetch';
 export { useOptimisticPoll, clearAllPendingPollOperations } from './useOptimisticPoll';
+
+// Event/Calendar optimizations
+export { useEventPrefetch, getEventFromCache, clearAllEventCache } from './useEventPrefetch';
+export { useOptimisticEvent, clearAllPendingEventOperations } from './useOptimisticEvent';

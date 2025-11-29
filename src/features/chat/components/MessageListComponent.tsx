@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ActivityIndicator, Animated, Platform } from 'react-native';
+import { View, StyleSheet, Animated, Platform } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { MessageItem } from './MessageItem';
 import { DateSeparator } from './DateSeparator';
@@ -214,13 +214,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
             }
           }, 300);
         }}
-        ListFooterComponent={
-          isLoadingMore ? (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <ActivityIndicator size="small" color={theme.primary} />
-            </View>
-          ) : null
-        }
+        ListFooterComponent={null}
       />
     </Animated.View>
   );
