@@ -14,6 +14,8 @@ import { useNotificationStore } from '@shared/store/notificationStore';
 import { websocketService } from './src/services/websocket.service';
 import { NotificationProvider } from '@shared/contexts/NotificationContext';
 import { ActionModalProvider } from '@shared/contexts/ActionModalContext';
+import { OfflineBanner } from '@shared/components/common/OfflineBanner';
+import { NetworkSyncProvider } from '@shared/providers/NetworkSyncProvider';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -168,7 +170,10 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NotificationProvider>
         <ActionModalProvider>
-          <AppNavigator />
+          <NetworkSyncProvider enabled={isAuthenticated}>
+            <AppNavigator />
+            <OfflineBanner />
+          </NetworkSyncProvider>
         </ActionModalProvider>
       </NotificationProvider>
     </GestureHandlerRootView>

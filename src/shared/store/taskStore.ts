@@ -1,156 +1,116 @@
 /**
  * Task Store
  * Управление состоянием задач с использованием Zustand
+ *
+ * MMKV кэширование на native (iOS/Android)
  */
 
 import { create } from 'zustand';
-import { Task, TaskStatus, UpdateTaskDto, CreateTaskDto } from '@/features/tasks/types/task.types';
-import {
-  getTasks,
-  getTask,
-  createTask,
-  updateTask as apiUpdateTask,
-  deleteTask
-} from '@/features/tasks/api/task.api';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { Task } from '@/features/tasks/types/task.types';
+import { getZustandTaskStorage, isNative } from '@shared/storage';
 
-interface TaskStore {
-  tasks: Task[];
-  selectedTask: Task | null;
-  isLoading: boolean;
-  error: string | null;
+type StatusTab = 'new' | 'in_progress' | 'review' | 'done';
 
-  // Actions
-  loadTasks: () => Promise<void>;
-  loadTask: (taskId: number) => Promise<void>;
-  createTask: (data: CreateTaskDto) => Promise<Task>;
-  updateTaskStatus: (taskId: number, status: TaskStatus) => Promise<void>;
-  updateTask: (taskId: number, updates: UpdateTaskDto) => Promise<void>;
-  deleteTask: (taskId: number) => Promise<void>;
-  clearError: () => void;
-  clearSelectedTask: () => void;
+interface TasksByStatus {
+  new: Task[];
+  in_progress: Task[];
+  review: Task[];
+  done: Task[];
 }
 
-export const useTaskStore = create<TaskStore>((set, get) => ({
-  tasks: [],
-  selectedTask: null,
-  isLoading: false,
-  error: null,
+interface TotalsByStatus {
+  new: number;
+  in_progress: number;
+  review: number;
+  done: number;
+}
 
-  loadTasks: async () => {
-    try {
-      set({ isLoading: true, error: null });
+interface TaskCacheStore {
+  // Cached data
+  tasksByStatus: TasksByStatus;
+  totals: TotalsByStatus;
+  lastUpdated: number | null;
 
-      const response = await getTasks();
-      const tasks = response.data || [];
+  // Actions
+  setTasksForStatus: (status: StatusTab, tasks: Task[], total: number) => void;
+  appendTasksForStatus: (status: StatusTab, tasks: Task[]) => void;
+  getCachedTasks: () => TasksByStatus;
+  getCachedTotals: () => TotalsByStatus;
+  clearCache: () => void;
+}
 
-      set({ tasks, isLoading: false });
-    } catch (error: any) {
-      console.error('❌ Failed to load tasks:', error);
-      set({
-        error: error.message || 'Failed to load tasks',
-        isLoading: false,
-      });
+const initialTasksByStatus: TasksByStatus = {
+  new: [],
+  in_progress: [],
+  review: [],
+  done: [],
+};
+
+const initialTotals: TotalsByStatus = {
+  new: 0,
+  in_progress: 0,
+  review: 0,
+  done: 0,
+};
+
+export const useTaskStore = create<TaskCacheStore>()(
+  persist(
+    (set, get) => ({
+      tasksByStatus: initialTasksByStatus,
+      totals: initialTotals,
+      lastUpdated: null,
+
+      setTasksForStatus: (status: StatusTab, tasks: Task[], total: number) => {
+        set((state) => ({
+          tasksByStatus: {
+            ...state.tasksByStatus,
+            [status]: tasks,
+          },
+          totals: {
+            ...state.totals,
+            [status]: total,
+          },
+          lastUpdated: Date.now(),
+        }));
+      },
+
+      appendTasksForStatus: (status: StatusTab, tasks: Task[]) => {
+        set((state) => {
+          const existingIds = new Set(state.tasksByStatus[status].map(t => t.id));
+          const newTasks = tasks.filter(t => !existingIds.has(t.id));
+          return {
+            tasksByStatus: {
+              ...state.tasksByStatus,
+              [status]: [...state.tasksByStatus[status], ...newTasks],
+            },
+            lastUpdated: Date.now(),
+          };
+        });
+      },
+
+      getCachedTasks: () => get().tasksByStatus,
+
+      getCachedTotals: () => get().totals,
+
+      clearCache: () => {
+        set({
+          tasksByStatus: initialTasksByStatus,
+          totals: initialTotals,
+          lastUpdated: null,
+        });
+      },
+    }),
+    {
+      name: 'task-storage',
+      storage: createJSONStorage(() => getZustandTaskStorage()),
+      partialize: (state) => ({
+        tasksByStatus: state.tasksByStatus,
+        totals: state.totals,
+        lastUpdated: state.lastUpdated,
+      }),
+      skipHydration: !isNative,
+      version: 2,
     }
-  },
-
-  loadTask: async (taskId: number) => {
-    try {
-      set({ isLoading: true, error: null });
-
-      const task = await getTask(taskId);
-
-      set({ selectedTask: task, isLoading: false });
-    } catch (error: any) {
-      console.error('❌ Failed to load task:', error);
-      set({
-        error: error.message || 'Failed to load task',
-        isLoading: false,
-      });
-    }
-  },
-
-  createTask: async (data: CreateTaskDto) => {
-    try {
-
-      const newTask = await createTask(data);
-
-      // Add to tasks array
-      const tasks = [newTask, ...get().tasks];
-      set({ tasks });
-
-      return newTask;
-    } catch (error: any) {
-      console.error('❌ Failed to create task:', error);
-      set({ error: error.message || 'Failed to create task' });
-      throw error;
-    }
-  },
-
-  updateTaskStatus: async (taskId: number, status: TaskStatus) => {
-    try {
-      const updatedTask = await apiUpdateTask(taskId, { status });
-
-      // Update in tasks array
-      const tasks = get().tasks.map((task) =>
-        task.id === taskId ? updatedTask : task
-      );
-      set({ tasks });
-
-      // Update selected task if it matches
-      const selectedTask = get().selectedTask;
-      if (selectedTask && selectedTask.id === taskId) {
-        set({ selectedTask: updatedTask });
-      }
-    } catch (error: any) {
-      console.error('❌ Failed to update task status:', error);
-      set({ error: error.message || 'Failed to update task status' });
-      throw error;
-    }
-  },
-
-  updateTask: async (taskId: number, updates: UpdateTaskDto) => {
-    try {
-      const updatedTask = await apiUpdateTask(taskId, updates);
-
-      // Update in tasks array
-      const tasks = get().tasks.map((task) =>
-        task.id === taskId ? updatedTask : task
-      );
-      set({ tasks });
-
-      // Update selected task if it matches
-      const selectedTask = get().selectedTask;
-      if (selectedTask && selectedTask.id === taskId) {
-        set({ selectedTask: updatedTask });
-      }
-    } catch (error: any) {
-      console.error('❌ Failed to update task:', error);
-      set({ error: error.message || 'Failed to update task' });
-      throw error;
-    }
-  },
-
-  deleteTask: async (taskId: number) => {
-    try {
-
-      await deleteTask(taskId);
-
-      // Remove from tasks array
-      const tasks = get().tasks.filter((task) => task.id !== taskId);
-      set({ tasks });
-
-      // Clear selected task if it matches
-      const selectedTask = get().selectedTask;
-      if (selectedTask && selectedTask.id === taskId) {
-        set({ selectedTask: null });
-      }
-    } catch (error: any) {
-      console.error('❌ Failed to delete task:', error);
-      set({ error: error.message || 'Failed to delete task' });
-      throw error;
-    }
-  },
-
-  clearError: () => set({ error: null }),
-  clearSelectedTask: () => set({ selectedTask: null }),
-}));
+  )
+);

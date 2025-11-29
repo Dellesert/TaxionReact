@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Task } from '../types/task.types';
 import type { StatusTab } from '../utils/taskListHelpers';
 import { TASKS_PER_PAGE, removeDuplicateTasks, getTasksWithSubtasks } from '../utils/taskListHelpers';
 import * as taskApi from '../api/task.api';
+import { useTaskStore } from '@shared/store/taskStore';
 
 // Re-export StatusTab for convenience
 export type { StatusTab } from '../utils/taskListHelpers';
@@ -62,21 +63,17 @@ export interface UseTaskListDataReturn {
  * Hook for managing task list data
  */
 export const useTaskListData = (): UseTaskListDataReturn => {
-  // Tasks by status
-  const [tasks, setTasks] = useState<TasksByStatus>({
-    new: [],
-    in_progress: [],
-    review: [],
-    done: [],
-  });
+  // Get cached data from store
+  const cachedTasks = useTaskStore((state) => state.tasksByStatus);
+  const cachedTotals = useTaskStore((state) => state.totals);
+  const setTasksForStatus = useTaskStore((state) => state.setTasksForStatus);
+  const appendTasksForStatus = useTaskStore((state) => state.appendTasksForStatus);
 
-  // Totals by status
-  const [totals, setTotals] = useState<TotalsByStatus>({
-    new: 0,
-    in_progress: 0,
-    review: 0,
-    done: 0,
-  });
+  // Tasks by status - initialize from cache
+  const [tasks, setTasks] = useState<TasksByStatus>(cachedTasks);
+
+  // Totals by status - initialize from cache
+  const [totals, setTotals] = useState<TotalsByStatus>(cachedTotals);
 
   // Loading states
   const [loading, setLoading] = useState<LoadingByStatus>({
@@ -94,7 +91,17 @@ export const useTaskListData = (): UseTaskListDataReturn => {
     done: false,
   });
 
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  // Check if we have cached data
+  const hasCachedData = Object.values(cachedTasks).some(arr => arr.length > 0);
+  const [isInitialLoading, setIsInitialLoading] = useState(!hasCachedData);
+
+  // Sync from cache on mount
+  useEffect(() => {
+    if (hasCachedData) {
+      setTasks(cachedTasks);
+      setTotals(cachedTotals);
+    }
+  }, []);
 
   const loadTasksByStatus = useCallback(async (
     status: StatusTab,
@@ -120,16 +127,19 @@ export const useTaskListData = (): UseTaskListDataReturn => {
       }
 
       setTasks(prev => {
+        let updatedTasks: Task[];
         if (append) {
           const uniqueTasks = removeDuplicateTasks(prev[status], fetchedTasks);
-          const updatedTasks = [...prev[status], ...uniqueTasks];
+          updatedTasks = [...prev[status], ...uniqueTasks];
 
-          // Log warning if all tasks were duplicates
-          if (uniqueTasks.length === 0 && updatedTasks.length < response.total && fetchedTasks.length > 0) {
-          }
+          // Save to cache (append mode)
+          appendTasksForStatus(status, uniqueTasks);
 
           return { ...prev, [status]: updatedTasks };
         } else {
+          updatedTasks = fetchedTasks;
+          // Save to cache (replace mode)
+          setTasksForStatus(status, fetchedTasks, response.total);
           return { ...prev, [status]: fetchedTasks };
         }
       });
@@ -149,7 +159,7 @@ export const useTaskListData = (): UseTaskListDataReturn => {
         setLoading(prev => ({ ...prev, [status]: false }));
       }
     }
-  }, []);
+  }, [setTasksForStatus, appendTasksForStatus]);
 
   const loadAllTasks = useCallback(async (
     silentUpdate: boolean = false,

@@ -1,15 +1,21 @@
 /**
  * Chat Store
  * Zustand store для управления чатами и сообщениями
+ *
+ * MMKV кэширование на native (iOS/Android):
+ * - Чаты и сообщения загружаются мгновенно из кэша
+ * - Фоновая синхронизация обновляет данные
  */
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Chat, Message, TypingIndicator, MessageType } from '@/features/chat/types/chat.types';
 import * as chatApi from '@/features/chat/api/chat.api';
 import { getUser } from '@api/user.api';
 import { isMockMode, mockGetChats, mockGetMessages } from '@shared/utils/mockData';
 import { useAuthStore } from '@shared/store/authStore';
 import { websocketService } from '@services/websocket.service';
+import { getZustandChatStorage, isNative } from '@shared/storage';
 
 // Tab data structure for caching
 interface TabData {
@@ -112,27 +118,32 @@ const enrichChatWithUsers = async (chat: Chat): Promise<Chat> => {
   return { ...chat, members: enrichedMembers };
 };
 
-export const useChatStore = create<ChatState>((set, get) => ({
-  chats: [],
-  tabs: {
-    all: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-    private: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-    group: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-    favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-  },
-  currentTab: 'all',
-  totalChats: 0,
-  hasMoreChats: true,
-  activeChat: null,
-  messages: {},
-  isLoading: false,
-  isLoadingMore: false,
-  error: null,
-  typingUsers: {},
-  totalUnreadCount: 0,
+// Initial tabs state (used for reset)
+const initialTabsState: Record<TabName, TabData> = {
+  all: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+  private: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+  group: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+  favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+};
 
-  // Load data for a specific tab
-  loadTabData: async (tabName: TabName) => {
+export const useChatStore = create<ChatState>()(
+  persist(
+    (set, get) => ({
+      chats: [],
+      tabs: { ...initialTabsState },
+      currentTab: 'all',
+      totalChats: 0,
+      hasMoreChats: true,
+      activeChat: null,
+      messages: {},
+      isLoading: false,
+      isLoadingMore: false,
+      error: null,
+      typingUsers: {},
+      totalUnreadCount: 0,
+
+      // Load data for a specific tab
+      loadTabData: async (tabName: TabName) => {
     const { tabs, isLoading } = get();
 
     // Skip if already loaded or currently loading
@@ -1675,4 +1686,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
   set: (state: Partial<ChatState>) => {
     set(state);
   },
-}));
+    }),
+    {
+      name: 'chat-storage',
+      storage: createJSONStorage(() => getZustandChatStorage()),
+      partialize: (state) => ({
+        chats: state.chats,
+        tabs: state.tabs,
+        currentTab: state.currentTab,
+        messages: state.messages,
+        totalUnreadCount: state.totalUnreadCount,
+      }),
+      // На web пропускаем гидратацию (storage = no-op)
+      skipHydration: !isNative,
+      version: 1,
+    }
+  )
+);

@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Poll, PollStatus } from '../types/poll.types';
 import * as pollApi from '../api/poll.api';
+import { usePollStore } from '@shared/store/pollStore';
 
 const POLLS_PER_PAGE = 50;
 
@@ -18,20 +19,40 @@ interface UsePollListDataReturn {
 
 /**
  * Custom hook for managing poll list data loading
- * Simplified to match task list behavior
+ * With MMKV caching support
  */
 export const usePollListData = (): UsePollListDataReturn => {
-  const [polls, setPolls] = useState<Poll[]>([]);
-  const [total, setTotal] = useState(0);
+  // Cache store
+  const cachedPolls = usePollStore((state) => state.polls);
+  const cachedTotal = usePollStore((state) => state.total);
+  const setCachedPolls = usePollStore((state) => state.setPolls);
+  const appendCachedPolls = usePollStore((state) => state.appendPolls);
+
+  // Initialize from cache
+  const hasCachedData = cachedPolls.length > 0;
+
+  const [polls, setPolls] = useState<Poll[]>(cachedPolls);
+  const [total, setTotal] = useState(cachedTotal);
   const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!hasCachedData);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync from cache on mount
+  useEffect(() => {
+    if (hasCachedData) {
+      setPolls(cachedPolls);
+      setTotal(cachedTotal);
+    }
+  }, []);
 
   const loadPolls = useCallback(
     async (filters?: { status?: PollStatus }, searchQuery?: string) => {
       try {
-        setIsLoading(true);
+        // Only show loading if no cached data
+        if (!hasCachedData) {
+          setIsLoading(true);
+        }
         setError(null);
 
         let response;
@@ -46,6 +67,11 @@ export const usePollListData = (): UsePollListDataReturn => {
         setPolls(response.polls);
         setTotal(response.total);
         setHasMore(response.hasMore);
+
+        // Save to cache (only for non-search queries)
+        if (!searchQuery || !searchQuery.trim()) {
+          setCachedPolls(response.polls, response.total);
+        }
       } catch (error: any) {
         console.error('Failed to load polls:', error);
         setError(error.message || 'Failed to load polls');
@@ -53,7 +79,7 @@ export const usePollListData = (): UsePollListDataReturn => {
         setIsLoading(false);
       }
     },
-    []
+    [hasCachedData, setCachedPolls]
   );
 
   const handleRefresh = useCallback(
@@ -83,16 +109,22 @@ export const usePollListData = (): UsePollListDataReturn => {
         }
 
         // Append new polls
-        setPolls(prevPolls => [...prevPolls, ...response.polls]);
+        const newPolls = [...polls, ...response.polls];
+        setPolls(newPolls);
         setTotal(response.total);
         setHasMore(response.hasMore);
+
+        // Save to cache (only for non-search queries)
+        if (!searchQuery || !searchQuery.trim()) {
+          appendCachedPolls(response.polls);
+        }
       } catch (error: any) {
         console.error('Failed to load more polls:', error);
       } finally {
         setIsLoadingMore(false);
       }
     },
-    [hasMore, isLoadingMore, isLoading, polls.length]
+    [hasMore, isLoadingMore, isLoading, polls, appendCachedPolls]
   );
 
   return {

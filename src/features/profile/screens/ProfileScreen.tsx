@@ -187,6 +187,12 @@ const ProfileScreen: React.FC = () => {
               onPress={handleThemePress}
             />
             <ProfileMenuItem
+              icon="server-outline"
+              iconColor="#10B981"
+              text="Хранилище и память"
+              onPress={() => navigation.navigate('Storage')}
+            />
+            <ProfileMenuItem
               icon="information-circle-outline"
               iconColor="#3ed6ccff"
               text="О приложении"

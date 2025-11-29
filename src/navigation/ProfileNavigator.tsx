@@ -12,6 +12,7 @@ import NotificationSettingsScreen from '@/features/profile/screens/NotificationS
 import ActiveSessionsScreen from '@/features/profile/screens/ActiveSessionsScreen';
 import PasskeyManagementScreen from '@/features/profile/screens/PasskeyManagementScreen';
 import AboutScreen from '@/features/profile/screens/AboutScreen';
+import StorageScreen from '@/features/profile/screens/StorageScreen';
 import AnalyticsHubScreen from '@/features/admin/screens/AnalyticsHubScreen';
 import MetricsAnalyticsScreen from '@/features/admin/screens/MetricsAnalyticsScreen';
 import PerformanceAnalyticsScreen from '@/features/admin/screens/PerformanceAnalyticsScreen';
@@ -26,6 +27,7 @@ export type ProfileStackParamList = {
   ActiveSessions: undefined;
   PasskeyManagement: undefined;
   About: undefined;
+  Storage: undefined;
   Analytics: undefined;
   MetricsAnalytics: undefined;
   PerformanceAnalytics: undefined;
@@ -50,6 +52,7 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Screen name="ActiveSessions" component={ActiveSessionsScreen} />
       <Stack.Screen name="PasskeyManagement" component={PasskeyManagementScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
+      <Stack.Screen name="Storage" component={StorageScreen} />
       <Stack.Screen name="Analytics" component={AnalyticsHubScreen} />
       <Stack.Screen name="MetricsAnalytics" component={MetricsAnalyticsScreen} />
       <Stack.Screen name="PerformanceAnalytics" component={PerformanceAnalyticsScreen} />
