@@ -22,7 +22,8 @@ const ZoomableImage: React.FC<{
   sessionId: string | null;
   isActive: boolean;
   onZoomChange?: (isZoomed: boolean) => void;
-}> = ({ uri, sessionId, isActive, onZoomChange }) => {
+  onSingleTap?: () => void;
+}> = ({ uri, sessionId, isActive, onZoomChange, onSingleTap }) => {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -124,6 +125,15 @@ const ZoomableImage: React.FC<{
       savedTranslateY.value = translateY.value;
     });
 
+  // Одинарный тап для скрытия/показа контролов
+  const singleTap = Gesture.Tap()
+    .numberOfTaps(1)
+    .onEnd(() => {
+      if (onSingleTap) {
+        runOnJS(onSingleTap)();
+      }
+    });
+
   // Двойной тап для зума
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
@@ -153,9 +163,12 @@ const ZoomableImage: React.FC<{
       }
     });
 
-  // Комбинируем жесты - только зум и перемещение при зуме
+  // Комбинируем тапы - double tap имеет приоритет над single tap
+  const tapGesture = Gesture.Exclusive(doubleTap, singleTap);
+
+  // Комбинируем жесты - зум, перемещение и тапы
   const gesture = Gesture.Race(
-    doubleTap,
+    tapGesture,
     Gesture.Simultaneous(pinchGesture, panGestureZoomed),
     panGestureSingleFinger
   );
@@ -204,11 +217,13 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const flatListRef = useRef<FlatList>(null);
 
   // Значения для свайпа вниз (закрытие)
   const swipeY = useSharedValue(0);
   const backgroundOpacity = useSharedValue(1);
+  const controlsOpacity = useSharedValue(1);
 
   useEffect(() => {
     const loadSessionId = async () => {
@@ -223,8 +238,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     if (visible) {
       setCurrentIndex(initialIndex);
       setIsZoomed(false);
+      setControlsVisible(true);
       swipeY.value = 0;
       backgroundOpacity.value = 1;
+      controlsOpacity.value = 1;
       setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
       }, 50);
@@ -251,6 +268,13 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   }, [visible, currentIndex, imageUrls.length]);
 
   const hasMultipleImages = imageUrls.length > 1;
+
+  // Переключение видимости контролов по тапу
+  const toggleControls = () => {
+    const newVisible = !controlsVisible;
+    setControlsVisible(newVisible);
+    controlsOpacity.value = withTiming(newVisible ? 1 : 0, { duration: 200 });
+  };
 
   const handleNext = () => {
     if (currentIndex < imageUrls.length - 1) {
@@ -314,6 +338,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         sessionId={sessionId}
         isActive={index === currentIndex}
         onZoomChange={setIsZoomed}
+        onSingleTap={toggleControls}
       />
     </View>
   );
@@ -333,7 +358,11 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   }));
 
   const animatedHeaderStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
+    opacity: headerOpacity.value * controlsOpacity.value,
+  }));
+
+  const animatedControlsStyle = useAnimatedStyle(() => ({
+    opacity: controlsOpacity.value,
   }));
 
   // Не отображаем модалку если нет изображений
@@ -399,26 +428,24 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
               {hasMultipleImages && (
                 <>
                   {currentIndex > 0 && (
-                    <TouchableOpacity
-                      style={[styles.navButton, styles.navButtonLeft]}
-                      onPress={handlePrevious}
-                    >
-                      <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
-                    </TouchableOpacity>
+                    <Animated.View style={[styles.navButton, styles.navButtonLeft, animatedControlsStyle]}>
+                      <TouchableOpacity onPress={handlePrevious} style={styles.navButtonTouchable}>
+                        <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </Animated.View>
                   )}
 
                   {currentIndex < imageUrls.length - 1 && (
-                    <TouchableOpacity
-                      style={[styles.navButton, styles.navButtonRight]}
-                      onPress={handleNext}
-                    >
-                      <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
-                    </TouchableOpacity>
+                    <Animated.View style={[styles.navButton, styles.navButtonRight, animatedControlsStyle]}>
+                      <TouchableOpacity onPress={handleNext} style={styles.navButtonTouchable}>
+                        <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </Animated.View>
                   )}
 
                   {/* Индикаторы точек */}
                   {imageUrls.length <= 10 && (
-                    <View style={styles.dotsContainer}>
+                    <Animated.View style={[styles.dotsContainer, animatedControlsStyle]}>
                       {imageUrls.map((_, index) => (
                         <View
                           key={index}
@@ -432,7 +459,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                           ]}
                         />
                       ))}
-                    </View>
+                    </Animated.View>
                   )}
                 </>
               )}
@@ -527,6 +554,12 @@ const styles = StyleSheet.create({
   },
   navButtonRight: {
     right: 20,
+  },
+  navButtonTouchable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   dotsContainer: {
     position: 'absolute',
