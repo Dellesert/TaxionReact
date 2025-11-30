@@ -111,12 +111,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // ⚡ ОПТИМИЗАЦИЯ: Устанавливаем isScrollReady как можно раньше
   useEffect(() => {
-    // Как только загрузка позиции завершена И есть сообщения - можем показывать UI
-    if (!isLoadingPosition && messages.length > 0 && !isScrollReady) {
+    // Как только загрузка позиции завершена - можем показывать UI
+    // Для пустых чатов (без сообщений) сразу показываем UI
+    if (!isLoadingPosition && !isScrollReady) {
       // ⚡ Устанавливаем готовность МГНОВЕННО для быстрого показа UI
       setIsScrollReady(true);
     }
-  }, [isLoadingPosition, messages.length, isScrollReady]);
+  }, [isLoadingPosition, isScrollReady]);
 
   // Устанавливаем initialScrolled после появления сообщений
   useEffect(() => {
