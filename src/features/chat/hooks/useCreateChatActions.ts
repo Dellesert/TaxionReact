@@ -106,7 +106,12 @@ export const useCreateChatActions = (
           throw new Error('Сервер вернул невалидный ID чата');
         }
 
-        // Navigate to the new chat
+        // Close CreateChat screen and navigate to the new chat
+        navigation.replace('Chat', {
+          chatId: newChat.id,
+          chatName: newChat.name,
+          unreadCount: 0
+        });
       } catch (error: unknown) {
         console.error('❌ Failed to create chat:', error);
         const err = error as { message?: string };
