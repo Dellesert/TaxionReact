@@ -1146,9 +1146,22 @@ export const useChatStore = create<ChatState>()(
         // Добавляем загруженный чат в store
         set((state) => {
           const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+
+          // ⚠️ ВАЖНО: Используем last_message из fetchedChat если оно новее текущего message
+          let lastMessage = message;
+          if (fetchedChat.last_message) {
+            const fetchedLastTime = new Date(fetchedChat.last_message.created_at).getTime();
+            const newMessageTime = new Date(message.created_at).getTime();
+            // Если сообщение из fetchedChat новее - используем его
+            if (fetchedLastTime > newMessageTime ||
+                (fetchedLastTime === newMessageTime && fetchedChat.last_message.id > message.id)) {
+              lastMessage = fetchedChat.last_message;
+            }
+          }
+
           const chatWithMessage = {
             ...fetchedChat,
-            last_message: message,
+            last_message: lastMessage,
             unread_count: shouldIncrementUnread ? 1 : 0,
           };
 
@@ -1267,9 +1280,21 @@ export const useChatStore = create<ChatState>()(
         return chats.map((chat) => {
           if (chat.id === message.chat_id) {
             const shouldIncrementUnread = !isOwnMessage && !isInActiveChat;
+
+            // ⚠️ ВАЖНО: Обновляем last_message только если новое сообщение ДЕЙСТВИТЕЛЬНО новее
+            // Проверяем по ID (большее ID = новее) или по дате создания
+            let shouldUpdateLastMessage = true;
+            if (chat.last_message) {
+              const currentLastMessageTime = new Date(chat.last_message.created_at).getTime();
+              const newMessageTime = new Date(message.created_at).getTime();
+              // Обновляем только если новое сообщение новее (или равно по времени, но с большим ID)
+              shouldUpdateLastMessage = newMessageTime > currentLastMessageTime ||
+                (newMessageTime === currentLastMessageTime && message.id > chat.last_message.id);
+            }
+
             const updatedChat = {
               ...chat,
-              last_message: message,
+              last_message: shouldUpdateLastMessage ? message : chat.last_message,
               unread_count: shouldIncrementUnread ? (chat.unread_count || 0) + 1 : chat.unread_count || 0,
             };
             return updatedChat;

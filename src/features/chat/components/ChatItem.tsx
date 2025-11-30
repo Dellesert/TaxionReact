@@ -161,14 +161,22 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     let messageText = message.content || '';
 
     // Если сообщение пустое но есть вложения
-    if (!messageText && message.attachments && message.attachments.length > 0) {
-      const attachment = message.attachments[0];
-      if (attachment.file_type?.startsWith('image')) {
-        messageText = 'Фото';
-      } else if (attachment.file_type?.startsWith('video')) {
-        messageText = 'Видео';
+    // Проверяем и attachments и любое поле которое может содержать файлы
+    const attachments = message.attachments || (message as any).files || [];
+    if (!messageText && attachments && Array.isArray(attachments) && attachments.length > 0) {
+      const count = attachments.length;
+      const firstAttachment = attachments[0];
+
+      // Проверяем file_type или mime_type для определения типа
+      const fileType = firstAttachment.file_type || firstAttachment.mime_type || '';
+
+      if (fileType.includes('image') || fileType.startsWith('image')) {
+        // Если одно фото - просто "Фото", если несколько - "3 фото"
+        messageText = count === 1 ? 'Фото' : `${count} фото`;
+      } else if (fileType.includes('video') || fileType.startsWith('video')) {
+        messageText = count === 1 ? 'Видео' : `${count} видео`;
       } else {
-        messageText = 'Файл';
+        messageText = count === 1 ? 'Файл' : `${count} файла`;
       }
     }
 
