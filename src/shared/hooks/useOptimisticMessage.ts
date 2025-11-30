@@ -99,18 +99,51 @@ export const useOptimisticMessage = (
     useChatStore.setState((state) => {
       const existingMessages = state.messages[chatId] || [];
 
-      // Добавляем в конец списка
+      // Helper to update chat with new message and sort
+      const updateChatWithMessage = (chat: any) => {
+        if (chat.id === chatId) {
+          return { ...chat, last_message: message };
+        }
+        return chat;
+      };
+
+      // Sort chats by last message time
+      const sortByLastMessage = (chats: any[]) => {
+        return [...chats].sort((a, b) => {
+          const timeA = a.last_message?.created_at || a.created_at || '';
+          const timeB = b.last_message?.created_at || b.created_at || '';
+          return new Date(timeB).getTime() - new Date(timeA).getTime();
+        });
+      };
+
+      // Update all tabs
+      const updatedTabs = { ...state.tabs };
+      (Object.keys(updatedTabs) as Array<'all' | 'private' | 'group' | 'favorite'>).forEach(tabKey => {
+        const tab = updatedTabs[tabKey];
+        if (!tab.loaded) return;
+
+        // Update and sort regular chats
+        const updatedRegular = sortByLastMessage(tab.regularChats.map(updateChatWithMessage));
+        const updatedPinned = tab.pinnedChats.map(updateChatWithMessage);
+
+        updatedTabs[tabKey] = {
+          ...tab,
+          pinnedChats: updatedPinned,
+          regularChats: updatedRegular,
+        };
+      });
+
+      // Reconstruct chats from current tab
+      const currentTabData = updatedTabs[state.currentTab];
+      const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
       return {
         messages: {
           ...state.messages,
           [chatId]: [...existingMessages, message],
         },
-        // Обновляем last_message в чате
-        chats: state.chats.map((chat) =>
-          chat.id === chatId
-            ? { ...chat, last_message: message }
-            : chat
-        ),
+        chats: updatedChats,
+        tabs: updatedTabs,
       };
     });
   }, [chatId]);
@@ -127,17 +160,38 @@ export const useOptimisticMessage = (
         msg.id === tempId ? { ...realMessage, sending: false } : msg
       );
 
+      // Helper to update chat with real message
+      const updateChatWithMessage = (chat: any) => {
+        if (chat.id === chatId) {
+          return { ...chat, last_message: realMessage };
+        }
+        return chat;
+      };
+
+      // Update all tabs
+      const updatedTabs = { ...state.tabs };
+      (Object.keys(updatedTabs) as Array<'all' | 'private' | 'group' | 'favorite'>).forEach(tabKey => {
+        const tab = updatedTabs[tabKey];
+        if (!tab.loaded) return;
+
+        updatedTabs[tabKey] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.map(updateChatWithMessage),
+          regularChats: tab.regularChats.map(updateChatWithMessage),
+        };
+      });
+
+      // Reconstruct chats from current tab
+      const currentTabData = updatedTabs[state.currentTab];
+      const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
       return {
         messages: {
           ...state.messages,
           [chatId]: updatedMessages,
         },
-        // Обновляем last_message реальным сообщением
-        chats: state.chats.map((chat) =>
-          chat.id === chatId
-            ? { ...chat, last_message: realMessage }
-            : chat
-        ),
+        chats: updatedChats,
+        tabs: updatedTabs,
       };
     });
 
@@ -189,16 +243,38 @@ export const useOptimisticMessage = (
         ? filteredMessages[filteredMessages.length - 1]
         : undefined;
 
+      // Helper to restore last_message in chat
+      const restoreChatLastMessage = (chat: any) => {
+        if (chat.id === chatId) {
+          return { ...chat, last_message: lastMessage };
+        }
+        return chat;
+      };
+
+      // Update all tabs
+      const updatedTabs = { ...state.tabs };
+      (Object.keys(updatedTabs) as Array<'all' | 'private' | 'group' | 'favorite'>).forEach(tabKey => {
+        const tab = updatedTabs[tabKey];
+        if (!tab.loaded) return;
+
+        updatedTabs[tabKey] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.map(restoreChatLastMessage),
+          regularChats: tab.regularChats.map(restoreChatLastMessage),
+        };
+      });
+
+      // Reconstruct chats from current tab
+      const currentTabData = updatedTabs[state.currentTab];
+      const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
       return {
         messages: {
           ...state.messages,
           [chatId]: filteredMessages,
         },
-        chats: state.chats.map((chat) =>
-          chat.id === chatId
-            ? { ...chat, last_message: lastMessage }
-            : chat
-        ),
+        chats: updatedChats,
+        tabs: updatedTabs,
       };
     });
 

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, View, StyleSheet, TouchableOpacity, Text, Platform, Dimensions } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { Modal, View, StyleSheet, TouchableOpacity, Text, Platform, Dimensions, FlatList } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,10 +14,181 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Отдельный компонент для изображения с зумом
+const ZoomableImage: React.FC<{
+  uri: string;
+  sessionId: string | null;
+  isActive: boolean;
+  onZoomChange?: (isZoomed: boolean) => void;
+}> = ({ uri, sessionId, isActive, onZoomChange }) => {
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  // Сброс зума когда изображение становится неактивным
+  useEffect(() => {
+    if (!isActive) {
+      scale.value = withTiming(1, { duration: 200 });
+      savedScale.value = 1;
+      translateX.value = withTiming(0, { duration: 200 });
+      translateY.value = withTiming(0, { duration: 200 });
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
+      if (onZoomChange) onZoomChange(false);
+    }
+  }, [isActive]);
+
+  // Фокальная точка для зума
+  const focalX = useSharedValue(0);
+  const focalY = useSharedValue(0);
+
+  const pinchGesture = Gesture.Pinch()
+    .onStart((event) => {
+      focalX.value = event.focalX - SCREEN_WIDTH / 2;
+      focalY.value = event.focalY - SCREEN_HEIGHT / 2;
+    })
+    .onUpdate((event) => {
+      const newScale = savedScale.value * event.scale;
+      scale.value = newScale;
+
+      if (newScale > 1) {
+        const scaleDiff = newScale / savedScale.value;
+        translateX.value = savedTranslateX.value + focalX.value * (1 - scaleDiff);
+        translateY.value = savedTranslateY.value + focalY.value * (1 - scaleDiff);
+      }
+    })
+    .onEnd(() => {
+      if (scale.value < 1) {
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+        if (onZoomChange) runOnJS(onZoomChange)(false);
+      } else if (scale.value > 4) {
+        scale.value = withSpring(4);
+        savedScale.value = 4;
+        savedTranslateX.value = translateX.value;
+        savedTranslateY.value = translateY.value;
+        if (onZoomChange) runOnJS(onZoomChange)(true);
+      } else {
+        savedScale.value = scale.value;
+        savedTranslateX.value = translateX.value;
+        savedTranslateY.value = translateY.value;
+        if (onZoomChange) runOnJS(onZoomChange)(scale.value > 1);
+      }
+    });
+
+  // Pan для перемещения при зуме (2 пальца)
+  const panGestureZoomed = Gesture.Pan()
+    .minPointers(2)
+    .onUpdate((event) => {
+      if (scale.value > 1) {
+        translateX.value = savedTranslateX.value + event.translationX;
+        translateY.value = savedTranslateY.value + event.translationY;
+      }
+    })
+    .onEnd(() => {
+      if (scale.value > 1) {
+        savedTranslateX.value = translateX.value;
+        savedTranslateY.value = translateY.value;
+      }
+    });
+
+  // Pan для перемещения при зуме (1 палец) - только когда зумлено
+  const panGestureSingleFinger = Gesture.Pan()
+    .minPointers(1)
+    .maxPointers(1)
+    .minDistance(5)
+    .manualActivation(true)
+    .onTouchesMove((_event, stateManager) => {
+      // Активируем жест только если зумлено
+      if (scale.value > 1) {
+        stateManager.activate();
+      } else {
+        stateManager.fail();
+      }
+    })
+    .onUpdate((event) => {
+      translateX.value = savedTranslateX.value + event.translationX;
+      translateY.value = savedTranslateY.value + event.translationY;
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  // Двойной тап для зума
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd((event) => {
+      if (scale.value > 1) {
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+        if (onZoomChange) runOnJS(onZoomChange)(false);
+      } else {
+        const targetScale = 2.5;
+        const tapX = event.x - SCREEN_WIDTH / 2;
+        const tapY = event.y - SCREEN_HEIGHT * 0.4;
+
+        scale.value = withSpring(targetScale);
+        savedScale.value = targetScale;
+
+        translateX.value = withSpring(-tapX * (targetScale - 1));
+        translateY.value = withSpring(-tapY * (targetScale - 1));
+        savedTranslateX.value = -tapX * (targetScale - 1);
+        savedTranslateY.value = -tapY * (targetScale - 1);
+
+        if (onZoomChange) runOnJS(onZoomChange)(true);
+      }
+    });
+
+  // Комбинируем жесты - только зум и перемещение при зуме
+  const gesture = Gesture.Race(
+    doubleTap,
+    Gesture.Simultaneous(pinchGesture, panGestureZoomed),
+    panGestureSingleFinger
+  );
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View style={[styles.imageContainer, animatedStyle]}>
+        <Image
+          source={{
+            uri,
+            headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+          }}
+          style={styles.fullscreenImage}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+        />
+      </Animated.View>
+    </GestureDetector>
+  );
+};
+
 interface ImageViewerProps {
   visible: boolean;
-  imageUrls: string[]; // Массив URL изображений
-  initialIndex?: number; // Начальный индекс
+  imageUrls: string[];
+  initialIndex?: number;
   onClose: () => void;
 }
 
@@ -32,20 +203,12 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
 }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const screenWidth = Dimensions.get('window').width;
+  const [isZoomed, setIsZoomed] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
-  // Значения для свайпа между изображениями
-  const translateX = useSharedValue(0);
-
-  // Значения для zoom и pan
-  const scale = useSharedValue(1);
-  const savedScale = useSharedValue(1);
-  const focalX = useSharedValue(0);
-  const focalY = useSharedValue(0);
-  const translateXZoom = useSharedValue(0);
-  const translateYZoom = useSharedValue(0);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
+  // Значения для свайпа вниз (закрытие)
+  const swipeY = useSharedValue(0);
+  const backgroundOpacity = useSharedValue(1);
 
   useEffect(() => {
     const loadSessionId = async () => {
@@ -55,163 +218,111 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     loadSessionId();
   }, []);
 
-  // Сброс индекса и зума при открытии
+  // Сброс при открытии
   useEffect(() => {
     if (visible) {
       setCurrentIndex(initialIndex);
-      translateX.value = 0;
-      scale.value = 1;
-      savedScale.value = 1;
-      translateXZoom.value = 0;
-      translateYZoom.value = 0;
-      savedTranslateX.value = 0;
-      savedTranslateY.value = 0;
+      setIsZoomed(false);
+      swipeY.value = 0;
+      backgroundOpacity.value = 1;
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
+      }, 50);
     }
   }, [visible, initialIndex]);
 
-  // Сброс зума при смене изображения
-  useEffect(() => {
-    scale.value = withTiming(1, { duration: 200 });
-    savedScale.value = 1;
-    translateXZoom.value = withTiming(0, { duration: 200 });
-    translateYZoom.value = withTiming(0, { duration: 200 });
-    savedTranslateX.value = 0;
-    savedTranslateY.value = 0;
-  }, [currentIndex]);
-
   // Обработка клавиатуры для веба
   useEffect(() => {
-    if (Platform.OS === 'web' && visible) {
-      const handleKeyPress = (e: KeyboardEvent) => {
-        if (e.key === 'ArrowLeft') {
-          handlePrevious();
-        } else if (e.key === 'ArrowRight') {
-          handleNext();
-        } else if (e.key === 'Escape') {
-          onClose();
-        }
-      };
-      window.addEventListener('keydown', handleKeyPress);
-      return () => window.removeEventListener('keydown', handleKeyPress);
+    if (Platform.OS !== 'web' || !visible) {
+      return;
     }
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        handlePrevious();
+      } else if (e.key === 'ArrowRight') {
+        handleNext();
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
   }, [visible, currentIndex, imageUrls.length]);
 
-  const currentImageUrl = imageUrls[currentIndex];
   const hasMultipleImages = imageUrls.length > 1;
 
   const handleNext = () => {
     if (currentIndex < imageUrls.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      translateX.value = 0;
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      flatListRef.current?.scrollToIndex({ index: newIndex, animated: true });
     }
   };
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-      translateX.value = 0;
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      flatListRef.current?.scrollToIndex({ index: newIndex, animated: true });
     }
   };
 
-  // Жест pinch для зума
-  const pinchGesture = Gesture.Pinch()
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50
+  }).current;
+
+  // Свайп вниз для закрытия - на уровне всего контейнера
+  const swipeDownGesture = Gesture.Pan()
+    .activeOffsetY([15, 300])
+    .failOffsetX([-10, 10])
+    .failOffsetY(-10)
+    .enabled(!isZoomed)
     .onUpdate((event) => {
-      scale.value = savedScale.value * event.scale;
-    })
-    .onEnd(() => {
-      // Ограничиваем минимальный и максимальный зум
-      if (scale.value < 1) {
-        scale.value = withSpring(1);
-        savedScale.value = 1;
-        translateXZoom.value = withSpring(0);
-        translateYZoom.value = withSpring(0);
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-      } else if (scale.value > 4) {
-        scale.value = withSpring(4);
-        savedScale.value = 4;
-      } else {
-        savedScale.value = scale.value;
+      if (event.translationY > 0) {
+        swipeY.value = event.translationY;
+        backgroundOpacity.value = 1 - (event.translationY / 400);
       }
-    });
-
-  // Жест pan для перемещения увеличенного изображения
-  const panGestureZoom = Gesture.Pan()
-    .enabled(savedScale.value > 1)
-    .onUpdate((event) => {
-      translateXZoom.value = savedTranslateX.value + event.translationX;
-      translateYZoom.value = savedTranslateY.value + event.translationY;
-    })
-    .onEnd(() => {
-      savedTranslateX.value = translateXZoom.value;
-      savedTranslateY.value = translateYZoom.value;
-    });
-
-  // Жест для переключения между изображениями (свайп)
-  const panGestureSwipe = Gesture.Pan()
-    .enabled(hasMultipleImages && savedScale.value <= 1)
-    .onUpdate((event) => {
-      translateX.value = event.translationX;
     })
     .onEnd((event) => {
-      const threshold = screenWidth * 0.3;
-      const { translationX, velocityX } = event;
-
-      if (translationX < -threshold || velocityX < -500) {
-        // Свайп влево - следующее изображение
-        if (currentIndex < imageUrls.length - 1) {
-          runOnJS(handleNext)();
-        } else {
-          translateX.value = withSpring(0);
-        }
-      } else if (translationX > threshold || velocityX > 500) {
-        // Свайп вправо - предыдущее изображение
-        if (currentIndex > 0) {
-          runOnJS(handlePrevious)();
-        } else {
-          translateX.value = withSpring(0);
-        }
+      if (event.translationY > 120) {
+        runOnJS(onClose)();
       } else {
-        // Возврат в исходное положение
-        translateX.value = withSpring(0);
+        swipeY.value = withSpring(0);
+        backgroundOpacity.value = withSpring(1);
       }
     });
 
-  // Двойной тап для зума
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .onEnd(() => {
-      if (scale.value > 1) {
-        // Если увеличено - вернуть в исходное состояние
-        scale.value = withSpring(1);
-        savedScale.value = 1;
-        translateXZoom.value = withSpring(0);
-        translateYZoom.value = withSpring(0);
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-      } else {
-        // Если не увеличено - увеличить
-        scale.value = withSpring(2.5);
-        savedScale.value = 2.5;
-      }
-    });
-
-  // Композиция жестов
-  const composedGesture = Gesture.Simultaneous(
-    Gesture.Race(doubleTap, Gesture.Simultaneous(pinchGesture, panGestureZoom)),
-    panGestureSwipe
+  const renderImageItem = ({ item, index }: { item: string; index: number }) => (
+    <View style={styles.imageSlide}>
+      <ZoomableImage
+        uri={item}
+        sessionId={sessionId}
+        isActive={index === currentIndex}
+        onZoomChange={setIsZoomed}
+      />
+    </View>
   );
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { translateX: translateXZoom.value },
-        { translateY: translateYZoom.value },
-        { scale: scale.value },
-      ],
-    };
+  const getItemLayout = (_: any, index: number) => ({
+    length: SCREEN_WIDTH,
+    offset: SCREEN_WIDTH * index,
+    index,
   });
+
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: swipeY.value }],
+  }));
+
+  const animatedBackgroundStyle = useAnimatedStyle(() => ({
+    opacity: backgroundOpacity.value,
+  }));
 
   // Не отображаем модалку если нет изображений
   if (!visible || imageUrls.length === 0) {
@@ -226,98 +337,104 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       onRequestClose={onClose}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <BlurView intensity={95} style={styles.blurOverlay} tint="dark">
-          <View style={styles.imageViewerOverlay}>
-            {/* Заголовок с счетчиком */}
-            {hasMultipleImages && (
-              <View style={[styles.header, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-                <Text style={[styles.counterText, { color: '#FFFFFF' }]}>
-                  {currentIndex + 1} из {imageUrls.length}
-                </Text>
-              </View>
-            )}
+        <View style={styles.container}>
+          <Animated.View style={[StyleSheet.absoluteFill, animatedBackgroundStyle]}>
+            <BlurView intensity={95} style={styles.blurOverlay} tint="dark" />
+          </Animated.View>
 
-            <Pressable style={styles.imagePressable} onPress={onClose}>
-              <GestureDetector gesture={composedGesture}>
-                <Animated.View style={[styles.imageViewerContainer, animatedStyle]}>
-                  {currentImageUrl && (
-                    <Image
-                      source={{
-                        uri: currentImageUrl,
-                        headers: sessionId ? {
-                          'X-Session-ID': sessionId,
-                        } : undefined,
-                      }}
-                      style={styles.fullscreenImage}
-                      contentFit="contain"
-                      transition={200}
-                      cachePolicy="memory-disk"
-                    />
+          <GestureDetector gesture={swipeDownGesture}>
+            <Animated.View style={[styles.imageViewerOverlay, animatedContainerStyle]}>
+              {/* Заголовок с счетчиком */}
+              <View style={styles.header}>
+                <View style={styles.headerContent}>
+                  {hasMultipleImages && (
+                    <Text style={styles.counterText}>
+                      {currentIndex + 1} из {imageUrls.length}
+                    </Text>
                   )}
-                </Animated.View>
-              </GestureDetector>
-            </Pressable>
+                </View>
+                {/* Кнопка закрытия в заголовке */}
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={onClose}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={28} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
 
-            {/* Кнопка закрытия */}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={onClose}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="close" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
+              {/* Галерея изображений с горизонтальным скроллом */}
+              <FlatList
+                ref={flatListRef}
+                data={imageUrls}
+                renderItem={renderImageItem}
+                keyExtractor={(item, index) => `${index}-${item}`}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                initialScrollIndex={initialIndex}
+                getItemLayout={getItemLayout}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
+                style={styles.flatList}
+                bounces={false}
+                decelerationRate="fast"
+                scrollEnabled={!isZoomed}
+              />
 
-            {/* Навигационные стрелки для веба и множественных изображений */}
-            {hasMultipleImages && (
-              <>
-                {/* Левая стрелка */}
-                {currentIndex > 0 && (
-                  <TouchableOpacity
-                    style={[styles.navButton, styles.navButtonLeft, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}
-                    onPress={handlePrevious}
-                  >
-                    <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
-                  </TouchableOpacity>
-                )}
+              {/* Навигационные стрелки */}
+              {hasMultipleImages && (
+                <>
+                  {currentIndex > 0 && (
+                    <TouchableOpacity
+                      style={[styles.navButton, styles.navButtonLeft]}
+                      onPress={handlePrevious}
+                    >
+                      <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  )}
 
-                {/* Правая стрелка */}
-                {currentIndex < imageUrls.length - 1 && (
-                  <TouchableOpacity
-                    style={[styles.navButton, styles.navButtonRight, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}
-                    onPress={handleNext}
-                  >
-                    <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
-                  </TouchableOpacity>
-                )}
+                  {currentIndex < imageUrls.length - 1 && (
+                    <TouchableOpacity
+                      style={[styles.navButton, styles.navButtonRight]}
+                      onPress={handleNext}
+                    >
+                      <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  )}
 
-                {/* Индикаторы точек */}
-                {imageUrls.length <= 10 && (
-                  <View style={styles.dotsContainer}>
-                    {imageUrls.map((_, index) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.dot,
-                          {
-                            backgroundColor: index === currentIndex ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)',
-                            width: index === currentIndex ? 8 : 6,
-                            height: index === currentIndex ? 8 : 6,
-                          },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
-          </View>
-        </BlurView>
+                  {/* Индикаторы точек */}
+                  {imageUrls.length <= 10 && (
+                    <View style={styles.dotsContainer}>
+                      {imageUrls.map((_, index) => (
+                        <View
+                          key={index}
+                          style={[
+                            styles.dot,
+                            {
+                              backgroundColor: index === currentIndex ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)',
+                              width: index === currentIndex ? 8 : 6,
+                              height: index === currentIndex ? 8 : 6,
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
+            </Animated.View>
+          </GestureDetector>
+        </View>
       </GestureHandlerRootView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   blurOverlay: {
     flex: 1,
   },
@@ -326,15 +443,23 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 10,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     zIndex: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerContent: {
+    flex: 1,
     alignItems: 'center',
   },
   counterText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
+    color: '#FFFFFF',
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -342,14 +467,18 @@ const styles = StyleSheet.create({
   imageViewerOverlay: {
     flex: 1,
   },
-  imagePressable: {
+  flatList: {
     flex: 1,
+  },
+  imageSlide: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  imageViewerContainer: {
-    width: '90%',
-    height: '90%',
+  imageContainer: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.8,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -359,15 +488,15 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 5,
-    right: 20,
+    top: Platform.OS === 'ios' ? 55 : 35,
+    right: 16,
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   navButton: {
     position: 'absolute',
@@ -379,6 +508,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,

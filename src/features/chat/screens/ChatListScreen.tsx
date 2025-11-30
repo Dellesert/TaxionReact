@@ -3,7 +3,7 @@
  * Экран списка чатов (Refactored)
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,7 +25,7 @@ import { ChatListHeader } from '../components/ChatListHeader';
 import { ChatSearchBar } from '../components/ChatSearchBar';
 import { ChatListTabs } from '../components/ChatListTabs';
 import { ChatActionBar } from '../components/ChatActionBar';
-import { ChatListContent } from '../components/ChatListContent';
+import { ChatListContent, ChatListContentRef } from '../components/ChatListContent';
 import { ChatCreateMenu } from '../components/ChatCreateMenu';
 import { ChatErrorState } from '../components/ChatErrorState';
 
@@ -40,6 +40,9 @@ const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
   const { theme } = useTheme();
   const { showConfirm } = useActionModal();
+
+  // Ref for ChatListContent
+  const chatListRef = useRef<ChatListContentRef>(null);
 
   // Local state
   const [refreshing, setRefreshing] = useState(false);
@@ -94,10 +97,12 @@ const ChatListScreen: React.FC = () => {
     loadAllTabs();
   }, [loadAllTabs]);
 
-  // Update unread count when screen gains focus
+  // Update unread count and scroll to top when screen gains focus
   useFocusEffect(
     useCallback(() => {
       loadUnreadCount();
+      // Scroll to top when returning to chat list
+      chatListRef.current?.scrollToTop();
     }, [loadUnreadCount])
   );
 
@@ -281,6 +286,7 @@ const ChatListScreen: React.FC = () => {
         />
 
         <ChatListContent
+          ref={chatListRef}
           chatFilter={chatFilter}
           tabs={tabs}
           searchQuery={searchQuery}

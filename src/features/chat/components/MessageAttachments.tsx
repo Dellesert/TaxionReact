@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -23,7 +23,7 @@ interface Attachment {
 
 interface MessageAttachmentsProps {
   attachments: Attachment[];
-  imageUrls: { [key: number]: string };
+  imageUrls?: { [key: number]: string }; // Deprecated, not used anymore
   onImagePress: (imageUrl: string) => void;
   onLongPress?: () => void;
 }
@@ -33,7 +33,6 @@ interface MessageAttachmentsProps {
  */
 export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
-  imageUrls,
   onImagePress,
   onLongPress,
 }) => {
@@ -57,70 +56,66 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
 
   // Load images with auth headers for web platform
   React.useEffect(() => {
-    if (Platform.OS === 'web' && sessionId && images.length > 0) {
-      const loadImageBlobs = async () => {
-        const newBlobUrls: { [key: number]: string } = {};
-
-        for (const attachment of images) {
-          try {
-            const imageUrl = replaceLocalhostWithIP(attachment.file_url);
-            const response = await fetch(imageUrl, {
-              headers: {
-                'X-Session-ID': sessionId,
-              },
-            });
-
-            if (response.ok) {
-              const blob = await response.blob();
-              const blobUrl = URL.createObjectURL(blob);
-              newBlobUrls[attachment.id] = blobUrl;
-            } else {
-              console.error('❌ Failed to load image blob:', imageUrl, response.status);
-            }
-          } catch (error) {
-            console.error('❌ Error loading image blob:', error);
-          }
-        }
-
-        setBlobUrls(newBlobUrls);
-      };
-
-      loadImageBlobs();
-
-      // Cleanup blob URLs on unmount
-      return () => {
-        Object.values(blobUrls).forEach(url => URL.revokeObjectURL(url));
-      };
+    if (Platform.OS !== 'web' || !sessionId || images.length === 0) {
+      return;
     }
+
+    const loadImageBlobs = async () => {
+      const newBlobUrls: { [key: number]: string } = {};
+
+      for (const attachment of images) {
+        try {
+          const imageUrl = replaceLocalhostWithIP(attachment.file_url);
+          const response = await fetch(imageUrl, {
+            headers: {
+              'X-Session-ID': sessionId,
+            },
+          });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            newBlobUrls[attachment.id] = blobUrl;
+          } else {
+            console.error('❌ Failed to load image blob:', imageUrl, response.status);
+          }
+        } catch (error) {
+          console.error('❌ Error loading image blob:', error);
+        }
+      }
+
+      setBlobUrls(newBlobUrls);
+    };
+
+    loadImageBlobs();
+
+    // Cleanup blob URLs on unmount
+    return () => {
+      Object.values(blobUrls).forEach(url => URL.revokeObjectURL(url));
+    };
   }, [Platform.OS, sessionId, images.length, attachments]);
 
   // Prepare image URLs with proper baseURL replacement for gallery
   const galleryImageUrls = images.map(img => replaceLocalhostWithIP(img.file_url));
 
-  // Determine image size based on count
-  const screenWidth = Dimensions.get('window').width;
-  const maxBubbleWidth = screenWidth * 0.7; // 70% от ширины экрана
-  const bubblePadding = 24; // 12px padding с каждой стороны
-  const maxImageWidth = maxBubbleWidth - bubblePadding;
+  // Количество скрытых фото (показываем максимум 4)
+  const hiddenCount = imageCount > 4 ? imageCount - 4 : 0;
 
-  const getImageSize = () => {
+  // Размеры изображений - используем flex для автоматического распределения
+  const getImageLayout = () => {
     if (imageCount === 1) {
-      const size = Math.min(250, maxImageWidth);
-      return { width: size, height: size };
+      return { type: 'single' as const };
     }
     if (imageCount === 2) {
-      const size = Math.min(120, (maxImageWidth - 4) / 2); // -4 для gap между изображениями
-      return { width: size, height: size };
+      return { type: 'row' as const };
     }
     if (imageCount === 3) {
-      const size = Math.min(120, (maxImageWidth - 4) / 2);
-      return { width: size, height: size };
+      return { type: 'left1-right2' as const };
     }
-    const size = Math.min(115, (maxImageWidth - 8) / 2); // 4 or more, -8 для gaps
-    return { width: size, height: size };
+    return { type: 'grid2x2' as const };
   };
 
-  const imageSize = getImageSize();
+  const imageLayout = getImageLayout();
 
   const handleFileDownload = async (attachment: Attachment) => {
     try {
@@ -215,65 +210,117 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
     return null;
   }
 
+  // Рендер одного изображения
+  const renderImage = (attachment: Attachment, index: number, imageStyle?: object, showOverlay: boolean = false) => {
+    const imageUri = Platform.OS === 'web' && blobUrls[attachment.id]
+      ? blobUrls[attachment.id]
+      : replaceLocalhostWithIP(attachment.file_url);
+
+    return (
+      <TouchableOpacity
+        key={attachment.id || index}
+        style={[styles.imageAttachment, imageStyle]}
+        onPress={() => {
+          onImagePress(Platform.OS === 'web' && blobUrls[attachment.id] ? blobUrls[attachment.id] : galleryImageUrls[index]);
+        }}
+        onLongPress={onLongPress}
+        delayLongPress={500}
+      >
+        {Platform.OS === 'web' && blobUrls[attachment.id] ? (
+          <Image
+            source={{ uri: blobUrls[attachment.id] }}
+            style={styles.imagePreview}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+        ) : Platform.OS === 'web' && !blobUrls[attachment.id] ? (
+          <View style={[styles.imagePreview, { backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator size="small" color={theme.primary} />
+          </View>
+        ) : (
+          <Image
+            source={{
+              uri: imageUri,
+              headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+            }}
+            style={styles.imagePreview}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            onError={(error) => {
+              console.error('❌ Message image load error:', imageUri, error);
+            }}
+          />
+        )}
+        {showOverlay && hiddenCount > 0 && (
+          <View style={styles.imageOverlay}>
+            <Text style={styles.imageOverlayText}>+{hiddenCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // Рендер сетки изображений в зависимости от количества
+  const renderImagesGrid = () => {
+    if (imageCount === 0) return null;
+
+    // 1 фото
+    if (imageLayout.type === 'single') {
+      return (
+        <View style={styles.imagesGrid}>
+          {renderImage(images[0], 0, styles.imageSingle)}
+        </View>
+      );
+    }
+
+    // 2 фото - рядом
+    if (imageLayout.type === 'row') {
+      return (
+        <View style={[styles.imagesGrid, styles.imagesRow]}>
+          {renderImage(images[0], 0, styles.imageHalf)}
+          {renderImage(images[1], 1, styles.imageHalf)}
+        </View>
+      );
+    }
+
+    // 3 фото - 1 слева, 2 справа (столбец)
+    if (imageLayout.type === 'left1-right2') {
+      return (
+        <View style={[styles.imagesGrid, styles.imagesRow]}>
+          {renderImage(images[0], 0, styles.imageHalf)}
+          <View style={[styles.imagesColumn, styles.imageHalf]}>
+            {renderImage(images[1], 1, styles.imageSmall)}
+            {renderImage(images[2], 2, styles.imageSmall)}
+          </View>
+        </View>
+      );
+    }
+
+    // 4+ фото - сетка 2x2
+    if (imageLayout.type === 'grid2x2') {
+      return (
+        <View style={styles.imagesGrid}>
+          <View style={styles.imagesRow}>
+            {renderImage(images[0], 0, styles.imageHalf)}
+            {renderImage(images[1], 1, styles.imageHalf)}
+          </View>
+          <View style={styles.imagesRow}>
+            {renderImage(images[2], 2, styles.imageHalf)}
+            {renderImage(images[3], 3, styles.imageHalf, true)}
+          </View>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <View style={styles.attachmentsContainer}>
       {/* Render images in grid */}
-      {images.length > 0 && (
-        <View style={[
-          styles.imagesGrid,
-          imageCount === 1 && styles.imagesGridSingle,
-          imageCount === 2 && styles.imagesGridDouble,
-          imageCount >= 3 && styles.imagesGridMultiple,
-        ]}>
-          {images.map((attachment, index) => (
-            <TouchableOpacity
-              key={attachment.id || index}
-              style={[
-                styles.imageAttachment,
-                imageCount > 1 && styles.imageAttachmentGrid,
-              ]}
-              onPress={() => {
-                onImagePress(Platform.OS === 'web' && blobUrls[attachment.id] ? blobUrls[attachment.id] : galleryImageUrls[index]);
-              }}
-              onLongPress={onLongPress}
-              delayLongPress={500}
-            >
-              {Platform.OS === 'web' && blobUrls[attachment.id] ? (
-                <Image
-                  source={{ uri: blobUrls[attachment.id] }}
-                  style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height, maxWidth: '100%' }]}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                />
-              ) : Platform.OS === 'web' && !blobUrls[attachment.id] ? (
-                <View style={[
-                  styles.imagePreview,
-                  { width: imageSize.width, height: imageSize.height, maxWidth: '100%', backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }
-                ]}>
-                  <ActivityIndicator size="small" color={theme.primary} />
-                </View>
-              ) : (
-                <Image
-                  source={{
-                    uri: replaceLocalhostWithIP(attachment.file_url),
-                    headers: sessionId ? {
-                      'X-Session-ID': sessionId,
-                    } : undefined,
-                  }}
-                  style={[styles.imagePreview, { width: imageSize.width, height: imageSize.height, maxWidth: '100%' }]}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                  onError={(error) => {
-                    console.error('❌ Message image load error:', replaceLocalhostWithIP(attachment.file_url), error);
-                  }}
-                />
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+      {renderImagesGrid()}
 
       {/* Render file attachments */}
       {files.map((attachment, index) => {
@@ -288,7 +335,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             delayLongPress={500}
           >
             <Ionicons name={fileIcon as any} size={24} color={theme.primary} />
-            <View style={{ width: Dimensions.get('window').width * 0.7 - 70 }}>
+            <View style={styles.fileInfo}>
               <Text
                 style={{
                   fontSize: 14,
@@ -315,22 +362,31 @@ const styles = StyleSheet.create({
   attachmentsContainer: {
     marginTop: 8,
     gap: 6,
-    maxWidth: '100%',
   },
   imagesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 4,
     marginBottom: 6,
   },
-  imagesGridSingle: {
-    // Single image - no special layout
+  imagesRow: {
+    flexDirection: 'row',
+    gap: 4,
   },
-  imagesGridDouble: {
-    // 2 images side by side
+  imagesColumn: {
+    flexDirection: 'column',
+    gap: 4,
   },
-  imagesGridMultiple: {
-    // 3+ images in grid
+  // Размеры изображений
+  imageSingle: {
+    width: 200,
+    height: 200,
+  },
+  imageHalf: {
+    width: 100,
+    height: 100,
+  },
+  imageSmall: {
+    width: 100,
+    height: 48,
   },
   attachmentItem: {
     flexDirection: 'row',
@@ -339,15 +395,32 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 10,
   },
+  fileInfo: {
+    flex: 1,
+  },
   imageAttachment: {
     borderRadius: 8,
     overflow: 'hidden',
   },
-  imageAttachmentGrid: {
-    // Additional styles for grid images
-  },
   imagePreview: {
+    width: '100%',
+    height: '100%',
     borderRadius: 8,
-    maxWidth: '100%',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageOverlayText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '600',
   },
 });

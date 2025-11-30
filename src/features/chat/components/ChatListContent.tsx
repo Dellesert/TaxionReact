@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 import { View, RefreshControl, ActivityIndicator, Platform, StyleSheet, Dimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -10,6 +10,10 @@ import { ChatEmptyState } from './ChatEmptyState';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Chat } from '../types/chat.types';
 import { ChatFilter, filterChatsBySearch, combineTabChats } from '../utils/chatHelpers';
+
+export interface ChatListContentRef {
+  scrollToTop: (filter?: ChatFilter) => void;
+}
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -42,7 +46,7 @@ interface ChatListContentProps {
   onDeleteChat: (chatId: number, clearHistory?: boolean) => void;
 }
 
-export const ChatListContent: React.FC<ChatListContentProps> = ({
+export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentProps>(({
   chatFilter,
   tabs,
   searchQuery,
@@ -62,12 +66,12 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
   onTogglePinned,
   onMarkAsRead,
   onDeleteChat,
-}) => {
+}, ref) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
   // Refs for FlashList instances per tab
-  const listRefs = useRef<Record<ChatFilter, FlashList<Chat> | null>>({
+  const listRefs = useRef<Record<ChatFilter, any>>({
     all: null,
     private: null,
     group: null,
@@ -75,12 +79,18 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
   });
 
   // Scroll to top helper
-  const scrollToTop = useCallback((filterKey: ChatFilter) => {
-    const listRef = listRefs.current[filterKey];
+  const scrollToTop = useCallback((filterKey?: ChatFilter) => {
+    const key = filterKey || chatFilter;
+    const listRef = listRefs.current[key];
     if (listRef) {
-      listRef.scrollToOffset({ offset: 0, animated: true });
+      listRef.scrollToOffset({ offset: 0, animated: false });
     }
-  }, []);
+  }, [chatFilter]);
+
+  // Expose scrollToTop to parent
+  useImperativeHandle(ref, () => ({
+    scrollToTop,
+  }), [scrollToTop]);
 
   // Handle pin toggle with scroll to top
   const handleTogglePinnedWithScroll = useCallback(async (chatId: number) => {
@@ -139,20 +149,17 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
             <ChatEmptyState />
           ) : (
             <FlashList
-              ref={(ref) => { listRefs.current[filterKey] = ref; }}
+              ref={(ref: any) => { listRefs.current[filterKey] = ref; }}
               data={tabChats}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item: Chat) => item.id.toString()}
               renderItem={renderChatItem}
-              estimatedItemHeight={72}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
               contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
               onEndReached={() => {
-
                 if (canLoadMore && hasMoreChats && !isLoadingMore) {
                   onLoadMore();
-                } else {
                 }
               }}
               onEndReachedThreshold={0.3}
@@ -163,15 +170,7 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
                   </View>
                 ) : null
               }
-              maxToRenderPerBatch={10}
-              updateCellsBatchingPeriod={50}
-              initialNumToRender={15}
-              windowSize={5}
-              getItemLayout={(_data, index) => ({
-                length: 80,
-                offset: 80 * index,
-                index,
-              })}
+              drawDistance={200}
             />
           )}
         </View>
@@ -213,7 +212,7 @@ export const ChatListContent: React.FC<ChatListContentProps> = ({
       </GestureDetector>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   horizontalTabsContainer: {
