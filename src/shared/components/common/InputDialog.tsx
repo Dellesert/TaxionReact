@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
 
 interface InputDialogProps {
   visible: boolean;
@@ -27,6 +28,7 @@ export const InputDialog: React.FC<InputDialogProps> = ({
 }) => {
   const { theme } = useTheme();
   const [value, setValue] = useState(initialValue);
+  const inputRef = useRef<AutoCorrectedTextInputRef>(null);
 
   React.useEffect(() => {
     if (visible) {
@@ -35,10 +37,18 @@ export const InputDialog: React.FC<InputDialogProps> = ({
   }, [visible, initialValue]);
 
   const handleConfirm = () => {
-    if (value.trim()) {
-      onConfirm(value.trim());
-      setValue('');
-    }
+    // Применяем iOS автокоррекцию перед подтверждением
+    inputRef.current?.commitAutocorrection();
+
+    setTimeout(() => {
+      setValue((currentValue) => {
+        if (currentValue.trim()) {
+          onConfirm(currentValue.trim());
+          return '';
+        }
+        return currentValue;
+      });
+    }, 10);
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -93,7 +103,8 @@ export const InputDialog: React.FC<InputDialogProps> = ({
             <Text style={[styles.message, dynamicStyles.message]}>{message}</Text>
           )}
 
-          <TextInput
+          <AutoCorrectedTextInput
+            ref={inputRef}
             style={[styles.input, dynamicStyles.input]}
             value={value}
             onChangeText={setValue}

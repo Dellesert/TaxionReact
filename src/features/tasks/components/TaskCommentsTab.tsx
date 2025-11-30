@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
@@ -14,6 +13,69 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { getUserDisplayName } from '../utils/taskHelpers';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
+
+// Компонент для редактирования комментария с поддержкой iOS автокоррекции
+const EditCommentInput: React.FC<{
+  editingCommentText: string;
+  setEditingCommentText: (text: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  theme: any;
+}> = ({ editingCommentText, setEditingCommentText, onSaveEdit, onCancelEdit, theme }) => {
+  const inputRef = useRef<AutoCorrectedTextInputRef>(null);
+
+  const handleSave = () => {
+    inputRef.current?.commitAutocorrection();
+    setTimeout(() => {
+      onSaveEdit();
+    }, 10);
+  };
+
+  return (
+    <View style={{ marginTop: 8 }}>
+      <AutoCorrectedTextInput
+        ref={inputRef}
+        style={[
+          styles.commentInput,
+          {
+            backgroundColor: theme.input,
+            color: theme.text,
+            borderColor: theme.border,
+            marginBottom: 8,
+          },
+        ]}
+        value={editingCommentText}
+        onChangeText={setEditingCommentText}
+        multiline
+        maxLength={1000}
+        autoFocus
+      />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.primary, flex: 1 }]}
+          onPress={handleSave}
+        >
+          <Text style={styles.buttonText}>Сохранить</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgroundSecondary,
+              borderWidth: 1,
+              borderColor: theme.border,
+              flex: 1,
+            },
+          ]}
+          onPress={onCancelEdit}
+        >
+          <Text style={[styles.buttonText, { color: theme.text }]}>Отмена</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
 interface TaskCommentsTabProps {
   comments: TaskComment[];
@@ -110,46 +172,13 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
                 )}
               </View>
               {isEditing ? (
-                <View style={{ marginTop: 8 }}>
-                  <TextInput
-                    style={[
-                      styles.commentInput,
-                      {
-                        backgroundColor: theme.input,
-                        color: theme.text,
-                        borderColor: theme.border,
-                        marginBottom: 8,
-                      },
-                    ]}
-                    value={editingCommentText}
-                    onChangeText={setEditingCommentText}
-                    multiline
-                    maxLength={1000}
-                    autoFocus
-                  />
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity
-                      style={[styles.button, { backgroundColor: theme.primary, flex: 1 }]}
-                      onPress={() => onSaveEdit(comment.id)}
-                    >
-                      <Text style={styles.buttonText}>Сохранить</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.button,
-                        {
-                          backgroundColor: theme.backgroundSecondary,
-                          borderWidth: 1,
-                          borderColor: theme.border,
-                          flex: 1,
-                        },
-                      ]}
-                      onPress={onCancelEdit}
-                    >
-                      <Text style={[styles.buttonText, { color: theme.text }]}>Отмена</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <EditCommentInput
+                  editingCommentText={editingCommentText}
+                  setEditingCommentText={setEditingCommentText}
+                  onSaveEdit={() => onSaveEdit(comment.id)}
+                  onCancelEdit={onCancelEdit}
+                  theme={theme}
+                />
               ) : (
                 <Text style={[styles.commentText, { color: theme.textSecondary }]}>
                   {comment.content}
