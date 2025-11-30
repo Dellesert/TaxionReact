@@ -164,6 +164,9 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
     };
   }, [keyboardHeightAnim]);
 
+  // ⚡ ОПТИМИЗАЦИЯ: Скрываем контент пока скролл не готов
+  // Это предотвращает "дергание" при загрузке из кеша
+  // При загрузке с сервера будут показаны скелетоны в MessageListComponent
   if (!shouldShowContent) {
     return <View style={styles.hiddenContent} />;
   }

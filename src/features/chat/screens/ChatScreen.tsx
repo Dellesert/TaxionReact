@@ -132,6 +132,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     isScrollingToUnread,
     scrollSessionKey,
     isRestoringPosition,
+    isScrollReady, // ⚡ Флаг готовности скролла
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
@@ -379,7 +380,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     return <View style={[styles.container, { backgroundColor: theme.background }]} />;
   }
 
-  const shouldShowContent = contentReady && !isScrollingToUnread;
+  // ⚡ ОПТИМИЗАЦИЯ: Показываем контент только когда:
+  // 1. contentReady (экран в фокусе)
+  // 2. isScrollReady (скролл готов к показу - позиция загружена и установлена)
+  // 3. !isScrollingToUnread (не происходит скролл к непрочитанным)
+  //
+  // Для загрузки из кеша это будет практически мгновенно!
+  // Для загрузки с сервера - покажутся скелетоны до готовности
+  const shouldShowContent = contentReady && isScrollReady && !isScrollingToUnread;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
