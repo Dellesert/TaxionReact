@@ -1,6 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Animated, Keyboard, Platform } from 'react-native';
+import { Animated, Keyboard, Platform, LayoutAnimation, UIManager } from 'react-native';
 import type { Chat } from '../types/chat.types';
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 /**
  * Custom hook to manage all local state for ChatScreen
@@ -50,12 +55,24 @@ export const useChatScreenState = () => {
           onKeyboardShow.current(height);
         }
 
-        // Start padding animation
-        Animated.timing(keyboardHeightAnim, {
-          toValue: height,
-          duration: Platform.OS === 'ios' ? event.duration : 120,
-          useNativeDriver: false,
-        }).start();
+        if (Platform.OS === 'ios') {
+          // Use LayoutAnimation on iOS for perfect sync with keyboard
+          LayoutAnimation.configureNext({
+            duration: event.duration,
+            update: {
+              type: LayoutAnimation.Types.keyboard,
+            },
+          });
+          // Update Animated.Value immediately (LayoutAnimation handles visual transition)
+          keyboardHeightAnim.setValue(height);
+        } else {
+          // Use Animated.timing on Android
+          Animated.timing(keyboardHeightAnim, {
+            toValue: height,
+            duration: 120,
+            useNativeDriver: false,
+          }).start();
+        }
       }
     );
 
@@ -69,11 +86,24 @@ export const useChatScreenState = () => {
           onKeyboardHide.current();
         }
 
-        Animated.timing(keyboardHeightAnim, {
-          toValue: 0,
-          duration: Platform.OS === 'ios' ? event.duration : 120,
-          useNativeDriver: false,
-        }).start();
+        if (Platform.OS === 'ios') {
+          // Use LayoutAnimation on iOS for perfect sync with keyboard
+          LayoutAnimation.configureNext({
+            duration: event.duration,
+            update: {
+              type: LayoutAnimation.Types.keyboard,
+            },
+          });
+          // Update Animated.Value immediately (LayoutAnimation handles visual transition)
+          keyboardHeightAnim.setValue(0);
+        } else {
+          // Use Animated.timing on Android
+          Animated.timing(keyboardHeightAnim, {
+            toValue: 0,
+            duration: 120,
+            useNativeDriver: false,
+          }).start();
+        }
       }
     );
 
