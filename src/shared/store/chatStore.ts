@@ -89,6 +89,10 @@ interface ChatState {
   handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number) => void;
   clearError: () => void;
   getChatById: (chatId: number) => Chat | undefined;
+  /** Merge updated chats (for differential sync) */
+  mergeChats: (chats: Chat[]) => void;
+  /** Remove deleted chats by IDs (for differential sync) */
+  removeChats: (chatIds: number[]) => void;
   set: (state: Partial<ChatState>) => void;
 }
 
@@ -1681,6 +1685,81 @@ export const useChatStore = create<ChatState>()(
 
   getChatById: (chatId: number) => {
     return get().chats.find((chat) => chat.id === chatId);
+  },
+
+  mergeChats: (updatedChats: Chat[]) => {
+    if (!updatedChats || updatedChats.length === 0) return;
+
+    set((state) => {
+      // Helper to merge chats in a list
+      const mergeChatList = (chats: Chat[]) => {
+        const chatMap = new Map(chats.map(c => [c.id, c]));
+        for (const chat of updatedChats) {
+          chatMap.set(chat.id, { ...chatMap.get(chat.id), ...chat });
+        }
+        return Array.from(chatMap.values());
+      };
+
+      // Update all tabs
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (!tab.loaded) return;
+
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: mergeChatList(tab.pinnedChats),
+          regularChats: mergeChatList(tab.regularChats),
+        };
+      });
+
+      // Reconstruct chats for current tab
+      const currentTabData = updatedTabs[state.currentTab];
+      const mergedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+      return {
+        tabs: updatedTabs,
+        chats: mergedChats,
+      };
+    });
+  },
+
+  removeChats: (chatIds: number[]) => {
+    if (!chatIds || chatIds.length === 0) return;
+
+    const idsToRemove = new Set(chatIds);
+
+    set((state) => {
+      // Update all tabs
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (!tab.loaded) return;
+
+        updatedTabs[tabKey as TabName] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.filter(c => !idsToRemove.has(c.id)),
+          regularChats: tab.regularChats.filter(c => !idsToRemove.has(c.id)),
+        };
+      });
+
+      // Reconstruct chats for current tab
+      const currentTabData = updatedTabs[state.currentTab];
+      const filteredChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+      // Clean up messages for removed chats
+      const updatedMessages = { ...state.messages };
+      for (const chatId of chatIds) {
+        delete updatedMessages[chatId];
+      }
+
+      return {
+        tabs: updatedTabs,
+        chats: filteredChats,
+        messages: updatedMessages,
+        activeChat: state.activeChat && idsToRemove.has(state.activeChat.id) ? null : state.activeChat,
+      };
+    });
   },
 
   set: (state: Partial<ChatState>) => {

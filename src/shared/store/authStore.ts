@@ -14,6 +14,13 @@ import * as authApi from '@/features/auth/api/auth.api';
 import * as userApi from '@api/user.api';
 import { isMockMode, mockLogin, mockRegister } from '@shared/utils/mockData';
 import { websocketService } from '@services/websocket.service';
+import { clearAllStorages } from '@shared/storage';
+import { clearSyncMetadata } from '@shared/storage/syncMetadata';
+import { useChatStore } from './chatStore';
+import { useTaskStore } from './taskStore';
+import { usePollStore } from './pollStore';
+import { useCalendarStore } from './calendarStore';
+import { useUserStore } from './userStore';
 
 interface AuthState {
   // State
@@ -190,6 +197,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
 
+      // Clear all MMKV caches (chats, tasks, polls, calendar, users)
+      clearAllStorages();
+
+      // Clear sync metadata (differential sync timestamps)
+      clearSyncMetadata();
+
+      // Clear Zustand stores in memory
+      useChatStore.getState().set({
+        chats: [],
+        tabs: {
+          all: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+          private: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+          group: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+          favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+        },
+        messages: {},
+        totalUnreadCount: 0,
+      });
+      useTaskStore.getState().clearCache();
+      usePollStore.getState().clearCache();
+      useCalendarStore.getState().clearCache();
+      useUserStore.getState().clearCache();
+
+      console.log('[Auth] All caches cleared on logout');
 
       // Clear state
       set({

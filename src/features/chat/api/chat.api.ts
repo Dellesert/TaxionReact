@@ -104,6 +104,10 @@ export const getPinnedChats = async (
 
 /**
  * Get list of chats with pagination and filters
+ * @param limit - Number of chats to fetch
+ * @param offset - Pagination offset
+ * @param filters - Chat filters
+ * @param since - ISO date string for differential sync (only chats updated after this date)
  */
 export const getChats = async (
   limit?: number,
@@ -112,7 +116,8 @@ export const getChats = async (
     type?: 'private' | 'group' | 'channel';
     is_favorite?: boolean;
     is_pinned?: boolean;
-  }
+  },
+  since?: string
 ): Promise<{ chats: Chat[]; total: number; hasMore: boolean }> => {
   const params: any = {
     limit: limit || 50,
@@ -128,6 +133,11 @@ export const getChats = async (
   }
   if (filters?.is_pinned !== undefined) {
     params.is_pinned = filters.is_pinned.toString();
+  }
+
+  // Add updated_since parameter for differential sync
+  if (since) {
+    params.updated_since = since;
   }
 
   const response = await api.get<{ chats: Chat[]; total?: number }>(API_ENDPOINTS.CHAT.LIST, {

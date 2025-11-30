@@ -1,11 +1,13 @@
 /**
  * Network Sync Hook
  * Автоматическая синхронизация данных при восстановлении сети
+ * Использует дифференциальную синхронизацию для эффективной загрузки только изменённых данных
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useNetworkStatus } from './useNetworkStatus';
-import { useChatStore, useTaskStore, useCalendarStore, usePollStore, useUserStore } from '@shared/store';
+import { useDifferentialSync } from './useDifferentialSync';
+import { isNative } from '@shared/storage';
 
 interface UseNetworkSyncOptions {
   /** Включить авто-синхронизацию (по умолчанию true) */
@@ -18,7 +20,7 @@ interface UseNetworkSyncOptions {
 
 /**
  * Хук для автоматической синхронизации при восстановлении сети
- * Очищает кэш Zustand stores чтобы данные загрузились заново
+ * Использует дифференциальную синхронизацию (updated_since) вместо полной очистки кэша
  */
 export const useNetworkSync = (options: UseNetworkSyncOptions = {}) => {
   const {
@@ -30,33 +32,37 @@ export const useNetworkSync = (options: UseNetworkSyncOptions = {}) => {
   const { isOffline, status } = useNetworkStatus();
   const wasOfflineRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Get clear/refresh functions from stores
-  const refreshChats = useChatStore((state) => state.refreshCurrentTab);
-  const clearTaskCache = useTaskStore((state) => state.clearCache);
-  const clearCalendarCache = useCalendarStore((state) => state.clearCache);
-  const clearPollCache = usePollStore((state) => state.clearCache);
-  const clearUserCache = useUserStore((state) => state.clearCache);
+  // Use differential sync for efficient data updates
+  const { syncAll } = useDifferentialSync({
+    enabled: isNative,
+    onComplete: (results) => {
+      const totalUpdated = results.reduce((sum, r) => sum + r.updated, 0);
+      const totalDeleted = results.reduce((sum, r) => sum + r.deleted, 0);
+      console.log(`[NetworkSync] Differential sync completed: ` +
+        `${totalUpdated} updated, ${totalDeleted} deleted`);
+    },
+    onError: (error, feature) => {
+      console.warn(`[NetworkSync] Failed to sync ${feature}:`, error);
+    },
+  });
 
-  const syncData = useCallback(() => {
-    console.log('[NetworkSync] Starting sync after network restore...');
+  const syncData = useCallback(async () => {
+    console.log('[NetworkSync] Starting differential sync after network restore...');
+    setIsSyncing(true);
 
-    // Clear all caches to force reload from server
     try {
-      // Chat store uses refresh instead of clear
-      refreshChats?.();
-      clearTaskCache?.();
-      clearCalendarCache?.();
-      clearPollCache?.();
-      clearUserCache?.();
-      console.log('[NetworkSync] Caches cleared, data will reload on next access');
+      // Use differential sync instead of clearing caches
+      await syncAll();
+      console.log('[NetworkSync] Differential sync completed');
     } catch (e) {
-      console.warn('[NetworkSync] Error clearing caches:', e);
+      console.warn('[NetworkSync] Error during sync:', e);
+    } finally {
+      setIsSyncing(false);
+      onSync?.();
     }
-
-    console.log('[NetworkSync] Sync completed');
-    onSync?.();
-  }, [refreshChats, clearTaskCache, clearCalendarCache, clearPollCache, clearUserCache, onSync]);
+  }, [syncAll, onSync]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -72,7 +78,7 @@ export const useNetworkSync = (options: UseNetworkSyncOptions = {}) => {
       }
     } else if (wasOfflineRef.current) {
       // Сеть восстановлена - запускаем синхронизацию с задержкой
-      console.log('[NetworkSync] Network restored, scheduling sync in', delay, 'ms');
+      console.log('[NetworkSync] Network restored, scheduling differential sync in', delay, 'ms');
 
       syncTimeoutRef.current = setTimeout(() => {
         syncData();
@@ -94,7 +100,7 @@ export const useNetworkSync = (options: UseNetworkSyncOptions = {}) => {
 
   return {
     isOffline,
-    isSyncing: false,
+    isSyncing,
     manualSync,
     networkStatus: status,
   };

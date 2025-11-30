@@ -35,6 +35,10 @@ interface TaskCacheStore {
   // Actions
   setTasksForStatus: (status: StatusTab, tasks: Task[], total: number) => void;
   appendTasksForStatus: (status: StatusTab, tasks: Task[]) => void;
+  /** Merge updated tasks (for differential sync) */
+  mergeTasks: (tasks: Task[], status: StatusTab) => void;
+  /** Remove deleted tasks by IDs (for differential sync) */
+  removeTasks: (taskIds: number[], status: StatusTab) => void;
   getCachedTasks: () => TasksByStatus;
   getCachedTotals: () => TotalsByStatus;
   clearCache: () => void;
@@ -84,6 +88,48 @@ export const useTaskStore = create<TaskCacheStore>()(
             tasksByStatus: {
               ...state.tasksByStatus,
               [status]: [...currentTasks, ...newTasks],
+            },
+            lastUpdated: Date.now(),
+          };
+        });
+      },
+
+      mergeTasks: (tasks: Task[], status: StatusTab) => {
+        set((state) => {
+          const currentTasks = state.tasksByStatus[status] || [];
+          const taskMap = new Map(currentTasks.map(t => [t.id, t]));
+
+          // Update existing tasks or add new ones
+          for (const task of tasks) {
+            taskMap.set(task.id, task);
+          }
+
+          return {
+            tasksByStatus: {
+              ...state.tasksByStatus,
+              [status]: Array.from(taskMap.values()),
+            },
+            lastUpdated: Date.now(),
+          };
+        });
+      },
+
+      removeTasks: (taskIds: number[], status: StatusTab) => {
+        if (!taskIds || taskIds.length === 0) return;
+
+        set((state) => {
+          const currentTasks = state.tasksByStatus[status] || [];
+          const idsToRemove = new Set(taskIds);
+          const filteredTasks = currentTasks.filter(t => !idsToRemove.has(t.id));
+
+          return {
+            tasksByStatus: {
+              ...state.tasksByStatus,
+              [status]: filteredTasks,
+            },
+            totals: {
+              ...state.totals,
+              [status]: Math.max(0, (state.totals[status] || 0) - taskIds.length),
             },
             lastUpdated: Date.now(),
           };

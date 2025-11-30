@@ -1,0 +1,363 @@
+/**
+ * Cache Warming Hook
+ * Прогрев кэша при старте приложения для мгновенного отображения данных
+ */
+
+import { useEffect, useRef, useCallback } from 'react';
+import { InteractionManager } from 'react-native';
+import { useChatStore } from '@shared/store/chatStore';
+import { useTaskStore } from '@shared/store/taskStore';
+import { usePollStore } from '@shared/store/pollStore';
+import { useUserStore } from '@shared/store/userStore';
+import { isNative } from '@shared/storage';
+
+// Приоритеты загрузки (чем меньше, тем раньше)
+const WARM_PRIORITY = {
+  chats: 1,      // Чаты - самое важное, грузим первыми
+  tasks: 2,      // Задачи - второй приоритет
+  unreadCount: 3, // Счётчик непрочитанных
+  polls: 4,      // Опросы
+  users: 5,      // Профили пользователей (кэшируются отдельно)
+} as const;
+
+interface WarmingResult {
+  feature: keyof typeof WARM_PRIORITY;
+  success: boolean;
+  duration: number;
+  itemsLoaded?: number;
+}
+
+interface UseCacheWarmingOptions {
+  /** Включить прогрев (по умолчанию true на native) */
+  enabled?: boolean;
+  /** Задержка перед началом прогрева (мс) */
+  delay?: number;
+  /** Загружать данные параллельно или последовательно */
+  parallel?: boolean;
+  /** Callback после завершения прогрева */
+  onComplete?: (results: WarmingResult[]) => void;
+  /** Callback при ошибке */
+  onError?: (error: Error, feature: string) => void;
+}
+
+/**
+ * Хук для прогрева кэша при старте приложения
+ * Загружает критичные данные в фоне после рендера UI
+ */
+export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
+  const {
+    enabled = isNative,
+    delay = 100,
+    parallel = true,
+    onComplete,
+    onError,
+  } = options;
+
+  const isWarmingRef = useRef(false);
+  const hasWarmedRef = useRef(false);
+  const resultsRef = useRef<WarmingResult[]>([]);
+
+  // Store selectors - проверяем есть ли уже данные в кэше
+  const chatTabs = useChatStore((state) => state.tabs);
+  const tasksByStatus = useTaskStore((state) => state.tasksByStatus);
+  const polls = usePollStore((state) => state.polls);
+
+  // Store actions
+  const loadTabData = useChatStore((state) => state.loadTabData);
+  const loadUnreadCount = useChatStore((state) => state.loadUnreadCount);
+  const setTasksForStatus = useTaskStore((state) => state.setTasksForStatus);
+  const setPolls = usePollStore((state) => state.setPolls);
+
+  /**
+   * Проверить, нужен ли прогрев для фичи
+   */
+  const needsWarming = useCallback((feature: keyof typeof WARM_PRIORITY): boolean => {
+    switch (feature) {
+      case 'chats': {
+        // Проверяем есть ли чаты в любом табе
+        const hasChats = chatTabs.all.pinnedChats.length > 0 || chatTabs.all.regularChats.length > 0;
+        const needsWarm = !hasChats;
+        if (!needsWarm) {
+          console.log(`[CacheWarming] chats: skipped (has ${chatTabs.all.pinnedChats.length + chatTabs.all.regularChats.length} chats in cache)`);
+        }
+        return needsWarm;
+      }
+      case 'tasks': {
+        // Проверяем есть ли задачи в любом статусе
+        const taskCounts = Object.entries(tasksByStatus || {}).map(([status, arr]) => `${status}:${arr?.length || 0}`);
+        const hasTasks = Object.values(tasksByStatus || {}).some(arr => arr && arr.length > 0);
+        const needsWarm = !hasTasks;
+        if (!needsWarm) {
+          console.log(`[CacheWarming] tasks: skipped (${taskCounts.join(', ')})`);
+        }
+        return needsWarm;
+      }
+      case 'polls': {
+        const needsWarm = !polls || polls.length === 0;
+        if (!needsWarm) {
+          console.log(`[CacheWarming] polls: skipped (has ${polls?.length || 0} polls in cache)`);
+        }
+        return needsWarm;
+      }
+      case 'unreadCount':
+        return true; // Всегда обновляем
+      case 'users':
+        return false; // Пользователи кэшируются по запросу
+      default:
+        return false;
+    }
+  }, [chatTabs, tasksByStatus, polls]);
+
+  /**
+   * Прогреть чаты
+   */
+  const warmChats = useCallback(async (): Promise<WarmingResult> => {
+    const start = Date.now();
+    try {
+      await loadTabData('all');
+      const tabs = useChatStore.getState().tabs;
+      const itemsLoaded = tabs.all.pinnedChats.length + tabs.all.regularChats.length;
+      return {
+        feature: 'chats',
+        success: true,
+        duration: Date.now() - start,
+        itemsLoaded,
+      };
+    } catch (error) {
+      onError?.(error as Error, 'chats');
+      return { feature: 'chats', success: false, duration: Date.now() - start };
+    }
+  }, [loadTabData, onError]);
+
+  /**
+   * Прогреть задачи
+   */
+  const warmTasks = useCallback(async (): Promise<WarmingResult> => {
+    const start = Date.now();
+    try {
+      const taskApi = await import('@/features/tasks/api/task.api');
+
+      // Загружаем все статусы параллельно
+      const statuses = ['new', 'in_progress', 'review', 'done'] as const;
+      const results = await Promise.all(
+        statuses.map(status => taskApi.getTasksByStatus(status, 10, 0))
+      );
+
+      // Обновляем store
+      let totalItems = 0;
+      results.forEach((response, index) => {
+        const tasks = response.data || [];
+        setTasksForStatus(statuses[index], tasks, response.total || 0);
+        totalItems += tasks.length;
+      });
+
+      return {
+        feature: 'tasks',
+        success: true,
+        duration: Date.now() - start,
+        itemsLoaded: totalItems,
+      };
+    } catch (error) {
+      onError?.(error as Error, 'tasks');
+      return { feature: 'tasks', success: false, duration: Date.now() - start };
+    }
+  }, [setTasksForStatus, onError]);
+
+  /**
+   * Прогреть опросы
+   */
+  const warmPolls = useCallback(async (): Promise<WarmingResult> => {
+    const start = Date.now();
+    try {
+      const pollApi = await import('@/features/polls/api/poll.api');
+      const response = await pollApi.getPolls(10, 0);
+      const pollsList = response.data || [];
+
+      setPolls(pollsList, response.total || 0);
+
+      return {
+        feature: 'polls',
+        success: true,
+        duration: Date.now() - start,
+        itemsLoaded: pollsList.length,
+      };
+    } catch (error) {
+      onError?.(error as Error, 'polls');
+      return { feature: 'polls', success: false, duration: Date.now() - start };
+    }
+  }, [setPolls, onError]);
+
+  /**
+   * Прогреть счётчик непрочитанных
+   */
+  const warmUnreadCount = useCallback(async (): Promise<WarmingResult> => {
+    const start = Date.now();
+    try {
+      await loadUnreadCount();
+      return {
+        feature: 'unreadCount',
+        success: true,
+        duration: Date.now() - start,
+      };
+    } catch (error) {
+      onError?.(error as Error, 'unreadCount');
+      return { feature: 'unreadCount', success: false, duration: Date.now() - start };
+    }
+  }, [loadUnreadCount, onError]);
+
+  /**
+   * Выполнить прогрев кэша
+   */
+  const warmCache = useCallback(async () => {
+    if (!enabled || isWarmingRef.current || hasWarmedRef.current) {
+      return;
+    }
+
+    isWarmingRef.current = true;
+    resultsRef.current = [];
+
+    console.log('[CacheWarming] Starting cache warming...');
+    const startTime = Date.now();
+
+    // Определяем какие фичи нужно прогреть
+    const featuresToWarm: Array<{
+      feature: keyof typeof WARM_PRIORITY;
+      warmFn: () => Promise<WarmingResult>;
+    }> = [];
+
+    if (needsWarming('chats')) {
+      featuresToWarm.push({ feature: 'chats', warmFn: warmChats });
+    }
+    if (needsWarming('tasks')) {
+      featuresToWarm.push({ feature: 'tasks', warmFn: warmTasks });
+    }
+    if (needsWarming('unreadCount')) {
+      featuresToWarm.push({ feature: 'unreadCount', warmFn: warmUnreadCount });
+    }
+    if (needsWarming('polls')) {
+      featuresToWarm.push({ feature: 'polls', warmFn: warmPolls });
+    }
+
+    // Сортируем по приоритету
+    featuresToWarm.sort((a, b) => WARM_PRIORITY[a.feature] - WARM_PRIORITY[b.feature]);
+
+    if (featuresToWarm.length === 0) {
+      console.log('[CacheWarming] All data already cached, skipping');
+      hasWarmedRef.current = true;
+      isWarmingRef.current = false;
+      return;
+    }
+
+    console.log(`[CacheWarming] Warming ${featuresToWarm.length} features:`,
+      featuresToWarm.map(f => f.feature).join(', '));
+
+    try {
+      let results: WarmingResult[];
+
+      if (parallel) {
+        // Параллельная загрузка (быстрее, но больше нагрузка)
+        results = await Promise.all(featuresToWarm.map(f => f.warmFn()));
+      } else {
+        // Последовательная загрузка (медленнее, но меньше нагрузка)
+        results = [];
+        for (const { warmFn } of featuresToWarm) {
+          const result = await warmFn();
+          results.push(result);
+        }
+      }
+
+      resultsRef.current = results;
+
+      const totalDuration = Date.now() - startTime;
+      const successCount = results.filter(r => r.success).length;
+      const totalItems = results.reduce((sum, r) => sum + (r.itemsLoaded || 0), 0);
+
+      console.log(`[CacheWarming] Completed in ${totalDuration}ms`);
+      console.log(`[CacheWarming] Success: ${successCount}/${results.length}, Items loaded: ${totalItems}`);
+
+      hasWarmedRef.current = true;
+      onComplete?.(results);
+    } catch (error) {
+      console.error('[CacheWarming] Failed:', error);
+    } finally {
+      isWarmingRef.current = false;
+    }
+  }, [
+    enabled,
+    parallel,
+    needsWarming,
+    warmChats,
+    warmTasks,
+    warmPolls,
+    warmUnreadCount,
+    onComplete,
+  ]);
+
+  /**
+   * Запустить прогрев после рендера UI
+   */
+  const startWarming = useCallback(() => {
+    if (!enabled) return;
+
+    // Ждём завершения анимаций и рендера
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => {
+        warmCache();
+      }, delay);
+    });
+  }, [enabled, delay, warmCache]);
+
+  /**
+   * Сбросить флаг прогрева (для повторного запуска)
+   */
+  const resetWarming = useCallback(() => {
+    hasWarmedRef.current = false;
+    resultsRef.current = [];
+  }, []);
+
+  return {
+    startWarming,
+    resetWarming,
+    isWarming: isWarmingRef.current,
+    hasWarmed: hasWarmedRef.current,
+    results: resultsRef.current,
+  };
+};
+
+/**
+ * Провайдер для автоматического прогрева при авторизации
+ */
+export const useCacheWarmingOnAuth = (isAuthenticated: boolean) => {
+  const { startWarming, resetWarming } = useCacheWarming({
+    enabled: isNative,
+    delay: 300, // Небольшая задержка после авторизации
+    parallel: true,
+    onComplete: (results) => {
+      const failed = results.filter(r => !r.success);
+      if (failed.length > 0) {
+        console.warn('[CacheWarming] Some features failed to warm:',
+          failed.map(f => f.feature).join(', '));
+      }
+    },
+  });
+
+  const prevAuthRef = useRef(isAuthenticated);
+
+  useEffect(() => {
+    // Запускаем прогрев когда пользователь авторизовался
+    if (isAuthenticated && !prevAuthRef.current) {
+      console.log('[CacheWarming] User authenticated, starting cache warming');
+      startWarming();
+    }
+
+    // Сбрасываем при выходе
+    if (!isAuthenticated && prevAuthRef.current) {
+      console.log('[CacheWarming] User logged out, resetting cache warming');
+      resetWarming();
+    }
+
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated, startWarming, resetWarming]);
+};
+
+export default useCacheWarming;

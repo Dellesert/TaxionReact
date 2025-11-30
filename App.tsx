@@ -16,6 +16,7 @@ import { NotificationProvider } from '@shared/contexts/NotificationContext';
 import { ActionModalProvider } from '@shared/contexts/ActionModalContext';
 import { OfflineBanner } from '@shared/components/common/OfflineBanner';
 import { NetworkSyncProvider } from '@shared/providers/NetworkSyncProvider';
+import { useCacheWarmingOnAuth } from '@shared/hooks/useCacheWarming';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -106,6 +107,9 @@ export default function App() {
   const initSystemThemeListener = useThemeStore((state) => state.initSystemThemeListener);
 
   const loadUnreadCount = useNotificationStore((state) => state.loadUnreadCount);
+
+  // Прогрев кэша при авторизации (загружает чаты, задачи, опросы в фоне)
+  useCacheWarmingOnAuth(isAuthenticated);
 
   useEffect(() => {
     // Initialize auth state and theme on app start

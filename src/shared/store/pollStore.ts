@@ -19,6 +19,10 @@ interface PollCacheStore {
   // Actions
   setPolls: (polls: Poll[], total: number) => void;
   appendPolls: (polls: Poll[]) => void;
+  /** Merge updated polls (for differential sync) */
+  mergePolls: (polls: Poll[]) => void;
+  /** Remove deleted polls by IDs (for differential sync) */
+  removePolls: (pollIds: number[]) => void;
   getCachedPolls: () => Poll[];
   clearCache: () => void;
 }
@@ -44,6 +48,37 @@ export const usePollStore = create<PollCacheStore>()(
           const uniquePolls = newPolls.filter(p => !existingIds.has(p.id));
           return {
             polls: [...state.polls, ...uniquePolls],
+            lastUpdated: Date.now(),
+          };
+        });
+      },
+
+      mergePolls: (updatedPolls: Poll[]) => {
+        set((state) => {
+          const pollMap = new Map(state.polls.map(p => [p.id, p]));
+
+          // Update existing polls or add new ones
+          for (const poll of updatedPolls) {
+            pollMap.set(poll.id, poll);
+          }
+
+          return {
+            polls: Array.from(pollMap.values()),
+            lastUpdated: Date.now(),
+          };
+        });
+      },
+
+      removePolls: (pollIds: number[]) => {
+        if (!pollIds || pollIds.length === 0) return;
+
+        set((state) => {
+          const idsToRemove = new Set(pollIds);
+          const filteredPolls = state.polls.filter(p => !idsToRemove.has(p.id));
+
+          return {
+            polls: filteredPolls,
+            total: Math.max(0, state.total - pollIds.length),
             lastUpdated: Date.now(),
           };
         });

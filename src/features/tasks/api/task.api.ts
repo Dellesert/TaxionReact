@@ -37,16 +37,25 @@ import { ApiResponse, PaginatedResponse, PaginationParams } from '../../../types
 
 /**
  * Get list of tasks with filters
+ * @param filters - Task filters
+ * @param pagination - Pagination params
+ * @param since - ISO date string for differential sync (only tasks updated after this date)
  */
 export const getTasks = async (
   filters?: TaskListFilters,
-  pagination?: PaginationParams
+  pagination?: PaginationParams,
+  since?: string
 ): Promise<PaginatedResponse<Task>> => {
-  const params = {
+  const params: any = {
     ...filters,
     limit: pagination?.limit || PAGINATION.DEFAULT_LIMIT,
     offset: pagination?.offset || PAGINATION.DEFAULT_OFFSET,
   };
+
+  // Add updated_since parameter for differential sync
+  if (since) {
+    params.updated_since = since;
+  }
 
   const response = await api.get<ApiResponse<PaginatedResponse<Task>>>(
     API_ENDPOINTS.TASK.LIST,
@@ -109,14 +118,20 @@ export const getTasks = async (
 
 /**
  * Get tasks by specific status with pagination
+ * @param status - Task status
+ * @param limit - Number of tasks to fetch
+ * @param offset - Pagination offset
+ * @param additionalFilters - Additional filters
+ * @param since - ISO date string for differential sync
  */
 export const getTasksByStatus = async (
   status: 'new' | 'in_progress' | 'review' | 'done',
   limit: number = 3,
   offset: number = 0,
-  additionalFilters?: Omit<TaskListFilters, 'status'>
+  additionalFilters?: Omit<TaskListFilters, 'status'>,
+  since?: string
 ): Promise<PaginatedResponse<Task>> => {
-  return getTasks({ ...additionalFilters, status }, { limit, offset });
+  return getTasks({ ...additionalFilters, status }, { limit, offset }, since);
 };
 
 /**

@@ -23,17 +23,27 @@ import { ApiResponse } from '../../../types/common.types';
 
 /**
  * Get list of polls with filters and pagination
+ * @param filters - Poll filters
+ * @param limit - Number of polls to fetch
+ * @param offset - Pagination offset
+ * @param since - ISO date string for differential sync (only polls updated after this date)
  */
 export const getPolls = async (
   filters?: PollListFilters,
   limit?: number,
-  offset?: number
+  offset?: number,
+  since?: string
 ): Promise<{ polls: Poll[]; total: number; hasMore: boolean }> => {
-  const params = {
+  const params: any = {
     ...filters,
     limit: limit || 20,
     offset: offset || 0,
   };
+
+  // Add updated_since parameter for differential sync
+  if (since) {
+    params.updated_since = since;
+  }
 
   const response = await api.get<any>(API_ENDPOINTS.POLL.LIST, { params });
 
