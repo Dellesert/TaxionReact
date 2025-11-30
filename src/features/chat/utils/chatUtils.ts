@@ -61,6 +61,24 @@ export const getChatDisplayAvatar = (chat: Chat, currentUserId?: number): string
 };
 
 /**
+ * Получить thumbnail аватара для отображения чата в списках
+ * Для личных чатов возвращает avatar_thumbnail собеседника
+ * Для групповых чатов возвращает avatar_thumbnail чата
+ */
+export const getChatDisplayAvatarThumbnail = (chat: Chat, currentUserId?: number): string | undefined => {
+  // Для личных чатов показываем thumbnail аватара собеседника
+  if (chat.type === 'private') {
+    const companion = getPersonalChatCompanion(chat, currentUserId);
+    if (companion?.avatar_thumbnail) {
+      return companion.avatar_thumbnail;
+    }
+  }
+
+  // Для групповых чатов возвращаем thumbnail (когда будет поддержка)
+  return chat.avatar_thumbnail;
+};
+
+/**
  * Получить текст статуса пользователя для отображения
  */
 export const getUserStatusText = (user: User | null | undefined): string => {

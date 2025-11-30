@@ -12,6 +12,7 @@ import { API_BASE_URL } from '@shared/constants/api.constants';
 interface AvatarProps {
   name?: string;
   imageUrl?: string;
+  thumbnailUrl?: string; // Thumbnail URL for small avatars (400x300px)
   size?: number;
   status?: 'online' | 'offline' | 'busy' | 'away';
   showStatus?: boolean;
@@ -20,11 +21,13 @@ interface AvatarProps {
   userId?: number;
   badge?: ReactNode; // Custom badge component to show in bottom-right corner
   badgeStyle?: ViewStyle;
+  useOriginal?: boolean; // Force use of original avatar (for profile page)
 }
 
 const Avatar: React.FC<AvatarProps> = ({
   name = 'User',
   imageUrl,
+  thumbnailUrl,
   size = 40,
   status,
   showStatus = false,
@@ -33,15 +36,23 @@ const Avatar: React.FC<AvatarProps> = ({
   userId,
   badge,
   badgeStyle,
+  useOriginal = false,
 }) => {
   const [imageError, setImageError] = useState(false);
   const sessionId = useAuthStore((state) => state.sessionId);
 
   // Prepare image source with headers if needed
   const imageSource = useMemo(() => {
-    if (!imageUrl) return null;
+    // Decide which URL to use:
+    // - If useOriginal=true (profile page) -> use original avatar
+    // - If size <= 100px (chat, lists) -> use thumbnail (if available)
+    // - Otherwise -> use original
+    const shouldUseThumbnail = !useOriginal && size <= 100 && thumbnailUrl;
+    const finalUrl = shouldUseThumbnail ? thumbnailUrl : imageUrl;
 
-    let fixedUrl = imageUrl;
+    if (!finalUrl) return null;
+
+    let fixedUrl = finalUrl;
 
     // Replace localhost with configured API base URL for iOS/Android devices
     // This is needed because avatar URLs might be saved in DB with localhost
@@ -65,7 +76,7 @@ const Avatar: React.FC<AvatarProps> = ({
 
     // Otherwise, it might be a relative path - use as is
     return { uri: fixedUrl };
-  }, [imageUrl, sessionId]);
+  }, [imageUrl, thumbnailUrl, sessionId, useOriginal, size]);
 
   const getInitials = (fullName: string): string => {
     const names = fullName.trim().split(' ');
@@ -109,8 +120,14 @@ const Avatar: React.FC<AvatarProps> = ({
           source={imageSource}
           style={[styles.avatar, avatarSize]}
           contentFit="cover"
-          transition={200}
+          transition={100}
           cachePolicy="memory-disk"
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+          placeholderContentFit="cover"
+          priority="low"
+          recyclingKey={userId ? `avatar-${userId}` : undefined}
+          responsivePolicy="initial"
+          allowDownscaling={true}
           onError={(error) => {
             console.log('❌ Avatar load error:', imageUrl, error);
             setImageError(true);

@@ -32,8 +32,13 @@ export const useProfileAvatar = () => {
       // Use public file URL (no authentication required)
       const avatarUrl = fileApi.getPublicFileUrl(uploadedFile.file_name);
 
-      // Update user profile with new avatar URL
-      const updatedUser = await updateAvatar(avatarUrl);
+      // Get thumbnail URL if available (backend creates it automatically)
+      const thumbnailUrl = uploadedFile.thumbnail_url
+        ? fileApi.getPublicFileUrl(uploadedFile.thumbnail_url.split('/').pop()!)
+        : undefined;
+
+      // Update user profile with new avatar URL and thumbnail
+      const updatedUser = await updateAvatar(avatarUrl, thumbnailUrl);
 
       // Update local user state
       setUser(updatedUser);

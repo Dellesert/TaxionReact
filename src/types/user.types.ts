@@ -36,6 +36,7 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   avatar?: string;
+  avatar_thumbnail?: string; // Thumbnail for small avatars (400x300px)
   position?: string;
   department_id?: number;
   department?: Department;
@@ -59,6 +60,7 @@ export interface UpdateProfileDto {
   phone?: string;
   bio?: string;
   avatar?: string;
+  avatar_thumbnail?: string; // Thumbnail URL from file-service
   department_id?: number;
 }
 

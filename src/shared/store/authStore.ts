@@ -25,6 +25,7 @@ import { useUserStore } from './userStore';
 interface AuthState {
   // State
   user: User | null;
+  sessionId: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitializing: boolean;
@@ -43,6 +44,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   // Initial state
   user: null,
+  sessionId: null,
   isAuthenticated: false,
   isLoading: false,
   isInitializing: true,
@@ -72,13 +74,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const currentUser = await userApi.getProfile();
             set({
               user: currentUser,
+              sessionId,
               isAuthenticated: true,
               isInitializing: false,
             });
           } catch (error) {
             await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
             await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
-            set({ isInitializing: false });
+            set({ sessionId: null, isInitializing: false });
           }
         } else {
           // Clear session ID if user data is missing
@@ -132,6 +135,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({
         user: response.user,
+        sessionId: savedSessionId,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -225,6 +229,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Clear state
       set({
         user: null,
+        sessionId: null,
         isAuthenticated: false,
         isLoading: false,
         error: null,

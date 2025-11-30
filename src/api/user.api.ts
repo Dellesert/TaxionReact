@@ -301,9 +301,10 @@ export const getDepartmentUsers = async (id: number): Promise<User[]> => {
 /**
  * Update user avatar
  */
-export const updateAvatar = async (avatarUrl: string): Promise<User> => {
+export const updateAvatar = async (avatarUrl: string, thumbnailUrl?: string): Promise<User> => {
   const response = await api.put<ApiResponse<User>>(API_ENDPOINTS.USER.PROFILE, {
     avatar: avatarUrl,
+    avatar_thumbnail: thumbnailUrl,
   });
 
   if (response.data.data) {

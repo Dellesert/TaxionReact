@@ -81,8 +81,11 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
       <Avatar
         style={dynamicStyles.userAvatar}
         imageUrl={user.avatar}
+        thumbnailUrl={user.avatar_thumbnail}
         name={user.name || user.email}
         size={100}
+        useOriginal={true}
+        userId={user.id}
       />
       <View style={dynamicStyles.userNameRow}>
         <Text style={dynamicStyles.userName}>{user.name || 'Без имени'}</Text>

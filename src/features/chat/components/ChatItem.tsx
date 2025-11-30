@@ -8,7 +8,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
-import { getChatDisplayName, getChatDisplayAvatar, getPersonalChatCompanion } from '../utils/chatUtils';
+import { getChatDisplayName, getChatDisplayAvatar, getChatDisplayAvatarThumbnail, getPersonalChatCompanion } from '../utils/chatUtils';
 import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
 import { useChatPrefetch } from '@shared/hooks/usePrefetch';
 
@@ -68,6 +68,10 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
   const getChatAvatar = () => {
     return getChatDisplayAvatar(chat, currentUser?.id);
+  };
+
+  const getChatAvatarThumbnail = () => {
+    return getChatDisplayAvatarThumbnail(chat, currentUser?.id);
   };
 
   const getCompanionOnlineStatus = () => {
@@ -285,6 +289,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
           <View style={styles.avatarContainer}>
             <Avatar
               imageUrl={getChatAvatar()}
+              thumbnailUrl={getChatAvatarThumbnail()}
               name={getChatName()}
               size={50}
             />

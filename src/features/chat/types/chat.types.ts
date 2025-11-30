@@ -115,6 +115,7 @@ export interface Chat {
   type: ChatType;
   description?: string;
   avatar?: string;
+  avatar_thumbnail?: string; // Thumbnail for group chat avatars
   creator_id: number;
   created_by?: number;
   creator?: User;
@@ -145,6 +146,7 @@ export interface UpdateChatDto {
   name?: string;
   description?: string;
   avatar?: string;
+  avatar_thumbnail?: string;
 }
 
 // Send Message DTO

@@ -162,8 +162,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
             <Avatar
               imageUrl={sender?.avatar}
+              thumbnailUrl={sender?.avatar_thumbnail}
               name={sender?.name || `User ${message.sender_id}`}
               size={32}
+              userId={sender?.id}
               style={styles.avatar}
             />
           </TouchableOpacity>
