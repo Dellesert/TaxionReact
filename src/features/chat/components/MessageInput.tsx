@@ -2,13 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { FileAttachmentPicker } from './FileAttachmentPicker';
+import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
 
 interface MessageInputProps {
   onSend: (message: string, replyToId?: number) => void;
@@ -38,6 +38,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<AutoCorrectedTextInputRef>(null);
 
   // При установке editingMessage заполняем поле ввода
   useEffect(() => {
@@ -66,30 +67,39 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleSend = () => {
-    // Allow sending if either message has content OR files are selected
-    if (message.trim() || selectedFileIds.length > 0) {
-      // Clear typing timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+    // Применяем iOS автокоррекцию перед отправкой
+    inputRef.current?.commitAutocorrection();
 
-      // Stop typing indicator
-      if (onTyping) {
-        onTyping(false);
-      }
+    // Даём время на обновление state после автокоррекции
+    setTimeout(() => {
+      setMessage((currentMessage) => {
+        // Allow sending if either message has content OR files are selected
+        if (currentMessage.trim() || selectedFileIds.length > 0) {
+          // Clear typing timeout
+          if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+          }
 
-      // Если редактируем, добавим префикс с ID сообщения
-      if (editingMessage) {
-        onSend(`EDIT:${editingMessage.id}:${message.trim()}`);
-        if (onCancelEdit) onCancelEdit();
-      } else {
-        // Отправляем сообщение с reply_to_id если отвечаем
-        onSend(message.trim(), replyingToMessage?.id);
-        if (onCancelReply) onCancelReply();
-      }
+          // Stop typing indicator
+          if (onTyping) {
+            onTyping(false);
+          }
 
-      setMessage('');
-    }
+          // Если редактируем, добавим префикс с ID сообщения
+          if (editingMessage) {
+            onSend(`EDIT:${editingMessage.id}:${currentMessage.trim()}`);
+            if (onCancelEdit) onCancelEdit();
+          } else {
+            // Отправляем сообщение с reply_to_id если отвечаем
+            onSend(currentMessage.trim(), replyingToMessage?.id);
+            if (onCancelReply) onCancelReply();
+          }
+
+          return '';
+        }
+        return currentMessage;
+      });
+    }, 10);
   };
 
   const handleCancelEdit = () => {
@@ -194,7 +204,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </TouchableOpacity>
         )}
 
-        <TextInput
+        <AutoCorrectedTextInput
+          ref={inputRef}
           style={[styles.input, dynamicStyles.input]}
           placeholder="Сообщение"
           placeholderTextColor={theme.inputPlaceholder}
