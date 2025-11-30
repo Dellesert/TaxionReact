@@ -99,6 +99,37 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  // Отслеживаем видимые элементы для ленивой загрузки изображений
+  // Инициализируем с первыми 10 элементами для начальной загрузки
+  const [viewableIndices, setViewableIndices] = React.useState<Set<number>>(() => {
+    const initial = new Set<number>();
+    for (let i = 0; i < Math.min(10, messageListItems.length); i++) {
+      initial.add(i);
+    }
+    return initial;
+  });
+
+  // Обновляем видимые индексы при изменении viewableItems
+  const handleViewableItemsChanged = React.useCallback((info: any) => {
+    // Вызываем оригинальный обработчик
+    if (onViewableItemsChanged) {
+      onViewableItemsChanged(info);
+    }
+
+    // Обновляем наш локальный стейт с буфером (+/- 2 элемента для предзагрузки)
+    const newViewableIndices = new Set<number>();
+    info.viewableItems.forEach((item: any) => {
+      if (item.index !== null && item.index !== undefined) {
+        const idx = item.index;
+        // Добавляем текущий элемент и соседние для плавной загрузки (буфер ±3)
+        for (let offset = -3; offset <= 3; offset++) {
+          newViewableIndices.add(idx + offset);
+        }
+      }
+    });
+    setViewableIndices(newViewableIndices);
+  }, [onViewableItemsChanged]);
+
   // Показываем skeleton'ы если сообщения еще не загружены
   const showSkeletons = isLoading && messageListItems.length === 0;
 
@@ -130,8 +161,9 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         ref={listRef}
         data={messageListItems}
         extraData={messagesKey}
-        estimatedItemHeight={100}
+        drawDistance={Platform.OS === 'ios' ? 250 : 500}
         initialScrollIndex={initialScrollIndex}
+        estimatedItemSize={100}
         renderItem={({ item, index }) => {
           // Рендер разделителя даты
           if (item.type === 'date') {
@@ -174,6 +206,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
                 isSelected={selectedMessages.has(message.id)}
                 onEnterSelectionMode={onEnterSelectionMode}
                 onToggleSelection={onToggleMessageSelection}
+                isVisible={viewableIndices.has(index)}
               />
             </>
           );
@@ -185,13 +218,14 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
           styles.messagesList,
           { paddingBottom: baseBottomPadding }, // Статический padding
         ]}
+        // @ts-ignore - FlashList 2.x uses different approach
         inverted={true}
         keyboardShouldPersistTaps="handled"
-        removeClippedSubviews={false}
+        removeClippedSubviews={Platform.OS === 'ios'}
         onContentSizeChange={onContentSizeChange}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        onViewableItemsChanged={onViewableItemsChanged}
+        onViewableItemsChanged={handleViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onScrollToIndexFailed={(info: any) => {
           // ⚠️ КРИТИЧЕСКИ ВАЖНО: Игнорируем onScrollToIndexFailed во время восстановления позиции!

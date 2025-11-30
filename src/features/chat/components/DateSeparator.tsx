@@ -6,7 +6,7 @@ interface DateSeparatorProps {
   date: string; // "Сегодня", "Вчера", или "15 октября"
 }
 
-export const DateSeparator: React.FC<DateSeparatorProps> = ({ date }) => {
+const DateSeparatorComponent: React.FC<DateSeparatorProps> = ({ date }) => {
   const { theme } = useTheme();
 
   return (
@@ -17,6 +17,11 @@ export const DateSeparator: React.FC<DateSeparatorProps> = ({ date }) => {
     </View>
   );
 };
+
+// Мемоизация для предотвращения лишних ре-рендеров
+export const DateSeparator = React.memo(DateSeparatorComponent, (prevProps, nextProps) => {
+  return prevProps.date === nextProps.date;
+});
 
 const styles = StyleSheet.create({
   container: {

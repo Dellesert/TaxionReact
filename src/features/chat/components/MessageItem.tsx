@@ -42,6 +42,7 @@ interface MessageItemProps {
   onEnterSelectionMode?: (messageId: number) => void;
   onToggleSelection?: (messageId: number) => void;
   onRetryMessage?: (messageId: number) => void;
+  isVisible?: boolean; // Добавляем флаг видимости для ленивой загрузки
 }
 
 /**
@@ -70,6 +71,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onEnterSelectionMode,
   onToggleSelection,
   onRetryMessage,
+  isVisible = true, // По умолчанию видим
 }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
@@ -183,6 +185,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           onImagePress={handleImagePress}
           messageBubbleRef={messageBubbleRef}
           onRetryMessage={onRetryMessage}
+          isVisible={isVisible}
         />
       </View>
 

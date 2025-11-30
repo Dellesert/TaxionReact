@@ -26,12 +26,13 @@ interface MessageBubbleProps {
   onImagePress: (imageUrl: string) => void;
   messageBubbleRef: React.RefObject<View>;
   onRetryMessage?: (messageId: number) => void;
+  isVisible?: boolean;
 }
 
 /**
  * Компонент пузыря сообщения с контентом
  */
-export const MessageBubble: React.FC<MessageBubbleProps> = ({
+const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   message,
   isOwnMessage,
   isHighlighted,
@@ -46,6 +47,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onImagePress,
   messageBubbleRef,
   onRetryMessage,
+  isVisible = true,
 }) => {
   const { theme } = useTheme();
 
@@ -221,6 +223,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   imageUrls={imageUrls}
                   onImagePress={onImagePress}
                   onLongPress={onLongPress}
+                  isVisible={isVisible}
                 />
               )}
             </View>
@@ -362,4 +365,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
   },
+});
+
+// Мемоизация MessageBubble для оптимизации производительности
+export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, nextProps) => {
+  // Основные поля сообщения
+  if (
+    prevProps.message.id !== nextProps.message.id ||
+    prevProps.message.content !== nextProps.message.content ||
+    prevProps.message.is_edited !== nextProps.message.is_edited ||
+    prevProps.message.is_deleted !== nextProps.message.is_deleted ||
+    prevProps.isHighlighted !== nextProps.isHighlighted ||
+    prevProps.isOwnMessage !== nextProps.isOwnMessage
+  ) {
+    return false;
+  }
+
+  // Сравниваем вложения
+  const prevAttachments = prevProps.message.attachments || [];
+  const nextAttachments = nextProps.message.attachments || [];
+
+  if (prevAttachments.length !== nextAttachments.length) {
+    return false;
+  }
+
+  // Сравниваем ID вложений
+  const prevAttachmentIds = prevAttachments.map(a => a.id).join(',');
+  const nextAttachmentIds = nextAttachments.map(a => a.id).join(',');
+
+  if (prevAttachmentIds !== nextAttachmentIds) {
+    return false;
+  }
+
+  // Сравниваем sender
+  if (prevProps.sender?.id !== nextProps.sender?.id ||
+      prevProps.sender?.name !== nextProps.sender?.name) {
+    return false;
+  }
+
+  // Сравниваем replySender
+  if (prevProps.replySender?.id !== nextProps.replySender?.id) {
+    return false;
+  }
+
+  // Все проверки пройдены - не нужно обновлять
+  return true;
 });

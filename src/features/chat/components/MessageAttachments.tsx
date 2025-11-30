@@ -26,15 +26,17 @@ interface MessageAttachmentsProps {
   imageUrls?: { [key: number]: string }; // Deprecated, not used anymore
   onImagePress: (imageUrl: string) => void;
   onLongPress?: () => void;
+  isVisible?: boolean; // Флаг видимости для ленивой загрузки
 }
 
 /**
  * Компонент для отображения вложений сообщения (изображения и файлы)
  */
-export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
+const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
   attachments,
   onImagePress,
   onLongPress,
+  isVisible = true,
 }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
@@ -65,7 +67,9 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
 
       for (const attachment of images) {
         try {
-          const imageUrl = replaceLocalhostWithIP(attachment.file_url);
+          // Используем thumbnail для превью в списке сообщений
+          const thumbnailUrl = attachment.thumbnail_url || attachment.file_url;
+          const imageUrl = replaceLocalhostWithIP(thumbnailUrl);
           const response = await fetch(imageUrl, {
             headers: {
               'X-Session-ID': sessionId,
@@ -96,6 +100,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   }, [Platform.OS, sessionId, images.length, attachments]);
 
   // Prepare image URLs with proper baseURL replacement for gallery
+  // Для ImageViewer используем оригинальные изображения (file_url), а не thumbnails
   const galleryImageUrls = images.map(img => replaceLocalhostWithIP(img.file_url));
 
   // Количество скрытых фото (показываем максимум 4)
@@ -212,9 +217,11 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
 
   // Рендер одного изображения
   const renderImage = (attachment: Attachment, index: number, imageStyle?: object, showOverlay: boolean = false) => {
+    // Используем thumbnail для превью, оригинал для просмотра
+    const thumbnailUri = attachment.thumbnail_url || attachment.file_url;
     const imageUri = Platform.OS === 'web' && blobUrls[attachment.id]
       ? blobUrls[attachment.id]
-      : replaceLocalhostWithIP(attachment.file_url);
+      : replaceLocalhostWithIP(thumbnailUri);
 
     return (
       <TouchableOpacity
@@ -231,8 +238,15 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             source={{ uri: blobUrls[attachment.id] }}
             style={styles.imagePreview}
             contentFit="cover"
-            transition={200}
+            contentPosition="center"
+            transition={100}
             cachePolicy="memory-disk"
+            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+            placeholderContentFit="cover"
+            recyclingKey={`attachment-${attachment.id}`}
+            responsivePolicy="initial"
+            allowDownscaling={true}
+            decodeFormat="rgb565"
           />
         ) : Platform.OS === 'web' && !blobUrls[attachment.id] ? (
           <View style={[styles.imagePreview, { backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }]}>
@@ -246,8 +260,16 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             }}
             style={styles.imagePreview}
             contentFit="cover"
-            transition={200}
+            contentPosition="center"
+            transition={100}
             cachePolicy="memory-disk"
+            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+            placeholderContentFit="cover"
+            priority="low"
+            recyclingKey={`attachment-${attachment.id}`}
+            responsivePolicy="initial"
+            allowDownscaling={true}
+            decodeFormat="rgb565"
             onError={(error) => {
               console.error('❌ Message image load error:', imageUri, error);
             }}
@@ -375,18 +397,18 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 4,
   },
-  // Размеры изображений
+  // Размеры изображений - уменьшены для оптимизации на iOS
   imageSingle: {
-    width: 200,
-    height: 200,
+    width: 180,
+    height: 180,
   },
   imageHalf: {
-    width: 100,
-    height: 100,
+    width: 90,
+    height: 90,
   },
   imageSmall: {
-    width: 100,
-    height: 48,
+    width: 90,
+    height: 45,
   },
   attachmentItem: {
     flexDirection: 'row',
@@ -423,4 +445,34 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
   },
+});
+
+// Мемоизация компонента для предотвращения лишних ре-рендеров
+export const MessageAttachments = React.memo(MessageAttachmentsComponent, (prevProps, nextProps) => {
+  // Сравниваем флаг видимости
+  if (prevProps.isVisible !== nextProps.isVisible) {
+    return false;
+  }
+
+  // Сравниваем массивы вложений
+  if (prevProps.attachments.length !== nextProps.attachments.length) {
+    return false;
+  }
+
+  // Глубокое сравнение вложений по ID
+  const prevIds = prevProps.attachments.map(a => a.id).join(',');
+  const nextIds = nextProps.attachments.map(a => a.id).join(',');
+
+  if (prevIds !== nextIds) {
+    return false;
+  }
+
+  // Сравниваем функции (обычно это стабильные ссылки)
+  if (prevProps.onImagePress !== nextProps.onImagePress ||
+      prevProps.onLongPress !== nextProps.onLongPress) {
+    return false;
+  }
+
+  // Все проверки пройдены - не нужно обновлять
+  return true;
 });
