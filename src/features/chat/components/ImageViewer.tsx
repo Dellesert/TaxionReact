@@ -278,12 +278,19 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     itemVisiblePercentThreshold: 50
   }).current;
 
+  // Значение для скрытия заголовка при свайпе
+  const headerOpacity = useSharedValue(1);
+
   // Свайп вниз для закрытия - на уровне всего контейнера
   const swipeDownGesture = Gesture.Pan()
     .activeOffsetY([15, 300])
     .failOffsetX([-10, 10])
     .failOffsetY(-10)
     .enabled(!isZoomed)
+    .onStart(() => {
+      // Сразу скрываем заголовок при начале свайпа
+      headerOpacity.value = withTiming(0, { duration: 150 });
+    })
     .onUpdate((event) => {
       if (event.translationY > 0) {
         swipeY.value = event.translationY;
@@ -296,6 +303,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       } else {
         swipeY.value = withSpring(0);
         backgroundOpacity.value = withSpring(1);
+        headerOpacity.value = withTiming(1, { duration: 200 });
       }
     });
 
@@ -324,6 +332,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     opacity: backgroundOpacity.value,
   }));
 
+  const animatedHeaderStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+  }));
+
   // Не отображаем модалку если нет изображений
   if (!visible || imageUrls.length === 0) {
     return null;
@@ -345,7 +357,8 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           <GestureDetector gesture={swipeDownGesture}>
             <Animated.View style={[styles.imageViewerOverlay, animatedContainerStyle]}>
               {/* Заголовок с счетчиком */}
-              <View style={styles.header}>
+              <Animated.View style={[styles.header, animatedHeaderStyle]}>
+                <View style={{ width: 44 }} />
                 <View style={styles.headerContent}>
                   {hasMultipleImages && (
                     <Text style={styles.counterText}>
@@ -353,7 +366,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                     </Text>
                   )}
                 </View>
-                {/* Кнопка закрытия в заголовке */}
+                {/* Кнопка закрытия */}
                 <TouchableOpacity
                   style={styles.closeButton}
                   onPress={onClose}
@@ -361,7 +374,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                 >
                   <Ionicons name="close" size={28} color="#FFFFFF" />
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
 
               {/* Галерея изображений с горизонтальным скроллом */}
               <FlatList
@@ -443,14 +456,13 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 55 : 35,
+    paddingBottom: 15,
+    paddingHorizontal: 16,
     zIndex: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
   headerContent: {
     flex: 1,
@@ -487,16 +499,11 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   closeButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 55 : 35,
-    right: 16,
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 100,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   navButton: {
     position: 'absolute',
