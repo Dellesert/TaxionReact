@@ -12,7 +12,7 @@ import { Chat } from '../types/chat.types';
 import { ChatFilter, filterChatsBySearch, combineTabChats } from '../utils/chatHelpers';
 
 export interface ChatListContentRef {
-  scrollToTop: (filter?: ChatFilter) => void;
+  scrollToTop: (filter?: ChatFilter, animated?: boolean) => void;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -79,11 +79,11 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
   });
 
   // Scroll to top helper
-  const scrollToTop = useCallback((filterKey?: ChatFilter) => {
+  const scrollToTop = useCallback((filterKey?: ChatFilter, animated: boolean = true) => {
     const key = filterKey || chatFilter;
     const listRef = listRefs.current[key];
     if (listRef) {
-      listRef.scrollToOffset({ offset: 0, animated: false });
+      listRef.scrollToOffset({ offset: 0, animated });
     }
   }, [chatFilter]);
 
@@ -95,9 +95,9 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
   // Handle pin toggle with scroll to top
   const handleTogglePinnedWithScroll = useCallback(async (chatId: number) => {
     await onTogglePinned(chatId);
-    // Scroll to top after state update completes
+    // Scroll to top after state update completes (no animation for immediate feedback)
     setTimeout(() => {
-      scrollToTop(chatFilter);
+      scrollToTop(chatFilter, false);
     }, 150);
   }, [onTogglePinned, chatFilter, scrollToTop]);
 

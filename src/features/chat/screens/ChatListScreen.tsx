@@ -19,6 +19,7 @@ import { websocketService } from '@services/websocket.service';
 import { useChatData } from '../hooks/useChatData';
 import { useChatListActions } from '../hooks/useChatListActions';
 import { useChatSwipeGesture } from '../hooks/useChatSwipeGesture';
+import { useChatStore } from '@shared/store/chatStore';
 
 // Components
 import { ChatListHeader } from '../components/ChatListHeader';
@@ -36,6 +37,15 @@ type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Cha
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+// Global set to track chats where messages were sent (for smart scroll)
+// This is reset when user returns to chat list
+const chatsWithSentMessages = new Set<number>();
+
+// Export function to mark chat as having sent messages (called from ChatScreen)
+export const markChatMessageSent = (chatId: number) => {
+  chatsWithSentMessages.add(chatId);
+};
+
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation<ChatListNavigationProp>();
   const { theme } = useTheme();
@@ -43,6 +53,9 @@ const ChatListScreen: React.FC = () => {
 
   // Ref for ChatListContent
   const chatListRef = useRef<ChatListContentRef>(null);
+
+  // Track last opened chat for smart scrolling
+  const lastOpenedChatRef = useRef<{ id: number } | null>(null);
 
   // Local state
   const [refreshing, setRefreshing] = useState(false);
@@ -97,12 +110,49 @@ const ChatListScreen: React.FC = () => {
     loadAllTabs();
   }, [loadAllTabs]);
 
-  // Update unread count and scroll to top when screen gains focus
+
+  // Update unread count when screen gains focus
+  // Smart scroll: scroll to top only if message was sent in chat
   useFocusEffect(
     useCallback(() => {
-      loadUnreadCount();
-      // Scroll to top when returning to chat list
-      chatListRef.current?.scrollToTop();
+      const checkAndScroll = async () => {
+        // Always update unread count badge
+        await loadUnreadCount();
+
+        // Check if we should scroll to top after returning from chat
+        if (lastOpenedChatRef.current) {
+          const { id } = lastOpenedChatRef.current;
+
+          // Check if user sent a message in this chat
+          const messageSent = chatsWithSentMessages.has(id);
+
+          console.log('🔍 Smart scroll check:', {
+            chatId: id,
+            messageSent,
+          });
+
+          // If user sent a message, scroll to top
+          // No need to refresh - data is already updated via WebSocket
+          if (messageSent) {
+            console.log('✅ Message was sent - scrolling to top');
+            // Small delay to let chat list reorder, then smooth scroll
+            setTimeout(() => {
+              chatListRef.current?.scrollToTop();
+            }, 100);
+
+            // Clear the flag
+            chatsWithSentMessages.delete(id);
+          } else {
+            console.log('⏭️ No message sent - preserving scroll position');
+          }
+
+          // Reset the tracking
+          lastOpenedChatRef.current = null;
+        }
+        // If no chat was tracked, don't refresh - preserve scroll position
+      };
+
+      checkAndScroll();
     }, [loadUnreadCount])
   );
 
@@ -157,6 +207,16 @@ const ChatListScreen: React.FC = () => {
           prev.includes(chat.id) ? prev.filter((id) => id !== chat.id) : [...prev, chat.id]
         );
       } else {
+        // Save chat ID before opening for smart scroll detection
+        lastOpenedChatRef.current = {
+          id: chat.id,
+        };
+
+        console.log('💾 Saved chat state for smart scroll:', {
+          chatId: chat.id,
+          chatName: chat.name,
+        });
+
         // Navigate to chat
         navigation.navigate('Chat', {
           chatId: chat.id,
