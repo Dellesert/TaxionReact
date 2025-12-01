@@ -47,10 +47,10 @@ export const ChatHeader = {
     let subtitle = '';
     if (!isConnected) {
       subtitle = 'Подключение...';
-    } else if (isPrivateChat && statusText) {
-      subtitle = statusText;
+    } else if (statusText) {
+      subtitle = statusText; // Show typing indicator or online status for both private and group chats
     } else if (!isPrivateChat && membersText) {
-      subtitle = membersText;
+      subtitle = membersText; // Fallback to member count for group chats
     }
 
     return (

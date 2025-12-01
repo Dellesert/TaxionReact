@@ -116,6 +116,8 @@ export const useChatNavigation = ({
     displayName,
     displayAvatar,
     finalStatusText,
+    typingText,
+    statusText,
     membersText,
     isPrivateChat,
     isConnected,
