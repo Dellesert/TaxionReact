@@ -74,42 +74,52 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
       // Переходим на соответствующий экран в зависимости от типа
       setTimeout(() => {
         if (notification.type === 'message' && notification.data?.chat_id) {
-          navigation.navigate('Chats' as never, {
-            screen: 'Chat',
-            params: { chatId: notification.data.chat_id },
-          } as never);
+          // @ts-ignore - Navigation with nested params
+          navigation.navigate('Main', {
+            screen: 'Chats',
+            params: {
+              screen: 'Chat',
+              params: {
+                chatId: notification.data.chat_id,
+              },
+            },
+          });
         } else if ((notification.type === 'task' || notification.type === 'reminder')) {
           // Check for grouped notifications (multiple tasks)
           if (notification.data?.task_ids && notification.data.task_ids.length > 1) {
             // For grouped notifications, go to task list with filter
-            // TODO: Implement task list filtering by IDs or category
-            navigation.navigate('Tasks' as never, {
-              screen: 'TaskList',
+            // @ts-ignore - Navigation with nested params
+            navigation.navigate('Main', {
+              screen: 'Tasks',
               params: {
-                filterCategory: notification.data.category,
-                taskIds: notification.data.task_ids
+                screen: 'TaskList',
+                params: {
+                  filterCategory: notification.data.category,
+                  taskIds: notification.data.task_ids
+                }
               },
-            } as never);
+            });
           } else if (notification.data?.task_id) {
-            // Single task notification
-            navigation.navigate('Tasks' as never, {
-              screen: 'TaskDetail',
-              params: { taskId: notification.data.task_id },
-            } as never);
+            // Single task notification - navigate to root TaskDetail screen
+            // @ts-ignore - Navigation to root level screen
+            navigation.navigate('TaskDetail', {
+              taskId: notification.data.task_id,
+            });
           } else if (notification.data?.task_ids && notification.data.task_ids.length === 1) {
-            // Single task in array format
-            navigation.navigate('Tasks' as never, {
-              screen: 'TaskDetail',
-              params: { taskId: notification.data.task_ids[0] },
-            } as never);
+            // Single task in array format - navigate to root TaskDetail screen
+            // @ts-ignore - Navigation to root level screen
+            navigation.navigate('TaskDetail', {
+              taskId: notification.data.task_ids[0],
+            });
           }
         } else if (notification.type === 'poll' && notification.data?.poll_id) {
-          navigation.navigate('Polls' as never, {
-            screen: 'PollDetail',
-            params: { pollId: notification.data.poll_id },
-          } as never);
-        } else if (notification.type === 'calendar' && notification.data?.event_id) {
-          navigation.navigate('Calendar' as never);
+          // @ts-ignore - Navigation to root level screen
+          navigation.navigate('PollDetail', {
+            pollId: notification.data.poll_id,
+          });
+        } else if (notification.type === 'event' && notification.data?.event_id) {
+          // @ts-ignore - Navigation to calendar
+          navigation.navigate('Calendar');
         }
       }, 300);
     },

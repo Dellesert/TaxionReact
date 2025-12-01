@@ -442,14 +442,6 @@ export default function StorageScreen() {
       </SafeAreaView>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {!isNative && (
-          <View style={styles.webNotice}>
-            <Ionicons name="information-circle" size={24} color={isDark ? theme.textSecondary : '#92400E'} />
-            <Text style={styles.webNoticeText}>
-              Кэширование данных доступно только в мобильном приложении
-            </Text>
-          </View>
-        )}
 
         {/* Data Cache Section */}
         <View style={styles.section}>

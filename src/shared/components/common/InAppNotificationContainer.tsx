@@ -37,13 +37,18 @@ export const InAppNotificationContainer: React.FC = () => {
     // Навигация в зависимости от типа уведомления
     if (currentNotification.type === 'message' && currentNotification.data?.chat_id) {
       console.log('🔔 [InAppNotification] Navigating to chat:', currentNotification.data.chat_id);
-      // Переход в чат
-      navigation.navigate('Chats', {
-        screen: 'Chat',
-        params: { chatId: currentNotification.data.chat_id },
+      // Переход в чат - используем вложенную навигацию
+      navigation.navigate('Main', {
+        screen: 'Chats',
+        params: {
+          screen: 'Chat',
+          params: {
+            chatId: currentNotification.data.chat_id,
+          },
+        },
       });
     } else if (currentNotification.type === 'task' && currentNotification.data?.task_id) {
-      // Переход к задаче
+      // Переход к задаче - используем корневой экран TaskDetail
       console.log('🔔 [InAppNotification] Navigating to task:', currentNotification.data.task_id);
       navigation.navigate('TaskDetail', {
         taskId: currentNotification.data.task_id,
@@ -52,17 +57,14 @@ export const InAppNotificationContainer: React.FC = () => {
       // Переход к событию
       navigation.navigate('Calendar');
     } else if (currentNotification.type === 'poll' && currentNotification.data?.poll_id) {
-      // Переход к опросу
-      navigation.navigate('Polls', {
-        screen: 'PollDetails',
-        params: { pollId: currentNotification.data.poll_id },
+      // Переход к опросу - используем корневой экран PollDetail
+      navigation.navigate('PollDetail', {
+        pollId: currentNotification.data.poll_id,
       });
     } else {
       console.log('🔔 [InAppNotification] No specific route, going to notifications list');
       // По умолчанию переход в список уведомлений
-      navigation.navigate('Notifications', {
-        screen: 'NotificationList',
-      });
+      navigation.navigate('NotificationList');
     }
   };
 

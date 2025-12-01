@@ -11,7 +11,7 @@ import { useAuth } from '@shared/hooks/useAuth';
 import { useTheme } from '@shared/hooks/useTheme';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
-import ChatDetailScreen from '@/features/chat/screens/ChatDetailScreen';
+// ChatScreen removed - using nested navigation instead
 import TaskDetailScreen from '@/features/tasks/screens/TaskDetailScreen';
 import PollDetailScreen from '@/features/polls/screens/PollDetailScreen';
 import NotificationListScreen from '@/features/notifications/screens/NotificationListScreen';
@@ -24,7 +24,6 @@ import * as Linking from 'expo-linking';
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
-  ChatDetail: { chatId: number };
   TaskDetail: { taskId: number };
   EventDetail: { eventId: number };
   PollDetail: { pollId: number };
@@ -63,7 +62,6 @@ const linking: LinkingOptions<RootStackParamList> = {
           Profile: 'profile',
         },
       },
-      ChatDetail: 'chat/:chatId',
       TaskDetail: 'task/:taskId',
       EventDetail: 'event/:eventId',
       PollDetail: 'poll/:pollId',
@@ -117,22 +115,10 @@ const AppNavigator: React.FC = () => {
           <>
             <Stack.Screen name="Main" component={MainNavigator} />
             <Stack.Screen
-              name="ChatDetail"
-              component={ChatDetailScreen}
-              options={{
-                headerShown: true,
-                headerTitle: 'Чат',
-                headerBackTitle: 'Назад',
-                animation: 'slide_from_right',
-              }}
-            />
-            <Stack.Screen
               name="TaskDetail"
               component={TaskDetailScreen}
               options={{
-                headerShown: true,
-                headerTitle: 'Задача',
-                headerBackTitle: 'Назад',
+                headerShown: false,
                 animation: 'slide_from_right',
               }}
             />
@@ -141,9 +127,7 @@ const AppNavigator: React.FC = () => {
               name="PollDetail"
               component={PollDetailScreen}
               options={{
-                headerShown: true,
-                headerTitle: 'Опрос',
-                headerBackTitle: 'Назад',
+                headerShown: false,
                 animation: 'slide_from_right',
               }}
             />

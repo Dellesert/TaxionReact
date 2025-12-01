@@ -41,7 +41,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [isScrollReady, setIsScrollReady] = useState(false); // ⚡ Флаг готовности скролла для показа UI
 
   // ✅ СИНХРОННАЯ загрузка сохраненной позиции ДО первого рендера
-  // Используем useMemo с пустыми зависимостями для однократного выполнения
+  // Используем useMemo для загрузки при изменении chatId
   useMemo(() => {
     // Загружаем из AsyncStorage
     AsyncStorage.getItem(`chat_scroll_offset_${chatId}`)
@@ -62,7 +62,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         setHasSavedPosition(false);
         setIsLoadingPosition(false); // Загрузка завершена (с ошибкой)
       });
-  }, []); // Пустые зависимости = выполняется ОДИН РАЗ при создании хука
+  }, [chatId]); // Загружаем заново при изменении chatId
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {

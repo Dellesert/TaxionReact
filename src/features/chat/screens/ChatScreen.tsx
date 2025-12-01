@@ -198,6 +198,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     [chatIdNum, messages] // Только стабильные зависимости
   );
 
+  // ✅ Безопасное значение initialScrollIndex - не должно выходить за пределы списка
+  const safeInitialScrollIndex = useMemo(() => {
+    if (initialScrollIndex === undefined || initialScrollIndex === null || messageListItems.length === 0) {
+      return undefined;
+    }
+    // Убеждаемся что индекс находится в допустимых пределах
+    return Math.min(Math.max(0, initialScrollIndex), messageListItems.length - 1);
+  }, [initialScrollIndex, messageListItems.length]);
 
   // Сразу показываем UI
   useEffect(() => {
@@ -406,7 +414,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         insetsBottom={insets.bottom}
         listRef={listRef}
         highlightedMessageId={highlightedMessageId}
-        initialScrollIndex={initialScrollIndex}
+        initialScrollIndex={safeInitialScrollIndex}
         scrollSessionKey={scrollSessionKey}
         isRestoringPosition={isRestoringPosition}
         onContentSizeChange={handleContentSizeChange}

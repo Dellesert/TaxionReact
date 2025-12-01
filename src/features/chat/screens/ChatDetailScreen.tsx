@@ -4,9 +4,11 @@
  */
 
 import React, { useRef } from 'react';
-import { View, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, Animated, StyleSheet } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@shared/store/authStore';
+import { useTheme } from '@shared/hooks/useTheme';
 import { Loading } from '@shared/components/common/Loading';
 import { MessageInput } from '../components/MessageInput';
 
@@ -21,13 +23,14 @@ import { MessageListComponent } from '../components/MessageListComponent';
 import { EmptyMessagesState } from '../components/EmptyMessagesState';
 
 type ChatDetailRouteParams = {
-  chatId: string;
+  chatId: number;
 };
 
 const ChatDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: ChatDetailRouteParams }, 'params'>>();
-  const { chatId: chatIdParam } = route.params;
-  const chatId = Number(chatIdParam);
+  const { chatId } = route.params;
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const user = useAuthStore((state) => state.user);
 
@@ -48,60 +51,76 @@ const ChatDetailScreen: React.FC = () => {
   // Chat not found
   if (!chat) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Loading text="Чат не найден" fullScreen />
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+        <View style={styles.centerContent}>
+          <Loading text="Чат не найден" fullScreen />
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
-      <ChatDetailHeader chat={chat} typingUsers={typingUsers} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ChatDetailHeader chat={chat} typingUsers={typingUsers} />
 
-      {messages.length === 0 ? (
-        <EmptyMessagesState chatName={chat.name} />
-      ) : (
-        <MessageListComponent
-          chatId={chatId}
-          messageListItems={messages.map(msg => ({ type: 'message' as const, data: msg }))}
-          messagesKey={`chat-${chatId}`}
-          firstUnreadIndex={-1}
-          unreadCount={0}
-          showUnreadBanner={false}
-          initialUnreadCount={0}
-          isLoading={false}
-          isLoadingMore={false}
-          inputHeight={60}
-          insetsBottom={0}
-          keyboardHeightAnim={keyboardHeightAnim}
-          listRef={flatListRef}
-          highlightedMessageId={null}
-          scrollSessionKey={0}
-          onContentSizeChange={() => {}}
-          onScroll={() => {}}
-          onViewableItemsChanged={null}
-          viewabilityConfig={{}}
-          onLoadMore={handleLoadMore}
-          onReply={() => {}}
-          onEdit={() => {}}
-          onDelete={async () => {}}
-          onRestore={async () => {}}
-          onDeletePermanent={async () => {}}
-          onPin={async () => {}}
-          onUnpin={async () => {}}
-          onForward={() => {}}
-          onReplyPress={() => {}}
-          onPollPress={() => {}}
-        />
-      )}
+        {messages.length === 0 ? (
+          <EmptyMessagesState chatName={chat.name} />
+        ) : (
+          <MessageListComponent
+            chatId={chatId}
+            messageListItems={messages.map(msg => ({ type: 'message' as const, data: msg }))}
+            messagesKey={`chat-${chatId}`}
+            firstUnreadIndex={-1}
+            unreadCount={0}
+            showUnreadBanner={false}
+            initialUnreadCount={0}
+            isLoading={false}
+            isLoadingMore={false}
+            inputHeight={60}
+            insetsBottom={insets.bottom}
+            keyboardHeightAnim={keyboardHeightAnim}
+            listRef={flatListRef}
+            highlightedMessageId={null}
+            scrollSessionKey={0}
+            isRestoringPosition={{ current: false }}
+            onContentSizeChange={() => {}}
+            onScroll={() => {}}
+            onViewableItemsChanged={null}
+            viewabilityConfig={{}}
+            onLoadMore={handleLoadMore}
+            onReply={() => {}}
+            onEdit={() => {}}
+            onDelete={async () => {}}
+            onRestore={async () => {}}
+            onDeletePermanent={async () => {}}
+            onPin={async () => {}}
+            onUnpin={async () => {}}
+            onForward={() => {}}
+            onReplyPress={() => {}}
+            onPollPress={() => {}}
+          />
+        )}
 
-      <MessageInput onSend={handleSendMessage} onTyping={handleTyping} />
-    </KeyboardAvoidingView>
+        <MessageInput onSend={handleSendMessage} onTyping={handleTyping} />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 export default ChatDetailScreen;
