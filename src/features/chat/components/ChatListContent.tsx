@@ -10,6 +10,7 @@ import { ChatEmptyState } from './ChatEmptyState';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Chat } from '../types/chat.types';
 import { ChatFilter, filterChatsBySearch, combineTabChats } from '../utils/chatHelpers';
+import { useChatStore } from '@shared/store/chatStore';
 
 export interface ChatListContentRef {
   scrollToTop: (filter?: ChatFilter, animated?: boolean) => void;
@@ -70,6 +71,9 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
+  // Get typing users from chatStore
+  const typingUsers = useChatStore((state) => state.typingUsers);
+
   // Refs for FlashList instances per tab
   const listRefs = useRef<Record<ChatFilter, any>>({
     all: null,
@@ -105,19 +109,25 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
    * Render single chat item
    */
   const renderChatItem = useCallback(
-    ({ item, index }: { item: Chat; index: number }) => (
-      <ChatItem
-        chat={item}
-        onPress={onChatPress}
-        isSelected={selectedChats.includes(item.id)}
-        isEditMode={isEditMode}
-        itemIndex={index}
-        onToggleFavorite={() => onToggleFavorite(item.id)}
-        onTogglePinned={() => handleTogglePinnedWithScroll(item.id)}
-        onMarkAsRead={() => onMarkAsRead(item.id)}
-        onDelete={onDeleteChat}
-      />
-    ),
+    ({ item, index }: { item: Chat; index: number }) => {
+      // Get typing users for this specific chat
+      const chatTypingUsers = typingUsers[item.id] || [];
+
+      return (
+        <ChatItem
+          chat={item}
+          onPress={onChatPress}
+          isSelected={selectedChats.includes(item.id)}
+          isEditMode={isEditMode}
+          itemIndex={index}
+          typingUsers={chatTypingUsers}
+          onToggleFavorite={() => onToggleFavorite(item.id)}
+          onTogglePinned={() => handleTogglePinnedWithScroll(item.id)}
+          onMarkAsRead={() => onMarkAsRead(item.id)}
+          onDelete={onDeleteChat}
+        />
+      );
+    },
     [
       isEditMode,
       selectedChats,
@@ -126,6 +136,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
       handleTogglePinnedWithScroll,
       onMarkAsRead,
       onDeleteChat,
+      typingUsers,
     ]
   );
 

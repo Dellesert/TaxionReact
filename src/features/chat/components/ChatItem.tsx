@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Chat } from '../types/chat.types';
+import { Chat, TypingIndicator } from '../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getChatDisplayName, getChatDisplayAvatar, getChatDisplayAvatarThumbnail, getPersonalChatCompanion } from '../utils/chatUtils';
 import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
 import { useChatPrefetch } from '@shared/hooks/usePrefetch';
+import { getTypingUserNames, formatTypingText } from '../utils/chatScreenHelpers';
 
 interface ChatItemProps {
   chat: Chat;
@@ -23,9 +24,10 @@ interface ChatItemProps {
   isEditMode?: boolean;
   isSelected?: boolean;
   itemIndex?: number;
+  typingUsers?: TypingIndicator[];
 }
 
-const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRead, onDelete, onToggleFavorite, onTogglePinned, isEditMode, isSelected, itemIndex = 0 }) => {
+const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRead, onDelete, onToggleFavorite, onTogglePinned, isEditMode, isSelected, itemIndex = 0, typingUsers = [] }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -114,6 +116,14 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   };
 
   const getLastMessagePreview = () => {
+    // Check if someone is typing (takes priority over last message)
+    if (typingUsers.length > 0) {
+      const typingNames = getTypingUserNames(typingUsers, currentUser?.id);
+      if (typingNames.length > 0) {
+        return formatTypingText(typingNames, chat.type === 'private');
+      }
+    }
+
     if (!chat.last_message) return 'Нет сообщений';
 
     const message = chat.last_message;
@@ -186,7 +196,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: chat.is_pinned
-        ? (theme.isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)')
+        ? theme.backgroundTertiary || theme.backgroundSecondary
         : theme.backgroundSecondary,
       borderBottomColor: theme.borderLight,
     },
@@ -642,6 +652,13 @@ const styles = StyleSheet.create({
 
 // Оптимизация: используем React.memo для предотвращения лишних ре-рендеров
 export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => {
+  // Check if typing users changed
+  const prevTypingCount = prevProps.typingUsers?.length || 0;
+  const nextTypingCount = nextProps.typingUsers?.length || 0;
+  const typingChanged = prevTypingCount !== nextTypingCount ||
+    (prevTypingCount > 0 && nextTypingCount > 0 &&
+      JSON.stringify(prevProps.typingUsers) !== JSON.stringify(nextProps.typingUsers));
+
   return (
     prevProps.chat.id === nextProps.chat.id &&
     prevProps.chat.last_message?.id === nextProps.chat.last_message?.id &&
@@ -651,6 +668,7 @@ export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => 
     prevProps.chat.is_favorite === nextProps.chat.is_favorite &&
     prevProps.chat.is_muted === nextProps.chat.is_muted &&
     prevProps.isEditMode === nextProps.isEditMode &&
-    prevProps.isSelected === nextProps.isSelected
+    prevProps.isSelected === nextProps.isSelected &&
+    !typingChanged
   );
 });
