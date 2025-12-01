@@ -202,10 +202,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
 
       // Clear all MMKV caches (chats, tasks, polls, calendar, users)
-      clearAllStorages();
+      await clearAllStorages();
 
       // Clear sync metadata (differential sync timestamps)
-      clearSyncMetadata();
+      await clearSyncMetadata();
 
       // Clear Zustand stores in memory
       useChatStore.getState().set({

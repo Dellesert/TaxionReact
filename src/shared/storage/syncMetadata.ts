@@ -1,38 +1,62 @@
 /**
  * Sync Metadata Storage
- * Хранение timestamps последней синхронизации для дифференциальной загрузки
+ * Stores timestamps of last sync for differential loading
+ *
+ * - iOS/Android: Uses MMKV (synchronous)
+ * - Web: Uses AsyncStorage (asynchronous)
  */
 
-import { isNative } from './index';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Ключ хранилища
-const SYNC_METADATA_KEY = 'sync_metadata';
+const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
+
+// Storage keys
 const SETTINGS_STORAGE_ID = 'taxion-settings-storage';
+const SYNC_METADATA_KEY = isNative ? 'sync_metadata' : `${SETTINGS_STORAGE_ID}:sync_metadata`;
 
 export interface SyncMetadata {
-  /** Последняя синхронизация чатов */
+  /** Last chat sync */
   chats?: number;
-  /** Последняя синхронизация задач */
+  /** Last task sync */
   tasks?: number;
-  /** Последняя синхронизация опросов */
+  /** Last poll sync */
   polls?: number;
-  /** Последняя синхронизация календаря */
+  /** Last calendar sync */
   calendar?: number;
-  /** Последняя синхронизация пользователей */
+  /** Last user sync */
   users?: number;
 }
 
-/**
- * Получить метаданные синхронизации
- */
-export const getSyncMetadata = (): SyncMetadata => {
-  if (!isNative) return {};
+// MMKV instance (lazy-loaded for native)
+let mmkvSettings: any = null;
 
+const getMMKVSettings = () => {
+  if (!isNative) return null;
+  if (!mmkvSettings) {
+    try {
+      const { createMMKV } = require('react-native-mmkv');
+      mmkvSettings = createMMKV({ id: SETTINGS_STORAGE_ID });
+    } catch (e) {
+      console.warn('[SyncMetadata] MMKV not available:', e);
+    }
+  }
+  return mmkvSettings;
+};
+
+/**
+ * Get sync metadata
+ */
+export const getSyncMetadata = async (): Promise<SyncMetadata> => {
   try {
-    const { createMMKV } = require('react-native-mmkv');
-    const storage = createMMKV({ id: SETTINGS_STORAGE_ID });
-    const data = storage.getString(SYNC_METADATA_KEY);
-    return data ? JSON.parse(data) : {};
+    if (isNative) {
+      const mmkv = getMMKVSettings();
+      const data = mmkv?.getString(SYNC_METADATA_KEY);
+      return data ? JSON.parse(data) : {};
+    } else {
+      const data = await AsyncStorage.getItem(SYNC_METADATA_KEY);
+      return data ? JSON.parse(data) : {};
+    }
   } catch (e) {
     console.warn('[SyncMetadata] Failed to get metadata:', e);
     return {};
@@ -40,56 +64,60 @@ export const getSyncMetadata = (): SyncMetadata => {
 };
 
 /**
- * Обновить метаданные синхронизации
+ * Update sync metadata
  */
-export const updateSyncMetadata = (updates: Partial<SyncMetadata>): void => {
-  if (!isNative) return;
-
+export const updateSyncMetadata = async (updates: Partial<SyncMetadata>): Promise<void> => {
   try {
-    const { createMMKV } = require('react-native-mmkv');
-    const storage = createMMKV({ id: SETTINGS_STORAGE_ID });
-    const current = getSyncMetadata();
+    const current = await getSyncMetadata();
     const updated = { ...current, ...updates };
-    storage.set(SYNC_METADATA_KEY, JSON.stringify(updated));
+    const serialized = JSON.stringify(updated);
+
+    if (isNative) {
+      const mmkv = getMMKVSettings();
+      mmkv?.set(SYNC_METADATA_KEY, serialized);
+    } else {
+      await AsyncStorage.setItem(SYNC_METADATA_KEY, serialized);
+    }
   } catch (e) {
     console.warn('[SyncMetadata] Failed to update metadata:', e);
   }
 };
 
 /**
- * Получить timestamp последней синхронизации для фичи
+ * Get timestamp of last sync for a feature
  */
-export const getLastSyncTime = (feature: keyof SyncMetadata): number | undefined => {
-  const metadata = getSyncMetadata();
+export const getLastSyncTime = async (feature: keyof SyncMetadata): Promise<number | undefined> => {
+  const metadata = await getSyncMetadata();
   return metadata[feature];
 };
 
 /**
- * Получить ISO строку для API запроса
+ * Get ISO string for API request
  */
-export const getLastSyncISO = (feature: keyof SyncMetadata): string | undefined => {
-  const timestamp = getLastSyncTime(feature);
+export const getLastSyncISO = async (feature: keyof SyncMetadata): Promise<string | undefined> => {
+  const timestamp = await getLastSyncTime(feature);
   if (!timestamp) return undefined;
   return new Date(timestamp).toISOString();
 };
 
 /**
- * Установить время последней синхронизации
+ * Set last sync time
  */
-export const setLastSyncTime = (feature: keyof SyncMetadata, timestamp?: number): void => {
-  updateSyncMetadata({ [feature]: timestamp ?? Date.now() });
+export const setLastSyncTime = async (feature: keyof SyncMetadata, timestamp?: number): Promise<void> => {
+  await updateSyncMetadata({ [feature]: timestamp ?? Date.now() });
 };
 
 /**
- * Очистить все метаданные синхронизации
+ * Clear all sync metadata
  */
-export const clearSyncMetadata = (): void => {
-  if (!isNative) return;
-
+export const clearSyncMetadata = async (): Promise<void> => {
   try {
-    const { createMMKV } = require('react-native-mmkv');
-    const storage = createMMKV({ id: SETTINGS_STORAGE_ID });
-    storage.delete(SYNC_METADATA_KEY);
+    if (isNative) {
+      const mmkv = getMMKVSettings();
+      mmkv?.remove(SYNC_METADATA_KEY);
+    } else {
+      await AsyncStorage.removeItem(SYNC_METADATA_KEY);
+    }
     console.log('[SyncMetadata] Cleared all sync metadata');
   } catch (e) {
     console.warn('[SyncMetadata] Failed to clear metadata:', e);
@@ -97,10 +125,10 @@ export const clearSyncMetadata = (): void => {
 };
 
 /**
- * Проверить, нужна ли синхронизация (данные устарели)
+ * Check if sync is needed (data is stale)
  */
-export const needsSync = (feature: keyof SyncMetadata, maxAgeMs: number): boolean => {
-  const lastSync = getLastSyncTime(feature);
+export const needsSync = async (feature: keyof SyncMetadata, maxAgeMs: number): Promise<boolean> => {
+  const lastSync = await getLastSyncTime(feature);
   if (!lastSync) return true;
   return Date.now() - lastSync > maxAgeMs;
 };

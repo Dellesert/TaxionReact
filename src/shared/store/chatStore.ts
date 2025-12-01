@@ -49,7 +49,7 @@ interface ChatState {
   // Legacy support - keeping for backward compatibility but will use new tab logic
   loadChats: (append?: boolean, filters?: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean }) => Promise<void>;
   createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
-  updateChat: (chatId: number, data: { name?: string; avatar?: string; description?: string }) => Promise<void>;
+  updateChat: (chatId: number, data: { name?: string; avatar?: string; avatar_thumbnail?: string; description?: string }) => Promise<void>;
   deleteChat: (chatId: number, clearHistory?: boolean) => Promise<void>;
   leaveChat: (chatId: number) => Promise<void>;
   removeChatMember: (chatId: number, userId: number) => Promise<void>;
@@ -450,7 +450,7 @@ export const useChatStore = create<ChatState>()(
     }
   },
 
-  updateChat: async (chatId: number, data: { name?: string; avatar?: string; description?: string }) => {
+  updateChat: async (chatId: number, data: { name?: string; avatar?: string; avatar_thumbnail?: string; description?: string }) => {
     try {
       const updatedChat = await chatApi.updateChat(chatId, data);
       set((state) => ({

@@ -52,7 +52,7 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
    */
   const syncChats = useCallback(async (): Promise<SyncResult> => {
     const start = Date.now();
-    const lastSync = getLastSyncISO('chats');
+    const lastSync = await getLastSyncISO('chats');
     const isFullSync = !lastSync;
 
     try {
@@ -80,7 +80,7 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
       const serverTime = syncData.server_time
         ? new Date(syncData.server_time).getTime()
         : Date.now();
-      setLastSyncTime('chats', serverTime);
+      await setLastSyncTime('chats', serverTime);
 
       console.log(`[DiffSync] Chats: ${isFullSync ? 'full' : 'diff'} sync, ` +
         `updated=${chats.length}, deleted=${syncData.deleted_ids?.length || 0}`);
@@ -112,7 +112,7 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
    */
   const syncTasks = useCallback(async (): Promise<SyncResult> => {
     const start = Date.now();
-    const lastSync = getLastSyncISO('tasks');
+    const lastSync = await getLastSyncISO('tasks');
     const isFullSync = !lastSync;
 
     try {
@@ -154,7 +154,7 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
       }
 
       // Сохраняем время синхронизации
-      setLastSyncTime('tasks', serverTime);
+      await setLastSyncTime('tasks', serverTime);
 
       console.log(`[DiffSync] Tasks: ${isFullSync ? 'full' : 'diff'} sync, ` +
         `updated=${totalUpdated}, deleted=${totalDeleted}`);
@@ -186,7 +186,7 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
    */
   const syncPolls = useCallback(async (): Promise<SyncResult> => {
     const start = Date.now();
-    const lastSync = getLastSyncISO('polls');
+    const lastSync = await getLastSyncISO('polls');
     const isFullSync = !lastSync;
 
     try {
@@ -214,7 +214,7 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
       const serverTime = syncData.server_time
         ? new Date(syncData.server_time).getTime()
         : Date.now();
-      setLastSyncTime('polls', serverTime);
+      await setLastSyncTime('polls', serverTime);
 
       console.log(`[DiffSync] Polls: ${isFullSync ? 'full' : 'diff'} sync, ` +
         `updated=${polls.length}, deleted=${syncData.deleted_ids?.length || 0}`);
@@ -287,8 +287,8 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
   /**
    * Сбросить метаданные синхронизации (для принудительной полной синхронизации)
    */
-  const resetSync = useCallback(() => {
-    clearSyncMetadata();
+  const resetSync = useCallback(async () => {
+    await clearSyncMetadata();
     console.log('[DiffSync] Sync metadata cleared, next sync will be full');
   }, []);
 

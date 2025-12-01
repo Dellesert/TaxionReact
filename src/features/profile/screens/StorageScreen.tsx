@@ -66,7 +66,7 @@ export default function StorageScreen() {
   const loadCacheInfo = useCallback(async () => {
     setIsLoading(true);
     try {
-      const mmkvInfo = getStorageSize();
+      const mmkvInfo = await getStorageSize();
       let documentCacheSize = 0;
 
       // Get document cache size (expo-file-system cache)
@@ -84,13 +84,18 @@ export default function StorageScreen() {
       // expo-image cache size is not directly accessible, estimate based on usage
       const imageCacheEstimate = 0; // Will show as "Управляется системой"
 
+      const [cacheLimit, usagePercent] = await Promise.all([
+        getCacheLimit(),
+        getCacheUsagePercent(),
+      ]);
+
       setCacheInfo({
         mmkv: mmkvInfo,
         imageCache: imageCacheEstimate,
         documentCache: documentCacheSize,
         totalCache: mmkvInfo.totalSize + documentCacheSize,
-        cacheLimit: getCacheLimit(),
-        usagePercent: getCacheUsagePercent(),
+        cacheLimit,
+        usagePercent,
       });
     } catch (error) {
       console.error('Failed to load cache info:', error);
@@ -115,7 +120,7 @@ export default function StorageScreen() {
           onPress: async () => {
             setIsClearing(true);
             try {
-              clearAllStorages();
+              await clearAllStorages();
               await loadCacheInfo();
               Alert.alert('Готово', 'Кэш данных очищен');
             } catch (error) {
@@ -168,7 +173,7 @@ export default function StorageScreen() {
           onPress: async () => {
             setIsClearing(true);
             try {
-              clearAllStorages();
+              await clearAllStorages();
               await Image.clearDiskCache();
               await Image.clearMemoryCache();
 
@@ -198,26 +203,26 @@ export default function StorageScreen() {
   };
 
   const handleChangeCacheLimit = () => {
-    const currentLimit = cacheInfo?.cacheLimit || getCacheLimit();
+    const currentLimit = cacheInfo?.cacheLimit;
     const currentOption = CACHE_LIMIT_OPTIONS.find(opt => opt.value === currentLimit);
 
     Alert.alert(
       'Лимит кэша',
-      `Текущий лимит: ${currentOption?.label || formatBytes(currentLimit)}`,
+      `Текущий лимит: ${currentOption?.label || formatBytes(currentLimit || 0)}`,
       CACHE_LIMIT_OPTIONS.map(option => ({
         text: option.label,
-        onPress: () => {
-          setCacheLimit(option.value);
-          loadCacheInfo();
+        onPress: async () => {
+          await setCacheLimit(option.value);
+          await loadCacheInfo();
         },
       }))
     );
   };
 
   const getCurrentLimitLabel = (): string => {
-    const limit = cacheInfo?.cacheLimit || getCacheLimit();
+    const limit = cacheInfo?.cacheLimit;
     const option = CACHE_LIMIT_OPTIONS.find(opt => opt.value === limit);
-    return option?.label || formatBytes(limit);
+    return option?.label || formatBytes(limit || 0);
   };
 
   const styles = StyleSheet.create({
