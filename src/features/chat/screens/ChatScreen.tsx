@@ -23,7 +23,6 @@ import {
   isUserAdmin,
   getTypingUserNames,
 } from '../utils/chatScreenHelpers';
-import { markChatMessageSent } from './ChatListScreen';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
 
@@ -367,9 +366,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // Обертка для handleSendMessage с автоматическим скроллом вниз
   const handleSendMessage = async (content: string, replyToId?: number) => {
     await originalHandleSendMessage(content, replyToId);
-
-    // Mark that message was sent for smart scroll in ChatListScreen
-    markChatMessageSent(chatIdNum);
 
     // После отправки сообщения скроллим вниз и скрываем баннер (пользователь активно участвует в диалоге)
     if (showUnreadBanner) {
