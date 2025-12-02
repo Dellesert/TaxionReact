@@ -200,7 +200,7 @@ export interface GetMessagesParams {
 
 // NEW API Response Types
 export interface GetLatestMessagesParams {
-  limit?: number; // default: 30, max: 100
+  limit?: number; // default: 10, max: 100
   include_unread_marker?: boolean; // default: true
 }
 
@@ -217,7 +217,7 @@ export interface GetLatestMessagesResponse {
 }
 
 export interface GetMessagesBeforeParams {
-  limit?: number; // default: 30, max: 100
+  limit?: number; // default: 10, max: 100
 }
 
 export interface GetMessagesBeforeResponse {

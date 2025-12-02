@@ -16,6 +16,7 @@ import { isMockMode, mockGetChats, mockGetMessages } from '@shared/utils/mockDat
 import { useAuthStore } from '@shared/store/authStore';
 import { websocketService } from '@services/websocket.service';
 import { getZustandChatStorage, isNative } from '@shared/storage';
+import { PAGINATION } from '@shared/constants/api.constants';
 
 // Tab data structure for caching
 interface TabData {
@@ -530,7 +531,7 @@ export const useChatStore = create<ChatState>()(
         // NEW API: Use getLatestMessages (cursor-based pagination)
         // Messages are returned in chronological order (oldest → newest)
         const response = await chatApi.getLatestMessages(chatId, {
-          limit: 30,
+          limit: PAGINATION.DEFAULT_LIMIT,
           include_unread_marker: true,
         });
 
@@ -556,7 +557,7 @@ export const useChatStore = create<ChatState>()(
     try {
       // NEW API: Use getMessagesBefore (cursor-based pagination)
       const response = await chatApi.getMessagesBefore(chatId, beforeMessageId, {
-        limit: 30,
+        limit: PAGINATION.DEFAULT_LIMIT,
       });
 
       const responseMessages = response.messages || [];
@@ -1803,7 +1804,7 @@ export const useChatStore = create<ChatState>()(
       }),
       // На web пропускаем гидратацию (storage = no-op)
       skipHydration: !isNative,
-      version: 1,
+      version: 2, // Incremented to clear old cache with different pagination
     }
   )
 );

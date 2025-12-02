@@ -21,6 +21,7 @@ interface MessageListComponentProps {
   initialUnreadCount: number; // Количество непрочитанных при входе в чат
   isLoading: boolean;
   isLoadingMore: boolean;
+  isWaitingToLoad: boolean;
   inputHeight: number;
   insetsBottom: number;
   keyboardHeightAnim: Animated.Value; // Анимированная высота клавиатуры
@@ -66,6 +67,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   initialUnreadCount,
   isLoading,
   isLoadingMore,
+  isWaitingToLoad,
   inputHeight,
   insetsBottom,
   keyboardHeightAnim,

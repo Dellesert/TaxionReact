@@ -20,6 +20,7 @@ interface ChatScreenContentProps {
   initialUnreadCount: number;
   isLoading: boolean;
   isLoadingMore: boolean;
+  isWaitingToLoad: boolean;
   inputHeight: number;
   insetsBottom: number;
   listRef: React.RefObject<any>;
@@ -101,6 +102,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   initialUnreadCount,
   isLoading,
   isLoadingMore,
+  isWaitingToLoad,
   inputHeight,
   insetsBottom,
   listRef,
@@ -198,6 +200,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           initialUnreadCount={initialUnreadCount}
           isLoading={isLoading}
           isLoadingMore={isLoadingMore}
+          isWaitingToLoad={isWaitingToLoad}
           inputHeight={inputHeight}
           insetsBottom={insetsBottom}
           keyboardHeightAnim={keyboardHeightAnim}

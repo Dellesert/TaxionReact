@@ -125,6 +125,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     currentDateLabel,
     showDateHeader,
     isLoadingMore,
+    isWaitingToLoad,
     hasReachedBottom,
     userScrolledToBottom,
     newMessagesCount,
@@ -408,6 +409,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         initialUnreadCount={initialUnreadCount}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
+        isWaitingToLoad={isWaitingToLoad}
         inputHeight={inputHeight}
         insetsBottom={insets.bottom}
         listRef={listRef}

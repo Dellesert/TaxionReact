@@ -18,6 +18,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
+  const [isWaitingToLoad, setIsWaitingToLoad] = useState(false); // Флаг ожидания загрузки (3 сек)
   const [userScrolledToBottom, setUserScrolledToBottom] = useState(false); // Флаг намеренного скролла
   const [newMessagesCount, setNewMessagesCount] = useState(0); // Количество новых сообщений ниже текущей позиции
   const [firstNewMessageIndex, setFirstNewMessageIndex] = useState<number>(-1); // Индекс первого нового непрочитанного сообщения
@@ -39,6 +40,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const scrollOffsetBeforeLoad = useRef<number>(0); // Позиция скролла перед загрузкой
   const currentContentHeight = useRef<number>(0); // Текущая высота контента (обновляется при каждом вызове handleContentSizeChange)
   const scrollAdjustmentTimer = useRef<NodeJS.Timeout | null>(null); // Таймер для множественных корректировок
+  const loadMoreTimer = useRef<NodeJS.Timeout | null>(null); // Таймер для задержки загрузки старых сообщений
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
@@ -78,12 +80,10 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       // Обычная инициализация - мгновенный показ
       setInitialScrolled(true);
-      console.log('✅ [Init] initialScrolled set to true, messages:', messages.length);
 
       // Даем время на автоматический скролл к непрочитанным, после чего разрешаем отслеживание
       setTimeout(() => {
         canTrackUserScroll.current = true;
-        console.log('✅ [Init] canTrackUserScroll enabled');
       }, 300);
     }
   }, [messages.length, initialScrolled]);
@@ -106,7 +106,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
             animated: true, // Используем анимацию для плавности
           });
         }
-      }, 100);
+      }, 10);
     }
   }, [initialScrolled, messages.length]);
 
@@ -140,19 +140,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     if (Platform.OS === 'ios') {
       scrollLogCounter.current++;
       if (scrollLogCounter.current === 1) {
-        console.log('🎯 [First Scroll Event]', {
-          initialScrolled,
-          offsetY: contentOffset.y.toFixed(2),
-          messagesCount: messages.length,
-        });
       }
       if (initialScrolled && scrollLogCounter.current % 20 === 0) {
-        console.log('📱 [iOS Scroll Debug]', {
-          offsetY: contentOffset.y.toFixed(2),
-          contentHeight: contentSize.height.toFixed(2),
-          layoutHeight: layoutMeasurement.height.toFixed(2),
-          messagesCount: messages.length,
-        });
       }
     }
 
@@ -183,30 +172,30 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     // 🔍 ДИАГНОСТИКА: Логируем данные скролла только когда близко к верху (для отладки iOS)
     if (isNearTop && !isLoadingMore) {
-      console.log('📱 [Scroll Near Top]', {
-        platform: Platform.OS,
-        initialScrolled,
-        offsetY: contentOffset.y.toFixed(2),
-        distanceFromTop: distanceFromTop.toFixed(2),
-        distanceFromBottom: distanceFromBottom.toFixed(2),
-        isNearTopStandard,
-        isNearTopAlternative,
-        hasMoreMessages,
-        messagesCount: messages.length,
-        oldestMessageId: messages[0]?.id,
-        lastOldestId: lastOldestMessageId.current,
-      });
     }
 
     // Если пользователь близко к верху и есть еще сообщения - загружаем
     // ВАЖНО: Убрали проверку initialScrolled, так как на iOS первое событие скролла происходит ДО установки этого флага
-    if (isNearTop && !isLoadingMore && hasMoreMessages && messages.length > 0) {
+    if (isNearTop && !isLoadingMore && !isWaitingToLoad && hasMoreMessages && messages.length > 0) {
       // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
       const oldestMessage = messages[0];
 
       if (oldestMessage && lastOldestMessageId.current !== oldestMessage.id) {
-        console.log('🔄 [Scroll] Triggering load more, distanceFromTop:', distanceFromTop, 'platform:', Platform.OS);
-        handleLoadMoreRef.current?.();
+
+        // Устанавливаем флаг ожидания
+        setIsWaitingToLoad(true);
+
+        // Очищаем предыдущий таймер если он есть
+        if (loadMoreTimer.current) {
+          clearTimeout(loadMoreTimer.current);
+        }
+
+        // Запускаем загрузку с задержкой 3 секунды
+        loadMoreTimer.current = setTimeout(() => {
+          setIsWaitingToLoad(false);
+          handleLoadMoreRef.current?.();
+          loadMoreTimer.current = null;
+        }, 100);
       }
     }
 
@@ -264,14 +253,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     scrollOffsetBeforeLoad.current = currentOffset;
     contentHeightBeforeLoad.current = currentHeight;
 
-    console.log('📥 [LoadMore] Saving state - offset:', currentOffset.toFixed(2), 'height:', currentHeight.toFixed(2));
 
     setIsLoadingMore(true);
     isLoadingOldMessages.current = true;
 
     try {
       const addedCount = await loadMoreMessages(chatId, oldestMessage.id);
-      console.log('📥 [LoadMore] Loaded', addedCount, 'new messages');
 
       if (addedCount === 0) {
         setHasMoreMessages(false);
@@ -281,7 +268,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       }
       // Если addedCount > 0, флаги сбросятся в handleContentSizeChange после коррекции
     } catch (error) {
-      console.error(`Failed to load more messages for chat ${chatId}:`, error);
       lastOldestMessageId.current = null;
       isLoadingOldMessages.current = false;
       contentHeightBeforeLoad.current = 0;
@@ -302,6 +288,10 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // Очищаем таймер коррекции скролла при размонтировании
       if (scrollAdjustmentTimer.current) {
         clearTimeout(scrollAdjustmentTimer.current);
+      }
+      // Очищаем таймер задержки загрузки при размонтировании
+      if (loadMoreTimer.current) {
+        clearTimeout(loadMoreTimer.current);
       }
       // Сбрасываем флаги при размонтировании
       isRestoringPosition.current = false;
@@ -331,7 +321,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       // Проверяем что высота действительно увеличилась (загрузились новые сообщения)
       if (heightDifference > 0) {
-        console.log('📏 [ContentSize] Height increased by', heightDifference.toFixed(2), 'px');
 
         // КРИТИЧЕСКИ ВАЖНО: Блокируем handleScroll на всё время коррекции
         isRestoringPosition.current = true;
@@ -351,7 +340,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
             animated: false,
           });
           lastScrollOffset.current = newOffset;
-          console.log('1️⃣ [Immediate] Scroll adjusted to', newOffset.toFixed(2));
         }
 
         // 2️⃣ Коррекция в следующем animation frame (перед отрисовкой)
@@ -362,7 +350,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
               animated: false,
             });
             lastScrollOffset.current = newOffset;
-            console.log('2️⃣ [RAF] Scroll adjusted to', newOffset.toFixed(2));
           }
         });
 
@@ -374,13 +361,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
               animated: false,
             });
             lastScrollOffset.current = newOffset;
-            console.log('3️⃣ [Final] Scroll adjusted to', newOffset.toFixed(2));
           }
 
           // Разблокируем handleScroll после финальной коррекции
           setTimeout(() => {
             isRestoringPosition.current = false;
-            console.log('🔓 [ContentSize] Scroll handlers unlocked');
           }, 50);
         }, 16);
 
@@ -466,7 +451,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
                 animated: true,
               });
             } else {
-              console.log(`❌ [AUTO-SCROLL] listRef.current is null`);
             }
           }, 100);
         } else {
@@ -585,10 +569,16 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       clearTimeout(scrollAdjustmentTimer.current);
       scrollAdjustmentTimer.current = null;
     }
+    // Очищаем таймер задержки загрузки если он активен
+    if (loadMoreTimer.current) {
+      clearTimeout(loadMoreTimer.current);
+      loadMoreTimer.current = null;
+    }
 
     setHasMoreMessages(true);
     setInitialScrolled(false);
     setHasReachedBottom(false);
+    setIsWaitingToLoad(false); // Сбрасываем флаг ожидания
     setUserScrolledToBottom(false); // Сбрасываем флаг намеренного скролла
     setNewMessagesCount(0); // Сбрасываем счетчик новых сообщений
     setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
@@ -620,6 +610,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     currentDateLabel,
     showDateHeader,
     isLoadingMore,
+    isWaitingToLoad, // Возвращаем флаг ожидания загрузки (3 сек)
     hasMoreMessages,
     hasReachedBottom,
     userScrolledToBottom, // Возвращаем флаг намеренного скролла

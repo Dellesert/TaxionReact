@@ -543,7 +543,7 @@ export const getLatestMessages = async (
   params?: GetLatestMessagesParams
 ): Promise<GetLatestMessagesResponse> => {
   const queryParams = {
-    limit: params?.limit || 30,
+    limit: params?.limit || PAGINATION.DEFAULT_LIMIT,
     include_unread_marker: params?.include_unread_marker !== false, // default true
   };
 
@@ -573,7 +573,7 @@ export const getMessagesBefore = async (
   params?: GetMessagesBeforeParams
 ): Promise<GetMessagesBeforeResponse> => {
   const queryParams = {
-    limit: params?.limit || 30,
+    limit: params?.limit || PAGINATION.DEFAULT_LIMIT,
   };
 
   const response = await api.get<GetMessagesBeforeResponse>(

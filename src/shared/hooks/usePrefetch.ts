@@ -28,7 +28,7 @@ interface UsePrefetchOptions {
  */
 export const useChatPrefetch = (options: UsePrefetchOptions = {}) => {
   const {
-    messageLimit = 30,
+    messageLimit = 10,
     delay = 150,
   } = options;
 
