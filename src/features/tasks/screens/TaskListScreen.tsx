@@ -15,7 +15,7 @@ import { useTaskSwipeGesture } from '../hooks/useTaskSwipeGesture';
 import { TaskListHeader } from '../components/TaskListHeader';
 import { TaskListContent } from '../components/TaskListContent';
 import { TaskFilterMenu } from '../components/TaskFilterMenu';
-import { TaskKanbanBoard } from '../components/TaskKanbanBoard';
+import { TaskViewSwitcher } from '../components/TaskViewSwitcher';
 import type { StatusTab } from '../utils/taskListHelpers';
 import { TASKS_PER_PAGE } from '../utils/taskListHelpers';
 
@@ -183,10 +183,10 @@ const TaskListScreen: React.FC = () => {
         isDesktop={isDesktop}
       />
 
-      {/* Content - Kanban Board for Desktop, Swipe Navigation for Mobile */}
+      {/* Content - TaskViewSwitcher for Desktop, Swipe Navigation for Mobile */}
       <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
         {isDesktop ? (
-          <TaskKanbanBoard
+          <TaskViewSwitcher
             tasks={tasks}
             totals={totals}
             loading={loading}
@@ -199,6 +199,7 @@ const TaskListScreen: React.FC = () => {
             onLoadMore={handleLoadMore}
             onRefresh={handleRefresh}
             onExpandAllToggle={handleExpandAllToggle}
+            onTaskUpdated={() => loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks)}
           />
         ) : (
           <TaskListContent

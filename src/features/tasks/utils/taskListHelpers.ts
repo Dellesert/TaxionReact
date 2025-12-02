@@ -83,3 +83,23 @@ export const getTabIndex = (status: StatusTab): number => {
 export const getStatusByIndex = (index: number): StatusTab => {
   return STATUS_TABS_ORDER[index];
 };
+
+/**
+ * Status colors mapping
+ */
+export const STATUS_COLORS: Record<StatusTab, string> = {
+  new: '#F59E0B',
+  in_progress: '#3B82F6',
+  review: '#8B5CF6',
+  done: '#10B981',
+};
+
+/**
+ * Status labels mapping
+ */
+export const STATUS_LABELS: Record<StatusTab, string> = {
+  new: 'Новые',
+  in_progress: 'В работе',
+  review: 'Проверка',
+  done: 'Готово',
+};

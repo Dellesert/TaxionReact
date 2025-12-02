@@ -158,9 +158,29 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
   );
 
   // Calculate menu position for desktop dropdown
-  const menuTop = buttonPosition
-    ? buttonPosition.y + buttonPosition.height + 8
-    : 60;
+  const calculateMenuPosition = () => {
+    if (!buttonPosition) return { top: 60 };
+
+    const windowHeight = Dimensions.get('window').height;
+    const estimatedMenuHeight = 300; // Approximate menu height
+    const spaceBelow = windowHeight - (buttonPosition.y + buttonPosition.height);
+    const spaceAbove = buttonPosition.y;
+
+    // If there's enough space below, show menu below the button
+    if (spaceBelow >= estimatedMenuHeight + 8) {
+      return { top: buttonPosition.y + buttonPosition.height + 8 };
+    }
+
+    // If there's enough space above, show menu above the button
+    if (spaceAbove >= estimatedMenuHeight + 8) {
+      return { bottom: windowHeight - buttonPosition.y + 8 };
+    }
+
+    // Otherwise, show it below but allow scrolling
+    return { top: buttonPosition.y + buttonPosition.height + 8 };
+  };
+
+  const menuPosition = calculateMenuPosition();
 
   // Desktop Dropdown Render
   if (isDesktop) {
@@ -178,8 +198,8 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
         >
           <View style={[
             styles.desktopMenu,
+            menuPosition,
             {
-              top: menuTop,
               backgroundColor: theme.card,
               shadowColor: theme.shadow || '#000',
             }

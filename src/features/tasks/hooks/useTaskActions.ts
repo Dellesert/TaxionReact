@@ -66,10 +66,11 @@ export const useTaskActions = (
 
     try {
       await taskApi.deleteTask(task.id);
+      onTaskUpdated();
     } catch (error: any) {
       onError(`Не удалось удалить задачу: ${error.message || error}`);
     }
-  }, [task, onError]);
+  }, [task, onTaskUpdated, onError]);
 
   return {
     handleStatusChange,

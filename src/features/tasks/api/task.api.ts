@@ -50,6 +50,7 @@ export const getTasks = async (
     ...filters,
     limit: pagination?.limit || PAGINATION.DEFAULT_LIMIT,
     offset: pagination?.offset || PAGINATION.DEFAULT_OFFSET,
+    include_permissions: true, // Request permissions from backend
   };
 
   // Add updated_since parameter for differential sync
