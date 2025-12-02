@@ -1,7 +1,7 @@
 /**
  * Task Desktop Layout
  * Компонент для отображения деталей задачи на широких экранах
- * Layout: Обзор слева (широкая карточка), вложения и комментарии справа (2 узкие карточки)
+ * Layout: Три равные колонки - Обзор, Вложения, Комментарии
  */
 
 import React, { useState, useEffect } from 'react';
@@ -44,12 +44,6 @@ interface TaskDesktopLayoutProps {
   // Activities props
   isLoadingActivities: boolean;
 
-  // Status change props
-  isCreator?: boolean;
-  allSubtasksCompleted?: boolean;
-  allChecklistItemsCompleted?: boolean;
-  canChangeStatus?: boolean;
-
   // Callbacks
   onChecklistChanged: () => void;
   onSubtaskPress: (subtask: Task) => void;
@@ -65,8 +59,6 @@ interface TaskDesktopLayoutProps {
   onAttachmentLongPress: (attachment: TaskAttachment) => void;
   onPickFile: () => void;
   onSendComment: () => void;
-  onTaskAction?: () => void;
-  onStatusChange?: (status: Task['status']) => void;
   onLoadActivities?: () => void;
 }
 
@@ -104,12 +96,6 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
   onAttachmentLongPress,
   onPickFile,
   onSendComment,
-  isCreator = false,
-  allSubtasksCompleted = true,
-  allChecklistItemsCompleted = true,
-  canChangeStatus = false,
-  onTaskAction,
-  onStatusChange,
   onLoadActivities,
 }) => {
   const { theme } = useTheme();
@@ -128,10 +114,10 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Main Content Area */}
+      {/* Main Content Area - Three Columns */}
       <View style={styles.mainContent}>
-        {/* Left Side - Overview (широкая карточка) */}
-        <View style={styles.leftSection}>
+        {/* Left Column - Overview */}
+        <View style={styles.column}>
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
@@ -152,69 +138,11 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
               />
             </View>
           </ScrollView>
-
-          {/* Status Action Buttons */}
-          {canChangeStatus && !isDelegatedByMe && onStatusChange && onTaskAction && (
-            <View style={[styles.actionButtonsContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-              {task.status === 'new' && (
-                <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: theme.primary }]}
-                  onPress={onTaskAction}
-                >
-                  <Ionicons name="play-circle-outline" size={20} color="#FFFFFF" />
-                  <Text style={styles.actionButtonText}>Начать работу</Text>
-                </TouchableOpacity>
-              )}
-
-              {task.status === 'in_progress' && (
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { backgroundColor: theme.success },
-                    (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.disabledButton,
-                  ]}
-                  onPress={onTaskAction}
-                  disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
-                >
-                  <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
-                  <Text style={styles.actionButtonText}>
-                    {isCreator ? 'Завершить' : 'Сдать на проверку'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {task.status === 'review' && isCreator && (
-                <View style={styles.reviewActions}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.halfButton, { backgroundColor: theme.backgroundTertiary, borderColor: theme.border }]}
-                    onPress={() => onStatusChange('in_progress')}
-                  >
-                    <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
-                    <Text style={[styles.actionButtonText, { color: theme.text }]}>Вернуть</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      styles.halfButton,
-                      { backgroundColor: theme.success },
-                      (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.disabledButton,
-                    ]}
-                    onPress={() => onStatusChange('done')}
-                    disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
-                  >
-                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
-                    <Text style={styles.actionButtonText}>Завершить</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
         </View>
 
-        {/* Right Side - Attachments & Comments (2 карточки) */}
-        <View style={styles.rightSection}>
-          {/* Attachments Card */}
-          <View style={[styles.card, styles.sideCard, { backgroundColor: theme.card }]}>
+        {/* Middle Column - Attachments */}
+        <View style={styles.column}>
+          <View style={[styles.card, styles.fullHeightCard, { backgroundColor: theme.card }]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <Ionicons name="attach" size={20} color={theme.primary} />
@@ -229,8 +157,8 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
               </View>
             </View>
             <ScrollView
-              style={styles.sideCardContent}
-              contentContainerStyle={styles.sideCardScrollContent}
+              style={styles.cardContent}
+              contentContainerStyle={styles.cardScrollContent}
               showsVerticalScrollIndicator={false}
             >
               <TaskAttachmentsTab
@@ -245,9 +173,11 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
               />
             </ScrollView>
           </View>
+        </View>
 
-          {/* Comments Card */}
-          <View style={[styles.card, styles.sideCard, { backgroundColor: theme.card }]}>
+        {/* Right Column - Comments */}
+        <View style={styles.column}>
+          <View style={[styles.card, styles.fullHeightCard, { backgroundColor: theme.card }]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <Ionicons name="chatbubble-outline" size={20} color={theme.primary} />
@@ -261,7 +191,7 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
                 )}
               </View>
             </View>
-            <ScrollView style={styles.sideCardContent} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.cardContent} showsVerticalScrollIndicator={false}>
               <View style={styles.commentsContent}>
                 <TaskCommentsTab
                   comments={comments}
@@ -372,15 +302,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
   },
-  leftSection: {
-    flex: 2,
-    minWidth: 600,
-  },
-  rightSection: {
+  column: {
     flex: 1,
     minWidth: 350,
-    maxWidth: 450,
-    gap: 16,
   },
   scrollView: {
     flex: 1,
@@ -396,9 +320,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  sideCard: {
+  fullHeightCard: {
     flex: 1,
-    maxHeight: '48%',
     display: 'flex',
   },
   cardHeader: {
@@ -432,10 +355,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  sideCardContent: {
+  cardContent: {
     flex: 1,
   },
-  sideCardScrollContent: {
+  cardScrollContent: {
     padding: 16,
   },
   commentsContent: {
@@ -465,38 +388,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  actionButtonsContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    marginTop: 16,
-    borderRadius: 12,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    gap: 8,
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  reviewActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  halfButton: {
-    flex: 1,
-    borderWidth: 1,
-  },
-  disabledButton: {
-    opacity: 0.5,
   },
   historySection: {
     borderTopWidth: 1,

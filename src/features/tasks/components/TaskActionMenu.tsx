@@ -23,6 +23,8 @@ interface TaskActionMenuProps {
   onAddSubtask: () => void;
   onEmergencyComplete: () => void;
   onDelete: () => void;
+  isDesktop?: boolean;
+  buttonPosition?: { x: number; y: number; width: number; height: number };
 }
 
 export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
@@ -35,6 +37,8 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
   onAddSubtask,
   onEmergencyComplete,
   onDelete,
+  isDesktop = false,
+  buttonPosition,
 }) => {
   const { theme, isDark } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
@@ -118,7 +122,10 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
     isDestructive = false
   ) => (
     <TouchableOpacity
-      style={[styles.menuItem, { backgroundColor: theme.backgroundSecondary }]}
+      style={[
+        isDesktop ? styles.menuItemDesktop : styles.menuItem,
+        !isDesktop && { backgroundColor: theme.backgroundSecondary }
+      ]}
       onPress={() => handleMenuItemPress(onPress)}
     >
       <View
@@ -140,14 +147,103 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
         >
           {title}
         </Text>
-        <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>
-          {subtitle}
-        </Text>
+        {!isDesktop && (
+          <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>
+            {subtitle}
+          </Text>
+        )}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+      {!isDesktop && <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />}
     </TouchableOpacity>
   );
 
+  // Calculate menu position for desktop dropdown
+  const menuTop = buttonPosition
+    ? buttonPosition.y + buttonPosition.height + 8
+    : 60;
+
+  // Desktop Dropdown Render
+  if (isDesktop) {
+    return (
+      <Modal
+        visible={visible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={onClose}
+      >
+        <TouchableOpacity
+          style={styles.desktopOverlay}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <View style={[
+            styles.desktopMenu,
+            {
+              top: menuTop,
+              backgroundColor: theme.card,
+              shadowColor: theme.shadow || '#000',
+            }
+          ]}>
+            {/* Edit Task Option */}
+            {permissions.can_edit &&
+              renderMenuItem(
+                'create-outline',
+                'Редактировать',
+                'Изменить детали задачи',
+                '#3b82f6',
+                onEdit
+              )}
+
+            {/* Delegate Task Option */}
+            {permissions.can_delegate &&
+              task?.status !== 'done' &&
+              task?.status !== 'cancelled' &&
+              renderMenuItem(
+                'git-branch-outline',
+                'Передать задачу',
+                'Назначить другого исполнителя',
+                '#8b5cf6',
+                onDelegate
+              )}
+
+            {/* Add Subtask Option */}
+            {permissions.can_create_subtasks &&
+              renderMenuItem(
+                'add-circle-outline',
+                'Добавить подзадачу',
+                'Разбить задачу на этапы',
+                theme.primary,
+                onAddSubtask
+              )}
+
+            {/* Emergency Complete Option */}
+            {permissions.can_emergency_complete &&
+              task?.status !== 'done' &&
+              renderMenuItem(
+                'warning-outline',
+                'Аварийное завершение',
+                'Завершить просроченную задачу',
+                '#f59e0b',
+                onEmergencyComplete
+              )}
+
+            {/* Delete Task Option */}
+            {permissions.can_delete &&
+              renderMenuItem(
+                'trash-outline',
+                'Удалить задачу',
+                'Это действие нельзя отменить',
+                '#ef4444',
+                onDelete,
+                true
+              )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  }
+
+  // Mobile Bottom Sheet Render
   return (
     <Modal
       visible={modalVisible}
@@ -321,5 +417,28 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Desktop styles
+  desktopOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  desktopMenu: {
+    position: 'absolute',
+    right: 16,
+    minWidth: 240,
+    borderRadius: 12,
+    padding: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  menuItemDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
 });

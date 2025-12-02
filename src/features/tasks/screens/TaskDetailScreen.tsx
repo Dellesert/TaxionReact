@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, ScrollView, Dimensions, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, ScrollView, Dimensions, StyleSheet, Platform, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
@@ -18,6 +18,7 @@ import { TaskHistoryTab } from '../components/TaskHistoryTab';
 import { TaskActionButtons } from '../components/TaskActionButtons';
 import { TaskActionMenu } from '../components/TaskActionMenu';
 import { TaskDesktopLayout } from '../components/TaskDesktopLayout';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTaskPermissions } from '../hooks/useTaskPermissions';
@@ -60,6 +61,10 @@ const TaskDetailScreen: React.FC = () => {
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
   const [showDelegateModal, setShowDelegateModal] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
+  const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
+
+  // Ref for the 3-dot menu button
+  const menuButtonRef = useRef<any>(null);
 
   // Custom hooks for data management
   const {
@@ -245,6 +250,17 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
+  const handleOpenActionMenu = () => {
+    if (isDesktop && menuButtonRef.current) {
+      menuButtonRef.current.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
+        setMenuButtonPosition({ x: pageX, y: pageY, width, height });
+        setShowActionMenu(true);
+      });
+    } else {
+      setShowActionMenu(true);
+    }
+  };
+
   const handleAttachmentLongPress = (attachment: any) => {
     const canDelete =
       !isDelegatedByMe &&
@@ -347,31 +363,112 @@ const TaskDetailScreen: React.FC = () => {
         <View style={{ borderBottomWidth: 1, borderBottomColor: theme.border }}>
           <ScreenHeader
             title="Задача"
-            leftButton={{
-              icon: 'close',
-              color: theme.error,
-              onPress: () => {
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
-                } else {
-                  // @ts-ignore
-                  navigation.navigate('Main', { screen: 'Tasks' });
-                }
-              },
-            }}
-            rightButton={
-              task && (
-                permissions.can_edit ||
-                permissions.can_delegate ||
-                permissions.can_create_subtasks ||
-                permissions.can_emergency_complete ||
-                permissions.can_delete
-              )
-                ? {
-                    icon: 'ellipsis-horizontal',
-                    onPress: () => setShowActionMenu(true),
-                  }
-                : undefined
+            customContent={
+              <View style={styles.customHeader}>
+                {/* Left button */}
+                <TouchableOpacity
+                  onPress={() => {
+                    if (navigation.canGoBack()) {
+                      navigation.goBack();
+                    } else {
+                      // @ts-ignore
+                      navigation.navigate('Main', { screen: 'Tasks' });
+                    }
+                  }}
+                  style={styles.headerSideButton}
+                >
+                  <Ionicons name="close" size={24} color={theme.error} />
+                </TouchableOpacity>
+
+                {/* Title */}
+                <View style={styles.headerTitleContainer}>
+                  <Text style={[styles.headerTitle, { color: theme.text }]}>Задача</Text>
+                </View>
+
+                {/* Desktop Status Action Buttons */}
+                {isDesktop && task && permissions.can_change_status && !isDelegatedByMe && task.status !== 'done' && (
+                  <View style={styles.headerActions}>
+                    {task.status === 'new' && (
+                      <TouchableOpacity
+                        style={[styles.statusButton, { backgroundColor: theme.primary }]}
+                        onPress={handleTaskAction}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="play-circle-outline" size={18} color="#FFFFFF" />
+                        <Text style={styles.statusButtonText}>Начать работу</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {task.status === 'in_progress' && (
+                      <TouchableOpacity
+                        style={[
+                          styles.statusButton,
+                          { backgroundColor: theme.success },
+                          (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.statusButtonDisabled,
+                        ]}
+                        onPress={handleTaskAction}
+                        disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
+                        <Text style={styles.statusButtonText}>
+                          {isCreator ? 'Завершить' : 'Сдать на проверку'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {task.status === 'review' && isCreator && (
+                      <>
+                        <TouchableOpacity
+                          style={[styles.statusButton, styles.statusButtonSecondary, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                          onPress={() => handleStatusChange('in_progress')}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="arrow-back-circle-outline" size={18} color={theme.text} />
+                          <Text style={[styles.statusButtonText, { color: theme.text }]}>Вернуть</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.statusButton,
+                            { backgroundColor: theme.success },
+                            (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.statusButtonDisabled,
+                          ]}
+                          onPress={() => handleStatusChange('done')}
+                          disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.statusButtonText}>Завершить</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+                )}
+
+                {/* Right button (3 dots menu) */}
+                {task && (
+                  permissions.can_edit ||
+                  permissions.can_delegate ||
+                  permissions.can_create_subtasks ||
+                  permissions.can_emergency_complete ||
+                  permissions.can_delete
+                ) && (
+                  <TouchableOpacity
+                    ref={menuButtonRef}
+                    onPress={handleOpenActionMenu}
+                    style={styles.headerSideButton}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
+                {!(task && (
+                  permissions.can_edit ||
+                  permissions.can_delegate ||
+                  permissions.can_create_subtasks ||
+                  permissions.can_emergency_complete ||
+                  permissions.can_delete
+                )) && <View style={styles.headerSideButton} />}
+              </View>
             }
             showDivider={false}
             withShadow={false}
@@ -407,10 +504,6 @@ const TaskDetailScreen: React.FC = () => {
               isLoadingAttachments={isLoadingAttachments}
               isUploadingAttachment={isUploadingAttachment}
               isLoadingActivities={isLoadingActivities}
-              isCreator={isCreator}
-              allSubtasksCompleted={allSubtasksCompleted}
-              allChecklistItemsCompleted={allChecklistItemsCompleted}
-              canChangeStatus={permissions.can_change_status}
               onChecklistChanged={() => {
                 loadTaskSilently();
                 loadActivitiesSilently();
@@ -434,8 +527,6 @@ const TaskDetailScreen: React.FC = () => {
               onAttachmentLongPress={handleAttachmentLongPress}
               onPickFile={handlePickFile}
               onSendComment={handleSendComment}
-              onTaskAction={handleTaskAction}
-              onStatusChange={handleStatusChange}
               onLoadActivities={() => {
                 loadActivities().catch(() => showError('Не удалось загрузить историю'));
               }}
@@ -633,6 +724,8 @@ const TaskDetailScreen: React.FC = () => {
             onAddSubtask={() => setShowSubtaskModal(true)}
             onEmergencyComplete={handleEmergencyCompleteConfirm}
             onDelete={handleDeleteTaskConfirm}
+            isDesktop={isDesktop}
+            buttonPosition={menuButtonPosition}
           />
         )}
       </View>
@@ -654,6 +747,51 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     flex: 1,
+  },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  headerSideButton: {
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  statusButtonSecondary: {
+    borderWidth: 1,
+  },
+  statusButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusButtonDisabled: {
+    opacity: 0.5,
   },
 });
 
