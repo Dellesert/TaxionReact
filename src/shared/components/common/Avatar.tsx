@@ -4,9 +4,8 @@
  */
 
 import React, { useState, useMemo, ReactNode } from 'react';
-import { View, Text, StyleSheet, ViewStyle, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { useAuthStore } from '@shared/store/authStore';
 import { API_BASE_URL } from '@shared/constants/api.constants';
 
 interface AvatarProps {
@@ -24,7 +23,7 @@ interface AvatarProps {
   useOriginal?: boolean; // Force use of original avatar (for profile page)
 }
 
-const Avatar: React.FC<AvatarProps> = ({
+const AvatarComponent: React.FC<AvatarProps> = ({
   name = 'User',
   imageUrl,
   thumbnailUrl,
@@ -39,20 +38,19 @@ const Avatar: React.FC<AvatarProps> = ({
   useOriginal = false,
 }) => {
   const [imageError, setImageError] = useState(false);
-  const sessionId = useAuthStore((state) => state.sessionId);
 
-  // Prepare image source with headers if needed
-  const imageSource = useMemo(() => {
+  // Prepare final URL to use (stable string reference)
+  const finalUrl = useMemo(() => {
     // Decide which URL to use:
     // - If useOriginal=true (profile page) -> use original avatar
     // - If size <= 100px (chat, lists) -> use thumbnail (if available)
     // - Otherwise -> use original
     const shouldUseThumbnail = !useOriginal && size <= 100 && thumbnailUrl;
-    const finalUrl = shouldUseThumbnail ? thumbnailUrl : imageUrl;
+    const url = shouldUseThumbnail ? thumbnailUrl : imageUrl;
 
-    if (!finalUrl) return null;
+    if (!url) return null;
 
-    let fixedUrl = finalUrl;
+    let fixedUrl = url;
 
     // Replace localhost with configured API base URL for iOS/Android devices
     // This is needed because avatar URLs might be saved in DB with localhost
@@ -64,19 +62,23 @@ const Avatar: React.FC<AvatarProps> = ({
       fixedUrl = fixedUrl.replace(/http:\/\/localhost:8080/, baseUrl);
     }
 
-    // If it's a public URL or already includes full path, use it directly
-    if (fixedUrl.startsWith('http://') || fixedUrl.startsWith('https://')) {
-      return {
-        uri: fixedUrl,
-        headers: sessionId ? {
-          'X-Session-ID': sessionId,
-        } : undefined,
-      };
+    return fixedUrl;
+  }, [imageUrl, thumbnailUrl, useOriginal, size]);
+
+  // Prepare image source with headers if needed
+  // OPTIMIZATION: Use stable object reference by stringifying for cache key
+  const imageSource = useMemo(() => {
+    if (!finalUrl) return null;
+
+    // If it's a public URL or already includes full path, return string directly
+    // expo-image will handle auth headers via Image.prefetch or global headers
+    if (finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) {
+      return finalUrl;
     }
 
     // Otherwise, it might be a relative path - use as is
-    return { uri: fixedUrl };
-  }, [imageUrl, thumbnailUrl, sessionId, useOriginal, size]);
+    return finalUrl;
+  }, [finalUrl]);
 
   const getInitials = (fullName: string): string => {
     const names = fullName.trim().split(' ');
@@ -125,7 +127,7 @@ const Avatar: React.FC<AvatarProps> = ({
           placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           placeholderContentFit="cover"
           priority="low"
-          recyclingKey={userId ? `avatar-${userId}` : undefined}
+          recyclingKey={userId ? `avatar-${userId}` : imageSource}
           responsivePolicy="initial"
           allowDownscaling={true}
           onError={(error) => {
@@ -210,6 +212,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+});
+
+// Memoize Avatar component to prevent unnecessary re-renders
+const Avatar = React.memo(AvatarComponent, (prevProps, nextProps) => {
+  // Check if any prop that affects rendering has changed
+  return (
+    prevProps.imageUrl === nextProps.imageUrl &&
+    prevProps.thumbnailUrl === nextProps.thumbnailUrl &&
+    prevProps.name === nextProps.name &&
+    prevProps.size === nextProps.size &&
+    prevProps.status === nextProps.status &&
+    prevProps.showStatus === nextProps.showStatus &&
+    prevProps.userId === nextProps.userId &&
+    prevProps.useOriginal === nextProps.useOriginal &&
+    prevProps.badge === nextProps.badge
+  );
 });
 
 export { Avatar };

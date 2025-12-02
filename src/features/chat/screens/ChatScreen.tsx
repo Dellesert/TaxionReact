@@ -125,14 +125,12 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     currentDateLabel,
     showDateHeader,
     isLoadingMore,
-    isWaitingToLoad,
     hasReachedBottom,
     userScrolledToBottom,
     newMessagesCount,
     initialScrollIndex,
     isScrollingToUnread,
     scrollSessionKey,
-    isRestoringPosition,
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
@@ -409,14 +407,12 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         initialUnreadCount={initialUnreadCount}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
-        isWaitingToLoad={isWaitingToLoad}
         inputHeight={inputHeight}
         insetsBottom={insets.bottom}
         listRef={listRef}
         highlightedMessageId={highlightedMessageId}
         initialScrollIndex={safeInitialScrollIndex}
         scrollSessionKey={scrollSessionKey}
-        isRestoringPosition={isRestoringPosition}
         onContentSizeChange={handleContentSizeChange}
         onScroll={handleScroll}
         onViewableItemsChanged={onViewableItemsChanged}

@@ -14,9 +14,55 @@ import * as chatApi from '@/features/chat/api/chat.api';
 import { getUser } from '@api/user.api';
 import { isMockMode, mockGetChats, mockGetMessages } from '@shared/utils/mockData';
 import { useAuthStore } from '@shared/store/authStore';
+import { useUserStore } from '@shared/store/userStore';
 import { websocketService } from '@services/websocket.service';
 import { getZustandChatStorage, isNative } from '@shared/storage';
 import { PAGINATION } from '@shared/constants/api.constants';
+
+// In-flight user requests cache to prevent duplicate requests
+const inFlightUserRequests = new Map<number, Promise<any>>();
+
+/**
+ * Get user with request deduplication
+ * Prevents multiple parallel requests for the same user
+ */
+const getUserWithDedup = async (userId: number): Promise<any> => {
+  const { getCachedUser, cacheUser } = useUserStore.getState();
+
+  // Check cache first
+  const cachedUser = getCachedUser(userId);
+  if (cachedUser) {
+    console.log(`✅ User ${userId} from cache`);
+    return cachedUser;
+  }
+
+  // Check if there's already a request in flight for this user
+  const existingRequest = inFlightUserRequests.get(userId);
+  if (existingRequest) {
+    console.log(`♻️ User ${userId} request already in-flight, reusing...`);
+    return existingRequest;
+  }
+
+  // Create new request
+  console.log(`🌐 Fetching user ${userId} from API...`);
+  const request = getUser(userId)
+    .then((user) => {
+      cacheUser(user);
+      inFlightUserRequests.delete(userId);
+      console.log(`✅ User ${userId} fetched and cached`);
+      return user;
+    })
+    .catch((error) => {
+      inFlightUserRequests.delete(userId);
+      console.error(`❌ Failed to fetch user ${userId}:`, error);
+      throw error;
+    });
+
+  // Store the request promise
+  inFlightUserRequests.set(userId, request);
+
+  return request;
+};
 
 // Tab data structure for caching
 interface TabData {
@@ -97,7 +143,7 @@ interface ChatState {
   set: (state: Partial<ChatState>) => void;
 }
 
-// Helper function to enrich chat with user data
+// Helper function to enrich chat with user data (with caching and deduplication)
 const enrichChatWithUsers = async (chat: Chat): Promise<Chat> => {
   if (!chat.members || chat.members.length === 0) {
     return chat;
@@ -111,7 +157,8 @@ const enrichChatWithUsers = async (chat: Chat): Promise<Chat> => {
       }
 
       try {
-        const user = await getUser(member.user_id);
+        // Use deduplication function
+        const user = await getUserWithDedup(member.user_id);
         return { ...member, user };
       } catch (error) {
         console.error(`Failed to load user ${member.user_id}:`, error);
@@ -1482,10 +1529,11 @@ export const useChatStore = create<ChatState>()(
   },
 
   handleTypingStart: async (chatId: number, typing: TypingIndicator) => {
-    // Load user data if not present
+    // Load user data if not present (with caching and deduplication)
     if (!typing.user) {
       try {
-        const user = await getUser(typing.user_id);
+        // Use deduplication function
+        const user = await getUserWithDedup(typing.user_id);
         typing = { ...typing, user };
       } catch (error) {
         console.error(`Failed to load user for typing indicator:`, error);

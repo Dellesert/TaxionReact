@@ -19,6 +19,7 @@ interface Attachment {
   file_size: number;
   mime_type: string;
   file_type?: string;
+  thumbnail_url?: string;
 }
 
 interface MessageAttachmentsProps {
@@ -52,13 +53,25 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     loadSessionId();
   }, []);
 
-  const images = attachments.filter(a => isImageFile(a.mime_type || a.file_type || ''));
-  const files = attachments.filter(a => !isImageFile(a.mime_type || a.file_type || ''));
+  const images = React.useMemo(
+    () => attachments.filter(a => isImageFile(a.mime_type || a.file_type || '')),
+    [attachments]
+  );
+  const files = React.useMemo(
+    () => attachments.filter(a => !isImageFile(a.mime_type || a.file_type || '')),
+    [attachments]
+  );
   const imageCount = images.length;
+
+  // Create stable image IDs key for caching
+  const imageIds = React.useMemo(
+    () => images.map(img => img.id).join(','),
+    [images]
+  );
 
   // Load images with auth headers for web platform
   React.useEffect(() => {
-    if (Platform.OS !== 'web' || !sessionId || images.length === 0) {
+    if (Platform.OS !== 'web' || !sessionId || images.length === 0 || !isVisible) {
       return;
     }
 
@@ -95,9 +108,12 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
 
     // Cleanup blob URLs on unmount
     return () => {
-      Object.values(blobUrls).forEach(url => URL.revokeObjectURL(url));
+      setBlobUrls(prev => {
+        Object.values(prev).forEach(url => URL.revokeObjectURL(url));
+        return {};
+      });
     };
-  }, [Platform.OS, sessionId, images.length, attachments]);
+  }, [Platform.OS, sessionId, imageIds, isVisible]);
 
   // Prepare image URLs with proper baseURL replacement for gallery
   // Для ImageViewer используем оригинальные изображения (file_url), а не thumbnails
@@ -239,7 +255,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
             style={styles.imagePreview}
             contentFit="cover"
             contentPosition="center"
-            transition={100}
+            transition={0}
             cachePolicy="memory-disk"
             placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
             placeholderContentFit="cover"
@@ -261,11 +277,11 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
             style={styles.imagePreview}
             contentFit="cover"
             contentPosition="center"
-            transition={100}
+            transition={0}
             cachePolicy="memory-disk"
             placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
             placeholderContentFit="cover"
-            priority="low"
+            priority={isVisible ? "high" : "low"}
             recyclingKey={`attachment-${attachment.id}`}
             responsivePolicy="initial"
             allowDownscaling={true}
@@ -397,18 +413,18 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 4,
   },
-  // Размеры изображений - уменьшены для оптимизации на iOS
+  // ✅ ИСПРАВЛЕНО: Фиксированные размеры с aspectRatio для предотвращения layout shift
   imageSingle: {
     width: 180,
-    height: 180,
+    aspectRatio: 1, // 1:1 квадрат
   },
   imageHalf: {
     width: 90,
-    height: 90,
+    aspectRatio: 1, // 1:1 квадрат
   },
   imageSmall: {
     width: 90,
-    height: 45,
+    aspectRatio: 2, // 2:1 прямоугольник (90x45)
   },
   attachmentItem: {
     flexDirection: 'row',

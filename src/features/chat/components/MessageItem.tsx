@@ -17,7 +17,6 @@ import { ImageViewer } from './ImageViewer';
 import { useMessageData } from '../hooks/useMessageData';
 import { useImageLoader } from '@shared/hooks/useImageLoader';
 import { isForwardedMessage } from '../utils/message.utils';
-import { getUser } from '@api/user.api';
 import { getOrCreateDirectChat } from '../api/chat.api';
 
 interface MessageItemProps {

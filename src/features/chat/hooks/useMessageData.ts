@@ -8,7 +8,7 @@ import { Message } from '../types/chat.types';
  * Этот хук просто извлекает sender из message объекта
  */
 export const useMessageData = (message: Message) => {
-  // Sender всегда приходит с бэкенда
+  // Sender всегда приходит с бэкенда - используем memo для стабильности ссылки
   const sender = useMemo(() => message.sender || null, [message.sender]);
 
   // Reply sender тоже всегда приходит с бэкенда
@@ -17,5 +17,8 @@ export const useMessageData = (message: Message) => {
     [message.reply_to?.sender]
   );
 
-  return { sender, replySender };
+  // Оставляем setSender для обратной совместимости (не используется)
+  const setSender = () => {};
+
+  return { sender, setSender, replySender };
 };

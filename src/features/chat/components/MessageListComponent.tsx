@@ -21,7 +21,6 @@ interface MessageListComponentProps {
   initialUnreadCount: number; // Количество непрочитанных при входе в чат
   isLoading: boolean;
   isLoadingMore: boolean;
-  isWaitingToLoad: boolean;
   inputHeight: number;
   insetsBottom: number;
   keyboardHeightAnim: Animated.Value; // Анимированная высота клавиатуры
@@ -29,7 +28,6 @@ interface MessageListComponentProps {
   highlightedMessageId: number | null;
   initialScrollIndex?: number;
   scrollSessionKey: number;
-  isRestoringPosition: React.MutableRefObject<boolean>;
   onContentSizeChange: (width: number, height: number) => void;
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
@@ -67,7 +65,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   initialUnreadCount,
   isLoading,
   isLoadingMore,
-  isWaitingToLoad,
   inputHeight,
   insetsBottom,
   keyboardHeightAnim,
@@ -75,7 +72,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   highlightedMessageId,
   initialScrollIndex,
   scrollSessionKey,
-  isRestoringPosition,
   onContentSizeChange,
   onScroll,
   onViewableItemsChanged,
@@ -165,7 +161,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         extraData={messagesKey}
         drawDistance={Platform.OS === 'ios' ? 250 : 500}
         initialScrollIndex={initialScrollIndex}
-        estimatedItemSize={100}
+        estimatedItemSize={120}
         renderItem={({ item, index }) => {
           // Рендер разделителя даты
           if (item.type === 'date') {
@@ -230,12 +226,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         onViewableItemsChanged={handleViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onScrollToIndexFailed={(info: any) => {
-          // ⚠️ КРИТИЧЕСКИ ВАЖНО: Игнорируем onScrollToIndexFailed во время восстановления позиции!
-          // Это предотвращает нежелательный автоскролл после восстановления сохраненной позиции
-          if (isRestoringPosition.current) {
-            return;
-          }
-
           const averageHeight = info.averageItemLength || 100;
           const offset = averageHeight * info.index;
           listRef.current?.scrollToOffset({ offset, animated: false });
