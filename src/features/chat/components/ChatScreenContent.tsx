@@ -29,7 +29,7 @@ interface ChatScreenContentProps {
   isRestoringPosition: React.MutableRefObject<boolean>;
 
   // Message list handlers
-  onContentSizeChange: () => void;
+  onContentSizeChange: (width: number, height: number) => void;
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
   viewabilityConfig: any;

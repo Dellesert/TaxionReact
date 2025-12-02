@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { FlatList } from 'react-native';
+import { FlatList, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useChatStore } from '@shared/store/chatStore';
 import { getDateLabel } from '@shared/utils/dateHelpers';
@@ -34,7 +34,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [scrollSessionKey, setScrollSessionKey] = useState(0);
   const lastScrollOffset = useRef<number>(0);
   const isRestoringPosition = useRef<boolean>(false); // Флаг процесса восстановления
-  const [isScrollReady, setIsScrollReady] = useState(true); // ⚡ Флаг готовности скролла для показа UI
+  const isLoadingOldMessages = useRef<boolean>(false); // Флаг загрузки старых сообщений
+  const contentHeightBeforeLoad = useRef<number>(0); // Высота контента перед загрузкой старых сообщений
+  const scrollOffsetBeforeLoad = useRef<number>(0); // Позиция скролла перед загрузкой
+  const currentContentHeight = useRef<number>(0); // Текущая высота контента (обновляется при каждом вызове handleContentSizeChange)
+  const scrollAdjustmentTimer = useRef<NodeJS.Timeout | null>(null); // Таймер для множественных корректировок
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
@@ -74,10 +78,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       // Обычная инициализация - мгновенный показ
       setInitialScrolled(true);
+      console.log('✅ [Init] initialScrolled set to true, messages:', messages.length);
 
       // Даем время на автоматический скролл к непрочитанным, после чего разрешаем отслеживание
       setTimeout(() => {
         canTrackUserScroll.current = true;
+        console.log('✅ [Init] canTrackUserScroll enabled');
       }, 300);
     }
   }, [messages.length, initialScrolled]);
@@ -105,7 +111,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   }, [initialScrolled, messages.length]);
 
   // Handle keyboard animation progress - не используется
-  const handleKeyboardAnimating = useCallback((currentHeight: number, targetHeight: number) => {
+  const handleKeyboardAnimating = useCallback((_currentHeight: number, _targetHeight: number) => {
     // Не делаем ничего
   }, []);
 
@@ -114,6 +120,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // При скрытии клавиатуры также ничего не делаем
     // Паддинг уменьшится и сообщения вернутся на место
   }, []);
+
+  // Счетчик для throttling логов (чтобы не спамить консоль)
+  const scrollLogCounter = useRef(0);
 
   // Обработчик скролла
   const handleScroll = useCallback((event: any) => {
@@ -127,6 +136,26 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Сохраняем текущую позицию скролла
     lastScrollOffset.current = contentOffset.y;
 
+    // 🔍 ДИАГНОСТИКА iOS: Логируем каждый 20-й скролл чтобы не спамить
+    if (Platform.OS === 'ios') {
+      scrollLogCounter.current++;
+      if (scrollLogCounter.current === 1) {
+        console.log('🎯 [First Scroll Event]', {
+          initialScrolled,
+          offsetY: contentOffset.y.toFixed(2),
+          messagesCount: messages.length,
+        });
+      }
+      if (initialScrolled && scrollLogCounter.current % 20 === 0) {
+        console.log('📱 [iOS Scroll Debug]', {
+          offsetY: contentOffset.y.toFixed(2),
+          contentHeight: contentSize.height.toFixed(2),
+          layoutHeight: layoutMeasurement.height.toFixed(2),
+          messagesCount: messages.length,
+        });
+      }
+    }
+
     // Для инвертированного списка (inverted=true):
     // offset.y начинается с отрицательных значений или малых при старте
     // при скролле ВВЕРХ (к старым сообщениям) offset.y уменьшается
@@ -135,23 +164,53 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Расстояние от верхнего края контента
     const distanceFromTop = contentOffset.y;
 
+    // Вычисляем расстояния от краев для определения позиции скролла
+    // Порог 500px ≈ 5 сообщений (среднее сообщение ~100px)
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+
     // Для инвертированного списка проверяем близость к верхней границе
     // Когда пользователь скроллит вверх к старым сообщениям, offset.y становится маленьким или отрицательным
-    const isNearTop = distanceFromTop <= 500; // Увеличен порог до 500px
+
+    // ⚠️ ВАЖНО: На iOS с inverted={true} поведение может отличаться
+    // Попробуем два варианта проверки:
+    // 1. Стандартный: distanceFromTop <= 500 (работает на Web/Android)
+    // 2. Альтернативный: проверка расстояния от конца контента (может работать на iOS)
+    const isNearTopStandard = distanceFromTop <= 500;
+    const isNearTopAlternative = distanceFromBottom >= contentSize.height - layoutMeasurement.height - 500;
+
+    // Для iOS используем альтернативную проверку, для остальных - стандартную
+    const isNearTop = Platform.OS === 'ios' ? isNearTopAlternative : isNearTopStandard;
+
+    // 🔍 ДИАГНОСТИКА: Логируем данные скролла только когда близко к верху (для отладки iOS)
+    if (isNearTop && !isLoadingMore) {
+      console.log('📱 [Scroll Near Top]', {
+        platform: Platform.OS,
+        initialScrolled,
+        offsetY: contentOffset.y.toFixed(2),
+        distanceFromTop: distanceFromTop.toFixed(2),
+        distanceFromBottom: distanceFromBottom.toFixed(2),
+        isNearTopStandard,
+        isNearTopAlternative,
+        hasMoreMessages,
+        messagesCount: messages.length,
+        oldestMessageId: messages[0]?.id,
+        lastOldestId: lastOldestMessageId.current,
+      });
+    }
 
     // Если пользователь близко к верху и есть еще сообщения - загружаем
-    if (isNearTop && initialScrolled && !isLoadingMore && hasMoreMessages && messages.length > 0) {
+    // ВАЖНО: Убрали проверку initialScrolled, так как на iOS первое событие скролла происходит ДО установки этого флага
+    if (isNearTop && !isLoadingMore && hasMoreMessages && messages.length > 0) {
       // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
       const oldestMessage = messages[0];
 
       if (oldestMessage && lastOldestMessageId.current !== oldestMessage.id) {
+        console.log('🔄 [Scroll] Triggering load more, distanceFromTop:', distanceFromTop, 'platform:', Platform.OS);
         handleLoadMoreRef.current?.();
       }
     }
 
-    // Проверяем расстояние от низа
-    // Порог 500px ≈ 5 сообщений (среднее сообщение ~100px)
-    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    // Проверяем достигли ли низа списка
     const isAtBottom = distanceFromBottom <= 500;
 
     if (isAtBottom) {
@@ -184,7 +243,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   // Подгружаем старые сообщения
   const handleLoadMore = useCallback(async () => {
     // Ранние проверки для оптимизации
-    if (!initialScrolled || isLoadingMore || messages.length === 0 || !hasMoreMessages) {
+    if (isLoadingMore || messages.length === 0 || !hasMoreMessages) {
       return;
     }
 
@@ -196,34 +255,140 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     // Устанавливаем ID до начала загрузки для предотвращения дублирования
     lastOldestMessageId.current = oldestMessage.id;
+
+    // ✅ КРИТИЧЕСКИ ВАЖНО: Сохраняем ТОЧНУЮ позицию скролла и высоту контента
+    // ДО начала загрузки, чтобы потом точно восстановить визуальную позицию
+    const currentOffset = lastScrollOffset.current;
+    const currentHeight = currentContentHeight.current;
+
+    scrollOffsetBeforeLoad.current = currentOffset;
+    contentHeightBeforeLoad.current = currentHeight;
+
+    console.log('📥 [LoadMore] Saving state - offset:', currentOffset.toFixed(2), 'height:', currentHeight.toFixed(2));
+
     setIsLoadingMore(true);
+    isLoadingOldMessages.current = true;
 
     try {
       const addedCount = await loadMoreMessages(chatId, oldestMessage.id);
+      console.log('📥 [LoadMore] Loaded', addedCount, 'new messages');
 
       if (addedCount === 0) {
         setHasMoreMessages(false);
+        isLoadingOldMessages.current = false;
+        contentHeightBeforeLoad.current = 0;
+        scrollOffsetBeforeLoad.current = 0;
       }
+      // Если addedCount > 0, флаги сбросятся в handleContentSizeChange после коррекции
     } catch (error) {
       console.error(`Failed to load more messages for chat ${chatId}:`, error);
-      // Сбрасываем ID при ошибке, чтобы можно было повторить попытку
       lastOldestMessageId.current = null;
+      isLoadingOldMessages.current = false;
+      contentHeightBeforeLoad.current = 0;
+      scrollOffsetBeforeLoad.current = 0;
     } finally {
       setIsLoadingMore(false);
     }
-  }, [chatId, messages, initialScrolled, isLoadingMore, hasMoreMessages, loadMoreMessages]);
+  }, [chatId, messages, isLoadingMore, hasMoreMessages, loadMoreMessages]);
 
   // Сохраняем ссылку на handleLoadMore для использования в handleScroll
-  handleLoadMoreRef.current = handleLoadMore;
+  useEffect(() => {
+    handleLoadMoreRef.current = handleLoadMore;
+  }, [handleLoadMore]);
 
-  // Обработчик изменения размера контента - теперь только для сохранения позиции
-  const handleContentSizeChange = useCallback(() => {
+  // Cleanup при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      // Очищаем таймер коррекции скролла при размонтировании
+      if (scrollAdjustmentTimer.current) {
+        clearTimeout(scrollAdjustmentTimer.current);
+      }
+      // Сбрасываем флаги при размонтировании
+      isRestoringPosition.current = false;
+      isLoadingOldMessages.current = false;
+    };
+  }, []);
+
+  // Обработчик изменения размера контента
+  const handleContentSizeChange = useCallback((_width: number, height: number) => {
+    // Обновляем текущую высоту контента в начале для точности
+    currentContentHeight.current = height;
+
     // Сохраняем позицию непрочитанных для восстановления
     if (initialScrolled && firstUnreadIndex !== -1 && unreadCount >= 1) {
       AsyncStorage.setItem(
         `chat_scroll_position_${chatId}`,
         JSON.stringify({ unreadIndex: firstUnreadIndex, timestamp: Date.now() })
       ).catch(err => console.warn('Failed to save scroll position:', err));
+    }
+
+    // ✅ ПРОФЕССИОНАЛЬНОЕ РЕШЕНИЕ v2: Агрессивная коррекция с множественными попытками
+    // Проблема: React Native может рендерить контент в несколько проходов, вызывая микро-рывки
+    // Решение: Множественные коррекции в разные моменты жизненного цикла рендера
+    // ВАЖНО: Работает только после инициализации (initialScrolled=true), чтобы не мешать первоначальному скроллу
+    if (isLoadingOldMessages.current && contentHeightBeforeLoad.current > 0 && initialScrolled) {
+      const heightDifference = height - contentHeightBeforeLoad.current;
+
+      // Проверяем что высота действительно увеличилась (загрузились новые сообщения)
+      if (heightDifference > 0) {
+        console.log('📏 [ContentSize] Height increased by', heightDifference.toFixed(2), 'px');
+
+        // КРИТИЧЕСКИ ВАЖНО: Блокируем handleScroll на всё время коррекции
+        isRestoringPosition.current = true;
+
+        const newOffset = scrollOffsetBeforeLoad.current + heightDifference;
+
+        // Очищаем предыдущий таймер если есть
+        if (scrollAdjustmentTimer.current) {
+          clearTimeout(scrollAdjustmentTimer.current);
+        }
+
+        // 🎯 СТРАТЕГИЯ: Тройная коррекция для максимальной плавности
+        // 1️⃣ Немедленная синхронная коррекция
+        if (listRef.current) {
+          listRef.current.scrollToOffset({
+            offset: newOffset,
+            animated: false,
+          });
+          lastScrollOffset.current = newOffset;
+          console.log('1️⃣ [Immediate] Scroll adjusted to', newOffset.toFixed(2));
+        }
+
+        // 2️⃣ Коррекция в следующем animation frame (перед отрисовкой)
+        requestAnimationFrame(() => {
+          if (listRef.current) {
+            listRef.current.scrollToOffset({
+              offset: newOffset,
+              animated: false,
+            });
+            lastScrollOffset.current = newOffset;
+            console.log('2️⃣ [RAF] Scroll adjusted to', newOffset.toFixed(2));
+          }
+        });
+
+        // 3️⃣ Финальная коррекция через 16ms (1 frame @ 60fps)
+        scrollAdjustmentTimer.current = setTimeout(() => {
+          if (listRef.current) {
+            listRef.current.scrollToOffset({
+              offset: newOffset,
+              animated: false,
+            });
+            lastScrollOffset.current = newOffset;
+            console.log('3️⃣ [Final] Scroll adjusted to', newOffset.toFixed(2));
+          }
+
+          // Разблокируем handleScroll после финальной коррекции
+          setTimeout(() => {
+            isRestoringPosition.current = false;
+            console.log('🔓 [ContentSize] Scroll handlers unlocked');
+          }, 50);
+        }, 16);
+
+        // Сбрасываем флаги после запуска корректировок
+        isLoadingOldMessages.current = false;
+        contentHeightBeforeLoad.current = 0;
+        scrollOffsetBeforeLoad.current = 0;
+      }
     }
   }, [initialScrolled, firstUnreadIndex, unreadCount, chatId]);
 
@@ -415,6 +580,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Сброс состояния при смене чата
   const resetScroll = useCallback(() => {
+    // Очищаем таймер коррекции скролла если он активен
+    if (scrollAdjustmentTimer.current) {
+      clearTimeout(scrollAdjustmentTimer.current);
+      scrollAdjustmentTimer.current = null;
+    }
+
     setHasMoreMessages(true);
     setInitialScrolled(false);
     setHasReachedBottom(false);
@@ -436,6 +607,10 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     setScrollSessionKey(prev => prev + 1); // Увеличиваем ключ для форсирования ремонтирования FlashList
     lastScrollOffset.current = 0;
     isRestoringPosition.current = false; // ✅ Сбрасываем флаг процесса восстановления
+    isLoadingOldMessages.current = false; // ✅ Сбрасываем флаг загрузки старых сообщений
+    contentHeightBeforeLoad.current = 0; // ✅ Сбрасываем сохраненную высоту контента
+    scrollOffsetBeforeLoad.current = 0; // ✅ Сбрасываем сохраненную позицию скролла
+    currentContentHeight.current = 0; // ✅ Сбрасываем текущую высоту контента
   }, []);
 
   return {
@@ -453,7 +628,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isScrollingToUnread, // Возвращаем новый флаг для управления видимостью UI
     scrollSessionKey, // Возвращаем ключ сеанса для FlashList
     isRestoringPosition, // Возвращаем ref для блокировки onScrollToIndexFailed
-    isScrollReady, // ⚡ Возвращаем флаг готовности скролла
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
