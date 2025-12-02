@@ -36,7 +36,7 @@ export const UnreadMessagesBanner: React.FC<UnreadMessagesBannerProps> = ({ unre
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    width: '50%',
+    width: '90%',
     margin: 'auto',
     paddingVertical: 8,
     paddingHorizontal: 16,

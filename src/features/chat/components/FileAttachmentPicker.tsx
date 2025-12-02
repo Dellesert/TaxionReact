@@ -293,7 +293,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       )}
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.backgroundTertiary, marginRight: 5 }]}
+        style={[styles.button, { backgroundColor: theme.backgroundTertiary }]}
         onPress={() => {
           showAttachmentMenu();
         }}
@@ -306,7 +306,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    width: 40,
+    width: 42,
     height: 42,
     justifyContent: 'center',
     alignItems: 'center',

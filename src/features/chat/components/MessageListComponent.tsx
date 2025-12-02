@@ -29,7 +29,7 @@ interface MessageListComponentProps {
   initialScrollIndex?: number;
   scrollSessionKey: number;
   isRestoringPosition: React.MutableRefObject<boolean>;
-  onContentSizeChange: () => void;
+  onContentSizeChange: (width: number, height: number) => void;
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
   viewabilityConfig: any;
