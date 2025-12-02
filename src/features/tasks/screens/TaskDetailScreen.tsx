@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, ScrollView, Dimensions, StyleSheet } from 'react-native';
+import { View, ScrollView, Dimensions, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
@@ -17,6 +17,7 @@ import { TaskCommentsTab } from '../components/TaskCommentsTab';
 import { TaskHistoryTab } from '../components/TaskHistoryTab';
 import { TaskActionButtons } from '../components/TaskActionButtons';
 import { TaskActionMenu } from '../components/TaskActionMenu';
+import { TaskDesktopLayout } from '../components/TaskDesktopLayout';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTaskPermissions } from '../hooks/useTaskPermissions';
@@ -44,6 +45,10 @@ const TaskDetailScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
+  const { width } = useWindowDimensions();
+
+  // Desktop mode detection
+  const isDesktop = Platform.OS === 'web' && width >= 1024;
 
   // Screen state
   const [isNarrowScreen, setIsNarrowScreen] = useState(Dimensions.get('window').width < 460);
@@ -374,102 +379,166 @@ const TaskDetailScreen: React.FC = () => {
           />
         </View>
 
-        {/* Card with Tabs */}
-        <View style={[styles.card, { backgroundColor: theme.background }]}>
-          {/* Tabs */}
-          <TaskTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            attachmentsCount={attachments.length}
-            commentsCount={comments.length}
-            isNarrowScreen={isNarrowScreen}
-          />
+        {/* Content - Desktop Layout or Mobile Tabs */}
+        {isDesktop ? (
+          // Desktop Layout
+          showContentSkeleton ? (
+            <View style={[styles.card, { backgroundColor: theme.background }]}>
+              <TaskContentSkeleton />
+            </View>
+          ) : task ? (
+            <TaskDesktopLayout
+              task={task}
+              subtasks={subtasks}
+              comments={comments}
+              attachments={attachments}
+              activities={activities}
+              permissions={permissions}
+              currentUserId={user?.id}
+              isDelegatedByMe={isDelegatedByMe}
+              newComment={newComment}
+              setNewComment={setNewComment}
+              isSendingComment={isSendingComment}
+              hasMoreComments={hasMoreComments}
+              isLoadingMoreComments={isLoadingMoreComments}
+              editingCommentId={editingCommentId}
+              editingCommentText={editingCommentText}
+              setEditingCommentText={setEditingCommentText}
+              isLoadingAttachments={isLoadingAttachments}
+              isUploadingAttachment={isUploadingAttachment}
+              isLoadingActivities={isLoadingActivities}
+              isCreator={isCreator}
+              allSubtasksCompleted={allSubtasksCompleted}
+              allChecklistItemsCompleted={allChecklistItemsCompleted}
+              canChangeStatus={permissions.can_change_status}
+              onChecklistChanged={() => {
+                loadTaskSilently();
+                loadActivitiesSilently();
+              }}
+              onSubtaskPress={(subtask) => {
+                // @ts-ignore
+                navigation.push('TaskDetail', { taskId: subtask.id.toString() });
+              }}
+              onSubtaskCreated={() => {
+                loadTaskSilently();
+                loadActivitiesSilently();
+              }}
+              onCreateSubtaskPress={() => setShowSubtaskModal(true)}
+              onUserPress={handleUserPress}
+              onLoadMoreComments={loadMoreComments}
+              onEditComment={editComment}
+              onSaveEdit={handleSaveEditComment}
+              onCancelEdit={cancelEdit}
+              onDeleteComment={handleDeleteComment}
+              onAttachmentPress={openAttachment}
+              onAttachmentLongPress={handleAttachmentLongPress}
+              onPickFile={handlePickFile}
+              onSendComment={handleSendComment}
+              onTaskAction={handleTaskAction}
+              onStatusChange={handleStatusChange}
+              onLoadActivities={() => {
+                loadActivities().catch(() => showError('Не удалось загрузить историю'));
+              }}
+            />
+          ) : null
+        ) : (
+          // Mobile Tabs Layout
+          <View style={[styles.card, { backgroundColor: theme.background }]}>
+            {/* Tabs */}
+            <TaskTabs
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              attachmentsCount={attachments.length}
+              commentsCount={comments.length}
+              isNarrowScreen={isNarrowScreen}
+            />
 
-          {/* Tab Content */}
-          <ScrollView
-            style={styles.tabContent}
-            contentContainerStyle={{
-              paddingBottom:
-                activeTab === 'comments' && !isDelegatedByMe && task?.status !== 'done'
-                  ? insets.bottom + 170
-                  : insets.bottom + 100,
-            }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Показываем скелетон если нет задачи */}
-            {showContentSkeleton && <TaskContentSkeleton />}
+            {/* Tab Content */}
+            <ScrollView
+              style={styles.tabContent}
+              contentContainerStyle={{
+                paddingBottom:
+                  activeTab === 'comments' && !isDelegatedByMe && task?.status !== 'done'
+                    ? insets.bottom + 170
+                    : insets.bottom + 100,
+              }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Показываем скелетон если нет задачи */}
+              {showContentSkeleton && <TaskContentSkeleton />}
 
-            {/* Реальный контент когда задача загружена */}
-            {task && activeTab === 'overview' && (
-              <TaskOverviewTab
-                task={task}
-                subtasks={subtasks}
-                permissions={permissions}
-                currentUserId={user?.id}
-                isDelegatedByMe={isDelegatedByMe}
-                onChecklistChanged={() => {
-                  loadTaskSilently();
-                  loadActivitiesSilently();
-                }}
-                onSubtaskPress={(subtask) => {
-                  // @ts-ignore
-                  navigation.push('TaskDetail', { taskId: subtask.id.toString() });
-                }}
-                onSubtaskCreated={() => {
-                  loadTaskSilently();
-                  loadActivitiesSilently();
-                }}
-                onCreateSubtaskPress={() => setShowSubtaskModal(true)}
-                onUserPress={handleUserPress}
-              />
-            )}
+              {/* Реальный контент когда задача загружена */}
+              {task && activeTab === 'overview' && (
+                <TaskOverviewTab
+                  task={task}
+                  subtasks={subtasks}
+                  permissions={permissions}
+                  currentUserId={user?.id}
+                  isDelegatedByMe={isDelegatedByMe}
+                  onChecklistChanged={() => {
+                    loadTaskSilently();
+                    loadActivitiesSilently();
+                  }}
+                  onSubtaskPress={(subtask) => {
+                    // @ts-ignore
+                    navigation.push('TaskDetail', { taskId: subtask.id.toString() });
+                  }}
+                  onSubtaskCreated={() => {
+                    loadTaskSilently();
+                    loadActivitiesSilently();
+                  }}
+                  onCreateSubtaskPress={() => setShowSubtaskModal(true)}
+                  onUserPress={handleUserPress}
+                />
+              )}
 
-            {task && activeTab === 'attachments' && (
-              <TaskAttachmentsTab
-                attachments={attachments}
-                isLoading={isLoadingAttachments}
-                isUploading={isUploadingAttachment}
-                canUpload={!isDelegatedByMe && task.status !== 'done'}
-                currentUserId={user?.id}
-                onAttachmentPress={openAttachment}
-                onAttachmentLongPress={handleAttachmentLongPress}
-                onPickFile={handlePickFile}
-              />
-            )}
+              {task && activeTab === 'attachments' && (
+                <TaskAttachmentsTab
+                  attachments={attachments}
+                  isLoading={isLoadingAttachments}
+                  isUploading={isUploadingAttachment}
+                  canUpload={!isDelegatedByMe && task.status !== 'done'}
+                  currentUserId={user?.id}
+                  onAttachmentPress={openAttachment}
+                  onAttachmentLongPress={handleAttachmentLongPress}
+                  onPickFile={handlePickFile}
+                />
+              )}
 
-            {task && activeTab === 'comments' && (
-              <TaskCommentsTab
-                comments={comments}
-                hasMoreComments={hasMoreComments}
-                isLoadingMore={isLoadingMoreComments}
-                editingCommentId={editingCommentId}
-                editingCommentText={editingCommentText}
-                currentUserId={user?.id}
-                onLoadMore={loadMoreComments}
-                onEditComment={editComment}
-                onSaveEdit={handleSaveEditComment}
-                onCancelEdit={cancelEdit}
-                onDeleteComment={handleDeleteComment}
-                onUserPress={handleUserPress}
-                setEditingCommentText={setEditingCommentText}
-              />
-            )}
+              {task && activeTab === 'comments' && (
+                <TaskCommentsTab
+                  comments={comments}
+                  hasMoreComments={hasMoreComments}
+                  isLoadingMore={isLoadingMoreComments}
+                  editingCommentId={editingCommentId}
+                  editingCommentText={editingCommentText}
+                  currentUserId={user?.id}
+                  onLoadMore={loadMoreComments}
+                  onEditComment={editComment}
+                  onSaveEdit={handleSaveEditComment}
+                  onCancelEdit={cancelEdit}
+                  onDeleteComment={handleDeleteComment}
+                  onUserPress={handleUserPress}
+                  setEditingCommentText={setEditingCommentText}
+                />
+              )}
 
-            {task && activeTab === 'history' && (
-              <TaskHistoryTab
-                activities={activities}
-                isLoading={isLoadingActivities}
-                task={task}
-                currentUserId={user?.id}
-                onUserPress={handleUserPress}
-              />
-            )}
-          </ScrollView>
-        </View>
+              {task && activeTab === 'history' && (
+                <TaskHistoryTab
+                  activities={activities}
+                  isLoading={isLoadingActivities}
+                  task={task}
+                  currentUserId={user?.id}
+                  onUserPress={handleUserPress}
+                />
+              )}
+            </ScrollView>
+          </View>
+        )}
 
-        {/* Fixed Action Buttons - только когда есть task */}
-        {task && (
+        {/* Fixed Action Buttons - только для мобильной версии */}
+        {!isDesktop && task && (
           <TaskActionButtons
             task={task}
             activeTab={activeTab}

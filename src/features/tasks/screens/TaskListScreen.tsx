@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,9 +13,9 @@ import { useTaskListFilters } from '../hooks/useTaskListFilters';
 import { useSubtasksCache } from '../hooks/useSubtasksCache';
 import { useTaskSwipeGesture } from '../hooks/useTaskSwipeGesture';
 import { TaskListHeader } from '../components/TaskListHeader';
-import { TaskStatusTabs } from '../components/TaskStatusTabs';
 import { TaskListContent } from '../components/TaskListContent';
 import { TaskFilterMenu } from '../components/TaskFilterMenu';
+import { TaskKanbanBoard } from '../components/TaskKanbanBoard';
 import type { StatusTab } from '../utils/taskListHelpers';
 import { TASKS_PER_PAGE } from '../utils/taskListHelpers';
 
@@ -25,6 +25,10 @@ const TaskListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const { user } = useAuthStore();
+  const { width } = useWindowDimensions();
+
+  // Determine if desktop mode (wide screen)
+  const isDesktop = Platform.OS === 'web' && width >= 1024;
 
   // Local state
   const [refreshing, setRefreshing] = useState(false);
@@ -49,7 +53,7 @@ const TaskListScreen: React.FC = () => {
 
   const { subtasksCache, loadSubtasksForMultipleTasks } = useSubtasksCache();
 
-  const handleFilterChangeRef = useRef<() => void>();
+  const handleFilterChangeRef = useRef<(() => void) | undefined>(undefined);
 
   const {
     searchQuery,
@@ -176,28 +180,46 @@ const TaskListScreen: React.FC = () => {
         totals={totals}
         onTabChange={setActiveTab}
         onFilterButtonLayout={setFilterButtonPosition}
+        isDesktop={isDesktop}
       />
 
-      {/* Content with swipe navigation */}
+      {/* Content - Kanban Board for Desktop, Swipe Navigation for Mobile */}
       <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
-        <TaskListContent
-          activeTab={activeTab}
-          tasks={tasks}
-          totals={totals}
-          loading={loading}
-          canLoadMore={canLoadMore}
-          isInitialLoading={isInitialLoading}
-          subtasksCache={subtasksCache}
-          expandAllSubtasks={expandAllSubtasks}
-          refreshing={refreshing}
-          searchQuery={searchQuery}
-          translateX={translateX}
-          swipeGesture={swipeGesture}
-          onTaskPress={handleTaskPress}
-          onLoadMore={handleLoadMore}
-          onRefresh={handleRefresh}
-          onExpandAllToggle={handleExpandAllToggle}
-        />
+        {isDesktop ? (
+          <TaskKanbanBoard
+            tasks={tasks}
+            totals={totals}
+            loading={loading}
+            canLoadMore={canLoadMore}
+            subtasksCache={subtasksCache}
+            expandAllSubtasks={expandAllSubtasks}
+            refreshing={refreshing}
+            searchQuery={searchQuery}
+            onTaskPress={handleTaskPress}
+            onLoadMore={handleLoadMore}
+            onRefresh={handleRefresh}
+            onExpandAllToggle={handleExpandAllToggle}
+          />
+        ) : (
+          <TaskListContent
+            activeTab={activeTab}
+            tasks={tasks}
+            totals={totals}
+            loading={loading}
+            canLoadMore={canLoadMore}
+            isInitialLoading={isInitialLoading}
+            subtasksCache={subtasksCache}
+            expandAllSubtasks={expandAllSubtasks}
+            refreshing={refreshing}
+            searchQuery={searchQuery}
+            translateX={translateX}
+            swipeGesture={swipeGesture}
+            onTaskPress={handleTaskPress}
+            onLoadMore={handleLoadMore}
+            onRefresh={handleRefresh}
+            onExpandAllToggle={handleExpandAllToggle}
+          />
+        )}
       </View>
 
       {/* Filter Menu Dropdown */}

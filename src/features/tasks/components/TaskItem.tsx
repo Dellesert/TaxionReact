@@ -161,6 +161,7 @@ interface TaskItemProps {
   onSubtaskPress?: (subtask: Task) => void;
   forceExpanded?: boolean;
   isLastSubtask?: boolean;
+  isKanbanMode?: boolean;
 }
 
 // Priority labels and colors
@@ -200,6 +201,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   onSubtaskPress,
   forceExpanded = false,
   isLastSubtask = false,
+  isKanbanMode = false,
 }) => {
   const { theme, isDark } = useTheme();
   const { user: currentUser } = useAuthStore();
@@ -299,6 +301,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   // Build delegation chain display
   const renderDelegationChain = () => {
+    const avatarSize = isKanbanMode ? 16 : 18;
+    const textStyle = isKanbanMode ? styles.kanbanDelegationText : styles.delegationText;
+
     // Priority: use delegation_chain if available
     if (task.delegation_chain && task.delegation_chain.length > 0) {
       return (
@@ -309,13 +314,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                 <Avatar
                   name={user.name}
                   imageUrl={user.avatar}
-                  size={18}
+                  size={avatarSize}
                 />
-                <Text style={[styles.delegationText, { color: theme.textSecondary }]} numberOfLines={1}>
+                <Text style={[textStyle, { color: theme.textSecondary }]} numberOfLines={1}>
                   {formatUserName(user.name, user.id)}
                 </Text>
                 {index < task.delegation_chain!.length - 1 && (
-                  <Text style={styles.chainArrow}>→</Text>
+                  <Text style={[styles.chainArrow, isKanbanMode && styles.kanbanChainArrow]}>→</Text>
                 )}
               </View>
             ))}
@@ -364,13 +369,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                 <Avatar
                   name={user.name}
                   imageUrl={user.avatar}
-                  size={18}
+                  size={avatarSize}
                 />
-                <Text style={[styles.delegationText, { color: theme.textSecondary }]} numberOfLines={1}>
+                <Text style={[textStyle, { color: theme.textSecondary }]} numberOfLines={1}>
                   {formatUserName(user.name, user.id)}
                 </Text>
                 {index < chain.length - 1 && (
-                  <Text style={styles.chainArrow}>→</Text>
+                  <Text style={[styles.chainArrow, isKanbanMode && styles.kanbanChainArrow]}>→</Text>
                 )}
               </View>
             ))}
@@ -387,9 +392,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             <Avatar
               name={task.creator.name}
               imageUrl={task.creator.avatar}
-              size={16}
+              size={avatarSize}
             />
-            <Text style={[styles.delegationText, { color: theme.textSecondary }]} numberOfLines={1}>
+            <Text style={[textStyle, { color: theme.textSecondary }]} numberOfLines={1}>
               {formatUserName(task.creator.name, task.creator.id)}
             </Text>
           </View>
@@ -444,6 +449,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
               borderColor: theme.border,
             },
             isSubtask && styles.subtaskCard,
+            isKanbanMode && styles.kanbanCard,
           ]}
           onPress={() => onPress(task)}
           onPressIn={handlePressIn}
@@ -482,6 +488,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           { color: theme.text },
           isSubtask && styles.subtaskTitle,
           isCompleted && styles.completedTitle,
+          isKanbanMode && styles.kanbanTitle,
         ]} numberOfLines={2}>
           {task.title}
         </Text>
@@ -497,9 +504,21 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           </View>
         )}
 
+        {/* Divider after title in Kanban mode */}
+        {isKanbanMode && !isSubtask && (
+          <View style={[styles.kanbanDivider, { backgroundColor: theme.border }]} />
+        )}
+
+        {/* Delegation Chain - в отдельной строке в режиме Kanban */}
+        {isKanbanMode && !isSubtask && (
+          <View style={styles.kanbanDelegationRow}>
+            {renderDelegationChain()}
+          </View>
+        )}
+
         {/* Deadline */}
         {task.due_date && !isCompleted && (
-          <View style={styles.deadlineRow}>
+          <View style={[styles.deadlineRow, isKanbanMode && styles.kanbanDeadlineRow]}>
             <Ionicons
               name="calendar-outline"
               size={isSubtask ? 14 : 16}
@@ -518,13 +537,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           </View>
         )}
 
-        {/* Footer: Delegation Chain + Meta Info */}
-        <View style={styles.footer}>
-          <View style={[styles.footerLeft, isCompleted && styles.completedFooter]}>
-            {renderDelegationChain()}
-          </View>
+        {/* Footer: Delegation Chain (non-kanban) + Meta Info */}
+        <View style={[styles.footer, isKanbanMode && styles.kanbanFooter]}>
+          {!isKanbanMode && (
+            <View style={[styles.footerLeft, isCompleted && styles.completedFooter]}>
+              {renderDelegationChain()}
+            </View>
+          )}
 
-          <View style={styles.metaInfo}>
+          <View style={[styles.metaInfo, isKanbanMode && styles.kanbanMetaInfo]}>
             {attachmentCount > 0 && (
               <View style={[styles.attachmentBadge, isCompleted && styles.completedAttachmentBadge]}>
                 <Ionicons name="attach" size={isSubtask ? 14 : 16} color={isCompleted ? '#9ca3af' : '#6b7280'} />
@@ -1022,6 +1043,50 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+  },
+  // Kanban mode styles
+  kanbanCard: {
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    marginHorizontal: 0,
+    borderRadius: 12,
+  },
+  kanbanTitle: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  kanbanDivider: {
+    height: 1,
+    marginVertical: 8,
+  },
+  kanbanDelegationRow: {
+    marginBottom: 6,
+  },
+  kanbanDelegationText: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginLeft: 4,
+  },
+  kanbanChainArrow: {
+    fontSize: 11,
+    marginHorizontal: 3,
+  },
+  kanbanDeadlineRow: {
+    marginBottom: 6,
+    justifyContent: 'flex-end',
+  },
+  kanbanFooter: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  kanbanMetaInfo: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+    justifyContent: 'flex-end',
   },
 });
 

@@ -22,6 +22,7 @@ interface TaskListHeaderProps {
   totals: TotalsByStatus;
   onTabChange: (tab: StatusTab) => void;
   onFilterButtonLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
+  isDesktop?: boolean;
 }
 
 export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
@@ -37,13 +38,14 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
   totals,
   onTabChange,
   onFilterButtonLayout,
+  isDesktop = false,
 }) => {
   const { theme } = useTheme();
   const filterButtonRef = React.useRef<View>(null);
 
   const handleFilterToggle = () => {
     if (onFilterButtonLayout && filterButtonRef.current) {
-      filterButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
+      filterButtonRef.current.measure((_x, _y, width, height, pageX, pageY) => {
         onFilterButtonLayout({ x: pageX, y: pageY, width, height });
       });
     }
@@ -102,12 +104,14 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
             onSearchChange={onSearchChange}
           />
 
-          {/* Status Tabs */}
-          <TaskStatusTabs
-            activeTab={activeTab}
-            totals={totals}
-            onTabChange={onTabChange}
-          />
+          {/* Status Tabs - Hidden on Desktop */}
+          {!isDesktop && (
+            <TaskStatusTabs
+              activeTab={activeTab}
+              totals={totals}
+              onTabChange={onTabChange}
+            />
+          )}
         </>
       }
     />
