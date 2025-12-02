@@ -7,17 +7,46 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { ChatStackParamList } from './types';
 import ChatListScreen from '@/features/chat/screens/ChatListScreen';
 import CreateChatScreen from '@/features/chat/screens/CreateChatScreen';
 import ChatScreen from '@/features/chat/screens/ChatScreen';
 import ChatSettingsScreen from '@/features/chat/screens/ChatSettingsScreen';
+import ChatSplitView from '@/features/chat/screens/ChatSplitView';
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
 
 const ChatNavigator: React.FC = () => {
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
 
+  // Desktop режим с split-view
+  if (isWideScreen) {
+    return (
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          contentStyle: {
+            backgroundColor: theme.background,
+          },
+        }}
+      >
+        <Stack.Screen
+          name="ChatList"
+          component={ChatSplitView}
+        />
+        {/* ChatSettings and CreateChat handled by modals in ChatSplitView/ChatListScreen */}
+        {/* Chat screen остается для совместимости, но не используется в desktop */}
+        <Stack.Screen
+          name="Chat"
+          component={ChatScreen}
+        />
+      </Stack.Navigator>
+    );
+  }
+
+  // Mobile режим
   return (
     <Stack.Navigator
       screenOptions={{

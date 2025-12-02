@@ -7,7 +7,7 @@ import { useState, useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChatStackParamList } from '@navigation/types';
-import { ChatType } from '../types/chat.types';
+import { ChatType, Chat } from '../types/chat.types';
 import { useChatStore } from '@shared/store/chatStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import {
@@ -26,7 +26,8 @@ interface UseCreateChatActionsReturn {
 }
 
 export const useCreateChatActions = (
-  chatType: ChatType
+  chatType: ChatType,
+  onChatCreated?: (chat: Chat) => void
 ): UseCreateChatActionsReturn => {
   const navigation = useNavigation<CreateChatNavigationProp>();
   const { showError } = useNotification();
@@ -106,12 +107,22 @@ export const useCreateChatActions = (
           throw new Error('Сервер вернул невалидный ID чата');
         }
 
-        // Close CreateChat screen and navigate to the new chat
-        navigation.replace('Chat', {
-          chatId: newChat.id,
-          chatName: newChat.name,
-          unreadCount: 0
-        });
+        console.log('✅ Chat created successfully:', newChat);
+        console.log('🔍 onChatCreated callback exists:', !!onChatCreated);
+
+        // If custom callback provided (desktop mode), use it
+        if (onChatCreated) {
+          console.log('📱 Desktop mode: using onChatCreated callback');
+          onChatCreated(newChat);
+        } else {
+          // Otherwise, navigate normally (mobile mode)
+          console.log('📱 Mobile mode: navigating to chat');
+          navigation.replace('Chat', {
+            chatId: newChat.id,
+            chatName: newChat.name,
+            unreadCount: 0
+          });
+        }
       } catch (error: unknown) {
         console.error('❌ Failed to create chat:', error);
         const err = error as { message?: string };
@@ -120,7 +131,7 @@ export const useCreateChatActions = (
         setIsCreating(false);
       }
     },
-    [selectedUsers, createChatAction, navigation, showError]
+    [selectedUsers, createChatAction, navigation, showError, onChatCreated]
   );
 
   return {

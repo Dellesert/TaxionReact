@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Modal, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import { View, Modal, TouchableOpacity, Text, StyleSheet, Platform, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ChatType } from '../types/chat.types';
@@ -8,14 +8,33 @@ interface ChatCreateMenuProps {
   visible: boolean;
   onClose: () => void;
   onCreateChatType: (chatType: ChatType) => void;
+  isDesktopMode?: boolean;
 }
 
 export const ChatCreateMenu: React.FC<ChatCreateMenuProps> = ({
   visible,
   onClose,
   onCreateChatType,
+  isDesktopMode = false,
 }) => {
   const { theme } = useTheme();
+
+  // In desktop mode, align menu to the right edge of chat list
+  // Chat list: starts at 80px (SideNavBar), width 420px, ends at 500px
+  // Menu: width 200px, positioned at 500px - 200px - 16px (padding) = 284px from left
+  const menuContainerStyle: ViewStyle = isDesktopMode
+    ? {
+        ...styles.menuContainer,
+        backgroundColor: theme.card,
+        // Align to right edge of chat list area
+        right: undefined,
+        left: 284, // 80px (SideNavBar) + 420px (chat list) - 200px (menu width) - 16px (padding)
+        top: Platform.OS === 'web' ? 60 : 100,
+      }
+    : {
+        ...styles.menuContainer,
+        backgroundColor: theme.card,
+      };
 
   return (
     <Modal
@@ -29,7 +48,7 @@ export const ChatCreateMenu: React.FC<ChatCreateMenuProps> = ({
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={[styles.menuContainer, { backgroundColor: theme.card }]}>
+        <View style={menuContainerStyle}>
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => onCreateChatType('private')}

@@ -43,13 +43,39 @@ import { formatUserCount } from '../utils/createChatFormatters';
 
 type CreateChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'CreateChat'>;
 
-const CreateChatScreen: React.FC = () => {
-  const navigation = useNavigation<CreateChatNavigationProp>();
-  const route = useRoute<RouteProp<ChatStackParamList, 'CreateChat'>>();
+interface CreateChatScreenProps {
+  route?: any;
+  navigation?: any;
+}
+
+const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, navigation: navigationProp }) => {
+  // Try hooks first (they might fail in modal context, that's ok)
+  let navigationHook, routeHook;
+  try {
+    navigationHook = useNavigation<CreateChatNavigationProp>();
+    routeHook = useRoute<RouteProp<ChatStackParamList, 'CreateChat'>>();
+  } catch (e) {
+    // Hooks failed - we're in modal context
+  }
+
   const { theme } = useTheme();
 
-  const [chatType] = useState<ChatType>(route.params?.initialChatType || 'group');
+  // Use props if provided (desktop modal), otherwise use hooks (mobile)
+  const route = routeProp || routeHook;
+  const navigation = navigationProp || navigationHook;
+
+  const [chatType] = useState<ChatType>(route?.params?.initialChatType || 'group');
   const [chatName, setChatName] = useState('');
+  const onChatCreated = route?.params?.onChatCreated;
+
+  console.log('🎯 CreateChatScreen rendered with:', {
+    hasRouteProp: !!routeProp,
+    hasNavigationProp: !!navigationProp,
+    routeParams: route?.params,
+    initialChatType: route?.params?.initialChatType,
+    hasOnChatCreated: !!onChatCreated,
+    onChatCreatedType: typeof onChatCreated,
+  });
 
   // Custom Hooks
   const { filteredUsers, isLoading, searchQuery, setSearchQuery } = useCreateChatData();
@@ -60,7 +86,7 @@ const CreateChatScreen: React.FC = () => {
     toggleUserSelection,
     toggleDepartmentSelection,
     createChat,
-  } = useCreateChatActions(chatType);
+  } = useCreateChatActions(chatType, onChatCreated);
 
   const { sections } = useUserSections(filteredUsers);
 

@@ -13,11 +13,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
+  ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@shared/store/notificationStore';
+import { useChatSelection } from '@shared/contexts/ChatSelectionContext';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import NotificationItem from '@shared/components/common/NotificationItem';
 import { Notification } from '../../../types/notification.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -31,6 +34,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
+  const { selectChat } = useChatSelection();
 
   const {
     notifications,
@@ -74,16 +79,28 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
       // Переходим на соответствующий экран в зависимости от типа
       setTimeout(() => {
         if (notification.type === 'message' && notification.data?.chat_id) {
-          // @ts-ignore - Navigation with nested params
-          navigation.navigate('Main', {
-            screen: 'Chats',
-            params: {
-              screen: 'Chat',
+          if (isWideScreen) {
+            // Desktop mode: use context to select chat and switch to Chats tab
+            const chatName = (notification.data.chat_name as string) || 'Чат';
+            selectChat(notification.data.chat_id, chatName, 0);
+            // @ts-ignore - Navigation with nested params
+            navigation.navigate('Main', {
+              screen: 'Chats',
+            });
+          } else {
+            // Mobile mode: navigate to chat screen
+            // @ts-ignore - Navigation with nested params
+            navigation.navigate('Main', {
+              screen: 'Chats',
               params: {
-                chatId: notification.data.chat_id,
+                screen: 'Chat',
+                params: {
+                  chatId: notification.data.chat_id,
+                  chatName: notification.data.chat_name || 'Чат',
+                },
               },
-            },
-          });
+            });
+          }
         } else if ((notification.type === 'task' || notification.type === 'reminder')) {
           // Check for grouped notifications (multiple tasks)
           if (notification.data?.task_ids && notification.data.task_ids.length > 1) {
@@ -123,7 +140,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
         }
       }, 300);
     },
-    [markAsRead, navigation, onClose]
+    [markAsRead, navigation, onClose, isWideScreen, selectChat]
   );
 
   const handleMarkAllAsRead = useCallback(() => {
@@ -188,24 +205,58 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
 
   if (!visible) return null;
 
+  // Desktop mode: center modal and limit width
+  const modalContainerStyle: ViewStyle = {
+    ...styles.desktopModalContainer,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  };
+
+  const contentStyle: ViewStyle = isWideScreen
+    ? {
+        ...styles.desktopContent,
+        backgroundColor: theme.background,
+        borderRadius: 12,
+        maxWidth: 600,
+        maxHeight: '90%',
+      }
+    : {
+        ...styles.container,
+        backgroundColor: theme.background,
+        paddingTop: insets.top,
+      };
+
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={isWideScreen ? 'fade' : 'slide'}
       onRequestClose={onClose}
-      presentationStyle="fullScreen"
+      presentationStyle={isWideScreen ? 'overFullScreen' : 'fullScreen'}
+      transparent={isWideScreen}
     >
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: theme.background,
-            paddingTop: insets.top,
-          },
-        ]}
-      >
+      {isWideScreen && (
+        <TouchableOpacity
+          style={modalContainerStyle}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={contentStyle}
+          >
+            {renderModalContent()}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
+      {!isWideScreen && <View style={contentStyle}>{renderModalContent()}</View>}
+    </Modal>
+  );
+
+  function renderModalContent() {
+    return (
+      <>
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <View style={[styles.header, { borderBottomColor: theme.border, ...(isWideScreen && { borderTopLeftRadius: 12, borderTopRightRadius: 12 }) }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="close" size={28} color="#EF4444" />
           </TouchableOpacity>
@@ -246,15 +297,26 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
           contentContainerStyle={
             notifications.length === 0 ? styles.emptyListContainer : styles.listContent
           }
+          style={isWideScreen && { borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}
         />
-      </View>
-    </Modal>
-  );
+      </>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  desktopModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  desktopContent: {
+    width: '100%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',

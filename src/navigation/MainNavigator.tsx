@@ -3,35 +3,72 @@
  * Главная навигация с bottom tabs для авторизованных пользователей
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useChatStore } from '@shared/store/chatStore';
-import { useNotificationStore } from '@shared/store/notificationStore';
+import { ChatSelectionProvider } from '@shared/contexts/ChatSelectionContext';
 import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
 import PollNavigator from './PollNavigator';
 import AdminNavigator from './AdminNavigator';
 import ProfileNavigator from './ProfileNavigator';
-import NotificationNavigator from './NotificationNavigator';
 import CalendarScreen from '@/features/calendar/screens/CalendarScreen';
 import { AnimatedTabBar } from '@shared/components/navigation/AnimatedTabBar';
+import { SideNavBar } from '@shared/components/navigation/SideNavBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const MainNavigator: React.FC = () => {
+const MainNavigatorContent: React.FC = () => {
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
   const chats = useChatStore((state) => state.chats);
+  const [activeTab, setActiveTab] = useState<string>('Chats');
 
   // Подсчитываем общее количество непрочитанных сообщений
   const totalUnreadCount = useMemo(() => {
     return chats.reduce((total, chat) => total + (chat.unread_count || 0), 0);
   }, [chats]);
 
+  // Desktop mode: render with side navbar
+  if (isWideScreen) {
+    const renderContent = () => {
+      switch (activeTab) {
+        case 'Tasks':
+          return <TaskNavigator />;
+        case 'Polls':
+          return <PollNavigator />;
+        case 'Chats':
+          return <ChatNavigator />;
+        case 'Calendar':
+          return <CalendarScreen />;
+        case 'Profile':
+          return <ProfileNavigator />;
+        default:
+          return <ChatNavigator />;
+      }
+    };
+
+    return (
+      <View style={[styles.desktopContainer, { backgroundColor: theme.background }]}>
+        <SideNavBar
+          activeRoute={activeTab}
+          onNavigate={setActiveTab}
+          totalUnreadCount={totalUnreadCount}
+        />
+        <View style={styles.desktopContent}>
+          {renderContent()}
+        </View>
+      </View>
+    );
+  }
+
+  // Mobile mode: render with bottom tabs
   return (
     <Tab.Navigator
       initialRouteName="Chats"
@@ -41,7 +78,7 @@ const MainNavigator: React.FC = () => {
       tabBar={(props) => <AnimatedTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           switch (route.name) {
@@ -130,7 +167,7 @@ const MainNavigator: React.FC = () => {
         component={ProfileNavigator}
         options={{ tabBarLabel: 'Настройки' }}
       />
-     
+
       <Tab.Screen
         name="Admin"
         component={AdminNavigator}
@@ -143,6 +180,13 @@ const MainNavigator: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  desktopContainer: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  desktopContent: {
+    flex: 1,
+  },
   badge: {
     position: 'absolute',
     top: -4,
@@ -160,5 +204,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+const MainNavigator: React.FC = () => {
+  return (
+    <ChatSelectionProvider>
+      <MainNavigatorContent />
+    </ChatSelectionProvider>
+  );
+};
 
 export default MainNavigator;

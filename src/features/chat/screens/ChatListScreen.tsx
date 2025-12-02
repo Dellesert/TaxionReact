@@ -10,6 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ChatStackParamList } from '@navigation/types';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useChatSelection } from '@shared/contexts/ChatSelectionContext';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Chat, ChatType } from '../types/chat.types';
@@ -30,6 +31,7 @@ import { ChatActionBar } from '../components/ChatActionBar';
 import { ChatListContent, ChatListContentRef } from '../components/ChatListContent';
 import { ChatCreateMenu } from '../components/ChatCreateMenu';
 import { ChatErrorState } from '../components/ChatErrorState';
+import { CreateChatModal } from '../components/CreateChatModal';
 
 // Utils
 import { ChatFilter, getTabIndexFromFilter } from '../utils/chatHelpers';
@@ -38,10 +40,16 @@ type ChatListNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Cha
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
-const ChatListScreen: React.FC = () => {
+interface ChatListScreenProps {
+  onChatSelect?: (chat: Chat) => void;
+  isDesktopMode?: boolean;
+}
+
+const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktopMode = false }) => {
   const navigation = useNavigation<ChatListNavigationProp>();
   const { theme } = useTheme();
   const { showConfirm } = useActionModal();
+  const { selectChat } = useChatSelection();
 
   // Ref for ChatListContent
   const chatListRef = useRef<ChatListContentRef>(null);
@@ -59,6 +67,8 @@ const ChatListScreen: React.FC = () => {
   const [isCreateMenuVisible, setIsCreateMenuVisible] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [tabContainerWidth, setTabContainerWidth] = useState<number>(SCREEN_WIDTH);
+  const [showCreateChatModal, setShowCreateChatModal] = useState(false);
+  const [createChatType, setCreateChatType] = useState<ChatType>('group');
 
   // Custom hooks
   const {
@@ -222,15 +232,20 @@ const ChatListScreen: React.FC = () => {
           lastMessageId: chat.last_message?.id,
         });
 
-        // Navigate to chat
-        navigation.navigate('Chat', {
-          chatId: chat.id,
-          chatName: chat.name,
-          unreadCount: chat.unread_count || 0,
-        });
+        // Desktop mode: call onChatSelect callback
+        if (isDesktopMode && onChatSelect) {
+          onChatSelect(chat);
+        } else {
+          // Mobile mode: navigate to chat
+          navigation.navigate('Chat', {
+            chatId: chat.id,
+            chatName: chat.name,
+            unreadCount: chat.unread_count || 0,
+          });
+        }
       }
     },
-    [isEditMode, navigation, isSwipingHorizontally]
+    [isEditMode, navigation, isSwipingHorizontally, isDesktopMode, onChatSelect]
   );
 
   const toggleEditMode = useCallback(() => {
@@ -250,9 +265,16 @@ const ChatListScreen: React.FC = () => {
   const handleCreateChatType = useCallback(
     (chatType: ChatType) => {
       setIsCreateMenuVisible(false);
-      navigation.navigate('CreateChat', { initialChatType: chatType });
+      if (isDesktopMode) {
+        // Desktop mode: show modal
+        setCreateChatType(chatType);
+        setShowCreateChatModal(true);
+      } else {
+        // Mobile mode: navigate
+        navigation.navigate('CreateChat', { initialChatType: chatType });
+      }
     },
-    [navigation]
+    [navigation, isDesktopMode]
   );
 
   const handleDeleteSelected = useCallback(() => {
@@ -379,7 +401,23 @@ const ChatListScreen: React.FC = () => {
         visible={isCreateMenuVisible}
         onClose={() => setIsCreateMenuVisible(false)}
         onCreateChatType={handleCreateChatType}
+        isDesktopMode={isDesktopMode}
       />
+
+      {/* Create Chat Modal (Desktop mode only) */}
+      {isDesktopMode && (
+        <CreateChatModal
+          visible={showCreateChatModal}
+          onClose={() => setShowCreateChatModal(false)}
+          initialChatType={createChatType}
+          onChatCreated={(chat) => {
+            console.log('🎯 ChatListScreen: onChatCreated called with:', chat);
+            // Close modal and select the new chat in split view
+            setShowCreateChatModal(false);
+            selectChat(chat.id, chat.name || '', 0);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };

@@ -5,12 +5,14 @@
 
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Chat } from '@/features/chat/types/chat.types';
 
 // Chat Stack
 export type ChatStackParamList = {
   ChatList: undefined;
   CreateChat: {
     initialChatType?: 'private' | 'group' | 'channel';
+    onChatCreated?: (chat: Chat) => void;
   };
   Chat: {
     chatId: number;
