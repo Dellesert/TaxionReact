@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Task } from '../types/task.types';
 import type { TasksByStatus, TotalsByStatus, LoadingByStatus, StatusTab } from '../hooks/useTaskListData';
@@ -47,6 +47,9 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
   // Expanded tasks state (for subtasks)
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<number>>(new Set());
+
+  // Hover state for rows (web only)
+  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
 
   // Action menu state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -289,14 +292,21 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
-      return <Ionicons name="swap-vertical" size={14} color={theme.textSecondary} />;
+      return (
+        <View style={styles.sortIconContainer}>
+          <Ionicons name="swap-vertical-outline" size={16} color={theme.textSecondary} style={styles.sortIconInactive} />
+        </View>
+      );
     }
     return (
-      <Ionicons
-        name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
-        size={14}
-        color={theme.primary}
-      />
+      <View style={styles.sortIconContainer}>
+        <Ionicons
+          name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
+          size={16}
+          color={theme.primary}
+          style={styles.sortIconActive}
+        />
+      </View>
     );
   };
 
@@ -309,8 +319,39 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       low: 'Низкий',
       medium: 'Средний',
       high: 'Высокий',
+      critical: 'Критичный',
     };
     return labels[priority] || priority;
+  };
+
+  const getPriorityColor = (priority: string) => {
+    const colors: Record<string, string> = {
+      low: '#10B981',      // green
+      medium: '#F59E0B',   // amber
+      high: '#EF4444',     // red
+      critical: '#DC2626', // dark red
+    };
+    return colors[priority] || '#6B7280';
+  };
+
+  const getDeadlineStatus = (dueDate?: string) => {
+    if (!dueDate) return null;
+    const now = new Date();
+    const deadline = new Date(dueDate);
+    const diffTime = deadline.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return 'overdue';
+    if (diffDays <= 3) return 'upcoming';
+    return 'normal';
+  };
+
+  const getDeadlineColor = (status: string | null) => {
+    switch (status) {
+      case 'overdue': return '#EF4444';
+      case 'upcoming': return '#F59E0B';
+      default: return undefined;
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -379,8 +420,19 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
               </View>
             ) : tasksWithSubtasks.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                <Ionicons
+                  name={searchQuery ? 'search-outline' : 'document-text-outline'}
+                  size={64}
+                  color={theme.border}
+                  style={styles.emptyIcon}
+                />
+                <Text style={[styles.emptyTitle, { color: theme.text }]}>
                   {searchQuery ? 'Задачи не найдены' : 'Нет задач'}
+                </Text>
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                  {searchQuery
+                    ? 'Попробуйте изменить параметры поиска'
+                    : 'Создайте новую задачу для начала работы'}
                 </Text>
               </View>
             ) : (
@@ -388,17 +440,26 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                 const hasSubtasks = (subtasksCache[task.id]?.length || 0) > 0;
                 const isExpanded = expandedTaskIds.has(task.id);
 
+                const isHovered = hoveredRowId === task.id;
+
                 return (
                 <TouchableOpacity
                   key={`${task.id}-${level}`}
                   style={[
                     styles.row,
                     {
-                      backgroundColor: isSubtask ? theme.backgroundSecondary : theme.background,
-                      borderBottomColor: theme.border
+                      backgroundColor: isHovered
+                        ? theme.backgroundSecondary
+                        : isSubtask
+                        ? theme.backgroundSecondary
+                        : theme.background,
+                      borderBottomColor: theme.border,
                     }
                   ]}
                   onPress={() => onTaskPress(task)}
+                  // @ts-ignore - web-only props
+                  onMouseEnter={Platform.OS === 'web' ? () => setHoveredRowId(task.id) : undefined}
+                  onMouseLeave={Platform.OS === 'web' ? () => setHoveredRowId(null) : undefined}
                 >
                   <View style={[styles.cell, styles.titleColumn]}>
                     <View style={styles.titleRow}>
@@ -435,7 +496,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
                       {/* Task info */}
                       <View style={styles.titleContent}>
-                        <Text style={[styles.cellText, { color: theme.text }]} numberOfLines={2}>
+                        <Text style={[styles.cellText, styles.taskTitle, { color: theme.text }]} numberOfLines={2}>
                           {task.title}
                         </Text>
                         {task.description ? (
@@ -443,14 +504,62 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                             {task.description}
                           </Text>
                         ) : null}
-                        {hasSubtasks && (
-                          <View style={styles.subtaskBadge}>
-                            <Ionicons name="list" size={12} color={theme.textSecondary} />
-                            <Text style={[styles.subtaskText, { color: theme.textSecondary }]}>
-                              {subtasksCache[task.id].length}
+                        <View style={styles.taskMetaRow}>
+                          {hasSubtasks && (
+                            <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                              <Ionicons name="git-branch-outline" size={12} color={theme.textSecondary} />
+                              <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+                                {subtasksCache[task.id].length}
+                              </Text>
+                            </View>
+                          )}
+                          {task.assignees && task.assignees.length > 0 && (
+                            <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                              <Ionicons name="person-outline" size={12} color={theme.textSecondary} />
+                              <Text style={[styles.metaText, { color: theme.textSecondary }]} numberOfLines={1}>
+                                {task.assignees.length > 1 ? `${task.assignees.length} исполн.` : task.assignees[0].name}
+                              </Text>
+                            </View>
+                          )}
+                          {task.comment_count > 0 && (
+                            <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                              <Ionicons name="chatbubble-outline" size={12} color={theme.textSecondary} />
+                              <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+                                {task.comment_count}
+                              </Text>
+                            </View>
+                          )}
+                          {task.tags && task.tags.length > 0 && task.tags.slice(0, 2).map((tag, idx) => (
+                            <View key={idx} style={[styles.tagBadge, { backgroundColor: theme.primary + '20', borderColor: theme.primary }]}>
+                              <Text style={[styles.tagText, { color: theme.primary }]}>
+                                {tag}
+                              </Text>
+                            </View>
+                          ))}
+                          {task.tags && task.tags.length > 2 && (
+                            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+                              +{task.tags.length - 2}
                             </Text>
-                          </View>
-                        )}
+                          )}
+                          {task.progress_percentage > 0 && (
+                            <View style={styles.progressContainer}>
+                              <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
+                                <View
+                                  style={[
+                                    styles.progressFill,
+                                    {
+                                      width: `${task.progress_percentage}%`,
+                                      backgroundColor: task.progress_percentage === 100 ? '#10B981' : theme.primary
+                                    }
+                                  ]}
+                                />
+                              </View>
+                              <Text style={[styles.progressText, { color: theme.textSecondary }]}>
+                                {task.progress_percentage}%
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -462,15 +571,36 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                   </View>
 
                   <View style={[styles.cell, styles.priorityColumn]}>
-                    <Text style={[styles.cellText, { color: theme.text }]}>
-                      {getPriorityLabel(task.priority)}
-                    </Text>
+                    <View style={styles.priorityContainer}>
+                      <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(task.priority) }]} />
+                      <Text style={[styles.cellText, { color: theme.text }]}>
+                        {getPriorityLabel(task.priority)}
+                      </Text>
+                    </View>
                   </View>
 
                   <View style={[styles.cell, styles.dateColumn]}>
-                    <Text style={[styles.cellText, { color: theme.text }]}>
-                      {formatDate(task.due_date)}
-                    </Text>
+                    {task.due_date ? (
+                      <View style={styles.deadlineContainer}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={14}
+                          color={getDeadlineColor(getDeadlineStatus(task.due_date)) || theme.textSecondary}
+                          style={styles.deadlineIcon}
+                        />
+                        <Text style={[
+                          styles.cellText,
+                          {
+                            color: getDeadlineColor(getDeadlineStatus(task.due_date)) || theme.text,
+                            fontWeight: getDeadlineStatus(task.due_date) === 'overdue' ? '600' : '400'
+                          }
+                        ]}>
+                          {formatDate(task.due_date)}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={[styles.cellText, { color: theme.textSecondary }]}>—</Text>
+                    )}
                   </View>
 
                   <View style={[styles.cell, styles.dateColumn]}>
@@ -564,17 +694,36 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     borderBottomWidth: 2,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
   },
   headerCell: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transitionProperty: 'opacity',
+      transitionDuration: '0.15s',
+    }),
   },
   headerText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    opacity: 0.8,
+  },
+  sortIconContainer: {
+    width: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sortIconInactive: {
+    opacity: 0.4,
+  },
+  sortIconActive: {
+    opacity: 1,
   },
   titleColumn: {
     flex: 3,
@@ -601,17 +750,29 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 16,
+    minHeight: 72,
+    ...(Platform.OS === 'web' && {
+      transitionProperty: 'background-color, box-shadow',
+      transitionDuration: '0.15s',
+      transitionTimingFunction: 'ease-in-out',
+      cursor: 'pointer',
+    }),
   },
   cell: {
     justifyContent: 'center',
   },
   cellText: {
     fontSize: 14,
+    lineHeight: 20,
+  },
+  taskTitle: {
+    fontWeight: '500',
   },
   descriptionText: {
     fontSize: 12,
+    lineHeight: 16,
     marginTop: 4,
   },
   titleRow: {
@@ -632,6 +793,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 4,
+    borderRadius: 4,
+    ...(Platform.OS === 'web' && {
+      transitionProperty: 'background-color',
+      transitionDuration: '0.15s',
+      cursor: 'pointer',
+    }),
   },
   expandButtonPlaceholder: {
     width: 24,
@@ -639,26 +806,90 @@ const styles = StyleSheet.create({
   },
   titleContent: {
     flex: 1,
+    gap: 4,
   },
-  subtaskBadge: {
+  taskMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+    flexWrap: 'wrap',
+  },
+  metaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  subtaskText: {
-    fontSize: 12,
+  metaText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  tagBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  priorityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  deadlineContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deadlineIcon: {
+    marginTop: 1,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    maxWidth: 120,
+  },
+  progressBar: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 11,
+    fontWeight: '500',
+    minWidth: 32,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
   statusText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   actionButton: {
     width: 32,
@@ -666,6 +897,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' && {
+      transitionProperty: 'opacity, transform',
+      transitionDuration: '0.15s',
+      cursor: 'pointer',
+    }),
   },
   loadingContainer: {
     flex: 1,
@@ -677,9 +913,22 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    marginBottom: 16,
+    opacity: 0.5,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

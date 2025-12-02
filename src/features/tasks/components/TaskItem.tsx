@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task, TaskPriority } from '../types/task.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -206,6 +206,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const { theme, isDark } = useTheme();
   const { user: currentUser } = useAuthStore();
   const [expanded, setExpanded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Prefetch hook for preloading task details
   const { prefetchTaskDelayed } = useTaskPrefetch();
@@ -415,6 +416,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const isDelegatedByMe = currentUser &&
     task.delegated_from_user_id === currentUser.id;
 
+  // Get status info for hover effect
+  const STATUS_TABS = [
+    { key: 'new', label: 'Новые', color: '#F59E0B', icon: 'document-text' },
+    { key: 'in_progress', label: 'В работе', color: '#3B82F6', icon: 'time' },
+    { key: 'review', label: 'Проверка', color: '#8B5CF6', icon: 'eye' },
+    { key: 'done', label: 'Готово', color: '#10B981', icon: 'checkmark-circle' },
+  ];
+  const statusInfo = STATUS_TABS.find(tab => tab.key === task.status);
+
   return (
     <View style={styles.container}>
       <View style={styles.cardWrapper}>
@@ -446,14 +456,18 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             styles.card,
             {
               backgroundColor: theme.backgroundSecondary,
-              borderColor: theme.border,
+              borderColor: isHovered ? (statusInfo?.color || theme.primary) : theme.border,
             },
             isSubtask && styles.subtaskCard,
             isKanbanMode && styles.kanbanCard,
+            isHovered && styles.cardHovered,
           ]}
           onPress={() => onPress(task)}
           onPressIn={handlePressIn}
           activeOpacity={0.7}
+          // @ts-ignore - web-only props
+          onMouseEnter={Platform.OS === 'web' ? () => setIsHovered(true) : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setIsHovered(false) : undefined}
         >
           {/* Priority Badge - горизонтальная лента в правом верхнем углу */}
           <View
@@ -537,6 +551,27 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           </View>
         )}
 
+        {/* Tags - show first 2 tags in Kanban mode */}
+        {isKanbanMode && task.tags && task.tags.length > 0 && (
+          <View style={styles.tagsRow}>
+            {task.tags.slice(0, 2).map((tag, index) => (
+              <View key={index} style={[styles.tagBadge, {
+                backgroundColor: `${statusInfo?.color || theme.primary}15`,
+                borderColor: `${statusInfo?.color || theme.primary}40`,
+              }]}>
+                <Text style={[styles.tagText, { color: statusInfo?.color || theme.primary }]}>
+                  {tag}
+                </Text>
+              </View>
+            ))}
+            {task.tags.length > 2 && (
+              <Text style={[styles.tagMoreText, { color: theme.textSecondary }]}>
+                +{task.tags.length - 2}
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Footer: Delegation Chain (non-kanban) + Meta Info */}
         <View style={[styles.footer, isKanbanMode && styles.kanbanFooter]}>
           {!isKanbanMode && (
@@ -554,6 +589,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   isSubtask && styles.subtaskAttachmentCount,
                   isCompleted && styles.completedAttachmentText,
                 ]}>{attachmentCount}</Text>
+              </View>
+            )}
+            {task.comment_count > 0 && isKanbanMode && (
+              <View style={[styles.attachmentBadge, isCompleted && styles.completedAttachmentBadge]}>
+                <Ionicons name="chatbubble-outline" size={14} color={isCompleted ? '#9ca3af' : '#6b7280'} />
+                <Text style={[
+                  styles.attachmentCount,
+                  isSubtask && styles.subtaskAttachmentCount,
+                  isCompleted && styles.completedAttachmentText,
+                ]}>{task.comment_count}</Text>
               </View>
             )}
             {/* Progress for tasks without subtasks (always show) */}
@@ -662,8 +707,30 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     overflow: 'visible',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: 'rgba(0, 0, 0, 0.06)',
+    ...Platform.select({
+      web: {
+        transitionProperty: 'transform, box-shadow, border-color',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease-out',
+        cursor: 'pointer',
+      },
+    }),
+  },
+  cardHovered: {
+    ...Platform.select({
+      web: {
+        transform: 'translateY(-4px)',
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06)',
+      },
+      default: {
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        elevation: 8,
+      },
+    }),
   },
   subtaskCard: {
     marginLeft: 44,
@@ -678,8 +745,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     opacity: 0.98,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: 'rgba(0, 0, 0, 0.05)',
+    ...Platform.select({
+      web: {
+        transitionProperty: 'transform, box-shadow, border-color',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease-out',
+      },
+    }),
   },
   subtaskCardCompleted: {
     borderLeftColor: '#10b981',
@@ -875,11 +949,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 22,
     marginBottom: 10,
+    letterSpacing: -0.2,
   },
   subtaskTitle: {
     fontSize: 15,
     lineHeight: 20,
     marginBottom: 8,
+    letterSpacing: -0.1,
   },
   deadlineRow: {
     flexDirection: 'row',
@@ -937,6 +1013,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 10,
     backgroundColor: 'transparent',
+    ...Platform.select({
+      web: {
+        transitionProperty: 'opacity',
+        transitionDuration: '0.15s',
+        cursor: 'pointer',
+      },
+    }),
   },
   subtasksToggleContent: {
     flexDirection: 'row',
@@ -1046,9 +1129,9 @@ const styles = StyleSheet.create({
   },
   // Kanban mode styles
   kanbanCard: {
-    paddingTop: 12,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    paddingTop: 14,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
     marginHorizontal: 0,
     borderRadius: 12,
   },
@@ -1087,6 +1170,28 @@ const styles = StyleSheet.create({
     gap: 8,
     width: '100%',
     justifyContent: 'flex-end',
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  tagBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  tagMoreText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
 });
 

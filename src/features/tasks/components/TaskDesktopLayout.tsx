@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { Task, TaskComment, TaskAttachment, TaskActivity } from '../types/task.types';
@@ -100,6 +100,7 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
 }) => {
   const { theme } = useTheme();
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [hoveredSection, setHoveredSection] = useState<'overview' | 'attachments' | 'comments' | 'history' | null>(null);
 
   // Load activities on mount to show count badge
   useEffect(() => {
@@ -117,13 +118,22 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
       {/* Main Content Area - Three Columns */}
       <View style={styles.mainContent}>
         {/* Left Column - Overview */}
-        <View style={styles.column}>
+        <View
+          style={styles.column}
+          // @ts-ignore - web-only props
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredSection('overview') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredSection(null) : undefined}
+        >
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
+            <View style={[
+              styles.card,
+              { backgroundColor: theme.card },
+              hoveredSection === 'overview' && styles.cardHovered,
+            ]}>
               <TaskOverviewTab
                 task={task}
                 subtasks={subtasks}
@@ -141,8 +151,18 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
         </View>
 
         {/* Middle Column - Attachments */}
-        <View style={styles.column}>
-          <View style={[styles.card, styles.fullHeightCard, { backgroundColor: theme.card }]}>
+        <View
+          style={styles.column}
+          // @ts-ignore - web-only props
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredSection('attachments') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredSection(null) : undefined}
+        >
+          <View style={[
+            styles.card,
+            styles.fullHeightCard,
+            { backgroundColor: theme.card },
+            hoveredSection === 'attachments' && styles.cardHovered,
+          ]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <Ionicons name="attach" size={20} color={theme.primary} />
@@ -176,8 +196,18 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
         </View>
 
         {/* Right Column - Comments */}
-        <View style={styles.column}>
-          <View style={[styles.card, styles.fullHeightCard, { backgroundColor: theme.card }]}>
+        <View
+          style={styles.column}
+          // @ts-ignore - web-only props
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredSection('comments') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredSection(null) : undefined}
+        >
+          <View style={[
+            styles.card,
+            styles.fullHeightCard,
+            { backgroundColor: theme.card },
+            hoveredSection === 'comments' && styles.cardHovered,
+          ]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <Ionicons name="chatbubble-outline" size={20} color={theme.primary} />
@@ -249,9 +279,16 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
       {/* History Section (раскрывающаяся секция внизу) */}
       <View style={[styles.historySection, { borderTopColor: theme.border }]}>
         <TouchableOpacity
-          style={[styles.historyHeader, { backgroundColor: theme.card }]}
+          style={[
+            styles.historyHeader,
+            { backgroundColor: theme.card },
+            hoveredSection === 'history' && styles.historyHeaderHovered,
+          ]}
           onPress={handleHistoryToggle}
           activeOpacity={0.7}
+          // @ts-ignore - web-only props
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredSection('history') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredSection(null) : undefined}
         >
           <View style={styles.historyHeaderLeft}>
             <Ionicons name="time-outline" size={20} color={theme.primary} />
@@ -299,26 +336,50 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     flexDirection: 'row',
-    padding: 16,
-    gap: 16,
+    padding: 20,
+    gap: 20,
   },
   column: {
     flex: 1,
-    minWidth: 350,
+    minWidth: 380,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 20,
   },
   card: {
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: 16,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)',
+        transitionProperty: 'box-shadow, transform',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease-out',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 4,
+      },
+    }),
+  },
+  cardHovered: {
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06)',
+        transform: 'translateY(-2px)',
+      },
+      default: {
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 6,
+      },
+    }),
   },
   fullHeightCard: {
     flex: 1,
@@ -328,87 +389,138 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 2,
     borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   cardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   badge: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
   },
   badgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   cardContent: {
     flex: 1,
   },
   cardScrollContent: {
-    padding: 16,
+    padding: 20,
   },
   commentsContent: {
-    padding: 16,
+    padding: 20,
   },
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
     borderTopWidth: 1,
   },
   commentInput: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
-    borderWidth: 1,
+    minHeight: 44,
+    maxHeight: 120,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    fontSize: 15,
+    lineHeight: 20,
+    borderWidth: 2,
+    ...Platform.select({
+      web: {
+        transitionProperty: 'border-color, box-shadow',
+        transitionDuration: '0.2s',
+        outlineStyle: 'none',
+      },
+    }),
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Platform.select({
+      web: {
+        transitionProperty: 'transform, box-shadow',
+        transitionDuration: '0.15s',
+        cursor: 'pointer',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        elevation: 3,
+      },
+    }),
   },
   historySection: {
-    borderTopWidth: 1,
+    borderTopWidth: 2,
   },
   historyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    ...Platform.select({
+      web: {
+        transitionProperty: 'background-color',
+        transitionDuration: '0.15s',
+        cursor: 'pointer',
+      },
+    }),
   },
   historyHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   historyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  historyHeaderHovered: {
+    ...Platform.select({
+      web: {
+        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+      },
+    }),
   },
   historyContent: {
-    maxHeight: 400,
+    maxHeight: 500,
   },
 });
