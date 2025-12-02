@@ -33,48 +33,14 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [isScrollingToUnread, setIsScrollingToUnread] = useState(false);
   const [scrollSessionKey, setScrollSessionKey] = useState(0);
   const lastScrollOffset = useRef<number>(0);
-  const savedScrollOffset = useRef<number | null>(null);
-  const hasRestoredScroll = useRef<boolean>(false); // Флаг что позиция уже восстановлена
-  const [hasSavedPosition, setHasSavedPosition] = useState(false); // State для триггера useMemo
-  const [isLoadingPosition, setIsLoadingPosition] = useState(true); // Флаг загрузки позиции из AsyncStorage
   const isRestoringPosition = useRef<boolean>(false); // Флаг процесса восстановления
-  const [isScrollReady, setIsScrollReady] = useState(false); // ⚡ Флаг готовности скролла для показа UI
-
-  // ✅ СИНХРОННАЯ загрузка сохраненной позиции ДО первого рендера
-  // Используем useMemo для загрузки при изменении chatId
-  useMemo(() => {
-    // Загружаем из AsyncStorage
-    AsyncStorage.getItem(`chat_scroll_offset_${chatId}`)
-      .then(savedPosition => {
-        if (savedPosition) {
-          const offset = parseFloat(savedPosition);
-          savedScrollOffset.current = offset;
-          setHasSavedPosition(true); // Триггерим перевычисление initialScrollIndex
-        } else {
-          savedScrollOffset.current = null;
-          setHasSavedPosition(false);
-        }
-        setIsLoadingPosition(false); // Загрузка завершена
-      })
-      .catch(error => {
-        console.warn('Failed to load scroll position:', error);
-        savedScrollOffset.current = null;
-        setHasSavedPosition(false);
-        setIsLoadingPosition(false); // Загрузка завершена (с ошибкой)
-      });
-  }, [chatId]); // Загружаем заново при изменении chatId
+  const [isScrollReady, setIsScrollReady] = useState(true); // ⚡ Флаг готовности скролла для показа UI
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
     // ⚠️ КРИТИЧЕСКИ ВАЖНО: Вычисляем ТОЛЬКО ОДИН РАЗ при первом рендере!
     // Если уже вычисляли - возвращаем undefined (блокируем повторное вычисление)
     if (hasCalculatedInitialIndex.current) {
-      return undefined;
-    }
-
-    // ⚠️ КРИТИЧЕСКИ ВАЖНО: ЖДЕМ пока AsyncStorage загрузит позицию!
-    // Если еще загружается - возвращаем undefined и ждем следующего вызова
-    if (isLoadingPosition) {
       return undefined;
     }
 
@@ -86,38 +52,19 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Помечаем что индекс вычислен (ПЕРЕД любыми return!)
     hasCalculatedInitialIndex.current = true;
 
-    // ПРИОРИТЕТ 1: Если есть сохраненная позиция скролла - НЕ устанавливаем initialScrollIndex!
-    // ❌ НЕ ИСПОЛЬЗУЕМ initialScrollIndex - он вызовет видимый скролл!
-    // Позиция будет восстановлена через scrollToOffset в useEffect
-    if (hasSavedPosition && savedScrollOffset.current !== null) {
-      setHasReachedBottom(false);
-      // ⚠️ КРИТИЧЕСКИ ВАЖНО: возвращаем undefined, чтобы FlatList не скроллил автоматически
-      return undefined;
-    }
-
-    // ПРИОРИТЕТ 2: Если есть непрочитанные - скроллим к первому непрочитанному
+    // ПРИОРИТЕТ 1: Если есть непрочитанные - скроллим к первому непрочитанному
     if (firstUnreadIndex !== -1 && unreadCount >= 1) {
       setHasReachedBottom(false);
       return firstUnreadIndex;
     }
 
-    // ПРИОРИТЕТ 3: Скроллим к последнему сообщению (вниз)
+    // ПРИОРИТЕТ 2: Скроллим к последнему сообщению (вниз)
     setHasReachedBottom(true);
     return messages.length - 1;
-  }, [messages.length, firstUnreadIndex, unreadCount, hasSavedPosition, isLoadingPosition, chatId]); // Добавили isLoadingPosition!
+  }, [messages.length, firstUnreadIndex, unreadCount, chatId]);
 
   // Оптимизация: функции в Zustand стабильны и не меняются
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
-
-  // ⚡ ОПТИМИЗАЦИЯ: Устанавливаем isScrollReady как можно раньше
-  useEffect(() => {
-    // Как только загрузка позиции завершена - можем показывать UI
-    // Для пустых чатов (без сообщений) сразу показываем UI
-    if (!isLoadingPosition && !isScrollReady) {
-      // ⚡ Устанавливаем готовность МГНОВЕННО для быстрого показа UI
-      setIsScrollReady(true);
-    }
-  }, [isLoadingPosition, isScrollReady]);
 
   // Устанавливаем initialScrolled после появления сообщений
   useEffect(() => {
@@ -125,49 +72,15 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // Инициализируем счетчик предыдущих сообщений
       previousMessagesLength.current = messages.length;
 
-      // Если есть сохраненная позиция - восстанавливаем её
-      if (hasSavedPosition && savedScrollOffset.current !== null && !hasRestoredScroll.current) {
-        // ⚠️ БЛОКИРУЕМ handleScroll и onScrollToIndexFailed во время восстановления!
-        isRestoringPosition.current = true;
+      // Обычная инициализация - мгновенный показ
+      setInitialScrolled(true);
 
-        // ⚠️ КРИТИЧЕСКИ ВАЖНО: Если восстанавливаем позицию - значит пользователь НЕ был внизу!
-        // Это предотвратит автоскролл вниз при получении новых сообщений
-        wasAtBottomBeforeNewMessage.current = false;
-        setHasReachedBottom(false);
-
-        // ⚡ Используем requestAnimationFrame для МГНОВЕННОГО восстановления позиции
-        requestAnimationFrame(() => {
-          if (listRef.current) {
-            listRef.current.scrollToOffset({
-              offset: savedScrollOffset.current!,
-              animated: false, // Без анимации для мгновенного восстановления
-            });
-
-            // Помечаем что позиция восстановлена
-            hasRestoredScroll.current = true;
-
-            // Устанавливаем initialScrolled сразу же
-            setInitialScrolled(true);
-
-            // ⚠️ ВАЖНО: Разблокируем handleScroll только после стабилизации
-            setTimeout(() => {
-              isRestoringPosition.current = false; // Разблокируем handleScroll
-              canTrackUserScroll.current = true;
-            }, 300); // ⚡ УМЕНЬШИЛИ время для быстрой готовности
-          }
-        });
-      } else {
-        // Нет сохраненной позиции - обычная инициализация
-        // ⚡ УБРАЛИ задержку для мгновенного показа
-        setInitialScrolled(true);
-
-        // Даем время на автоматический скролл к непрочитанным, после чего разрешаем отслеживание
-        setTimeout(() => {
-          canTrackUserScroll.current = true;
-        }, 300); // ⚡ УМЕНЬШИЛИ время
-      }
+      // Даем время на автоматический скролл к непрочитанным, после чего разрешаем отслеживание
+      setTimeout(() => {
+        canTrackUserScroll.current = true;
+      }, 300);
     }
-  }, [messages.length, initialScrolled, hasSavedPosition]);
+  }, [messages.length, initialScrolled]);
 
   // Ref для handleLoadMore чтобы избежать циклической зависимости
   const handleLoadMoreRef = useRef<(() => Promise<void>) | null>(null);
@@ -499,22 +412,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     viewAreaCoveragePercentThreshold: 50,
   });
 
-  // Сохраняем позицию скролла при выходе из чата
-  useEffect(() => {
-    return () => {
-      // Сохраняем позицию ТОЛЬКО если пользователь НЕ внизу
-      // Если пользователь внизу - удаляем сохраненную позицию (чтобы в следующий раз открылся снизу)
-      if (hasReachedBottom) {
-        AsyncStorage.removeItem(`chat_scroll_offset_${chatId}`)
-          .catch(err => console.warn('Failed to remove scroll offset:', err));
-      } else if (lastScrollOffset.current > 0) {
-        AsyncStorage.setItem(
-          `chat_scroll_offset_${chatId}`,
-          lastScrollOffset.current.toString()
-        ).catch(err => console.warn('Failed to save scroll offset:', err));
-      }
-    };
-  }, [chatId, hasReachedBottom]);
 
   // Сброс состояния при смене чата
   const resetScroll = useCallback(() => {
@@ -537,14 +434,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     setShowScrollToBottom(false);
     setShowDateHeader(false);
     setScrollSessionKey(prev => prev + 1); // Увеличиваем ключ для форсирования ремонтирования FlashList
-    // Сбрасываем флаги восстановления позиции (они будут заново загружены для нового чата)
-    savedScrollOffset.current = null;
     lastScrollOffset.current = 0;
-    hasRestoredScroll.current = false; // ✅ Сбрасываем флаг восстановления
-    setHasSavedPosition(false); // ✅ Сбрасываем флаг наличия сохраненной позиции
-    setIsLoadingPosition(true); // ✅ Сбрасываем флаг загрузки (будет загружена заново для нового чата)
     isRestoringPosition.current = false; // ✅ Сбрасываем флаг процесса восстановления
-    setIsScrollReady(false); // ⚡ Сбрасываем флаг готовности скролла
   }, []);
 
   return {
