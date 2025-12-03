@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Poll, PollStatus } from '../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { usePollListData } from '../hooks/usePollListData';
 import { usePollListFilters } from '../hooks/usePollListFilters';
 import { PollStackParamList } from '@navigation/types';
@@ -25,6 +26,7 @@ const PollListScreen: React.FC = () => {
   const navigation = useNavigation<PollListScreenNavigationProp>();
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
+  const isDesktop = useIsWideScreen();
 
   // Local state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -63,7 +65,19 @@ const PollListScreen: React.FC = () => {
   // Server returns polls with vote priority (un-voted first, voted last)
   // We need to load enough data to show all polls matching the filter
   const getFilters = useCallback(() => {
-    return filter !== 'all' ? { status: filter as PollStatus } : undefined;
+    if (filter === 'all') {
+      return undefined; // No status filter - show all polls
+    }
+    if (filter === 'active') {
+      // Active polls include both 'active' and 'draft' statuses
+      return { status: ['active', 'draft'] as PollStatus[] };
+    }
+    if (filter === 'closed') {
+      // Closed polls include 'closed', 'archived', and 'cancelled' statuses
+      return { status: ['closed', 'archived', 'cancelled'] as PollStatus[] };
+    }
+    // Fallback for any other filter values
+    return { status: filter as PollStatus };
   }, [filter]);
 
   // Server already filters by status, no need for client-side filtering
@@ -143,6 +157,7 @@ const PollListScreen: React.FC = () => {
         onFilterPress={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
         onCreatePress={handleCreatePoll}
         onFilterButtonLayout={setFilterButtonPosition}
+        isDesktop={isDesktop}
       />
 
       {/* Content */}
@@ -158,6 +173,7 @@ const PollListScreen: React.FC = () => {
           onRefresh={handleRefreshWrapper}
           onLoadMore={handleLoadMoreWrapper}
           onRetry={() => loadPolls(getFilters(), searchQuery)}
+          isDesktop={isDesktop}
         />
       </View>
 

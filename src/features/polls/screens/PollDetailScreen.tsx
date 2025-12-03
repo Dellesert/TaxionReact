@@ -12,6 +12,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { usePollData } from '../hooks/usePollData';
@@ -23,11 +24,13 @@ import SharePollModal from '../components/SharePollModal';
 import EditPollModal from '../components/EditPollModal';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { PollHeader } from '../components/PollHeader';
+import { PollDesktopHeader } from '../components/PollDesktopHeader';
 import { PollInfo } from '../components/PollInfo';
 import { PollVotingUI } from '../components/PollVotingUI';
 import { PollResults } from '../components/PollResults';
 import { PollActionButtons } from '../components/PollActionButtons';
 import { PollErrorState } from '../components/PollErrorState';
+import { PollDesktopLayout } from '../components/PollDesktopLayout';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { isSystemAdmin, shouldShowResults, shouldShowVotingUI } from '../utils/pollHelpers';
 
@@ -49,6 +52,7 @@ const PollDetailScreen: React.FC = () => {
   const route = useRoute<PollDetailScreenRouteProp>();
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
+  const isDesktop = useIsWideScreen();
   const { showSuccess, showError } = useNotification();
   const { showConfirm } = useActionModal();
 
@@ -294,85 +298,138 @@ const PollDetailScreen: React.FC = () => {
       edges={['top']}
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header - only show if not opened from chat */}
+        {/* Header */}
         {!isFromChat && (
-          <PollHeader
-            canShare={permissions.can_share}
-            canEdit={permissions.can_edit}
-            canDelete={permissions.can_delete_or_close}
-            isDeleting={isDeleting}
-            onShare={() => setShowShareModal(true)}
-            onEdit={() => setShowEditModal(true)}
-            onDelete={handleDeleteAction}
-            onClose={() => navigation.goBack()}
-          />
+          isDesktop ? (
+            <PollDesktopHeader
+              poll={poll}
+              canShare={permissions.can_share}
+              canEdit={permissions.can_edit}
+              canDeleteOrClose={permissions.can_delete_or_close}
+              isDeleting={isDeleting}
+              isPublishing={isPublishing}
+              onShare={() => setShowShareModal(true)}
+              onEdit={() => setShowEditModal(true)}
+              onDelete={handleDeleteAction}
+              onPublish={handlePublishAction}
+              onClose={handleCloseAction}
+              onBack={() => navigation.goBack()}
+            />
+          ) : (
+            <PollHeader
+              canShare={permissions.can_share}
+              canEdit={permissions.can_edit}
+              canDelete={permissions.can_delete_or_close}
+              isDeleting={isDeleting}
+              onShare={() => setShowShareModal(true)}
+              onEdit={() => setShowEditModal(true)}
+              onDelete={handleDeleteAction}
+              onClose={() => navigation.goBack()}
+            />
+          )
         )}
 
-        {/* Content Card */}
-        <View style={[styles.card, { backgroundColor: theme.background }]}>
-          <ScrollView
-            style={styles.tabContent}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.content}>
-              {/* Poll Info */}
-              <PollInfo poll={poll} onUserPress={handleUserPress} />
+        {/* Content - Desktop or Mobile Layout */}
+        {isDesktop ? (
+          <PollDesktopLayout
+            poll={poll}
+            votersPreview={votersPreview}
+            canDeleteOrClose={permissions.can_delete_or_close}
+            isCreatorOrAdmin={isCreatorOrAdmin}
+            isRevoting={isRevoting}
+            isVoting={isVoting}
+            isPublishing={isPublishing}
+            showResults={showResults}
+            showVotingUI={showVotingUI}
+            showResultsSection={showResultsSection}
+            selectedOptions={selectedOptions}
+            textAnswer={textAnswer}
+            ratingValue={ratingValue}
+            comment={comment}
+            onUserPress={handleUserPress}
+            onOptionToggle={(optionId) => handleOptionToggle(optionId, poll.type)}
+            onTextChange={setTextAnswer}
+            onRatingChange={setRatingValue}
+            onSelectRatingOption={(optionId) => handleOptionToggle(optionId, 'single_choice')}
+            onCommentChange={setComment}
+            onVote={handleVoteAction}
+            onRevote={() => setIsRevoting(true)}
+            onCancelRevote={() => {
+              setIsRevoting(false);
+              loadPollDetail();
+            }}
+            onToggleResults={() => setShowResults(!showResults)}
+            onPublish={handlePublishAction}
+            onClose={handleCloseAction}
+            onViewVoters={() => navigation.navigate('PollVoters', { pollId: poll.id })}
+          />
+        ) : (
+          <View style={[styles.card, { backgroundColor: theme.background }]}>
+            <ScrollView
+              style={styles.tabContent}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.content}>
+                {/* Poll Info */}
+                <PollInfo poll={poll} onUserPress={handleUserPress} />
 
-              {/* Voting UI */}
-              {showVotingUI && (
-                <PollVotingUI
+                {/* Voting UI */}
+                {showVotingUI && (
+                  <PollVotingUI
+                    poll={poll}
+                    selectedOptions={selectedOptions}
+                    textAnswer={textAnswer}
+                    ratingValue={ratingValue}
+                    isRevoting={isRevoting}
+                    onOptionToggle={(optionId) =>
+                      handleOptionToggle(optionId, poll.type)
+                    }
+                    onTextChange={setTextAnswer}
+                    onRatingChange={setRatingValue}
+                    onSelectRatingOption={(optionId) => {
+                      handleOptionToggle(optionId, 'single_choice');
+                    }}
+                  />
+                )}
+
+                {/* Action Buttons */}
+                <PollActionButtons
                   poll={poll}
-                  selectedOptions={selectedOptions}
-                  textAnswer={textAnswer}
-                  ratingValue={ratingValue}
-                  onOptionToggle={(optionId) =>
-                    handleOptionToggle(optionId, poll.type)
-                  }
-                  onTextChange={setTextAnswer}
-                  onRatingChange={setRatingValue}
-                  onSelectRatingOption={(optionId) => {
-                    handleOptionToggle(optionId, 'single_choice');
-                  }}
-                />
-              )}
-
-              {/* Action Buttons */}
-              <PollActionButtons
-                poll={poll}
-                canDeleteOrClose={permissions.can_delete_or_close}
-                isCreatorOrAdmin={isCreatorOrAdmin}
-                isRevoting={isRevoting}
-                isVoting={isVoting}
-                isPublishing={isPublishing}
-                showResults={showResults}
-                comment={comment}
-                onCommentChange={setComment}
-                onVote={handleVoteAction}
-                onRevote={() => setIsRevoting(true)}
-                onCancelRevote={() => {
-                  setIsRevoting(false);
-                  loadPollDetail();
-                }}
-                onToggleResults={() => setShowResults(!showResults)}
-                onPublish={handlePublishAction}
-                onClose={handleCloseAction}
-              />
-
-              {/* Results */}
-              {showResultsSection && (
-                <PollResults
-                  poll={poll}
-                  votersPreview={votersPreview}
+                  canDeleteOrClose={permissions.can_delete_or_close}
                   isCreatorOrAdmin={isCreatorOrAdmin}
-                  onViewVoters={() =>
-                    navigation.navigate('PollVoters', { pollId: poll.id })
-                  }
+                  isRevoting={isRevoting}
+                  isVoting={isVoting}
+                  isPublishing={isPublishing}
+                  showResults={showResults}
+                  comment={comment}
+                  onCommentChange={setComment}
+                  onVote={handleVoteAction}
+                  onRevote={() => setIsRevoting(true)}
+                  onCancelRevote={() => {
+                    setIsRevoting(false);
+                    loadPollDetail();
+                  }}
+                  onToggleResults={() => setShowResults(!showResults)}
+                  onPublish={handlePublishAction}
+                  onClose={handleCloseAction}
                 />
-              )}
-            </View>
-          </ScrollView>
-        </View>
+
+                {/* Results */}
+                {showResultsSection && (
+                  <PollResults
+                    poll={poll}
+                    votersPreview={votersPreview}
+                    isCreatorOrAdmin={isCreatorOrAdmin}
+                    onViewVoters={() =>
+                      navigation.navigate('PollVoters', { pollId: poll.id })
+                    }
+                  />
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         {/* Modals */}
         {poll && (

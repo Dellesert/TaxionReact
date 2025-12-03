@@ -182,7 +182,7 @@ export interface PollResults {
 
 // Poll List Filters
 export interface PollListFilters {
-  status?: PollStatus;
+  status?: PollStatus | PollStatus[]; // Support both single and multiple statuses
   type?: PollType;
   visibility?: PollVisibility;
   created_by?: number;

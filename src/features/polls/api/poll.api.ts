@@ -35,10 +35,23 @@ export const getPolls = async (
   since?: string
 ): Promise<{ polls: Poll[]; total: number; hasMore: boolean }> => {
   const params: any = {
-    ...filters,
     limit: limit || 20,
     offset: offset || 0,
   };
+
+  // Add filters, handling status array for multiple statuses
+  if (filters) {
+    const { status, ...otherFilters } = filters;
+
+    // If status is an array, don't spread it - axios will handle it correctly
+    // Backend expects: ?status=active&status=draft
+    if (status) {
+      params.status = status;
+    }
+
+    // Add other filters
+    Object.assign(params, otherFilters);
+  }
 
   // Add updated_since parameter for differential sync
   if (since) {
@@ -168,8 +181,8 @@ export const getPollVoters = async (pollId: number): Promise<PollVotersList> => 
   const response = await api.get<any>(
     API_ENDPOINTS.POLL.VOTERS(pollId)
   );
-  // Backend returns: { voters: [...] }
-  return response.data.voters;
+  // Backend returns: { success: true, data: { voters: [...], total_voters: 20, poll_id: 1, poll_title: "..." } }
+  return response.data.data;
 };
 
 // ============= Poll Comments =============

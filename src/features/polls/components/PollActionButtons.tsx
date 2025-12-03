@@ -13,6 +13,7 @@ interface PollActionButtonsProps {
   isPublishing: boolean;
   showResults: boolean;
   comment: string;
+  isDesktop?: boolean;
   onCommentChange: (text: string) => void;
   onVote: () => void;
   onRevote: () => void;
@@ -31,6 +32,7 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
   isPublishing,
   showResults,
   comment,
+  isDesktop = false,
   onCommentChange,
   onVote,
   onRevote,
@@ -72,8 +74,8 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
         </>
       )}
 
-      {/* Close poll button for active polls */}
-      {poll.status === 'active' && canDeleteOrClose && (
+      {/* Close poll button for active polls (hidden on desktop, shown in header) */}
+      {poll.status === 'active' && canDeleteOrClose && !isDesktop && (
         <TouchableOpacity
           style={[
             styles.publishButton,
@@ -160,11 +162,12 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
           )
         : null}
 
-      {/* Revote button for users who already voted (not for admins/creators) */}
+      {/* Revote button for users who already voted (not for admins/creators) - hidden on desktop */}
       {poll.user_has_voted &&
         !isRevoting &&
         poll.status === 'active' &&
-        !isCreatorOrAdmin && (
+        !isCreatorOrAdmin &&
+        !isDesktop && (
           <TouchableOpacity
             style={[
               styles.revoteButton,

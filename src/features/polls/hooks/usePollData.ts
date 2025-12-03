@@ -35,26 +35,48 @@ export const usePollData = (
       try {
         const results = await pollApi.getPollResults(pollId);
 
-        // Merge results into poll options
-        if (results.options && loadedPoll.options) {
+        // Update total votes and voters count
+        if (results.total_votes !== undefined) {
+          loadedPoll.total_votes = results.total_votes;
+        }
+        if (results.total_voters !== undefined) {
+          loadedPoll.total_voters = results.total_voters;
+        }
+
+        // Merge results into poll options using votes_by_option
+        if (results.votes_by_option && loadedPoll.options) {
+          const totalVotes = results.total_votes || 0;
+
+          loadedPoll.options = loadedPoll.options.map((option) => {
+            // votes_by_option is an object like {6177: 2, 6178: 5}
+            const voteCount = results.votes_by_option[option.id] || 0;
+            const votePercent = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
+
+            return {
+              ...option,
+              vote_count: voteCount,
+              vote_percent: votePercent,
+            };
+          });
+        } else if (results.options && loadedPoll.options) {
+          // Fallback: if backend returns options array with vote data
           loadedPoll.options = loadedPoll.options.map((option) => {
             const resultOption = results.options.find(
-              (r) => r.option_id === option.id
+              (r: any) => r.option_id === option.id || r.id === option.id
             );
             if (resultOption) {
               return {
                 ...option,
-                vote_count: resultOption.votes_count || 0,
-                vote_percent: resultOption.percentage || 0,
+                vote_count: resultOption.votes_count || resultOption.vote_count || 0,
+                vote_percent: resultOption.percentage || resultOption.vote_percent || 0,
               };
             }
-            return option;
+            return {
+              ...option,
+              vote_count: 0,
+              vote_percent: 0,
+            };
           });
-        }
-
-        // Update total votes count
-        if (results.total_votes !== undefined) {
-          loadedPoll.total_votes = results.total_votes;
         }
       } catch (resultsError) {
         console.warn('Failed to load poll results:', resultsError);

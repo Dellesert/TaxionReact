@@ -19,6 +19,7 @@ interface PollListContentProps {
   onRefresh: () => void;
   onLoadMore: () => void;
   onRetry: () => void;
+  isDesktop?: boolean;
 }
 
 export const PollListContent: React.FC<PollListContentProps> = ({
@@ -32,6 +33,7 @@ export const PollListContent: React.FC<PollListContentProps> = ({
   onRefresh,
   onLoadMore,
   onRetry,
+  isDesktop = false,
 }) => {
   const { theme } = useTheme();
   const [canLoadMore, setCanLoadMore] = React.useState(false);
@@ -79,8 +81,10 @@ export const PollListContent: React.FC<PollListContentProps> = ({
       data={polls}
       keyExtractor={(item) => item.id.toString()}
       estimatedItemSize={150}
-      renderItem={({ item }) => <PollItem poll={item} onPress={onPollPress} />}
-      contentContainerStyle={styles.listContent}
+      numColumns={isDesktop ? 4 : 1}
+      key={isDesktop ? 'grid' : 'list'}
+      renderItem={({ item }) => <PollItem poll={item} onPress={onPollPress} isDesktop={isDesktop} />}
+      contentContainerStyle={[styles.listContent, isDesktop && styles.gridContent]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       onEndReached={() => {
         if (hasMore && !isLoadingMore && !isLoading && canLoadMore) {
@@ -90,7 +94,7 @@ export const PollListContent: React.FC<PollListContentProps> = ({
       onEndReachedThreshold={0.5}
       ListFooterComponent={
         isLoadingMore && hasMore ? (
-          <View style={styles.loadMoreContainer}>
+          <View style={[styles.loadMoreContainer, isDesktop && styles.gridLoadMoreContainer]}>
             <ActivityIndicator size="small" color={theme.primary} />
           </View>
         ) : null
@@ -104,8 +108,14 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 120,
   },
+  gridContent: {
+    paddingHorizontal: 8,
+  },
   loadMoreContainer: {
     paddingVertical: 16,
     alignItems: 'center',
+  },
+  gridLoadMoreContainer: {
+    width: '100%',
   },
 });

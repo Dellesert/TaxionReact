@@ -10,9 +10,10 @@ import { usePollPrefetch } from '@shared/hooks/usePollPrefetch';
 interface PollItemProps {
   poll: Poll;
   onPress: (poll: Poll) => void;
+  isDesktop?: boolean;
 }
 
-export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
+export const PollItem: React.FC<PollItemProps> = ({ poll, onPress, isDesktop = false }) => {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const { prefetchPollDelayed, cancelPrefetch } = usePollPrefetch();
@@ -148,7 +149,11 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}
+      style={[
+        styles.container,
+        { backgroundColor: theme.card, borderColor: theme.border },
+        isDesktop && styles.gridItem,
+      ]}
       onPress={() => onPress(poll)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -271,6 +276,10 @@ const styles = StyleSheet.create({
     elevation: 3,
     position: 'relative',
     borderWidth: 1,
+  },
+  gridItem: {
+    flex: 1,
+    marginHorizontal: 8,
   },
   content: {
     paddingLeft: 16,

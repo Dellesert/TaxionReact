@@ -9,6 +9,7 @@ interface PollVotingUIProps {
   selectedOptions: number[];
   textAnswer: string;
   ratingValue: number | null;
+  isRevoting?: boolean;
   onOptionToggle: (optionId: number) => void;
   onTextChange: (text: string) => void;
   onRatingChange: (value: number) => void;
@@ -20,6 +21,7 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
   selectedOptions,
   textAnswer,
   ratingValue,
+  isRevoting = false,
   onOptionToggle,
   onTextChange,
   onRatingChange,
@@ -42,7 +44,8 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
   }
 
   // Voted message (should not reach here normally, but as fallback)
-  if (poll.user_has_voted) {
+  // Skip this check when revoting
+  if (poll.user_has_voted && !isRevoting) {
     return (
       <View style={styles.votedContainer}>
         <Ionicons name="checkmark-circle" size={48} color="#10B981" />

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Poll, PollStatus } from '../types/poll.types';
+import { Poll, PollStatus, PollListFilters } from '../types/poll.types';
 import * as pollApi from '../api/poll.api';
 import { usePollStore } from '@shared/store/pollStore';
 
@@ -12,9 +12,9 @@ interface UsePollListDataReturn {
   isLoading: boolean;
   isLoadingMore: boolean;
   error: string | null;
-  loadPolls: (filters?: { status?: PollStatus }, searchQuery?: string) => Promise<void>;
-  handleRefresh: (filters?: { status?: PollStatus }, searchQuery?: string) => Promise<void>;
-  handleLoadMore: (filters?: { status?: PollStatus }, searchQuery?: string) => Promise<void>;
+  loadPolls: (filters?: PollListFilters, searchQuery?: string) => Promise<void>;
+  handleRefresh: (filters?: PollListFilters, searchQuery?: string) => Promise<void>;
+  handleLoadMore: (filters?: PollListFilters, searchQuery?: string) => Promise<void>;
 }
 
 /**
@@ -47,7 +47,7 @@ export const usePollListData = (): UsePollListDataReturn => {
   }, []);
 
   const loadPolls = useCallback(
-    async (filters?: { status?: PollStatus }, searchQuery?: string) => {
+    async (filters?: PollListFilters, searchQuery?: string) => {
       try {
         // Only show loading if no cached data
         if (!hasCachedData) {
@@ -83,14 +83,14 @@ export const usePollListData = (): UsePollListDataReturn => {
   );
 
   const handleRefresh = useCallback(
-    async (filters?: { status?: PollStatus }, searchQuery?: string) => {
+    async (filters?: PollListFilters, searchQuery?: string) => {
       await loadPolls(filters, searchQuery);
     },
     [loadPolls]
   );
 
   const handleLoadMore = useCallback(
-    async (filters?: { status?: PollStatus }, searchQuery?: string) => {
+    async (filters?: PollListFilters, searchQuery?: string) => {
       if (!hasMore || isLoadingMore || isLoading) {
         return;
       }
