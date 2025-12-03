@@ -504,31 +504,75 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                             {task.description}
                           </Text>
                         ) : null}
-                        <View style={styles.taskMetaRow}>
-                          {hasSubtasks && (
-                            <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                              <Ionicons name="git-branch-outline" size={12} color={theme.textSecondary} />
-                              <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                                {subtasksCache[task.id].length}
-                              </Text>
-                            </View>
-                          )}
-                          {task.assignees && task.assignees.length > 0 && (
-                            <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+
+                        {/* Delegation chain - always show on separate line */}
+                        {(() => {
+                          // Build delegation chain
+                          const chain: { name: string; id?: number }[] = [];
+
+                          if (task.delegation_chain && task.delegation_chain.length > 0) {
+                            // Use delegation_chain from backend
+                            task.delegation_chain.forEach(u => chain.push({ name: u.name, id: u.id }));
+                          } else {
+                            // Fallback: build from creator -> assignees
+                            if (task.creator) {
+                              chain.push({ name: task.creator.name, id: task.creator.id });
+                            }
+
+                            if (task.assignees && task.assignees.length > 0) {
+                              task.assignees.forEach(a => {
+                                if (!chain.find(u => u.id === a.id)) {
+                                  chain.push({ name: a.name, id: a.id });
+                                }
+                              });
+                            }
+                          }
+
+                          // Format user name (replace current user with "Я")
+                          const formatUserName = (userName: string, userId?: number): string => {
+                            if (user && userId === user.id) return 'Я';
+                            // Extract first name (before space)
+                            return userName.split(' ')[0];
+                          };
+
+                          const delegationText = chain.length > 0
+                            ? chain.map(u => formatUserName(u.name, u.id)).join(' → ')
+                            : '—';
+
+                          return (
+                            <View style={styles.delegationRow}>
                               <Ionicons name="person-outline" size={12} color={theme.textSecondary} />
-                              <Text style={[styles.metaText, { color: theme.textSecondary }]} numberOfLines={1}>
-                                {task.assignees.length > 1 ? `${task.assignees.length} исполн.` : task.assignees[0].name}
+                              <Text style={[styles.delegationRowText, { color: theme.textSecondary }]} numberOfLines={1}>
+                                {delegationText}
                               </Text>
                             </View>
-                          )}
-                          {task.comment_count > 0 && (
-                            <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                              <Ionicons name="chatbubble-outline" size={12} color={theme.textSecondary} />
-                              <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                                {task.comment_count}
-                              </Text>
-                            </View>
-                          )}
+                          );
+                        })()}
+
+                        <View style={styles.taskMetaRow}>
+                          {/* Subtasks count - always show */}
+                          <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                            <Ionicons name="git-branch-outline" size={12} color={theme.textSecondary} />
+                            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+                              {subtasksCache[task.id]?.length || 0}
+                            </Text>
+                          </View>
+
+                          {/* Comments count - always show */}
+                          <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                            <Ionicons name="chatbubble-outline" size={12} color={theme.textSecondary} />
+                            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+                              {task.comment_count || 0}
+                            </Text>
+                          </View>
+
+                          {/* Attachments count - always show */}
+                          <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                            <Ionicons name="attach-outline" size={12} color={theme.textSecondary} />
+                            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+                              {task.attachments?.length || 0}
+                            </Text>
+                          </View>
                           {task.tags && task.tags.length > 0 && task.tags.slice(0, 2).map((tag, idx) => (
                             <View key={idx} style={[styles.tagBadge, { backgroundColor: theme.primary + '20', borderColor: theme.primary }]}>
                               <Text style={[styles.tagText, { color: theme.primary }]}>
@@ -819,8 +863,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingRight: 6,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   metaText: {
@@ -930,5 +974,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  delegationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  delegationRowText: {
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

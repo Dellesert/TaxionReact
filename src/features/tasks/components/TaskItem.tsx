@@ -530,20 +530,19 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           </View>
         )}
 
-        {/* Deadline */}
-        {task.due_date && !isCompleted && (
-          <View style={[styles.deadlineRow, isKanbanMode && styles.kanbanDeadlineRow]}>
+        {/* Deadline - aligned left in Kanban mode */}
+        {task.due_date && !isCompleted && isKanbanMode && (
+          <View style={styles.kanbanDeadlineRow}>
             <Ionicons
               name="calendar-outline"
-              size={isSubtask ? 14 : 16}
+              size={14}
               color={isOverdue ? '#ef4444' : '#6b7280'}
             />
             <Text
               style={[
-                styles.deadlineText,
+                styles.kanbanDeadlineText,
                 { color: isOverdue ? '#ef4444' : '#6b7280' },
                 isOverdue && styles.overdueText,
-                isSubtask && styles.subtaskDeadlineText,
               ]}
             >
               {formatDeadline(task.due_date)}
@@ -591,16 +590,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                 ]}>{attachmentCount}</Text>
               </View>
             )}
-            {task.comment_count > 0 && isKanbanMode && (
-              <View style={[styles.attachmentBadge, isCompleted && styles.completedAttachmentBadge]}>
-                <Ionicons name="chatbubble-outline" size={14} color={isCompleted ? '#9ca3af' : '#6b7280'} />
-                <Text style={[
-                  styles.attachmentCount,
-                  isSubtask && styles.subtaskAttachmentCount,
-                  isCompleted && styles.completedAttachmentText,
-                ]}>{task.comment_count}</Text>
-              </View>
-            )}
             {/* Progress for tasks without subtasks (always show) */}
             {!hasSubtasks && !isSubtask && (
               <View style={styles.progressBadge}>
@@ -613,6 +602,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   color={task.progress_percentage === 100 ? '#10B981' : theme.primary}
                   backgroundColor={isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'}
                 />
+              </View>
+            )}
+            {task.comment_count > 0 && isKanbanMode && !hasSubtasks && (
+              <View style={[styles.attachmentBadge, isCompleted && styles.completedAttachmentBadge]}>
+                <Ionicons name="chatbubble-outline" size={14} color={isCompleted ? '#9ca3af' : '#6b7280'} />
+                <Text style={[
+                  styles.attachmentCount,
+                  isSubtask && styles.subtaskAttachmentCount,
+                  isCompleted && styles.completedAttachmentText,
+                ]}>{task.comment_count}</Text>
               </View>
             )}
             {/* Progress for subtasks with progress > 0 */}
@@ -648,6 +647,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   </Text>
                 </View>
                 <View style={styles.subtasksProgress}>
+                  {task.comment_count > 0 && isKanbanMode && (
+                    <View style={[styles.attachmentBadge, isCompleted && styles.completedAttachmentBadge]}>
+                      <Ionicons name="chatbubble-outline" size={14} color={isCompleted ? '#9ca3af' : '#6b7280'} />
+                      <Text style={[
+                        styles.attachmentCount,
+                        isCompleted && styles.completedAttachmentText,
+                      ]}>{task.comment_count}</Text>
+                    </View>
+                  )}
                   <Text style={styles.subtasksCount}>
                     {task.progress_percentage}%
                   </Text>
@@ -1048,6 +1056,19 @@ const styles = StyleSheet.create({
     minWidth: 32,
     textAlign: 'right',
   },
+  subtasksCommentBadge: {
+    marginLeft: 8,
+  },
+  subtasksMetaRow: {
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+  subtasksMetaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'flex-end',
+  },
   subtasksContainer: {
     marginTop: 4,
     paddingTop: 4,
@@ -1156,8 +1177,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 3,
   },
   kanbanDeadlineRow: {
-    marginBottom: 6,
-    justifyContent: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  kanbanDeadlineText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   kanbanFooter: {
     marginTop: 6,
