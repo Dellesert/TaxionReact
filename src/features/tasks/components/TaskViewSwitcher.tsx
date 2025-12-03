@@ -28,6 +28,7 @@ interface TaskViewSwitcherProps {
   onRefresh?: () => void;
   onExpandAllToggle: () => void;
   onTaskUpdated?: () => void;
+  onViewModeChange?: (mode: ViewMode) => void;
 }
 
 export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
@@ -54,6 +55,7 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, mode);
       setViewMode(mode);
+      props.onViewModeChange?.(mode);
     } catch (error) {
       console.error('Failed to save view mode:', error);
     }
@@ -62,6 +64,11 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
   const handleViewModeChange = (mode: ViewMode) => {
     saveViewMode(mode);
   };
+
+  // Notify parent when viewMode is loaded
+  useEffect(() => {
+    props.onViewModeChange?.(viewMode);
+  }, [viewMode]);
 
   const tabs = [
     { id: 'board' as ViewMode, label: 'Доска', icon: 'grid-outline' },

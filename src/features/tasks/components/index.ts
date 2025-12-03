@@ -6,4 +6,6 @@ export { TaskProgressBar } from './TaskProgressBar';
 export { CreateSubtaskModal } from './CreateSubtaskModal';
 export { DelegateTaskModal } from './DelegateTaskModal';
 export { AdvancedTaskFilterMenu } from './AdvancedTaskFilterMenu';
+export { BoardFilterMenu } from './BoardFilterMenu';
+export { MobileFilterMenu } from './MobileFilterMenu';
 export { TaskFilterMenu } from './TaskFilterMenu';

@@ -32,24 +32,20 @@ const getUserWithDedup = async (userId: number): Promise<any> => {
   // Check cache first
   const cachedUser = getCachedUser(userId);
   if (cachedUser) {
-    console.log(`✅ User ${userId} from cache`);
     return cachedUser;
   }
 
   // Check if there's already a request in flight for this user
   const existingRequest = inFlightUserRequests.get(userId);
   if (existingRequest) {
-    console.log(`♻️ User ${userId} request already in-flight, reusing...`);
     return existingRequest;
   }
 
   // Create new request
-  console.log(`🌐 Fetching user ${userId} from API...`);
   const request = getUser(userId)
     .then((user) => {
       cacheUser(user);
       inFlightUserRequests.delete(userId);
-      console.log(`✅ User ${userId} fetched and cached`);
       return user;
     })
     .catch((error) => {

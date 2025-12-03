@@ -15,8 +15,10 @@ import { useTaskSwipeGesture } from '../hooks/useTaskSwipeGesture';
 import { TaskListHeader } from '../components/TaskListHeader';
 import { TaskListContent } from '../components/TaskListContent';
 import { AdvancedTaskFilterMenu } from '../components/AdvancedTaskFilterMenu';
-import { TaskViewSwitcher } from '../components/TaskViewSwitcher';
-import type { StatusTab, AdvancedTaskFilters } from '../utils/taskListHelpers';
+import { BoardFilterMenu } from '../components/BoardFilterMenu';
+import { MobileFilterMenu } from '../components/MobileFilterMenu';
+import { TaskViewSwitcher, ViewMode } from '../components/TaskViewSwitcher';
+import type { StatusTab, AdvancedTaskFilters, TaskFilter } from '../utils/taskListHelpers';
 import { TASKS_PER_PAGE, buildAdvancedTaskFilters } from '../utils/taskListHelpers';
 
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
@@ -29,6 +31,8 @@ const TaskListScreen: React.FC = () => {
 
   // Determine if desktop mode (wide screen)
   const isDesktop = Platform.OS === 'web' && width >= 1024;
+  // Determine if narrow screen (mobile)
+  const isMobile = width < 768;
 
   // Local state
   const [refreshing, setRefreshing] = useState(false);
@@ -36,6 +40,7 @@ const TaskListScreen: React.FC = () => {
   const [expandAllSubtasks, setExpandAllSubtasks] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
+  const [viewMode, setViewMode] = useState<ViewMode>('board');
 
   // Advanced filters state
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedTaskFilters>({
@@ -186,12 +191,42 @@ const TaskListScreen: React.FC = () => {
     loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
   }, [setFilter, closeFilterMenu, searchQuery, user?.id, loadAllTasks, loadSubtasksForMultipleTasks]);
 
+  // Handler for simple filter change (mobile/board)
+  const handleSimpleFilterChange = useCallback((newFilter: TaskFilter) => {
+    const newFilters: AdvancedTaskFilters = {
+      ...advancedFilters,
+      baseFilter: newFilter,
+    };
+    setAdvancedFilters(newFilters);
+    setFilter(newFilter);
+    closeFilterMenu();
+
+    // Immediately reload data with new filters
+    const apiFilters = buildAdvancedTaskFilters(newFilters, searchQuery, user?.id);
+    loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+  }, [advancedFilters, setFilter, closeFilterMenu, searchQuery, user?.id, loadAllTasks, loadSubtasksForMultipleTasks]);
+
   // Sync advancedFilters.baseFilter when old filter changes (for backward compatibility)
   useEffect(() => {
     if (advancedFilters.baseFilter !== filter) {
       setAdvancedFilters(prev => ({ ...prev, baseFilter: filter }));
     }
   }, [filter, advancedFilters.baseFilter]);
+
+  // Clear status filters when switching to board view (since board has columns by status)
+  useEffect(() => {
+    if (isDesktop && viewMode === 'board' && advancedFilters.statuses.length > 0) {
+      const clearedFilters: AdvancedTaskFilters = {
+        ...advancedFilters,
+        statuses: [], // Clear status filters for board view
+      };
+      setAdvancedFilters(clearedFilters);
+
+      // Reload data with cleared status filters
+      const apiFilters = buildAdvancedTaskFilters(clearedFilters, searchQuery, user?.id);
+      loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+    }
+  }, [viewMode, isDesktop, advancedFilters.statuses.length, searchQuery, user?.id, loadAllTasks, loadSubtasksForMultipleTasks]);
 
   // Check if any advanced filters are active
   const hasActiveFilters =
@@ -247,6 +282,7 @@ const TaskListScreen: React.FC = () => {
               const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
               loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
             }}
+            onViewModeChange={setViewMode}
           />
         ) : (
           <TaskListContent
@@ -270,15 +306,40 @@ const TaskListScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Advanced Filter Menu */}
-      <AdvancedTaskFilterMenu
-        visible={isFilterMenuVisible}
-        currentFilters={advancedFilters}
-        onFiltersChange={handleAdvancedFiltersChange}
-        onClose={closeFilterMenu}
-        buttonPosition={filterButtonPosition}
-        isDesktop={isDesktop}
-      />
+      {/* Filter Menus - Different for mobile/board/table */}
+      {isMobile ? (
+        // Mobile: only base filter (Все/Мои/Назначенные)
+        <MobileFilterMenu
+          visible={isFilterMenuVisible}
+          currentFilter={advancedFilters.baseFilter}
+          onFilterChange={handleSimpleFilterChange}
+          onClose={closeFilterMenu}
+          buttonPosition={filterButtonPosition}
+        />
+      ) : isDesktop && viewMode === 'table' ? (
+        // Desktop Table: full advanced filters
+        <AdvancedTaskFilterMenu
+          visible={isFilterMenuVisible}
+          currentFilters={advancedFilters}
+          onFiltersChange={handleAdvancedFiltersChange}
+          onClose={closeFilterMenu}
+          buttonPosition={filterButtonPosition}
+          isDesktop={isDesktop}
+        />
+      ) : (
+        // Desktop Board: base filter + sorting (without statuses)
+        <BoardFilterMenu
+          visible={isFilterMenuVisible}
+          currentFilters={{
+            ...advancedFilters,
+            statuses: [], // Never show status filters for board
+          }}
+          onFiltersChange={handleAdvancedFiltersChange}
+          onClose={closeFilterMenu}
+          buttonPosition={filterButtonPosition}
+          isDesktop={isDesktop}
+        />
+      )}
 
       {/* Create Task Modal */}
       <CreateTaskModal
