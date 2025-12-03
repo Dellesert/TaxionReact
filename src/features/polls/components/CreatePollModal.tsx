@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as pollApi from '../api/poll.api';
@@ -44,6 +45,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
   onPollCreated,
 }) => {
   const { theme, isDark } = useTheme();
+  const isDesktop = useIsWideScreen();
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
   const { showSuccess, showError } = useNotification();
@@ -200,8 +202,9 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
   const goToNextStep = () => {
     if (currentStep < totalSteps) {
       const nextStep = currentStep + 1;
+      const width = isDesktop ? 700 : SCREEN_WIDTH;
       Animated.timing(slideAnim, {
-        toValue: -(nextStep - 1) * SCREEN_WIDTH,
+        toValue: -(nextStep - 1) * width,
         duration: 300,
         useNativeDriver: true,
       }).start();
@@ -212,8 +215,9 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
   const goToPreviousStep = () => {
     if (currentStep > 1) {
       const prevStep = currentStep - 1;
+      const width = isDesktop ? 700 : SCREEN_WIDTH;
       Animated.timing(slideAnim, {
-        toValue: -(prevStep - 1) * SCREEN_WIDTH,
+        toValue: -(prevStep - 1) * width,
         duration: 300,
         useNativeDriver: true,
       }).start();
@@ -250,20 +254,33 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
     }
   };
 
+  // Calculate modal width for animations
+  const modalWidth = isDesktop ? 700 : SCREEN_WIDTH;
+
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      transparent={false}
+      animationType={isDesktop ? "fade" : "slide"}
+      transparent={isDesktop}
       onRequestClose={handleClose}
-      presentationStyle="fullScreen"
+      presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
     >
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
-      >
-        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
+      <View style={[
+        styles.modalOverlay,
+        isDesktop && styles.modalOverlayDesktop,
+        { backgroundColor: isDesktop ? 'rgba(0, 0, 0, 0.5)' : theme.card }
+      ]}>
+        <KeyboardAvoidingView
+          style={[
+            styles.container,
+            { backgroundColor: theme.card },
+            !isDesktop && { paddingTop: insets.top },
+            isDesktop && styles.containerDesktop
+          ]}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+        >
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
@@ -308,7 +325,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             ]}
           >
             {/* Step 1: Основная информация */}
-            <View style={[styles.stepContent, { width: SCREEN_WIDTH }]}>
+            <View style={[styles.stepContent, { width: modalWidth }]}>
               <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
@@ -354,7 +371,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             </View>
 
             {/* Step 2: Тип и варианты */}
-            <View style={[styles.stepContent, { width: SCREEN_WIDTH }]}>
+            <View style={[styles.stepContent, { width: modalWidth }]}>
               <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
@@ -430,7 +447,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             </View>
 
             {/* Step 3: Аудитория */}
-            <View style={[styles.stepContent, { width: SCREEN_WIDTH }]}>
+            <View style={[styles.stepContent, { width: modalWidth }]}>
               <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
@@ -502,7 +519,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
             </View>
 
             {/* Step 4: Настройки */}
-            <View style={[styles.stepContent, { width: SCREEN_WIDTH }]}>
+            <View style={[styles.stepContent, { width: modalWidth }]}>
               <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
@@ -566,7 +583,14 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
         </View>
 
         {/* Bottom Navigation */}
-        <View style={[styles.bottomNav, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: insets.bottom }]}>
+        <View style={[
+          styles.bottomNav,
+          {
+            backgroundColor: theme.card,
+            borderTopColor: theme.border,
+            paddingBottom: isDesktop ? 20 : insets.bottom
+          }
+        ]}>
           {currentStep > 1 ? (
             <TouchableOpacity
               onPress={goToPreviousStep}
@@ -625,13 +649,40 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
           />
         )}
       </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+  },
+  modalOverlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   container: {
     flex: 1,
+  },
+  containerDesktop: {
+    width: 700,
+    maxHeight: '90%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.3,
+        shadowRadius: 60,
+        elevation: 24,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',

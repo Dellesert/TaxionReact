@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@shared/store/authStore';
 import * as taskApi from '../api/task.api';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { TaskPriority, CreateTaskDto } from '../types/task.types';
 import UserSelector from '@shared/components/common/UserSelector';
@@ -44,6 +45,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   onTaskCreated,
 }) => {
   const { theme, isDark } = useTheme();
+  const isDesktop = useIsWideScreen();
   const insets = useSafeAreaInsets();
   const { user: currentUser } = useAuthStore();
   const { showSuccess, showError } = useNotification();
@@ -262,13 +264,23 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      transparent={false}
+      animationType={isDesktop ? "fade" : "slide"}
+      transparent={isDesktop}
       onRequestClose={handleClose}
-      presentationStyle="fullScreen"
+      presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
     >
-      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
-        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
+      <View style={[
+        styles.modalOverlay,
+        isDesktop && styles.modalOverlayDesktop,
+        { backgroundColor: isDesktop ? 'rgba(0, 0, 0, 0.5)' : theme.card }
+      ]}>
+        <View style={[
+          styles.container,
+          { backgroundColor: theme.card },
+          !isDesktop && { paddingTop: insets.top },
+          isDesktop && styles.containerDesktop
+        ]}>
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
@@ -533,7 +545,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         </Animated.View>
 
         {/* Bottom Navigation */}
-        <View style={[styles.bottomNav, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: insets.bottom }]}>
+        <View style={[
+          styles.bottomNav,
+          {
+            backgroundColor: theme.card,
+            borderTopColor: theme.border,
+            paddingBottom: isDesktop ? 20 : insets.bottom
+          }
+        ]}>
           {currentStep > 1 ? (
             <TouchableOpacity
               onPress={goToPreviousStep}
@@ -583,14 +602,41 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             mode="datetime"
           />
         )}
+        </View>
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+  },
+  modalOverlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   container: {
     flex: 1,
+  },
+  containerDesktop: {
+    width: 700,
+    maxHeight: '90%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.3,
+        shadowRadius: 60,
+        elevation: 24,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',

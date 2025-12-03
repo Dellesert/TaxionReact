@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Platform,
   Modal,
   StatusBar,
   ActivityIndicator,
@@ -24,6 +25,7 @@ import { createSubtask, getTaskAttachments } from '../api/task.api';
 import UserSelector from '@shared/components/common/UserSelector';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -44,6 +46,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   onSubtaskCreated,
 }) => {
   const { theme, isDark } = useTheme();
+  const isDesktop = useIsWideScreen();
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
 
@@ -310,13 +313,23 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      transparent={false}
+      animationType={isDesktop ? "fade" : "slide"}
+      transparent={isDesktop}
       onRequestClose={handleClose}
-      presentationStyle="fullScreen"
+      presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
     >
-      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
-        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
+      <View style={[
+        styles.modalOverlay,
+        isDesktop && styles.modalOverlayDesktop,
+        { backgroundColor: isDesktop ? 'rgba(0, 0, 0, 0.5)' : theme.card }
+      ]}>
+        <View style={[
+          styles.container,
+          { backgroundColor: theme.card },
+          !isDesktop && { paddingTop: insets.top },
+          isDesktop && styles.containerDesktop
+        ]}>
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
@@ -671,7 +684,14 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
         </Animated.View>
 
         {/* Bottom Navigation */}
-        <View style={[styles.bottomNav, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: insets.bottom }]}>
+        <View style={[
+          styles.bottomNav,
+          {
+            backgroundColor: theme.card,
+            borderTopColor: theme.border,
+            paddingBottom: isDesktop ? 20 : insets.bottom
+          }
+        ]}>
           {currentStep > 1 ? (
             <TouchableOpacity
               onPress={goToPreviousStep}
@@ -721,14 +741,41 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
             mode="datetime"
           />
         )}
+        </View>
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+  },
+  modalOverlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   container: {
     flex: 1,
+  },
+  containerDesktop: {
+    width: 700,
+    maxHeight: '90%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.3,
+        shadowRadius: 60,
+        elevation: 24,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
