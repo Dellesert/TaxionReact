@@ -153,18 +153,35 @@ export const useTaskListData = (): UseTaskListDataReturn => {
         setIsInitialLoading(true);
       }
 
-      await Promise.all([
-        loadTasksByStatus('new', TASKS_PER_PAGE, 0, false, filters, onSubtasksLoad),
-        loadTasksByStatus('in_progress', TASKS_PER_PAGE, 0, false, filters, onSubtasksLoad),
-        loadTasksByStatus('review', TASKS_PER_PAGE, 0, false, filters, onSubtasksLoad),
-        loadTasksByStatus('done', TASKS_PER_PAGE, 0, false, filters, onSubtasksLoad),
-      ]);
+      // If filters contain specific statuses (array), only load those statuses
+      // Otherwise load all statuses
+      const statusesToLoad: StatusTab[] =
+        filters.status && Array.isArray(filters.status) && filters.status.length > 0 && filters.status.length < 4
+          ? filters.status as StatusTab[]
+          : ['new', 'in_progress', 'review', 'done'];
+
+      // Create a copy of filters without the status field for individual status loading
+      const filtersWithoutStatus = { ...filters };
+      delete filtersWithoutStatus.status;
+
+      await Promise.all(
+        statusesToLoad.map(status =>
+          loadTasksByStatus(status, TASKS_PER_PAGE, 0, false, filtersWithoutStatus, onSubtasksLoad)
+        )
+      );
+
+      // Clear tabs that are not in statusesToLoad
+      const allStatuses: StatusTab[] = ['new', 'in_progress', 'review', 'done'];
+      const statusesToClear = allStatuses.filter(s => !statusesToLoad.includes(s));
+      statusesToClear.forEach(status => {
+        setTasksForStatus(status, [], 0);
+      });
     } catch (error) {
       console.error('Failed to load tasks:', error);
     } finally {
       setIsInitialLoading(false);
     }
-  }, [loadTasksByStatus]);
+  }, [loadTasksByStatus, setTasksForStatus]);
 
   const resetCanLoadMore = useCallback(() => {
     setCanLoadMore({

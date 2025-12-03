@@ -58,6 +58,25 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  // Custom parameter serialization to match Go backend expectations
+  paramsSerializer: {
+    serialize: (params) => {
+      const searchParams = new URLSearchParams();
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          // Serialize arrays as: key=value1&key=value2 (without brackets)
+          value.forEach(item => {
+            searchParams.append(key, String(item));
+          });
+        } else if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+
+      return searchParams.toString();
+    }
+  },
 });
 
 // Session-based authentication - no token refresh needed!

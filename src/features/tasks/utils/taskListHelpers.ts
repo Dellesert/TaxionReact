@@ -1,7 +1,21 @@
-import type { Task } from '../types/task.types';
+import type { Task, TaskPriority, TaskStatus } from '../types/task.types';
 
 export type TaskFilter = 'all' | 'my' | 'assigned';
 export type StatusTab = 'new' | 'in_progress' | 'review' | 'done';
+
+/**
+ * Advanced filter options for task table
+ */
+export interface AdvancedTaskFilters {
+  baseFilter: TaskFilter;
+  statuses: TaskStatus[];
+  priorities: TaskPriority[];
+  hasSubtasks?: boolean | null; // null = both, true = only with subtasks, false = only without
+  hasOverdueDeadline?: boolean;
+  isDelegated?: boolean;
+  sortBy?: 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'title' | 'progress_percentage';
+  sortDirection?: 'asc' | 'desc';
+}
 
 export const TASKS_PER_PAGE = 10;
 
@@ -45,6 +59,106 @@ export const buildTaskFilters = (
   }
 
   return filters;
+};
+
+/**
+ * Build advanced filter object for API request and client-side filtering
+ */
+export const buildAdvancedTaskFilters = (
+  advancedFilters: AdvancedTaskFilters,
+  searchQuery: string,
+  userId: number | undefined
+): Record<string, any> => {
+  const filters: Record<string, any> = {};
+
+  // Base filter (all/my/assigned)
+  if (advancedFilters.baseFilter === 'my') {
+    filters.created_by = userId;
+  } else if (advancedFilters.baseFilter === 'assigned') {
+    filters.assigned_to = userId;
+  }
+
+  // Search query
+  if (searchQuery.trim()) {
+    filters.search = searchQuery.trim();
+  }
+
+  // Statuses (if not all selected)
+  // There are 4 possible statuses: new, in_progress, review, done
+  if (advancedFilters.statuses.length > 0 && advancedFilters.statuses.length < 4) {
+    filters.status = advancedFilters.statuses;
+  }
+
+  // Priorities (if not all selected)
+  // There are 4 possible priorities: low, medium, high, critical
+  if (advancedFilters.priorities.length > 0 && advancedFilters.priorities.length < 4) {
+    filters.priority = advancedFilters.priorities;
+  }
+
+  // Delegated tasks
+  if (advancedFilters.isDelegated) {
+    filters.is_delegated = true;
+  }
+
+  // Has subtasks filter
+  if (advancedFilters.hasSubtasks === true) {
+    filters.has_subtasks = true;
+  } else if (advancedFilters.hasSubtasks === false) {
+    filters.has_subtasks = false;
+  }
+
+  // Sorting
+  if (advancedFilters.sortBy) {
+    filters.sort_by = advancedFilters.sortBy;
+  }
+  if (advancedFilters.sortDirection) {
+    filters.sort_order = advancedFilters.sortDirection;
+  }
+
+  // Debug log
+  if (__DEV__) {
+    console.log('🔍 Advanced Filters Applied:', {
+      advancedFilters,
+      searchQuery,
+      userId,
+      resultFilters: filters,
+    });
+
+    // Additional detailed logging
+    if (filters.priority) {
+      console.log('📊 Priority filter:', filters.priority);
+    }
+    if (filters.status) {
+      console.log('📊 Status filter:', filters.status);
+    }
+    if (filters.sort_by || filters.sort_order) {
+      console.log('🔄 Sorting:', { sort_by: filters.sort_by, sort_order: filters.sort_order });
+    }
+  }
+
+  return filters;
+};
+
+/**
+ * Apply client-side filters that cannot be done via API
+ * Note: Subtasks filter is now done server-side, only overdue deadline remains client-side
+ */
+export const applyClientSideFilters = (
+  tasks: Task[],
+  advancedFilters: AdvancedTaskFilters
+): Task[] => {
+  let filtered = [...tasks];
+
+  // Filter by overdue deadline
+  if (advancedFilters.hasOverdueDeadline) {
+    const now = new Date();
+    filtered = filtered.filter(t => {
+      if (!t.due_date || t.status === 'done') return false;
+      return new Date(t.due_date) < now;
+    });
+  }
+
+  return filtered;
 };
 
 /**

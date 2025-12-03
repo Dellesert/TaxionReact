@@ -14,10 +14,10 @@ import { useSubtasksCache } from '../hooks/useSubtasksCache';
 import { useTaskSwipeGesture } from '../hooks/useTaskSwipeGesture';
 import { TaskListHeader } from '../components/TaskListHeader';
 import { TaskListContent } from '../components/TaskListContent';
-import { TaskFilterMenu } from '../components/TaskFilterMenu';
+import { AdvancedTaskFilterMenu } from '../components/AdvancedTaskFilterMenu';
 import { TaskViewSwitcher } from '../components/TaskViewSwitcher';
-import type { StatusTab } from '../utils/taskListHelpers';
-import { TASKS_PER_PAGE } from '../utils/taskListHelpers';
+import type { StatusTab, AdvancedTaskFilters } from '../utils/taskListHelpers';
+import { TASKS_PER_PAGE, buildAdvancedTaskFilters } from '../utils/taskListHelpers';
 
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
 
@@ -36,6 +36,18 @@ const TaskListScreen: React.FC = () => {
   const [expandAllSubtasks, setExpandAllSubtasks] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
+
+  // Advanced filters state
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedTaskFilters>({
+    baseFilter: 'all',
+    statuses: [],
+    priorities: [],
+    hasSubtasks: null,
+    hasOverdueDeadline: false,
+    isDelegated: false,
+    sortBy: 'created_at',
+    sortDirection: 'desc',
+  });
 
   const isFirstRender = useRef(true);
 
@@ -86,13 +98,15 @@ const TaskListScreen: React.FC = () => {
   // Store the actual filter change handler in ref (inside useEffect to avoid setState during render)
   useEffect(() => {
     handleFilterChangeRef.current = () => {
-      loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks);
+      const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
+      loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
     };
-  }, [loadAllTasks, buildFilters, user?.id, loadSubtasksForMultipleTasks]);
+  }, [loadAllTasks, advancedFilters, searchQuery, user?.id, loadSubtasksForMultipleTasks]);
 
   // Initial load on mount
   useEffect(() => {
-    loadAllTasks(false, buildFilters(user?.id), loadSubtasksForMultipleTasks);
+    const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
+    loadAllTasks(false, apiFilters, loadSubtasksForMultipleTasks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -103,7 +117,8 @@ const TaskListScreen: React.FC = () => {
         isFirstRender.current = false;
         return;
       }
-      loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks);
+      const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
+      loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
     });
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,10 +133,11 @@ const TaskListScreen: React.FC = () => {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     resetCanLoadMore();
-    await loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks);
+    const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
+    await loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
     setRefreshing(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [advancedFilters, searchQuery, user?.id]);
 
   const handleLoadMore = useCallback(async (status: StatusTab) => {
     const currentTasks = tasks[status];
@@ -129,16 +145,17 @@ const TaskListScreen: React.FC = () => {
 
     if (currentTasks.length >= total) return;
 
+    const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
     await loadTasksByStatus(
       status,
       TASKS_PER_PAGE,
       currentTasks.length,
       true,
-      buildFilters(user?.id),
+      apiFilters,
       loadSubtasksForMultipleTasks
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, totals]);
+  }, [tasks, totals, advancedFilters, searchQuery, user?.id]);
 
   const handleTaskPress = useCallback((task: Task) => {
     navigation.navigate('TaskDetail', { taskId: task.id });
@@ -149,18 +166,44 @@ const TaskListScreen: React.FC = () => {
   }, []);
 
   const handleTaskCreated = useCallback(() => {
-    loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks);
+    const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
+    loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [advancedFilters, searchQuery, user?.id]);
 
   const handleExpandAllToggle = useCallback(() => {
     setExpandAllSubtasks(prev => !prev);
   }, []);
 
-  const handleFilterChange2 = useCallback((newFilter: typeof filter) => {
-    setFilter(newFilter);
+  const handleAdvancedFiltersChange = useCallback((newFilters: AdvancedTaskFilters) => {
+    setAdvancedFilters(newFilters);
+    // Update the old filter for backward compatibility
+    setFilter(newFilters.baseFilter);
     closeFilterMenu();
-  }, [setFilter, closeFilterMenu]);
+
+    // Immediately reload data with new filters
+    const apiFilters = buildAdvancedTaskFilters(newFilters, searchQuery, user?.id);
+    loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+  }, [setFilter, closeFilterMenu, searchQuery, user?.id, loadAllTasks, loadSubtasksForMultipleTasks]);
+
+  // Sync advancedFilters.baseFilter when old filter changes (for backward compatibility)
+  useEffect(() => {
+    if (advancedFilters.baseFilter !== filter) {
+      setAdvancedFilters(prev => ({ ...prev, baseFilter: filter }));
+    }
+  }, [filter, advancedFilters.baseFilter]);
+
+  // Check if any advanced filters are active
+  const hasActiveFilters =
+    advancedFilters.baseFilter !== 'all' ||
+    advancedFilters.statuses.length > 0 ||
+    advancedFilters.priorities.length > 0 ||
+    advancedFilters.hasSubtasks !== null ||
+    advancedFilters.hasOverdueDeadline ||
+    advancedFilters.isDelegated;
+
+  // Update filter for header indicator (backward compatibility)
+  const displayFilter = hasActiveFilters ? 'my' : 'all'; // Use 'my' as non-'all' to show indicator
 
   const canCreateTask = user?.role !== 'employee';
 
@@ -168,7 +211,7 @@ const TaskListScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
       {/* Header */}
       <TaskListHeader
-        filter={filter}
+        filter={displayFilter}
         isSearchVisible={isSearchVisible}
         searchQuery={searchQuery}
         onSearchToggle={toggleSearch}
@@ -195,11 +238,15 @@ const TaskListScreen: React.FC = () => {
             expandAllSubtasks={expandAllSubtasks}
             refreshing={refreshing}
             searchQuery={searchQuery}
+            advancedFilters={advancedFilters}
             onTaskPress={handleTaskPress}
             onLoadMore={handleLoadMore}
             onRefresh={handleRefresh}
             onExpandAllToggle={handleExpandAllToggle}
-            onTaskUpdated={() => loadAllTasks(true, buildFilters(user?.id), loadSubtasksForMultipleTasks)}
+            onTaskUpdated={() => {
+              const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
+              loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+            }}
           />
         ) : (
           <TaskListContent
@@ -223,13 +270,14 @@ const TaskListScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Filter Menu Dropdown */}
-      <TaskFilterMenu
+      {/* Advanced Filter Menu */}
+      <AdvancedTaskFilterMenu
         visible={isFilterMenuVisible}
-        currentFilter={filter}
-        onFilterChange={handleFilterChange2}
+        currentFilters={advancedFilters}
+        onFiltersChange={handleAdvancedFiltersChange}
         onClose={closeFilterMenu}
         buttonPosition={filterButtonPosition}
+        isDesktop={isDesktop}
       />
 
       {/* Create Task Modal */}

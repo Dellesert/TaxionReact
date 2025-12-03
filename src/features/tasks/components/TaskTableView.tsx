@@ -13,7 +13,7 @@ import { TaskActionMenu } from './TaskActionMenu';
 import EditTaskModal from './EditTaskModal';
 import { DelegateTaskModal } from './DelegateTaskModal';
 import { CreateSubtaskModal } from './CreateSubtaskModal';
-import { STATUS_LABELS, STATUS_COLORS, STATUS_TABS_ORDER } from '../utils/taskListHelpers';
+import { STATUS_LABELS, STATUS_COLORS, STATUS_TABS_ORDER, applyClientSideFilters, type AdvancedTaskFilters } from '../utils/taskListHelpers';
 
 interface TaskTableViewProps {
   tasks: TasksByStatus;
@@ -21,12 +21,10 @@ interface TaskTableViewProps {
   loading: LoadingByStatus;
   subtasksCache: Record<number, Task[]>;
   searchQuery: string;
+  advancedFilters: AdvancedTaskFilters;
   onTaskPress: (task: Task) => void;
   onTaskUpdated?: () => void; // Callback when task is updated/deleted
 }
-
-type SortField = 'title' | 'status' | 'deadline' | 'priority' | 'created_at';
-type SortDirection = 'asc' | 'desc';
 
 export const TaskTableView: React.FC<TaskTableViewProps> = ({
   tasks,
@@ -34,6 +32,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   loading,
   subtasksCache,
   searchQuery,
+  advancedFilters,
   onTaskPress,
   onTaskUpdated,
 }) => {
@@ -41,9 +40,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   const { user } = useAuthStore();
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
-
-  const [sortField, setSortField] = useState<SortField>('created_at');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Expanded tasks state (for subtasks)
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<number>>(new Set());
@@ -67,48 +63,16 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   const [showDelegateModal, setShowDelegateModal] = useState(false);
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
 
-  // Combine all tasks from all statuses
+  // Combine all tasks from all statuses and apply client-side filters
+  // Note: Server-side sorting is already applied via advancedFilters
   const allTasks = React.useMemo(() => {
     const combined: Task[] = [];
     STATUS_TABS_ORDER.forEach(status => {
       combined.push(...tasks[status]);
     });
-    return combined;
-  }, [tasks]);
-
-  // Sort tasks
-  const sortedTasks = React.useMemo(() => {
-    const sorted = [...allTasks];
-    sorted.sort((a, b) => {
-      let compareResult = 0;
-
-      switch (sortField) {
-        case 'title':
-          compareResult = a.title.localeCompare(b.title);
-          break;
-        case 'status':
-          compareResult = a.status.localeCompare(b.status);
-          break;
-        case 'deadline':
-          const aDeadline = a.due_date || '';
-          const bDeadline = b.due_date || '';
-          compareResult = aDeadline.localeCompare(bDeadline);
-          break;
-        case 'priority':
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          const aPriority = priorityOrder[a.priority] || 0;
-          const bPriority = priorityOrder[b.priority] || 0;
-          compareResult = aPriority - bPriority;
-          break;
-        case 'created_at':
-          compareResult = (a.created_at || '').localeCompare(b.created_at || '');
-          break;
-      }
-
-      return sortDirection === 'asc' ? compareResult : -compareResult;
-    });
-    return sorted;
-  }, [allTasks, sortField, sortDirection]);
+    // Apply client-side filters (overdue deadline only - subtasks now filtered on server)
+    return applyClientSideFilters(combined, advancedFilters);
+  }, [tasks, advancedFilters]);
 
   // Build hierarchical list with subtasks
   type TaskRow = {
@@ -132,12 +96,12 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       }
     };
 
-    sortedTasks.forEach(task => {
+    allTasks.forEach(task => {
       addTaskWithSubtasks(task, 0);
     });
 
     return result;
-  }, [sortedTasks, expandedTaskIds, subtasksCache]);
+  }, [allTasks, expandedTaskIds, subtasksCache]);
 
   // Get permissions for selected task
   const permissions = useTaskPermissions(selectedTask);
@@ -177,14 +141,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     showError
   );
 
-  const handleSort = useCallback((field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  }, [sortField]);
 
   const handleToggleExpand = useCallback((taskId: number) => {
     setExpandedTaskIds(prev => {
@@ -290,25 +246,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     onTaskUpdated?.();
   }, [onTaskUpdated]);
 
-  const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) {
-      return (
-        <View style={styles.sortIconContainer}>
-          <Ionicons name="swap-vertical-outline" size={16} color={theme.textSecondary} style={styles.sortIconInactive} />
-        </View>
-      );
-    }
-    return (
-      <View style={styles.sortIconContainer}>
-        <Ionicons
-          name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
-          size={16}
-          color={theme.primary}
-          style={styles.sortIconActive}
-        />
-      </View>
-    );
-  };
 
   const getStatusColor = (status: StatusTab) => {
     return STATUS_COLORS[status];
@@ -367,45 +304,25 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       <View style={styles.tableContainer}>
         {/* Header */}
         <View style={[styles.headerRow, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity
-            style={[styles.headerCell, styles.titleColumn]}
-            onPress={() => handleSort('title')}
-          >
+          <View style={[styles.headerCell, styles.titleColumn]}>
             <Text style={[styles.headerText, { color: theme.text }]}>Название</Text>
-            {renderSortIcon('title')}
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.headerCell, styles.statusColumn]}
-            onPress={() => handleSort('status')}
-          >
+          <View style={[styles.headerCell, styles.statusColumn]}>
             <Text style={[styles.headerText, { color: theme.text }]}>Статус</Text>
-            {renderSortIcon('status')}
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.headerCell, styles.priorityColumn]}
-            onPress={() => handleSort('priority')}
-          >
+          <View style={[styles.headerCell, styles.priorityColumn]}>
             <Text style={[styles.headerText, { color: theme.text }]}>Приоритет</Text>
-            {renderSortIcon('priority')}
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.headerCell, styles.dateColumn]}
-            onPress={() => handleSort('deadline')}
-          >
+          <View style={[styles.headerCell, styles.dateColumn]}>
             <Text style={[styles.headerText, { color: theme.text }]}>Дедлайн</Text>
-            {renderSortIcon('deadline')}
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.headerCell, styles.dateColumn]}
-            onPress={() => handleSort('created_at')}
-          >
+          <View style={[styles.headerCell, styles.dateColumn]}>
             <Text style={[styles.headerText, { color: theme.text }]}>Создано</Text>
-            {renderSortIcon('created_at')}
-          </TouchableOpacity>
+          </View>
 
           <View style={[styles.headerCell, styles.actionsColumn]}>
             <Text style={[styles.headerText, { color: theme.text }]}>Действия</Text>
@@ -445,20 +362,23 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
                 return (
                 <TouchableOpacity
-                  key={`${task.id}-${level}`}
+                  key={`${task.id}-${level}-${task.parent_task_id || 'root'}-${index}`}
                   style={[
                     styles.row,
                     {
                       backgroundColor: isHovered
                         ? theme.primary + '12'
                         : isSubtask
-                        ? theme.backgroundSecondary
+                        ? theme.primary + '08'
                         : isEvenRow
                         ? theme.background
                         : theme.backgroundSecondary + '40',
                       borderBottomColor: theme.border,
+                      borderLeftColor: isSubtask ? theme.primary : 'transparent',
+                      borderLeftWidth: isSubtask ? 3 : 0,
                     },
                     isHovered && styles.rowHovered,
+                    isSubtask && styles.subtaskRow,
                   ]}
                   onPress={() => onTaskPress(task)}
                   // @ts-ignore - web-only props
@@ -467,22 +387,19 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                 >
                   <View style={[styles.cell, styles.titleColumn]}>
                     <View style={styles.titleRow}>
-                      {/* Indentation */}
+                      {/* Indentation with visual connector */}
                       {level > 0 && (
-                        <View style={{ width: level * 20 }}>
-                          {Array.from({ length: level }).map((_, i) => (
-                            <View
-                              key={i}
-                              style={[styles.indentLine, { backgroundColor: theme.border }]}
-                            />
-                          ))}
+                        <View style={styles.indentContainer}>
+                          <View style={[styles.verticalConnector, { backgroundColor: theme.primary + '40' }]} />
+                          <View style={[styles.horizontalConnector, { backgroundColor: theme.primary + '40' }]} />
+                          <View style={[styles.connectorDot, { backgroundColor: theme.primary }]} />
                         </View>
                       )}
 
                       {/* Expand/Collapse button */}
-                      {hasSubtasks ? (
+                      {hasSubtasks && !isSubtask ? (
                         <TouchableOpacity
-                          style={styles.expandButton}
+                          style={[styles.expandButton, { backgroundColor: isExpanded ? theme.primary + '15' : 'transparent' }]}
                           onPress={(e) => {
                             e.stopPropagation();
                             handleToggleExpand(task.id);
@@ -490,19 +407,26 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                         >
                           <Ionicons
                             name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-                            size={16}
-                            color={theme.text}
+                            size={18}
+                            color={isExpanded ? theme.primary : theme.text}
                           />
                         </TouchableOpacity>
-                      ) : (
+                      ) : !isSubtask ? (
                         <View style={styles.expandButtonPlaceholder} />
-                      )}
+                      ) : null}
 
                       {/* Task info */}
                       <View style={styles.titleContent}>
-                        <Text style={[styles.cellText, styles.taskTitle, { color: theme.text }]} numberOfLines={2}>
-                          {task.title}
-                        </Text>
+                        <View style={styles.taskTitleRow}>
+                          {isSubtask && (
+                            <View style={[styles.subtaskBadge, { backgroundColor: theme.primary + '20', borderColor: theme.primary }]}>
+                              <Ionicons name="git-branch-outline" size={12} color={theme.primary} />
+                            </View>
+                          )}
+                          <Text style={[styles.cellText, styles.taskTitle, { color: theme.text }, isSubtask && styles.subtaskTitle]} numberOfLines={2}>
+                            {task.title}
+                          </Text>
+                        </View>
                         {task.description ? (
                           <Text style={[styles.descriptionText, { color: theme.textSecondary }]} numberOfLines={1}>
                             {task.description}
@@ -750,11 +674,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    ...(Platform.OS === 'web' && {
-      cursor: 'pointer',
-      transitionProperty: 'opacity',
-      transitionDuration: '0.15s',
-    }),
   },
   headerText: {
     fontSize: 12,
@@ -762,17 +681,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     opacity: 0.8,
-  },
-  sortIconContainer: {
-    width: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sortIconInactive: {
-    opacity: 0.4,
-  },
-  sortIconActive: {
-    opacity: 1,
   },
   titleColumn: {
     flex: 3,
@@ -830,6 +738,25 @@ const styles = StyleSheet.create({
       elevation: 4,
     },
   }),
+  subtaskRow: {
+    marginLeft: 20,
+    marginRight: 16,
+    minHeight: 70,
+    paddingVertical: 16,
+    borderRadius: 10,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 1,
+      },
+    }),
+  },
   cell: {
     justifyContent: 'center',
   },
@@ -854,23 +781,60 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flex: 1,
   },
-  indentLine: {
+  indentContainer: {
+    width: 40,
+    marginRight: 8,
+    position: 'relative',
+    height: '100%',
+    minHeight: 40,
+  },
+  verticalConnector: {
     position: 'absolute',
-    left: 10,
+    left: 15,
     top: 0,
-    bottom: 0,
-    width: 1,
+    bottom: '50%',
+    width: 2,
+    borderRadius: 1,
+  },
+  horizontalConnector: {
+    position: 'absolute',
+    left: 15,
+    top: '50%',
+    width: 20,
+    height: 2,
+    borderRadius: 1,
+  },
+  connectorDot: {
+    position: 'absolute',
+    left: 32,
+    top: '50%',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: -3,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
   },
   expandButton: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 4,
-    borderRadius: 4,
+    marginRight: 8,
+    borderRadius: 6,
     ...(Platform.OS === 'web' && {
-      transitionProperty: 'background-color',
-      transitionDuration: '0.15s',
+      transitionProperty: 'background-color, transform',
+      transitionDuration: '0.2s',
       cursor: 'pointer',
     }),
   },
@@ -881,6 +845,24 @@ const styles = StyleSheet.create({
   titleContent: {
     flex: 1,
     gap: 4,
+  },
+  taskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  subtaskBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  subtaskTitle: {
+    fontSize: 14,
+    opacity: 0.95,
   },
   taskMetaRow: {
     flexDirection: 'row',

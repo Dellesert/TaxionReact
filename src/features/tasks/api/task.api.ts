@@ -129,10 +129,18 @@ export const getTasksByStatus = async (
   status: 'new' | 'in_progress' | 'review' | 'done',
   limit: number = 3,
   offset: number = 0,
-  additionalFilters?: Omit<TaskListFilters, 'status'>,
+  additionalFilters?: Record<string, any>,
   since?: string
 ): Promise<PaginatedResponse<Task>> => {
-  return getTasks({ ...additionalFilters, status }, { limit, offset }, since);
+  // If additionalFilters already has a status (array or single), use it instead of the status parameter
+  const filters = { ...additionalFilters };
+
+  // Only set status if it's not already present in additionalFilters
+  if (!filters.status) {
+    filters.status = status;
+  }
+
+  return getTasks(filters, { limit, offset }, since);
 };
 
 /**

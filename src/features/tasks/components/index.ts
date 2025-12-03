@@ -5,3 +5,5 @@ export { TaskChecklistsView } from './TaskChecklistsView';
 export { TaskProgressBar } from './TaskProgressBar';
 export { CreateSubtaskModal } from './CreateSubtaskModal';
 export { DelegateTaskModal } from './DelegateTaskModal';
+export { AdvancedTaskFilterMenu } from './AdvancedTaskFilterMenu';
+export { TaskFilterMenu } from './TaskFilterMenu';

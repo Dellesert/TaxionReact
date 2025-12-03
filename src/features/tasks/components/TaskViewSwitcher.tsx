@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { Task } from '../types/task.types';
 import type { TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus, StatusTab } from '../hooks/useTaskListData';
+import type { AdvancedTaskFilters } from '../utils/taskListHelpers';
 import { TaskKanbanBoard } from './TaskKanbanBoard';
 import { TaskTableView } from './TaskTableView';
 
@@ -21,6 +22,7 @@ interface TaskViewSwitcherProps {
   expandAllSubtasks: boolean;
   refreshing?: boolean;
   searchQuery: string;
+  advancedFilters: AdvancedTaskFilters;
   onTaskPress: (task: Task) => void;
   onLoadMore: (status: StatusTab) => void;
   onRefresh?: () => void;
@@ -122,6 +124,7 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
             loading={props.loading}
             subtasksCache={props.subtasksCache}
             searchQuery={props.searchQuery}
+            advancedFilters={props.advancedFilters}
             onTaskPress={props.onTaskPress}
             onTaskUpdated={props.onTaskUpdated}
           />
