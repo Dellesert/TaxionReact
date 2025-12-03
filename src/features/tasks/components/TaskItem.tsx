@@ -1113,7 +1113,6 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: '#f3f4f6',
     borderRadius: 6,
   },
   attachmentCount: {
