@@ -436,11 +436,12 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                 </Text>
               </View>
             ) : (
-              tasksWithSubtasks.map(({ task, level, isSubtask }) => {
+              tasksWithSubtasks.map(({ task, level, isSubtask }, index) => {
                 const hasSubtasks = (subtasksCache[task.id]?.length || 0) > 0;
                 const isExpanded = expandedTaskIds.has(task.id);
 
                 const isHovered = hoveredRowId === task.id;
+                const isEvenRow = index % 2 === 0;
 
                 return (
                 <TouchableOpacity
@@ -449,12 +450,15 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                     styles.row,
                     {
                       backgroundColor: isHovered
-                        ? theme.backgroundSecondary
+                        ? theme.primary + '12'
                         : isSubtask
                         ? theme.backgroundSecondary
-                        : theme.background,
+                        : isEvenRow
+                        ? theme.background
+                        : theme.backgroundSecondary + '40',
                       borderBottomColor: theme.border,
-                    }
+                    },
+                    isHovered && styles.rowHovered,
                   ]}
                   onPress={() => onTaskPress(task)}
                   // @ts-ignore - web-only props
@@ -738,8 +742,9 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     borderBottomWidth: 2,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    marginBottom: 4,
   },
   headerCell: {
     flexDirection: 'row',
@@ -790,34 +795,59 @@ const styles = StyleSheet.create({
   },
   bodyContainer: {
     flex: 1,
+    paddingTop: 4,
   },
   row: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    minHeight: 72,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    minHeight: 80,
+    marginHorizontal: 8,
+    marginVertical: 2,
+    borderRadius: 8,
     ...(Platform.OS === 'web' && {
-      transitionProperty: 'background-color, box-shadow',
-      transitionDuration: '0.15s',
-      transitionTimingFunction: 'ease-in-out',
+      transitionProperty: 'background-color, box-shadow, transform',
+      transitionDuration: '0.2s',
+      transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
       cursor: 'pointer',
     }),
   },
+  rowHovered: Platform.select({
+    web: {
+      transform: [{ translateY: -2 }],
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    default: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+  }),
   cell: {
     justifyContent: 'center',
   },
   cellText: {
     fontSize: 14,
     lineHeight: 20,
+    letterSpacing: -0.1,
   },
   taskTitle: {
-    fontWeight: '500',
+    fontWeight: '600',
+    fontSize: 15,
+    lineHeight: 21,
   },
   descriptionText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
     marginTop: 4,
+    opacity: 0.8,
   },
   titleRow: {
     flexDirection: 'row',
@@ -863,9 +893,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingRight: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+      },
+    }),
   },
   metaText: {
     fontSize: 11,
@@ -888,9 +923,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   priorityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
   },
   deadlineContainer: {
     flexDirection: 'row',
@@ -923,16 +970,28 @@ const styles = StyleSheet.create({
     minWidth: 32,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
     alignSelf: 'flex-start',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
   },
   statusText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    fontWeight: '700',
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   actionButton: {
@@ -979,11 +1038,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 6,
-    marginBottom: 4,
+    marginTop: 8,
+    marginBottom: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   delegationRowText: {
     fontSize: 12,
     lineHeight: 16,
+    fontWeight: '500',
   },
 });
