@@ -498,7 +498,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                           <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
                             <Ionicons name="attach-outline" size={12} color={theme.textSecondary} />
                             <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                              {task.attachments?.length || 0}
+                              {task.attachment_count || 0}
                             </Text>
                           </View>
                           {task.tags && task.tags.length > 0 && task.tags.slice(0, 2).map((tag, idx) => (

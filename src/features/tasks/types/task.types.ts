@@ -150,6 +150,7 @@ export interface Task {
   parent_task?: Task;
   subtasks?: Task[];
   subtask_count?: number;
+  attachment_count?: number; // Backend returns attachment_count
 
   // NEW: Delegation fields
   created_by_user_id?: number;
