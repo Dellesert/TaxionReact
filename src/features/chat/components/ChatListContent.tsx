@@ -164,6 +164,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
               data={tabChats}
               keyExtractor={(item: Chat) => item.id.toString()}
               renderItem={renderChatItem}
+              extraData={{ isEditMode, selectedChats, typingUsers }}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
