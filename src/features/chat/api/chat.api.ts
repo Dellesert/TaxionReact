@@ -596,6 +596,34 @@ export const getMessagesBefore = async (
 };
 
 /**
+ * Get messages after a specific message (cursor-based pagination)
+ * Messages are returned in chronological order (oldest → newest)
+ */
+export const getMessagesAfter = async (
+  chatId: number,
+  messageId: number,
+  params?: GetMessagesBeforeParams // Reusing the same params type
+): Promise<GetMessagesBeforeResponse> => { // Similar response structure
+  const queryParams = {
+    limit: params?.limit || PAGINATION.DEFAULT_LIMIT,
+  };
+
+  const response = await api.get<any>(
+    API_ENDPOINTS.CHAT.MESSAGES_AFTER(chatId, messageId),
+    { params: queryParams }
+  );
+
+  // Normalize messages
+  const normalizedMessages = response.data.messages.map((msg: any) => normalizeMessage(msg));
+
+  return {
+    messages: normalizedMessages,
+    has_older: response.data.has_newer, // has_newer from backend maps to has_older for consistency
+    oldest_id: response.data.newest_id, // newest_id from backend is the cursor
+  };
+};
+
+/**
  * Get message context (messages around a specific message)
  * Used for "jump to message" functionality (search, reply, notifications)
  */

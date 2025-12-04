@@ -75,6 +75,7 @@ export const API_ENDPOINTS = {
     // NEW API endpoints (v1)
     MESSAGES_LATEST: (id: number) => `/chats/${id}/messages/latest`,
     MESSAGES_BEFORE: (chatId: number, messageId: number) => `/chats/${chatId}/messages/before/${messageId}`,
+    MESSAGES_AFTER: (chatId: number, messageId: number) => `/chats/${chatId}/messages/after/${messageId}`,
     MESSAGES_CONTEXT: (chatId: number, messageId: number) => `/chats/${chatId}/messages/context/${messageId}`,
     READ: (id: number) => `/chats/${id}/read`,
     // DEPRECATED (old endpoints - will be removed)

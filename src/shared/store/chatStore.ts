@@ -99,6 +99,7 @@ interface ChatState {
   removeChatMember: (chatId: number, userId: number) => Promise<void>;
   loadMessages: (chatId: number) => Promise<void>;
   loadMoreMessages: (chatId: number, beforeMessageId: number) => Promise<number>;
+  loadMoreMessagesAfter: (chatId: number, afterMessageId: number) => Promise<boolean>;
   jumpToMessage: (chatId: number, messageId: number) => Promise<void>;
   setActiveChat: (chat: Chat | null) => void;
   sendMessage: (chatId: number, content: string, replyToId?: number, fileIds?: number[], extraData?: any) => Promise<void>;
@@ -641,6 +642,42 @@ export const useChatStore = create<ChatState>()(
       console.error(`Failed to load more messages for chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to load more messages' });
       return 0;
+    }
+  },
+
+  loadMoreMessagesAfter: async (chatId: number, afterMessageId: number) => {
+    try {
+      // NEW API: Use getMessagesAfter (cursor-based pagination for scrolling down)
+      const response = await chatApi.getMessagesAfter(chatId, afterMessageId, {
+        limit: PAGINATION.DEFAULT_LIMIT,
+      });
+
+      const responseMessages = response.messages || [];
+
+      if (responseMessages.length > 0) {
+        set((state) => {
+          const existingMessages = state.messages[chatId] || [];
+          const existingIds = new Set(existingMessages.map(m => m.id));
+
+          // Filter duplicates - add only new messages
+          // Messages are in chronological order (oldest → newest)
+          const newMessages = responseMessages.filter(msg => !existingIds.has(msg.id));
+
+          return {
+            messages: {
+              ...state.messages,
+              [chatId]: [...existingMessages, ...newMessages], // Add new messages at the END
+            },
+          };
+        });
+      }
+
+      // Return true if there are more newer messages, false otherwise
+      return response.has_older; // Note: has_older from response maps to has_newer
+    } catch (error: any) {
+      console.error(`Failed to load messages after ${afterMessageId} for chat ${chatId}:`, error);
+      set({ error: error.message || 'Failed to load newer messages' });
+      return false;
     }
   },
 
