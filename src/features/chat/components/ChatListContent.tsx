@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
-import { View, RefreshControl, ActivityIndicator, Platform, StyleSheet, Dimensions } from 'react-native';
+import React, { useCallback, useRef, useImperativeHandle, forwardRef, useState } from 'react';
+import { View, RefreshControl, ActivityIndicator, Platform, StyleSheet, Dimensions, LayoutChangeEvent } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -70,6 +70,9 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
 }, ref) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Track actual container width (for split view support)
+  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH);
 
   // Get typing users from chatStore
   const typingUsers = useChatStore((state) => state.typingUsers);
@@ -156,7 +159,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
       const chatsHash = tabChats.map(c => `${c.id}-${c.is_favorite}-${c.unread_count}-${c.is_pinned}`).join(',');
 
       return (
-        <View key={filterKey} style={{ width: SCREEN_WIDTH, height: '100%' }}>
+        <View key={filterKey} style={{ width: containerWidth, height: '100%' }}>
           {isLoading && !tabData.loaded ? (
             <ChatListSkeleton />
           ) : tabChats.length === 0 ? (
@@ -214,10 +217,25 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
 
   const filterTabsOrder: ChatFilter[] = ['all', 'private', 'group', 'favorite'];
 
+  // Handle container layout to get actual width
+  const handleContainerLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0 && width !== containerWidth) {
+      setContainerWidth(width);
+    }
+  }, [containerWidth]);
+
   return (
-    <View style={{ flex: 1, overflow: 'hidden' }}>
+    <View style={{ flex: 1, overflow: 'hidden' }} onLayout={handleContainerLayout}>
       <GestureDetector gesture={swipeGesture}>
-        <Animated.View style={[styles.horizontalTabsContainer, animatedContentStyle]}>
+        <Animated.View style={[
+          {
+            flexDirection: 'row',
+            width: containerWidth * 4, // 4 tabs: all, group, private, favorite
+            height: '100%',
+          },
+          animatedContentStyle
+        ]}>
           {Platform.OS === 'ios'
             ? // Render all tabs side by side for iOS swipe
               filterTabsOrder.map((filterKey) => renderFilterContent(filterKey))
@@ -230,11 +248,6 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
 });
 
 const styles = StyleSheet.create({
-  horizontalTabsContainer: {
-    flexDirection: 'row',
-    width: SCREEN_WIDTH * 4, // 4 tabs: all, group, private, favorite
-    height: '100%',
-  },
   loadMoreContainer: {
     paddingVertical: 16,
     alignItems: 'center',
