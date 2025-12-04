@@ -56,6 +56,7 @@ export type PollStackParamList = {
 
 // Admin Stack
 export type AdminStackParamList = {
+  AdminHub: undefined;
   Departments: undefined;
   EditDepartment: {
     departmentId: number;
@@ -64,6 +65,10 @@ export type AdminStackParamList = {
   EditUser: {
     userId: number;
   };
+  MetricsAnalytics: undefined;
+  PerformanceAnalytics: undefined;
+  DepartmentsAnalytics: undefined;
+  SecurityAnalytics: undefined;
 };
 
 // Profile Stack

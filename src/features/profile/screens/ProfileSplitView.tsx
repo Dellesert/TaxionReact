@@ -22,9 +22,6 @@ import NotificationSettingsContent from '../components/sections/NotificationSett
 import ThemeSettingsContent from '../components/sections/ThemeSettingsContent';
 import StorageContent from '../components/sections/StorageContent';
 import AboutContent from '../components/sections/AboutContent';
-import AnalyticsContent from '../components/sections/AnalyticsContent';
-import DepartmentsContent from '../components/sections/DepartmentsContent';
-import UsersContent from '../components/sections/UsersContent';
 
 export const ProfileSplitView: React.FC = () => {
   const { theme } = useTheme();
@@ -130,36 +127,6 @@ export const ProfileSplitView: React.FC = () => {
             description="Информация о версии и разработчиках"
           >
             <AboutContent />
-          </ProfileContentArea>
-        );
-
-      case 'analytics':
-        return (
-          <ProfileContentArea
-            title="Аналитика"
-            description="Статистика использования системы"
-          >
-            <AnalyticsContent />
-          </ProfileContentArea>
-        );
-
-      case 'departments':
-        return (
-          <ProfileContentArea
-            title="Управление отделами"
-            description="Создание и редактирование структуры организации"
-          >
-            <DepartmentsContent />
-          </ProfileContentArea>
-        );
-
-      case 'users':
-        return (
-          <ProfileContentArea
-            title="Управление пользователями"
-            description="Добавление и редактирование пользователей"
-          >
-            <UsersContent />
           </ProfileContentArea>
         );
 

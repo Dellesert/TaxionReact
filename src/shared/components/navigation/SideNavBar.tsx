@@ -7,12 +7,14 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAuthStore } from '@shared/store/authStore';
 
 interface NavItem {
   name: string;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconFocused: keyof typeof Ionicons.glyphMap;
+  adminOnly?: boolean;
 }
 
 interface SideNavBarProps {
@@ -47,6 +49,13 @@ const NAV_ITEMS: NavItem[] = [
     iconFocused: 'calendar',
   },
   {
+    name: 'Admin',
+    label: 'Админка',
+    icon: 'shield-outline',
+    iconFocused: 'shield',
+    adminOnly: true,
+  },
+  {
     name: 'Profile',
     label: 'Настройки',
     icon: 'settings-outline',
@@ -60,10 +69,22 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   totalUnreadCount = 0,
 }) => {
   const { theme } = useTheme();
+  const { user } = useAuthStore();
+
+  // Check if user is admin or super_admin
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+
+  // Filter items based on admin status
+  const visibleItems = NAV_ITEMS.filter(item => {
+    if (item.adminOnly) {
+      return isAdmin;
+    }
+    return true;
+  });
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundSecondary, borderRightColor: theme.border }]}>
-      {NAV_ITEMS.map((item) => {
+      {visibleItems.map((item) => {
         const isActive = activeRoute === item.name;
         const showBadge = item.name === 'Chats' && totalUnreadCount > 0;
 

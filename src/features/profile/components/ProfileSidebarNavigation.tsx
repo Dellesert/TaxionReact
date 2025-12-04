@@ -18,10 +18,7 @@ export type ProfileSection =
   | 'notifications'
   | 'theme'
   | 'storage'
-  | 'about'
-  | 'analytics'
-  | 'departments'
-  | 'users';
+  | 'about';
 
 interface SidebarItem {
   id: ProfileSection;
@@ -43,8 +40,8 @@ interface ProfileSidebarNavigationProps {
   isLoggingOut: boolean;
 }
 
-const getSidebarStructure = (isAdmin: boolean): SidebarGroup[] => {
-  const baseGroups: SidebarGroup[] = [
+const getSidebarStructure = (): SidebarGroup[] => {
+  return [
     {
       title: 'ПРОФИЛЬ',
       items: [
@@ -70,19 +67,6 @@ const getSidebarStructure = (isAdmin: boolean): SidebarGroup[] => {
       ],
     },
   ];
-
-  if (isAdmin) {
-    baseGroups.push({
-      title: 'АДМИНИСТРИРОВАНИЕ',
-      items: [
-        { id: 'analytics', label: 'Аналитика', icon: 'bar-chart-outline', iconColor: '#3B82F6' },
-        { id: 'departments', label: 'Отделы', icon: 'business-outline', iconColor: '#e944d6ff' },
-        { id: 'users', label: 'Пользователи', icon: 'people-outline', iconColor: '#e99444ff' },
-      ],
-    });
-  }
-
-  return baseGroups;
 };
 
 export const ProfileSidebarNavigation: React.FC<ProfileSidebarNavigationProps> = ({
@@ -94,8 +78,7 @@ export const ProfileSidebarNavigation: React.FC<ProfileSidebarNavigationProps> =
 }) => {
   const { theme, isDark } = useTheme();
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-  const sidebarStructure = getSidebarStructure(isAdmin);
+  const sidebarStructure = getSidebarStructure();
 
   const dynamicStyles = StyleSheet.create({
     container: {

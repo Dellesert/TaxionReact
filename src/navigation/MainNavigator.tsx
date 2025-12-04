@@ -47,6 +47,8 @@ const MainNavigatorContent: React.FC = () => {
           return <ChatNavigator />;
         case 'Calendar':
           return <CalendarScreen />;
+        case 'Admin':
+          return <AdminNavigator />;
         case 'Profile':
           return <ProfileNavigator />;
         default:
