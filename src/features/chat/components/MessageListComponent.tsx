@@ -161,7 +161,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         extraData={messagesKey}
         drawDistance={Platform.OS === 'ios' ? 250 : 500}
         initialScrollIndex={initialScrollIndex}
-        estimatedItemSize={120}
+        estimatedItemSize={150}
         renderItem={({ item, index }) => {
           // Рендер разделителя даты
           if (item.type === 'date') {

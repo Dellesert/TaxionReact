@@ -280,41 +280,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       ).catch(err => console.warn('Failed to save scroll position:', err));
     }
 
-    // ✅ ИСПРАВЛЕНО: Мгновенная коррекция скролла для инвертированного списка
-    // Для inverted списков maintainVisibleContentPosition не работает, делаем вручную
-    if (isLoadingOldMessages.current && contentHeightBeforeLoad.current > 0 && initialScrolled) {
-      const heightDifference = height - contentHeightBeforeLoad.current;
-
-      // Проверяем что высота действительно увеличилась (загрузились новые сообщения)
-      if (heightDifference > 0) {
-        const newOffset = scrollOffsetBeforeLoad.current + heightDifference;
-
-        // Двойная коррекция для полной плавности:
-        // 1️⃣ Мгновенная синхронная
-        if (listRef.current) {
-          listRef.current.scrollToOffset({
-            offset: newOffset,
-            animated: false,
-          });
-          lastScrollOffset.current = newOffset;
-        }
-
-        // 2️⃣ Коррекция в следующем кадре (перед отрисовкой)
-        requestAnimationFrame(() => {
-          if (listRef.current) {
-            listRef.current.scrollToOffset({
-              offset: newOffset,
-              animated: false,
-            });
-            lastScrollOffset.current = newOffset;
-          }
-        });
-
-        // Сбрасываем флаги
-        isLoadingOldMessages.current = false;
-        contentHeightBeforeLoad.current = 0;
-        scrollOffsetBeforeLoad.current = 0;
-      }
+    // ✅ ВРЕМЕННО ОТКЛЮЧЕНА коррекция скролла для теста
+    // Проверяем, можно ли обойтись без неё, полагаясь на точный estimatedItemSize
+    if (isLoadingOldMessages.current) {
+      isLoadingOldMessages.current = false;
+      contentHeightBeforeLoad.current = 0;
+      scrollOffsetBeforeLoad.current = 0;
     }
   }, [initialScrolled, firstUnreadIndex, unreadCount, chatId]);
 
