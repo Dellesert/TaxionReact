@@ -152,6 +152,9 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
       // Apply client-side search filter
       const tabChats = filterChatsBySearch(tabChatsFromStore, searchQuery);
 
+      // Create a hash of relevant chat properties to force re-render when they change
+      const chatsHash = tabChats.map(c => `${c.id}-${c.is_favorite}-${c.unread_count}-${c.is_pinned}`).join(',');
+
       return (
         <View key={filterKey} style={{ width: SCREEN_WIDTH, height: '100%' }}>
           {isLoading && !tabData.loaded ? (
@@ -164,7 +167,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
               data={tabChats}
               keyExtractor={(item: Chat) => item.id.toString()}
               renderItem={renderChatItem}
-              extraData={{ isEditMode, selectedChats, typingUsers }}
+              extraData={{ isEditMode, selectedChats, typingUsers, chatsHash }}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
