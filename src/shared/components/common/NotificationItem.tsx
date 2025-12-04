@@ -4,12 +4,13 @@
  */
 
 import React, { useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Notification, NotificationType } from '@types/notification.types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { Avatar } from '@shared/components/common/Avatar';
 import { Swipeable } from 'react-native-gesture-handler';
 
@@ -131,6 +132,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   onDelete,
 }) => {
   const { theme, isDark } = useTheme();
+  const isDesktop = useIsWideScreen();
   const swipeableRef = useRef<Swipeable>(null);
   const iconName = getNotificationIcon(notification.type);
   const iconColor = getNotificationColor(notification.type);
@@ -181,7 +183,11 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       friction={2}
     >
       <TouchableOpacity
-        style={[styles.container, { backgroundColor, borderBottomColor: theme.border }]}
+        style={[
+          styles.container,
+          isDesktop && styles.containerDesktop,
+          { backgroundColor, borderBottomColor: theme.border }
+        ]}
         onPress={handlePress}
         activeOpacity={0.7}
       >
@@ -247,6 +253,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
+  },
+  containerDesktop: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginHorizontal: 8,
+    marginVertical: 4,
+    borderBottomWidth: 0,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+        transitionProperty: 'transform, box-shadow',
+        transitionDuration: '0.15s',
+        cursor: 'pointer',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+      },
+    }),
   },
   content: {
     flexDirection: 'row',

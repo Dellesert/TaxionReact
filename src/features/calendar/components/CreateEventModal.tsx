@@ -22,6 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useAuthStore } from '@shared/store/authStore';
 import { CreateEventDto, Event } from '../types/calendar.types';
@@ -58,6 +59,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   editEvent = null,
 }) => {
   const { theme, isDark } = useTheme();
+  const isDesktop = useIsWideScreen();
   const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
@@ -309,17 +311,27 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      transparent={false}
+      animationType={isDesktop ? "fade" : "slide"}
+      transparent={isDesktop}
       onRequestClose={handleClose}
-      presentationStyle="fullScreen"
+      presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
     >
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
-      >
-        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
+      <View style={[
+        styles.modalOverlay,
+        isDesktop && styles.modalOverlayDesktop,
+        { backgroundColor: isDesktop ? 'rgba(0, 0, 0, 0.5)' : theme.card }
+      ]}>
+        <KeyboardAvoidingView
+          style={[
+            styles.container,
+            { backgroundColor: theme.card },
+            !isDesktop && { paddingTop: insets.top },
+            isDesktop && styles.containerDesktop
+          ]}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+        >
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
@@ -598,7 +610,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         </Animated.View>
 
         {/* Bottom Navigation */}
-        <View style={[styles.bottomNav, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: insets.bottom }]}>
+        <View style={[styles.bottomNav, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: isDesktop ? 20 : insets.bottom }]}>
           {currentStep > 1 ? (
             <TouchableOpacity
               onPress={goToPreviousStep}
@@ -661,14 +673,41 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             mode={allDay ? 'date' : 'datetime'}
           />
         )}
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+  },
+  modalOverlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   container: {
     flex: 1,
+  },
+  containerDesktop: {
+    width: 700,
+    maxHeight: '90%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.3,
+        shadowRadius: 60,
+        elevation: 24,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',

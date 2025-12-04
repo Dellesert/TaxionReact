@@ -11,7 +11,9 @@ import {
   Animated,
   TouchableOpacity,
   Dimensions,
+  Platform,
 } from 'react-native';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -32,6 +34,7 @@ const Toast: React.FC<ToastProps> = ({
   duration = 4000,
   onHide,
 }) => {
+  const isDesktop = useIsWideScreen();
   const translateY = useRef(new Animated.Value(100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -107,6 +110,7 @@ const Toast: React.FC<ToastProps> = ({
     <Animated.View
       style={[
         styles.container,
+        isDesktop && styles.containerDesktop,
         {
           backgroundColor: getBackgroundColor(),
           opacity,
@@ -144,6 +148,26 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     zIndex: 9999,
+  },
+  containerDesktop: {
+    position: 'absolute',
+    right: 24,
+    bottom: 24,
+    left: 'auto',
+    width: 400,
+    maxWidth: 400,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 40,
+        elevation: 16,
+      },
+    }),
   },
   content: {
     flexDirection: 'row',

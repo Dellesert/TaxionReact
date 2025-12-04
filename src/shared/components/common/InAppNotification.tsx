@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { Notification, NotificationType } from '@types/notification.types';
 import { Avatar } from '@shared/components/common/Avatar';
 
@@ -79,6 +80,7 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
   duration = 4000,
 }) => {
   const { theme, isDark } = useTheme();
+  const isDesktop = useIsWideScreen();
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -144,6 +146,7 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
     <Animated.View
       style={[
         styles.container,
+        isDesktop && styles.containerDesktop,
         {
           backgroundColor: backgroundColor,
           borderLeftColor: iconColor,
@@ -229,6 +232,28 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     zIndex: 9999,
+  },
+  containerDesktop: {
+    top: 24,
+    right: 24,
+    left: 'auto',
+    width: 400,
+    maxWidth: 400,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
+        transitionProperty: 'transform, box-shadow',
+        transitionDuration: '0.2s',
+        cursor: 'pointer',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 32,
+        elevation: 12,
+      },
+    }),
   },
   content: {
     flexDirection: 'row',
