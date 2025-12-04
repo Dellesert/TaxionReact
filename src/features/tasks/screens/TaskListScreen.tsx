@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { Task } from '../types/task.types';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { TaskStackParamList } from '@navigation/types';
 import CreateTaskModal from '../components/CreateTaskModal';
 import { useTaskListData } from '../hooks/useTaskListData';
@@ -28,11 +29,12 @@ const TaskListScreen: React.FC = () => {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const { width } = useWindowDimensions();
+  const isWideScreen = useIsWideScreen();
 
-  // Determine if desktop mode (wide screen)
-  const isDesktop = Platform.OS === 'web' && width >= 1024;
+  // Use the same logic as MainNavigator
+  const isDesktop = isWideScreen;
   // Determine if narrow screen (mobile)
-  const isMobile = width < 768;
+  const isMobile = !isWideScreen;
 
   // Local state
   const [refreshing, setRefreshing] = useState(false);

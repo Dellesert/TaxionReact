@@ -15,7 +15,7 @@ export const TaskListEmptyState: React.FC<TaskListEmptyStateProps> = ({
   const { theme } = useTheme();
 
   return (
-    <View style={[styles.emptyContainer, { backgroundColor: theme.background }]}>
+    <View style={styles.emptyContainer}>
       <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundTertiary }]}>
         <Ionicons name="checkmark-done" size={40} color={theme.textTertiary} />
       </View>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, ScrollView, Dimensions, StyleSheet, Platform, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
+import { View, ScrollView, Dimensions, StyleSheet, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
@@ -20,6 +20,7 @@ import { TaskActionMenu } from '../components/TaskActionMenu';
 import { TaskDesktopLayout } from '../components/TaskDesktopLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTaskPermissions } from '../hooks/useTaskPermissions';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
@@ -47,9 +48,10 @@ const TaskDetailScreen: React.FC = () => {
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
   const { width } = useWindowDimensions();
+  const isWideScreen = useIsWideScreen();
 
-  // Desktop mode detection
-  const isDesktop = Platform.OS === 'web' && width >= 1024;
+  // Desktop mode detection - use same logic as MainNavigator
+  const isDesktop = isWideScreen;
 
   // Screen state
   const [isNarrowScreen, setIsNarrowScreen] = useState(Dimensions.get('window').width < 460);

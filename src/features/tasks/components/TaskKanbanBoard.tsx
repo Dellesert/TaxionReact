@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View, ScrollView } from 'react-native';
 import type { Task } from '../types/task.types';
 import type { StatusTab, TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus } from '../hooks/useTaskListData';
 import { TaskKanbanColumn } from './TaskKanbanColumn';
 import { ExpandAllSubtasksButton } from './ExpandAllSubtasksButton';
 import { getTasksWithSubtasks, STATUS_TABS_ORDER } from '../utils/taskListHelpers';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 
 interface TaskKanbanBoardProps {
   tasks: TasksByStatus;
@@ -34,16 +35,32 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
   onExpandAllToggle,
 }) => {
   const { width } = useWindowDimensions();
+  const isWideScreen = useIsWideScreen();
 
-  // Calculate column width: divide by 4 columns accounting for all gaps and sidebar
-  // SideNavBar width: 80px
-  // Each column has marginHorizontal: 6 (12px total per column)
-  // Container has paddingHorizontal: 12 (24px total)
-  // Total to subtract: 80 (sidebar) + 24 (container padding) + 48 (4 columns * 12px margin) = 152px
-  const SIDEBAR_WIDTH = 80;
-  const CONTAINER_PADDING = 24;
-  const COLUMN_MARGINS = 48;
-  const columnWidth = (width - SIDEBAR_WIDTH - CONTAINER_PADDING - COLUMN_MARGINS) / 4;
+  // Minimum column width to ensure all content fits
+  const MIN_COLUMN_WIDTH = 330;
+
+  let columnWidth: number;
+
+  if (isWideScreen) {
+    // Desktop: Calculate column width for 4 columns accounting for all gaps and sidebar
+    // SideNavBar width: 80px
+    // Each column has marginHorizontal: 6 (12px total per column)
+    // Container has paddingHorizontal: 12 (24px total)
+    // Total to subtract: 80 (sidebar) + 24 (container padding) + 48 (4 columns * 12px margin) = 152px
+    const SIDEBAR_WIDTH = 80;
+    const CONTAINER_PADDING = 24;
+    const COLUMN_MARGINS = 48;
+    const calculatedColumnWidth = (width - SIDEBAR_WIDTH - CONTAINER_PADDING - COLUMN_MARGINS) / 4;
+
+    // Use minimum width if calculated width is too small
+    columnWidth = Math.max(calculatedColumnWidth, MIN_COLUMN_WIDTH);
+  } else {
+    // Mobile: use full width minus padding and margins
+    const CONTAINER_PADDING = 24;
+    const COLUMN_MARGINS = 12; // marginHorizontal: 6 per column * 2
+    columnWidth = width - CONTAINER_PADDING - COLUMN_MARGINS;
+  }
 
   // Count total tasks with subtasks across all columns
   const totalTasksWithSubtasks = STATUS_TABS_ORDER.reduce((count, status) => {
@@ -64,7 +81,12 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
       )}
 
       {/* Kanban Columns */}
-      <View style={styles.columnsContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={true}
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.columnsContainer}
+      >
         {STATUS_TABS_ORDER.map((status) => (
           <TaskKanbanColumn
             key={status}
@@ -81,7 +103,7 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
             columnWidth={columnWidth}
           />
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -89,11 +111,12 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    
+  },
+  scrollContainer: {
+    flex: 1,
   },
   columnsContainer: {
     flexDirection: 'row',
-    flex: 1,
     paddingHorizontal: 12,
     paddingTop: 12,
   },
