@@ -448,24 +448,55 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // ПРИОРИТЕТ 1: Если мы в контексте после jump - перезагружаем последние сообщения
     const wasInJumpContext = isInJumpContext.current;
     if (wasInJumpContext) {
-      console.log('📍 In jump context, reloading latest messages...');
-      await loadMessages(chatId);
-      isInJumpContext.current = false; // Сбрасываем флаг
-      lastNewestMessageId.current = null; // Сбрасываем ID для incremental load
+      console.log('📍 In jump context, animating scroll...');
 
-      // После загрузки скроллим в самый низ
+      // Сбрасываем флаги сразу
+      isInJumpContext.current = false;
+      lastNewestMessageId.current = null;
+
+      // Сначала делаем псевдо-анимацию скролла на текущем контенте
+      const currentHeight = currentContentHeight.current;
+      const currentOffset = lastScrollOffset.current;
+
+      // Шаг 1: Скроллим на 30% вниз от текущей позиции
+      listRef.current?.scrollToOffset({
+        offset: currentOffset + (currentHeight - currentOffset) * 0.3,
+        animated: true,
+      });
+
+      // Шаг 2: Скроллим на 60% (через 120ms)
       setTimeout(() => {
-        console.log('📍 Scrolling to bottom from jump context');
         listRef.current?.scrollToOffset({
-          offset: 999999,
+          offset: currentOffset + (currentHeight - currentOffset) * 0.6,
           animated: true,
         });
-        setHasReachedBottom(true);
-        setUserScrolledToBottom(true);
-        setNewMessagesCount(0);
-        setFirstNewMessageIndex(-1);
-        setShowScrollToBottom(false);
-      }, 300);
+
+        // Шаг 3: Скроллим на 90% (через еще 120ms)
+        setTimeout(() => {
+          listRef.current?.scrollToOffset({
+            offset: currentOffset + (currentHeight - currentOffset) * 0.9,
+            animated: true,
+          });
+
+          // Шаг 4: Загружаем последние сообщения и скроллим в самый низ (через еще 120ms)
+          setTimeout(async () => {
+            await loadMessages(chatId);
+
+            // После загрузки скроллим в самый низ
+            setTimeout(() => {
+              listRef.current?.scrollToOffset({
+                offset: 999999,
+                animated: true,
+              });
+              setHasReachedBottom(true);
+              setUserScrolledToBottom(true);
+              setNewMessagesCount(0);
+              setFirstNewMessageIndex(-1);
+              setShowScrollToBottom(false);
+            }, 100);
+          }, 120);
+        }, 120);
+      }, 120);
       return;
     }
 
