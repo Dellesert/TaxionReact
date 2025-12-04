@@ -15,6 +15,9 @@ export type EventParticipantStatus = 'pending' | 'accepted' | 'declined' | 'mayb
 // Calendar View Type
 export type CalendarView = 'day' | 'week' | 'month';
 
+// Week Display Mode (for week view only)
+export type WeekDisplayMode = 'timeline' | 'list';
+
 // Event Reminder Interface
 export interface EventReminder {
   id: number;

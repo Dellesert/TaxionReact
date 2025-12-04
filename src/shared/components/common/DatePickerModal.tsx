@@ -14,7 +14,7 @@ if (Platform.OS === 'web') {
     registerLocale = require('react-datepicker').registerLocale;
     ruLocale = require('date-fns/locale/ru').ru;
     require('react-datepicker/dist/react-datepicker.css');
-    require('../../styles/datepicker-custom.css');
+    require('../../../styles/datepicker-custom.css');
 
     // Регистрируем русскую локаль
     if (registerLocale && ruLocale) {
@@ -235,24 +235,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   webModal: {
     borderRadius: 12,
-    padding: 20,
-    minWidth: 320,
-    maxWidth: 400,
+    padding: 12,
+    minWidth: 260,
+    maxWidth: 300,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   webHeader: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   webTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -260,17 +260,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   webFooter: {
-    marginTop: 16,
+    marginTop: 8,
   },
   webButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
   },
   webButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
   },
 });

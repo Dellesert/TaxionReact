@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Event } from '../types/calendar.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import {
@@ -10,10 +10,8 @@ import {
   eachDayOfInterval,
   format,
   isSameMonth,
-  isSameDay,
   isToday,
 } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import { DayEventsSheet } from './DayEventsSheet';
 
 interface MonthCalendarViewProps {
@@ -21,6 +19,7 @@ interface MonthCalendarViewProps {
   events: Event[];
   onDatePress: (date: Date) => void;
   onEventPress?: (event: Event) => void;
+  isCompact?: boolean; // Desktop compact mode
 }
 
 const WEEKDAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -30,6 +29,7 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
   events,
   onDatePress,
   onEventPress,
+  isCompact = false,
 }) => {
   const { theme } = useTheme();
   const [selectedDayForSheet, setSelectedDayForSheet] = useState<Date | null>(null);
@@ -94,8 +94,15 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
   };
 
   const renderDay = (date: Date) => {
+    const [isDayHovered, setIsDayHovered] = useState(false);
     const isCurrentMonth = isSameMonth(date, selectedDate);
     const isTodayDate = isToday(date);
+
+    // Check if this day is the selected day (for desktop compact mode)
+    const isSelectedDay = isCompact &&
+      date.getDate() === selectedDate.getDate() &&
+      date.getMonth() === selectedDate.getMonth() &&
+      date.getFullYear() === selectedDate.getFullYear();
 
     // Create a normalized date at midnight local time to avoid timezone issues
     const normalizedDate = new Date(
@@ -111,7 +118,10 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
     const handleDayPress = () => {
-      if (hasEvents && isCurrentMonth) {
+      if (isCompact && isCurrentMonth) {
+        // In compact mode, call onDatePress to navigate to that day
+        onDatePress(normalizedDate);
+      } else if (hasEvents && isCurrentMonth) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -127,29 +137,39 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
         key={date.toISOString()}
         style={styles.dayContainer}
         onPress={handleDayPress}
-        activeOpacity={hasEvents && isCurrentMonth ? 0.6 : 1}
-        disabled={!hasEvents || !isCurrentMonth}
+        activeOpacity={isCompact && isCurrentMonth ? 0.6 : (hasEvents && isCurrentMonth ? 0.6 : 1)}
+        disabled={isCompact ? !isCurrentMonth : (!hasEvents || !isCurrentMonth)}
+        // @ts-ignore - web only props
+        onMouseEnter={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(true) : undefined}
+        onMouseLeave={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(false) : undefined}
       >
         <View
           style={[
             styles.dayContent,
-            isTodayDate && [styles.todayContainer, { backgroundColor: theme.primary }],
+            isTodayDate && [styles.todayContainer, { borderColor: theme.primary }],
+            isSelectedDay && !isTodayDate && [styles.selectedDayContainer, { backgroundColor: theme.backgroundSecondary }],
+            isSelectedDay && isTodayDate && [styles.selectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary }],
             !isCurrentMonth && styles.dayOutOfMonth,
+            isDayHovered && isCurrentMonth && Platform.OS === 'web' && [
+              styles.dayContentHovered,
+              !isTodayDate && !isSelectedDay && { backgroundColor: theme.backgroundSecondary }
+            ],
           ]}
         >
           <Text
             style={[
               styles.dayText,
               { color: isCurrentMonth ? theme.text : theme.textTertiary },
-              isTodayDate && styles.todayText,
-              isWeekend && isCurrentMonth && !isTodayDate && { color: theme.primary },
+              isTodayDate && [styles.todayText, { color: theme.primary }],
+              isSelectedDay && !isTodayDate && styles.selectedDayText,
+              isWeekend && isCurrentMonth && !isTodayDate && !isSelectedDay && { color: theme.primary },
             ]}
           >
             {format(date, 'd')}
           </Text>
         </View>
 
-        {/* Event dots indicator */}
+        {/* Event dots indicator - always show when has events */}
         {hasEvents && isCurrentMonth && (
           <View style={styles.dotsContainer}>
             {dotColors.map((color, index) => (
@@ -158,14 +178,13 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
                 style={[
                   styles.eventDot,
                   { backgroundColor: color },
-                  isTodayDate && styles.eventDotToday,
                 ]}
               />
             ))}
             {dayEvents.length > 3 && (
               <Text style={[
                 styles.moreIndicator,
-                { color: isTodayDate ? '#FFFFFF' : theme.textTertiary }
+                { color: theme.textTertiary }
               ]}>
                 +{dayEvents.length - 3}
               </Text>
@@ -183,8 +202,15 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
   }
 
   return (
-    <View style={styles.wrapper}>
-      <View style={[styles.container, { backgroundColor: theme.card }]}>
+    <View style={[
+      isCompact ? styles.wrapperCompact : styles.wrapper,
+      isCompact && { backgroundColor: theme.backgroundSecondary, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.border }
+    ]}>
+      <View style={[
+        styles.container,
+        { backgroundColor: theme.card },
+        isCompact && styles.containerCompact
+      ]}>
         {/* Weekday headers */}
         <View style={[styles.weekdayRow, { borderBottomColor: theme.border }]}>
         {WEEKDAY_NAMES.map((day, index) => {
@@ -195,6 +221,7 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
                 style={[
                   styles.weekdayText,
                   { color: isWeekend ? theme.primary : theme.textSecondary },
+                  isCompact && styles.weekdayTextCompact,
                 ]}
               >
                 {day}
@@ -207,7 +234,7 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
       {/* Calendar grid */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={isCompact ? styles.scrollContentCompact : styles.scrollContent}
       >
         {weeks.map((week, weekIndex) => (
           <View key={weekIndex} style={styles.weekRow}>
@@ -216,8 +243,8 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
         ))}
       </ScrollView>
 
-      {/* Day Events Sheet */}
-        {selectedDayForSheet && selectedDayKey && (
+      {/* Day Events Sheet - Only for non-compact mode */}
+        {!isCompact && selectedDayForSheet && selectedDayKey && (
           <DayEventsSheet
             visible={!!selectedDayForSheet}
             date={selectedDayForSheet}
@@ -244,6 +271,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
+  wrapperCompact: {
+    flex: 1,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
   container: {
     borderRadius: 16,
     shadowColor: '#000',
@@ -256,8 +288,22 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: 'hidden',
   },
+  containerCompact: {
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
   scrollContent: {
     paddingBottom: 16,
+  },
+  scrollContentCompact: {
+    paddingBottom: 8,
   },
   weekdayRow: {
     flexDirection: 'row',
@@ -276,6 +322,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  weekdayTextCompact: {
+    fontSize: 10,
+  },
   weekRow: {
     flexDirection: 'row',
     paddingHorizontal: 4,
@@ -285,22 +334,40 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
     padding: 3,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   dayContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      transition: 'all 0.2s ease',
+    } : {}),
+  },
+  dayContentHovered: {
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      transform: 'scale(1.05)',
+    } : {}),
   },
   todayContainer: {
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    borderWidth: 2,
+    // borderColor set dynamically from theme
+  },
+  selectedDayContainer: {
+    // backgroundColor set dynamically from theme
+  },
+  selectedTodayContainer: {
+    borderWidth: 2,
+    // borderColor and backgroundColor set dynamically from theme
+  },
+  selectedDayText: {
+    fontWeight: '700',
   },
   dayOutOfMonth: {
     opacity: 0.25,
@@ -310,39 +377,27 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   todayText: {
-    color: '#FFFFFF',
+    // color set dynamically from theme
     fontWeight: '700',
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 8,
+    bottom: 6,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   eventDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  eventDotToday: {
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   moreIndicator: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: '600',
-    marginLeft: 2,
+    marginLeft: 1,
   },
 });

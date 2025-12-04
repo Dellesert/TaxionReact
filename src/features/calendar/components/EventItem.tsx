@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Event, EventParticipantStatus } from '../types/calendar.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -16,6 +16,7 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const { prefetchEventDelayed, cancelPrefetch } = useEventPrefetch();
+  const [isHovered, setIsHovered] = useState(false);
 
   // Предзагрузка при касании (до нажатия)
   const handlePressIn = useCallback(() => {
@@ -26,19 +27,6 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
   const handlePressOut = useCallback(() => {
     cancelPrefetch();
   }, [cancelPrefetch]);
-
-  const getEventIcon = () => {
-    switch (event.type) {
-      case 'meeting':
-        return 'people';
-      case 'deadline':
-        return 'flag';
-      case 'personal':
-        return 'person';
-      default:
-        return 'calendar';
-    }
-  };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -72,10 +60,17 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}
+      style={[
+        styles.container,
+        { backgroundColor: theme.card, borderColor: theme.border },
+        isHovered && Platform.OS === 'web' && styles.containerHovered,
+      ]}
       onPress={() => onPress(event)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      // @ts-ignore - web only props
+      onMouseEnter={Platform.OS === 'web' ? () => setIsHovered(true) : undefined}
+      onMouseLeave={Platform.OS === 'web' ? () => setIsHovered(false) : undefined}
       activeOpacity={0.7}
     >
       {/* Color indicator */}
@@ -174,6 +169,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      transition: 'all 0.2s ease',
+      cursor: 'pointer',
+    } : {}),
+  },
+  containerHovered: {
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      transform: 'translateY(-2px)',
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+    } : {}),
   },
   colorIndicator: {
     position: 'absolute',

@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Platform,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,7 +38,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   onClose,
   onEventUpdated,
 }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const { showError } = useNotification();
   const { showConfirm } = useActionModal();
   const { user } = useAuthStore();
@@ -74,18 +73,6 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     }
   };
 
-  const getStatusBadge = (status: EventParticipantStatus) => {
-    switch (status) {
-      case 'accepted':
-        return { icon: 'checkmark-circle', color: '#10B981', label: 'Принято' };
-      case 'declined':
-        return { icon: 'close-circle', color: '#EF4444', label: 'Отклонено' };
-      case 'maybe':
-        return { icon: 'help-circle', color: '#F59E0B', label: 'Возможно' };
-      case 'pending':
-        return { icon: 'time', color: '#6B7280', label: 'Ожидание' };
-    }
-  };
 
   const handleUpdateStatus = async (status: EventParticipantStatus) => {
     if (!myParticipation) return;
@@ -137,8 +124,6 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     const date = new Date(dateString);
     return format(date, 'd MMMM yyyy, HH:mm', { locale: ru });
   };
-
-  const statusBadge = myParticipation ? getStatusBadge(myParticipation.status) : null;
 
   // Group participants by status
   const participants = event.participants || [];

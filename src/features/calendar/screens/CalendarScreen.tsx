@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Event } from '../types/calendar.types';
+import { Event, CalendarView } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/EventListSkeleton';
 import CreateEventModal from '../components/CreateEventModal';
 import { EventDetailModal } from '../components/EventDetailModal';
@@ -12,7 +12,9 @@ import { CalendarDateNavigation } from '../components/CalendarDateNavigation';
 import { CalendarViewSelector } from '../components/CalendarViewSelector';
 import { CalendarEventsList } from '../components/CalendarEventsList';
 import { CalendarEmptyState } from '../components/CalendarEmptyState';
+import { CalendarDesktopView } from '../components/CalendarDesktopView';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { useCalendarNavigation } from '../hooks/useCalendarNavigation';
@@ -22,6 +24,7 @@ import * as calendarApi from '../api/calendar.api';
 const CalendarScreen: React.FC = () => {
   const { theme } = useTheme();
   const { showError } = useNotification();
+  const isWideScreen = useIsWideScreen();
 
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -75,6 +78,21 @@ const CalendarScreen: React.FC = () => {
     loadEvents();
   };
 
+  // Desktop-specific handler that can change view
+  const handleDesktopDatePress = (date: Date, view?: CalendarView) => {
+    // Set the date and optionally change the view
+    handleDatePress(date);
+    if (view && selectedView !== view) {
+      setSelectedView(view);
+    }
+  };
+
+
+  // Handle desktop view change
+  const handleDesktopViewChange = (view: CalendarView) => {
+    setSelectedView(view);
+  };
+
   // Computed values
   const dateRangeText = formatDateRangeText(selectedDate, selectedView);
   const sections = groupEventsByDate(events);
@@ -90,36 +108,56 @@ const CalendarScreen: React.FC = () => {
 
       {/* Content container with background */}
       <View style={[styles.content, { backgroundColor: theme.background }]}>
-        {/* Date Navigation */}
-        <CalendarDateNavigation
-          dateRangeText={dateRangeText}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          onToday={handleToday}
-        />
-
-        {/* View Selector Pills */}
-        <CalendarViewSelector selectedView={selectedView} onViewChange={setSelectedView} />
-
-        {/* Events List or Month Calendar */}
-        {isLoading ? (
-          <EventListSkeleton />
-        ) : selectedView === 'month' ? (
-          <MonthCalendarView
+        {isWideScreen ? (
+          /* Desktop View - Three Panel Layout */
+          <CalendarDesktopView
             selectedDate={selectedDate}
             events={events}
-            onDatePress={handleDatePress}
-            onEventPress={handleEventPress}
-          />
-        ) : sections.length === 0 ? (
-          <CalendarEmptyState />
-        ) : (
-          <CalendarEventsList
             sections={sections}
+            isLoading={isLoading}
             refreshing={refreshing}
-            onRefresh={handleRefresh}
+            initialView={selectedView}
+            onDatePress={handleDesktopDatePress}
             onEventPress={handleEventPress}
+            onRefresh={handleRefresh}
+            onEventUpdated={handleEventUpdated}
+            onViewChange={handleDesktopViewChange}
           />
+        ) : (
+          /* Mobile View - Original Layout */
+          <>
+            {/* Date Navigation */}
+            <CalendarDateNavigation
+              dateRangeText={dateRangeText}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              onToday={handleToday}
+            />
+
+            {/* View Selector Pills */}
+            <CalendarViewSelector selectedView={selectedView} onViewChange={setSelectedView} />
+
+            {/* Events List or Month Calendar */}
+            {isLoading ? (
+              <EventListSkeleton />
+            ) : selectedView === 'month' ? (
+              <MonthCalendarView
+                selectedDate={selectedDate}
+                events={events}
+                onDatePress={handleDatePress}
+                onEventPress={handleEventPress}
+              />
+            ) : sections.length === 0 ? (
+              <CalendarEmptyState />
+            ) : (
+              <CalendarEventsList
+                sections={sections}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                onEventPress={handleEventPress}
+              />
+            )}
+          </>
         )}
       </View>
 
@@ -130,13 +168,15 @@ const CalendarScreen: React.FC = () => {
         onEventCreated={handleEventCreated}
       />
 
-      {/* Event Detail Modal */}
-      <EventDetailModal
-        visible={!!selectedEvent}
-        event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
-        onEventUpdated={handleEventUpdated}
-      />
+      {/* Event Detail Modal - Only for mobile */}
+      {!isWideScreen && (
+        <EventDetailModal
+          visible={!!selectedEvent}
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onEventUpdated={handleEventUpdated}
+        />
+      )}
     </SafeAreaView>
   );
 };
