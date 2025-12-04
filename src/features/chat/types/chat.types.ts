@@ -214,6 +214,7 @@ export interface GetLatestMessagesResponse {
   total: number; // Всего сообщений в чате
   has_older: boolean; // Есть ли более старые сообщения?
   unread_info?: UnreadInfo;
+  pinned_messages: Message[]; // Все закрепленные сообщения в чате (недавно закрепленные первыми)
 }
 
 export interface GetMessagesBeforeParams {

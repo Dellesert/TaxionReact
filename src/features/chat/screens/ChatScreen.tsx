@@ -190,10 +190,11 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     [typingUsers, chatIdNum, currentUser]
   );
 
-  // Оптимизация: стабилизация зависимостей useMemo - getPinnedMessages вызывается напрямую
+  // Получаем закрепленные сообщения из стора (селектор с shallow compare)
+  const pinnedMessagesLength = useChatStore((state) => state.pinnedMessages[chatIdNum]?.length ?? 0);
   const pinnedMessages = useMemo(
-    () => useChatStore.getState().getPinnedMessages(chatIdNum),
-    [chatIdNum, messages] // Только стабильные зависимости
+    () => useChatStore.getState().pinnedMessages[chatIdNum] || [],
+    [chatIdNum, pinnedMessagesLength]
   );
 
   // ✅ Безопасное значение initialScrollIndex - не должно выходить за пределы списка

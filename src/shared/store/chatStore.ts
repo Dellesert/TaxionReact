@@ -79,6 +79,7 @@ interface ChatState {
   hasMoreChats: boolean;
   activeChat: Chat | null;
   messages: Record<number, Message[]>;
+  pinnedMessages: Record<number, Message[]>; // Закрепленные сообщения по chatId
   isLoading: boolean;
   isLoadingMore: boolean;
   error: string | null;
@@ -184,6 +185,7 @@ export const useChatStore = create<ChatState>()(
       hasMoreChats: true,
       activeChat: null,
       messages: {},
+      pinnedMessages: {},
       isLoading: false,
       isLoadingMore: false,
       error: null,
@@ -567,6 +569,7 @@ export const useChatStore = create<ChatState>()(
     try {
       set({ isLoading: true, error: null });
       let messages;
+      let pinnedMessages: Message[] = [];
 
       if (isMockMode()) {
         messages = await mockGetMessages(String(chatId));
@@ -581,12 +584,17 @@ export const useChatStore = create<ChatState>()(
         // ✅ Messages are ALREADY in chronological order (oldest → newest)
         // NO need to reverse!
         messages = response.messages;
+        pinnedMessages = response.pinned_messages || [];
       }
 
       set((state) => ({
         messages: {
           ...state.messages,
           [chatId]: messages,
+        },
+        pinnedMessages: {
+          ...state.pinnedMessages,
+          [chatId]: pinnedMessages,
         },
         isLoading: false,
       }));
@@ -811,14 +819,29 @@ export const useChatStore = create<ChatState>()(
     try {
       const updatedMessage = await chatApi.pinMessage(messageId);
       // Обновляем сообщение локально ПОЛНОСТЬЮ с сервера (включая poll_data)
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
-            msg.id === messageId ? updatedMessage : msg
-          ),
-        },
-      }));
+      set((state) => {
+        const chatId = updatedMessage.chat_id;
+        const existingPinned = state.pinnedMessages[chatId] || [];
+
+        // Добавляем в закрепленные (если еще нет)
+        const isAlreadyPinned = existingPinned.some(m => m.id === messageId);
+        const newPinned = isAlreadyPinned
+          ? existingPinned.map(m => m.id === messageId ? updatedMessage : m)
+          : [updatedMessage, ...existingPinned]; // Добавляем в начало
+
+        return {
+          messages: {
+            ...state.messages,
+            [chatId]: (state.messages[chatId] || []).map((msg) =>
+              msg.id === messageId ? updatedMessage : msg
+            ),
+          },
+          pinnedMessages: {
+            ...state.pinnedMessages,
+            [chatId]: newPinned,
+          },
+        };
+      });
     } catch (error: any) {
       set({ error: error.message || 'Failed to pin message' });
       throw error;
@@ -829,14 +852,26 @@ export const useChatStore = create<ChatState>()(
     try {
       const updatedMessage = await chatApi.unpinMessage(messageId);
       // Обновляем сообщение локально ПОЛНОСТЬЮ с сервера (включая poll_data)
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
-            msg.id === messageId ? updatedMessage : msg
-          ),
-        },
-      }));
+      set((state) => {
+        const chatId = updatedMessage.chat_id;
+        const existingPinned = state.pinnedMessages[chatId] || [];
+
+        // Удаляем из закрепленных
+        const newPinned = existingPinned.filter(m => m.id !== messageId);
+
+        return {
+          messages: {
+            ...state.messages,
+            [chatId]: (state.messages[chatId] || []).map((msg) =>
+              msg.id === messageId ? updatedMessage : msg
+            ),
+          },
+          pinnedMessages: {
+            ...state.pinnedMessages,
+            [chatId]: newPinned,
+          },
+        };
+      });
     } catch (error: any) {
       set({ error: error.message || 'Failed to unpin message' });
       throw error;
@@ -844,8 +879,8 @@ export const useChatStore = create<ChatState>()(
   },
 
   getPinnedMessages: (chatId: number) => {
-    const messages = get().messages[chatId] || [];
-    return messages.filter((msg) => msg.is_pinned && !msg.is_deleted);
+    // Возвращаем закрепленные сообщения из отдельного поля
+    return get().pinnedMessages[chatId] || [];
   },
 
   addReaction: async (messageId: number, emoji: string) => {

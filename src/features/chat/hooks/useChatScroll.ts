@@ -22,6 +22,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [newMessagesCount, setNewMessagesCount] = useState(0); // Количество новых сообщений ниже текущей позиции
   const [firstNewMessageIndex, setFirstNewMessageIndex] = useState<number>(-1); // Индекс первого нового непрочитанного сообщения
   const canTrackUserScroll = useRef(false); // Разрешение отслеживать скролл пользователя
+  const isInJumpContext = useRef(false); // Флаг что мы в контексте после jumpToMessage
   const hasScrolledAwayFromBottom = useRef(false); // Пользователь уже уходил от низа
   const lastOldestMessageId = useRef<number | null>(null);
   const lastVisibleMessageIndex = useRef<number>(-1); // Индекс последнего видимого сообщения
@@ -182,6 +183,22 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     const isAtBottom = distanceFromBottom <= 500;
 
     if (isAtBottom) {
+      // Если мы в контексте после jump и достигли низа загруженных сообщений - загружаем последние
+      if (isInJumpContext.current && !isLoadingMore) {
+        console.log('📍 Reached bottom in jump context, loading latest messages...');
+        const loadMessages = useChatStore.getState().loadMessages;
+        isInJumpContext.current = false; // Сбрасываем флаг
+        loadMessages(chatId).then(() => {
+          // После загрузки скроллим в самый низ
+          setTimeout(() => {
+            listRef.current?.scrollToOffset({
+              offset: 999999,
+              animated: true,
+            });
+          }, 100);
+        });
+      }
+
       setHasReachedBottom(true);
       wasAtBottomBeforeNewMessage.current = true; // Запоминаем что пользователь внизу
       // Отмечаем, что пользователь намеренно проскроллил вниз
@@ -397,9 +414,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId, firstNewMessageIndex, unreadCount]); // Добавили unreadCount в зависимости
 
   // Скролл к низу по кнопке
-  const handleScrollToBottom = useCallback(() => {
+  const handleScrollToBottom = useCallback(async () => {
+    console.log('📍 handleScrollToBottom called, isInJumpContext:', isInJumpContext.current, 'newMessagesCount:', newMessagesCount);
+    const loadMessages = useChatStore.getState().loadMessages;
+
     // Проверяем, есть ли новые непрочитанные сообщения
     if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
+      console.log('📍 Scrolling to first new message at index:', firstNewMessageIndex);
       // Если есть новые непрочитанные - скроллим к первому новому
       listRef.current?.scrollToIndex({
         index: firstNewMessageIndex,
@@ -409,27 +430,36 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // Не обнуляем счетчик сразу - дадим пользователю прочитать
       // Счетчик обнулится когда пользователь доскроллит до низа
     } else {
-      // Если новых непрочитанных нет - скроллим в самый низ
-      // Для инвертированного списка:
-      // offset=0 = самый верх (старые сообщения)
-      // большой offset = самый низ (новые сообщения)
-      // Нужно скроллить к большому offset - используем очень большое число
-      listRef.current?.scrollToOffset({
-        offset: 999999,
-        animated: true,
-      });
-      setHasReachedBottom(true);
-      setUserScrolledToBottom(true); // Пользователь намеренно проскроллил вниз
-      setNewMessagesCount(0); // Обнуляем счетчик новых сообщений
-      setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
+      // Если мы в контексте после jump - перезагружаем последние сообщения
+      const wasInJumpContext = isInJumpContext.current;
+      if (wasInJumpContext) {
+        console.log('📍 In jump context, reloading latest messages...');
+        await loadMessages(chatId);
+        isInJumpContext.current = false; // Сбрасываем флаг
+      }
+
+      // После загрузки скроллим в самый низ
+      setTimeout(() => {
+        console.log('📍 Scrolling to bottom');
+        listRef.current?.scrollToOffset({
+          offset: 999999,
+          animated: true,
+        });
+        setHasReachedBottom(true);
+        setUserScrolledToBottom(true); // Пользователь намеренно проскроллил вниз
+        setNewMessagesCount(0); // Обнуляем счетчик новых сообщений
+        setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
+        setShowScrollToBottom(false); // Скрываем кнопку после скролла
+      }, wasInJumpContext ? 300 : 100); // Больше времени если перезагружали
     }
   }, [messages.length, newMessagesCount, firstNewMessageIndex, chatId]);
 
   // Скролл к конкретному сообщению
-  const handleReplyPress = useCallback((messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
+  const handleReplyPress = useCallback(async (messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
     const messageIndex = messages.findIndex(m => m.id === messageId);
 
     if (messageIndex !== -1) {
+      // Сообщение уже загружено - просто скролим к нему
       listRef.current?.scrollToIndex({
         index: messageIndex,
         animated: true,
@@ -440,8 +470,41 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       setTimeout(() => {
         setHighlightedMessageId(null);
       }, 2000);
+    } else {
+      // Сообщение не загружено - используем jumpToMessage для загрузки контекста
+      const jumpToMessage = useChatStore.getState().jumpToMessage;
+      await jumpToMessage(chatId, messageId);
+
+      // Устанавливаем флаг что мы в контексте
+      isInJumpContext.current = true;
+      setShowScrollToBottom(true); // Показываем кнопку "Вниз" для возврата
+      setHasReachedBottom(false); // Мы больше не внизу
+      setNewMessagesCount(0); // Сбрасываем счетчик непрочитанных (т.к. контекст может быть где угодно)
+      setFirstNewMessageIndex(-1);
+
+      // После загрузки найдем новый индекс и скролим
+      setTimeout(() => {
+        const updatedMessages = useChatStore.getState().messages[chatId] || [];
+        const newMessageIndex = updatedMessages.findIndex(m => m.id === messageId);
+
+        // Обновляем previousMessagesLength чтобы избежать ложного вычисления "новых" сообщений
+        previousMessagesLength.current = updatedMessages.length;
+
+        if (newMessageIndex !== -1) {
+          listRef.current?.scrollToIndex({
+            index: newMessageIndex,
+            animated: true,
+            viewPosition: 0.5,
+          });
+
+          setHighlightedMessageId(messageId);
+          setTimeout(() => {
+            setHighlightedMessageId(null);
+          }, 2000);
+        }
+      }, 300); // Даем время на обновление списка
     }
-  }, [messages]);
+  }, [messages, chatId]);
 
   // Обработчик видимых элементов для sticky date header
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -483,6 +546,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     setNewMessagesCount(0); // Сбрасываем счетчик новых сообщений
     setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
     canTrackUserScroll.current = false; // Запрещаем отслеживание до следующей инициализации
+    isInJumpContext.current = false; // Сбрасываем флаг контекста
     hasScrolledAwayFromBottom.current = false; // Сбрасываем флаг ухода от низа
     wasAtBottomBeforeNewMessage.current = true; // По умолчанию считаем что пользователь внизу
     previousUnreadCount.current = 0; // Сбрасываем счетчик предыдущих непрочитанных

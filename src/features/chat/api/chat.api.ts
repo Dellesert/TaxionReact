@@ -555,11 +555,15 @@ export const getLatestMessages = async (
   // Normalize messages to ensure all fields are present
   const normalizedMessages = response.data.messages.map(msg => normalizeMessage(msg));
 
+  // Normalize pinned messages
+  const normalizedPinnedMessages = (response.data.pinned_messages || []).map(msg => normalizeMessage(msg));
+
   return {
     messages: normalizedMessages,
     total: response.data.total,
     has_older: response.data.has_older,
     unread_info: response.data.unread_info,
+    pinned_messages: normalizedPinnedMessages,
   };
 };
 
