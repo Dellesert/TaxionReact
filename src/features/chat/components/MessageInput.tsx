@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -111,6 +112,30 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     if (onCancelReply) onCancelReply();
   };
 
+  // Обработчик клавиш для веба: Enter - отправка, Ctrl+Enter - новая строка
+  const handleKeyPress = (e: any) => {
+    if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter') {
+      // Ctrl+Enter или Cmd+Enter - новая строка
+      if (e.nativeEvent.ctrlKey || e.nativeEvent.metaKey) {
+        e.preventDefault();
+        // Вставляем символ новой строки в текущую позицию курсора
+        const target = e.target as HTMLTextAreaElement;
+        const start = target.selectionStart || 0;
+        const end = target.selectionEnd || 0;
+        const newMessage = message.substring(0, start) + '\n' + message.substring(end);
+        setMessage(newMessage);
+        // Восстанавливаем позицию курсора после новой строки
+        setTimeout(() => {
+          target.selectionStart = target.selectionEnd = start + 1;
+        }, 0);
+        return;
+      }
+      // Enter без модификаторов - отправка сообщения
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.backgroundSecondary,
@@ -215,6 +240,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           maxLength={4000}
           editable={!disabled}
           onSubmitEditing={handleSend}
+          onKeyPress={handleKeyPress}
           autoCorrect={true}
           autoCapitalize="sentences"
           keyboardType="default"
