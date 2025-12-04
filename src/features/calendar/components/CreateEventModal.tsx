@@ -25,7 +25,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useAuthStore } from '@shared/store/authStore';
-import { CreateEventDto, Event } from '../types/calendar.types';
+import { CreateEventDto, Event, EventType } from '../types/calendar.types';
 import * as calendarApi from '../api/calendar.api';
 import * as userApi from '@api/user.api';
 import UserSelector from '@shared/components/common/UserSelector';
@@ -50,6 +50,12 @@ const EVENT_COLORS = [
   { value: '#3B82F6', label: 'Синий' },
   { value: '#8B5CF6', label: 'Фиолетовый' },
   { value: '#EC4899', label: 'Розовый' },
+];
+
+const EVENT_TYPES = [
+  { value: 'personal' as EventType, label: 'Личные события', icon: 'person-outline' },
+  { value: 'meeting' as EventType, label: 'Встречи/совещания', icon: 'people-outline' },
+  { value: 'deadline' as EventType, label: 'Дедлайны/крайние сроки', icon: 'flag-outline' },
 ];
 
 const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -90,6 +96,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [isPrivate, setIsPrivate] = useState(false);
 
   // Step 4: Settings
+  const [eventType, setEventType] = useState<EventType>('meeting');
   const [color, setColor] = useState('#3B82F6');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -105,6 +112,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       setEndDate(new Date(editEvent.end_time));
       setAllDay(editEvent.all_day);
       setLocation(editEvent.location || '');
+      setEventType(editEvent.type);
       setColor(editEvent.color);
       setIsPrivate(editEvent.is_private);
 
@@ -137,6 +145,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setEndDate(getDefaultEndDate());
     setAllDay(false);
     setLocation('');
+    setEventType('meeting');
     setColor('#3B82F6');
     setIsPrivate(false);
     setAudienceType('all');
@@ -206,7 +215,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 { department_id: user.department_id },
                 { limit: 1000 }
               );
-              participantIds = usersResponse.data.map(u => u.id);
+              participantIds = usersResponse.data?.map(u => u.id) || [];
             } catch (error) {
               console.error('Failed to fetch department users:', error);
               showError('Не удалось загрузить пользователей отдела');
@@ -216,7 +225,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         } else if (audienceType === 'all') {
           try {
             const usersResponse = await userApi.getUsers({}, { limit: 1000 });
-            participantIds = usersResponse.data.map(u => u.id);
+            participantIds = usersResponse.data?.map(u => u.id) || [];
           } catch (error) {
             console.error('Failed to fetch all users:', error);
             showError('Не удалось загрузить список пользователей');
@@ -232,7 +241,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         end_time: endDate.toISOString(),
         all_day: allDay,
         location: location.trim() || undefined,
-        type: 'meeting',
+        type: eventType,
         color,
         is_private: isPrivate,
         participant_ids: participantIds,
@@ -580,8 +589,47 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               {currentStep === 4 && (
                 <View style={styles.stepContent}>
                   <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
-                    Выберите цвет для события
+                    Выберите тип и цвет для события
                   </Text>
+
+                  <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Тип события *</Text>
+                    <View style={styles.eventTypeRow}>
+                      {EVENT_TYPES.map((type) => (
+                        <TouchableOpacity
+                          key={type.value}
+                          style={[
+                            styles.eventTypeCard,
+                            { backgroundColor: theme.card, borderColor: theme.border },
+                            eventType === type.value && {
+                              backgroundColor: theme.primary + '15',
+                              borderColor: theme.primary,
+                              borderWidth: 2,
+                            },
+                          ]}
+                          onPress={() => setEventType(type.value)}
+                        >
+                          <Ionicons
+                            name={type.icon as any}
+                            size={24}
+                            color={eventType === type.value ? theme.primary : theme.textSecondary}
+                          />
+                          <Text style={[
+                            styles.eventTypeLabel,
+                            { color: theme.text },
+                            eventType === type.value && { color: theme.primary, fontWeight: '600' }
+                          ]}>
+                            {type.label}
+                          </Text>
+                          {eventType === type.value && (
+                            <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
+                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
 
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: theme.textSecondary }]}>Цвет</Text>
@@ -849,6 +897,31 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
+  },
+  eventTypeRow: {
+    gap: 12,
+  },
+  eventTypeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+    position: 'relative',
+  },
+  eventTypeLabel: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  checkmarkBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   colorRow: {
     flexDirection: 'row',

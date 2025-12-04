@@ -220,6 +220,19 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
     }
   };
 
+  const getEventTypeLabel = () => {
+    switch (event.type) {
+      case 'meeting':
+        return 'Встречи/совещания';
+      case 'deadline':
+        return 'Дедлайны/крайние сроки';
+      case 'personal':
+        return 'Личные события';
+      default:
+        return 'Событие';
+    }
+  };
+
   const handleUpdateStatus = async (status: EventParticipantStatus) => {
     if (!myParticipation) return;
 
@@ -285,9 +298,6 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color={theme.text} />
           </TouchableOpacity>
-          <View style={[styles.eventTypeIndicator, { backgroundColor: event.color }]}>
-            <Ionicons name={getEventIcon() as any} size={16} color="#FFFFFF" />
-          </View>
           {canManage && (
             <View style={styles.headerActions}>
               <TouchableOpacity
@@ -452,6 +462,17 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               )}
             </View>
           )}
+        </View>
+
+        {/* Event Type Card */}
+        <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.infoCardIcon, { backgroundColor: event.color + '20' }]}>
+            <Ionicons name={getEventIcon() as any} size={22} color={event.color} />
+          </View>
+          <View style={styles.infoCardContent}>
+            <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>Тип события</Text>
+            <Text style={[styles.infoCardValue, { color: theme.text }]}>{getEventTypeLabel()}</Text>
+          </View>
         </View>
 
         {/* Date & Time Card */}
