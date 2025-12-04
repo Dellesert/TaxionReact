@@ -5,7 +5,9 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import ProfileScreen from '@/features/profile/screens/ProfileScreen';
+import ProfileSplitView from '@/features/profile/screens/ProfileSplitView';
 import EditProfileScreen from '@/features/profile/screens/EditProfileScreen';
 import ChangePasswordScreen from '@/features/profile/screens/ChangePasswordScreen';
 import NotificationSettingsScreen from '@/features/profile/screens/NotificationSettingsScreen';
@@ -38,6 +40,27 @@ export type ProfileStackParamList = {
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 const ProfileNavigator: React.FC = () => {
+  const isWideScreen = useIsWideScreen();
+
+  // Desktop mode: use ProfileSplitView with sidebar navigation
+  if (isWideScreen) {
+    return (
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="ProfileMain" component={ProfileSplitView} />
+        {/* Analytics sub-screens for drill-down navigation */}
+        <Stack.Screen name="MetricsAnalytics" component={MetricsAnalyticsScreen} />
+        <Stack.Screen name="PerformanceAnalytics" component={PerformanceAnalyticsScreen} />
+        <Stack.Screen name="DepartmentsAnalytics" component={DepartmentsAnalyticsScreen} />
+        <Stack.Screen name="SecurityAnalytics" component={SecurityAnalyticsScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  // Mobile mode: use stack navigation
   return (
     <Stack.Navigator
       screenOptions={{
