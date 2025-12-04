@@ -328,6 +328,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   size={16}
                   color={theme.warning || '#FFB800'}
                   style={styles.favoriteIcon}
+                  testID={`favorite-star-${chat.id}`}
                 />
               )}
               {chat.is_pinned && (
@@ -336,6 +337,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   size={16}
                   color={theme.primary}
                   style={styles.pinIcon}
+                  testID={`pin-icon-${chat.id}`}
                 />
               )}
               {chat.last_message && (
@@ -393,7 +395,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                 <Ionicons name="notifications-off" size={16} color={theme.textTertiary} style={styles.muteIcon} />
               )}
               {!!chat.unread_count && chat.unread_count > 0 && (
-                <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]}>
+                <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]} testID={`unread-badge-${chat.id}`}>
                   <Text style={styles.unreadText}>
                     {chat.unread_count > 99 ? '99+' : String(chat.unread_count)}
                   </Text>

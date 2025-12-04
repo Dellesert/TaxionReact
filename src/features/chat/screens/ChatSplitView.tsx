@@ -120,9 +120,14 @@ const styles = StyleSheet.create({
     width: 420,
     minWidth: 360,
     maxWidth: 480,
+    position: 'relative',
+    zIndex: 10,
+    overflow: 'hidden',
   },
   chatDetail: {
     flex: 1,
+    position: 'relative',
+    zIndex: 1,
   },
   chatContent: {
     flex: 1,
