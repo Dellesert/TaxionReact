@@ -7,6 +7,7 @@ import { useEffect, useRef, useMemo } from 'react';
 import { useChatStore } from '@shared/store/chatStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { isValidChatId, shouldShowLoading } from '../utils/chatDetailHelpers';
+import { websocketService } from '@/services/websocket.service';
 
 interface UseChatDetailDataReturn {
   chat: any | undefined;
@@ -43,6 +44,23 @@ export const useChatDetailData = (chatId: number): UseChatDetailDataReturn => {
       });
     }
   }, [chatId, loadMessages, showError]);
+
+  // Join/Leave chat room via WebSocket for presence tracking
+  useEffect(() => {
+    if (!isValidChatId(chatId)) {
+      return;
+    }
+
+    // Join chat room when component mounts
+    console.log(`🔵 Joining chat room ${chatId}`);
+    websocketService.joinChat(chatId);
+
+    // Leave chat room when component unmounts
+    return () => {
+      console.log(`🔴 Leaving chat room ${chatId}`);
+      websocketService.leaveChat(chatId);
+    };
+  }, [chatId]);
 
   // ОПТИМИЗАЦИЯ: Удалена предзагрузка пользователей
   // Backend теперь всегда возвращает sender в сообщениях, поэтому кэш не нужен

@@ -294,8 +294,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     // WebSocket connection
     connectWebSocket();
 
+    // Join chat room for presence tracking
+    console.log(`🔵 Joining chat room ${chatIdNum}`);
+    websocketService.joinChat(chatIdNum);
+
     return () => {
       setActiveChat(null);
+      // Leave chat room when component unmounts
+      console.log(`🔴 Leaving chat room ${chatIdNum}`);
+      websocketService.leaveChat(chatIdNum);
     };
   }, [chatIdNum, connectWebSocket]); // Значительно уменьшен массив зависимостей!
 
