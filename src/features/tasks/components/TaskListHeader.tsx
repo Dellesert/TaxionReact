@@ -244,7 +244,8 @@ const styles = StyleSheet.create({
   desktopHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 32,
+    justifyContent: 'space-between',
+    gap: 24,
   },
   desktopLeft: {
     flexShrink: 0,
@@ -256,8 +257,18 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   desktopCenter: {
-    flex: 1,
-    marginHorizontal: 32,
+    position: 'absolute',
+    left: '50%',
+    transform: [{ translateX: -300 }], // Half of maxWidth (600/2)
+    width: 600,
+    maxWidth: 600,
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        transform: 'translateX(-50%)',
+        left: '50%',
+      },
+    }),
   },
   desktopSearchContainer: {
     flexDirection: 'row',
@@ -288,11 +299,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     height: 44,
-    ...Platform.select({
+    ...(Platform.select({
       web: {
         outlineStyle: 'none',
       },
-    }),
+    }) as any),
   },
   clearButton: {
     padding: 4,

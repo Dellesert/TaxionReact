@@ -99,13 +99,6 @@ const CalendarScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <ScreenHeader
-        title="Календарь"
-        showDivider={true}
-        customContent={<CalendarHeader onAddPress={handleAddEvent} />}
-      />
-
       {/* Content container with background */}
       <View style={[styles.content, { backgroundColor: theme.background }]}>
         {isWideScreen ? (
@@ -122,10 +115,18 @@ const CalendarScreen: React.FC = () => {
             onRefresh={handleRefresh}
             onEventUpdated={handleEventUpdated}
             onViewChange={handleDesktopViewChange}
+            onAddPress={handleAddEvent}
           />
         ) : (
           /* Mobile View - Original Layout */
           <>
+            {/* Header */}
+            <ScreenHeader
+              title="Календарь"
+              showDivider={true}
+              customContent={<CalendarHeader onAddPress={handleAddEvent} />}
+            />
+
             {/* Date Navigation */}
             <CalendarDateNavigation
               dateRangeText={dateRangeText}

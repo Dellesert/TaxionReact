@@ -12,6 +12,7 @@ import { CalendarEmptyState } from './CalendarEmptyState';
 import { EventDetailsPanel } from './EventDetailsPanel';
 import { EventListSkeleton } from './EventListSkeleton';
 import { CalendarStatsPanel } from './CalendarStatsPanel';
+import { CalendarHeader } from './CalendarHeader';
 import { CalendarToolbar } from './CalendarToolbar';
 import { WeekTimelineView } from './WeekTimelineView';
 import { WeekViewModeSelector } from './WeekViewModeSelector';
@@ -29,6 +30,7 @@ interface CalendarDesktopViewProps {
   onRefresh: () => void;
   onEventUpdated: () => void;
   onViewChange?: (view: CalendarView) => void;
+  onAddPress: () => void;
 }
 
 export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
@@ -43,11 +45,13 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   onRefresh,
   onEventUpdated,
   onViewChange,
+  onAddPress,
 }) => {
   const { theme } = useTheme();
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [viewMode, setViewMode] = useState<CalendarView>(initialView);
   const { weekDisplayMode, setWeekDisplayMode } = useWeekDisplayMode();
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load events for the entire month for the mini calendar
   const { monthEvents } = useMonthEvents(selectedDate);
@@ -91,9 +95,26 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
     }
   };
 
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+  };
+
+  const handleSearchClear = () => {
+    setSearchQuery('');
+  };
+
   return (
     <View style={styles.container}>
-      {/* Toolbar */}
+      {/* Header - Search and Actions */}
+      <CalendarHeader
+        isDesktop={true}
+        searchQuery={searchQuery}
+        onAddPress={onAddPress}
+        onSearchChange={handleSearchChange}
+        onSearchClear={handleSearchClear}
+      />
+
+      {/* Toolbar - Navigation and View Selector */}
       <CalendarToolbar
         selectedDate={selectedDate}
         selectedView={viewMode}
