@@ -543,38 +543,93 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         setHighlightedMessageId(null);
       }, 2000);
     } else {
-      // Сообщение не загружено - используем jumpToMessage для загрузки контекста
-      const jumpToMessage = useChatStore.getState().jumpToMessage;
-      await jumpToMessage(chatId, messageId);
+      // Сообщение не загружено - делаем плавную многоступенчатую анимацию вверх,
+      // потом загружаем контекст и показываем целевое сообщение
+      console.log('📍 Message not loaded, animating before jump...');
 
-      // Устанавливаем флаг что мы в контексте
-      isInJumpContext.current = true;
-      setShowScrollToBottom(true); // Показываем кнопку "Вниз" для возврата
-      setHasReachedBottom(false); // Мы больше не внизу
-      setNewMessagesCount(0); // Сбрасываем счетчик непрочитанных (т.к. контекст может быть где угодно)
-      setFirstNewMessageIndex(-1);
+      const currentOffset = lastScrollOffset.current;
 
-      // После загрузки найдем новый индекс и скролим
+      // Шаг 1: Скроллим на 15% вверх от текущей позиции
+      listRef.current?.scrollToOffset({
+        offset: Math.max(0, currentOffset - currentOffset * 0.15),
+        animated: true,
+      });
+
+      // Шаг 2: Скроллим на 30% вверх (через 60ms)
       setTimeout(() => {
-        const updatedMessages = useChatStore.getState().messages[chatId] || [];
-        const newMessageIndex = updatedMessages.findIndex(m => m.id === messageId);
+        listRef.current?.scrollToOffset({
+          offset: Math.max(0, currentOffset - currentOffset * 0.3),
+          animated: true,
+        });
 
-        // Обновляем previousMessagesLength чтобы избежать ложного вычисления "новых" сообщений
-        previousMessagesLength.current = updatedMessages.length;
-
-        if (newMessageIndex !== -1) {
-          listRef.current?.scrollToIndex({
-            index: newMessageIndex,
+        // Шаг 3: Скроллим на 45% вверх (через еще 60ms)
+        setTimeout(() => {
+          listRef.current?.scrollToOffset({
+            offset: Math.max(0, currentOffset - currentOffset * 0.45),
             animated: true,
-            viewPosition: 0.5,
           });
 
-          setHighlightedMessageId(messageId);
+          // Шаг 4: Скроллим на 60% вверх (через еще 60ms)
           setTimeout(() => {
-            setHighlightedMessageId(null);
-          }, 2000);
-        }
-      }, 300); // Даем время на обновление списка
+            listRef.current?.scrollToOffset({
+              offset: Math.max(0, currentOffset - currentOffset * 0.6),
+              animated: true,
+            });
+
+            // Шаг 5: Скроллим на 75% вверх (через еще 60ms)
+            setTimeout(() => {
+              listRef.current?.scrollToOffset({
+                offset: Math.max(0, currentOffset - currentOffset * 0.75),
+                animated: true,
+              });
+
+              // Шаг 6: Скроллим на 90% вверх (через еще 60ms)
+              setTimeout(() => {
+                listRef.current?.scrollToOffset({
+                  offset: Math.max(0, currentOffset - currentOffset * 0.9),
+                  animated: true,
+                });
+
+                // Шаг 7: Загружаем контекст и показываем целевое сообщение (через еще 60ms)
+                setTimeout(async () => {
+                  const jumpToMessage = useChatStore.getState().jumpToMessage;
+                  await jumpToMessage(chatId, messageId);
+
+                  // Устанавливаем флаг что мы в контексте
+                  isInJumpContext.current = true;
+                  setShowScrollToBottom(true); // Показываем кнопку "Вниз" для возврата
+                  setHasReachedBottom(false); // Мы больше не внизу
+                  setNewMessagesCount(0); // Сбрасываем счетчик непрочитанных (т.к. контекст может быть где угодно)
+                  setFirstNewMessageIndex(-1);
+
+                  // После загрузки найдем новый индекс и показываем сообщение
+                  setTimeout(() => {
+                    const updatedMessages = useChatStore.getState().messages[chatId] || [];
+                    const newMessageIndex = updatedMessages.findIndex(m => m.id === messageId);
+
+                    // Обновляем previousMessagesLength чтобы избежать ложного вычисления "новых" сообщений
+                    previousMessagesLength.current = updatedMessages.length;
+
+                    if (newMessageIndex !== -1) {
+                      // Показываем сообщение БЕЗ анимации скролла
+                      listRef.current?.scrollToIndex({
+                        index: newMessageIndex,
+                        animated: false,
+                        viewPosition: 0.5,
+                      });
+
+                      setHighlightedMessageId(messageId);
+                      setTimeout(() => {
+                        setHighlightedMessageId(null);
+                      }, 2000);
+                    }
+                  }, 100);
+                }, 60);
+              }, 60);
+            }, 60);
+          }, 60);
+        }, 60);
+      }, 60);
     }
   }, [messages, chatId]);
 
