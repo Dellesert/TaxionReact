@@ -5,6 +5,7 @@ import { MessageItem } from './MessageItem';
 import { DateSeparator } from './DateSeparator';
 import { UnreadMessagesBanner } from './UnreadMessagesBanner';
 import { MessageSkeleton } from './MessageSkeleton';
+import { ChatEmptyMessages } from './ChatEmptyMessages';
 import { useTheme } from '@shared/hooks/useTheme';
 
 type MessageListItem =
@@ -131,6 +132,9 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   // Показываем skeleton'ы если сообщения еще не загружены
   const showSkeletons = isLoading && messageListItems.length === 0;
 
+  // Показываем пустое состояние если нет сообщений и загрузка завершена
+  const showEmptyState = !isLoading && messageListItems.length === 0;
+
   // Базовый отступ внизу списка = высота инпута (статический)
   // В веб-версии добавляем дополнительный отступ из-за особенностей рендеринга инвертированного списка
   const baseBottomPadding = inputHeight + insetsBottom + (Platform.OS === 'web' ? 40 : 20);
@@ -149,6 +153,10 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         ))}
       </View>
     );
+  }
+
+  if (showEmptyState) {
+    return <ChatEmptyMessages />;
   }
 
   return (
