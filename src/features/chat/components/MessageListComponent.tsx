@@ -98,6 +98,11 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  // Функция для определения типа элемента (помогает FlashList оптимизировать рендеринг)
+  const getItemType = React.useCallback((item: MessageListItem) => {
+    return item.type; // 'message' или 'date'
+  }, []);
+
   // Отслеживаем видимые элементы для ленивой загрузки изображений
   // Инициализируем с первыми 10 элементами для начальной загрузки
   const [viewableIndices, setViewableIndices] = React.useState<Set<number>>(() => {
@@ -167,9 +172,10 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         ref={listRef}
         data={messageListItems}
         extraData={messagesKey}
-        drawDistance={Platform.OS === 'ios' ? 250 : 500}
+        drawDistance={Platform.OS === 'ios' ? 500 : 500}
         initialScrollIndex={initialScrollIndex}
         estimatedItemSize={150}
+        getItemType={getItemType}
         renderItem={({ item, index }) => {
           // Рендер разделителя даты
           if (item.type === 'date') {
@@ -227,7 +233,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         // @ts-ignore - FlashList 2.x uses different approach
         inverted={true}
         keyboardShouldPersistTaps="handled"
-        removeClippedSubviews={Platform.OS === 'ios'}
+        removeClippedSubviews={false}
         onContentSizeChange={onContentSizeChange}
         onScroll={onScroll}
         scrollEventThrottle={16}
