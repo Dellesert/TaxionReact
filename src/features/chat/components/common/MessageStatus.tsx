@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { Message } from '../types/chat.types';
+import { Message } from '../../types/chat.types';
 
 interface MessageStatusProps {
   message: Message;

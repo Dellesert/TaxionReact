@@ -13,9 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
-import { Chat, Message } from '../types/chat.types';
+import { Chat, Message } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
-import { getChatDisplayName, getChatDisplayAvatar } from '../utils/chatUtils';
+import { getChatDisplayName, getChatDisplayAvatar } from '../../utils/chatUtils';
 
 interface ForwardMessageModalProps {
   visible: boolean;

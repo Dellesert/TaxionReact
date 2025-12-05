@@ -2,14 +2,14 @@ import React, { useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { Message } from '../types/chat.types';
-import { User } from '../../../types/user.types';
-import { MessageAttachments } from './MessageAttachments';
+import { Message } from '../../types/chat.types';
+import { User } from '../../../../types/user.types';
+import { MessageAttachments } from '../attachments/MessageAttachments';
 import PollMessageCard from './PollMessageCard';
 import TaskMessageCard from './TaskMessageCard';
-import { MessageStatus } from './MessageStatus';
-import { formatTime, parseForwardedMessage, getDisplayContent } from '../utils/message.utils';
-import { LinkifiedText } from './LinkifiedText';
+import { MessageStatus } from '../common/MessageStatus';
+import { formatTime, parseForwardedMessage, getDisplayContent } from '../../utils/message.utils';
+import { LinkifiedText } from '../common/LinkifiedText';
 
 interface MessageBubbleProps {
   message: Message;

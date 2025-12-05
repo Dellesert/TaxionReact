@@ -2,10 +2,10 @@ import React from 'react';
 import { View, StyleSheet, Animated, Platform } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { MessageItem } from './MessageItem';
-import { DateSeparator } from './DateSeparator';
+import { DateSeparator } from '../common/DateSeparator';
 import { UnreadMessagesBanner } from './UnreadMessagesBanner';
 import { MessageSkeleton } from './MessageSkeleton';
-import { ChatEmptyMessages } from './ChatEmptyMessages';
+import { ChatEmptyMessages } from '../states/ChatEmptyMessages';
 import { useTheme } from '@shared/hooks/useTheme';
 
 type MessageListItem =

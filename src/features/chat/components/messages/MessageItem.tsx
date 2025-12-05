@@ -5,19 +5,19 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { useTheme } from '@shared/hooks/useTheme';
-import { Message } from '../types/chat.types';
+import { Message } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { MessageBubble } from './MessageBubble';
-import { MessageContextMenu } from './MessageContextMenu';
+import { MessageContextMenu } from '../modals/MessageContextMenu';
 import { ActionModal } from '@shared/components/common/ActionModal';
-import { ImageViewer } from './ImageViewer';
-import { useMessageData } from '../hooks/useMessageData';
+import { ImageViewer } from '../modals/ImageViewer';
+import { useMessageData } from '../../hooks/useMessageData';
 import { useImageLoader } from '@shared/hooks/useImageLoader';
-import { isForwardedMessage } from '../utils/message.utils';
-import { getOrCreateDirectChat } from '../api/chat.api';
+import { isForwardedMessage } from '../../utils/message.utils';
+import { getOrCreateDirectChat } from '../../api/chat.api';
 
 interface MessageItemProps {
   message: Message;

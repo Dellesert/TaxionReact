@@ -27,11 +27,11 @@ import { useCreateChatActions } from '../hooks/useCreateChatActions';
 import { useUserSections } from '@shared/hooks/useUserSections';
 
 // Components
-import { CreateChatHeader } from '../components/CreateChatHeader';
-import { ChatNameInput } from '../components/ChatNameInput';
-import { SelectedUsersCounter } from '../components/SelectedUsersCounter';
-import { CreateChatSearchBar } from '../components/CreateChatSearchBar';
-import { CreateChatUserItem } from '../components/CreateChatUserItem';
+import { CreateChatHeader } from '../components/headers/CreateChatHeader';
+import { ChatNameInput } from '../components/common/ChatNameInput';
+import { SelectedUsersCounter } from '../components/common/SelectedUsersCounter';
+import { CreateChatSearchBar } from '../components/create-chat/CreateChatSearchBar';
+import { CreateChatUserItem } from '../components/create-chat/CreateChatUserItem';
 
 // Utils
 import {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { Chat } from '../types/chat.types';
-import { ChatHeader } from '../components/ChatHeader';
+import { ChatHeader } from '../components/headers/ChatHeader';
 import {
   getChatDisplayName,
   getChatDisplayAvatar,

@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Chat, TypingIndicator } from '../types/chat.types';
+import { Chat, TypingIndicator } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
-import { getChatDisplayName, getChatDisplayAvatar, getChatDisplayAvatarThumbnail, getPersonalChatCompanion } from '../utils/chatUtils';
+import { getChatDisplayName, getChatDisplayAvatar, getChatDisplayAvatarThumbnail, getPersonalChatCompanion } from '../../utils/chatUtils';
 import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
 import { useChatPrefetch } from '@shared/hooks/usePrefetch';
-import { getTypingUserNames, formatTypingText } from '../utils/chatScreenHelpers';
+import { getTypingUserNames, formatTypingText } from '../../utils/chatScreenHelpers';
 
 interface ChatItemProps {
   chat: Chat;

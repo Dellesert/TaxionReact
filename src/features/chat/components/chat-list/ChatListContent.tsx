@@ -4,12 +4,12 @@ import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChatItem } from '../components/ChatItem';
-import { ChatListSkeleton } from '../components/ChatListSkeleton';
+import { ChatItem } from './ChatItem';
+import { ChatListSkeleton } from './ChatListSkeleton';
 import { ChatEmptyState } from './ChatEmptyState';
 import { useTheme } from '@shared/hooks/useTheme';
-import { Chat } from '../types/chat.types';
-import { ChatFilter, filterChatsBySearch, combineTabChats } from '../utils/chatHelpers';
+import { Chat } from '../../types/chat.types';
+import { ChatFilter, filterChatsBySearch, combineTabChats } from '../../utils/chatHelpers';
 import { useChatStore } from '@shared/store/chatStore';
 
 export interface ChatListContentRef {

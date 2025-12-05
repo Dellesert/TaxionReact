@@ -8,7 +8,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
-import { ChatMember } from '../types/chat.types';
+import { ChatMember } from '../../types/chat.types';
 
 interface ParticipantsTabProps {
   members: ChatMember[];

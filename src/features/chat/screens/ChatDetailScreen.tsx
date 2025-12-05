@@ -10,7 +10,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Loading } from '@shared/components/common/Loading';
-import { MessageInput } from '../components/MessageInput';
+import { MessageInput } from '../components/messages/MessageInput';
 
 // Custom Hooks
 import { useChatDetailData } from '../hooks/useChatDetailData';
@@ -18,9 +18,9 @@ import { useChatMessageActions } from '../hooks/useChatMessageActions';
 import { useChatTyping } from '../hooks/useChatTyping';
 
 // Components
-import { ChatDetailHeader } from '../components/ChatDetailHeader';
-import { MessageListComponent } from '../components/MessageListComponent';
-import { EmptyMessagesState } from '../components/EmptyMessagesState';
+import { ChatDetailHeader } from '../components/headers/ChatDetailHeader';
+import { MessageListComponent } from '../components/messages/MessageListComponent';
+import { EmptyMessagesState } from '../components/messages/EmptyMessagesState';
 
 type ChatDetailRouteParams = {
   chatId: number;

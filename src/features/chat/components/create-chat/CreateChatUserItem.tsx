@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import Avatar from '@shared/components/common/Avatar';
 import { User } from '@/types/user.types';
-import { getRoleText } from '../utils/createChatFormatters';
+import { getRoleText } from '../../utils/createChatFormatters';
 
 interface CreateChatUserItemProps {
   user: User;

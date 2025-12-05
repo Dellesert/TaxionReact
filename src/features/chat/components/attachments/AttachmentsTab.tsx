@@ -21,13 +21,13 @@ import FileViewer from 'react-native-file-viewer';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { Attachment } from '../types/chat.types';
-import * as chatApi from '../api/chat.api';
-import { ImageViewer } from './ImageViewer';
+import { Attachment } from '../../types/chat.types';
+import * as chatApi from '../../api/chat.api';
+import { ImageViewer } from '../modals/ImageViewer';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import { replaceLocalhostWithIP } from '../utils/message.utils';
-import { decodeFileName } from '../utils/file.utils';
+import { replaceLocalhostWithIP } from '../../utils/message.utils';
+import { decodeFileName } from '../../utils/file.utils';
 
 interface AttachmentsTabProps {
   chatId: number;

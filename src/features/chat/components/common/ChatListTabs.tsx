@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useTheme } from '@shared/hooks/useTheme';
-import { ChatFilter } from '../utils/chatHelpers';
+import { ChatFilter } from '../../utils/chatHelpers';
 
 interface ChatListTabsProps {
   activeFilter: ChatFilter;

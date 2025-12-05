@@ -14,9 +14,9 @@ import { ConfirmDialog } from '@shared/components/common/ConfirmDialog';
 import { InputDialog } from '@shared/components/common/InputDialog';
 import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
-import { ChatDetailTabs, TabType } from '../components/ChatDetailTabs';
-import { ParticipantsTab } from '../components/ParticipantsTab';
-import { AttachmentsTab } from '../components/AttachmentsTab';
+import { ChatDetailTabs, TabType } from '../components/common/ChatDetailTabs';
+import { ParticipantsTab } from '../components/chat-details/ParticipantsTab';
+import { AttachmentsTab } from '../components/attachments/AttachmentsTab';
 
 // Hooks
 import { useChatSettingsData } from '../hooks/useChatSettingsData';
@@ -25,10 +25,10 @@ import { useChatSettingsActions } from '../hooks/useChatSettingsActions';
 import { useChatAvatar } from '../hooks/useChatAvatar';
 
 // Components
-import { ChatSettingsHeader } from '../components/ChatSettingsHeader';
-import { PrivateChatInfo } from '../components/PrivateChatInfo';
-import { GroupChatInfo } from '../components/GroupChatInfo';
-import { QuickAction } from '../components/QuickActions';
+import { ChatSettingsHeader } from '../components/headers/ChatSettingsHeader';
+import { PrivateChatInfo } from '../components/chat-details/PrivateChatInfo';
+import { GroupChatInfo } from '../components/chat-details/GroupChatInfo';
+import { QuickAction } from '../components/common/QuickActions';
 
 // Utils
 import {

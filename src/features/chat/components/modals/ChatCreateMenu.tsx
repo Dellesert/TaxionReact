@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, Text, StyleSheet, Platform, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { ChatType } from '../types/chat.types';
+import { ChatType } from '../../types/chat.types';
 
 interface ChatCreateMenuProps {
   visible: boolean;

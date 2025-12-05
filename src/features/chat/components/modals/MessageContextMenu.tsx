@@ -4,9 +4,9 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { Message } from '../types/chat.types';
-import { formatTime } from '../utils/message.utils';
-import { getFileIcon, decodeFileName } from '../utils/file.utils';
+import { Message } from '../../types/chat.types';
+import { formatTime } from '../../utils/message.utils';
+import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 
 interface MessageContextMenuProps {
   visible: boolean;

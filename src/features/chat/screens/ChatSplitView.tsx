@@ -15,9 +15,9 @@ import { ChatStackParamList } from '@navigation/types';
 import { Chat } from '../types/chat.types';
 import ChatListScreen from './ChatListScreen';
 import ChatScreen from './ChatScreen';
-import { ChatEmptyPlaceholder } from '../components/ChatEmptyPlaceholder';
-import { ChatDesktopHeader } from '../components/ChatDesktopHeader';
-import { ChatSettingsModal } from '../components/ChatSettingsModal';
+import { ChatEmptyPlaceholder } from '../components/states/ChatEmptyPlaceholder';
+import { ChatDesktopHeader } from '../components/headers/ChatDesktopHeader';
+import { ChatSettingsModal } from '../components/modals/ChatSettingsModal';
 import { getChatDisplayName, getChatDisplayAvatar } from '../utils/chatUtils';
 
 type ChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Chat'>;

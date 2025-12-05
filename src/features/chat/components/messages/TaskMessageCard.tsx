@@ -7,7 +7,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { MessageTaskData } from '../types/chat.types';
+import { MessageTaskData } from '../../types/chat.types';
 
 interface TaskMessageCardProps {
   taskData: MessageTaskData;

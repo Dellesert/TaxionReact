@@ -9,8 +9,8 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import { isImageFile, replaceLocalhostWithIP } from '../utils/message.utils';
-import { getFileIcon, decodeFileName } from '../utils/file.utils';
+import { isImageFile, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 
 interface Attachment {
   id: number;

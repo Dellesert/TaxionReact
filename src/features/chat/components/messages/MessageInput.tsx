@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { FileAttachmentPicker } from './FileAttachmentPicker';
+import { FileAttachmentPicker } from '../attachments/FileAttachmentPicker';
 import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
 
 interface MessageInputProps {

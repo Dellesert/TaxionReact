@@ -24,14 +24,14 @@ import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 
 // Components
-import { ChatListHeader } from '../components/ChatListHeader';
-import { ChatSearchBar } from '../components/ChatSearchBar';
-import { ChatListTabs } from '../components/ChatListTabs';
-import { ChatActionBar } from '../components/ChatActionBar';
-import { ChatListContent, ChatListContentRef } from '../components/ChatListContent';
-import { ChatCreateMenu } from '../components/ChatCreateMenu';
-import { ChatErrorState } from '../components/ChatErrorState';
-import { CreateChatModal } from '../components/CreateChatModal';
+import { ChatListHeader } from '../components/headers/ChatListHeader';
+import { ChatSearchBar } from '../components/chat-list/ChatSearchBar';
+import { ChatListTabs } from '../components/common/ChatListTabs';
+import { ChatActionBar } from '../components/common/ChatActionBar';
+import { ChatListContent, ChatListContentRef } from '../components/chat-list/ChatListContent';
+import { ChatCreateMenu } from '../components/modals/ChatCreateMenu';
+import { ChatErrorState } from '../components/states/ChatErrorState';
+import { CreateChatModal } from '../components/modals/CreateChatModal';
 
 // Utils
 import { ChatFilter, getTabIndexFromFilter } from '../utils/chatHelpers';

@@ -1,39 +1,29 @@
 /**
- * Create Chat Modal
- * Modal wrapper for CreateChatScreen in desktop mode
+ * Chat Settings Modal
+ * Modal wrapper for ChatSettingsScreen in desktop mode
  */
 
 import React from 'react';
 import { Modal, View, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
-import CreateChatScreen from '../screens/CreateChatScreen';
-import { ChatType, Chat } from '../types/chat.types';
+import ChatSettingsScreen from '../../screens/ChatSettingsScreen';
 
-interface CreateChatModalProps {
+interface ChatSettingsModalProps {
   visible: boolean;
   onClose: () => void;
-  initialChatType?: ChatType;
-  onChatCreated?: (chat: Chat) => void;
+  chatId: number;
+  chatName: string;
 }
 
-export const CreateChatModal: React.FC<CreateChatModalProps> = ({
+export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   visible,
   onClose,
-  initialChatType = 'group',
-  onChatCreated,
+  chatId,
+  chatName,
 }) => {
   const { theme } = useTheme();
 
-  console.log('🎯 CreateChatModal rendered with:', {
-    visible,
-    initialChatType,
-    hasOnChatCreated: !!onChatCreated,
-  });
-
   if (!visible) return null;
-
-  // Different max width for private vs group chats
-  const maxWidth = initialChatType === 'private' ? 500 : 600;
 
   const modalContainerStyle: ViewStyle = {
     ...styles.modalContainer,
@@ -43,7 +33,6 @@ export const CreateChatModal: React.FC<CreateChatModalProps> = ({
   const contentStyle: ViewStyle = {
     ...styles.content,
     backgroundColor: theme.background,
-    maxWidth,
   };
 
   return (
@@ -64,20 +53,13 @@ export const CreateChatModal: React.FC<CreateChatModalProps> = ({
           onPress={(e) => e.stopPropagation()}
           style={contentStyle}
         >
-          <CreateChatScreen
+          <ChatSettingsScreen
             route={{
-              key: 'create-chat-modal',
-              name: 'CreateChat',
+              key: `chat-settings-${chatId}`,
+              name: 'ChatSettings',
               params: {
-                initialChatType,
-                onChatCreated: (chat: Chat) => {
-                  console.log('🎯 CreateChatModal: onChatCreated wrapper called');
-                  if (onChatCreated) {
-                    onChatCreated(chat);
-                  } else {
-                    console.error('❌ onChatCreated is undefined in wrapper!');
-                  }
-                },
+                chatId,
+                chatName,
               },
             } as any}
             navigation={{
@@ -88,6 +70,7 @@ export const CreateChatModal: React.FC<CreateChatModalProps> = ({
               replace: () => {
                 console.log('🚫 Navigation.replace blocked in desktop modal');
               },
+              setOptions: () => {},
             } as any}
           />
         </TouchableOpacity>
@@ -105,7 +88,7 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 700,
     maxHeight: '90%',
     borderRadius: 12,
     overflow: 'hidden',

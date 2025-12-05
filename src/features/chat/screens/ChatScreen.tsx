@@ -15,8 +15,8 @@ import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ChatScreenContent } from '../components/ChatScreenContent';
-import { ChatModals } from '../components/ChatModals';
+import { ChatScreenContent } from '../components/chat-details/ChatScreenContent';
+import { ChatModals } from '../components/modals/ChatModals';
 import {
   canDeleteForEveryone as checkCanDeleteForEveryone,
   getUserRoleInChat,
