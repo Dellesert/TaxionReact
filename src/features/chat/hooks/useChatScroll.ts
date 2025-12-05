@@ -40,6 +40,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const scrollOffsetBeforeLoad = useRef<number>(0); // Позиция скролла перед загрузкой
   const isLoadingNewerMessages = useRef<boolean>(false); // Флаг загрузки более новых сообщений (при скролле вниз в jump context)
   const lastNewestMessageId = useRef<number | null>(null); // ID последнего загруженного сообщения при incremental load
+  const isAnimatingToPin = useRef<boolean>(false); // Флаг анимации к закрепленному сообщению
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
@@ -186,7 +187,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     if (isAtBottom) {
       // Если мы в контексте после jump и достигли низа загруженных сообщений - загружаем следующую партию
-      if (isInJumpContext.current && !isLoadingMore && !isLoadingNewerMessages.current && messages.length > 0) {
+      // НО НЕ ЗАГРУЖАЕМ если идет анимация к закрепленному сообщению
+      if (isInJumpContext.current && !isLoadingMore && !isLoadingNewerMessages.current && !isAnimatingToPin.current && messages.length > 0) {
         const newestMessage = messages[messages.length - 1];
 
         // Проверяем что мы еще не загружали от этого сообщения
@@ -528,108 +530,180 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Скролл к конкретному сообщению
   const handleReplyPress = useCallback(async (messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
+    console.log('⚪ useChatScroll.handleReplyPress CALLED with messageId:', messageId);
+    console.log('⚪ Current messages array length:', messages.length);
+
     const messageIndex = messages.findIndex(m => m.id === messageId);
+    console.log('⚪ Found messageIndex:', messageIndex);
 
     if (messageIndex !== -1) {
-      // Сообщение уже загружено - просто скролим к нему
+      // ✅ ФИНАЛЬНАЯ СТРАТЕГИЯ: Как в Telegram - мгновенный прыжок + короткая доводка
+
+      const currentVisibleIndex = lastVisibleMessageIndex.current;
+      const distance = Math.abs(messageIndex - currentVisibleIndex);
+
+      console.log(`📍 Scrolling to pinned message: distance=${distance} items`);
+
+      // Для близких элементов (< 10) - обычная анимация работает отлично
+      if (distance < 10) {
+        listRef.current?.scrollToIndex({
+          index: messageIndex,
+          animated: true,
+          viewPosition: 0.5,
+        });
+
+        setHighlightedMessageId(messageId);
+        setTimeout(() => {
+          setHighlightedMessageId(null);
+        }, 2000);
+        return;
+      }
+
+      // ✅ ДЛЯ ДАЛЬНИХ ЭЛЕМЕНТОВ: Плавная анимация как в Telegram
+      // Просто используем scrollToIndex с анимацией - FlashList сам сделает плавный переход
+
+      console.log(`📍 Smooth scroll to pinned message: distance=${distance} items`);
+
+      // Один плавный скролл с анимацией
       listRef.current?.scrollToIndex({
         index: messageIndex,
         animated: true,
         viewPosition: 0.5,
       });
 
-      setHighlightedMessageId(messageId);
+      // Подсвечиваем сообщение после скролла
       setTimeout(() => {
-        setHighlightedMessageId(null);
-      }, 2000);
-    } else {
-      // Сообщение не загружено - делаем плавную многоступенчатую анимацию вверх,
-      // потом загружаем контекст и показываем целевое сообщение
-      console.log('📍 Message not loaded, animating before jump...');
-
-      const currentOffset = lastScrollOffset.current;
-
-      // Шаг 1: Скроллим на 15% вверх от текущей позиции
-      listRef.current?.scrollToOffset({
-        offset: Math.max(0, currentOffset - currentOffset * 0.15),
-        animated: true,
-      });
-
-      // Шаг 2: Скроллим на 30% вверх (через 60ms)
-      setTimeout(() => {
-        listRef.current?.scrollToOffset({
-          offset: Math.max(0, currentOffset - currentOffset * 0.3),
-          animated: true,
-        });
-
-        // Шаг 3: Скроллим на 45% вверх (через еще 60ms)
+        setHighlightedMessageId(messageId);
         setTimeout(() => {
-          listRef.current?.scrollToOffset({
-            offset: Math.max(0, currentOffset - currentOffset * 0.45),
-            animated: true,
-          });
+          setHighlightedMessageId(null);
+        }, 2000);
+      }, 500); // Ждём завершения анимации скролла
 
-          // Шаг 4: Скроллим на 60% вверх (через еще 60ms)
-          setTimeout(() => {
-            listRef.current?.scrollToOffset({
-              offset: Math.max(0, currentOffset - currentOffset * 0.6),
-              animated: true,
+    } else {
+      // ✅ НОВАЯ СТРАТЕГИЯ: Непрерывная анимация с подменой контента
+      // 1. Начинаем скролл вверх на текущих сообщениях
+      // 2. Параллельно загружаем новый контекст
+      // 3. Незаметно подменяем сообщения во время скролла
+      // 4. Продолжаем скролл уже к закрепленному в новом контексте
+
+      console.log('📍 Starting seamless scroll to pinned message...');
+
+      const performSeamlessScroll = async () => {
+        try {
+          const currentVisibleIndex = lastVisibleMessageIndex.current;
+          const currentMessages = messages;
+
+          isAnimatingToPin.current = true;
+
+          // ШАГ 1: Сначала загружаем контекст
+          console.log('📍 Phase 1: Loading context first...');
+
+          const jumpToMessage = useChatStore.getState().jumpToMessage;
+          await jumpToMessage(chatId, messageId);
+
+          console.log('📍 Phase 2: Context loaded');
+
+          // Устанавливаем флаги jump контекста
+          isInJumpContext.current = true;
+          setShowScrollToBottom(true);
+          setHasReachedBottom(false);
+          setNewMessagesCount(0);
+          setFirstNewMessageIndex(-1);
+
+          // Даём время FlashList обновиться
+          await new Promise(resolve => setTimeout(resolve, 150));
+
+          const updatedMessages = useChatStore.getState().messages[chatId] || [];
+          const targetIndex = updatedMessages.findIndex(m => m.id === messageId);
+
+          console.log('📍 Phase 3: Ready to scroll, total:', updatedMessages.length, 'target:', targetIndex);
+
+          previousMessagesLength.current = updatedMessages.length;
+
+          if (targetIndex !== -1) {
+            // Проверяем направление списка
+            const isInverted = updatedMessages.length >= 2 &&
+              new Date(updatedMessages[0].created_at) > new Date(updatedMessages[updatedMessages.length - 1].created_at);
+
+            console.log('  List inverted:', isInverted);
+
+            // ШАГ 2: Определяем точки для плавного скролла снизу вверх
+            const WINDOW_SIZE = 22;
+            let scrollStart: number; // Стартовая точка (внизу, более новые сообщения)
+            let midPoint: number;    // Промежуточная точка
+
+            if (isInverted) {
+              // Inverted: 0=новое (внизу), большой индекс=старое (вверху)
+              // target имеет большой индекс (старое сообщение вверху)
+              scrollStart = Math.max(0, targetIndex - WINDOW_SIZE); // Ещё ниже
+              midPoint = Math.max(0, targetIndex - Math.floor(WINDOW_SIZE * 0.55)); // Промежуточная
+            } else {
+              // Normal: 0=старое (вверху), большой индекс=новое (внизу)
+              // target имеет малый индекс (старое сообщение вверху)
+              scrollStart = Math.min(updatedMessages.length - 1, targetIndex + WINDOW_SIZE); // Более новые (внизу)
+              midPoint = Math.min(updatedMessages.length - 1, targetIndex + Math.floor(WINDOW_SIZE * 0.55)); // Промежуточная
+            }
+
+            console.log('📍 Phase 4: Scroll path:');
+            console.log('  Start (bottom):', scrollStart);
+            console.log('  Mid point:', midPoint);
+            console.log('  Target (top):', targetIndex);
+
+            // ШАГ 2.1: Мгновенно прыгаем к стартовой точке внизу (БЕЗ анимации)
+            listRef.current?.scrollToIndex({
+              index: scrollStart,
+              animated: false, // БЕЗ анимации - незаметный прыжок
+              viewPosition: 0.5,
             });
 
-            // Шаг 5: Скроллим на 75% вверх (через еще 60ms)
+            console.log('📍 Phase 4.1: Jumped to start (bottom)');
+
+            // ШАГ 2.2: Небольшая пауза для рендера
             setTimeout(() => {
-              listRef.current?.scrollToOffset({
-                offset: Math.max(0, currentOffset - currentOffset * 0.75),
+              // Первый скролл: снизу к промежуточной точке
+              console.log('📍 Phase 4.2: First scroll up to midpoint');
+
+              listRef.current?.scrollToIndex({
+                index: midPoint,
                 animated: true,
+                viewPosition: 0.5,
               });
 
-              // Шаг 6: Скроллим на 90% вверх (через еще 60ms)
+              // ШАГ 3: Продолжаем к цели
               setTimeout(() => {
-                listRef.current?.scrollToOffset({
-                  offset: Math.max(0, currentOffset - currentOffset * 0.9),
-                  animated: true,
+                console.log('📍 Phase 5: Continuing to target');
+
+                listRef.current?.scrollToIndex({
+                  index: targetIndex,
+                  animated: true, // Продолжение плавного движения вверх
+                  viewPosition: 0.5,
                 });
 
-                // Шаг 7: Загружаем контекст и показываем целевое сообщение (через еще 60ms)
-                setTimeout(async () => {
-                  const jumpToMessage = useChatStore.getState().jumpToMessage;
-                  await jumpToMessage(chatId, messageId);
+                // Снимаем флаг анимации
+                setTimeout(() => {
+                  isAnimatingToPin.current = false;
+                }, 800);
 
-                  // Устанавливаем флаг что мы в контексте
-                  isInJumpContext.current = true;
-                  setShowScrollToBottom(true); // Показываем кнопку "Вниз" для возврата
-                  setHasReachedBottom(false); // Мы больше не внизу
-                  setNewMessagesCount(0); // Сбрасываем счетчик непрочитанных (т.к. контекст может быть где угодно)
-                  setFirstNewMessageIndex(-1);
-
-                  // После загрузки найдем новый индекс и показываем сообщение
+                // Подсветка
+                setTimeout(() => {
+                  setHighlightedMessageId(messageId);
                   setTimeout(() => {
-                    const updatedMessages = useChatStore.getState().messages[chatId] || [];
-                    const newMessageIndex = updatedMessages.findIndex(m => m.id === messageId);
+                    setHighlightedMessageId(null);
+                  }, 2000);
+                }, 600);
+              }, 350); // Задержка между первым и вторым скроллом
+            }, 50); // Пауза после прыжка
+          } else {
+            console.error('📍 ERROR: Target not found');
+            isAnimatingToPin.current = false;
+          }
+        } catch (error) {
+          console.error('📍 ERROR:', error);
+          isAnimatingToPin.current = false;
+        }
+      };
 
-                    // Обновляем previousMessagesLength чтобы избежать ложного вычисления "новых" сообщений
-                    previousMessagesLength.current = updatedMessages.length;
-
-                    if (newMessageIndex !== -1) {
-                      // Показываем сообщение БЕЗ анимации скролла
-                      listRef.current?.scrollToIndex({
-                        index: newMessageIndex,
-                        animated: false,
-                        viewPosition: 0.5,
-                      });
-
-                      setHighlightedMessageId(messageId);
-                      setTimeout(() => {
-                        setHighlightedMessageId(null);
-                      }, 2000);
-                    }
-                  }, 100);
-                }, 60);
-              }, 60);
-            }, 60);
-          }, 60);
-        }, 60);
-      }, 60);
+      performSeamlessScroll();
     }
   }, [messages, chatId]);
 
@@ -693,6 +767,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     scrollOffsetBeforeLoad.current = 0;
     isLoadingNewerMessages.current = false; // ✅ Сбрасываем флаг загрузки новых сообщений
     lastNewestMessageId.current = null; // ✅ Сбрасываем ID последнего загруженного сообщения
+    isAnimatingToPin.current = false; // ✅ Сбрасываем флаг анимации
   }, []);
 
   return {
