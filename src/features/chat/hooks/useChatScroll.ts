@@ -627,72 +627,82 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
             console.log('  List inverted:', isInverted);
 
-            // ШАГ 2: Определяем точки для плавного скролла снизу вверх
-            const WINDOW_SIZE = 22;
-            let scrollStart: number; // Стартовая точка (внизу, более новые сообщения)
-            let midPoint: number;    // Промежуточная точка
+            // ШАГ 2: Многошаговый плавный скролл для непрерывности
+            // Создаём несколько промежуточных точек для цепочки анимаций
+            const WINDOW_SIZE = 24;
+            let scrollStart: number;
+            let step1: number;
+            let step2: number;
+            let step3: number;
 
             if (isInverted) {
               // Inverted: 0=новое (внизу), большой индекс=старое (вверху)
-              // target имеет большой индекс (старое сообщение вверху)
-              scrollStart = Math.max(0, targetIndex - WINDOW_SIZE); // Ещё ниже
-              midPoint = Math.max(0, targetIndex - Math.floor(WINDOW_SIZE * 0.55)); // Промежуточная
+              scrollStart = Math.max(0, targetIndex - WINDOW_SIZE);
+              step1 = Math.max(0, targetIndex - Math.floor(WINDOW_SIZE * 0.75));
+              step2 = Math.max(0, targetIndex - Math.floor(WINDOW_SIZE * 0.5));
+              step3 = Math.max(0, targetIndex - Math.floor(WINDOW_SIZE * 0.25));
             } else {
               // Normal: 0=старое (вверху), большой индекс=новое (внизу)
-              // target имеет малый индекс (старое сообщение вверху)
-              scrollStart = Math.min(updatedMessages.length - 1, targetIndex + WINDOW_SIZE); // Более новые (внизу)
-              midPoint = Math.min(updatedMessages.length - 1, targetIndex + Math.floor(WINDOW_SIZE * 0.55)); // Промежуточная
+              scrollStart = Math.min(updatedMessages.length - 1, targetIndex + WINDOW_SIZE);
+              step1 = Math.min(updatedMessages.length - 1, targetIndex + Math.floor(WINDOW_SIZE * 0.75));
+              step2 = Math.min(updatedMessages.length - 1, targetIndex + Math.floor(WINDOW_SIZE * 0.5));
+              step3 = Math.min(updatedMessages.length - 1, targetIndex + Math.floor(WINDOW_SIZE * 0.25));
             }
 
-            console.log('📍 Phase 4: Scroll path:');
-            console.log('  Start (bottom):', scrollStart);
-            console.log('  Mid point:', midPoint);
-            console.log('  Target (top):', targetIndex);
+            console.log('📍 Phase 4: Multi-step scroll path:', scrollStart, '→', step1, '→', step2, '→', step3, '→', targetIndex);
 
-            // ШАГ 2.1: Мгновенно прыгаем к стартовой точке внизу (БЕЗ анимации)
+            // Прыгаем к стартовой точке
             listRef.current?.scrollToIndex({
               index: scrollStart,
-              animated: false, // БЕЗ анимации - незаметный прыжок
+              animated: false,
               viewPosition: 0.5,
             });
 
-            console.log('📍 Phase 4.1: Jumped to start (bottom)');
-
-            // ШАГ 2.2: Небольшая пауза для рендера
+            // Создаём непрерывную цепочку скроллов с перекрытием
             setTimeout(() => {
-              // Первый скролл: снизу к промежуточной точке
-              console.log('📍 Phase 4.2: First scroll up to midpoint');
-
               listRef.current?.scrollToIndex({
-                index: midPoint,
+                index: step1,
                 animated: true,
                 viewPosition: 0.5,
               });
 
-              // ШАГ 3: Продолжаем к цели
               setTimeout(() => {
-                console.log('📍 Phase 5: Continuing to target');
-
                 listRef.current?.scrollToIndex({
-                  index: targetIndex,
-                  animated: true, // Продолжение плавного движения вверх
+                  index: step2,
+                  animated: true,
                   viewPosition: 0.5,
                 });
 
-                // Снимаем флаг анимации
                 setTimeout(() => {
-                  isAnimatingToPin.current = false;
-                }, 800);
+                  listRef.current?.scrollToIndex({
+                    index: step3,
+                    animated: true,
+                    viewPosition: 0.5,
+                  });
 
-                // Подсветка
-                setTimeout(() => {
-                  setHighlightedMessageId(messageId);
                   setTimeout(() => {
-                    setHighlightedMessageId(null);
-                  }, 2000);
-                }, 600);
-              }, 350); // Задержка между первым и вторым скроллом
-            }, 50); // Пауза после прыжка
+                    listRef.current?.scrollToIndex({
+                      index: targetIndex,
+                      animated: true,
+                      viewPosition: 0.5,
+                    });
+
+                    // Снимаем флаг анимации
+                    setTimeout(() => {
+                      isAnimatingToPin.current = false;
+                    }, 600);
+
+                    // Подсветка
+                    setTimeout(() => {
+                      setHighlightedMessageId(messageId);
+                      setTimeout(() => {
+                        setHighlightedMessageId(null);
+                      }, 2000);
+                    }, 400);
+                  }, 150); // Шаг 4
+                }, 150); // Шаг 3
+              }, 150); // Шаг 2
+            }, 50); // Шаг 1
           } else {
             console.error('📍 ERROR: Target not found');
             isAnimatingToPin.current = false;
