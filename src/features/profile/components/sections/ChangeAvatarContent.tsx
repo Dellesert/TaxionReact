@@ -4,11 +4,11 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
-import { API_BASE_URL } from '@shared/constants/api.constants';
+import { Avatar } from '@shared/components/common/Avatar';
 
 interface ChangeAvatarContentProps {
   isUploadingAvatar: boolean;
@@ -27,26 +27,11 @@ const ChangeAvatarContent: React.FC<ChangeAvatarContentProps> = ({
       alignItems: 'center',
       paddingVertical: 40,
     },
-    avatarContainer: {
-      width: 160,
-      height: 160,
-      borderRadius: 80,
-      backgroundColor: theme.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
+    avatarWrapper: {
       marginBottom: 32,
-      overflow: 'hidden',
       borderWidth: 4,
+      borderRadius: 80,
       borderColor: theme.border,
-    },
-    avatar: {
-      width: '100%',
-      height: '100%',
-    },
-    avatarPlaceholderText: {
-      fontSize: 56,
-      fontWeight: '700',
-      color: '#FFFFFF',
     },
     changeButton: {
       flexDirection: 'row',
@@ -77,22 +62,18 @@ const ChangeAvatarContent: React.FC<ChangeAvatarContentProps> = ({
     },
   });
 
-  const avatarUrl = user?.avatar
-    ? `${API_BASE_URL}${user.avatar}`
-    : null;
-
-  const avatarInitial = user?.name?.charAt(0).toUpperCase() || '?';
-
   return (
     <View style={dynamicStyles.container}>
       {/* Avatar Preview */}
-      <View style={dynamicStyles.avatarContainer}>
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={dynamicStyles.avatar} />
-        ) : (
-          <Text style={dynamicStyles.avatarPlaceholderText}>{avatarInitial}</Text>
-        )}
-      </View>
+      <Avatar
+        style={dynamicStyles.avatarWrapper}
+        imageUrl={user?.avatar}
+        thumbnailUrl={user?.avatar_thumbnail}
+        name={user?.name || user?.email || 'User'}
+        size={160}
+        useOriginal={true}
+        userId={user?.id}
+      />
 
       {/* Change Button */}
       <TouchableOpacity
@@ -110,7 +91,7 @@ const ChangeAvatarContent: React.FC<ChangeAvatarContentProps> = ({
           <>
             <Ionicons name="camera" size={20} color="#FFFFFF" />
             <Text style={dynamicStyles.changeButtonText}>
-              {avatarUrl ? 'Изменить фото' : 'Загрузить фото'}
+              {user?.avatar ? 'Изменить фото' : 'Загрузить фото'}
             </Text>
           </>
         )}

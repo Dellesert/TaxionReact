@@ -3,7 +3,7 @@
  * Константы цветов и стилей для светлой и темной темы
  */
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface Theme {
   // Background colors
@@ -160,7 +160,7 @@ export const darkTheme: Theme = {
   linkColor: '#60A5FA',
 };
 
-export const themes: Record<ThemeMode, Theme> = {
+export const themes: Record<Exclude<ThemeMode, 'system'>, Theme> = {
   light: lightTheme,
   dark: darkTheme,
 };

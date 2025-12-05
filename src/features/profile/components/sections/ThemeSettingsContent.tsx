@@ -14,6 +14,12 @@ const ThemeSettingsContent: React.FC = () => {
 
   const themeOptions: { mode: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap; description: string }[] = [
     {
+      mode: 'system',
+      label: 'Системная тема',
+      icon: 'phone-portrait-outline',
+      description: 'Автоматическое переключение в зависимости от настроек системы',
+    },
+    {
       mode: 'light',
       label: 'Светлая тема',
       icon: 'sunny',
