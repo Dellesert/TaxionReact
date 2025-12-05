@@ -14,6 +14,7 @@ import { usePasskeyAuth } from '../hooks/usePasskeyAuth';
 import { usePasswordAuth } from '../hooks/usePasswordAuth';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { LoginLogo } from '../components/LoginLogo';
 import { LoginForm } from '../components/LoginForm';
 import { AlternativeLoginMethods } from '../components/AlternativeLoginMethods';
@@ -26,6 +27,7 @@ const LoginScreen: React.FC = () => {
   const { isLoading } = useAuth();
   const notification = useNotification();
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
 
   // Form state
   const {
@@ -98,6 +100,70 @@ const LoginScreen: React.FC = () => {
     passwordInputRef.current?.focus();
   };
 
+  // Desktop layout
+  if (isWideScreen) {
+    return (
+      <View style={[styles.desktopContainer, { backgroundColor: theme.background }]}>
+        <View
+          style={[
+            styles.desktopCard,
+            {
+              backgroundColor: theme.card,
+              ...Platform.select({
+                web: {
+                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+                },
+                default: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 30,
+                  elevation: 20,
+                },
+              }),
+            },
+          ]}
+        >
+          {/* Left side - Logo */}
+          <View style={[styles.desktopLogoSection, { backgroundColor: theme.primary }]}>
+            <LoginLogo opacity={logoOpacity} />
+          </View>
+
+          {/* Right side - Form */}
+          <ScrollView
+            style={styles.desktopFormSection}
+            contentContainerStyle={styles.desktopFormContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <LoginForm
+              email={email}
+              password={password}
+              showPassword={showPassword}
+              isLoading={isLoading}
+              passwordInputRef={passwordInputRef}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+              onTogglePassword={togglePasswordVisibility}
+              onSubmit={handleLogin}
+              onForgotPassword={handleForgotPassword}
+              onPasswordInputFocus={handlePasswordInputFocus}
+            />
+
+            <AlternativeLoginMethods
+              passkeySupported={passkeySupported}
+              isPasskeyLoading={isPasskeyLoading}
+              isLoading={isLoading}
+              onPasskeyLogin={handlePasskeyLogin}
+              onAcceptInvitation={handleAcceptInvitation}
+            />
+          </ScrollView>
+        </View>
+      </View>
+    );
+  }
+
+  // Mobile layout
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
       <KeyboardAvoidingView
@@ -152,6 +218,7 @@ const LoginScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  // Mobile styles
   container: {
     flex: 1,
   },
@@ -168,6 +235,37 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     paddingHorizontal: 24,
     minHeight: 400,
+  },
+  // Desktop styles
+  desktopContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  desktopCard: {
+    flexDirection: 'row',
+    width: '100%',
+    maxWidth: 1000,
+    height: 600,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  desktopLogoSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 400,
+  },
+  desktopFormSection: {
+    flex: 1,
+    minWidth: 400,
+  },
+  desktopFormContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 60,
+    paddingVertical: 40,
   },
 });
 

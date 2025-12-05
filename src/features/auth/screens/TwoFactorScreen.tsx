@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, RouteProp, useRoute } from '@react-navigation/native';
@@ -12,6 +12,7 @@ import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { use2FACodeInput } from '../hooks/use2FACodeInput';
 import { use2FAVerification } from '../hooks/use2FAVerification';
 import { use2FAAnimation } from '../hooks/use2FAAnimation';
@@ -30,6 +31,7 @@ const TwoFactorScreen: React.FC = () => {
   const { showConfirm } = useActionModal();
   const notification = useNotification();
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
 
   const [isResending, setIsResending] = useState(false);
 
@@ -81,6 +83,54 @@ const TwoFactorScreen: React.FC = () => {
 
   const isCodeComplete = checkCodeComplete(code);
 
+  // Desktop layout
+  if (isWideScreen) {
+    return (
+      <View style={[styles.desktopContainer, { backgroundColor: theme.background }]}>
+        <View
+          style={[
+            styles.desktopCard,
+            {
+              backgroundColor: theme.card,
+              ...Platform.select({
+                web: {
+                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+                },
+                default: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 30,
+                  elevation: 20,
+                },
+              }),
+            },
+          ]}
+        >
+          <TwoFactorHeader email={email} />
+
+          <CodeInputGrid
+            code={code}
+            inputRefs={inputRefs}
+            isLoading={isLoading}
+            onCodeChange={handleCodeChange}
+            onKeyPress={handleKeyPress}
+          />
+
+          <TwoFactorActions
+            isCodeComplete={isCodeComplete}
+            isLoading={isLoading}
+            isResending={isResending}
+            onVerify={onVerify}
+            onResendCode={handleResendCode}
+            onBack={handleBack}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  // Mobile layout
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <KeyboardAvoidingView
@@ -129,6 +179,7 @@ const TwoFactorScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  // Mobile styles
   container: {
     flex: 1,
   },
@@ -148,6 +199,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
+  },
+  // Desktop styles
+  desktopContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  desktopCard: {
+    width: '100%',
+    maxWidth: 500,
+    borderRadius: 24,
+    padding: 48,
   },
 });
 

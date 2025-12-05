@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useInvitationValidation } from '../hooks/useInvitationValidation';
 import { useInvitationAcceptance } from '../hooks/useInvitationAcceptance';
 import { getStepSubtitle } from '../utils/invitationHelpers';
@@ -28,6 +29,7 @@ const AcceptInvitationScreen: React.FC = () => {
   const route = useRoute<AcceptInvitationScreenRouteProp>();
   const { showError } = useNotification();
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
 
   // Получаем токен из параметров (если пришли по deep link)
   const initialToken = route.params?.token || '';
@@ -98,6 +100,68 @@ const AcceptInvitationScreen: React.FC = () => {
     navigation.navigate('Login');
   };
 
+  // Desktop layout
+  if (isWideScreen) {
+    return (
+      <View style={[styles.desktopContainer, { backgroundColor: theme.background }]}>
+        <View
+          style={[
+            styles.desktopCard,
+            {
+              backgroundColor: theme.card,
+              ...Platform.select({
+                web: {
+                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+                },
+                default: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 30,
+                  elevation: 20,
+                },
+              }),
+            },
+          ]}
+        >
+          <Animated.View style={{ opacity: fadeAnim }}>
+            {/* Header */}
+            <InvitationHeader subtitle={getStepSubtitle(step)} />
+
+            {/* Step Content */}
+            {step === 'success' ? (
+              <InvitationSuccessStep onNavigateToLogin={handleNavigateToLogin} />
+            ) : step === 'enter_code' ? (
+              <InvitationCodeStep
+                code={invitationCode}
+                isLoading={isLoading}
+                onCodeChange={setInvitationCode}
+                onContinue={handleValidateCode}
+                onNavigateToLogin={handleNavigateToLogin}
+              />
+            ) : (
+              <InvitationPasswordStep
+                invitationData={invitationData}
+                password={password}
+                confirmPassword={confirmPassword}
+                showPassword={showPassword}
+                showConfirmPassword={showConfirmPassword}
+                isLoading={isLoading}
+                onPasswordChange={setPassword}
+                onConfirmPasswordChange={setConfirmPassword}
+                onTogglePassword={() => setShowPassword(!showPassword)}
+                onToggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                onAccept={handleAcceptInvitation}
+                onBack={handleBack}
+              />
+            )}
+          </Animated.View>
+        </View>
+      </View>
+    );
+  }
+
+  // Mobile layout
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -139,6 +203,7 @@ const AcceptInvitationScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  // Mobile styles
   container: {
     flex: 1,
   },
@@ -151,6 +216,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
+  },
+  // Desktop styles
+  desktopContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  desktopCard: {
+    width: '100%',
+    maxWidth: 550,
+    borderRadius: 24,
+    padding: 48,
   },
 });
 
