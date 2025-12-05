@@ -98,7 +98,7 @@ export const getUserById = async (id: number): Promise<User> => {
 // ============= User Management (Admin) =============
 
 /**
- * Get list of users with filters and pagination
+ * Get list of users with filters and pagination (Admin only)
  */
 export const getUsers = async (
   filters?: UserListFilters,
@@ -111,7 +111,7 @@ export const getUsers = async (
   };
 
   const response = await api.get<ApiResponse<PaginatedResponse<User>>>(
-    API_ENDPOINTS.USER.LIST,
+    API_ENDPOINTS.USER.ADMIN_LIST,
     { params }
   );
 
@@ -139,10 +139,10 @@ export const getUsers = async (
 };
 
 /**
- * Get single user by ID (Admin)
+ * Get single user by ID (Admin only)
  */
 export const getUser = async (id: number): Promise<User> => {
-  const response = await api.get<ApiResponse<User>>(API_ENDPOINTS.USER.BY_ID(id));
+  const response = await api.get<ApiResponse<User>>(API_ENDPOINTS.USER.ADMIN_BY_ID(id));
 
   if (response.data.data) {
     return response.data.data;
@@ -159,7 +159,7 @@ export const getUser = async (id: number): Promise<User> => {
  * Create new user (Admin only)
  */
 export const createUser = async (data: CreateUserDto): Promise<User> => {
-  const response = await api.post<ApiResponse<User>>(API_ENDPOINTS.USER.CREATE, data);
+  const response = await api.post<ApiResponse<User>>(API_ENDPOINTS.USER.ADMIN_CREATE, data);
   return response.data.data;
 };
 
@@ -167,7 +167,7 @@ export const createUser = async (data: CreateUserDto): Promise<User> => {
  * Update user (Admin only)
  */
 export const updateUser = async (id: number, data: UpdateUserDto): Promise<User> => {
-  const response = await api.put<ApiResponse<User>>(API_ENDPOINTS.USER.UPDATE(id), data);
+  const response = await api.put<ApiResponse<User>>(API_ENDPOINTS.USER.ADMIN_UPDATE(id), data);
 
   // Try different response structures
   if (response.data.data) {
@@ -203,7 +203,65 @@ export const updateUserRole = async (id: number, role: string): Promise<User> =>
  * Delete user (Admin only)
  */
 export const deleteUser = async (id: number): Promise<void> => {
-  await api.delete(API_ENDPOINTS.USER.DELETE(id));
+  await api.delete(API_ENDPOINTS.USER.ADMIN_DELETE(id));
+};
+
+/**
+ * Activate user (Admin only)
+ */
+export const activateUser = async (id: number): Promise<User> => {
+  const response = await api.put<ApiResponse<User>>(
+    API_ENDPOINTS.USER.ACTIVATE(id),
+    {},
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.user) {
+    return response.data.user;
+  } else if (response.data.id) {
+    return response.data as User;
+  } else {
+    return response.data as any;
+  }
+};
+
+/**
+ * Deactivate user (Admin only)
+ */
+export const deactivateUser = async (id: number): Promise<User> => {
+  const response = await api.put<ApiResponse<User>>(
+    API_ENDPOINTS.USER.DEACTIVATE(id),
+    {},
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.user) {
+    return response.data.user;
+  } else if (response.data.id) {
+    return response.data as User;
+  } else {
+    return response.data as any;
+  }
+};
+
+/**
+ * Get users statistics (Admin only)
+ */
+export const getUsersStats = async (): Promise<any> => {
+  const response = await api.get<ApiResponse<any>>(API_ENDPOINTS.USER.ADMIN_STATS);
+  return response.data.data || response.data;
 };
 
 // ============= Department Operations =============

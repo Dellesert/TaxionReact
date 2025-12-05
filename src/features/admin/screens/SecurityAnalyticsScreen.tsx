@@ -141,46 +141,89 @@ const SecurityAnalyticsScreen: React.FC = () => {
       padding: 16,
       paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 120 : 32,
     },
+    contentWrapper: {
+      maxWidth: 1400,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    sectionHeader: {
+      marginBottom: 20,
+    },
+    sectionHeaderTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+      letterSpacing: -0.4,
+    },
+    sectionHeaderDescription: {
+      fontSize: 15,
+      color: theme.textSecondary,
+      lineHeight: 22,
+    },
     periodSelector: {
       flexDirection: 'row',
-      gap: 8,
-      marginBottom: 20,
+      gap: 10,
+      marginBottom: 24,
+      padding: 4,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      borderRadius: 12,
     },
     periodButton: {
       flex: 1,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 8,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 10,
       alignItems: 'center',
     },
     periodButtonActive: {
       backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 2,
     },
     periodButtonText: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: theme.textSecondary,
     },
     periodButtonTextActive: {
       color: '#FFFFFF',
+      fontWeight: '700',
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginHorizontal: -8,
+      marginBottom: 24,
+    },
+    statsCardWrapper: {
+      width: '100%',
+      maxWidth: '50%',
+      paddingHorizontal: 8,
+      marginBottom: 16,
     },
     statsCard: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 16,
+      borderRadius: 20,
+      padding: 20,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.2 : 0.08,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      height: '100%',
     },
     statsTitle: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: '700',
       color: theme.text,
       marginBottom: 16,
+      letterSpacing: -0.3,
     },
     statsRow: {
       flexDirection: 'row',
@@ -188,41 +231,52 @@ const SecurityAnalyticsScreen: React.FC = () => {
     },
     statBox: {
       flex: 1,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-      borderRadius: 12,
-      padding: 12,
       alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 12,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     },
     statValue: {
-      fontSize: 28,
+      fontSize: 32,
       fontWeight: 'bold',
       color: theme.text,
       marginBottom: 4,
     },
     statLabel: {
-      fontSize: 11,
-      color: theme.textTertiary,
+      fontSize: 12,
+      color: theme.textSecondary,
       textAlign: 'center',
     },
     sectionTitle: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: '700',
       color: theme.text,
-      marginBottom: 12,
+      marginBottom: 16,
+      letterSpacing: -0.3,
     },
     activityList: {
-      gap: 12,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginHorizontal: -8,
+    },
+    activityCardWrapper: {
+      width: '100%',
+      maxWidth: '50%',
+      paddingHorizontal: 8,
+      marginBottom: 16,
     },
     activityCard: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: 16,
+      padding: 20,
       borderLeftWidth: 4,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: isDark ? 0.2 : 0.05,
-      shadowRadius: 2,
-      elevation: 1,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.2 : 0.08,
+      shadowRadius: 6,
+      elevation: 2,
+      height: '100%',
     },
     activityHeader: {
       flexDirection: 'row',
@@ -237,26 +291,27 @@ const SecurityAnalyticsScreen: React.FC = () => {
       flex: 1,
     },
     activityType: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: 16,
+      fontWeight: '700',
       color: theme.text,
       flex: 1,
+      letterSpacing: -0.2,
     },
     severityBadge: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
     },
     severityText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '700',
       color: '#FFFFFF',
     },
     activityDescription: {
-      fontSize: 14,
+      fontSize: 15,
       color: theme.textSecondary,
       marginBottom: 12,
-      lineHeight: 20,
+      lineHeight: 22,
     },
     activityMeta: {
       flexDirection: 'row',
@@ -308,19 +363,38 @@ const SecurityAnalyticsScreen: React.FC = () => {
     },
     emptyState: {
       alignItems: 'center',
-      paddingVertical: 60,
+      paddingVertical: 80,
+      paddingHorizontal: 40,
+    },
+    emptyStateIcon: {
+      marginBottom: 16,
+      opacity: 0.3,
     },
     emptyStateText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    emptyStateSubtext: {
       fontSize: 14,
       color: theme.textSecondary,
       textAlign: 'center',
-      marginTop: 8,
+      lineHeight: 20,
     },
     ipListCard: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 16,
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
     },
     ipItem: {
       flexDirection: 'row',
@@ -334,13 +408,13 @@ const SecurityAnalyticsScreen: React.FC = () => {
       borderBottomWidth: 0,
     },
     ipAddress: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: theme.text,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
     ipCount: {
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: 'bold',
       color: '#EF4444',
     },
@@ -385,8 +459,17 @@ const SecurityAnalyticsScreen: React.FC = () => {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        {/* Period Selector */}
-        <View style={dynamicStyles.periodSelector}>
+        <View style={dynamicStyles.contentWrapper}>
+          {/* Section Header */}
+          <View style={dynamicStyles.sectionHeader}>
+            <Text style={dynamicStyles.sectionHeaderTitle}>Безопасность</Text>
+            <Text style={dynamicStyles.sectionHeaderDescription}>
+              Мониторинг безопасности и подозрительной активности
+            </Text>
+          </View>
+
+          {/* Period Selector */}
+          <View style={dynamicStyles.periodSelector}>
           {periods.map((period) => (
             <TouchableOpacity
               key={period.key}
@@ -410,46 +493,53 @@ const SecurityAnalyticsScreen: React.FC = () => {
 
         {securityData ? (
           <>
-            {/* Login Statistics */}
-            <View style={dynamicStyles.statsCard}>
-              <Text style={dynamicStyles.statsTitle}>Статистика входов</Text>
-              <View style={dynamicStyles.statsRow}>
-                <View style={dynamicStyles.statBox}>
-                  <Text style={[dynamicStyles.statValue, { color: '#10B981' }]}>
-                    {securityData.login_stats?.successful || 0}
-                  </Text>
-                  <Text style={dynamicStyles.statLabel}>Успешных</Text>
-                </View>
-                <View style={dynamicStyles.statBox}>
-                  <Text style={[dynamicStyles.statValue, { color: '#EF4444' }]}>
-                    {securityData.login_stats?.failed || 0}
-                  </Text>
-                  <Text style={dynamicStyles.statLabel}>Неудачных</Text>
-                </View>
-                <View style={dynamicStyles.statBox}>
-                  <Text style={dynamicStyles.statValue}>
-                    {(securityData.login_stats?.success_rate || 0).toFixed(0)}%
-                  </Text>
-                  <Text style={dynamicStyles.statLabel}>Успешность</Text>
+            {/* Stats Grid */}
+            <View style={dynamicStyles.statsGrid}>
+              {/* Login Statistics */}
+              <View style={dynamicStyles.statsCardWrapper}>
+                <View style={dynamicStyles.statsCard}>
+                  <Text style={dynamicStyles.statsTitle}>Статистика входов</Text>
+                  <View style={dynamicStyles.statsRow}>
+                    <View style={dynamicStyles.statBox}>
+                      <Text style={[dynamicStyles.statValue, { color: '#10B981' }]}>
+                        {securityData.login_stats?.successful || 0}
+                      </Text>
+                      <Text style={dynamicStyles.statLabel}>Успешных</Text>
+                    </View>
+                    <View style={dynamicStyles.statBox}>
+                      <Text style={[dynamicStyles.statValue, { color: '#EF4444' }]}>
+                        {securityData.login_stats?.failed || 0}
+                      </Text>
+                      <Text style={dynamicStyles.statLabel}>Неудачных</Text>
+                    </View>
+                    <View style={dynamicStyles.statBox}>
+                      <Text style={dynamicStyles.statValue}>
+                        {(securityData.login_stats?.success_rate || 0).toFixed(0)}%
+                      </Text>
+                      <Text style={dynamicStyles.statLabel}>Успешность</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {/* Security Overview */}
-            <View style={dynamicStyles.statsCard}>
-              <Text style={dynamicStyles.statsTitle}>Обзор безопасности</Text>
-              <View style={dynamicStyles.statsRow}>
-                <View style={dynamicStyles.statBox}>
-                  <Text style={[dynamicStyles.statValue, { color: '#EF4444' }]}>
-                    {securityData.unresolved_activities_count || 0}
-                  </Text>
-                  <Text style={dynamicStyles.statLabel}>Не решено</Text>
-                </View>
-                <View style={dynamicStyles.statBox}>
-                  <Text style={[dynamicStyles.statValue, { color: '#10B981' }]}>
-                    {securityData.active_sessions_count || 0}
-                  </Text>
-                  <Text style={dynamicStyles.statLabel}>Активных сессий</Text>
+              {/* Security Overview */}
+              <View style={dynamicStyles.statsCardWrapper}>
+                <View style={dynamicStyles.statsCard}>
+                  <Text style={dynamicStyles.statsTitle}>Обзор безопасности</Text>
+                  <View style={dynamicStyles.statsRow}>
+                    <View style={dynamicStyles.statBox}>
+                      <Text style={[dynamicStyles.statValue, { color: '#EF4444' }]}>
+                        {securityData.unresolved_activities_count || 0}
+                      </Text>
+                      <Text style={dynamicStyles.statLabel}>Не решено</Text>
+                    </View>
+                    <View style={dynamicStyles.statBox}>
+                      <Text style={[dynamicStyles.statValue, { color: '#10B981' }]}>
+                        {securityData.active_sessions_count || 0}
+                      </Text>
+                      <Text style={dynamicStyles.statLabel}>Активных сессий</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
             </View>
@@ -481,8 +571,8 @@ const SecurityAnalyticsScreen: React.FC = () => {
                 <Text style={dynamicStyles.sectionTitle}>Подозрительная активность</Text>
                 <View style={dynamicStyles.activityList}>
                   {securityData.suspicious_activities.map((activity) => (
+                    <View key={activity.id} style={dynamicStyles.activityCardWrapper}>
                     <View
-                      key={activity.id}
                       style={[
                         dynamicStyles.activityCard,
                         { borderLeftColor: getSeverityColor(activity.severity) },
@@ -538,6 +628,7 @@ const SecurityAnalyticsScreen: React.FC = () => {
                         </View>
                       )}
                     </View>
+                    </View>
                   ))}
                 </View>
               </>
@@ -545,19 +636,36 @@ const SecurityAnalyticsScreen: React.FC = () => {
 
             {(!securityData.suspicious_activities || securityData.suspicious_activities.length === 0) && (
               <View style={dynamicStyles.emptyState}>
-                <Ionicons name="shield-checkmark-outline" size={64} color={theme.textTertiary} />
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={80}
+                  color={theme.textTertiary}
+                  style={dynamicStyles.emptyStateIcon}
+                />
                 <Text style={dynamicStyles.emptyStateText}>
                   Подозрительная активность не обнаружена
+                </Text>
+                <Text style={dynamicStyles.emptyStateSubtext}>
+                  Система не выявила потенциальных угроз безопасности за выбранный период
                 </Text>
               </View>
             )}
           </>
         ) : (
           <View style={dynamicStyles.emptyState}>
-            <Ionicons name="shield-outline" size={64} color={theme.textTertiary} />
+            <Ionicons
+              name="shield-outline"
+              size={80}
+              color={theme.textTertiary}
+              style={dynamicStyles.emptyStateIcon}
+            />
             <Text style={dynamicStyles.emptyStateText}>Нет данных для отображения</Text>
+            <Text style={dynamicStyles.emptyStateSubtext}>
+              Данные безопасности временно недоступны
+            </Text>
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );

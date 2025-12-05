@@ -12,6 +12,7 @@ interface AdminContentAreaProps {
   description?: string;
   children: React.ReactNode;
   scrollable?: boolean;
+  headerActions?: React.ReactNode;
 }
 
 export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
@@ -19,6 +20,7 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
   description,
   children,
   scrollable = true,
+  headerActions,
 }) => {
   const { theme, isDark } = useTheme();
 
@@ -35,6 +37,15 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
       borderBottomColor: theme.border,
       backgroundColor: isDark ? theme.card : '#FAFAFA',
     },
+    headerTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: description ? 6 : 0,
+    },
+    headerText: {
+      flex: 1,
+    },
     title: {
       fontSize: 28,
       fontWeight: '700',
@@ -46,6 +57,9 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
       fontSize: 15,
       color: theme.textSecondary,
       lineHeight: 22,
+    },
+    headerActionsContainer: {
+      marginTop: 20,
     },
     content: {
       flex: 1,
@@ -62,9 +76,16 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
     <View style={dynamicStyles.container}>
       {/* Header */}
       <View style={dynamicStyles.header}>
-        <Text style={dynamicStyles.title}>{title}</Text>
-        {description && (
-          <Text style={dynamicStyles.description}>{description}</Text>
+        <View style={dynamicStyles.headerText}>
+          <Text style={dynamicStyles.title}>{title}</Text>
+          {description && (
+            <Text style={dynamicStyles.description}>{description}</Text>
+          )}
+        </View>
+        {headerActions && (
+          <View style={dynamicStyles.headerActionsContainer}>
+            {headerActions}
+          </View>
         )}
       </View>
 

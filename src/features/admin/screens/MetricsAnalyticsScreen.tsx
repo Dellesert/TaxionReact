@@ -100,6 +100,11 @@ const MetricsAnalyticsScreen: React.FC = () => {
       padding: 16,
       paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 120 : 32,
     },
+    contentWrapper: {
+      maxWidth: 1200,
+      width: '100%',
+      alignSelf: 'center',
+    },
     periodSelector: {
       flexDirection: 'row',
       gap: 8,
@@ -127,11 +132,15 @@ const MetricsAnalyticsScreen: React.FC = () => {
     metricsGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 12,
+      marginHorizontal: -8,
     },
     metricCard: {
-      flex: 1,
-      minWidth: '47%',
+      width: '50%',
+      maxWidth: 400,
+      paddingHorizontal: 8,
+      marginBottom: 16,
+    },
+    metricCardInner: {
       backgroundColor: theme.backgroundSecondary,
       borderRadius: 12,
       padding: 16,
@@ -140,6 +149,7 @@ const MetricsAnalyticsScreen: React.FC = () => {
       shadowOpacity: isDark ? 0.2 : 0.08,
       shadowRadius: 4,
       elevation: 2,
+      height: '100%',
     },
     metricHeader: {
       marginBottom: 12,
@@ -245,8 +255,9 @@ const MetricsAnalyticsScreen: React.FC = () => {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        {/* Period Selector */}
-        <View style={dynamicStyles.periodSelector}>
+        <View style={dynamicStyles.contentWrapper}>
+          {/* Period Selector */}
+          <View style={dynamicStyles.periodSelector}>
           {periods.map((period) => (
             <TouchableOpacity
               key={period.key}
@@ -272,149 +283,163 @@ const MetricsAnalyticsScreen: React.FC = () => {
           <View style={dynamicStyles.metricsGrid}>
             {/* Active Users */}
             <View style={dynamicStyles.metricCard}>
-              <View style={dynamicStyles.metricHeader}>
-                <View style={[dynamicStyles.metricIcon, { backgroundColor: '#3B82F6' }]}>
-                  <Ionicons name="people" size={20} color="#FFFFFF" />
+              <View style={dynamicStyles.metricCardInner}>
+                <View style={dynamicStyles.metricHeader}>
+                  <View style={[dynamicStyles.metricIcon, { backgroundColor: '#3B82F6' }]}>
+                    <Ionicons name="people" size={20} color="#FFFFFF" />
+                  </View>
                 </View>
-              </View>
-              <Text style={dynamicStyles.metricLabel}>Активные пользователи</Text>
-              <Text style={dynamicStyles.metricValue}>
-                {getPeriodValue(dashboardData.stats.active_users, selectedPeriod)}
-              </Text>
-              {dashboardData.stats.active_users.growth_percent !== undefined && (
-                <Text
-                  style={[
-                    dynamicStyles.metricSubtext,
-                    dashboardData.stats.active_users.growth_percent > 0
-                      ? dynamicStyles.growthPositive
-                      : dynamicStyles.growthNegative,
-                  ]}
-                >
-                  {dashboardData.stats.active_users.growth_percent > 0 ? '↑' : '↓'}{' '}
-                  {Math.abs(dashboardData.stats.active_users.growth_percent || 0).toFixed(1)}%
+                <Text style={dynamicStyles.metricLabel}>Активные пользователи</Text>
+                <Text style={dynamicStyles.metricValue}>
+                  {getPeriodValue(dashboardData.stats.active_users, selectedPeriod)}
                 </Text>
-              )}
+                {dashboardData.stats.active_users.growth_percent !== undefined && (
+                  <Text
+                    style={[
+                      dynamicStyles.metricSubtext,
+                      dashboardData.stats.active_users.growth_percent > 0
+                        ? dynamicStyles.growthPositive
+                        : dynamicStyles.growthNegative,
+                    ]}
+                  >
+                    {dashboardData.stats.active_users.growth_percent > 0 ? '↑' : '↓'}{' '}
+                    {Math.abs(dashboardData.stats.active_users.growth_percent || 0).toFixed(1)}%
+                  </Text>
+                )}
+              </View>
             </View>
 
             {/* Messages */}
             <View style={dynamicStyles.metricCard}>
-              <View style={dynamicStyles.metricHeader}>
-                <View style={[dynamicStyles.metricIcon, { backgroundColor: '#8B5CF6' }]}>
-                  <Ionicons name="chatbubbles" size={20} color="#FFFFFF" />
+              <View style={dynamicStyles.metricCardInner}>
+                <View style={dynamicStyles.metricHeader}>
+                  <View style={[dynamicStyles.metricIcon, { backgroundColor: '#8B5CF6' }]}>
+                    <Ionicons name="chatbubbles" size={20} color="#FFFFFF" />
+                  </View>
                 </View>
+                <Text style={dynamicStyles.metricLabel}>Сообщения</Text>
+                <Text style={dynamicStyles.metricValue}>
+                  {getPeriodValue(dashboardData.stats.messages, selectedPeriod)}
+                </Text>
               </View>
-              <Text style={dynamicStyles.metricLabel}>Сообщения</Text>
-              <Text style={dynamicStyles.metricValue}>
-                {getPeriodValue(dashboardData.stats.messages, selectedPeriod)}
-              </Text>
             </View>
 
             {/* Tasks */}
             <View style={dynamicStyles.metricCard}>
-              <View style={dynamicStyles.metricHeader}>
-                <View style={[dynamicStyles.metricIcon, { backgroundColor: '#10B981' }]}>
-                  <Ionicons name="checkbox" size={20} color="#FFFFFF" />
+              <View style={dynamicStyles.metricCardInner}>
+                <View style={dynamicStyles.metricHeader}>
+                  <View style={[dynamicStyles.metricIcon, { backgroundColor: '#10B981' }]}>
+                    <Ionicons name="checkbox" size={20} color="#FFFFFF" />
+                  </View>
                 </View>
-              </View>
-              <Text style={dynamicStyles.metricLabel}>Задачи</Text>
-              <Text style={dynamicStyles.metricValue}>
-                {dashboardData.stats.tasks.completed || 0}/{dashboardData.stats.tasks.created || 0}
-              </Text>
-              <Text style={dynamicStyles.metricSubtext}>
-                {(dashboardData.stats.tasks.completion_rate || 0).toFixed(0)}% завершено
-              </Text>
-              <View style={dynamicStyles.progressBar}>
-                <View
-                  style={[
-                    dynamicStyles.progressFill,
-                    {
-                      width: `${dashboardData.stats.tasks.completion_rate || 0}%`,
-                      backgroundColor: '#10B981',
-                    },
-                  ]}
-                />
+                <Text style={dynamicStyles.metricLabel}>Задачи</Text>
+                <Text style={dynamicStyles.metricValue}>
+                  {dashboardData.stats.tasks.completed || 0}/{dashboardData.stats.tasks.created || 0}
+                </Text>
+                <Text style={dynamicStyles.metricSubtext}>
+                  {(dashboardData.stats.tasks.completion_rate || 0).toFixed(0)}% завершено
+                </Text>
+                <View style={dynamicStyles.progressBar}>
+                  <View
+                    style={[
+                      dynamicStyles.progressFill,
+                      {
+                        width: `${dashboardData.stats.tasks.completion_rate || 0}%`,
+                        backgroundColor: '#10B981',
+                      },
+                    ]}
+                  />
+                </View>
               </View>
             </View>
 
             {/* Storage */}
             <View style={dynamicStyles.metricCard}>
-              <View style={dynamicStyles.metricHeader}>
-                <View style={[dynamicStyles.metricIcon, { backgroundColor: '#F59E0B' }]}>
-                  <Ionicons name="server" size={20} color="#FFFFFF" />
+              <View style={dynamicStyles.metricCardInner}>
+                <View style={dynamicStyles.metricHeader}>
+                  <View style={[dynamicStyles.metricIcon, { backgroundColor: '#F59E0B' }]}>
+                    <Ionicons name="server" size={20} color="#FFFFFF" />
+                  </View>
                 </View>
-              </View>
-              <Text style={dynamicStyles.metricLabel}>Хранилище</Text>
-              <Text style={dynamicStyles.metricValue}>
-                {(dashboardData.stats.files.storage_used || 0).toFixed(0)}%
-              </Text>
-              <Text style={dynamicStyles.metricSubtext}>
-                {formatBytes(dashboardData.stats.files.total_size || 0)}
-              </Text>
-              <View style={dynamicStyles.progressBar}>
-                <View
-                  style={[
-                    dynamicStyles.progressFill,
-                    {
-                      width: `${dashboardData.stats.files.storage_used || 0}%`,
-                      backgroundColor: '#F59E0B',
-                    },
-                  ]}
-                />
+                <Text style={dynamicStyles.metricLabel}>Хранилище</Text>
+                <Text style={dynamicStyles.metricValue}>
+                  {(dashboardData.stats.files.storage_used || 0).toFixed(0)}%
+                </Text>
+                <Text style={dynamicStyles.metricSubtext}>
+                  {formatBytes(dashboardData.stats.files.total_size || 0)}
+                </Text>
+                <View style={dynamicStyles.progressBar}>
+                  <View
+                    style={[
+                      dynamicStyles.progressFill,
+                      {
+                        width: `${dashboardData.stats.files.storage_used || 0}%`,
+                        backgroundColor: '#F59E0B',
+                      },
+                    ]}
+                  />
+                </View>
               </View>
             </View>
 
             {/* Calendar Events */}
             <View style={dynamicStyles.metricCard}>
-              <View style={dynamicStyles.metricHeader}>
-                <View style={[dynamicStyles.metricIcon, { backgroundColor: '#EC4899' }]}>
-                  <Ionicons name="calendar" size={20} color="#FFFFFF" />
+              <View style={dynamicStyles.metricCardInner}>
+                <View style={dynamicStyles.metricHeader}>
+                  <View style={[dynamicStyles.metricIcon, { backgroundColor: '#EC4899' }]}>
+                    <Ionicons name="calendar" size={20} color="#FFFFFF" />
+                  </View>
                 </View>
+                <Text style={dynamicStyles.metricLabel}>События календаря</Text>
+                <Text style={dynamicStyles.metricValue}>
+                  {getPeriodValue(dashboardData.stats.calendar, selectedPeriod)}
+                </Text>
               </View>
-              <Text style={dynamicStyles.metricLabel}>События календаря</Text>
-              <Text style={dynamicStyles.metricValue}>
-                {getPeriodValue(dashboardData.stats.calendar, selectedPeriod)}
-              </Text>
             </View>
 
             {/* Polls */}
             <View style={dynamicStyles.metricCard}>
-              <View style={dynamicStyles.metricHeader}>
-                <View style={[dynamicStyles.metricIcon, { backgroundColor: '#06B6D4' }]}>
-                  <Ionicons name="pie-chart" size={20} color="#FFFFFF" />
+              <View style={dynamicStyles.metricCardInner}>
+                <View style={dynamicStyles.metricHeader}>
+                  <View style={[dynamicStyles.metricIcon, { backgroundColor: '#06B6D4' }]}>
+                    <Ionicons name="pie-chart" size={20} color="#FFFFFF" />
+                  </View>
                 </View>
+                <Text style={dynamicStyles.metricLabel}>Опросы</Text>
+                <Text style={dynamicStyles.metricValue}>
+                  {getPeriodValue(dashboardData.stats.polls, selectedPeriod)}
+                </Text>
               </View>
-              <Text style={dynamicStyles.metricLabel}>Опросы</Text>
-              <Text style={dynamicStyles.metricValue}>
-                {getPeriodValue(dashboardData.stats.polls, selectedPeriod)}
-              </Text>
             </View>
 
             {/* Task Stats Details */}
-            <View style={[dynamicStyles.metricCard, { minWidth: '100%' }]}>
-              <View style={dynamicStyles.metricHeader}>
-                <View style={[dynamicStyles.metricIcon, { backgroundColor: '#6366F1' }]}>
-                  <Ionicons name="stats-chart" size={20} color="#FFFFFF" />
+            <View style={[dynamicStyles.metricCard, { width: '100%', maxWidth: '100%' }]}>
+              <View style={dynamicStyles.metricCardInner}>
+                <View style={dynamicStyles.metricHeader}>
+                  <View style={[dynamicStyles.metricIcon, { backgroundColor: '#6366F1' }]}>
+                    <Ionicons name="stats-chart" size={20} color="#FFFFFF" />
+                  </View>
                 </View>
-              </View>
-              <Text style={dynamicStyles.metricLabel}>Детальная статистика задач</Text>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
-                <View>
-                  <Text style={[dynamicStyles.metricValue, { fontSize: 20 }]}>
-                    {dashboardData.stats.tasks.in_progress || 0}
-                  </Text>
-                  <Text style={dynamicStyles.metricSubtext}>В работе</Text>
-                </View>
-                <View>
-                  <Text style={[dynamicStyles.metricValue, { fontSize: 20, color: '#EF4444' }]}>
-                    {dashboardData.stats.tasks.overdue || 0}
-                  </Text>
-                  <Text style={dynamicStyles.metricSubtext}>Просрочено</Text>
-                </View>
-                <View>
-                  <Text style={[dynamicStyles.metricValue, { fontSize: 20, color: '#10B981' }]}>
-                    {(dashboardData.stats.tasks.completion_rate || 0).toFixed(0)}%
-                  </Text>
-                  <Text style={dynamicStyles.metricSubtext}>Выполнение</Text>
+                <Text style={dynamicStyles.metricLabel}>Детальная статистика задач</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                  <View>
+                    <Text style={[dynamicStyles.metricValue, { fontSize: 20 }]}>
+                      {dashboardData.stats.tasks.in_progress || 0}
+                    </Text>
+                    <Text style={dynamicStyles.metricSubtext}>В работе</Text>
+                  </View>
+                  <View>
+                    <Text style={[dynamicStyles.metricValue, { fontSize: 20, color: '#EF4444' }]}>
+                      {dashboardData.stats.tasks.overdue || 0}
+                    </Text>
+                    <Text style={dynamicStyles.metricSubtext}>Просрочено</Text>
+                  </View>
+                  <View>
+                    <Text style={[dynamicStyles.metricValue, { fontSize: 20, color: '#10B981' }]}>
+                      {(dashboardData.stats.tasks.completion_rate || 0).toFixed(0)}%
+                    </Text>
+                    <Text style={dynamicStyles.metricSubtext}>Выполнение</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -425,6 +450,7 @@ const MetricsAnalyticsScreen: React.FC = () => {
             <Text style={dynamicStyles.emptyStateText}>Нет данных для отображения</Text>
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );

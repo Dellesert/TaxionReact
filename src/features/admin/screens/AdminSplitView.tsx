@@ -35,26 +35,10 @@ export const AdminSplitView: React.FC = () => {
         );
 
       case 'departments':
-        return (
-          <AdminContentArea
-            title="Управление отделами"
-            description="Создание и редактирование структуры организации"
-            scrollable={false}
-          >
-            <DepartmentsDesktopContent />
-          </AdminContentArea>
-        );
+        return <DepartmentsDesktopContent />;
 
       case 'users':
-        return (
-          <AdminContentArea
-            title="Управление пользователями"
-            description="Добавление, редактирование и управление правами пользователей"
-            scrollable={false}
-          >
-            <UsersDesktopContent />
-          </AdminContentArea>
-        );
+        return <UsersDesktopContent />;
 
       default:
         return (

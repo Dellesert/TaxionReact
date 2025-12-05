@@ -57,16 +57,22 @@ const AnalyticsDesktopContent: React.FC = () => {
     container: {
       flex: 1,
     },
+    contentWrapper: {
+      maxWidth: 1200,
+      width: '100%',
+      alignSelf: 'center',
+    },
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       paddingBottom: 20,
-      marginHorizontal: -10,
+      marginHorizontal: -12,
     },
     cardWrapper: {
       width: '50%',
-      paddingHorizontal: 10,
-      marginBottom: 20,
+      maxWidth: 600,
+      paddingHorizontal: 12,
+      marginBottom: 24,
     },
     card: {
       backgroundColor: theme.backgroundSecondary,
@@ -144,32 +150,34 @@ const AnalyticsDesktopContent: React.FC = () => {
       style={dynamicStyles.container}
       showsVerticalScrollIndicator={false}
     >
-      <View style={dynamicStyles.grid}>
-        {sections.map((section) => (
-          <View key={section.id} style={dynamicStyles.cardWrapper}>
-            <TouchableOpacity
-              style={dynamicStyles.card}
-              onPress={() => handleNavigate(section.route)}
-              activeOpacity={0.8}
-            >
-              <View style={dynamicStyles.cardHeader}>
-                <View style={[dynamicStyles.iconContainer, { backgroundColor: section.color }]}>
-                  <Ionicons name={section.icon as any} size={32} color="#FFFFFF" />
+      <View style={dynamicStyles.contentWrapper}>
+        <View style={dynamicStyles.grid}>
+          {sections.map((section) => (
+            <View key={section.id} style={dynamicStyles.cardWrapper}>
+              <TouchableOpacity
+                style={dynamicStyles.card}
+                onPress={() => handleNavigate(section.route)}
+                activeOpacity={0.8}
+              >
+                <View style={dynamicStyles.cardHeader}>
+                  <View style={[dynamicStyles.iconContainer, { backgroundColor: section.color }]}>
+                    <Ionicons name={section.icon as any} size={32} color="#FFFFFF" />
+                  </View>
+                  <View style={dynamicStyles.cardContent}>
+                    <Text style={dynamicStyles.cardTitle}>{section.title}</Text>
+                    <Text style={dynamicStyles.cardSubtitle}>{section.subtitle}</Text>
+                  </View>
                 </View>
-                <View style={dynamicStyles.cardContent}>
-                  <Text style={dynamicStyles.cardTitle}>{section.title}</Text>
-                  <Text style={dynamicStyles.cardSubtitle}>{section.subtitle}</Text>
+                <View style={dynamicStyles.cardFooter}>
+                  <View style={dynamicStyles.actionButton}>
+                    <Text style={dynamicStyles.actionButtonText}>Открыть</Text>
+                    <Ionicons name="arrow-forward" size={16} color={theme.primary} />
+                  </View>
                 </View>
-              </View>
-              <View style={dynamicStyles.cardFooter}>
-                <View style={dynamicStyles.actionButton}>
-                  <Text style={dynamicStyles.actionButtonText}>Открыть</Text>
-                  <Ionicons name="arrow-forward" size={16} color={theme.primary} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-        ))}
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
       </View>
     </ScrollView>
   );

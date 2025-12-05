@@ -50,7 +50,6 @@ const EditDepartmentScreen: React.FC = () => {
 
       // Load department details
       const dept = await userApi.getDepartment(departmentId);
-      setDepartment(dept);
       setName(dept.name);
       setHeadId(dept.head_id);
 

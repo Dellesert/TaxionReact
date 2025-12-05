@@ -9,7 +9,6 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -21,7 +20,7 @@ import { Department } from '@/types/user.types';
 
 const DepartmentsScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
@@ -35,7 +34,7 @@ const DepartmentsScreen: React.FC = () => {
   // Check admin access
   if (user?.role !== 'admin' && user?.role !== 'super_admin') {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.noAccessContainer}>
           <Ionicons name="lock-closed" size={64} color="#EF4444" />
           <Text style={styles.noAccessTitle}>Нет доступа</Text>
@@ -43,7 +42,7 @@ const DepartmentsScreen: React.FC = () => {
             Только администраторы могут управлять отделами
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -120,24 +119,50 @@ const DepartmentsScreen: React.FC = () => {
     dept.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Profile' as any)}>
-            <Ionicons name="arrow-back" size={24} color={theme.primary} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Управление отделами</Text>
-          <View style={styles.addButton}>
-            <TouchableOpacity onPress={() => setShowCreateModal(true)}>
-              <Ionicons name="add" size={28} color={theme.primary} />
-            </TouchableOpacity>
-          </View>
-        </View>
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? theme.background : '#F3F4F6',
+    },
+    departmentCard: {
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.2 : 0.08,
+      shadowRadius: 6,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+    },
+    departmentName: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 6,
+      letterSpacing: -0.3,
+    },
+    departmentDescription: {
+      fontSize: 15,
+      color: theme.textSecondary,
+      marginBottom: 8,
+      lineHeight: 22,
+    },
+    departmentMembers: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+  });
 
-        {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+  return (
+    <View style={[styles.safeArea, { backgroundColor: theme.card }]}>
+      <View style={[dynamicStyles.container]}>
+        {/* Search Bar with Create Button */}
+        <View style={[styles.searchContainer, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
           <Ionicons name="search" size={20} color={theme.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: theme.text }]}
@@ -146,9 +171,13 @@ const DepartmentsScreen: React.FC = () => {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          {searchQuery.length > 0 && (
+          {searchQuery.length > 0 ? (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
               <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => setShowCreateModal(true)} style={styles.createButton}>
+              <Ionicons name="add-circle" size={28} color={theme.primary} />
             </TouchableOpacity>
           )}
         </View>
@@ -208,13 +237,13 @@ const DepartmentsScreen: React.FC = () => {
         ) : (
           <ScrollView
             style={styles.content}
-            contentContainerStyle={{ paddingBottom: 120 }}
             showsVerticalScrollIndicator={false}
           >
-            {filteredDepartments.map((department) => (
-              <TouchableOpacity
+            <View style={styles.contentInner}>
+              {filteredDepartments.map((department) => (
+                <TouchableOpacity
                 key={department.id}
-                style={[styles.departmentCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                style={dynamicStyles.departmentCard}
                 onPress={() => {
                   (navigation as any).navigate('EditDepartment', { departmentId: department.id });
                 }}
@@ -222,34 +251,52 @@ const DepartmentsScreen: React.FC = () => {
               >
                 <View style={styles.departmentHeader}>
                   <View style={styles.departmentInfo}>
-                    <Text style={[styles.departmentName, { color: theme.text }]}>
-                      {department.name}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <Ionicons name="business" size={20} color={theme.primary} />
+                      <Text style={dynamicStyles.departmentName}>
+                        {department.name}
+                      </Text>
+                    </View>
                     {department.description && (
-                      <Text style={[styles.departmentDescription, { color: theme.textSecondary }]}>
+                      <Text style={dynamicStyles.departmentDescription}>
                         {department.description}
                       </Text>
                     )}
-                    <Text style={[styles.departmentMembers, { color: theme.textTertiary }]}>
-                      Сотрудников: {department.user_count || department.members_count || 0}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="people" size={16} color={theme.textSecondary} />
+                      <Text style={dynamicStyles.departmentMembers}>
+                        {department.user_count || department.members_count || 0} сотрудников
+                      </Text>
+                    </View>
                   </View>
-                  <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleDeleteDepartment(department);
-                    }}
-                  >
-                    <Ionicons name="trash" size={20} color="#EF4444" />
-                  </TouchableOpacity>
+                  <View style={{ gap: 8 }}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        (navigation as any).navigate('EditDepartment', { departmentId: department.id });
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={20} color={theme.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteDepartment(department);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </TouchableOpacity>
-            ))}
+              ))}
+            </View>
           </ScrollView>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -260,42 +307,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 0 : 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
-  },
-  addButton: {
-    width: 40,
-    alignItems: 'flex-end',
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
     borderBottomWidth: 1,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
   },
+  createButton: {
+    padding: 4,
+  },
   content: {
     flex: 1,
+  },
+  contentInner: {
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
     padding: 16,
   },
   centerContainer: {
@@ -307,35 +340,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 16,
   },
-  departmentCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-  },
   departmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   departmentInfo: {
     flex: 1,
-  },
-  departmentName: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  departmentDescription: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  departmentMembers: {
-    fontSize: 13,
+    marginRight: 12,
   },
   actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -351,21 +368,27 @@ const styles = StyleSheet.create({
   },
   modal: {
     width: '90%',
-    maxWidth: 400,
-    borderRadius: 16,
-    padding: 24,
+    maxWidth: 500,
+    borderRadius: 20,
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 20,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 24,
+    letterSpacing: -0.4,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   textArea: {
     borderWidth: 1,
@@ -382,13 +405,13 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
   modalButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   noAccessContainer: {
     flex: 1,

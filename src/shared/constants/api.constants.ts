@@ -43,22 +43,36 @@ export const API_ENDPOINTS = {
     PROFILE_BY_ID: (id: number) => `/profile/${id}`,
     UPDATE_PASSWORD: '/profile/password',
     UPDATE_STATUS: '/profile/status',
-    LIST: '/users/',
-    BY_ID: (id: number) => `/users/${id}/`,
-    CREATE: '/users/',
-    UPDATE: (id: number) => `/users/${id}/`,
-    DELETE: (id: number) => `/users/${id}/`,
+    // Admin endpoints
+    ADMIN_LIST: '/admin/users',
+    ADMIN_STATS: '/admin/users/stats',
+    ADMIN_BY_ID: (id: number) => `/admin/users/${id}`,
+    ADMIN_CREATE: '/admin/users',
+    ADMIN_UPDATE: (id: number) => `/admin/users/${id}`,
+    ADMIN_DELETE: (id: number) => `/admin/users/${id}`,
     UPDATE_ROLE: (id: number) => `/admin/users/${id}/role`,
+    UPDATE_USER_STATUS: (id: number) => `/admin/users/${id}/status`,
+    ACTIVATE: (id: number) => `/admin/users/${id}/activate`,
+    DEACTIVATE: (id: number) => `/admin/users/${id}/deactivate`,
   },
 
   // Department
   DEPARTMENT: {
-    LIST: '/departments/',
-    CREATE: '/departments/',
-    BY_ID: (id: number) => `/departments/${id}/`,
-    UPDATE: (id: number) => `/departments/${id}/`,
-    DELETE: (id: number) => `/departments/${id}/`,
-    USERS: (id: number) => `/departments/${id}/users/`,
+    LIST: '/admin/departments',
+    CREATE: '/admin/departments',
+    BY_ID: (id: number) => `/admin/departments/${id}`,
+    UPDATE: (id: number) => `/admin/departments/${id}`,
+    DELETE: (id: number) => `/admin/departments/${id}`,
+    USERS: (id: number) => `/admin/departments/${id}/users`,
+  },
+
+  // Subdepartment
+  SUBDEPARTMENT: {
+    LIST: '/admin/subdepartments',
+    CREATE: '/admin/subdepartments',
+    BY_ID: (id: number) => `/admin/subdepartments/${id}`,
+    UPDATE: (id: number) => `/admin/subdepartments/${id}`,
+    DELETE: (id: number) => `/admin/subdepartments/${id}`,
   },
 
   // Chat

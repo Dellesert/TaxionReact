@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { fileApi } from '@api/fileApi';
-import { getUser } from '@api/user.api';
+import { getUserById } from '@api/user.api';
 
 /**
  * Custom hook for managing task attachments
@@ -29,7 +29,7 @@ export const useTaskAttachments = (taskId: string) => {
         data.map(async (attachment) => {
           if (!attachment.uploaded_by && attachment.uploaded_by_user_id) {
             try {
-              const user = await getUser(attachment.uploaded_by_user_id);
+              const user = await getUserById(attachment.uploaded_by_user_id);
               return {
                 ...attachment,
                 uploaded_by: {

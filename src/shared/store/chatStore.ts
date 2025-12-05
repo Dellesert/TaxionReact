@@ -11,7 +11,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Chat, Message, TypingIndicator, MessageType } from '@/features/chat/types/chat.types';
 import * as chatApi from '@/features/chat/api/chat.api';
-import { getUser } from '@api/user.api';
+import { getUserById } from '@api/user.api';
 import { isMockMode, mockGetChats, mockGetMessages } from '@shared/utils/mockData';
 import { useAuthStore } from '@shared/store/authStore';
 import { useUserStore } from '@shared/store/userStore';
@@ -42,7 +42,7 @@ const getUserWithDedup = async (userId: number): Promise<any> => {
   }
 
   // Create new request
-  const request = getUser(userId)
+  const request = getUserById(userId)
     .then((user) => {
       cacheUser(user);
       inFlightUserRequests.delete(userId);

@@ -40,17 +40,13 @@ const UsersScreen: React.FC = () => {
     try {
       setIsLoading(true);
 
-      // Use server-side sorting and search for admin user management
-      // Show all users (active and inactive, all roles)
+      // Backend filters with search and sorting
       const filters: any = {
-        // No is_active filter - show both active and inactive users
-        // Backend search (debounced)
+        // Text search (backend now supports it)
         search: debouncedSearch || undefined,
-
         // Role filter (from UI dropdown)
         role: selectedRole !== 'all' ? selectedRole : undefined,
-
-        // Sorting: simple alphabetical order by name
+        // Sorting by name
         sort_by: 'name',
         sort_order: 'asc',
       };
@@ -116,31 +112,20 @@ const UsersScreen: React.FC = () => {
   };
 
   const handleChangeRole = (user: User) => {
-    const roles: UserRole[] = ['employee', 'department_head', 'admin'];
+    // Only allow changing between employee and department_head
+    const roles: UserRole[] = ['employee', 'department_head'];
 
-    // Super admin can change any role, including super_admin
-    if (currentUser?.role === 'super_admin') {
-      roles.push('super_admin');
-    }
-
-    const roleLabels = roles.map(role => getRoleLabel(role));
-
-    if (Platform.OS === 'web') {
-      // For web, show a simple dialog
-      const newRole = prompt(`Выберите новую роль для ${user.name}:\n${roleLabels.join(', ')}`, user.role);
-      if (newRole && roles.includes(newRole as UserRole)) {
-        updateUserRole(user, newRole as UserRole);
-      }
-    } else {
-      // For mobile, show modal with options
-      showOptions(
-        'Изменить роль',
-        roles.map(role => ({
-          text: getRoleLabel(role),
-          onPress: () => updateUserRole(user, role),
-        }))
-      );
-    }
+    // Use showOptions for all platforms (web and mobile)
+    showOptions(
+      'Изменить роль',
+      roles.map(role => ({
+        text: getRoleLabel(role),
+        onPress: () => updateUserRole(user, role),
+        icon: role === user.role ? 'checkmark-circle' : undefined,
+        style: role === user.role ? 'primary' : 'default',
+      })),
+      `Текущая роль: ${getRoleLabel(user.role)}`
+    );
   };
 
   const updateUserRole = async (user: User, newRole: UserRole) => {
@@ -155,33 +140,33 @@ const UsersScreen: React.FC = () => {
   };
 
   const handleToggleUserStatus = async (user: User) => {
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(`Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`);
-      if (!confirmed) return;
-    } else {
-      // For mobile, use showConfirm with await
-      const confirmed = await new Promise<boolean>((resolve) => {
-        showConfirm(
-          user.is_active ? 'Деактивировать пользователя' : 'Активировать пользователя',
-          `Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`,
-          () => resolve(true),
-          () => resolve(false),
-          {
-            confirmText: user.is_active ? 'Деактивировать' : 'Активировать',
-            cancelText: 'Отмена',
-            destructive: user.is_active,
-          }
-        );
-      });
-      if (!confirmed) return;
-    }
+    // Use showConfirm for all platforms (web and mobile)
+    const confirmed = await new Promise<boolean>((resolve) => {
+      showConfirm(
+        user.is_active ? 'Деактивировать пользователя' : 'Активировать пользователя',
+        `Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`,
+        () => resolve(true),
+        () => resolve(false),
+        {
+          confirmText: user.is_active ? 'Деактивировать' : 'Активировать',
+          cancelText: 'Отмена',
+          destructive: user.is_active,
+        }
+      );
+    });
+    if (!confirmed) return;
 
     try {
-      await userApi.updateUser(user.id, { is_active: !user.is_active });
+      if (user.is_active) {
+        await userApi.deactivateUser(user.id);
+      } else {
+        await userApi.activateUser(user.id);
+      }
       showSuccess(`Пользователь ${user.is_active ? 'деактивирован' : 'активирован'}`);
       loadUsers();
     } catch (error: any) {
-      showError('Не удалось изменить статус пользователя');
+      const errorMessage = error?.response?.data?.error || error?.message || 'Не удалось изменить статус пользователя';
+      showError(errorMessage);
     }
   };
 
@@ -287,18 +272,19 @@ const UsersScreen: React.FC = () => {
         ) : (
           <ScrollView
             style={styles.content}
-            contentContainerStyle={{ paddingBottom: 120 }}
             showsVerticalScrollIndicator={false}
           >
-            {filteredUsers.map((user) => (
-              <View
-                key={user.id}
-                style={[
-                  styles.userCard,
-                  { backgroundColor: theme.card, borderColor: theme.border },
-                  !user.is_active && { opacity: 0.6 },
-                ]}
-              >
+            <View style={styles.contentInner}>
+              <View style={styles.usersGrid}>
+                {filteredUsers.map((user) => (
+                  <View key={user.id} style={styles.userCardWrapper}>
+                    <View
+                      style={[
+                        styles.userCard,
+                        { backgroundColor: theme.card, borderColor: theme.border },
+                        !user.is_active && { opacity: 0.6 },
+                      ]}
+                    >
                 <View style={styles.userHeader}>
                   <Avatar imageUrl={user.avatar} name={user.name} size={48} />
                   <View style={styles.userInfo}>
@@ -330,26 +316,35 @@ const UsersScreen: React.FC = () => {
                   </View>
 
                   <View style={styles.userActions}>
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
-                      onPress={() => handleChangeRole(user)}
-                    >
-                      <Ionicons name="shield-outline" size={18} color={theme.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
-                      onPress={() => handleToggleUserStatus(user)}
-                    >
-                      <Ionicons
-                        name={user.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
-                        size={18}
-                        color={user.is_active ? '#EF4444' : '#10B981'}
-                      />
-                    </TouchableOpacity>
+                    {/* Only show role change button for employee and department_head */}
+                    {(user.role === 'employee' || user.role === 'department_head') && (
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
+                        onPress={() => handleChangeRole(user)}
+                      >
+                        <Ionicons name="shield-outline" size={18} color={theme.primary} />
+                      </TouchableOpacity>
+                    )}
+                    {/* Only show activate/deactivate button for employee and department_head */}
+                    {(user.role === 'employee' || user.role === 'department_head') && (
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
+                        onPress={() => handleToggleUserStatus(user)}
+                      >
+                        <Ionicons
+                          name={user.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
+                          size={18}
+                          color={user.is_active ? '#EF4444' : '#10B981'}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    </View>
                   </View>
                 </View>
+                </View>
+                ))}
               </View>
-            ))}
+            </View>
           </ScrollView>
         )}
       </View>
@@ -419,7 +414,22 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentInner: {
+    maxWidth: 1400,
+    width: '100%',
+    alignSelf: 'center',
     padding: 16,
+  },
+  usersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
+  },
+  userCardWrapper: {
+    width: '100%',
+    paddingHorizontal: 8,
+    marginBottom: 16,
   },
   centerContainer: {
     flex: 1,
@@ -433,8 +443,8 @@ const styles = StyleSheet.create({
   userCard: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
+    height: '100%',
   },
   userHeader: {
     flexDirection: 'row',

@@ -124,101 +124,160 @@ const PerformanceAnalyticsScreen: React.FC = () => {
       padding: 16,
       paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 120 : 32,
     },
+    contentWrapper: {
+      maxWidth: 1200,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    sectionHeader: {
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+      letterSpacing: -0.4,
+    },
+    sectionDescription: {
+      fontSize: 15,
+      color: theme.textSecondary,
+      lineHeight: 22,
+    },
     periodSelector: {
       flexDirection: 'row',
-      gap: 8,
-      marginBottom: 20,
+      gap: 10,
+      marginBottom: 24,
+      padding: 4,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      borderRadius: 12,
     },
     periodButton: {
       flex: 1,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 8,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 10,
       alignItems: 'center',
     },
     periodButtonActive: {
       backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 2,
     },
     periodButtonText: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: theme.textSecondary,
     },
     periodButtonTextActive: {
       color: '#FFFFFF',
+      fontWeight: '700',
     },
     performersList: {
-      gap: 12,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginHorizontal: -8,
+    },
+    performerCardWrapper: {
+      width: '100%',
+      maxWidth: '50%',
+      paddingHorizontal: 8,
+      marginBottom: 16,
     },
     performerCard: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 16,
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      height: '100%',
+    },
+    performerCardTop3: {
+      borderWidth: 2,
+      shadowOpacity: isDark ? 0.4 : 0.15,
+      shadowRadius: 12,
+      elevation: 5,
+    },
+    performerCardTop: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.2 : 0.08,
-      shadowRadius: 4,
-      elevation: 2,
+      marginBottom: 16,
     },
     rankContainer: {
-      width: 50,
-      height: 50,
-      borderRadius: 25,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
     },
     medal: {
-      fontSize: 28,
+      fontSize: 32,
     },
     rank: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: 'bold',
     },
     performerInfo: {
       flex: 1,
     },
     performerName: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: '700',
       color: theme.text,
       marginBottom: 4,
+      letterSpacing: -0.3,
     },
     performerDepartment: {
-      fontSize: 13,
+      fontSize: 14,
       color: theme.textSecondary,
-      marginBottom: 8,
     },
-    performerStats: {
+    statsRow: {
       flexDirection: 'row',
-      gap: 16,
+      gap: 12,
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
     },
-    performerStat: {
-      fontSize: 12,
-      color: theme.textTertiary,
-    },
-    performerStatValue: {
-      fontWeight: '600',
-      color: theme.text,
-    },
-    scoreContainer: {
+    statBox: {
+      flex: 1,
       alignItems: 'center',
-      paddingLeft: 12,
-      borderLeftWidth: 1,
-      borderLeftColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 12,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     },
-    scoreLabel: {
-      fontSize: 11,
-      color: theme.textTertiary,
+    statValue: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.text,
       marginBottom: 4,
     },
-    scoreValue: {
-      fontSize: 24,
-      fontWeight: 'bold',
+    statLabel: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+    qualityBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      backgroundColor: theme.primary + '20',
+      alignSelf: 'flex-start',
+    },
+    qualityBadgeText: {
+      fontSize: 14,
+      fontWeight: '700',
       color: theme.primary,
     },
     loadingContainer: {
@@ -234,33 +293,25 @@ const PerformanceAnalyticsScreen: React.FC = () => {
     },
     emptyState: {
       alignItems: 'center',
-      paddingVertical: 60,
+      paddingVertical: 80,
+      paddingHorizontal: 40,
+    },
+    emptyStateIcon: {
+      marginBottom: 16,
+      opacity: 0.3,
     },
     emptyStateText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    emptyStateSubtext: {
       fontSize: 14,
       color: theme.textSecondary,
       textAlign: 'center',
-      marginTop: 8,
-    },
-    detailsGrid: {
-      marginTop: 12,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-    },
-    detailRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 8,
-    },
-    detailLabel: {
-      fontSize: 12,
-      color: theme.textTertiary,
-    },
-    detailValue: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: theme.text,
+      lineHeight: 20,
     },
   });
 
@@ -303,111 +354,125 @@ const PerformanceAnalyticsScreen: React.FC = () => {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        {/* Period Selector */}
-        <View style={dynamicStyles.periodSelector}>
-          {periods.map((period) => (
-            <TouchableOpacity
-              key={period.key}
-              style={[
-                dynamicStyles.periodButton,
-                selectedPeriod === period.key && dynamicStyles.periodButtonActive,
-              ]}
-              onPress={() => setSelectedPeriod(period.key)}
-            >
-              <Text
-                style={[
-                  dynamicStyles.periodButtonText,
-                  selectedPeriod === period.key && dynamicStyles.periodButtonTextActive,
-                ]}
-              >
-                {period.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {topPerformers.length > 0 ? (
-          <View style={dynamicStyles.performersList}>
-            {topPerformers.map((performer, index) => (
-              <View key={performer.user_id} style={dynamicStyles.performerCard}>
-                {/* Rank/Medal */}
-                <View
-                  style={[
-                    dynamicStyles.rankContainer,
-                    index < 3 && { backgroundColor: `${getRankColor(index)}20` },
-                  ]}
-                >
-                  {index < 3 ? (
-                    <Text style={dynamicStyles.medal}>{getMedalEmoji(index)}</Text>
-                  ) : (
-                    <Text style={[dynamicStyles.rank, { color: getRankColor(index) }]}>
-                      #{index + 1}
-                    </Text>
-                  )}
-                </View>
-
-                {/* Info */}
-                <View style={dynamicStyles.performerInfo}>
-                  <Text style={dynamicStyles.performerName}>{performer.user_name}</Text>
-                  {performer.department_name && (
-                    <Text style={dynamicStyles.performerDepartment}>
-                      {performer.department_name}
-                    </Text>
-                  )}
-                  <View style={dynamicStyles.performerStats}>
-                    <Text style={dynamicStyles.performerStat}>
-                      Завершено:{' '}
-                      <Text style={dynamicStyles.performerStatValue}>
-                        {performer.tasks_completed || 0}
-                      </Text>
-                    </Text>
-                    <Text style={dynamicStyles.performerStat}>
-                      В работе:{' '}
-                      <Text style={dynamicStyles.performerStatValue}>
-                        {performer.tasks_in_progress || 0}
-                      </Text>
-                    </Text>
-                  </View>
-
-                  {/* Additional Details */}
-                  <View style={dynamicStyles.detailsGrid}>
-                    <View style={dynamicStyles.detailRow}>
-                      <Text style={dynamicStyles.detailLabel}>Создано задач:</Text>
-                      <Text style={dynamicStyles.detailValue}>{performer.tasks_created || 0}</Text>
-                    </View>
-                    <View style={dynamicStyles.detailRow}>
-                      <Text style={dynamicStyles.detailLabel}>Просрочено:</Text>
-                      <Text style={[dynamicStyles.detailValue, { color: '#EF4444' }]}>
-                        {performer.tasks_overdue || 0}
-                      </Text>
-                    </View>
-                    <View style={dynamicStyles.detailRow}>
-                      <Text style={dynamicStyles.detailLabel}>% выполнения:</Text>
-                      <Text style={[dynamicStyles.detailValue, { color: '#10B981' }]}>
-                        {(performer.completion_rate || 0).toFixed(0)}%
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Quality Score */}
-                <View style={dynamicStyles.scoreContainer}>
-                  <Text style={dynamicStyles.scoreLabel}>Качество</Text>
-                  <Text style={dynamicStyles.scoreValue}>
-                    {(performer.quality_score || 0).toFixed(0)}%
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View style={dynamicStyles.emptyState}>
-            <Ionicons name="trophy-outline" size={64} color={theme.textTertiary} />
-            <Text style={dynamicStyles.emptyStateText}>
-              Нет данных о сотрудниках
+        <View style={dynamicStyles.contentWrapper}>
+          {/* Section Header */}
+          <View style={dynamicStyles.sectionHeader}>
+            <Text style={dynamicStyles.sectionTitle}>Топ сотрудников</Text>
+            <Text style={dynamicStyles.sectionDescription}>
+              Рейтинг лучших сотрудников по результатам работы
             </Text>
           </View>
-        )}
+
+          {/* Period Selector */}
+          <View style={dynamicStyles.periodSelector}>
+            {periods.map((period) => (
+              <TouchableOpacity
+                key={period.key}
+                style={[
+                  dynamicStyles.periodButton,
+                  selectedPeriod === period.key && dynamicStyles.periodButtonActive,
+                ]}
+                onPress={() => setSelectedPeriod(period.key)}
+              >
+                <Text
+                  style={[
+                    dynamicStyles.periodButtonText,
+                    selectedPeriod === period.key && dynamicStyles.periodButtonTextActive,
+                  ]}
+                >
+                  {period.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {topPerformers.length > 0 ? (
+            <View style={dynamicStyles.performersList}>
+              {topPerformers.map((performer, index) => (
+                <View key={performer.user_id} style={dynamicStyles.performerCardWrapper}>
+                <View
+                  style={[
+                    dynamicStyles.performerCard,
+                    index < 3 && dynamicStyles.performerCardTop3,
+                    index < 3 && { borderColor: getRankColor(index) + '40' },
+                  ]}
+                >
+                  {/* Top Section: Rank + Info + Quality */}
+                  <View style={dynamicStyles.performerCardTop}>
+                    {/* Rank/Medal */}
+                    <View
+                      style={[
+                        dynamicStyles.rankContainer,
+                        index < 3 && { backgroundColor: `${getRankColor(index)}20` },
+                      ]}
+                    >
+                      {index < 3 ? (
+                        <Text style={dynamicStyles.medal}>{getMedalEmoji(index)}</Text>
+                      ) : (
+                        <Text style={[dynamicStyles.rank, { color: getRankColor(index) }]}>
+                          #{index + 1}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Info */}
+                    <View style={dynamicStyles.performerInfo}>
+                      <Text style={dynamicStyles.performerName}>{performer.user_name}</Text>
+                      {performer.department_name && (
+                        <Text style={dynamicStyles.performerDepartment}>
+                          {performer.department_name}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Quality Badge */}
+                    <View style={dynamicStyles.qualityBadge}>
+                      <Text style={dynamicStyles.qualityBadgeText}>
+                        {(performer.quality_score || 0).toFixed(0)}%
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Stats Row */}
+                  <View style={dynamicStyles.statsRow}>
+                    <View style={dynamicStyles.statBox}>
+                      <Text style={[dynamicStyles.statValue, { color: '#10B981' }]}>
+                        {performer.tasks_completed || 0}
+                      </Text>
+                      <Text style={dynamicStyles.statLabel}>Завершено</Text>
+                    </View>
+                    <View style={dynamicStyles.statBox}>
+                      <Text style={[dynamicStyles.statValue, { color: '#F59E0B' }]}>
+                        {performer.tasks_in_progress || 0}
+                      </Text>
+                      <Text style={dynamicStyles.statLabel}>В работе</Text>
+                    </View>
+                    <View style={dynamicStyles.statBox}>
+                      <Text style={[dynamicStyles.statValue, { color: '#EF4444' }]}>
+                        {performer.tasks_overdue || 0}
+                      </Text>
+                      <Text style={dynamicStyles.statLabel}>Просрочено</Text>
+                    </View>
+                  </View>
+                </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={dynamicStyles.emptyState}>
+              <Ionicons
+                name="trophy-outline"
+                size={80}
+                color={theme.textTertiary}
+                style={dynamicStyles.emptyStateIcon}
+              />
+              <Text style={dynamicStyles.emptyStateText}>Нет данных за выбранный период</Text>
+              <Text style={dynamicStyles.emptyStateSubtext}>
+                Попробуйте выбрать другой период или дождитесь появления активности сотрудников
+              </Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </View>
   );

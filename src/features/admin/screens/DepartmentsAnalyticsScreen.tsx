@@ -104,42 +104,81 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
       padding: 16,
       paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 120 : 32,
     },
+    contentWrapper: {
+      maxWidth: 1400,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    sectionHeader: {
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+      letterSpacing: -0.4,
+    },
+    sectionDescription: {
+      fontSize: 15,
+      color: theme.textSecondary,
+      lineHeight: 22,
+    },
     periodSelector: {
       flexDirection: 'row',
-      gap: 8,
-      marginBottom: 20,
+      gap: 10,
+      marginBottom: 24,
+      padding: 4,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      borderRadius: 12,
     },
     periodButton: {
       flex: 1,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 8,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 10,
       alignItems: 'center',
     },
     periodButtonActive: {
       backgroundColor: theme.primary,
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 2,
     },
     periodButtonText: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: theme.textSecondary,
     },
     periodButtonTextActive: {
       color: '#FFFFFF',
+      fontWeight: '700',
     },
     departmentList: {
-      gap: 16,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginHorizontal: -8,
+    },
+    departmentCardWrapper: {
+      width: '100%',
+      maxWidth: '33.333%',
+      paddingHorizontal: 8,
+      marginBottom: 16,
     },
     departmentCard: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 16,
+      borderRadius: 20,
+      padding: 20,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.2 : 0.08,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      height: '100%',
     },
     departmentHeader: {
       flexDirection: 'row',
@@ -154,12 +193,13 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
       flex: 1,
     },
     departmentName: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: '700',
       color: theme.text,
+      letterSpacing: -0.3,
     },
     departmentCompletionText: {
-      fontSize: 20,
+      fontSize: 24,
       fontWeight: 'bold',
       color: theme.primary,
     },
@@ -167,48 +207,52 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
       marginBottom: 16,
     },
     departmentProgressBar: {
-      height: 8,
+      height: 10,
       backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-      borderRadius: 4,
+      borderRadius: 5,
       overflow: 'hidden',
     },
     departmentProgressFill: {
       height: '100%',
-      borderRadius: 4,
+      borderRadius: 5,
     },
     departmentStatsGrid: {
       flexDirection: 'row',
-      gap: 10,
+      gap: 12,
     },
     departmentStatBox: {
       flex: 1,
       alignItems: 'center',
-      gap: 4,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 12,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     },
     departmentStatIconContainer: {
-      width: 36,
-      height: 36,
-      borderRadius: 8,
+      width: 40,
+      height: 40,
+      borderRadius: 10,
       backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: 6,
     },
     departmentStatBoxValue: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: 'bold',
       color: theme.text,
+      marginBottom: 4,
     },
     departmentStatBoxLabel: {
-      fontSize: 11,
-      color: theme.textTertiary,
+      fontSize: 12,
+      color: theme.textSecondary,
       textAlign: 'center',
     },
     additionalInfo: {
-      marginTop: 12,
-      paddingTop: 12,
+      marginTop: 16,
+      paddingTop: 16,
       borderTopWidth: 1,
-      borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+      borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
       flexDirection: 'row',
       justifyContent: 'space-between',
     },
@@ -216,13 +260,13 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
       alignItems: 'center',
     },
     infoLabel: {
-      fontSize: 11,
-      color: theme.textTertiary,
+      fontSize: 12,
+      color: theme.textSecondary,
       marginBottom: 4,
     },
     infoValue: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 16,
+      fontWeight: '700',
       color: theme.text,
     },
     loadingContainer: {
@@ -238,13 +282,25 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
     },
     emptyState: {
       alignItems: 'center',
-      paddingVertical: 60,
+      paddingVertical: 80,
+      paddingHorizontal: 40,
+    },
+    emptyStateIcon: {
+      marginBottom: 16,
+      opacity: 0.3,
     },
     emptyStateText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    emptyStateSubtext: {
       fontSize: 14,
       color: theme.textSecondary,
       textAlign: 'center',
-      marginTop: 8,
+      lineHeight: 20,
     },
   });
 
@@ -287,8 +343,17 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        {/* Period Selector */}
-        <View style={dynamicStyles.periodSelector}>
+        <View style={dynamicStyles.contentWrapper}>
+          {/* Section Header */}
+          <View style={dynamicStyles.sectionHeader}>
+            <Text style={dynamicStyles.sectionTitle}>Статистика отделов</Text>
+            <Text style={dynamicStyles.sectionDescription}>
+              Показатели эффективности и производительности по отделам
+            </Text>
+          </View>
+
+          {/* Period Selector */}
+          <View style={dynamicStyles.periodSelector}>
           {periods.map((period) => (
             <TouchableOpacity
               key={period.key}
@@ -313,7 +378,8 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
         {departmentStats.length > 0 ? (
           <View style={dynamicStyles.departmentList}>
             {departmentStats.map((dept) => (
-              <View key={dept.department_id} style={dynamicStyles.departmentCard}>
+              <View key={dept.department_id} style={dynamicStyles.departmentCardWrapper}>
+              <View style={dynamicStyles.departmentCard}>
                 {/* Header with name and completion rate */}
                 <View style={dynamicStyles.departmentHeader}>
                   <View style={dynamicStyles.departmentTitleRow}>
@@ -349,7 +415,7 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
                 <View style={dynamicStyles.departmentStatsGrid}>
                   <View style={dynamicStyles.departmentStatBox}>
                     <View style={dynamicStyles.departmentStatIconContainer}>
-                      <Ionicons name="layers-outline" size={18} color="#6B7280" />
+                      <Ionicons name="layers-outline" size={20} color="#6B7280" />
                     </View>
                     <Text style={dynamicStyles.departmentStatBoxValue}>
                       {dept.total_tasks || 0}
@@ -364,7 +430,7 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
                         { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
                       ]}
                     >
-                      <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                      <Ionicons name="checkmark-circle" size={20} color="#10B981" />
                     </View>
                     <Text style={[dynamicStyles.departmentStatBoxValue, { color: '#10B981' }]}>
                       {dept.completed_tasks || 0}
@@ -379,7 +445,7 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
                         { backgroundColor: 'rgba(245, 158, 11, 0.1)' },
                       ]}
                     >
-                      <Ionicons name="time-outline" size={18} color="#F59E0B" />
+                      <Ionicons name="time-outline" size={20} color="#F59E0B" />
                     </View>
                     <Text style={[dynamicStyles.departmentStatBoxValue, { color: '#F59E0B' }]}>
                       {dept.in_progress_tasks || 0}
@@ -394,7 +460,7 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
                         { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
                       ]}
                     >
-                      <Ionicons name="alert-circle" size={18} color="#EF4444" />
+                      <Ionicons name="alert-circle" size={20} color="#EF4444" />
                     </View>
                     <Text style={[dynamicStyles.departmentStatBoxValue, { color: '#EF4444' }]}>
                       {dept.overdue_tasks || 0}
@@ -428,14 +494,24 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
                   </View>
                 </View>
               </View>
+              </View>
             ))}
           </View>
         ) : (
           <View style={dynamicStyles.emptyState}>
-            <Ionicons name="business-outline" size={64} color={theme.textTertiary} />
-            <Text style={dynamicStyles.emptyStateText}>Нет данных по отделам</Text>
+            <Ionicons
+              name="business-outline"
+              size={80}
+              color={theme.textTertiary}
+              style={dynamicStyles.emptyStateIcon}
+            />
+            <Text style={dynamicStyles.emptyStateText}>Нет данных за выбранный период</Text>
+            <Text style={dynamicStyles.emptyStateSubtext}>
+              Попробуйте выбрать другой период или дождитесь появления активности в отделах
+            </Text>
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );
