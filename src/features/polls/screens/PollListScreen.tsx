@@ -10,11 +10,11 @@ import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { usePollListData } from '../hooks/usePollListData';
 import { usePollListFilters } from '../hooks/usePollListFilters';
 import { PollStackParamList } from '@navigation/types';
-import CreatePollModal from '../components/CreatePollModal';
-import EditPollModal from '../components/EditPollModal';
-import { PollListHeader } from '../components/PollListHeader';
-import { PollListContent } from '../components/PollListContent';
-import { PollFilterMenu } from '../components/PollFilterMenu';
+import CreatePollModal from '../components/modals/CreatePollModal';
+import EditPollModal from '../components/modals/EditPollModal';
+import { PollListHeader } from '../components/headers/PollListHeader';
+import { PollListContent } from '../components/lists/PollListContent';
+import { PollFilterMenu } from '../components/common/PollFilterMenu';
 import { canUserCreatePoll, filterPollsByStatus } from '../utils/pollListHelpers';
 
 type PollListScreenNavigationProp = NativeStackNavigationProp<

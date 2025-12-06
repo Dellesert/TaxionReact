@@ -19,9 +19,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useActiveSessionsData } from '../hooks/useActiveSessionsData';
 import { useActiveSessionsActions } from '../hooks/useActiveSessionsActions';
-import { SessionCard } from '../components/SessionCard';
-import { SessionsEmptyState } from '../components/SessionsEmptyState';
-import { LogoutAllButton } from '../components/LogoutAllButton';
+import { SessionCard } from '../components/sessions/SessionCard';
+import { SessionsEmptyState } from '../components/sessions/SessionsEmptyState';
+import { LogoutAllButton } from '../components/sessions/LogoutAllButton';
 import type { ActiveSession } from '../../../types/user.types';
 
 export default function ActiveSessionsScreen() {

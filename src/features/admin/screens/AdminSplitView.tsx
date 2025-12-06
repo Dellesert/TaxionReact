@@ -6,13 +6,13 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
-import { AdminSidebarNavigation, AdminSection } from '../components/AdminSidebarNavigation';
-import { AdminContentArea } from '../components/AdminContentArea';
+import { AdminSidebarNavigation, AdminSection } from '../components/common/AdminSidebarNavigation';
+import { AdminContentArea } from '../components/common/AdminContentArea';
 
 // Import section content components
-import AnalyticsDesktopContent from '../components/AnalyticsDesktopContent';
-import DepartmentsDesktopContent from '../components/DepartmentsDesktopContent';
-import UsersDesktopContent from '../components/UsersDesktopContent';
+import AnalyticsDesktopContent from '../components/desktop-content/AnalyticsDesktopContent';
+import DepartmentsDesktopContent from '../components/desktop-content/DepartmentsDesktopContent';
+import UsersDesktopContent from '../components/desktop-content/UsersDesktopContent';
 
 export const AdminSplitView: React.FC = () => {
   const { theme } = useTheme();

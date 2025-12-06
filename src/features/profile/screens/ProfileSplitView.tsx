@@ -7,8 +7,8 @@ import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
-import { ProfileSidebarNavigation, ProfileSection } from '../components/ProfileSidebarNavigation';
-import { ProfileContentArea } from '../components/ProfileContentArea';
+import { ProfileSidebarNavigation, ProfileSection } from '../components/common/ProfileSidebarNavigation';
+import { ProfileContentArea } from '../components/common/ProfileContentArea';
 import { useProfileActions } from '../hooks/useProfileActions';
 import { useProfileAvatar } from '../hooks/useProfileAvatar';
 

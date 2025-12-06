@@ -14,10 +14,10 @@ import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useInvitationValidation } from '../hooks/useInvitationValidation';
 import { useInvitationAcceptance } from '../hooks/useInvitationAcceptance';
 import { getStepSubtitle } from '../utils/invitationHelpers';
-import { InvitationHeader } from '../components/InvitationHeader';
-import { InvitationCodeStep } from '../components/InvitationCodeStep';
-import { InvitationPasswordStep } from '../components/InvitationPasswordStep';
-import { InvitationSuccessStep } from '../components/InvitationSuccessStep';
+import { InvitationHeader } from '../components/invitation/InvitationHeader';
+import { InvitationCodeStep } from '../components/invitation/InvitationCodeStep';
+import { InvitationPasswordStep } from '../components/invitation/InvitationPasswordStep';
+import { InvitationSuccessStep } from '../components/invitation/InvitationSuccessStep';
 
 type AcceptInvitationScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'AcceptInvitation'>;
 type AcceptInvitationScreenRouteProp = RouteProp<AuthStackParamList, 'AcceptInvitation'>;

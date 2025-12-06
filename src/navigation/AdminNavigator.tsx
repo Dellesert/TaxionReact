@@ -8,11 +8,11 @@ import DepartmentsScreen from '@/features/admin/screens/DepartmentsScreen';
 import EditDepartmentScreen from '@/features/admin/screens/EditDepartmentScreen';
 import UsersScreen from '@/features/admin/screens/UsersScreen';
 import MetricsAnalyticsScreen from '@/features/admin/screens/MetricsAnalyticsScreen';
-import MetricsDesktopContent from '@/features/admin/components/MetricsDesktopContent';
+import MetricsDesktopContent from '@/features/admin/components/desktop-content/MetricsDesktopContent';
 import PerformanceAnalyticsScreen from '@/features/admin/screens/PerformanceAnalyticsScreen';
 import DepartmentsAnalyticsScreen from '@/features/admin/screens/DepartmentsAnalyticsScreen';
 import SecurityAnalyticsScreen from '@/features/admin/screens/SecurityAnalyticsScreen';
-import { AdminContentArea } from '@/features/admin/components/AdminContentArea';
+import { AdminContentArea } from '@/features/admin/components/common/AdminContentArea';
 
 // Wrapper for Metrics that adapts to screen size
 const MetricsAnalyticsWrapper: React.FC = () => {

@@ -9,11 +9,11 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { usePasskeyData } from '../../hooks/usePasskeyData';
 import { usePasskeyActions } from '../../hooks/usePasskeyActions';
 import { usePasskeyModal } from '../../hooks/usePasskeyModal';
-import { PasskeyCard } from '../../components/PasskeyCard';
-import { PasskeyEmptyState } from '../../components/PasskeyEmptyState';
-import { PasskeyInfoCard } from '../../components/PasskeyInfoCard';
-import { PasskeyNameModal } from '../../components/PasskeyNameModal';
-import { AddPasskeyButton } from '../../components/AddPasskeyButton';
+import { PasskeyCard } from '../passkeys/PasskeyCard';
+import { PasskeyEmptyState } from '../passkeys/PasskeyEmptyState';
+import { PasskeyInfoCard } from '../passkeys/PasskeyInfoCard';
+import { PasskeyNameModal } from '../passkeys/PasskeyNameModal';
+import { AddPasskeyButton } from '../passkeys/AddPasskeyButton';
 
 const PasskeyManagementContent: React.FC = () => {
   const { theme } = useTheme();

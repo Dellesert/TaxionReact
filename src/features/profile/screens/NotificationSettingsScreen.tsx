@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotificationSettings } from '@/features/notifications/hooks/useNotificationSettings';
-import { ProfileMenuSection } from '../components/ProfileMenuSection';
+import { ProfileMenuSection } from '../components/common/ProfileMenuSection';
 import { NotificationSettingItem } from '../components/notification/NotificationSettingItem';
 import { PriorityPickerModal } from '../components/notification/PriorityPickerModal';
 import { TimePickerModal } from '../components/notification/TimePickerModal';

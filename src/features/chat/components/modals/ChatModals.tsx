@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChatMembersModal } from './ChatMembersModal';
 import { ForwardMessageModal } from './ForwardMessageModal';
-import PollDetailModal from '@/features/polls/components/PollDetailModal';
+import PollDetailModal from '@/features/polls/components/modals/PollDetailModal';
 import type { Message } from '../../types/chat.types';
 
 interface ChatModalsProps {

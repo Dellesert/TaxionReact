@@ -1,2 +1,2 @@
-export { NoAccessView } from './NoAccessView';
-export { UserRoleBadge } from './UserRoleBadge';
+export { NoAccessView } from './common/NoAccessView';
+export { UserRoleBadge } from './common/UserRoleBadge';

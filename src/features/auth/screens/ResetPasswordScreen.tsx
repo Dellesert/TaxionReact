@@ -13,9 +13,9 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTokenValidation } from '../hooks/useTokenValidation';
 import { useResetPasswordAction } from '../hooks/useResetPasswordAction';
-import { ResetPasswordHeader } from '../components/ResetPasswordHeader';
-import { ResetPasswordForm } from '../components/ResetPasswordForm';
-import { TokenValidationStates } from '../components/TokenValidationStates';
+import { ResetPasswordHeader } from '../components/forgot-password/ResetPasswordHeader';
+import { ResetPasswordForm } from '../components/forgot-password/ResetPasswordForm';
+import { TokenValidationStates } from '../components/common/TokenValidationStates';
 
 type ResetPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
 type ResetPasswordScreenRouteProp = RouteProp<AuthStackParamList, 'ResetPassword'>;

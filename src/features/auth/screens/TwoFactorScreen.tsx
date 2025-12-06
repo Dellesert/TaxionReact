@@ -17,9 +17,9 @@ import { use2FACodeInput } from '../hooks/use2FACodeInput';
 import { use2FAVerification } from '../hooks/use2FAVerification';
 import { use2FAAnimation } from '../hooks/use2FAAnimation';
 import { isCodeComplete as checkCodeComplete } from '../utils/twoFactorHelpers';
-import { TwoFactorHeader } from '../components/TwoFactorHeader';
-import { CodeInputGrid } from '../components/CodeInputGrid';
-import { TwoFactorActions } from '../components/TwoFactorActions';
+import { TwoFactorHeader } from '../components/two-factor/TwoFactorHeader';
+import { CodeInputGrid } from '../components/two-factor/CodeInputGrid';
+import { TwoFactorActions } from '../components/two-factor/TwoFactorActions';
 
 type TwoFactorScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'TwoFactor'>;
 type TwoFactorScreenRouteProp = RouteProp<AuthStackParamList, 'TwoFactor'>;

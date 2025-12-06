@@ -13,10 +13,10 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { usePasswordReset } from '../hooks/usePasswordReset';
 import { validateResetCode } from '../utils/passwordResetHelpers';
-import { ForgotPasswordHeader } from '../components/ForgotPasswordHeader';
-import { EmailRequestForm } from '../components/EmailRequestForm';
-import { ManualCodeForm } from '../components/ManualCodeForm';
-import { PasswordResetSuccess } from '../components/PasswordResetSuccess';
+import { ForgotPasswordHeader } from '../components/forgot-password/ForgotPasswordHeader';
+import { EmailRequestForm } from '../components/forgot-password/EmailRequestForm';
+import { ManualCodeForm } from '../components/two-factor/ManualCodeForm';
+import { PasswordResetSuccess } from '../components/forgot-password/PasswordResetSuccess';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 

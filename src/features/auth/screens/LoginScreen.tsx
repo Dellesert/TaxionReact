@@ -15,9 +15,9 @@ import { usePasswordAuth } from '../hooks/usePasswordAuth';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
-import { LoginLogo } from '../components/LoginLogo';
-import { LoginForm } from '../components/LoginForm';
-import { AlternativeLoginMethods } from '../components/AlternativeLoginMethods';
+import { LoginLogo } from '../components/login/LoginLogo';
+import { LoginForm } from '../components/login/LoginForm';
+import { AlternativeLoginMethods } from '../components/login/AlternativeLoginMethods';
 import type { ApiError } from '../../../types/common.types';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;

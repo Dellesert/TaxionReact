@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotificationSettings } from '@/features/notifications/hooks/useNotificationSettings';
-import { ProfileMenuSection } from '../ProfileMenuSection';
+import { ProfileMenuSection } from '../common/ProfileMenuSection';
 import { NotificationSettingItem } from '../notification/NotificationSettingItem';
 import { PriorityPickerModal } from '../notification/PriorityPickerModal';
 import { TimePickerModal } from '../notification/TimePickerModal';

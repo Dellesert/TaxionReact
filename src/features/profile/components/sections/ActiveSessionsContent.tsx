@@ -13,9 +13,9 @@ import {
 import { useTheme } from '@shared/hooks/useTheme';
 import { useActiveSessionsData } from '../../hooks/useActiveSessionsData';
 import { useActiveSessionsActions } from '../../hooks/useActiveSessionsActions';
-import { SessionCard } from '../../components/SessionCard';
-import { SessionsEmptyState } from '../../components/SessionsEmptyState';
-import { LogoutAllButton } from '../../components/LogoutAllButton';
+import { SessionCard } from '../sessions/SessionCard';
+import { SessionsEmptyState } from '../sessions/SessionsEmptyState';
+import { LogoutAllButton } from '../sessions/LogoutAllButton';
 import type { ActiveSession } from '@/types/user.types';
 
 const ActiveSessionsContent: React.FC = () => {
