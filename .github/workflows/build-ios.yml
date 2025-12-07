@@ -105,12 +105,6 @@ jobs:
             echo "PROD_PROFILE_UUID=$PROD_PROFILE_UUID" >> $GITHUB_ENV
           fi
 
-      - name: Update Bundle ID for Release
-        if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
-        run: |
-          # Set production bundle ID for Release configuration
-          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = "com.dellesert.tachyon-messenger";/PRODUCT_BUNDLE_IDENTIFIER = "com.dellesert.tachyon-messenger.release";/g' ios/Tahion.xcodeproj/project.pbxproj
-
       - name: Build Development Client
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
         run: |
@@ -158,6 +152,26 @@ jobs:
             -exportOptionsPlist build/ExportOptions-Dev.plist
 
           mv build/ipa-dev/Tahion.ipa build/ipa-dev/Tahion-DevClient.ipa
+
+      - name: Update Bundle ID for Production
+        if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
+        run: |
+          # Set production bundle ID only for Release configuration
+          # Find the Release section and change bundle ID there
+          # Use awk to change only the second occurrence (Release config)
+          awk '
+            /PRODUCT_BUNDLE_IDENTIFIER = "com.dellesert.tachyon-messenger"/ {
+              count++
+              if (count == 2) {
+                sub(/com.dellesert.tachyon-messenger/, "com.dellesert.tachyon-messenger.release")
+              }
+            }
+            { print }
+          ' ios/Tahion.xcodeproj/project.pbxproj > ios/Tahion.xcodeproj/project.pbxproj.tmp
+          mv ios/Tahion.xcodeproj/project.pbxproj.tmp ios/Tahion.xcodeproj/project.pbxproj
+
+          echo "Bundle IDs after update:"
+          grep "PRODUCT_BUNDLE_IDENTIFIER" ios/Tahion.xcodeproj/project.pbxproj
 
       - name: Build Production Release
         if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
