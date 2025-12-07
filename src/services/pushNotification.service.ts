@@ -48,46 +48,54 @@ class PushNotificationService {
    * Запросить разрешение и зарегистрировать устройство для push-уведомлений
    */
   async registerForPushNotifications(): Promise<string | null> {
+    console.log('[Push] registerForPushNotifications called, platform:', Platform.OS);
+
     // Для web используем Firebase Cloud Messaging
     if (Platform.OS === 'web') {
       return this.registerForWebPushNotifications();
     }
 
     // Проверяем, что это физическое устройство
+    console.log('[Push] Device.isDevice:', Device.isDevice);
     if (!Device.isDevice) {
-      console.log('Push notifications require a physical device');
+      console.log('[Push] Push notifications require a physical device');
       return null;
     }
 
     // Проверяем текущие разрешения
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    console.log('[Push] Existing permission status:', existingStatus);
     let finalStatus = existingStatus;
 
     // Если разрешения нет, запрашиваем
     if (existingStatus !== 'granted') {
+      console.log('[Push] Requesting permissions...');
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
+      console.log('[Push] New permission status:', finalStatus);
     }
 
     if (finalStatus !== 'granted') {
-      console.log('Push notification permission denied');
+      console.log('[Push] Push notification permission denied');
       return null;
     }
 
     try {
+      console.log('[Push] Getting device push token...');
       // Получаем Device Push Token (APNs token для iOS, FCM token для Android)
       const tokenData = await Notifications.getDevicePushTokenAsync();
+      console.log('[Push] Token data received:', JSON.stringify(tokenData));
       const token = tokenData.data as string;
       this.devicePushToken = token;
 
-      console.log('Device Push Token:', token);
+      console.log('[Push] Device Push Token:', token);
 
       // Отправляем токен на бэкенд
       await this.sendTokenToBackend(token);
 
       return token;
     } catch (error) {
-      console.error('Error getting push token:', error);
+      console.error('[Push] Error getting push token:', error);
       return null;
     }
   }
