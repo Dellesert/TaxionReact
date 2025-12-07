@@ -49,3 +49,4 @@ nul
 /.claude
 /.claude
 .env.back
+/build

@@ -95,10 +95,10 @@ export const getUserById = async (id: number): Promise<User> => {
   }
 };
 
-// ============= User Management (Admin) =============
+// ============= User List =============
 
 /**
- * Get list of users with filters and pagination (Admin only)
+ * Get list of users with filters and pagination (доступен всем авторизованным пользователям)
  */
 export const getUsers = async (
   filters?: UserListFilters,
@@ -111,7 +111,7 @@ export const getUsers = async (
   };
 
   const response = await api.get<ApiResponse<PaginatedResponse<User>>>(
-    API_ENDPOINTS.USER.ADMIN_LIST,
+    API_ENDPOINTS.USER.LIST,
     { params }
   );
 
