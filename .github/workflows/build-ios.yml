@@ -30,8 +30,8 @@ jobs:
           # List available Xcode versions
           ls -la /Applications/ | grep Xcode
 
-          # Use Xcode 16.1 (required for React Native 0.81+)
-          sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          # Use Xcode 16.2 (has better actool compatibility for CI without simulator)
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
           # Show current state
           xcodebuild -version
@@ -198,7 +198,9 @@ jobs:
             PROVISIONING_PROFILE=$DEV_PROFILE_UUID \
             ONLY_ACTIVE_ARCH=NO \
             EXCLUDED_ARCHS="i386 x86_64" \
-            ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=YES
+            ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=YES \
+            VALIDATE_DEVELOPMENT_ASSET_PATHS=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Export Development IPA
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
@@ -273,7 +275,10 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE=$PROD_PROFILE_UUID \
             ONLY_ACTIVE_ARCH=NO \
-            EXCLUDED_ARCHS="i386 x86_64"
+            EXCLUDED_ARCHS="i386 x86_64" \
+            ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=YES \
+            VALIDATE_DEVELOPMENT_ASSET_PATHS=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Export Production IPA
         if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
