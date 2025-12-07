@@ -69,10 +69,12 @@ jobs:
         env:
           LANG: en_US.UTF-8
 
-      - name: Import signing certificate
+      - name: Import signing certificates
         env:
-          CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          DEV_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          DEV_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          DIST_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          DIST_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           # Create temporary keychain
@@ -81,12 +83,21 @@ jobs:
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-          # Import certificate
-          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
-          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-          security import $CERTIFICATE_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          # Import Development certificate
+          DEV_CERT_PATH=$RUNNER_TEMP/dev_certificate.p12
+          echo -n "$DEV_CERTIFICATE_BASE64" | base64 --decode -o $DEV_CERT_PATH
+          security import $DEV_CERT_PATH -P "$DEV_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
+          # Import Distribution certificate
+          DIST_CERT_PATH=$RUNNER_TEMP/dist_certificate.p12
+          echo -n "$DIST_CERTIFICATE_BASE64" | base64 --decode -o $DIST_CERT_PATH
+          security import $DIST_CERT_PATH -P "$DIST_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # List imported certificates
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
 
       - name: Import provisioning profiles
         env:
@@ -222,7 +233,7 @@ jobs:
             -archivePath build/Tahion-Release.xcarchive \
             archive \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
-            CODE_SIGN_IDENTITY="Apple Development" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE=$PROD_PROFILE_UUID \
             ONLY_ACTIVE_ARCH=NO \
@@ -237,7 +248,7 @@ jobs:
           <plist version="1.0">
           <dict>
               <key>method</key>
-              <string>development</string>
+              <string>ad-hoc</string>
               <key>teamID</key>
               <string>${{ secrets.APPLE_TEAM_ID }}</string>
               <key>compileBitcode</key>
