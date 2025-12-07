@@ -24,8 +24,25 @@ jobs:
 
       - name: Install iOS Simulator
         run: |
-          xcodebuild -downloadPlatform iOS
-          xcrun simctl list runtimes
+          # Retry logic for simulator download (known GitHub Actions issue)
+          max_attempts=3
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts..."
+            if xcodebuild -downloadPlatform iOS; then
+              echo "Successfully downloaded iOS platform"
+              xcrun simctl list runtimes
+              exit 0
+            else
+              if [ $attempt -lt $max_attempts ]; then
+                echo "Failed, waiting 30 seconds before retry..."
+                sleep 30
+              fi
+              attempt=$((attempt + 1))
+            fi
+          done
+          echo "Failed after $max_attempts attempts"
+          exit 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
