@@ -73,14 +73,16 @@ xcrun xctrace list devices
 6. Назови: `Tahion Development`
 7. Скачай `.mobileprovision` файл
 
-#### Ad Hoc Profile (для Production):
+#### Production Profile (для Release):
 
-1. Нажми **+** → **Ad Hoc**
+1. Нажми **+** → **iOS App Development** (не Ad Hoc, т.к. используем Apple Development сертификат)
 2. Выбери App ID: `com.dellesert.tachyon-messenger.release`
-3. Выбери сертификат Distribution
+3. Выбери сертификат **Apple Development** (тот же, что для Dev Client)
 4. Выбери устройства
-5. Назови: `Tahion Ad Hoc`
+5. Назови: `Tahion Production`
 6. Скачай `.mobileprovision` файл
+
+> **Важно:** Оба профиля должны использовать один и тот же сертификат Apple Development!
 
 ### 2.4 Конвертировать Profiles в Base64
 
@@ -169,8 +171,17 @@ xcrun devicectl device install app --device <UDID> path/to/Tahion.ipa
 
 ### Build timeout
 
-- Проверь, что `macos-14` runner доступен
+- Проверь, что `macos-15` runner доступен
 - Попробуй увеличить `timeout-minutes` в workflow
+
+### "No Accounts" или "No profiles found"
+
+Эта ошибка означает, что на CI нет provisioning profiles. Убедись что:
+- Секреты `IOS_DEV_PROVISIONING_PROFILE_BASE64` и `IOS_PROD_PROVISIONING_PROFILE_BASE64` созданы
+- Оба профиля используют тот же сертификат, что в `IOS_CERTIFICATE_BASE64`
+- Профили созданы для правильных Bundle ID:
+  - Dev: `com.dellesert.tachyon-messenger`
+  - Prod: `com.dellesert.tachyon-messenger.release`
 
 ## Быстрый экспорт всех секретов
 
