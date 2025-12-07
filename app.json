@@ -62,6 +62,13 @@
           "photosPermission": "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
           "cameraPermission": "Tachyon нужен доступ к камере для съемки и отправки фотографий"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#E94444"
+        }
       ]
     ]
   }

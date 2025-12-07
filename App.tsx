@@ -12,6 +12,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useThemeStore } from '@shared/store/themeStore';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { websocketService } from './src/services/websocket.service';
+import { pushNotificationService } from './src/services/pushNotification.service';
 import { NotificationProvider } from '@shared/contexts/NotificationContext';
 import { ActionModalProvider } from '@shared/contexts/ActionModalContext';
 import { OfflineBanner } from '@shared/components/common/OfflineBanner';
@@ -126,19 +127,37 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Connect/disconnect WebSocket based on auth state
+  // Connect/disconnect WebSocket and register for push notifications based on auth state
   useEffect(() => {
     if (isAuthenticated) {
       websocketService.connect();
       // Load unread notification count when user is authenticated
       loadUnreadCount();
+
+      // Register for push notifications
+      pushNotificationService.registerForPushNotifications();
+
+      // Setup notification listeners
+      pushNotificationService.setupNotificationListeners(
+        (notification) => {
+          // Reload unread count when notification received
+          loadUnreadCount();
+        },
+        (response) => {
+          // Handle notification tap - navigation will be handled by deep links
+          console.log('Notification tapped:', response.notification.request.content);
+        }
+      );
     } else {
       websocketService.disconnect();
+      pushNotificationService.removeNotificationListeners();
+      pushNotificationService.unregisterDevice();
     }
 
     // Cleanup on unmount
     return () => {
       websocketService.disconnect();
+      pushNotificationService.removeNotificationListeners();
     };
   }, [isAuthenticated]);
 

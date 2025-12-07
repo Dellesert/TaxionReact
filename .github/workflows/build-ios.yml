@@ -1,0 +1,215 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - production
+          - development
+
+env:
+  NODE_VERSION: '20'
+  RUBY_VERSION: '3.2'
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Install CocoaPods
+        run: gem install cocoapods
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Setup Expo
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install
+        env:
+          LANG: en_US.UTF-8
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          security import $CERTIFICATE_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+      - name: Import provisioning profiles
+        env:
+          DEV_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_DEV_PROVISIONING_PROFILE_BASE64 }}
+          PROD_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROD_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+
+          # Import development profile
+          if [ -n "$DEV_PROVISIONING_PROFILE_BASE64" ]; then
+            echo -n "$DEV_PROVISIONING_PROFILE_BASE64" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/dev_profile.mobileprovision
+          fi
+
+          # Import production profile
+          if [ -n "$PROD_PROVISIONING_PROFILE_BASE64" ]; then
+            echo -n "$PROD_PROVISIONING_PROFILE_BASE64" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/prod_profile.mobileprovision
+          fi
+
+      - name: Update Bundle ID for Release
+        if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
+        run: |
+          # Set production bundle ID for Release configuration
+          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = "com.dellesert.tachyon-messenger";/PRODUCT_BUNDLE_IDENTIFIER = "com.dellesert.tachyon-messenger.release";/g' ios/Tahion.xcodeproj/project.pbxproj
+
+      - name: Build Development Client
+        if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
+        run: |
+          xcodebuild -workspace ios/Tahion.xcworkspace \
+            -scheme Tahion \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Tahion-Dev.xcarchive \
+            archive \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            CODE_SIGN_IDENTITY="Apple Development" \
+            -allowProvisioningUpdates
+
+      - name: Export Development IPA
+        if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
+        run: |
+          cat > build/ExportOptions-Dev.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>teamID</key>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <key>compileBitcode</key>
+              <false/>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath build/Tahion-Dev.xcarchive \
+            -exportPath build/ipa-dev \
+            -exportOptionsPlist build/ExportOptions-Dev.plist \
+            -allowProvisioningUpdates
+
+          mv build/ipa-dev/Tahion.ipa build/ipa-dev/Tahion-DevClient.ipa
+
+      - name: Build Production Release
+        if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
+        env:
+          EXPO_PUBLIC_API_BASE_URL: https://taxion.fusioninsight.cloud/api/v1
+          EXPO_PUBLIC_WS_URL: wss://taxion.fusioninsight.cloud
+          EXPO_PUBLIC_ENV: production
+        run: |
+          xcodebuild -workspace ios/Tahion.xcworkspace \
+            -scheme Tahion \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Tahion-Release.xcarchive \
+            archive \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            -allowProvisioningUpdates
+
+      - name: Export Production IPA
+        if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
+        run: |
+          cat > build/ExportOptions-Prod.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>ad-hoc</string>
+              <key>teamID</key>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <key>compileBitcode</key>
+              <false/>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath build/Tahion-Release.xcarchive \
+            -exportPath build/ipa-prod \
+            -exportOptionsPlist build/ExportOptions-Prod.plist \
+            -allowProvisioningUpdates
+
+          mv build/ipa-prod/Tahion.ipa build/ipa-prod/Tahion-Production.ipa
+
+      - name: Upload Development IPA
+        if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tahion-DevClient-IPA
+          path: build/ipa-dev/Tahion-DevClient.ipa
+          retention-days: 30
+
+      - name: Upload Production IPA
+        if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tahion-Production-IPA
+          path: build/ipa-prod/Tahion-Production.ipa
+          retention-days: 30
+
+      - name: Create Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/ipa-dev/Tahion-DevClient.ipa
+            build/ipa-prod/Tahion-Production.ipa
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
