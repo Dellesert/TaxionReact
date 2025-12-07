@@ -18,38 +18,26 @@ env:
 
 jobs:
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 120
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: Select Xcode version
         run: |
           # List available Xcode versions
           ls -la /Applications/ | grep Xcode
 
-          # Try to find Xcode 16+ (required for React Native)
-          if [ -d "/Applications/Xcode_16.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_16.0.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_15.4.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_15.3.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.3.app/Contents/Developer
-          else
-            # Use default Xcode
-            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-          fi
+          # Use Xcode 16.1 (required for React Native 0.81+)
+          sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
 
           # Show current state
           xcodebuild -version
           xcodebuild -showsdks
 
-          # List available runtimes
-          xcrun simctl list runtimes || true
+          # Note: We use 'generic/platform=iOS' destination which doesn't require simulator runtime
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -125,7 +113,7 @@ jobs:
             echo "PROD_PROFILE_UUID=$PROD_PROFILE_UUID" >> $GITHUB_ENV
           fi
 
-      - name: Fix assets and storyboard for CI
+      - name: Fix assets for CI
         run: |
           # Remove problematic asset catalogs that require simulator runtimes
           # This is a known issue with expo-dev-launcher on CI without simulator SDKs
@@ -142,52 +130,57 @@ jobs:
           }
           EOF
 
-          # Replace SplashScreen.storyboard with a minimal version that doesn't require specific iOS runtime
-          # This is necessary because ibtool requires simulator runtime to compile storyboards
-          if [ -f "ios/Tahion/SplashScreen.storyboard" ]; then
-            cat > ios/Tahion/SplashScreen.storyboard << 'STORYBOARD'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
-              <device id="retina6_1" orientation="portrait" appearance="light"/>
-              <dependencies>
-                  <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21678"/>
-                  <capability name="Safe area layout guides" minToolsVersion="9.0"/>
-                  <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
-              </dependencies>
-              <scenes>
-                  <scene sceneID="EHf-IW-A2E">
-                      <objects>
-                          <viewController id="01J-lp-oVM" sceneMemberID="viewController">
-                              <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
-                                  <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
-                                  <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                  <subviews>
-                                      <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="SplashScreenBackground" translatesAutoresizingMaskIntoConstraints="NO" id="splash-image">
-                                          <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
-                                      </imageView>
-                                  </subviews>
-                                  <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
-                                  <color key="backgroundColor" red="0.91372549019607843" green="0.26666666666666666" blue="0.26666666666666666" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                  <constraints>
-                                      <constraint firstItem="splash-image" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="c1"/>
-                                      <constraint firstItem="splash-image" firstAttribute="bottom" secondItem="Ze5-6b-2t3" secondAttribute="bottom" id="c2"/>
-                                      <constraint firstItem="splash-image" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="c3"/>
-                                      <constraint firstItem="splash-image" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="c4"/>
-                                  </constraints>
-                              </view>
-                          </viewController>
-                          <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
-                      </objects>
-                      <point key="canvasLocation" x="53" y="375"/>
-                  </scene>
-              </scenes>
-              <resources>
-                  <image name="SplashScreenBackground" width="1" height="1"/>
-              </resources>
-          </document>
-          STORYBOARD
-            echo "Replaced SplashScreen.storyboard with minimal version"
-          fi
+      - name: Install xcodeproj gem
+        run: sudo gem install xcodeproj
+
+      - name: Remove SplashScreen storyboard from build
+        run: |
+          # The storyboard requires ibtool which needs iOS simulator runtime
+          # We remove it from the project using xcodeproj gem
+
+          cd ios
+
+          ruby << 'RUBY'
+          require 'xcodeproj'
+
+          project_path = 'Tahion.xcodeproj'
+          project = Xcodeproj::Project.open(project_path)
+
+          # Find the SplashScreen.storyboard file reference
+          splash_ref = project.files.find { |f| f.path&.include?('SplashScreen.storyboard') }
+
+          if splash_ref
+            puts "Found SplashScreen.storyboard reference: #{splash_ref.path}"
+
+            # Remove from all build phases
+            project.targets.each do |target|
+              target.resources_build_phase.files.each do |build_file|
+                if build_file.file_ref == splash_ref
+                  puts "Removing from target: #{target.name}"
+                  build_file.remove_from_project
+                end
+              end
+            end
+
+            # Remove the file reference itself
+            splash_ref.remove_from_project
+            puts "Removed SplashScreen.storyboard from project"
+          else
+            puts "SplashScreen.storyboard not found in project"
+          end
+
+          project.save
+          RUBY
+
+          # Delete the actual file
+          rm -f Tahion/SplashScreen.storyboard
+
+          # Remove reference from Info.plist and use UILaunchScreen instead
+          /usr/libexec/PlistBuddy -c "Delete :UILaunchStoryboardName" Tahion/Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen dict" Tahion/Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen:UIColorName string SplashScreenBackground" Tahion/Info.plist 2>/dev/null || true
+
+          echo "Removed SplashScreen.storyboard from build"
 
       - name: Build Development Client
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
