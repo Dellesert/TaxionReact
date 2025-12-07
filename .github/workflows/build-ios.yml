@@ -30,14 +30,20 @@ jobs:
           # List available Xcode versions
           ls -la /Applications/ | grep Xcode
 
-          # Use Xcode 16.2 (has better actool compatibility for CI without simulator)
+          # Use Xcode 16.2
           sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
           # Show current state
           xcodebuild -version
           xcodebuild -showsdks
 
-          # Note: We use 'generic/platform=iOS' destination which doesn't require simulator runtime
+      - name: Install iOS Simulator
+        run: |
+          # Download and install iOS Simulator runtime (required for actool asset validation)
+          xcodebuild -downloadPlatform iOS
+
+          # Verify installation
+          xcrun simctl list runtimes
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -130,58 +136,6 @@ jobs:
           }
           EOF
 
-      - name: Install xcodeproj gem
-        run: sudo gem install xcodeproj
-
-      - name: Remove SplashScreen storyboard from build
-        run: |
-          # The storyboard requires ibtool which needs iOS simulator runtime
-          # We remove it from the project using xcodeproj gem
-
-          cd ios
-
-          ruby << 'RUBY'
-          require 'xcodeproj'
-
-          project_path = 'Tahion.xcodeproj'
-          project = Xcodeproj::Project.open(project_path)
-
-          # Find the SplashScreen.storyboard file reference
-          splash_ref = project.files.find { |f| f.path&.include?('SplashScreen.storyboard') }
-
-          if splash_ref
-            puts "Found SplashScreen.storyboard reference: #{splash_ref.path}"
-
-            # Remove from all build phases
-            project.targets.each do |target|
-              target.resources_build_phase.files.each do |build_file|
-                if build_file.file_ref == splash_ref
-                  puts "Removing from target: #{target.name}"
-                  build_file.remove_from_project
-                end
-              end
-            end
-
-            # Remove the file reference itself
-            splash_ref.remove_from_project
-            puts "Removed SplashScreen.storyboard from project"
-          else
-            puts "SplashScreen.storyboard not found in project"
-          end
-
-          project.save
-          RUBY
-
-          # Delete the actual file
-          rm -f Tahion/SplashScreen.storyboard
-
-          # Remove reference from Info.plist and use UILaunchScreen instead
-          /usr/libexec/PlistBuddy -c "Delete :UILaunchStoryboardName" Tahion/Info.plist 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen dict" Tahion/Info.plist 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen:UIColorName string SplashScreenBackground" Tahion/Info.plist 2>/dev/null || true
-
-          echo "Removed SplashScreen.storyboard from build"
-
       - name: Build Development Client
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
         run: |
@@ -197,10 +151,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE=$DEV_PROFILE_UUID \
             ONLY_ACTIVE_ARCH=NO \
-            EXCLUDED_ARCHS="i386 x86_64" \
-            ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=YES \
-            VALIDATE_DEVELOPMENT_ASSET_PATHS=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            EXCLUDED_ARCHS="i386 x86_64"
 
       - name: Export Development IPA
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
@@ -275,10 +226,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE=$PROD_PROFILE_UUID \
             ONLY_ACTIVE_ARCH=NO \
-            EXCLUDED_ARCHS="i386 x86_64" \
-            ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=YES \
-            VALIDATE_DEVELOPMENT_ASSET_PATHS=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            EXCLUDED_ARCHS="i386 x86_64"
 
       - name: Export Production IPA
         if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
