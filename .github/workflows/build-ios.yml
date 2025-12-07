@@ -25,21 +25,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16.2
+      - name: Select Xcode and install iOS runtime
         run: |
           # List available Xcode versions
           ls -la /Applications/ | grep Xcode
-          # Try Xcode 16.2 first (has iOS 18.2 platform), fallback to 16.1
-          if [ -d "/Applications/Xcode_16.2.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
-          else
-            sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
-          fi
 
-      - name: Show Xcode version and available platforms
-        run: |
+          # Use Xcode 16.1
+          sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+
+          # Show current state
           xcodebuild -version
           xcodebuild -showsdks
+
+          # Install iOS 18.1 simulator runtime (required for storyboard compilation)
+          echo "Installing iOS 18.1 simulator runtime..."
+          xcrun simctl runtime add "iOS 18.1" || echo "Runtime may already be installed or unavailable"
+
+          # List available runtimes
+          xcrun simctl list runtimes || true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -132,16 +135,51 @@ jobs:
           }
           EOF
 
-          # Fix storyboard deployment target to match available iOS SDK
-          # Get the installed iOS SDK version
-          IOS_SDK_VERSION=$(xcodebuild -showsdks | grep "iphoneos" | tail -1 | awk '{print $NF}' | sed 's/iphoneos//')
-          echo "Available iOS SDK: $IOS_SDK_VERSION"
-
-          # Update SplashScreen.storyboard to use deployment target 15.1 instead of system version
+          # Replace SplashScreen.storyboard with a minimal version that doesn't require specific iOS runtime
+          # This is necessary because ibtool requires simulator runtime to compile storyboards
           if [ -f "ios/Tahion/SplashScreen.storyboard" ]; then
-            sed -i '' 's/targetRuntime="iOS.CocoaTouch.Storyboard.XIB.18.1"/targetRuntime="iOS.CocoaTouch"/g' ios/Tahion/SplashScreen.storyboard
-            sed -i '' 's/systemVersion="[0-9]*"/systemVersion="23"/g' ios/Tahion/SplashScreen.storyboard
-            echo "Updated SplashScreen.storyboard"
+            cat > ios/Tahion/SplashScreen.storyboard << 'STORYBOARD'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+              <device id="retina6_1" orientation="portrait" appearance="light"/>
+              <dependencies>
+                  <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21678"/>
+                  <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+                  <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+              </dependencies>
+              <scenes>
+                  <scene sceneID="EHf-IW-A2E">
+                      <objects>
+                          <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                              <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                                  <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                                  <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                  <subviews>
+                                      <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="SplashScreenBackground" translatesAutoresizingMaskIntoConstraints="NO" id="splash-image">
+                                          <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                                      </imageView>
+                                  </subviews>
+                                  <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
+                                  <color key="backgroundColor" red="0.91372549019607843" green="0.26666666666666666" blue="0.26666666666666666" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                  <constraints>
+                                      <constraint firstItem="splash-image" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="c1"/>
+                                      <constraint firstItem="splash-image" firstAttribute="bottom" secondItem="Ze5-6b-2t3" secondAttribute="bottom" id="c2"/>
+                                      <constraint firstItem="splash-image" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="c3"/>
+                                      <constraint firstItem="splash-image" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="c4"/>
+                                  </constraints>
+                              </view>
+                          </viewController>
+                          <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+                      </objects>
+                      <point key="canvasLocation" x="53" y="375"/>
+                  </scene>
+              </scenes>
+              <resources>
+                  <image name="SplashScreenBackground" width="1" height="1"/>
+              </resources>
+          </document>
+          STORYBOARD
+            echo "Replaced SplashScreen.storyboard with minimal version"
           fi
 
       - name: Build Development Client
