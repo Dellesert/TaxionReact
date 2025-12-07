@@ -111,13 +111,16 @@ jobs:
           xcodebuild -workspace ios/Tahion.xcworkspace \
             -scheme Tahion \
             -configuration Debug \
+            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath build/Tahion-Dev.xcarchive \
             archive \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
             CODE_SIGN_IDENTITY="Apple Development" \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE=$DEV_PROFILE_UUID
+            PROVISIONING_PROFILE=$DEV_PROFILE_UUID \
+            ONLY_ACTIVE_ARCH=NO \
+            EXCLUDED_ARCHS="i386 x86_64"
 
       - name: Export Development IPA
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
@@ -183,13 +186,16 @@ jobs:
           xcodebuild -workspace ios/Tahion.xcworkspace \
             -scheme Tahion \
             -configuration Release \
+            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath build/Tahion-Release.xcarchive \
             archive \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
             CODE_SIGN_IDENTITY="Apple Development" \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE=$PROD_PROFILE_UUID
+            PROVISIONING_PROFILE=$PROD_PROFILE_UUID \
+            ONLY_ACTIVE_ARCH=NO \
+            EXCLUDED_ARCHS="i386 x86_64"
 
       - name: Export Production IPA
         if: ${{ github.event.inputs.build_type == 'production' || github.event.inputs.build_type == 'both' }}
