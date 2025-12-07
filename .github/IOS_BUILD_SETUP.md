@@ -91,6 +91,9 @@ xcrun xctrace list devices
 base64 -i ~/Downloads/Tahion_Development.mobileprovision | pbcopy
 # Вставь в секрет IOS_DEV_PROVISIONING_PROFILE_BASE64
 
+Использовать PowerShell (рекомендуется для Windows)
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("D:\Загрузки\Taxion_Dev_Client.mobileprovision"))
+
 # Production profile:
 base64 -i ~/Downloads/Tahion_Ad_Hoc.mobileprovision | pbcopy
 # Вставь в секрет IOS_PROD_PROVISIONING_PROFILE_BASE64
