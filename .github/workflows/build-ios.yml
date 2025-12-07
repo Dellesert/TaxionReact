@@ -105,6 +105,23 @@ jobs:
             echo "PROD_PROFILE_UUID=$PROD_PROFILE_UUID" >> $GITHUB_ENV
           fi
 
+      - name: Fix expo-dev-launcher assets for CI
+        run: |
+          # Remove problematic asset catalogs that require simulator runtimes
+          # This is a known issue with expo-dev-launcher on CI without simulator SDKs
+          find node_modules -name "Assets.xcassets" -path "*/expo-dev-launcher/*" -exec rm -rf {} + 2>/dev/null || true
+
+          # Create empty asset catalog to prevent build errors
+          mkdir -p node_modules/expo-dev-launcher/ios/Assets.xcassets
+          cat > node_modules/expo-dev-launcher/ios/Assets.xcassets/Contents.json << 'EOF'
+          {
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          EOF
+
       - name: Build Development Client
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
         run: |
@@ -120,7 +137,8 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE=$DEV_PROFILE_UUID \
             ONLY_ACTIVE_ARCH=NO \
-            EXCLUDED_ARCHS="i386 x86_64"
+            EXCLUDED_ARCHS="i386 x86_64" \
+            ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=YES
 
       - name: Export Development IPA
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
