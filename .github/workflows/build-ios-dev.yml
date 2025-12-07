@@ -1,0 +1,158 @@
+name: Build iOS Dev Client
+
+on:
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  build-ios-dev:
+    runs-on: macos-15
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: |
+          ls -la /Applications/ | grep Xcode
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Install iOS Simulator
+        run: |
+          xcodebuild -downloadPlatform iOS
+          xcrun simctl list runtimes
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          pod --version
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Setup Expo
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install
+        env:
+          LANG: en_US.UTF-8
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          security import $CERTIFICATE_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+
+      - name: Import provisioning profile
+        env:
+          DEV_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_DEV_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+
+          DEV_PROFILE_PATH=~/Library/MobileDevice/Provisioning\ Profiles/dev_profile.mobileprovision
+          echo -n "$DEV_PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$DEV_PROFILE_PATH"
+          DEV_PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$DEV_PROFILE_PATH"))
+          cp "$DEV_PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/${DEV_PROFILE_UUID}.mobileprovision
+          echo "Development profile imported with UUID: $DEV_PROFILE_UUID"
+          echo "DEV_PROFILE_UUID=$DEV_PROFILE_UUID" >> $GITHUB_ENV
+
+      - name: Fix assets for CI
+        run: |
+          find node_modules -name "Assets.xcassets" -path "*/expo-dev-launcher/*" -exec rm -rf {} + 2>/dev/null || true
+          mkdir -p node_modules/expo-dev-launcher/ios/Assets.xcassets
+          cat > node_modules/expo-dev-launcher/ios/Assets.xcassets/Contents.json << 'EOF'
+          {
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          EOF
+
+      - name: Build Development Client
+        run: |
+          xcodebuild -workspace ios/Tahion.xcworkspace \
+            -scheme Tahion \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Tahion-Dev.xcarchive \
+            archive \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            CODE_SIGN_IDENTITY="Apple Development" \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE=$DEV_PROFILE_UUID \
+            ONLY_ACTIVE_ARCH=NO \
+            EXCLUDED_ARCHS="i386 x86_64"
+
+      - name: Export Development IPA
+        run: |
+          mkdir -p build
+
+          cat > build/ExportOptions-Dev.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>teamID</key>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <key>compileBitcode</key>
+              <false/>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.dellesert.tachyon-messenger</key>
+                  <string>$DEV_PROFILE_UUID</string>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath build/Tahion-Dev.xcarchive \
+            -exportPath build/ipa-dev \
+            -exportOptionsPlist build/ExportOptions-Dev.plist
+
+          mv build/ipa-dev/Tahion.ipa build/ipa-dev/Tahion-DevClient.ipa
+
+      - name: Upload Development IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tahion-DevClient-IPA
+          path: build/ipa-dev/Tahion-DevClient.ipa
+          retention-days: 30
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
