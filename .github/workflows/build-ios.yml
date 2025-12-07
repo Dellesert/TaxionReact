@@ -25,11 +25,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16.1
-        run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+      - name: Select Xcode 16.2
+        run: |
+          # List available Xcode versions
+          ls -la /Applications/ | grep Xcode
+          # Try Xcode 16.2 first (has iOS 18.2 platform), fallback to 16.1
+          if [ -d "/Applications/Xcode_16.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          else
+            sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          fi
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Show Xcode version and available platforms
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -105,7 +115,7 @@ jobs:
             echo "PROD_PROFILE_UUID=$PROD_PROFILE_UUID" >> $GITHUB_ENV
           fi
 
-      - name: Fix expo-dev-launcher assets for CI
+      - name: Fix assets and storyboard for CI
         run: |
           # Remove problematic asset catalogs that require simulator runtimes
           # This is a known issue with expo-dev-launcher on CI without simulator SDKs
@@ -121,6 +131,18 @@ jobs:
             }
           }
           EOF
+
+          # Fix storyboard deployment target to match available iOS SDK
+          # Get the installed iOS SDK version
+          IOS_SDK_VERSION=$(xcodebuild -showsdks | grep "iphoneos" | tail -1 | awk '{print $NF}' | sed 's/iphoneos//')
+          echo "Available iOS SDK: $IOS_SDK_VERSION"
+
+          # Update SplashScreen.storyboard to use deployment target 15.1 instead of system version
+          if [ -f "ios/Tahion/SplashScreen.storyboard" ]; then
+            sed -i '' 's/targetRuntime="iOS.CocoaTouch.Storyboard.XIB.18.1"/targetRuntime="iOS.CocoaTouch"/g' ios/Tahion/SplashScreen.storyboard
+            sed -i '' 's/systemVersion="[0-9]*"/systemVersion="23"/g' ios/Tahion/SplashScreen.storyboard
+            echo "Updated SplashScreen.storyboard"
+          fi
 
       - name: Build Development Client
         if: ${{ github.event.inputs.build_type == 'development' || github.event.inputs.build_type == 'both' }}
