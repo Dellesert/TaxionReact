@@ -8,6 +8,15 @@
 - Доступ к Apple Developer Portal
 - macOS для экспорта сертификатов
 
+## Push Notifications
+
+**ВАЖНО:** Для настройки push-уведомлений смотрите отдельную инструкцию: [PUSH_NOTIFICATIONS_SETUP.md](./PUSH_NOTIFICATIONS_SETUP.md)
+
+Push-уведомления требуют:
+- Включение Push Notifications capability в App IDs
+- Правильные entitlements (development/production)
+- APNs Authentication Key или Certificates на бэкенде
+
 ## Шаг 1: Создание сертификата подписи
 
 ### 1.1 Создать сертификат в Apple Developer Portal
@@ -41,13 +50,17 @@ base64 -i ~/Desktop/certificate.p12 | pbcopy
 1. [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers/list)
 2. Нажми **+** → **App IDs** → **App**
 3. Заполни:
-   - **Description**: Tahion Messenger
+   - **Description**: Tahion Messenger Dev
    - **Bundle ID**: Explicit → `com.dellesert.tachyon-messenger`
 4. Включи capabilities:
-   - ✅ Push Notifications
+   - ✅ **Push Notifications** ← ОБЯЗАТЕЛЬНО для push-уведомлений!
+   - ✅ Associated Domains (если используете)
 5. Нажми **Continue** → **Register**
 
-6. Повтори для Production bundle ID: `com.dellesert.tachyon-messenger.release`
+6. Повтори для Production bundle ID:
+   - **Description**: Tahion Messenger Prod
+   - **Bundle ID**: `com.dellesert.tachyon-messenger.release`
+   - ✅ **Push Notifications** ← ОБЯЗАТЕЛЬНО!
 
 ### 2.2 Зарегистрировать устройства
 
@@ -90,6 +103,9 @@ xcrun xctrace list devices
 # Development profile:
 base64 -i ~/Downloads/Tahion_Development.mobileprovision | pbcopy
 # Вставь в секрет IOS_DEV_PROVISIONING_PROFILE_BASE64
+
+Использовать PowerShell (рекомендуется для Windows)
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("D:\Загрузки\Taxion_Dev_Client.mobileprovision"))
 
 # Production profile:
 base64 -i ~/Downloads/Tahion_Ad_Hoc.mobileprovision | pbcopy
@@ -211,3 +227,4 @@ echo "QNVQ55232N"
 - [Apple Developer Portal](https://developer.apple.com/account)
 - [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 - [Expo Prebuild](https://docs.expo.dev/workflow/prebuild/)
+- [Push Notifications Setup](./PUSH_NOTIFICATIONS_SETUP.md) - Полная инструкция по настройке push-уведомлений

@@ -175,27 +175,43 @@ class PushNotificationService {
     onNotificationReceived?: (notification: Notifications.Notification) => void,
     onNotificationResponse?: (response: Notifications.NotificationResponse) => void
   ): void {
+    console.log('[Push] Setting up notification listeners for platform:', Platform.OS);
+
     // Для web используем Firebase onMessage
     if (Platform.OS === 'web') {
+      console.log('[Push] Using web notification listeners (Firebase)');
       this.setupWebNotificationListeners(onNotificationReceived);
       return;
     }
 
     // Listener для входящих уведомлений (когда приложение открыто)
+    console.log('[Push] Registering notification received listener');
     this.notificationListener = Notifications.addNotificationReceivedListener(
       (notification) => {
-        console.log('Notification received:', notification);
+        console.log('[Push] ✅ Notification received while app is OPEN (foreground):');
+        console.log('[Push] Title:', notification.request.content.title);
+        console.log('[Push] Body:', notification.request.content.body);
+        console.log('[Push] Data:', JSON.stringify(notification.request.content.data));
+        console.log('[Push] Full notification:', JSON.stringify(notification));
         onNotificationReceived?.(notification);
       }
     );
 
     // Listener для нажатий на уведомления
+    console.log('[Push] Registering notification response listener');
     this.responseListener = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        console.log('Notification response:', response);
+        console.log('[Push] ✅ Notification tapped/responded:');
+        console.log('[Push] Action:', response.actionIdentifier);
+        console.log('[Push] Title:', response.notification.request.content.title);
+        console.log('[Push] Body:', response.notification.request.content.body);
+        console.log('[Push] Data:', JSON.stringify(response.notification.request.content.data));
+        console.log('[Push] Full response:', JSON.stringify(response));
         onNotificationResponse?.(response);
       }
     );
+
+    console.log('[Push] Notification listeners registered successfully');
   }
 
   /**

@@ -130,25 +130,48 @@ export default function App() {
   // Connect/disconnect WebSocket and register for push notifications based on auth state
   useEffect(() => {
     if (isAuthenticated) {
+      console.log('[App] User authenticated - setting up push notifications');
       websocketService.connect();
       // Load unread notification count when user is authenticated
       loadUnreadCount();
 
       // Register for push notifications
-      pushNotificationService.registerForPushNotifications();
+      pushNotificationService.registerForPushNotifications().then((token) => {
+        if (token) {
+          console.log('[App] ✅ Push notifications registered, token:', token.substring(0, 20) + '...');
+        } else {
+          console.log('[App] ❌ Failed to register push notifications');
+        }
+      });
 
       // Setup notification listeners
       pushNotificationService.setupNotificationListeners(
         (notification) => {
+          console.log('[App] 📬 Notification received in app:', notification.request.content.title);
           // Reload unread count when notification received
           loadUnreadCount();
         },
         (response) => {
+          console.log('[App] 👆 Notification tapped:', response.notification.request.content.title);
           // Handle notification tap - navigation will be handled by deep links
-          console.log('Notification tapped:', response.notification.request.content);
         }
       );
+
+      // Check for last notification response (when app was opened from notification)
+      import('expo-notifications').then(({ Notifications }) => {
+        Notifications.getLastNotificationResponseAsync().then((response) => {
+          if (response) {
+            console.log('[App] 🚀 App opened from notification:');
+            console.log('[App] Title:', response.notification.request.content.title);
+            console.log('[App] Body:', response.notification.request.content.body);
+            console.log('[App] Data:', JSON.stringify(response.notification.request.content.data));
+          } else {
+            console.log('[App] App opened normally (not from notification)');
+          }
+        });
+      });
     } else {
+      console.log('[App] User logged out - cleaning up push notifications');
       websocketService.disconnect();
       pushNotificationService.removeNotificationListeners();
       pushNotificationService.unregisterDevice();
