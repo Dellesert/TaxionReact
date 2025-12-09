@@ -298,7 +298,7 @@
 			inputPaths = (
 				"$(SRCROOT)/.xcode.env",
 				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/Tahion/Tahion.entitlements",
+				"$(SRCROOT)/Tahion/Tahion-Dev.entitlements",
 				"$(SRCROOT)/Pods/Target Support Files/Pods-Tahion/expo-configure-project.sh",
 			);
 			name = "[Expo] Configure project";
@@ -354,7 +354,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Tahion/Tahion-Dev.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "Tahion/Tahion-Dev.entitlements";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = QNVQ55232N;
 				ENABLE_BITCODE = NO;
@@ -391,7 +391,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Tahion/Tahion-Prod.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "Tahion/Tahion-Prod.entitlements";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = QNVQ55232N;
 				INFOPLIST_FILE = Tahion/Info.plist;
