@@ -10,6 +10,7 @@ import { Platform } from 'react-native';
 import api from '@shared/api/axios.config';
 import { getFirebaseMessaging } from '@/config/firebase.config';
 import { getToken, onMessage, Unsubscribe } from 'firebase/messaging';
+import { iosPushNotificationService } from './pushNotificationIOS.service';
 
 // Настройка обработки уведомлений
 Notifications.setNotificationHandler({
@@ -50,10 +51,19 @@ class PushNotificationService {
   async registerForPushNotifications(): Promise<string | null> {
     console.log('[Push] registerForPushNotifications called, platform:', Platform.OS);
 
+    // Для iOS используем специальный сервис с поддержкой Firebase FCM
+    if (Platform.OS === 'ios') {
+      console.log('[Push] Using iOS-specific push notification service');
+      return iosPushNotificationService.registerForPushNotifications();
+    }
+
     // Для web используем Firebase Cloud Messaging
     if (Platform.OS === 'web') {
       return this.registerForWebPushNotifications();
     }
+
+    // Для Android используем стандартный Expo Notifications (FCM токен)
+    console.log('[Push] Using Android push notification service');
 
     // Проверяем, что это физическое устройство
     console.log('[Push] Device.isDevice:', Device.isDevice);
@@ -82,7 +92,7 @@ class PushNotificationService {
 
     try {
       console.log('[Push] Getting device push token...');
-      // Получаем Device Push Token (APNs token для iOS, FCM token для Android)
+      // Получаем Device Push Token (FCM token для Android)
       const tokenData = await Notifications.getDevicePushTokenAsync();
       console.log('[Push] Token data received:', JSON.stringify(tokenData));
       const token = tokenData.data as string;
@@ -177,12 +187,25 @@ class PushNotificationService {
   ): void {
     console.log('[Push] Setting up notification listeners for platform:', Platform.OS);
 
+    // Для iOS используем специальный сервис
+    if (Platform.OS === 'ios') {
+      console.log('[Push] Using iOS-specific notification listeners');
+      iosPushNotificationService.setupNotificationListeners(
+        onNotificationReceived,
+        onNotificationResponse
+      );
+      return;
+    }
+
     // Для web используем Firebase onMessage
     if (Platform.OS === 'web') {
       console.log('[Push] Using web notification listeners (Firebase)');
       this.setupWebNotificationListeners(onNotificationReceived);
       return;
     }
+
+    // Для Android используем стандартные Expo Notifications listeners
+    console.log('[Push] Using Android notification listeners');
 
     // Listener для входящих уведомлений (когда приложение открыто)
     console.log('[Push] Registering notification received listener');
@@ -274,6 +297,13 @@ class PushNotificationService {
    * Отписаться от уведомлений
    */
   removeNotificationListeners(): void {
+    // Для iOS используем специальный сервис
+    if (Platform.OS === 'ios') {
+      iosPushNotificationService.removeNotificationListeners();
+      return;
+    }
+
+    // Для остальных платформ
     if (this.notificationListener) {
       this.notificationListener.remove();
       this.notificationListener = null;
@@ -320,6 +350,13 @@ class PushNotificationService {
    * Отменить регистрацию устройства (при logout)
    */
   async unregisterDevice(): Promise<void> {
+    // Для iOS используем специальный сервис
+    if (Platform.OS === 'ios') {
+      await iosPushNotificationService.unregisterDevice();
+      return;
+    }
+
+    // Для остальных платформ
     if (!this.deviceId) return;
 
     try {
