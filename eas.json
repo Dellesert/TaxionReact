@@ -13,7 +13,9 @@
       "ios": {
         "resourceClass": "m-medium",
         "simulator": false,
-        "buildConfiguration": "Debug"
+        "buildConfiguration": "Debug",
+        "autoIncrement": true,
+        "credentialsSource": "remote"
       },
       "android": {
         "buildType": "apk",
