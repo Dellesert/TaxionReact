@@ -71,6 +71,14 @@
           "mode": "production"
         }
       ],
+      [
+        "@react-native-firebase/app",
+        {
+          "ios": {
+            "googleServicesFile": "./GoogleService-Info.plist"
+          }
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       "expo-web-browser"
