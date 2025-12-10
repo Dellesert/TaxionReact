@@ -57,6 +57,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withPodfileModifications.js",
       [
         "expo-image-picker",
         {
