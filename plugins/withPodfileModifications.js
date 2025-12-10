@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Add use_modular_headers! to Podfile for Firebase compatibility
+ * Add modular_headers for specific Firebase pods only
  */
 const withPodfileModifications = (config) => {
   return withDangerousMod(config, [
@@ -14,16 +14,35 @@ const withPodfileModifications = (config) => {
       if (fs.existsSync(podfilePath)) {
         let contents = fs.readFileSync(podfilePath, 'utf-8');
 
-        // Add use_modular_headers! if not already present
-        if (!contents.includes('use_modular_headers!')) {
-          // Add after "target 'AppName' do" line
+        // Add post_install hook to set modular_headers for Firebase pods
+        if (!contents.includes('Firebase pods modular headers')) {
+          const postInstallHook = `
+  post_install do |installer|
+    # Firebase pods modular headers
+    installer.pods_project.targets.each do |target|
+      if target.name.include?('Firebase') || target.name.include?('Google')
+        target.build_configurations.each do |config|
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+        end
+      end
+    end
+
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      :ccache_enabled => ccache_enabled?(podfile_properties),
+    )
+  end`;
+
+          // Replace existing post_install
           contents = contents.replace(
-            /(target .+ do\n)/,
-            '$1  use_modular_headers!\n'
+            /post_install do \|installer\|[\s\S]*?end\nend/,
+            postInstallHook + '\nend'
           );
 
           fs.writeFileSync(podfilePath, contents);
-          console.log('✅ Added use_modular_headers! to Podfile');
+          console.log('✅ Added Firebase modular headers to post_install');
         }
       }
 
