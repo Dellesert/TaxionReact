@@ -19,6 +19,7 @@
       "bundleIdentifier": "com.dellesert.tachyon-messenger",
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
         "NSCameraUsageDescription": "Tachyon нужен доступ к камере для съемки и отправки фотографий",
@@ -71,14 +72,7 @@
           "mode": "production"
         }
       ],
-      [
-        "@react-native-firebase/app",
-        {
-          "ios": {
-            "googleServicesFile": "./GoogleService-Info.plist"
-          }
-        }
-      ],
+      "@react-native-firebase/app",
       "expo-router",
       "expo-secure-store",
       "expo-web-browser"
