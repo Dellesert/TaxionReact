@@ -78,10 +78,6 @@
 	<true/>
 	<key>RCTRootViewBackgroundColor</key>
 	<integer>4293477444</integer>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>SplashScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

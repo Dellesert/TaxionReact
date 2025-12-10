@@ -9,27 +9,27 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		7EC308E4137D74A8FDF3655D /* libPods-Tahion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7B4CED0E630974C83C1ADE1C /* libPods-Tahion.a */; };
-		94AB71544ABD8EAA08777810 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6A43C5EA2E1F385CA9E83EF5 /* PrivacyInfo.xcprivacy */; };
+		49610E9A74E47E7382F7F229 /* libPods-Tahion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F8011F6D7002D46191C71C8F /* libPods-Tahion.a */; };
+		A5DCB2562377D01C670FA112 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0880D7520724D7ECA7046DD5 /* ExpoModulesProvider.swift */; };
+		B6E2ABF05710D243E5700181 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9F702FC689493066A503DBE1 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		DEDADF2C0F8B0C7073D63CE2 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C114FBB5CC107A9EAFCC5D39 /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0880D7520724D7ECA7046DD5 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Tahion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		103F78AF5C9EB57B01FAFE95 /* Pods-Tahion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tahion.release.xcconfig"; path = "Target Support Files/Pods-Tahion/Pods-Tahion.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Tahion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tahion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Tahion/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Tahion/Info.plist; sourceTree = "<group>"; };
-		39FDAD012ACB8EB62DD9B4C8 /* Pods-Tahion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tahion.release.xcconfig"; path = "Target Support Files/Pods-Tahion/Pods-Tahion.release.xcconfig"; sourceTree = "<group>"; };
-		6A43C5EA2E1F385CA9E83EF5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Tahion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		7B4CED0E630974C83C1ADE1C /* libPods-Tahion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Tahion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9F702FC689493066A503DBE1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Tahion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Tahion/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C114FBB5CC107A9EAFCC5D39 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Tahion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		E11FD41F1B918CA371E9DF14 /* Pods-Tahion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tahion.debug.xcconfig"; path = "Target Support Files/Pods-Tahion/Pods-Tahion.debug.xcconfig"; sourceTree = "<group>"; };
+		DA91379A5CD253CA23F77A5E /* Pods-Tahion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tahion.debug.xcconfig"; path = "Target Support Files/Pods-Tahion/Pods-Tahion.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Tahion/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Tahion-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Tahion-Bridging-Header.h"; path = "Tahion/Tahion-Bridging-Header.h"; sourceTree = "<group>"; };
+		F8011F6D7002D46191C71C8F /* libPods-Tahion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Tahion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7EC308E4137D74A8FDF3655D /* libPods-Tahion.a in Frameworks */,
+				49610E9A74E47E7382F7F229 /* libPods-Tahion.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,32 +53,32 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				6A43C5EA2E1F385CA9E83EF5 /* PrivacyInfo.xcprivacy */,
+				9F702FC689493066A503DBE1 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Tahion;
-			sourceTree = "<group>";
-		};
-		194419323A489F93BDCE0DF4 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				2F77D6F1B6F397F044CA9832 /* Tahion */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				7B4CED0E630974C83C1ADE1C /* libPods-Tahion.a */,
+				F8011F6D7002D46191C71C8F /* libPods-Tahion.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		2F77D6F1B6F397F044CA9832 /* Tahion */ = {
+		2FC67C1FA547C7718AD350C4 /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				C114FBB5CC107A9EAFCC5D39 /* ExpoModulesProvider.swift */,
+				60C5C12393FD25668822A40E /* Tahion */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		60C5C12393FD25668822A40E /* Tahion */ = {
+			isa = PBXGroup;
+			children = (
+				0880D7520724D7ECA7046DD5 /* ExpoModulesProvider.swift */,
 			);
 			name = Tahion;
 			sourceTree = "<group>";
@@ -97,8 +97,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				E37AEAEBFCFC97E4FA369AC2 /* Pods */,
-				194419323A489F93BDCE0DF4 /* ExpoModulesProviders */,
+				AA6342B86F057151F32243F3 /* Pods */,
+				2FC67C1FA547C7718AD350C4 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -113,6 +113,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		AA6342B86F057151F32243F3 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				DA91379A5CD253CA23F77A5E /* Pods-Tahion.debug.xcconfig */,
+				103F78AF5C9EB57B01FAFE95 /* Pods-Tahion.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -122,15 +131,6 @@
 			path = Tahion/Supporting;
 			sourceTree = "<group>";
 		};
-		E37AEAEBFCFC97E4FA369AC2 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				E11FD41F1B918CA371E9DF14 /* Pods-Tahion.debug.xcconfig */,
-				39FDAD012ACB8EB62DD9B4C8 /* Pods-Tahion.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -138,14 +138,14 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Tahion" */;
 			buildPhases = (
-				E3EDCE68FEBD38BF0A3DBA63 /* [CP] Check Pods Manifest.lock */,
-				C8BE41E83FBEA70A4C7CC14A /* [Expo] Configure project */,
+				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
+				B98A944E02EE0E44AFB446DC /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				5ADF676EB1BE2CFDCD9A4C8A /* [CP] Embed Pods Frameworks */,
-				7F1CC682913459F9A3F6A70C /* [CP] Copy Pods Resources */,
+				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
+				AB45282C5A53D604D638E27C /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				94AB71544ABD8EAA08777810 /* PrivacyInfo.xcprivacy in Resources */,
+				B6E2ABF05710D243E5700181 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,29 +219,29 @@
 			shellPath = /bin/sh;
 			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n`\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
 		};
-		5ADF676EB1BE2CFDCD9A4C8A /* [CP] Embed Pods Frameworks */ = {
+		08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			inputFileListPaths = (
 			);
-			name = "[CP] Embed Pods Frameworks";
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+				"$(DERIVED_FILE_DIR)/Pods-Tahion-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-frameworks.sh\"\n";
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		7F1CC682913459F9A3F6A70C /* [CP] Copy Pods Resources */ = {
+		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -287,7 +287,29 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		C8BE41E83FBEA70A4C7CC14A /* [Expo] Configure project */ = {
+		AB45282C5A53D604D638E27C /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		B98A944E02EE0E44AFB446DC /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -298,7 +320,7 @@
 			inputPaths = (
 				"$(SRCROOT)/.xcode.env",
 				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/Tahion/Tahion-Dev.entitlements",
+				"$(SRCROOT)/Tahion/Tahion.entitlements",
 				"$(SRCROOT)/Pods/Target Support Files/Pods-Tahion/expo-configure-project.sh",
 			);
 			name = "[Expo] Configure project";
@@ -311,28 +333,6 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Tahion/expo-configure-project.sh\"\n";
 		};
-		E3EDCE68FEBD38BF0A3DBA63 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-Tahion-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -341,7 +341,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				DEDADF2C0F8B0C7073D63CE2 /* ExpoModulesProvider.swift in Sources */,
+				A5DCB2562377D01C670FA112 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -350,11 +350,11 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E11FD41F1B918CA371E9DF14 /* Pods-Tahion.debug.xcconfig */;
+			baseConfigurationReference = DA91379A5CD253CA23F77A5E /* Pods-Tahion.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "Tahion/Tahion-Dev.entitlements";
+				CODE_SIGN_ENTITLEMENTS = Tahion/Tahion.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = QNVQ55232N;
 				ENABLE_BITCODE = NO;
@@ -387,11 +387,11 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 39FDAD012ACB8EB62DD9B4C8 /* Pods-Tahion.release.xcconfig */;
+			baseConfigurationReference = 103F78AF5C9EB57B01FAFE95 /* Pods-Tahion.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "Tahion/Tahion-Prod.entitlements";
+				CODE_SIGN_ENTITLEMENTS = Tahion/Tahion.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = QNVQ55232N;
 				INFOPLIST_FILE = Tahion/Info.plist;
@@ -407,7 +407,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.dellesert.tachyon-messenger.release";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dellesert.tachyon-messenger";
 				PRODUCT_NAME = Tahion;
 				SWIFT_OBJC_BRIDGING_HEADER = "Tahion/Tahion-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
