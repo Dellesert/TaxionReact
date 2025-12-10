@@ -91,9 +91,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottomWidth: 0,
     gap: 6,
+    minHeight: 44, // Fixed minimum height to prevent jumping
   },
   tab: {
     flex: 1,
+    minHeight: 36, // Fixed tab height
     paddingVertical: 8,
     paddingHorizontal: 6,
     alignItems: 'center',
