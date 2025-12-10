@@ -8,14 +8,12 @@ interface TaskStatusTabsProps {
   activeTab: StatusTab;
   totals: TotalsByStatus;
   onTabChange: (tab: StatusTab) => void;
-  isLoading?: boolean;
 }
 
 export const TaskStatusTabs: React.FC<TaskStatusTabsProps> = React.memo(({
   activeTab,
   totals,
   onTabChange,
-  isLoading = false,
 }) => {
   const { theme } = useTheme();
   const { width: screenWidth } = Dimensions.get('window');
@@ -54,8 +52,8 @@ export const TaskStatusTabs: React.FC<TaskStatusTabsProps> = React.memo(({
                 </Text>
               )}
 
-              {/* Count badge - hide during initial loading to prevent jumping */}
-              {!isLoading && count > 0 && (
+              {/* Count badge */}
+              {count > 0 && (
                 <View
                   style={[
                     styles.tabCountContainer,

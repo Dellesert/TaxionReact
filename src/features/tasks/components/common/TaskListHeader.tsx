@@ -23,7 +23,6 @@ interface TaskListHeaderProps {
   onTabChange: (tab: StatusTab) => void;
   onFilterButtonLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
   isDesktop?: boolean;
-  isInitialLoading?: boolean;
 }
 
 export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
@@ -40,7 +39,6 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
   onTabChange,
   onFilterButtonLayout,
   isDesktop = false,
-  isInitialLoading = false,
 }) => {
   const { theme } = useTheme();
   const filterButtonRef = React.useRef<View>(null);
@@ -176,7 +174,6 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
             activeTab={activeTab}
             totals={totals}
             onTabChange={onTabChange}
-            isLoading={isInitialLoading}
           />
         </>
       }

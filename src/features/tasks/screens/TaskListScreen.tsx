@@ -261,7 +261,6 @@ const TaskListScreen: React.FC = () => {
         onTabChange={setActiveTab}
         onFilterButtonLayout={setFilterButtonPosition}
         isDesktop={isDesktop}
-        isInitialLoading={isInitialLoading}
       />
 
       {/* Content - TaskViewSwitcher for Desktop, Swipe Navigation for Mobile */}

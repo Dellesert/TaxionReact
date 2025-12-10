@@ -58,11 +58,28 @@ const initialTotals: TotalsByStatus = {
   done: 0,
 };
 
+// Pre-load totals from storage on web for instant display
+let preloadedTotals: TotalsByStatus | null = null;
+if (!isNative) {
+  // On web, try to load totals synchronously from localStorage
+  try {
+    const stored = localStorage.getItem('task-storage');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed?.state?.totals) {
+        preloadedTotals = parsed.state.totals;
+      }
+    }
+  } catch (error) {
+    // Ignore errors, will use initial state
+  }
+}
+
 export const useTaskStore = create<TaskCacheStore>()(
   persist(
     (set, get) => ({
       tasksByStatus: initialTasksByStatus,
-      totals: initialTotals,
+      totals: preloadedTotals || initialTotals,
       lastUpdated: null,
 
       setTasksForStatus: (status: StatusTab, tasks: Task[], total: number) => {
