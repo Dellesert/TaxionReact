@@ -68,18 +68,20 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
 
     return (
       <View key={tab} style={{ width: SCREEN_WIDTH, height: '100%' }}>
-        {/* Expand All Subtasks Button */}
-        {!isInitialLoading && tabTotal > 0 && (
-          <ExpandAllSubtasksButton
-            expanded={expandAllSubtasks}
-            count={tasksWithSubtasksCount}
-            onToggle={onExpandAllToggle}
-          />
-        )}
-
         {isInitialLoading ? (
           <TaskListSkeleton />
-        ) : totalAllTasks === 0 ? (
+        ) : (
+          <>
+            {/* Expand All Subtasks Button */}
+            {tabTotal > 0 && (
+              <ExpandAllSubtasksButton
+                expanded={expandAllSubtasks}
+                count={tasksWithSubtasksCount}
+                onToggle={onExpandAllToggle}
+              />
+            )}
+
+            {totalAllTasks === 0 ? (
           <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={true} />
         ) : tabTotal === 0 ? (
           <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={false} />
@@ -121,6 +123,8 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
               ) : null
             }
           />
+            )}
+          </>
         )}
       </View>
     );

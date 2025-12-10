@@ -23,9 +23,10 @@ interface TaskListHeaderProps {
   onTabChange: (tab: StatusTab) => void;
   onFilterButtonLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
   isDesktop?: boolean;
+  isInitialLoading?: boolean;
 }
 
-export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
+export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
   filter,
   isSearchVisible,
   searchQuery,
@@ -39,6 +40,7 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
   onTabChange,
   onFilterButtonLayout,
   isDesktop = false,
+  isInitialLoading = false,
 }) => {
   const { theme } = useTheme();
   const filterButtonRef = React.useRef<View>(null);
@@ -174,12 +176,13 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
             activeTab={activeTab}
             totals={totals}
             onTabChange={onTabChange}
+            isLoading={isInitialLoading}
           />
         </>
       }
     />
   );
-};
+});
 
 const styles = StyleSheet.create({
   // Mobile styles
