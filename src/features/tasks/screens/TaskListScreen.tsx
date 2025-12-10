@@ -271,6 +271,7 @@ const TaskListScreen: React.FC = () => {
             totals={totals}
             loading={loading}
             canLoadMore={canLoadMore}
+            isInitialLoading={isInitialLoading}
             subtasksCache={subtasksCache}
             expandAllSubtasks={expandAllSubtasks}
             refreshing={refreshing}

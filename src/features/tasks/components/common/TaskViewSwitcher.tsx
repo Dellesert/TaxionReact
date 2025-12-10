@@ -8,6 +8,7 @@ import type { TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatu
 import type { AdvancedTaskFilters } from '../../utils/taskListHelpers';
 import { TaskKanbanBoard } from '../kanban/TaskKanbanBoard';
 import { TaskTableView } from '../lists/TaskTableView';
+import { TaskListSkeleton } from '../states/TaskListSkeleton';
 
 const STORAGE_KEY = '@task_view_mode';
 
@@ -18,6 +19,7 @@ interface TaskViewSwitcherProps {
   totals: TotalsByStatus;
   loading: LoadingByStatus;
   canLoadMore: CanLoadMoreByStatus;
+  isInitialLoading?: boolean;
   subtasksCache: Record<number, Task[]>;
   expandAllSubtasks: boolean;
   refreshing?: boolean;
@@ -107,34 +109,40 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
 
       {/* Content based on view mode */}
       <View style={styles.content}>
-        {viewMode === 'board' && (
-          <TaskKanbanBoard
-            tasks={props.tasks}
-            totals={props.totals}
-            loading={props.loading}
-            canLoadMore={props.canLoadMore}
-            subtasksCache={props.subtasksCache}
-            expandAllSubtasks={props.expandAllSubtasks}
-            refreshing={props.refreshing}
-            searchQuery={props.searchQuery}
-            onTaskPress={props.onTaskPress}
-            onLoadMore={props.onLoadMore}
-            onRefresh={props.onRefresh}
-            onExpandAllToggle={props.onExpandAllToggle}
-          />
-        )}
+        {props.isInitialLoading ? (
+          <TaskListSkeleton />
+        ) : (
+          <>
+            {viewMode === 'board' && (
+              <TaskKanbanBoard
+                tasks={props.tasks}
+                totals={props.totals}
+                loading={props.loading}
+                canLoadMore={props.canLoadMore}
+                subtasksCache={props.subtasksCache}
+                expandAllSubtasks={props.expandAllSubtasks}
+                refreshing={props.refreshing}
+                searchQuery={props.searchQuery}
+                onTaskPress={props.onTaskPress}
+                onLoadMore={props.onLoadMore}
+                onRefresh={props.onRefresh}
+                onExpandAllToggle={props.onExpandAllToggle}
+              />
+            )}
 
-        {viewMode === 'table' && (
-          <TaskTableView
-            tasks={props.tasks}
-            totals={props.totals}
-            loading={props.loading}
-            subtasksCache={props.subtasksCache}
-            searchQuery={props.searchQuery}
-            advancedFilters={props.advancedFilters}
-            onTaskPress={props.onTaskPress}
-            onTaskUpdated={props.onTaskUpdated}
-          />
+            {viewMode === 'table' && (
+              <TaskTableView
+                tasks={props.tasks}
+                totals={props.totals}
+                loading={props.loading}
+                subtasksCache={props.subtasksCache}
+                searchQuery={props.searchQuery}
+                advancedFilters={props.advancedFilters}
+                onTaskPress={props.onTaskPress}
+                onTaskUpdated={props.onTaskUpdated}
+              />
+            )}
+          </>
         )}
       </View>
     </View>

@@ -4,7 +4,7 @@ import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, SharedValue } from 'react-native-reanimated';
 import { TaskItem } from './TaskItem';
-import { TaskSkeleton } from '../states/TaskSkeleton';
+import { TaskListSkeleton } from '../states/TaskListSkeleton';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { Task } from '../../types/task.types';
 import type { StatusTab, TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus } from '../../hooks/useTaskListData';
@@ -78,11 +78,7 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
         )}
 
         {isInitialLoading ? (
-          <View style={{ flex: 1, paddingTop: 12 }}>
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <TaskSkeleton key={i} />
-            ))}
-          </View>
+          <TaskListSkeleton />
         ) : totalAllTasks === 0 ? (
           <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={true} />
         ) : tabTotal === 0 ? (
