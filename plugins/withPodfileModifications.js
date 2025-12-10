@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Add modular_headers for specific Firebase pods only
+ * Add use_modular_headers! for GoogleUtilities to fix Firebase static library integration
  */
 const withPodfileModifications = (config) => {
   return withDangerousMod(config, [
@@ -14,35 +14,30 @@ const withPodfileModifications = (config) => {
       if (fs.existsSync(podfilePath)) {
         let contents = fs.readFileSync(podfilePath, 'utf-8');
 
-        // Add post_install hook to set modular_headers for Firebase pods
-        if (!contents.includes('Firebase pods modular headers')) {
-          const postInstallHook = `
-  post_install do |installer|
-    # Firebase pods modular headers
-    installer.pods_project.targets.each do |target|
-      if target.name.include?('Firebase') || target.name.include?('Google')
-        target.build_configurations.each do |config|
-          config.build_settings['DEFINES_MODULE'] = 'YES'
-        end
-      end
-    end
+        // Add modular headers configuration after 'require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")'
+        const modularHeadersConfig = `
+  # Enable modular headers for GoogleUtilities to support Firebase static linking
+  pod 'GoogleUtilities', :modular_headers => true
+`;
 
-    react_native_post_install(
-      installer,
-      config[:reactNativePath],
-      :mac_catalyst_enabled => false,
-      :ccache_enabled => ccache_enabled?(podfile_properties),
-    )
-  end`;
+        // Insert after the require statements but before use_expo_modules!
+        if (!contents.includes("pod 'GoogleUtilities', :modular_headers => true")) {
+          // Find the position after require statements
+          const requirePattern = /require File\.join\(File\.dirname\(`node --print "require\.resolve\('expo\/package\.json'\)"`\), "scripts\/autolinking"\)/;
 
-          // Replace existing post_install
-          contents = contents.replace(
-            /post_install do \|installer\|[\s\S]*?end\nend/,
-            postInstallHook + '\nend'
-          );
+          if (requirePattern.test(contents)) {
+            contents = contents.replace(
+              requirePattern,
+              `$&${modularHeadersConfig}`
+            );
 
-          fs.writeFileSync(podfilePath, contents);
-          console.log('✅ Added Firebase modular headers to post_install');
+            fs.writeFileSync(podfilePath, contents);
+            console.log('✅ Added GoogleUtilities modular headers configuration');
+          } else {
+            console.warn('⚠️  Could not find autolinking require statement in Podfile');
+          }
+        } else {
+          console.log('ℹ️  GoogleUtilities modular headers already configured');
         }
       }
 
