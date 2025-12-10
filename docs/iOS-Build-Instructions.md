@@ -21,7 +21,7 @@
    - Откройте [Apple Developer Portal](https://developer.apple.com/account/resources/authkeys/list)
    - Create a Key → Enable "Apple Push Notifications service (APNs)"
    - Скачайте .p8 файл и загрузите в Firebase Console
-   - Укажите Key ID и Team ID (Team ID: Z7R5N84Y3S)
+   - Укажите Key ID и Team ID (Team ID: QNVQ55232N)
 
 ### 3. Обновить Entitlements для production
 
@@ -312,7 +312,7 @@ xcodebuild -exportArchive \
 - **Bundle ID**: com.dellesert.tachyon-messenger
 - **Workspace**: ios/Tahion.xcworkspace
 - **Scheme**: Tahion
-- **Team ID**: Z7R5N84Y3S
+- **Team ID**: QNVQ55232N
 
 ## Типичные ошибки и решения
 

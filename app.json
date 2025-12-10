@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tachyon",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "jsEngine": "jsc",
     "splash": {
       "image": "./assets/images/splash-icon.png",
@@ -17,7 +17,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dellesert.tachyon-messenger",
-      "displayName": "Тахион",
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
       "infoPlist": {
@@ -40,14 +39,14 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "name": "Тахион",
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.tachyonmessenger",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -69,7 +68,15 @@
           "icon": "./assets/images/icon.png",
           "color": "#E94444"
         }
-      ]
-    ]
+      ],
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4df1283d-1e02-4e8e-9583-aa9ecac0dc74"
+      }
+    }
   }
 }

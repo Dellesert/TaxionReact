@@ -24,6 +24,16 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# iOS
+ios/Pods/
+ios/Podfile.lock
+ios/build/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+
 # Metro
 .metro-health-check*
 

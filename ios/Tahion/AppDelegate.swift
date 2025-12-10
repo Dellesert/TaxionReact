@@ -1,9 +1,12 @@
 import Expo
 import React
 import ReactAppDependencyProvider
+import UserNotifications
+import FirebaseCore
+import FirebaseMessaging
 
 @UIApplicationMain
-public class AppDelegate: ExpoAppDelegate {
+public class AppDelegate: ExpoAppDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
   var window: UIWindow?
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
@@ -29,7 +32,84 @@ public class AppDelegate: ExpoAppDelegate {
       launchOptions: launchOptions)
 #endif
 
+    // Initialize Firebase
+    FirebaseApp.configure()
+
+    // Set FCM messaging delegate
+    Messaging.messaging().delegate = self
+
+    // Set UNUserNotificationCenter delegate for notification handling
+    UNUserNotificationCenter.current().delegate = self
+
+    // Register for remote notifications
+    application.registerForRemoteNotifications()
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // Handle APNs token registration
+  public override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+
+    // Pass device token to FCM
+    Messaging.messaging().apnsToken = deviceToken
+
+    let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
+    let token = tokenParts.joined()
+    print("📱 [AppDelegate] APNs Device Token: \(token)")
+  }
+
+  // Handle APNs token registration failure
+  public override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
+    print("❌ [AppDelegate] Failed to register for remote notifications: \(error.localizedDescription)")
+  }
+
+  // MARK: - MessagingDelegate
+
+  // Handle FCM token refresh
+  public func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+    if let token = fcmToken {
+      print("📬 [AppDelegate] FCM Token: \(token)")
+      // You can send this token to your backend if needed
+    }
+  }
+
+  // MARK: - UNUserNotificationCenterDelegate
+
+  // Handle notification when app is in foreground
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    let userInfo = notification.request.content.userInfo
+    print("🔔 [AppDelegate] Notification received in foreground: \(userInfo)")
+
+    // Show notification even when app is in foreground
+    if #available(iOS 14.0, *) {
+      completionHandler([.banner, .sound, .badge])
+    } else {
+      completionHandler([.alert, .sound, .badge])
+    }
+  }
+
+  // Handle notification tap
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    let userInfo = response.notification.request.content.userInfo
+    print("👆 [AppDelegate] Notification tapped: \(userInfo)")
+
+    completionHandler()
   }
 
   // Linking API
