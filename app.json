@@ -57,6 +57,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "@react-native-firebase/app",
       "./plugins/withPodfileModifications.js",
       [
         "expo-image-picker",
@@ -73,7 +74,6 @@
           "mode": "production"
         }
       ],
-      "@react-native-firebase/app",
       "expo-router",
       "expo-secure-store",
       "expo-web-browser"

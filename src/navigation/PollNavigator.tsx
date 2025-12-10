@@ -32,8 +32,8 @@ const PollNavigator: React.FC = () => {
         contentStyle: {
           backgroundColor: theme.background,
         },
-        animation: 'fade',
-        animationDuration: 200,
+        animation: 'default',
+        animationDuration: 150,
       }}
     >
       <Stack.Screen

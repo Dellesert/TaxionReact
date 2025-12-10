@@ -3,9 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Add use_modular_headers! for GoogleUtilities to fix Firebase static library integration
+ * Config plugin to fix Firebase CocoaPods integration issues
+ * Adds modular headers for GoogleUtilities and Firebase pods
  */
-const withPodfileModifications = (config) => {
+const withFirebasePodfileModifications = (config) => {
   return withDangerousMod(config, [
     'ios',
     async (config) => {
@@ -14,31 +15,40 @@ const withPodfileModifications = (config) => {
       if (fs.existsSync(podfilePath)) {
         let contents = fs.readFileSync(podfilePath, 'utf-8');
 
-        // Add modular headers configuration after 'require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")'
-        const modularHeadersConfig = `
-  # Enable modular headers for GoogleUtilities to support Firebase static linking
-  pod 'GoogleUtilities', :modular_headers => true
-`;
-
-        // Insert after the require statements but before use_expo_modules!
-        if (!contents.includes("pod 'GoogleUtilities', :modular_headers => true")) {
-          // Find the position after require statements
-          const requirePattern = /require File\.join\(File\.dirname\(`node --print "require\.resolve\('expo\/package\.json'\)"`\), "scripts\/autolinking"\)/;
-
-          if (requirePattern.test(contents)) {
-            contents = contents.replace(
-              requirePattern,
-              `$&${modularHeadersConfig}`
-            );
-
-            fs.writeFileSync(podfilePath, contents);
-            console.log('✅ Added GoogleUtilities modular headers configuration');
-          } else {
-            console.warn('⚠️  Could not find autolinking require statement in Podfile');
-          }
-        } else {
-          console.log('ℹ️  GoogleUtilities modular headers already configured');
+        // Check if already modified
+        if (contents.includes('# Firebase modular headers fix')) {
+          console.log('ℹ️  Firebase Podfile modifications already applied');
+          return config;
         }
+
+        // Find the post_install hook and modify it to add DEFINES_MODULE
+        const postInstallPattern = /post_install do \|installer\|/;
+
+        if (postInstallPattern.test(contents)) {
+          const firebaseFixCode = `post_install do |installer|
+  # Firebase modular headers fix
+  installer.pods_project.targets.each do |target|
+    if ['GoogleUtilities', 'FirebaseCore', 'FirebaseCoreInternal'].include?(target.name)
+      target.build_configurations.each do |config|
+        config.build_settings['DEFINES_MODULE'] = 'YES'
+      end
+    end
+  end
+
+  `;
+
+          contents = contents.replace(
+            postInstallPattern,
+            firebaseFixCode
+          );
+
+          fs.writeFileSync(podfilePath, contents);
+          console.log('✅ Applied Firebase modular headers fix in post_install');
+        } else {
+          console.warn('⚠️  Could not find post_install hook in Podfile');
+        }
+      } else {
+        console.log('ℹ️  Podfile does not exist yet (will be created during prebuild)');
       }
 
       return config;
@@ -46,4 +56,4 @@ const withPodfileModifications = (config) => {
   ]);
 };
 
-module.exports = withPodfileModifications;
+module.exports = withFirebasePodfileModifications;

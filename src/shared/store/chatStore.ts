@@ -176,6 +176,23 @@ const initialTabsState: Record<TabName, TabData> = {
   favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
 };
 
+// Pre-load unread count from storage on web for instant display
+let preloadedUnreadCount = 0;
+if (!isNative) {
+  // On web, try to load unread count synchronously from localStorage
+  try {
+    const stored = localStorage.getItem('chat-storage');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed?.state?.totalUnreadCount !== undefined) {
+        preloadedUnreadCount = parsed.state.totalUnreadCount;
+      }
+    }
+  } catch (error) {
+    // Ignore errors, will use initial state
+  }
+}
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
@@ -191,7 +208,7 @@ export const useChatStore = create<ChatState>()(
       isLoadingMore: false,
       error: null,
       typingUsers: {},
-      totalUnreadCount: 0,
+      totalUnreadCount: preloadedUnreadCount,
 
       // Load data for a specific tab
       loadTabData: async (tabName: TabName) => {

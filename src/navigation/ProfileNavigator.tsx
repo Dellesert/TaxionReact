@@ -65,7 +65,8 @@ const ProfileNavigator: React.FC = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
+        animation: 'default',
+        animationDuration: 150,
       }}
     >
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />

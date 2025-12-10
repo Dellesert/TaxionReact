@@ -38,6 +38,8 @@ const AdminNavigator: React.FC = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        animation: 'default',
+        animationDuration: 150,
       }}
       initialRouteName={isWideScreen ? 'AdminHub' : 'Departments'}
     >
