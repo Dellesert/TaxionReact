@@ -92,7 +92,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
 
   // Извлекаем все URL изображений для галереи
   const imageAttachments = attachments.filter((att) => att.file_type === 'image');
-  const imageUrls = imageAttachments.map((att) => att.file_url);
+  const imageUrls = imageAttachments.map((att) => replaceLocalhostWithIP(att.file_url));
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -390,7 +390,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
                 >
                   <Image
                     source={{
-                      uri: attachment.thumbnail_url || attachment.file_url,
+                      uri: replaceLocalhostWithIP(attachment.thumbnail_url || attachment.file_url),
                       headers: sessionId ? {
                         'X-Session-ID': sessionId,
                       } : undefined,
