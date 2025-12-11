@@ -5,7 +5,6 @@ import { Event, CalendarView } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/states/EventListSkeleton';
 import CreateEventModal from '../components/modals/CreateEventModal';
 import { EventDetailModal } from '../components/modals/EventDetailModal';
-import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { MonthCalendarView } from '../components/views/MonthCalendarView';
 import { CalendarHeader } from '../components/navigation/CalendarHeader';
 import { CalendarDateNavigation } from '../components/navigation/CalendarDateNavigation';
@@ -121,11 +120,7 @@ const CalendarScreen: React.FC = () => {
           /* Mobile View - Original Layout */
           <>
             {/* Header */}
-            <ScreenHeader
-              title="Календарь"
-              showDivider={true}
-              customContent={<CalendarHeader onAddPress={handleAddEvent} />}
-            />
+            <CalendarHeader onAddPress={handleAddEvent} />
 
             {/* Date Navigation */}
             <CalendarDateNavigation
