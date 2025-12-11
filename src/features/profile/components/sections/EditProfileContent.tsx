@@ -23,18 +23,21 @@ import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { Avatar } from '@shared/components/common/Avatar';
+import { useProfileAvatar } from '../../hooks/useProfileAvatar';
+import { getRoleLabel } from '@features/admin/utils/roleHelpers';
 
 const EditProfileContent: React.FC = () => {
   const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
   const { user, setUser } = useAuthStore();
+  const { isUploadingAvatar, handleChangeAvatar } = useProfileAvatar();
 
   const [name, setName] = useState(user?.name || '');
   const [firstName, setFirstName] = useState(user?.first_name || '');
   const [lastName, setLastName] = useState(user?.last_name || '');
   const [middleName, setMiddleName] = useState(user?.middle_name || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [position, setPosition] = useState(user?.position || '');
   const [birthDate, setBirthDate] = useState<Date | undefined>(
     user?.birth_date ? parseISO(user.birth_date) : undefined
   );
@@ -46,7 +49,6 @@ const EditProfileContent: React.FC = () => {
   const lastNameInputRef = useRef<TextInput>(null);
   const middleNameInputRef = useRef<TextInput>(null);
   const phoneInputRef = useRef<TextInput>(null);
-  const positionInputRef = useRef<TextInput>(null);
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -82,7 +84,6 @@ const EditProfileContent: React.FC = () => {
       if (lastName.trim()) updateData.last_name = lastName.trim();
       if (middleName.trim()) updateData.middle_name = middleName.trim();
       if (phone.trim()) updateData.phone = phone.trim();
-      if (position.trim()) updateData.position = position.trim();
       if (birthDate) updateData.birth_date = format(birthDate, 'yyyy-MM-dd');
 
       const updatedUser = await updateProfile(updateData);
@@ -171,10 +172,147 @@ const EditProfileContent: React.FC = () => {
       fontSize: 18,
       fontWeight: '600',
     },
+    avatarSection: {
+      alignItems: 'center',
+      marginBottom: 32,
+      paddingVertical: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    avatarWrapper: {
+      marginBottom: 16,
+    },
+    changeAvatarButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 10,
+      backgroundColor: theme.primary,
+    },
+    changeAvatarButtonDisabled: {
+      opacity: 0.6,
+    },
+    changeAvatarButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      marginLeft: 8,
+    },
+    readOnlySection: {
+      marginBottom: 32,
+      paddingBottom: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    readOnlyField: {
+      borderRadius: 12,
+      padding: 16,
+      backgroundColor: theme.backgroundSecondary,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    readOnlyText: {
+      fontSize: 16,
+      color: theme.textSecondary,
+    },
+    readOnlyRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    readOnlyIcon: {
+      marginRight: 8,
+    },
   });
 
   return (
     <View>
+      {/* Avatar Section */}
+      <View style={dynamicStyles.avatarSection}>
+        <View style={dynamicStyles.avatarWrapper}>
+          <Avatar
+            imageUrl={user?.avatar}
+            thumbnailUrl={user?.avatar_thumbnail}
+            name={user?.name || user?.email || 'User'}
+            size={120}
+            useOriginal={true}
+            userId={user?.id}
+          />
+        </View>
+        <TouchableOpacity
+          style={[
+            dynamicStyles.changeAvatarButton,
+            isUploadingAvatar && dynamicStyles.changeAvatarButtonDisabled,
+          ]}
+          onPress={handleChangeAvatar}
+          disabled={isUploadingAvatar}
+          activeOpacity={0.8}
+        >
+          {isUploadingAvatar ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <>
+              <Ionicons name="camera" size={18} color="#FFFFFF" />
+              <Text style={dynamicStyles.changeAvatarButtonText}>
+                {user?.avatar ? 'Изменить фото' : 'Загрузить фото'}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* User Information Section (Read-Only) */}
+      <View style={dynamicStyles.readOnlySection}>
+        <Text style={dynamicStyles.sectionTitle}>Информация о пользователе</Text>
+
+        <Text style={dynamicStyles.label}>Роль</Text>
+        <View style={dynamicStyles.readOnlyField}>
+          <View style={dynamicStyles.readOnlyRow}>
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={20}
+              color={theme.textSecondary}
+              style={dynamicStyles.readOnlyIcon}
+            />
+            <Text style={dynamicStyles.readOnlyText}>{getRoleLabel(user?.role || 'employee')}</Text>
+          </View>
+        </View>
+
+        {user?.department && (
+          <>
+            <Text style={dynamicStyles.label}>Отдел</Text>
+            <View style={dynamicStyles.readOnlyField}>
+              <View style={dynamicStyles.readOnlyRow}>
+                <Ionicons
+                  name="business-outline"
+                  size={20}
+                  color={theme.textSecondary}
+                  style={dynamicStyles.readOnlyIcon}
+                />
+                <Text style={dynamicStyles.readOnlyText}>{user.department.name}</Text>
+              </View>
+            </View>
+          </>
+        )}
+
+        {user?.position && (
+          <>
+            <Text style={dynamicStyles.label}>Должность</Text>
+            <View style={dynamicStyles.readOnlyField}>
+              <View style={dynamicStyles.readOnlyRow}>
+                <Ionicons
+                  name="briefcase-outline"
+                  size={20}
+                  color={theme.textSecondary}
+                  style={dynamicStyles.readOnlyIcon}
+                />
+                <Text style={dynamicStyles.readOnlyText}>{user.position}</Text>
+              </View>
+            </View>
+          </>
+        )}
+      </View>
+
       <View style={dynamicStyles.section}>
         <Text style={dynamicStyles.sectionTitle}>Основная информация</Text>
 
@@ -247,27 +385,13 @@ const EditProfileContent: React.FC = () => {
           onChangeText={setPhone}
           keyboardType="phone-pad"
           editable={!isLoading}
-          returnKeyType="next"
-          onSubmitEditing={() => positionInputRef.current?.focus()}
-          blurOnSubmit={false}
+          returnKeyType="done"
+          onSubmitEditing={handleSave}
         />
       </View>
 
       <View style={dynamicStyles.section}>
         <Text style={dynamicStyles.sectionTitle}>Дополнительная информация</Text>
-
-        <Text style={dynamicStyles.label}>Должность</Text>
-        <TextInput
-          ref={positionInputRef}
-          style={dynamicStyles.input}
-          placeholder="Ваша должность"
-          placeholderTextColor={theme.inputPlaceholder}
-          value={position}
-          onChangeText={setPosition}
-          editable={!isLoading}
-          returnKeyType="done"
-          onSubmitEditing={handleSave}
-        />
 
         <Text style={dynamicStyles.label}>Дата рождения</Text>
         <TouchableOpacity

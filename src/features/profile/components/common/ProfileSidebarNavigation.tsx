@@ -12,7 +12,6 @@ import { Avatar } from '@shared/components/common/Avatar';
 
 export type ProfileSection =
   | 'profile'
-  | 'change-avatar'
   | 'change-password'
   | 'active-sessions'
   | 'passkey'
@@ -46,8 +45,7 @@ const getSidebarStructure = (): SidebarGroup[] => {
     {
       title: 'ПРОФИЛЬ',
       items: [
-        { id: 'profile', label: 'Общие', icon: 'person-outline', iconColor: '#3B82F6' },
-        { id: 'change-avatar', label: 'Фото профиля', icon: 'camera-outline', iconColor: '#8B5CF6' },
+        { id: 'profile', label: 'Общие настройки', icon: 'person-outline', iconColor: '#3B82F6' },
       ],
     },
     {

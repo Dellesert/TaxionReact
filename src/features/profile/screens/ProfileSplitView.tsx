@@ -10,11 +10,9 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { ProfileSidebarNavigation, ProfileSection } from '../components/common/ProfileSidebarNavigation';
 import { ProfileContentArea } from '../components/common/ProfileContentArea';
 import { useProfileActions } from '../hooks/useProfileActions';
-import { useProfileAvatar } from '../hooks/useProfileAvatar';
 
 // Import section content components
 import EditProfileContent from '../components/sections/EditProfileContent';
-import ChangeAvatarContent from '../components/sections/ChangeAvatarContent';
 import ChangePasswordContent from '../components/sections/ChangePasswordContent';
 import ActiveSessionsContent from '../components/sections/ActiveSessionsContent';
 import PasskeyManagementContent from '../components/sections/PasskeyManagementContent';
@@ -27,7 +25,6 @@ export const ProfileSplitView: React.FC = () => {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const { isLoggingOut, handleLogout } = useProfileActions();
-  const { isUploadingAvatar, handleChangeAvatar } = useProfileAvatar();
 
   const [activeSection, setActiveSection] = useState<ProfileSection>('profile');
 
@@ -41,22 +38,9 @@ export const ProfileSplitView: React.FC = () => {
         return (
           <ProfileContentArea
             title="Общие настройки"
-            description="Основная информация вашего профиля"
+            description="Редактирование профиля и основной информации"
           >
             <EditProfileContent />
-          </ProfileContentArea>
-        );
-
-      case 'change-avatar':
-        return (
-          <ProfileContentArea
-            title="Фото профиля"
-            description="Загрузите или измените фотографию профиля"
-          >
-            <ChangeAvatarContent
-              isUploadingAvatar={isUploadingAvatar}
-              handleChangeAvatar={handleChangeAvatar}
-            />
           </ProfileContentArea>
         );
 
