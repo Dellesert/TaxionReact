@@ -94,7 +94,6 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      <SafeAreaView style={{ backgroundColor: theme.primary }} edges={['top']} />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={dynamicStyles.scrollContent}

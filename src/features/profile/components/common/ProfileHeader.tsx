@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -15,6 +16,11 @@ interface ProfileHeaderProps {
  */
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Pre-calculate top padding to prevent layout shift on iOS
+  // Only apply safe area top padding on native platforms
+  const topPadding = Platform.OS !== 'web' ? insets.top : 0;
 
   const roleIcon = getRoleIcon(user);
   const roleIconColor = getRoleIconColor(user);
@@ -22,12 +28,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.primary,
-      padding: 16,
+      paddingTop: topPadding + 16,
+      paddingHorizontal: 16,
       paddingBottom: 24,
       marginBottom: 0,
       alignItems: 'center',
       // Reserve minimum height to prevent layout shift
-      minHeight: 220,
+      minHeight: 220 + topPadding,
     },
     userAvatar: {
       borderWidth: 1,
