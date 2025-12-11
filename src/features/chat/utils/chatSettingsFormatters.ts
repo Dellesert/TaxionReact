@@ -8,8 +8,12 @@
  */
 export const getSystemRoleLabel = (role: string): string => {
   switch (role) {
+    case 'super_admin':
+      return 'Супер Админ';
     case 'admin':
       return 'Администратор';
+    case 'department_head':
+      return 'Руководитель отдела';
     case 'manager':
       return 'Менеджер';
     case 'employee':
