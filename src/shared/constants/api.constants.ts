@@ -45,6 +45,7 @@ export const API_ENDPOINTS = {
     UPDATE_STATUS: '/profile/status',
     // User list (доступен всем авторизованным пользователям)
     LIST: '/users',
+    BY_ID: (id: number) => `/users/${id}`,
     // Admin endpoints
     ADMIN_LIST: '/admin/users',
     ADMIN_STATS: '/admin/users/stats',
@@ -60,9 +61,18 @@ export const API_ENDPOINTS = {
 
   // Department
   DEPARTMENT: {
-    LIST: '/admin/departments',
+    // Public endpoints (доступны всем авторизованным пользователям)
+    LIST: '/departments',
+    BY_ID: (id: number) => `/departments/${id}`,
+    // Admin endpoints
+    ADMIN_LIST: '/admin/departments',
+    ADMIN_CREATE: '/admin/departments',
+    ADMIN_BY_ID: (id: number) => `/admin/departments/${id}`,
+    ADMIN_UPDATE: (id: number) => `/admin/departments/${id}`,
+    ADMIN_DELETE: (id: number) => `/admin/departments/${id}`,
+    ADMIN_USERS: (id: number) => `/admin/departments/${id}/users`,
+    // Legacy aliases (deprecated - используйте ADMIN_* версии)
     CREATE: '/admin/departments',
-    BY_ID: (id: number) => `/admin/departments/${id}`,
     UPDATE: (id: number) => `/admin/departments/${id}`,
     DELETE: (id: number) => `/admin/departments/${id}`,
     USERS: (id: number) => `/admin/departments/${id}/users`,
