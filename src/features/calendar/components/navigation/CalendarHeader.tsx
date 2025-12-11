@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { useTheme } from '@shared/hooks/useTheme';
-import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 
 interface CalendarHeaderProps {
   searchQuery?: string;
@@ -94,32 +93,39 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
   // Mobile header content
   return (
-    <ScreenHeader
-      title="Календарь"
-      customContent={
-        <View style={styles.container}>
-          <View style={styles.left}>
-            <NotificationBell />
-          </View>
-
-          <Text style={[styles.title, { color: theme.text }]}>Календарь</Text>
-
-          <TouchableOpacity onPress={onAddPress} style={styles.addButton}>
-            <Ionicons name="add" size={30} color={theme.primary} />
-          </TouchableOpacity>
+    <View style={[styles.mobileHeaderContainer, { backgroundColor: theme.card }]}>
+      <View style={styles.container}>
+        <View style={styles.left}>
+          <NotificationBell />
         </View>
-      }
-    />
+
+        <Text style={[styles.title, { color: theme.text }]}>Календарь</Text>
+
+        <TouchableOpacity onPress={onAddPress} style={styles.addButton}>
+          <Ionicons name="add" size={30} color={theme.primary} />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   // Mobile styles
+  mobileHeaderContainer: {
+    paddingHorizontal: 14,
+    paddingTop: 6,
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 4,
+    zIndex: 10,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   left: {
     width: 40,
