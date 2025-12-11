@@ -142,7 +142,7 @@ const PollListScreen: React.FC = () => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.card }]}
-      edges={['top', 'left', 'right']}
+      edges={['left', 'right']}
     >
       {/* Header */}
       <PollListHeader

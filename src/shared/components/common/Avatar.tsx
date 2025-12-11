@@ -103,6 +103,7 @@ const AvatarComponent: React.FC<AvatarProps> = ({
   };
 
   const avatarSize = { width: size, height: size, borderRadius: size / 2 };
+  const containerSize = { width: size, height: size, minWidth: size, minHeight: size };
   const statusSize = size * 0.25;
   const statusPosition = {
     width: statusSize,
@@ -118,23 +119,25 @@ const AvatarComponent: React.FC<AvatarProps> = ({
   const avatarContent = (
     <>
       {shouldShowImage ? (
-        <Image
-          source={imageSource}
-          style={[styles.avatar, avatarSize]}
-          contentFit="cover"
-          transition={100}
-          cachePolicy="memory-disk"
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-          placeholderContentFit="cover"
-          priority="low"
-          recyclingKey={userId ? `avatar-${userId}` : imageSource}
-          responsivePolicy="initial"
-          allowDownscaling={true}
-          onError={(error) => {
-            console.log('❌ Avatar load error:', imageUrl, error);
-            setImageError(true);
-          }}
-        />
+        <View style={[styles.imageWrapper, avatarSize]}>
+          <Image
+            source={imageSource}
+            style={[styles.avatar, avatarSize, { position: 'absolute' }]}
+            contentFit="cover"
+            transition={0}
+            cachePolicy="memory-disk"
+            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+            placeholderContentFit="cover"
+            priority={useOriginal ? "high" : "normal"}
+            recyclingKey={userId ? `avatar-${userId}` : imageSource}
+            responsivePolicy="initial"
+            allowDownscaling={true}
+            onError={(error) => {
+              console.log('❌ Avatar load error:', imageUrl, error);
+              setImageError(true);
+            }}
+          />
+        </View>
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder, avatarSize]}>
           <Text style={[styles.initials, { fontSize: size * 0.4 }]}>
@@ -170,7 +173,7 @@ const AvatarComponent: React.FC<AvatarProps> = ({
   if (onPress) {
     return (
       <TouchableOpacity
-        style={[styles.container, style]}
+        style={[styles.container, containerSize, style]}
         onPress={onPress}
         activeOpacity={0.7}
       >
@@ -180,7 +183,7 @@ const AvatarComponent: React.FC<AvatarProps> = ({
   }
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, containerSize, style]}>
       {avatarContent}
     </View>
   );
@@ -189,6 +192,14 @@ const AvatarComponent: React.FC<AvatarProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
+    // Prevent layout shift by ensuring container has fixed dimensions
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageWrapper: {
+    // Fixed-size wrapper to prevent layout shift during image load
+    overflow: 'hidden',
+    backgroundColor: '#E5E7EB',
   },
   avatar: {
     backgroundColor: '#E5E7EB',

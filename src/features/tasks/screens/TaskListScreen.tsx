@@ -245,7 +245,7 @@ const TaskListScreen: React.FC = () => {
   const canCreateTask = user?.role !== 'employee';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
       {/* Header */}
       <TaskListHeader
         filter={displayFilter}

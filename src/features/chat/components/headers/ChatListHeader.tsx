@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headerLeft: {
-    width: 40,
+    width: 100,
     justifyContent: 'flex-start',
   },
   editButton: {

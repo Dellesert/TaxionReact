@@ -97,7 +97,7 @@ const CalendarScreen: React.FC = () => {
   const sections = groupEventsByDate(events);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
       {/* Content container with background */}
       <View style={[styles.content, { backgroundColor: theme.background }]}>
         {isWideScreen ? (

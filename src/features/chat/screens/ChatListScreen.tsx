@@ -332,7 +332,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.card }]}
-      edges={['top', 'left', 'right']}
+      edges={['left', 'right']}
     >
       <ScreenHeader
         title="Чаты"

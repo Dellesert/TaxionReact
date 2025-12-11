@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerLeft: {
-    width: 40,
+    width: 100,
   },
   headerTitle: {
     fontSize: 20,

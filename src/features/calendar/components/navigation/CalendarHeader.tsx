@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -24,6 +25,11 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   isDesktop = false,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Pre-calculate top padding to prevent layout shift on iOS
+  // Only apply safe area top padding on native platforms
+  const topPadding = Platform.OS !== 'web' ? insets.top : 0;
 
   // Desktop header content
   if (isDesktop) {
@@ -93,7 +99,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
   // Mobile header content
   return (
-    <View style={[styles.mobileHeaderContainer, { backgroundColor: theme.card }]}>
+    <View style={[styles.mobileHeaderContainer, { backgroundColor: theme.card, paddingTop: topPadding + 6 }]}>
       <View style={styles.container}>
         <View style={styles.left}>
           <NotificationBell />
@@ -113,7 +119,6 @@ const styles = StyleSheet.create({
   // Mobile styles
   mobileHeaderContainer: {
     paddingHorizontal: 14,
-    paddingTop: 6,
     paddingBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

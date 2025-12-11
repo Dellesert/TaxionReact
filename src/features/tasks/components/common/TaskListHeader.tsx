@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerLeft: {
-    width: 40,
+    width: 100,
   },
   title: {
     flex: 1,

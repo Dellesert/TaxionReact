@@ -12,7 +12,8 @@
  */
 
 import React, { ReactNode } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
@@ -67,6 +68,15 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   titleStyle,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Pre-calculate top padding to prevent layout shift on iOS
+  // Only apply safe area top padding on native platforms
+  const topPadding = Platform.OS !== 'web' ? insets.top : 0;
+
+  // Add minimal content padding (6px for custom content, 12px for standard)
+  const contentPaddingTop = topPadding + (customContent ? 6 : 0);
+  const standardPaddingTop = topPadding + (compact ? 12 : 6);
 
   // If custom content provided, render it instead
   if (customContent) {
@@ -74,7 +84,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       <View
         style={[
           styles.container,
-          { backgroundColor: theme.card },
+          { backgroundColor: theme.card, paddingTop: contentPaddingTop },
           withShadow && styles.shadow,
           containerStyle,
         ]}
@@ -88,7 +98,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     <View
       style={[
         styles.container,
-        { backgroundColor: theme.card },
+        { backgroundColor: theme.card, paddingTop: standardPaddingTop },
         withShadow && styles.shadow,
         compact && styles.compact,
         containerStyle,
@@ -149,7 +159,6 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 14,
-    paddingTop: 6,
     paddingBottom: 0,
     zIndex: 10,
   },

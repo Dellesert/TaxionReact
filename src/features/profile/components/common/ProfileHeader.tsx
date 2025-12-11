@@ -26,6 +26,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
       paddingBottom: 24,
       marginBottom: 0,
       alignItems: 'center',
+      // Reserve minimum height to prevent layout shift
+      minHeight: 220,
     },
     userAvatar: {
       borderWidth: 1,
@@ -36,6 +38,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
       shadowOpacity: 0.12,
       shadowRadius: 16,
       elevation: 6,
+      // Ensure avatar container has fixed size to prevent layout shift
+      width: 100,
+      height: 100,
     },
     userNameRow: {
       flexDirection: 'row',
