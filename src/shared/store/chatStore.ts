@@ -85,6 +85,9 @@ interface ChatState {
   error: string | null;
   typingUsers: Record<number, TypingIndicator[]>;
   totalUnreadCount: number;
+  // Desktop mode: selected chat (persisted across tab switches)
+  selectedChatId: number | null;
+  setSelectedChatId: (chatId: number | null) => void;
   loadTabData: (tabName: TabName) => Promise<void>;
   loadMoreChats: () => Promise<void>;
   refreshCurrentTab: () => Promise<void>;
@@ -209,6 +212,9 @@ export const useChatStore = create<ChatState>()(
       error: null,
       typingUsers: {},
       totalUnreadCount: preloadedUnreadCount,
+      // Desktop mode: selected chat
+      selectedChatId: null,
+      setSelectedChatId: (chatId) => set({ selectedChatId: chatId }),
 
       // Load data for a specific tab
       loadTabData: async (tabName: TabName) => {
@@ -1934,10 +1940,11 @@ export const useChatStore = create<ChatState>()(
         currentTab: state.currentTab,
         messages: state.messages,
         totalUnreadCount: state.totalUnreadCount,
+        selectedChatId: state.selectedChatId, // Desktop mode: persist selected chat
       }),
       // На web пропускаем гидратацию (storage = no-op)
       skipHydration: !isNative,
-      version: 2, // Incremented to clear old cache with different pagination
+      version: 3, // Incremented to clear old cache (added selectedChatId)
     }
   )
 );

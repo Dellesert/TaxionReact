@@ -3,12 +3,11 @@
  * Split-view режим для широких экранов: список чатов слева, выбранный чат справа
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
-import { useChatSelection } from '@shared/contexts/ChatSelectionContext';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { ChatStackParamList } from '@navigation/types';
@@ -25,12 +24,36 @@ type ChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Chat'>;
 export const ChatSplitView: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<ChatNavigationProp>();
-  const { selectedChatId, selectedChatName, selectedChatUnreadCount, selectChat } = useChatSelection();
   const currentUser = useAuthStore((state) => state.user);
   const chats = useChatStore((state) => state.chats);
+  const selectedChatId = useChatStore((state) => state.selectedChatId);
+  const setSelectedChatId = useChatStore((state) => state.setSelectedChatId);
 
   // State for settings modal
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // Force remount counter to ensure ChatScreen reloads when coming back from other tabs
+  const [mountKey, setMountKey] = useState(0);
+
+  // Track if this is initial mount
+  const mountCountRef = useRef(0);
+
+  // Increment mount key on every mount to force ChatScreen reload
+  useEffect(() => {
+    mountCountRef.current += 1;
+
+    if (mountCountRef.current > 1) {
+      // Not initial mount - force reload
+      setMountKey(prev => prev + 1);
+    }
+  }, []);
+
+  // Also increment when selectedChatId changes
+  useEffect(() => {
+    if (mountCountRef.current > 0 && selectedChatId) {
+      setMountKey(prev => prev + 1);
+    }
+  }, [selectedChatId]);
 
   // Получаем полный объект чата для отображения аватара и статуса
   const selectedChat = useMemo(() => {
@@ -39,9 +62,9 @@ export const ChatSplitView: React.FC = () => {
 
   // Вычисляем отображаемое имя и аватар
   const displayName = useMemo(() => {
-    if (!selectedChat) return selectedChatName;
+    if (!selectedChat) return '';
     return getChatDisplayName(selectedChat, currentUser?.id);
-  }, [selectedChat, selectedChatName, currentUser?.id]);
+  }, [selectedChat, currentUser?.id]);
 
   const displayAvatar = useMemo(() => {
     if (!selectedChat) return undefined;
@@ -49,8 +72,8 @@ export const ChatSplitView: React.FC = () => {
   }, [selectedChat, currentUser?.id]);
 
   const handleChatSelect = useCallback((chat: Chat) => {
-    selectChat(chat.id, chat.name || '', chat.unread_count || 0);
-  }, [selectChat]);
+    setSelectedChatId(chat.id);
+  }, [setSelectedChatId]);
 
   const handleSettingsPress = useCallback(() => {
     if (selectedChatId) {
@@ -80,13 +103,14 @@ export const ChatSplitView: React.FC = () => {
             {/* Chat content */}
             <View style={styles.chatContent}>
               <ChatScreen
+                key={`chat-${selectedChatId}-mount-${mountKey}`}
                 route={{
                   key: `chat-${selectedChatId}`,
                   name: 'Chat',
                   params: {
                     chatId: selectedChatId,
-                    chatName: selectedChatName,
-                    unreadCount: selectedChatUnreadCount,
+                    chatName: displayName,
+                    unreadCount: selectedChat?.unread_count || 0,
                   },
                 } as any}
                 navigation={navigation as any}
