@@ -4,7 +4,7 @@ const path = require('path');
 
 /**
  * Config plugin to fix Firebase CocoaPods integration issues
- * Adds modular headers for GoogleUtilities and Firebase pods
+ * Adds use_modular_headers! globally to support Firebase static linking
  */
 const withFirebasePodfileModifications = (config) => {
   return withDangerousMod(config, [
@@ -16,36 +16,27 @@ const withFirebasePodfileModifications = (config) => {
         let contents = fs.readFileSync(podfilePath, 'utf-8');
 
         // Check if already modified
-        if (contents.includes('# Firebase modular headers fix')) {
+        if (contents.includes('# Firebase modular headers')) {
           console.log('ℹ️  Firebase Podfile modifications already applied');
           return config;
         }
 
-        // Find the post_install hook and modify it to add DEFINES_MODULE
-        const postInstallPattern = /post_install do \|installer\|/;
+        // Add use_modular_headers! right after platform :ios line
+        const platformPattern = /(platform :ios, podfile_properties\['ios\.deploymentTarget'\] \|\| '[^']+'\n)/;
 
-        if (postInstallPattern.test(contents)) {
-          const firebaseFixCode = `post_install do |installer|
-  # Firebase modular headers fix
-  installer.pods_project.targets.each do |target|
-    if ['GoogleUtilities', 'FirebaseCore', 'FirebaseCoreInternal'].include?(target.name)
-      target.build_configurations.each do |config|
-        config.build_settings['DEFINES_MODULE'] = 'YES'
-      end
-    end
-  end
-
-  `;
-
+        if (platformPattern.test(contents)) {
           contents = contents.replace(
-            postInstallPattern,
-            firebaseFixCode
+            platformPattern,
+            `$1
+  # Firebase modular headers
+  use_modular_headers!
+`
           );
 
           fs.writeFileSync(podfilePath, contents);
-          console.log('✅ Applied Firebase modular headers fix in post_install');
+          console.log('✅ Added use_modular_headers! to Podfile for Firebase support');
         } else {
-          console.warn('⚠️  Could not find post_install hook in Podfile');
+          console.warn('⚠️  Could not find platform declaration in Podfile');
         }
       } else {
         console.log('ℹ️  Podfile does not exist yet (will be created during prebuild)');
