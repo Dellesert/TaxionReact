@@ -13,6 +13,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { ConfirmDialog } from '@shared/components/common/ConfirmDialog';
 import { InputDialog } from '@shared/components/common/InputDialog';
 import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
+import { ActionModal } from '@shared/components/common/ActionModal';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { ChatDetailTabs, TabType } from '../components/common/ChatDetailTabs';
 import { ParticipantsTab } from '../components/chat-details/ParticipantsTab';
@@ -59,7 +60,8 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
-  const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [shouldClearHistory, setShouldClearHistory] = useState(false);
 
   // Members management state
   const [showAddMembersModal, setShowAddMembersModal] = useState(false);
@@ -171,45 +173,16 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  // Delete/Leave action options based on chat type and user role
-  const deleteActionOptions = useMemo((): ActionSheetOption[] => {
-    if (chat?.type === 'private') {
-      return [
-        {
-          label: 'Удалить',
-          onPress: () => deleteChat(false),
-        },
-        {
-          label: 'Удалить и очистить историю',
-          onPress: () => deleteChat(true),
-          destructive: true,
-        },
-      ];
-    } else if (chat?.type === 'group') {
-      if (isOwner) {
-        return [
-          {
-            label: 'Удалить для всех',
-            onPress: () => deleteChat(false),
-            destructive: true,
-          },
-          {
-            label: 'Удалить для всех и очистить историю',
-            onPress: () => deleteChat(true),
-            destructive: true,
-          },
-        ];
-      } else {
-        return [
-          {
-            label: 'Покинуть чат',
-            onPress: () => leaveChat(),
-          },
-        ];
-      }
-    }
-    return [];
-  }, [chat?.type, isOwner, deleteChat, leaveChat]);
+  // Handler for delete button
+  const handleDeletePress = () => {
+    setShouldClearHistory(false); // Сбрасываем чекбокс
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setShowDeleteModal(false);
+    deleteChat(shouldClearHistory);
+  };
 
   // Quick actions for private chat
   const privateQuickActions: QuickAction[] = useMemo(
@@ -227,11 +200,11 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       {
         icon: 'trash-outline',
         label: 'Удалить',
-        onPress: () => setShowDeleteActionSheet(true),
+        onPress: handleDeletePress,
         color: theme.error || '#FF3B30',
       },
     ],
-    [theme.error]
+    [theme.error, handleDeletePress]
   );
 
   // Quick actions for group chat
@@ -262,20 +235,20 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       actions.push({
         icon: 'exit-outline',
         label: 'Покинуть',
-        onPress: () => setShowDeleteActionSheet(true),
+        onPress: () => setShowLeaveDialog(true),
         color: theme.error || '#FF3B30',
       });
     } else {
       actions.push({
         icon: 'trash-outline',
         label: 'Удалить',
-        onPress: () => setShowDeleteActionSheet(true),
+        onPress: handleDeletePress,
         color: theme.error || '#FF3B30',
       });
     }
 
     return actions;
-  }, [isCreator, isUploadingAvatar, changeAvatar, theme.error]);
+  }, [isCreator, isUploadingAvatar, changeAvatar, theme.error, handleDeletePress]);
 
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -475,12 +448,34 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         destructive
       />
 
-      {/* Delete/Leave ActionSheet */}
-      <ActionSheet
-        visible={showDeleteActionSheet}
-        title={chat?.type === 'private' ? 'Удалить чат' : isOwner ? 'Удалить чат' : 'Покинуть чат'}
-        options={deleteActionOptions}
-        onCancel={() => setShowDeleteActionSheet(false)}
+      {/* Delete Modal */}
+      <ActionModal
+        visible={showDeleteModal}
+        title={chat?.type === 'private' ? 'Удалить чат' : 'Удалить чат для всех'}
+        message={
+          chat?.type === 'private'
+            ? 'Вы уверены, что хотите удалить этот чат?'
+            : 'Вы уверены, что хотите удалить чат для всех участников?'
+        }
+        checkbox={{
+          label: 'Также удалить историю сообщений',
+          checked: shouldClearHistory,
+          onChange: setShouldClearHistory,
+        }}
+        actions={[
+          {
+            text: 'Отмена',
+            style: 'cancel',
+            onPress: () => setShowDeleteModal(false),
+          },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            icon: 'trash-outline',
+            onPress: handleConfirmDelete,
+          },
+        ]}
+        onDismiss={() => setShowDeleteModal(false)}
       />
     </SafeAreaView>
   );

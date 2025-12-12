@@ -14,6 +14,15 @@ export interface ActionModalButton {
   icon?: string;
 }
 
+export interface ActionModalCheckbox {
+  /** Текст чекбокса */
+  label: string;
+  /** Состояние чекбокса */
+  checked: boolean;
+  /** Обработчик изменения состояния */
+  onChange: (checked: boolean) => void;
+}
+
 export interface ActionModalProps {
   /** Видимость модального окна */
   visible: boolean;
@@ -27,6 +36,8 @@ export interface ActionModalProps {
   onDismiss?: () => void;
   /** Возможность закрыть по нажатию вне окна */
   dismissable?: boolean;
+  /** Чекбокс (опционально) */
+  checkbox?: ActionModalCheckbox;
 }
 
 export interface ActionModalOptions {

@@ -26,6 +26,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   actions,
   onDismiss,
   dismissable = true,
+  checkbox,
 }) => {
   const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
@@ -96,6 +97,31 @@ export const ActionModal: React.FC<ActionModalProps> = ({
             {/* Сообщение (опционально) */}
             {message && (
               <Text style={[styles.message, dynamicStyles.message]}>{message}</Text>
+            )}
+
+            {/* Чекбокс (опционально) */}
+            {checkbox && (
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => checkbox.onChange(!checkbox.checked)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: checkbox.checked ? theme.primary : theme.backgroundSecondary,
+                    },
+                    checkbox.checked && { borderColor: theme.primary },
+                  ]}
+                >
+                  {checkbox.checked && <Ionicons name="checkmark" size={18} color="#FFF" />}
+                </View>
+                <Text style={[styles.checkboxLabel, { color: theme.text }]}>
+                  {checkbox.label}
+                </Text>
+              </TouchableOpacity>
             )}
 
             {/* Кнопки действий */}
@@ -194,6 +220,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
     textAlign: 'center',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxLabel: {
+    fontSize: 15,
+    flex: 1,
   },
   actionsContainer: {
     maxHeight: 350,

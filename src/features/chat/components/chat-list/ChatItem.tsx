@@ -9,7 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { getChatDisplayName, getChatDisplayAvatar, getChatDisplayAvatarThumbnail, getPersonalChatCompanion } from '../../utils/chatUtils';
-import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
+import { ActionModal } from '@shared/components/common/ActionModal';
 import { useChatPrefetch } from '@shared/hooks/usePrefetch';
 import { getTypingUserNames, formatTypingText } from '../../utils/chatScreenHelpers';
 
@@ -31,7 +31,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
-  const [showDeleteActionSheet, setShowDeleteActionSheet] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [clearHistory, setClearHistory] = useState(false);
 
   // Prefetch hook for preloading chat messages
   const { prefetchChatDelayed, cancelPrefetch } = useChatPrefetch();
@@ -224,24 +225,14 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
   const handleDelete = () => {
     setShowContextMenu(false);
-    setShowDeleteActionSheet(true);
+    setClearHistory(false); // Сбрасываем чекбокс при открытии
+    setShowDeleteModal(true);
   };
 
-  const deleteActionOptions: ActionSheetOption[] = [
-    {
-      label: 'Удалить',
-      onPress: () => {
-        onDelete?.(chat.id, false);
-      },
-    },
-    {
-      label: 'Удалить и очистить историю',
-      onPress: () => {
-        onDelete?.(chat.id, true);
-      },
-      destructive: true,
-    },
-  ];
+  const handleConfirmDelete = () => {
+    setShowDeleteModal(false);
+    onDelete?.(chat.id, clearHistory);
+  };
 
   const handleToggleFavorite = () => {
     setShowContextMenu(false);
@@ -490,12 +481,30 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
         </BlurView>
       </Modal>
 
-      {/* Delete ActionSheet */}
-      <ActionSheet
-        visible={showDeleteActionSheet}
+      {/* Delete Modal */}
+      <ActionModal
+        visible={showDeleteModal}
         title="Удалить чат"
-        options={deleteActionOptions}
-        onCancel={() => setShowDeleteActionSheet(false)}
+        message="Вы уверены, что хотите удалить этот чат?"
+        checkbox={{
+          label: 'Также удалить историю сообщений',
+          checked: clearHistory,
+          onChange: setClearHistory,
+        }}
+        actions={[
+          {
+            text: 'Отмена',
+            style: 'cancel',
+            onPress: () => setShowDeleteModal(false),
+          },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            icon: 'trash-outline',
+            onPress: handleConfirmDelete,
+          },
+        ]}
+        onDismiss={() => setShowDeleteModal(false)}
       />
     </>
   );
