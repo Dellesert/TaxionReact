@@ -366,16 +366,10 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                   style={[
                     styles.row,
                     {
-                      backgroundColor: isHovered
-                        ? theme.primary + '12'
-                        : isSubtask
-                        ? theme.primary + '08'
-                        : isEvenRow
-                        ? theme.background
-                        : theme.backgroundSecondary + '40',
-                      borderBottomColor: theme.border,
-                      borderLeftColor: isSubtask ? theme.primary : 'transparent',
-                      borderLeftWidth: isSubtask ? 3 : 0,
+                      backgroundColor: isSubtask ? theme.primary + '08' : theme.card,
+                      borderColor: theme.border,
+                      borderLeftColor: isSubtask ? theme.primary : theme.border,
+                      borderLeftWidth: isSubtask ? 3 : 1,
                     },
                     isHovered && styles.rowHovered,
                     isSubtask && styles.subtaskRow,
@@ -668,7 +662,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     paddingVertical: 16,
     paddingHorizontal: 28,
-    marginBottom: 4,
+    marginBottom: 8,
+    ...(Platform.OS === 'web' && {
+      position: 'sticky',
+      top: 0,
+      zIndex: 10,
+    }),
   },
   headerCell: {
     flexDirection: 'row',
@@ -678,9 +677,9 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    opacity: 0.8,
+    opacity: 0.7,
   },
   titleColumn: {
     flex: 3,
@@ -707,15 +706,20 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
+    borderWidth: 1,
+    borderRadius: 12,
     paddingVertical: 20,
     paddingHorizontal: 20,
     minHeight: 80,
-    marginHorizontal: 8,
-    marginVertical: 2,
-    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
     ...(Platform.OS === 'web' && {
-      transitionProperty: 'background-color, box-shadow, transform',
+      transitionProperty: 'all',
       transitionDuration: '0.2s',
       transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
       cursor: 'pointer',
@@ -725,10 +729,10 @@ const styles = StyleSheet.create({
     web: {
       transform: [{ translateY: -2 }],
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      elevation: 6,
     },
     default: {
       shadowColor: '#000',
@@ -739,23 +743,10 @@ const styles = StyleSheet.create({
     },
   }),
   subtaskRow: {
-    marginLeft: 20,
+    marginLeft: 24,
     marginRight: 16,
     minHeight: 70,
     paddingVertical: 16,
-    borderRadius: 10,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        elevation: 1,
-      },
-    }),
   },
   cell: {
     justifyContent: 'center',
@@ -766,7 +757,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   taskTitle: {
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 15,
     lineHeight: 21,
   },
