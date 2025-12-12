@@ -3,7 +3,7 @@
  * Модальное окно со списком уведомлений
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -155,16 +155,79 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
     deleteNotification(id);
   }, [deleteNotification]);
 
+  // Group notifications by date
+  type DateSection = {
+    title: string;
+    data: Notification[];
+  };
+
+  const groupedNotifications = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const sections: DateSection[] = [
+      { title: 'Сегодня', data: [] },
+      { title: 'Вчера', data: [] },
+      { title: 'Последние 7 дней', data: [] },
+      { title: 'Ранее', data: [] },
+    ];
+
+    notifications.forEach((notification) => {
+      const notificationDate = new Date(notification.created_at);
+
+      if (notificationDate >= today) {
+        sections[0].data.push(notification);
+      } else if (notificationDate >= yesterday) {
+        sections[1].data.push(notification);
+      } else if (notificationDate >= weekAgo) {
+        sections[2].data.push(notification);
+      } else {
+        sections[3].data.push(notification);
+      }
+    });
+
+    // Filter out empty sections and flatten for FlatList
+    return sections.filter((section) => section.data.length > 0);
+  }, [notifications]);
+
+  // Flatten grouped notifications for FlatList
+  const flattenedData = useMemo(() => {
+    const items: Array<{ type: 'header'; title: string } | { type: 'notification'; data: Notification }> = [];
+    groupedNotifications.forEach((section) => {
+      items.push({ type: 'header', title: section.title });
+      section.data.forEach((notification) => {
+        items.push({ type: 'notification', data: notification });
+      });
+    });
+    return items;
+  }, [groupedNotifications]);
+
   const renderItem = useCallback(
-    ({ item }: { item: Notification }) => (
-      <NotificationItem
-        notification={item}
-        onPress={handleNotificationPress}
-        onMarkAsRead={markAsRead}
-        onDelete={handleDeleteNotification}
-      />
-    ),
-    [handleNotificationPress, markAsRead, handleDeleteNotification]
+    ({ item }: { item: any }) => {
+      if (item.type === 'header') {
+        return (
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionHeaderText, { color: theme.textTertiary }]}>
+              {item.title}
+            </Text>
+          </View>
+        );
+      }
+
+      return (
+        <NotificationItem
+          notification={item.data}
+          onPress={handleNotificationPress}
+          onMarkAsRead={markAsRead}
+          onDelete={handleDeleteNotification}
+        />
+      );
+    },
+    [handleNotificationPress, markAsRead, handleDeleteNotification, theme]
   );
 
   const renderEmpty = () => {
@@ -279,9 +342,11 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
 
         {/* List */}
         <FlatList
-          data={notifications}
+          data={flattenedData}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item, index) =>
+            item.type === 'header' ? `header-${item.title}` : `notification-${item.data.id}`
+          }
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={renderFooter}
           refreshControl={
@@ -382,5 +447,17 @@ const styles = StyleSheet.create({
   footer: {
     paddingVertical: 20,
     alignItems: 'center',
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingTop: 16,
+    backgroundColor: 'transparent',
+  },
+  sectionHeaderText: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 });

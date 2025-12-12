@@ -490,8 +490,9 @@ const styles = StyleSheet.create({
   // Section Header Styles
   sectionHeader: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 20,
+    paddingVertical: 8,
+    paddingTop: 16,
+    backgroundColor: 'transparent',
   },
   sectionHeaderDesktop: {
     maxWidth: 800,
@@ -500,10 +501,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   sectionHeaderText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
 
   // Desktop List Container (Centered with max-width)
