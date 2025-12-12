@@ -88,9 +88,6 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
               <Ionicons name="add" size={20} color="#FFFFFF" />
               <Text style={styles.desktopButtonPrimaryText}>Создать событие</Text>
             </TouchableOpacity>
-
-            {/* Notification Bell */}
-            <NotificationBell />
           </View>
         </View>
       </View>

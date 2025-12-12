@@ -107,9 +107,6 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
                 <Text style={styles.desktopButtonPrimaryText}>Создать задачу</Text>
               </TouchableOpacity>
             )}
-
-            {/* Notification Bell */}
-            <NotificationBell />
           </View>
         </View>
       </View>

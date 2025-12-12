@@ -102,9 +102,6 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
                 <Text style={styles.desktopButtonPrimaryText}>Создать опрос</Text>
               </TouchableOpacity>
             )}
-
-            {/* Notification Bell */}
-            <NotificationBell />
           </View>
         </View>
       </View>

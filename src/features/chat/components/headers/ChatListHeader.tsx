@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { ConnectionStatus } from '@shared/components/common/ConnectionStatus';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 
 interface ChatListHeaderProps {
   isEditMode: boolean;
@@ -23,6 +24,7 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
   isSearchVisible,
 }) => {
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
 
   // Простая анимация fade для кнопок в header
   const buttonOpacity = useRef(new Animated.Value(1)).current;
@@ -52,10 +54,12 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
         { marginTop: isEditMode ? 0 : 0, marginBottom: isEditMode ? -4 : -4 },
       ]}
     >
-      {/* Left - Notifications */}
-      <View style={styles.headerLeft}>
-        <NotificationBell />
-      </View>
+      {/* Left - Notifications (Mobile only) */}
+      {!isWideScreen && (
+        <View style={styles.headerLeft}>
+          <NotificationBell />
+        </View>
+      )}
 
       {/* Center - Title or Connection Status */}
       {isConnected === false ? (

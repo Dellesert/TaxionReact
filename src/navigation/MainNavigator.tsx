@@ -18,6 +18,7 @@ import TaskNavigator from './TaskNavigator';
 import PollNavigator from './PollNavigator';
 import AdminNavigator from './AdminNavigator';
 import ProfileNavigator from './ProfileNavigator';
+import NotificationNavigator from './NotificationNavigator';
 import CalendarScreen from '@/features/calendar/screens/CalendarScreen';
 import { AnimatedTabBar } from '@shared/components/navigation/AnimatedTabBar';
 import { SideNavBar } from '@shared/components/navigation/SideNavBar';
@@ -47,6 +48,8 @@ const MainNavigatorContent: React.FC = () => {
           return <ChatNavigator />;
         case 'Calendar':
           return <CalendarScreen />;
+        case 'Notifications':
+          return <NotificationNavigator />;
         case 'Admin':
           return <AdminNavigator />;
         case 'Profile':

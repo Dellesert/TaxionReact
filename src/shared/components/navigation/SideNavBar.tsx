@@ -8,6 +8,7 @@ import { View, TouchableOpacity, Text, StyleSheet, Modal, Pressable } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
+import { useNotificationStore } from '@shared/store/notificationStore';
 import { Avatar } from '@shared/components/common/Avatar';
 
 interface NavItem {
@@ -50,6 +51,12 @@ const NAV_ITEMS: NavItem[] = [
     iconFocused: 'calendar',
   },
   {
+    name: 'Notifications',
+    label: 'Уведомления',
+    icon: 'notifications-outline',
+    iconFocused: 'notifications',
+  },
+  {
     name: 'Admin',
     label: 'Админка',
     icon: 'shield-outline',
@@ -71,6 +78,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
 }) => {
   const { theme } = useTheme();
   const { user, logout } = useAuthStore();
+  const unreadNotificationCount = useNotificationStore((state) => state.unreadCount);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -102,7 +110,9 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
       {/* Navigation Items */}
       {visibleItems.map((item) => {
         const isActive = activeRoute === item.name;
-        const showBadge = item.name === 'Chats' && totalUnreadCount > 0;
+        const showChatBadge = item.name === 'Chats' && totalUnreadCount > 0;
+        const showNotificationBadge = item.name === 'Notifications' && unreadNotificationCount > 0;
+        const badgeCount = item.name === 'Chats' ? totalUnreadCount : unreadNotificationCount;
 
         return (
           <TouchableOpacity
@@ -120,10 +130,10 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
                 size={24}
                 color={isActive ? theme.primary : theme.textTertiary}
               />
-              {showBadge && (
+              {(showChatBadge || showNotificationBadge) && (
                 <View style={[styles.badge, { backgroundColor: theme.error || '#FF3B30', borderColor: theme.backgroundSecondary }]}>
                   <Text style={styles.badgeText}>
-                    {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                    {badgeCount > 99 ? '99+' : badgeCount}
                   </Text>
                 </View>
               )}
