@@ -173,6 +173,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 28, // Fixed height to match countBadge height
   },
   columnTitle: {
     fontSize: 14,
