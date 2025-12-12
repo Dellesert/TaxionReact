@@ -14,6 +14,7 @@ import CreatePollModal from '../components/modals/CreatePollModal';
 import EditPollModal from '../components/modals/EditPollModal';
 import { PollListHeader } from '../components/headers/PollListHeader';
 import { PollListContent } from '../components/lists/PollListContent';
+import { PollViewSwitcher } from '../components/common/PollViewSwitcher';
 import { PollFilterMenu } from '../components/common/PollFilterMenu';
 import { canUserCreatePoll, filterPollsByStatus } from '../utils/pollListHelpers';
 
@@ -162,19 +163,34 @@ const PollListScreen: React.FC = () => {
 
       {/* Content */}
       <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <PollListContent
-          polls={displayedPolls}
-          isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
-          refreshing={refreshing}
-          error={error}
-          hasMore={hasMore}
-          onPollPress={handlePollPress}
-          onRefresh={handleRefreshWrapper}
-          onLoadMore={handleLoadMoreWrapper}
-          onRetry={() => loadPolls(getFilters(), searchQuery)}
-          isDesktop={isDesktop}
-        />
+        {isDesktop ? (
+          <PollViewSwitcher
+            polls={displayedPolls}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            refreshing={refreshing}
+            error={error}
+            hasMore={hasMore}
+            onPollPress={handlePollPress}
+            onRefresh={handleRefreshWrapper}
+            onLoadMore={handleLoadMoreWrapper}
+            onRetry={() => loadPolls(getFilters(), searchQuery)}
+          />
+        ) : (
+          <PollListContent
+            polls={displayedPolls}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            refreshing={refreshing}
+            error={error}
+            hasMore={hasMore}
+            onPollPress={handlePollPress}
+            onRefresh={handleRefreshWrapper}
+            onLoadMore={handleLoadMoreWrapper}
+            onRetry={() => loadPolls(getFilters(), searchQuery)}
+            isDesktop={false}
+          />
+        )}
       </View>
 
       {/* Filter Menu */}
