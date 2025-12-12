@@ -63,13 +63,17 @@ const NotificationListScreen: React.FC = () => {
 
     return notifications.filter((notification) => {
       const type = notification.type;
+      const data = notification.data;
+
       switch (selectedFilter) {
         case 'message':
           return type === 'message' || type === 'mention' || type === 'reaction';
         case 'task':
-          return type === 'task' || type === 'reminder';
+          // Только задачи и напоминания о задачах (не о событиях)
+          return (type === 'task') || (type === 'reminder' && !data?.event_id);
         case 'event':
-          return type === 'event';
+          // События и напоминания о событиях
+          return type === 'event' || (type === 'reminder' && data?.event_id);
         case 'poll':
           return type === 'poll';
         case 'system':
@@ -230,13 +234,14 @@ const NotificationListScreen: React.FC = () => {
               filter.key === 'all'
                 ? notifications.length
                 : notifications.filter((n) => {
+                    const data = n.data;
                     switch (filter.key) {
                       case 'message':
                         return n.type === 'message' || n.type === 'mention' || n.type === 'reaction';
                       case 'task':
-                        return n.type === 'task' || n.type === 'reminder';
+                        return (n.type === 'task') || (n.type === 'reminder' && !data?.event_id);
                       case 'event':
-                        return n.type === 'event';
+                        return n.type === 'event' || (n.type === 'reminder' && data?.event_id);
                       case 'poll':
                         return n.type === 'poll';
                       case 'system':

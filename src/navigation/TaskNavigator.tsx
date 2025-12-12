@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { InteractionManager } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -23,15 +24,30 @@ const TaskNavigator: React.FC = () => {
 
   // Handle navigation params from desktop navigation context
   useEffect(() => {
+    console.log('[TaskNavigator] Navigation params changed:', {
+      isWideScreen,
+      navigationParams: desktopNav.navigationParams
+    });
+
     if (isWideScreen && desktopNav.navigationParams?.taskId) {
       const taskId = desktopNav.navigationParams.taskId;
+      console.log('[TaskNavigator] Task ID found:', taskId);
+
       if (typeof taskId === 'number') {
-        // Navigate to TaskDetail within the stack
-        // @ts-ignore
-        navigation.navigate('TaskDetail', { taskId });
+        // Wait for navigation to be ready, then navigate
+        const task = InteractionManager.runAfterInteractions(() => {
+          setTimeout(() => {
+            console.log('[TaskNavigator] Navigating to TaskDetail with taskId:', taskId);
+            // @ts-ignore
+            navigation.navigate('TaskDetail', { taskId });
+          }, 100);
+        });
+
+        // Clear navigation params after scheduling
+        desktopNav.clearNavigationParams();
+
+        return () => task.cancel();
       }
-      // Clear navigation params after processing
-      desktopNav.clearNavigationParams();
     }
   }, [isWideScreen, desktopNav.navigationParams, navigation, desktopNav]);
 

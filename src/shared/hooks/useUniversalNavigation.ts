@@ -16,7 +16,7 @@ interface NavigationOptions {
 export const useUniversalNavigation = () => {
   const isWideScreen = useIsWideScreen();
   const mobileNavigation = useNavigation();
-  const desktopNavigation = isWideScreen ? useDesktopNavigation() : null;
+  const desktopNavigation = useDesktopNavigation();
 
   /**
    * Navigate to a screen
@@ -25,7 +25,13 @@ export const useUniversalNavigation = () => {
    */
   const navigate = useCallback(
     (screenName: string, options?: NavigationOptions) => {
-      if (isWideScreen && desktopNavigation) {
+      console.log('[UniversalNavigation] Navigate called:', {
+        isWideScreen,
+        screenName,
+        options
+      });
+
+      if (isWideScreen) {
         // Desktop navigation
         // Map screen names to desktop tab names
         let tabName = screenName;
@@ -59,9 +65,15 @@ export const useUniversalNavigation = () => {
         };
 
         const desktopTab = screenToTabMap[tabName] || tabName;
+        console.log('[UniversalNavigation] Desktop navigation:', {
+          tabName,
+          desktopTab,
+          params
+        });
         desktopNavigation.navigateToTab(desktopTab, params);
       } else {
         // Mobile navigation - use React Navigation
+        console.log('[UniversalNavigation] Mobile navigation');
         if (options?.screen) {
           // @ts-ignore - Navigation types are complex
           mobileNavigation.navigate(screenName, options);

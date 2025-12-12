@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { InteractionManager } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -27,12 +28,19 @@ const PollNavigator: React.FC = () => {
     if (isWideScreen && desktopNav.navigationParams?.pollId) {
       const pollId = desktopNav.navigationParams.pollId;
       if (typeof pollId === 'number') {
-        // Navigate to PollDetail within the stack
-        // @ts-ignore
-        navigation.navigate('PollDetail', { pollId });
+        // Wait for navigation to be ready, then navigate
+        const task = InteractionManager.runAfterInteractions(() => {
+          setTimeout(() => {
+            // @ts-ignore
+            navigation.navigate('PollDetail', { pollId });
+          }, 100);
+        });
+
+        // Clear navigation params after scheduling
+        desktopNav.clearNavigationParams();
+
+        return () => task.cancel();
       }
-      // Clear navigation params after processing
-      desktopNav.clearNavigationParams();
     }
   }, [isWideScreen, desktopNav.navigationParams, navigation, desktopNav]);
 

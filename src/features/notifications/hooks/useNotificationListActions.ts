@@ -47,19 +47,37 @@ export const useNotificationListActions = (
   // Notification press handler
   const handleNotificationPress = useCallback(
     (notification: Notification) => {
+      console.log('[Notification] Press:', {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        data: notification.data
+      });
+
       // Mark as read if unread
       if (!notification.is_read) {
         markAsRead(notification.id);
       }
 
       // Navigate to corresponding screen based on type
-      const screenName = getNavigationScreenByType(notification.type);
+      const screenName = getNavigationScreenByType(notification.type, notification.data);
       const params = notification.data
         ? getNavigationParams(notification.type, notification.data)
         : null;
 
+      console.log('[Notification] Navigation:', {
+        screenName,
+        params
+      });
+
       if (screenName && params) {
         navigate(screenName, params);
+      } else {
+        console.warn('[Notification] No navigation - screenName or params missing', {
+          screenName,
+          params,
+          type: notification.type
+        });
       }
     },
     [markAsRead, navigate]
