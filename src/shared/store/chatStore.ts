@@ -1609,12 +1609,16 @@ export const useChatStore = create<ChatState>()(
       // Сбрасываем activeChat если это был удаленный чат
       const updatedActiveChat = state.activeChat?.id === chatId ? null : state.activeChat;
 
+      // Сбрасываем selectedChatId если это был удаленный чат (для desktop mode)
+      const updatedSelectedChatId = state.selectedChatId === chatId ? null : state.selectedChatId;
+
       return {
         ...state,
         chats: updatedChats,
         tabs: updatedTabs,
         messages: updatedMessages,
         activeChat: updatedActiveChat,
+        selectedChatId: updatedSelectedChatId,
       };
     });
   },

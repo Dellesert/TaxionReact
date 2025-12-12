@@ -64,8 +64,13 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             } as any}
             navigation={{
               goBack: onClose,
-              navigate: () => {
-                console.log('🚫 Navigation blocked in desktop modal');
+              navigate: (screen: string) => {
+                // При удалении/выходе из чата закрываем модальное окно
+                if (screen === 'ChatList') {
+                  onClose();
+                } else {
+                  console.log('🚫 Navigation blocked in desktop modal');
+                }
               },
               replace: () => {
                 console.log('🚫 Navigation.replace blocked in desktop modal');

@@ -60,6 +60,16 @@ export const ChatSplitView: React.FC = () => {
     return chats.find((c) => c.id === selectedChatId);
   }, [chats, selectedChatId]);
 
+  // Проверяем, что выбранный чат существует, если нет - сбрасываем
+  useEffect(() => {
+    if (selectedChatId && !selectedChat) {
+      // Чат был удален, сбрасываем выбор
+      setSelectedChatId(null);
+      // Закрываем модальное окно настроек, если оно было открыто
+      setShowSettingsModal(false);
+    }
+  }, [selectedChatId, selectedChat, setSelectedChatId]);
+
   // Вычисляем отображаемое имя и аватар
   const displayName = useMemo(() => {
     if (!selectedChat) return '';
