@@ -32,7 +32,8 @@ const PERSISTENT_KEYS = ['access_token', 'refresh_token', 'user_data'];
  * This is needed because SecureStore doesn't persist in Expo Go
  */
 export const migrateToAsyncStorage = async (): Promise<void> => {
-  if (isWeb) return; // No need to migrate on web
+  // Only migrate on native platforms (not web, not Electron)
+  if (isWeb || electronSecureStorage) return;
 
 
   for (const key of PERSISTENT_KEYS) {
