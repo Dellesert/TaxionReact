@@ -258,15 +258,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 12,
-    marginHorizontal: 8,
-    marginVertical: 4,
+    marginHorizontal: 0,
+    marginVertical: 6,
+    maxWidth: 800,
+    width: '100%',
+    alignSelf: 'center',
     borderBottomWidth: 0,
     ...Platform.select({
       web: {
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-        transitionProperty: 'transform, box-shadow',
-        transitionDuration: '0.15s',
+        transitionProperty: 'transform, box-shadow, background-color',
+        transitionDuration: '0.2s',
         cursor: 'pointer',
+        ':hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+        },
       },
       default: {
         shadowColor: '#000',
