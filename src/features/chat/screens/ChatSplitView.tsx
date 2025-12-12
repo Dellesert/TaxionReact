@@ -10,6 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
+import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { ChatStackParamList } from '@navigation/types';
 import { Chat } from '../types/chat.types';
 import ChatListScreen from './ChatListScreen';
@@ -24,6 +25,7 @@ type ChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Chat'>;
 export const ChatSplitView: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<ChatNavigationProp>();
+  const desktopNav = useDesktopNavigation();
   const currentUser = useAuthStore((state) => state.user);
   const chats = useChatStore((state) => state.chats);
   const selectedChatId = useChatStore((state) => state.selectedChatId);
@@ -54,6 +56,18 @@ export const ChatSplitView: React.FC = () => {
       setMountKey(prev => prev + 1);
     }
   }, [selectedChatId]);
+
+  // Handle navigation params from desktop navigation context
+  useEffect(() => {
+    if (desktopNav.navigationParams?.chatId) {
+      const chatId = desktopNav.navigationParams.chatId;
+      if (typeof chatId === 'number' && chatId !== selectedChatId) {
+        setSelectedChatId(chatId);
+      }
+      // Clear navigation params after processing
+      desktopNav.clearNavigationParams();
+    }
+  }, [desktopNav.navigationParams, selectedChatId, setSelectedChatId, desktopNav]);
 
   // Получаем полный объект чата для отображения аватара и статуса
   const selectedChat = useMemo(() => {

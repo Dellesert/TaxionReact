@@ -3,9 +3,12 @@
  * Стек навигации для опросов
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { PollStackParamList } from './types';
 import PollListScreen from '@/features/polls/screens/PollListScreen';
 import PollDetailScreen from '@/features/polls/screens/PollDetailScreen';
@@ -15,6 +18,23 @@ const Stack = createNativeStackNavigator<PollStackParamList>();
 
 const PollNavigator: React.FC = () => {
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
+  const desktopNav = useDesktopNavigation();
+  const navigation = useNavigation();
+
+  // Handle navigation params from desktop navigation context
+  useEffect(() => {
+    if (isWideScreen && desktopNav.navigationParams?.pollId) {
+      const pollId = desktopNav.navigationParams.pollId;
+      if (typeof pollId === 'number') {
+        // Navigate to PollDetail within the stack
+        // @ts-ignore
+        navigation.navigate('PollDetail', { pollId });
+      }
+      // Clear navigation params after processing
+      desktopNav.clearNavigationParams();
+    }
+  }, [isWideScreen, desktopNav.navigationParams, navigation, desktopNav]);
 
   return (
     <Stack.Navigator

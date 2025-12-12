@@ -3,9 +3,12 @@
  * Стек навигации для задач
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { TaskStackParamList } from './types';
 import TaskListScreen from '@/features/tasks/screens/TaskListScreen';
 import TaskDetailScreen from '@/features/tasks/screens/TaskDetailScreen';
@@ -14,6 +17,23 @@ const Stack = createNativeStackNavigator<TaskStackParamList>();
 
 const TaskNavigator: React.FC = () => {
   const { theme } = useTheme();
+  const isWideScreen = useIsWideScreen();
+  const desktopNav = useDesktopNavigation();
+  const navigation = useNavigation();
+
+  // Handle navigation params from desktop navigation context
+  useEffect(() => {
+    if (isWideScreen && desktopNav.navigationParams?.taskId) {
+      const taskId = desktopNav.navigationParams.taskId;
+      if (typeof taskId === 'number') {
+        // Navigate to TaskDetail within the stack
+        // @ts-ignore
+        navigation.navigate('TaskDetail', { taskId });
+      }
+      // Clear navigation params after processing
+      desktopNav.clearNavigationParams();
+    }
+  }, [isWideScreen, desktopNav.navigationParams, navigation, desktopNav]);
 
   return (
     <Stack.Navigator

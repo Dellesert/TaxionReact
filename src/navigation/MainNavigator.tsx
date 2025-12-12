@@ -12,6 +12,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useChatStore } from '@shared/store/chatStore';
 import { ChatSelectionProvider } from '@shared/contexts/ChatSelectionContext';
+import { DesktopNavigationProvider, useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
@@ -29,6 +30,7 @@ const MainNavigatorContent: React.FC = () => {
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
   const chats = useChatStore((state) => state.chats);
+  const desktopNav = useDesktopNavigation();
   const [activeTab, setActiveTab] = useState<string>('Chats');
 
   // Подсчитываем общее количество непрочитанных сообщений
@@ -38,8 +40,10 @@ const MainNavigatorContent: React.FC = () => {
 
   // Desktop mode: render with side navbar
   if (isWideScreen) {
+    const currentActiveTab = desktopNav.activeTab;
+
     const renderContent = () => {
-      switch (activeTab) {
+      switch (currentActiveTab) {
         case 'Tasks':
           return <TaskNavigator />;
         case 'Polls':
@@ -62,8 +66,8 @@ const MainNavigatorContent: React.FC = () => {
     return (
       <View style={[styles.desktopContainer, { backgroundColor: theme.background }]}>
         <SideNavBar
-          activeRoute={activeTab}
-          onNavigate={setActiveTab}
+          activeRoute={currentActiveTab}
+          onNavigate={desktopNav.navigateToTab}
           totalUnreadCount={totalUnreadCount}
         />
         <View style={styles.desktopContent}>
@@ -212,9 +216,11 @@ const styles = StyleSheet.create({
 
 const MainNavigator: React.FC = () => {
   return (
-    <ChatSelectionProvider>
-      <MainNavigatorContent />
-    </ChatSelectionProvider>
+    <DesktopNavigationProvider>
+      <ChatSelectionProvider>
+        <MainNavigatorContent />
+      </ChatSelectionProvider>
+    </DesktopNavigationProvider>
   );
 };
 

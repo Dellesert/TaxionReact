@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useUniversalNavigation } from '@shared/hooks/useUniversalNavigation';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { Notification } from '@/types/notification.types';
 import {
@@ -24,7 +24,7 @@ export const useNotificationListActions = (
   isLoading: boolean,
   hasMore: boolean
 ): UseNotificationListActionsReturn => {
-  const navigation = useNavigation();
+  const { navigate } = useUniversalNavigation();
   const {
     loadNotifications,
     loadMoreNotifications,
@@ -59,11 +59,10 @@ export const useNotificationListActions = (
         : null;
 
       if (screenName && params) {
-        // @ts-ignore - Navigation types are complex, ignoring for now
-        navigation.navigate(screenName, params);
+        navigate(screenName, params);
       }
     },
-    [markAsRead, navigation]
+    [markAsRead, navigate]
   );
 
   // Mark all as read handler
