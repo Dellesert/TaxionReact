@@ -16,14 +16,17 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@shared/store/notificationStore';
-import { useChatSelection } from '@shared/contexts/ChatSelectionContext';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useUniversalNavigation } from '@shared/hooks/useUniversalNavigation';
 import NotificationItem from '@shared/components/common/NotificationItem';
 import { Notification } from '../../../types/notification.types';
 import { useTheme } from '@shared/hooks/useTheme';
+import {
+  getNavigationScreenByType,
+  getNavigationParams,
+} from '../utils/notificationFormatters';
 
 interface NotificationModalProps {
   visible: boolean;
@@ -31,11 +34,10 @@ interface NotificationModalProps {
 }
 
 export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, onClose }) => {
-  const navigation = useNavigation();
+  const { navigate } = useUniversalNavigation();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
-  const { selectChat } = useChatSelection();
 
   const {
     notifications,
@@ -68,79 +70,45 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
 
   const handleNotificationPress = useCallback(
     (notification: Notification) => {
-      // Отмечаем как прочитанное
+      console.log('[NotificationModal] Press:', {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        data: notification.data
+      });
+
+      // Mark as read if unread
       if (!notification.is_read) {
         markAsRead(notification.id);
       }
 
-      // Закрываем модалку
+      // Close modal
       onClose();
 
-      // Переходим на соответствующий экран в зависимости от типа
+      // Navigate to corresponding screen based on type
       setTimeout(() => {
-        if (notification.type === 'message' && notification.data?.chat_id) {
-          if (isWideScreen) {
-            // Desktop mode: use context to select chat and switch to Chats tab
-            const chatName = (notification.data.chat_name as string) || 'Чат';
-            selectChat(notification.data.chat_id, chatName, 0);
-            // @ts-ignore - Navigation with nested params
-            navigation.navigate('Main', {
-              screen: 'Chats',
-            });
-          } else {
-            // Mobile mode: navigate to chat screen
-            // @ts-ignore - Navigation with nested params
-            navigation.navigate('Main', {
-              screen: 'Chats',
-              params: {
-                screen: 'Chat',
-                params: {
-                  chatId: notification.data.chat_id,
-                  chatName: notification.data.chat_name || 'Чат',
-                },
-              },
-            });
-          }
-        } else if ((notification.type === 'task' || notification.type === 'reminder')) {
-          // Check for grouped notifications (multiple tasks)
-          if (notification.data?.task_ids && notification.data.task_ids.length > 1) {
-            // For grouped notifications, go to task list with filter
-            // @ts-ignore - Navigation with nested params
-            navigation.navigate('Main', {
-              screen: 'Tasks',
-              params: {
-                screen: 'TaskList',
-                params: {
-                  filterCategory: notification.data.category,
-                  taskIds: notification.data.task_ids
-                }
-              },
-            });
-          } else if (notification.data?.task_id) {
-            // Single task notification - navigate to root TaskDetail screen
-            // @ts-ignore - Navigation to root level screen
-            navigation.navigate('TaskDetail', {
-              taskId: notification.data.task_id,
-            });
-          } else if (notification.data?.task_ids && notification.data.task_ids.length === 1) {
-            // Single task in array format - navigate to root TaskDetail screen
-            // @ts-ignore - Navigation to root level screen
-            navigation.navigate('TaskDetail', {
-              taskId: notification.data.task_ids[0],
-            });
-          }
-        } else if (notification.type === 'poll' && notification.data?.poll_id) {
-          // @ts-ignore - Navigation to root level screen
-          navigation.navigate('PollDetail', {
-            pollId: notification.data.poll_id,
+        const screenName = getNavigationScreenByType(notification.type, notification.data);
+        const params = notification.data
+          ? getNavigationParams(notification.type, notification.data)
+          : null;
+
+        console.log('[NotificationModal] Navigation:', {
+          screenName,
+          params
+        });
+
+        if (screenName && params) {
+          navigate(screenName, params);
+        } else {
+          console.warn('[NotificationModal] No navigation - screenName or params missing', {
+            screenName,
+            params,
+            type: notification.type
           });
-        } else if (notification.type === 'event' && notification.data?.event_id) {
-          // @ts-ignore - Navigation to calendar
-          navigation.navigate('Calendar');
         }
       }, 300);
     },
-    [markAsRead, navigation, onClose, isWideScreen, selectChat]
+    [markAsRead, navigate, onClose]
   );
 
   const handleMarkAllAsRead = useCallback(() => {

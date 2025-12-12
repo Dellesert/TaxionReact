@@ -25,11 +25,6 @@ export const useUniversalNavigation = () => {
    */
   const navigate = useCallback(
     (screenName: string, options?: NavigationOptions) => {
-      console.log('[UniversalNavigation] Navigate called:', {
-        isWideScreen,
-        screenName,
-        options
-      });
 
       if (isWideScreen) {
         // Desktop navigation
@@ -65,22 +60,38 @@ export const useUniversalNavigation = () => {
         };
 
         const desktopTab = screenToTabMap[tabName] || tabName;
-        console.log('[UniversalNavigation] Desktop navigation:', {
-          tabName,
-          desktopTab,
-          params
-        });
         desktopNavigation.navigateToTab(desktopTab, params);
       } else {
         // Mobile navigation - use React Navigation
-        console.log('[UniversalNavigation] Mobile navigation');
-        if (options?.screen) {
+        
+
+        // Special handling for Tasks with taskId - navigate directly to TaskDetail
+        if (screenName === 'Tasks' && options?.taskId) {
+          // @ts-ignore - Navigation to root level screen
+          mobileNavigation.navigate('TaskDetail', {
+            taskId: options.taskId,
+          });
+        }
+        // Special handling for Polls - check both options.screen and options.params
+        else if (screenName === 'Polls' && (options?.screen === 'PollDetail' || options?.params?.pollId)) {
+          const pollId = options?.params?.pollId || options?.pollId;
+          // @ts-ignore - Navigation to root level screen
+          mobileNavigation.navigate('PollDetail', {
+            pollId,
+          });
+        }
+        // Handle nested navigation (e.g., { screen: 'Chat', params: { chatId: 1 } })
+        else if (options?.screen) {
           // @ts-ignore - Navigation types are complex
           mobileNavigation.navigate(screenName, options);
-        } else if (options?.params) {
+        }
+        // Regular navigation with params
+        else if (options?.params || options) {
           // @ts-ignore
-          mobileNavigation.navigate(screenName, options.params);
-        } else {
+          mobileNavigation.navigate(screenName, options?.params || options);
+        }
+        // Simple navigation without params
+        else {
           // @ts-ignore
           mobileNavigation.navigate(screenName);
         }
