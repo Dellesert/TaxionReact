@@ -8,6 +8,7 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
+import { Avatar } from '@shared/components/common/Avatar';
 
 interface NavItem {
   name: string;
@@ -84,6 +85,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundSecondary, borderRightColor: theme.border }]}>
+      {/* Navigation Items */}
       {visibleItems.map((item) => {
         const isActive = activeRoute === item.name;
         const showBadge = item.name === 'Chats' && totalUnreadCount > 0;
@@ -124,6 +126,19 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
           </TouchableOpacity>
         );
       })}
+
+      {/* User Avatar at bottom */}
+      {user && (
+        <View style={styles.avatarContainer}>
+          <Avatar
+            imageUrl={user.avatar}
+            thumbnailUrl={user.avatar_thumbnail}
+            name={user.name || user.email}
+            size={40}
+            userId={user.id}
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -133,6 +148,13 @@ const styles = StyleSheet.create({
     width: 80,
     paddingVertical: 12,
     borderRightWidth: 1,
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginTop: 'auto',
   },
   navItem: {
     alignItems: 'center',

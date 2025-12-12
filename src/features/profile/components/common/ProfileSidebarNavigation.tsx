@@ -8,7 +8,6 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { User } from '@/types/user.types';
-import { Avatar } from '@shared/components/common/Avatar';
 
 export type ProfileSection =
   | 'profile'
@@ -158,10 +157,6 @@ export const ProfileSidebarNavigation: React.FC<ProfileSidebarNavigationProps> =
       fontSize: 14,
       fontWeight: '600',
       color: '#EF4444',
-      flex: 1,
-    },
-    logoutAvatar: {
-      marginLeft: 12,
     },
   });
 
@@ -235,16 +230,6 @@ export const ProfileSidebarNavigation: React.FC<ProfileSidebarNavigationProps> =
           <Text style={dynamicStyles.logoutText}>
             {isLoggingOut ? 'Выход...' : 'Выйти'}
           </Text>
-          {user && (
-            <Avatar
-              style={dynamicStyles.logoutAvatar}
-              imageUrl={user.avatar}
-              thumbnailUrl={user.avatar_thumbnail}
-              name={user.name || user.email}
-              size={32}
-              userId={user.id}
-            />
-          )}
         </TouchableOpacity>
       </View>
     </View>
