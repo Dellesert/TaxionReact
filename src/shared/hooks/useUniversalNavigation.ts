@@ -5,8 +5,8 @@
 
 import { useNavigation } from '@react-navigation/native';
 import { useIsWideScreen } from './useIsWideScreen';
-import { useDesktopNavigation, DesktopNavigationParams } from '@shared/contexts/DesktopNavigationContext';
-import { useCallback } from 'react';
+import { DesktopNavigationParams, DesktopNavigationContext } from '@shared/contexts/DesktopNavigationContext';
+import { useCallback, useContext } from 'react';
 
 interface NavigationOptions {
   screen?: string;
@@ -16,7 +16,10 @@ interface NavigationOptions {
 export const useUniversalNavigation = () => {
   const isWideScreen = useIsWideScreen();
   const mobileNavigation = useNavigation();
-  const desktopNavigation = useDesktopNavigation();
+
+  // Use context directly to avoid hook rules violations
+  // This allows the hook to work outside of DesktopNavigationProvider (e.g., for InAppNotificationContainer)
+  const desktopNavigation = useContext(DesktopNavigationContext);
 
   /**
    * Navigate to a screen
@@ -26,8 +29,8 @@ export const useUniversalNavigation = () => {
   const navigate = useCallback(
     (screenName: string, options?: NavigationOptions) => {
 
-      if (isWideScreen) {
-        // Desktop navigation
+      if (isWideScreen && desktopNavigation) {
+        // Desktop navigation - only if we have the context available
         // Map screen names to desktop tab names
         let tabName = screenName;
         let params: DesktopNavigationParams | undefined;

@@ -4,9 +4,10 @@
  */
 
 import './global.css';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { LogBox, AppState, AppStateStatus, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { NavigationContainerRef } from '@react-navigation/native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from '@shared/store/authStore';
 import { useThemeStore } from '@shared/store/themeStore';
@@ -18,6 +19,10 @@ import { ActionModalProvider } from '@shared/contexts/ActionModalContext';
 import { OfflineBanner } from '@shared/components/common/OfflineBanner';
 import { NetworkSyncProvider } from '@shared/providers/NetworkSyncProvider';
 import { useCacheWarmingOnAuth } from '@shared/hooks/useCacheWarming';
+import {
+  getNavigationScreenByType,
+  getNavigationParams,
+} from '@/features/notifications/utils/notificationFormatters';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -109,6 +114,9 @@ export default function App() {
 
   const loadUnreadCount = useNotificationStore((state) => state.loadUnreadCount);
 
+  // Navigation ref for push notification navigation
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+
   // Прогрев кэша при авторизации (загружает чаты, задачи, опросы в фоне)
   useCacheWarmingOnAuth(isAuthenticated);
 
@@ -135,6 +143,81 @@ export default function App() {
       // Load unread notification count when user is authenticated
       loadUnreadCount();
 
+      // Web: Setup listeners for notification clicks
+      if (Platform.OS === 'web') {
+        const handleNotificationClick = (notificationData: Record<string, any>) => {
+          const type = notificationData.type as string;
+          const screenName = getNavigationScreenByType(type, notificationData);
+          const params = getNavigationParams(type, notificationData);
+
+          console.log('[App] Notification click navigation:', {
+            type,
+            screenName,
+            params
+          });
+
+          if (screenName && params && navigationRef.current?.isReady()) {
+            // Small delay to ensure app is ready
+            setTimeout(() => {
+              if (screenName === 'Tasks' && params.taskId) {
+                // @ts-ignore
+                navigationRef.current?.navigate('TaskDetail', { taskId: params.taskId });
+              } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
+                const pollId = params.params?.pollId || params.pollId;
+                // @ts-ignore
+                navigationRef.current?.navigate('PollDetail', { pollId });
+              } else if (params.screen) {
+                // Nested navigation
+                // @ts-ignore
+                navigationRef.current?.navigate(screenName, params);
+              } else {
+                // Regular navigation
+                // @ts-ignore
+                navigationRef.current?.navigate(screenName, params);
+              }
+            }, 300);
+          }
+        };
+
+        // Service Worker messages (for background notifications)
+        let cleanupServiceWorker: (() => void) | undefined;
+        if ('serviceWorker' in navigator) {
+          const handleServiceWorkerMessage = (event: MessageEvent) => {
+            console.log('[App] Service Worker message:', event.data);
+
+            if (event.data.type === 'NOTIFICATION_CLICK') {
+              handleNotificationClick(event.data.data || {});
+            }
+          };
+
+          navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+
+          cleanupServiceWorker = () => {
+            navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+          };
+        }
+
+        // Window messages (for foreground notifications clicked via browser notification)
+        const handleWindowMessage = (event: MessageEvent) => {
+          // Проверяем origin для безопасности
+          if (event.origin !== window.location.origin) return;
+
+          console.log('[App] Window message:', event.data);
+
+          if (event.data.type === 'NOTIFICATION_CLICK') {
+            handleNotificationClick(event.data.data || {});
+          }
+        };
+
+        window.addEventListener('message', handleWindowMessage);
+
+        // Cleanup
+        return () => {
+          cleanupServiceWorker?.();
+          window.removeEventListener('message', handleWindowMessage);
+        };
+      }
+
       // Register for push notifications
       pushNotificationService.registerForPushNotifications().then((token) => {
         if (token) {
@@ -153,7 +236,40 @@ export default function App() {
         },
         (response) => {
           console.log('[App] 👆 Notification tapped:', response.notification.request.content.title);
-          // Handle notification tap - navigation will be handled by deep links
+          const notificationData = response.notification.request.content.data || {};
+
+          console.log('[App] Notification data:', notificationData);
+
+          // Navigate using the same logic as in-app notifications
+          const type = notificationData.type as string;
+          const screenName = getNavigationScreenByType(type, notificationData);
+          const params = getNavigationParams(type, notificationData);
+
+          console.log('[App] Push notification navigation:', {
+            type,
+            screenName,
+            params
+          });
+
+          if (screenName && params && navigationRef.current?.isReady()) {
+            // Navigate to the screen
+            if (screenName === 'Tasks' && params.taskId) {
+              // @ts-ignore
+              navigationRef.current.navigate('TaskDetail', { taskId: params.taskId });
+            } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
+              const pollId = params.params?.pollId || params.pollId;
+              // @ts-ignore
+              navigationRef.current.navigate('PollDetail', { pollId });
+            } else if (params.screen) {
+              // Nested navigation
+              // @ts-ignore
+              navigationRef.current.navigate(screenName, params);
+            } else {
+              // Regular navigation
+              // @ts-ignore
+              navigationRef.current.navigate(screenName, params);
+            }
+          }
         }
       );
 
@@ -217,7 +333,7 @@ export default function App() {
       <NotificationProvider>
         <ActionModalProvider>
           <NetworkSyncProvider enabled={isAuthenticated}>
-            <AppNavigator />
+            <AppNavigator ref={navigationRef} />
             <OfflineBanner />
           </NetworkSyncProvider>
         </ActionModalProvider>

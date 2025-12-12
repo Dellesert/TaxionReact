@@ -27,7 +27,7 @@ interface DesktopNavigationContextValue {
   clearNavigationParams: () => void;
 }
 
-const DesktopNavigationContext = createContext<DesktopNavigationContextValue | null>(null);
+export const DesktopNavigationContext = createContext<DesktopNavigationContextValue | null>(null);
 
 interface DesktopNavigationProviderProps {
   children: ReactNode;

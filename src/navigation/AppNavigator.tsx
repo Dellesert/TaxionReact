@@ -73,7 +73,9 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
-const AppNavigator: React.FC = () => {
+interface AppNavigatorProps {}
+
+const AppNavigator = React.forwardRef<any, AppNavigatorProps>((props, ref) => {
   const { isAuthenticated, isInitializing } = useAuth();
   const { theme } = useTheme();
 
@@ -100,7 +102,7 @@ const AppNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer theme={navigationTheme} linking={linking}>
+    <NavigationContainer ref={ref} theme={navigationTheme} linking={linking}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -171,6 +173,8 @@ const AppNavigator: React.FC = () => {
       {isAuthenticated && <InAppNotificationContainer />}
     </NavigationContainer>
   );
-};
+});
+
+AppNavigator.displayName = 'AppNavigator';
 
 export default AppNavigator;

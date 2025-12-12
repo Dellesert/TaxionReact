@@ -259,11 +259,22 @@ class PushNotificationService {
               icon: '/favicon.ico',
               tag: payload.messageId || 'default',
               requireInteraction: true,
+              data: payload.data, // Передаем данные в notification
             });
 
             notification.onclick = () => {
               window.focus();
               notification.close();
+
+              // Отправляем сообщение для навигации
+              if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                // Отправляем сообщение в главное окно через broadcast
+                const notificationData = payload.data || {};
+                window.postMessage({
+                  type: 'NOTIFICATION_CLICK',
+                  data: notificationData,
+                }, window.location.origin);
+              }
             };
 
             console.log('Browser notification shown');
