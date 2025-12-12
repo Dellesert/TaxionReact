@@ -287,8 +287,11 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
           ]}>
             <View style={[
               styles.checkbox,
-              { borderColor: theme.border },
-              isSelected && { backgroundColor: theme.primary, borderColor: theme.primary }
+              {
+                borderColor: theme.border,
+                backgroundColor: isSelected ? theme.primary : theme.backgroundSecondary
+              },
+              isSelected && { borderColor: theme.primary }
             ]}>
               {isSelected && <Ionicons name="checkmark" size={18} color="#FFF" />}
             </View>
