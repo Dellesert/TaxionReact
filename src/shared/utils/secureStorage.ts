@@ -1,6 +1,8 @@
 /**
  * Secure Storage Wrapper
- * Использует SecureStore для мобильных платформ и localStorage для веб
+ * - SecureStore для мобильных платформ
+ * - localStorage для веб
+ * - safeStorage API для Electron (OS-native encryption)
  *
  * IMPORTANT: SecureStore в Expo Go может не персистить данные между сессиями
  * Поэтому используем AsyncStorage как fallback для токенов
@@ -9,8 +11,17 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { isElectron } from './platform';
 
-const isWeb = Platform.OS === 'web';
+// Dynamically import Electron secure storage
+let electronSecureStorage: typeof import('./secureStorage.electron') | null = null;
+
+if (isElectron()) {
+  // Electron environment - use safe storage
+  electronSecureStorage = require('./secureStorage.electron');
+}
+
+const isWeb = Platform.OS === 'web' && !isElectron();
 
 // Keys that should use AsyncStorage instead of SecureStore in development
 // because SecureStore doesn't persist in Expo Go
@@ -51,10 +62,14 @@ export const migrateToAsyncStorage = async (): Promise<void> => {
 
 export const setItemAsync = async (key: string, value: string): Promise<void> => {
   try {
-    if (isWeb) {
+    if (electronSecureStorage) {
+      // Electron: use safeStorage API
+      await electronSecureStorage.setItemAsync(key, value);
+    } else if (isWeb) {
+      // Web: use localStorage
       localStorage.setItem(key, value);
     } else {
-      // Use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
+      // Native: use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
       // SecureStore doesn't persist in Expo Go development mode
       if (PERSISTENT_KEYS.includes(key)) {
         await AsyncStorage.setItem(key, value);
@@ -72,10 +87,14 @@ export const getItemAsync = async (key: string): Promise<string | null> => {
   try {
     let value: string | null = null;
 
-    if (isWeb) {
+    if (electronSecureStorage) {
+      // Electron: use safeStorage API
+      value = await electronSecureStorage.getItemAsync(key);
+    } else if (isWeb) {
+      // Web: use localStorage
       value = localStorage.getItem(key);
     } else {
-      // Use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
+      // Native: use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
       if (PERSISTENT_KEYS.includes(key)) {
         value = await AsyncStorage.getItem(key);
       } else {
@@ -92,10 +111,14 @@ export const getItemAsync = async (key: string): Promise<string | null> => {
 
 export const deleteItemAsync = async (key: string): Promise<void> => {
   try {
-    if (isWeb) {
+    if (electronSecureStorage) {
+      // Electron: use safeStorage API
+      await electronSecureStorage.deleteItemAsync(key);
+    } else if (isWeb) {
+      // Web: use localStorage
       localStorage.removeItem(key);
     } else {
-      // Use AsyncStorage for persistent keys (tokens)
+      // Native: use AsyncStorage for persistent keys (tokens)
       if (PERSISTENT_KEYS.includes(key)) {
         await AsyncStorage.removeItem(key);
       } else {

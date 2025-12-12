@@ -7,9 +7,23 @@ const config = getDefaultConfig(__dirname);
 // Extend sourceExts to support mjs
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
 
+// Block electron directory from being bundled
+config.resolver.blockList = [
+  /electron\/.*/,
+  /dist-electron\/.*/,
+  /node_modules[\/\\]electron[\/\\].*/,
+];
+
 // CRITICAL FIX: Custom resolver to force CommonJS for problematic packages on web
 const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Block electron directory
+  if (moduleName.includes('electron/') || moduleName.includes('electron\\')) {
+    return {
+      type: 'empty',
+    };
+  }
+
   // Force CommonJS versions for web platform only
   if (platform === 'web') {
     // Redirect zustand ESM to CommonJS

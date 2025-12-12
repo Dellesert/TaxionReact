@@ -60,3 +60,10 @@ nul
 /.claude
 .env.back
 /build
+
+# Electron
+dist-electron/
+*.exe
+*.dmg
+*.AppImage
+*.deb
