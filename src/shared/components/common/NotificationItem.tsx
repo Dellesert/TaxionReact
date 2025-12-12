@@ -22,7 +22,15 @@ interface NotificationItemProps {
 }
 
 // Иконки для разных типов уведомлений
-const getNotificationIcon = (type: NotificationType): keyof typeof Ionicons.glyphMap => {
+const getNotificationIcon = (
+  type: NotificationType,
+  data?: Record<string, unknown>
+): keyof typeof Ionicons.glyphMap => {
+  // Если это напоминание о событии, показываем иконку календаря
+  if (type === 'reminder' && data?.event_id) {
+    return 'calendar';
+  }
+
   switch (type) {
     case 'message':
       return 'chatbubble';
@@ -39,14 +47,22 @@ const getNotificationIcon = (type: NotificationType): keyof typeof Ionicons.glyp
     case 'system':
       return 'information-circle';
     case 'reminder':
-      return 'alarm';
+      return 'alarm'; // Для напоминаний о задачах
     default:
       return 'notifications';
   }
 };
 
 // Цвета для разных типов
-const getNotificationColor = (type: NotificationType): string => {
+const getNotificationColor = (
+  type: NotificationType,
+  data?: Record<string, unknown>
+): string => {
+  // Если это напоминание о событии, используем цвет событий (фиолетовый)
+  if (type === 'reminder' && data?.event_id) {
+    return '#8B5CF6'; // Purple (как у событий)
+  }
+
   switch (type) {
     case 'message':
       return '#3B82F6'; // Blue
@@ -63,16 +79,25 @@ const getNotificationColor = (type: NotificationType): string => {
     case 'system':
       return '#6B7280'; // Gray
     case 'reminder':
-      return '#F59E0B'; // Amber (same as poll)
+      return '#F59E0B'; // Amber (для напоминаний о задачах)
     default:
       return '#3B82F6';
   }
 };
 
 // Фоновые цвета для непрочитанных (светлая тема)
-const getBackgroundColorLight = (type: NotificationType, isRead: boolean): string => {
+const getBackgroundColorLight = (
+  type: NotificationType,
+  isRead: boolean,
+  data?: Record<string, unknown>
+): string => {
   if (isRead) {
     return '#FFFFFF';
+  }
+
+  // Если это напоминание о событии, используем фон событий (фиолетовый)
+  if (type === 'reminder' && data?.event_id) {
+    return '#F5F3FF'; // Purple-50
   }
 
   switch (type) {
@@ -91,16 +116,25 @@ const getBackgroundColorLight = (type: NotificationType, isRead: boolean): strin
     case 'system':
       return '#F9FAFB'; // Gray-50
     case 'reminder':
-      return '#FFFBEB'; // Amber-50 (same as poll)
+      return '#FFFBEB'; // Amber-50 (для напоминаний о задачах)
     default:
       return '#EFF6FF';
   }
 };
 
 // Фоновые цвета для непрочитанных (темная тема)
-const getBackgroundColorDark = (type: NotificationType, isRead: boolean): string => {
+const getBackgroundColorDark = (
+  type: NotificationType,
+  isRead: boolean,
+  data?: Record<string, unknown>
+): string => {
   if (isRead) {
     return '#1F2937';
+  }
+
+  // Если это напоминание о событии, используем фон событий (фиолетовый)
+  if (type === 'reminder' && data?.event_id) {
+    return '#4C1D95'; // Purple-900
   }
 
   switch (type) {
@@ -119,7 +153,7 @@ const getBackgroundColorDark = (type: NotificationType, isRead: boolean): string
     case 'system':
       return '#374151'; // Gray-700
     case 'reminder':
-      return '#78350F'; // Amber-900 (same as poll)
+      return '#78350F'; // Amber-900 (для напоминаний о задачах)
     default:
       return '#1E3A8A';
   }
@@ -134,11 +168,11 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
   const swipeableRef = useRef<Swipeable>(null);
-  const iconName = getNotificationIcon(notification.type);
-  const iconColor = getNotificationColor(notification.type);
+  const iconName = getNotificationIcon(notification.type, notification.data);
+  const iconColor = getNotificationColor(notification.type, notification.data);
   const backgroundColor = isDark
-    ? getBackgroundColorDark(notification.type, notification.is_read)
-    : getBackgroundColorLight(notification.type, notification.is_read);
+    ? getBackgroundColorDark(notification.type, notification.is_read, notification.data)
+    : getBackgroundColorLight(notification.type, notification.is_read, notification.data);
 
   const handlePress = () => {
     if (!notification.is_read && onMarkAsRead) {

@@ -232,8 +232,11 @@ const NotificationListScreen: React.FC = () => {
             const isActive = selectedFilter === filter.key;
             const count =
               filter.key === 'all'
-                ? notifications.length
+                ? notifications.filter(n => !n.is_read).length
                 : notifications.filter((n) => {
+                    // Считаем только непрочитанные
+                    if (n.is_read) return false;
+
                     const data = n.data;
                     switch (filter.key) {
                       case 'message':
