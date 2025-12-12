@@ -21,6 +21,7 @@ import { useNotificationListActions } from '../hooks/useNotificationListActions'
 // Components
 import { NotificationEmptyState } from '../components/NotificationEmptyState';
 import { NotificationLoadingFooter } from '../components/NotificationLoadingFooter';
+import { NotificationSkeleton } from '../components/NotificationSkeleton';
 
 // Utils
 import { shouldShowMarkAllButton, isNotificationListEmpty } from '../utils/notificationHelpers';
@@ -164,11 +165,13 @@ const NotificationListScreen: React.FC = () => {
     [theme, isWideScreen, handleNotificationPress, markAsRead]
   );
 
-  // Render empty state
-  const renderEmpty = useCallback(
-    () => <NotificationEmptyState isLoading={isLoading} />,
-    [isLoading]
-  );
+  // Render empty state or skeleton
+  const renderEmpty = useCallback(() => {
+    if (isLoading) {
+      return <NotificationSkeleton count={8} />;
+    }
+    return <NotificationEmptyState />;
+  }, [isLoading]);
 
   // Render loading footer
   const renderFooter = useCallback(
