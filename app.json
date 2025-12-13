@@ -7,8 +7,8 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tachyon",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
-    "jsEngine": "jsc",
+    "newArchEnabled": true,
+    "jsEngine": "hermes",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
