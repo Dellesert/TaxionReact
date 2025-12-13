@@ -251,36 +251,95 @@ export default function App() {
             params
           });
 
-          if (screenName && params && navigationRef.current?.isReady()) {
-            // Navigate to the screen
-            if (screenName === 'Tasks' && params.taskId) {
-              // @ts-ignore
-              navigationRef.current.navigate('TaskDetail', { taskId: params.taskId });
-            } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
-              const pollId = params.params?.pollId || params.pollId;
-              // @ts-ignore
-              navigationRef.current.navigate('PollDetail', { pollId });
-            } else if (params.screen) {
-              // Nested navigation
-              // @ts-ignore
-              navigationRef.current.navigate(screenName, params);
-            } else {
-              // Regular navigation
-              // @ts-ignore
-              navigationRef.current.navigate(screenName, params);
-            }
+          if (screenName && params) {
+            // Navigate with retry mechanism for background->foreground transition
+            const attemptNavigation = (retries = 0) => {
+              if (navigationRef.current?.isReady()) {
+                console.log('[App] Navigation ready, navigating from tap...');
+                if (screenName === 'Tasks' && params.taskId) {
+                  // @ts-ignore
+                  navigationRef.current.navigate('TaskDetail', { taskId: params.taskId });
+                } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
+                  const pollId = params.params?.pollId || params.pollId;
+                  // @ts-ignore
+                  navigationRef.current.navigate('PollDetail', { pollId });
+                } else if (screenName === 'Chats' && params.screen === 'Chat') {
+                  // @ts-ignore
+                  navigationRef.current.navigate('Chats', params);
+                } else if (params.screen) {
+                  // Nested navigation
+                  // @ts-ignore
+                  navigationRef.current.navigate(screenName, params);
+                } else {
+                  // Regular navigation
+                  // @ts-ignore
+                  navigationRef.current.navigate(screenName, params);
+                }
+              } else if (retries < 10) {
+                console.log('[App] Navigation not ready for tap, retrying...', retries + 1);
+                setTimeout(() => attemptNavigation(retries + 1), 300);
+              } else {
+                console.log('[App] Navigation failed after retries for tap');
+              }
+            };
+
+            // Small delay then attempt navigation
+            setTimeout(() => attemptNavigation(), 100);
           }
         }
       );
 
       // Check for last notification response (when app was opened from notification)
-      import('expo-notifications').then(({ Notifications }) => {
+      import('expo-notifications').then(({ default: Notifications }) => {
         Notifications.getLastNotificationResponseAsync().then((response) => {
           if (response) {
             console.log('[App] 🚀 App opened from notification:');
             console.log('[App] Title:', response.notification.request.content.title);
             console.log('[App] Body:', response.notification.request.content.body);
             console.log('[App] Data:', JSON.stringify(response.notification.request.content.data));
+
+            // Navigate to the appropriate screen
+            const notificationData = response.notification.request.content.data || {};
+            const type = notificationData.type as string;
+            const screenName = getNavigationScreenByType(type, notificationData);
+            const params = getNavigationParams(type, notificationData);
+
+            console.log('[App] Cold start navigation:', { type, screenName, params });
+
+            if (screenName && params) {
+              // Wait for navigation to be ready (cold start may need more time)
+              const attemptNavigation = (retries = 0) => {
+                if (navigationRef.current?.isReady()) {
+                  console.log('[App] Navigation ready, navigating...');
+                  if (screenName === 'Tasks' && params.taskId) {
+                    // @ts-ignore
+                    navigationRef.current.navigate('TaskDetail', { taskId: params.taskId });
+                  } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
+                    const pollId = params.params?.pollId || params.pollId;
+                    // @ts-ignore
+                    navigationRef.current.navigate('PollDetail', { pollId });
+                  } else if (screenName === 'Chats' && params.screen === 'Chat') {
+                    // @ts-ignore
+                    navigationRef.current.navigate('Chats', params);
+                  } else if (params.screen) {
+                    // @ts-ignore
+                    navigationRef.current.navigate(screenName, params);
+                  } else {
+                    // @ts-ignore
+                    navigationRef.current.navigate(screenName, params);
+                  }
+                } else if (retries < 10) {
+                  // Retry up to 10 times with 300ms delay (3 seconds total)
+                  console.log('[App] Navigation not ready, retrying...', retries + 1);
+                  setTimeout(() => attemptNavigation(retries + 1), 300);
+                } else {
+                  console.log('[App] Navigation failed after retries');
+                }
+              };
+
+              // Start navigation attempt after a small delay
+              setTimeout(() => attemptNavigation(), 500);
+            }
           } else {
             console.log('[App] App opened normally (not from notification)');
           }
