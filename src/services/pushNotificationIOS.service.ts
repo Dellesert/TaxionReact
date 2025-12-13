@@ -9,42 +9,29 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import api from '@shared/api/axios.config';
 
-// Импортируем нативные модули Firebase для iOS
-// Эти модули будут доступны после установки Firebase pods
-interface FirebaseMessagingNative {
-  getToken: () => Promise<string>;
-  deleteToken: () => Promise<void>;
-  onTokenRefresh: (callback: (token: string) => void) => () => void;
-}
+// Динамический импорт Firebase Messaging для iOS
+let firebaseMessaging: typeof import('@react-native-firebase/messaging').default | null = null;
 
-// Получаем нативный модуль Firebase Messaging
-function getFirebaseMessaging(): FirebaseMessagingNative | null {
+// Инициализируем Firebase Messaging для iOS
+async function initFirebaseMessaging() {
   if (Platform.OS !== 'ios') {
     return null;
   }
 
-  try {
-    // Попытка получить нативный модуль через expo-modules
-    // Если Firebase правильно настроен, модуль будет доступен
-    const { NativeModules } = require('react-native');
-    const RNFBMessaging = NativeModules.RNFBMessaging;
-
-    if (RNFBMessaging) {
-      return {
-        getToken: () => RNFBMessaging.getToken(),
-        deleteToken: () => RNFBMessaging.deleteToken(),
-        onTokenRefresh: (callback: (token: string) => void) => {
-          // Настраиваем listener для обновления токена
-          const subscription = RNFBMessaging.onTokenRefresh(callback);
-          return () => subscription.remove();
-        },
-      };
-    }
-  } catch (error) {
-    console.warn('[PushIOS] Firebase Messaging native module not available:', error);
+  if (firebaseMessaging) {
+    return firebaseMessaging;
   }
 
-  return null;
+  try {
+    // Динамически импортируем @react-native-firebase/messaging
+    const messaging = require('@react-native-firebase/messaging').default;
+    firebaseMessaging = messaging;
+    console.log('[PushIOS] ✅ Firebase Messaging module loaded successfully');
+    return messaging;
+  } catch (error) {
+    console.warn('[PushIOS] ⚠️ Firebase Messaging module not available:', error);
+    return null;
+  }
 }
 
 // Настройка обработки уведомлений
@@ -100,66 +87,70 @@ class IOSPushNotificationService {
       return null;
     }
 
-    // Шаг 1: Запросить разрешения на уведомления
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    console.log('[PushIOS] Existing permission status:', existingStatus);
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      console.log('[PushIOS] Requesting permissions...');
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-      console.log('[PushIOS] New permission status:', finalStatus);
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('[PushIOS] ❌ Push notification permission denied');
-      return null;
-    }
-
     try {
-      // Шаг 2: Получить APNs токен (для логирования и отладки)
-      console.log('[PushIOS] Getting APNs device push token...');
-      const apnsTokenData = await Notifications.getDevicePushTokenAsync();
-      this.apnsToken = apnsTokenData.data as string;
-      console.log('[PushIOS] 📱 APNs Token:', this.apnsToken.substring(0, 20) + '...');
+      // Шаг 1: Инициализируем Firebase Messaging
+      const messaging = await initFirebaseMessaging();
 
-      // Шаг 3: Попытаться получить FCM токен через Firebase SDK
-      const firebaseMessaging = getFirebaseMessaging();
+      if (messaging) {
+        console.log('[PushIOS] Firebase Messaging initialized');
 
-      if (firebaseMessaging) {
-        console.log('[PushIOS] Firebase Messaging module available, getting FCM token...');
+        // Шаг 2: Запросить разрешения через Firebase
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-        try {
-          // Получаем FCM токен через нативный Firebase SDK
-          const fcmToken = await firebaseMessaging.getToken();
-          this.fcmToken = fcmToken;
-          console.log('[PushIOS] 📬 FCM Token:', fcmToken.substring(0, 20) + '...');
+        console.log('[PushIOS] Firebase authorization status:', authStatus, 'enabled:', enabled);
 
-          // Настроить listener для обновления токена
-          this.tokenRefreshUnsubscribe = firebaseMessaging.onTokenRefresh(async (newToken) => {
-            console.log('[PushIOS] 🔄 FCM Token refreshed:', newToken.substring(0, 20) + '...');
-            this.fcmToken = newToken;
-            await this.sendTokenToBackend(newToken);
-          });
-
-          // Отправляем FCM токен на бэкенд
-          await this.sendTokenToBackend(fcmToken);
-
-          return fcmToken;
-        } catch (error) {
-          console.error('[PushIOS] ❌ Failed to get FCM token:', error);
-          console.log('[PushIOS] ⚠️ Falling back to APNs token');
-
-          // Fallback: отправляем APNs токен
-          await this.sendTokenToBackend(this.apnsToken);
-          return this.apnsToken;
+        if (!enabled) {
+          console.log('[PushIOS] ❌ Push notification permission denied');
+          return null;
         }
-      } else {
-        console.log('[PushIOS] ⚠️ Firebase Messaging not available, using APNs token');
-        console.log('[PushIOS] ℹ️ To use FCM tokens, ensure GoogleService-Info.plist is added');
 
-        // Fallback: используем APNs токен
+        // Шаг 3: Получить APNs токен (для логирования)
+        const apnsToken = await messaging().getAPNSToken();
+        if (apnsToken) {
+          this.apnsToken = apnsToken;
+          console.log('[PushIOS] 📱 APNs Token:', apnsToken.substring(0, 20) + '...');
+        }
+
+        // Шаг 4: Получить FCM токен
+        const fcmToken = await messaging().getToken();
+        this.fcmToken = fcmToken;
+        console.log('[PushIOS] 📬 FCM Token:', fcmToken.substring(0, 20) + '...');
+
+        // Шаг 5: Настроить listener для обновления токена
+        this.tokenRefreshUnsubscribe = messaging().onTokenRefresh(async (newToken) => {
+          console.log('[PushIOS] 🔄 FCM Token refreshed:', newToken.substring(0, 20) + '...');
+          this.fcmToken = newToken;
+          await this.sendTokenToBackend(newToken);
+        });
+
+        // Шаг 6: Отправляем FCM токен на бэкенд
+        await this.sendTokenToBackend(fcmToken);
+
+        return fcmToken;
+      } else {
+        // Fallback на expo-notifications если Firebase недоступен
+        console.log('[PushIOS] ⚠️ Firebase Messaging not available, falling back to expo-notifications');
+
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+
+        if (finalStatus !== 'granted') {
+          console.log('[PushIOS] ❌ Push notification permission denied');
+          return null;
+        }
+
+        const apnsTokenData = await Notifications.getDevicePushTokenAsync();
+        this.apnsToken = apnsTokenData.data as string;
+        console.log('[PushIOS] 📱 APNs Token (fallback):', this.apnsToken.substring(0, 20) + '...');
+
         await this.sendTokenToBackend(this.apnsToken);
         return this.apnsToken;
       }
@@ -311,9 +302,8 @@ class IOSPushNotificationService {
       await api.delete(`/devices/${this.deviceId}`);
 
       // Удалить FCM токен если доступен
-      const firebaseMessaging = getFirebaseMessaging();
       if (firebaseMessaging && this.fcmToken) {
-        await firebaseMessaging.deleteToken();
+        await firebaseMessaging().deleteToken();
       }
 
       this.fcmToken = null;
