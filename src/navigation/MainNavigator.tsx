@@ -12,7 +12,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useChatStore } from '@shared/store/chatStore';
 import { ChatSelectionProvider } from '@shared/contexts/ChatSelectionContext';
-import { DesktopNavigationProvider, useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
+import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
@@ -216,11 +216,9 @@ const styles = StyleSheet.create({
 
 const MainNavigator: React.FC = () => {
   return (
-    <DesktopNavigationProvider>
-      <ChatSelectionProvider>
-        <MainNavigatorContent />
-      </ChatSelectionProvider>
-    </DesktopNavigationProvider>
+    <ChatSelectionProvider>
+      <MainNavigatorContent />
+    </ChatSelectionProvider>
   );
 };
 

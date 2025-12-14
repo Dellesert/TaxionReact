@@ -16,9 +16,10 @@ import {
   Animated,
   Platform,
 } from 'react-native';
+import { NavigationContainerRef } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@shared/store/notificationStore';
-import { useUniversalNavigation } from '@shared/hooks/useUniversalNavigation';
+import { DesktopNavigationParams } from '@shared/contexts/DesktopNavigationContext';
 import NotificationItem from '@shared/components/common/NotificationItem';
 import { Notification } from '../../../types/notification.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -31,23 +32,19 @@ interface TitleBarNotificationDropdownProps {
   visible: boolean;
   onClose: () => void;
   anchorPosition: { x: number; y: number };
+  navigationRef?: React.RefObject<NavigationContainerRef<any>>;
+  isWideScreen?: boolean;
+  desktopNavigateToTab?: (tab: string, params?: DesktopNavigationParams) => void;
 }
 
 export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdownProps> = ({
   visible,
   onClose,
   anchorPosition,
+  navigationRef,
+  isWideScreen = false,
+  desktopNavigateToTab,
 }) => {
-  // Безопасно получаем navigate (может быть undefined если вне NavigationContainer)
-  let navigate: ((screen: string, params?: any) => void) | undefined;
-  try {
-    const nav = useUniversalNavigation();
-    navigate = nav.navigate;
-  } catch (e) {
-    // Если не внутри NavigationContainer, navigate будет undefined
-    navigate = undefined;
-  }
-
   const { theme } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -66,6 +63,7 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
   } = useNotificationStore();
 
   useEffect(() => {
+    console.log('[TitleBarNotificationDropdown] Visibility changed:', visible);
     if (visible) {
       loadNotifications();
       // Анимация появления
@@ -119,21 +117,82 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
       // Close dropdown
       onClose();
 
-      // Navigate to corresponding screen based on type (если navigate доступен)
-      if (navigate) {
-        setTimeout(() => {
-          const screenName = getNavigationScreenByType(notification.type, notification.data);
-          const params = notification.data
-            ? getNavigationParams(notification.type, notification.data)
-            : null;
+      const screenName = getNavigationScreenByType(notification.type, notification.data);
+      const params = notification.data
+        ? getNavigationParams(notification.type, notification.data)
+        : null;
 
-          if (screenName && params && navigate) {
-            navigate(screenName, params);
+      console.log('[TitleBarNotificationDropdown] Navigation:', {
+        notificationType: notification.type,
+        notificationData: notification.data,
+        screenName,
+        params,
+        isWideScreen,
+        hasDesktopNavigateToTab: !!desktopNavigateToTab,
+        hasNavigationRef: !!navigationRef,
+      });
+
+      if (!screenName || !params) {
+        console.warn('[TitleBarNotificationDropdown] No screen or params');
+        return;
+      }
+
+      // Desktop navigation - use function passed via prop
+      if (isWideScreen && desktopNavigateToTab) {
+        setTimeout(() => {
+          console.log('[TitleBarNotificationDropdown] Using desktop navigation');
+
+          // Extract actual params from nested structure
+          let navigationParams = params;
+          if (params.screen && params.params) {
+            navigationParams = params.params;
           }
+
+          // Map screen names to desktop tabs
+          const screenToTabMap: Record<string, string> = {
+            Chats: 'Chats',
+            Chat: 'Chats',
+            Tasks: 'Tasks',
+            TaskDetail: 'Tasks',
+            Polls: 'Polls',
+            PollDetail: 'Polls',
+            Calendar: 'Calendar',
+          };
+
+          const tab = screenToTabMap[screenName] || screenName;
+          console.log('[TitleBarNotificationDropdown] Navigating to tab:', tab, 'with params:', navigationParams);
+
+          desktopNavigateToTab(tab, navigationParams);
         }, 300);
       }
+      // Mobile navigation - use navigationRef
+      else if (navigationRef?.current?.isReady()) {
+        setTimeout(() => {
+          console.log('[TitleBarNotificationDropdown] Using mobile navigation');
+
+          if (screenName === 'Tasks' && params.taskId) {
+            // @ts-ignore
+            navigationRef.current.navigate('TaskDetail', { taskId: params.taskId });
+          } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
+            const pollId = params.params?.pollId || params.pollId;
+            // @ts-ignore
+            navigationRef.current.navigate('PollDetail', { pollId });
+          } else if (screenName === 'Chats' && params.screen === 'Chat') {
+            // @ts-ignore
+            navigationRef.current.navigate('Chats', params);
+          } else if (params.screen) {
+            // @ts-ignore
+            navigationRef.current.navigate(screenName, params);
+          } else {
+            // @ts-ignore
+            navigationRef.current.navigate(screenName, params);
+          }
+        }, 300);
+      } else {
+        console.warn('[TitleBarNotificationDropdown] No navigation available');
+      }
     },
-    [markAsRead, navigate, onClose]
+    [markAsRead, onClose, navigationRef, isWideScreen, desktopNavigateToTab]
   );
 
   const handleMarkAllAsRead = useCallback(() => {
@@ -376,6 +435,7 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
   );
 
   // Используем Portal для рендеринга dropdown на верхнем уровне DOM (только для web)
+  // navigationRef передается через пропы, поэтому Portal не ломает навигацию
   if (Platform.OS === 'web' && typeof document !== 'undefined') {
     return ReactDOM.createPortal(dropdownContent, document.body);
   }

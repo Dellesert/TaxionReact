@@ -25,6 +25,7 @@ import {
 } from '@/features/notifications/utils/notificationFormatters';
 import { CustomTitleBar } from '@shared/components/common/CustomTitleBar';
 import { TitleBarSearchProvider } from '@shared/contexts/TitleBarSearchContext';
+import { DesktopNavigationProvider } from '@shared/contexts/DesktopNavigationContext';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -391,17 +392,19 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <TitleBarSearchProvider>
-        <CustomTitleBar />
-        <NotificationProvider>
-          <ActionModalProvider>
-            <NetworkSyncProvider enabled={isAuthenticated}>
-              <AppNavigator ref={navigationRef} />
-              <OfflineBanner />
-            </NetworkSyncProvider>
-          </ActionModalProvider>
-        </NotificationProvider>
-      </TitleBarSearchProvider>
+      <DesktopNavigationProvider>
+        <TitleBarSearchProvider>
+          <CustomTitleBar navigationRef={navigationRef} />
+          <NotificationProvider>
+            <ActionModalProvider>
+              <NetworkSyncProvider enabled={isAuthenticated}>
+                <AppNavigator ref={navigationRef} />
+                <OfflineBanner />
+              </NetworkSyncProvider>
+            </ActionModalProvider>
+          </NotificationProvider>
+        </TitleBarSearchProvider>
+      </DesktopNavigationProvider>
     </GestureHandlerRootView>
   );
 }

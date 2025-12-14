@@ -3,21 +3,35 @@
  * Кастомный заголовок окна для Electron приложения
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import { View, Text, TextInput, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { NavigationContainerRef } from '@react-navigation/native';
 import { useThemeStore } from '@shared/store/themeStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useTitleBarSearch } from '@shared/contexts/TitleBarSearchContext';
 import { useNotificationStore } from '@shared/store/notificationStore';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { DesktopNavigationContext } from '@shared/contexts/DesktopNavigationContext';
 import { TitleBarNotificationDropdown } from './TitleBarNotificationDropdown';
 
 interface CustomTitleBarProps {
   title?: string;
+  navigationRef?: React.RefObject<NavigationContainerRef<any>>;
 }
 
 export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
-  title = 'Tachyon Messenger'
+  title = 'Tachyon Messenger',
+  navigationRef
 }) => {
+  const isWideScreen = useIsWideScreen();
+  const desktopNav = useContext(DesktopNavigationContext);
+
+  console.log('[CustomTitleBar] Context:', {
+    isWideScreen,
+    hasDesktopNav: !!desktopNav,
+    hasNavigateToTab: !!desktopNav?.navigateToTab
+  });
+
   const theme = useThemeStore((state) => state.theme);
   const [hoveredButton, setHoveredButton] = useState<'minimize' | 'maximize' | 'close' | null>(null);
   const { searchQuery, placeholder, isVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
@@ -209,6 +223,9 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
         visible={notificationDropdownVisible}
         onClose={() => setNotificationDropdownVisible(false)}
         anchorPosition={notificationIconPosition}
+        navigationRef={navigationRef}
+        isWideScreen={isWideScreen}
+        desktopNavigateToTab={desktopNav?.navigateToTab}
       />
     </View>
   );

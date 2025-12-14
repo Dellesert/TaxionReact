@@ -11,6 +11,11 @@ import { useCallback, useContext } from 'react';
 interface NavigationOptions {
   screen?: string;
   params?: any;
+  taskId?: number;
+  pollId?: number;
+  chatId?: number;
+  eventId?: number;
+  [key: string]: any;
 }
 
 export const useUniversalNavigation = () => {
@@ -28,6 +33,12 @@ export const useUniversalNavigation = () => {
    */
   const navigate = useCallback(
     (screenName: string, options?: NavigationOptions) => {
+      console.log('[UniversalNavigation] navigate called:', {
+        screenName,
+        options,
+        isWideScreen,
+        hasDesktopNav: !!desktopNavigation
+      });
 
       if (isWideScreen && desktopNavigation) {
         // Desktop navigation - only if we have the context available
@@ -39,9 +50,28 @@ export const useUniversalNavigation = () => {
         if (options?.screen) {
           // For nested navigators, use the parent screen name as tab
           tabName = screenName;
+          // Extract params from nested structure
           params = options.params;
+          console.log('[UniversalNavigation] Nested navigation detected:', {
+            screen: options.screen,
+            extractedParams: params
+          });
         } else if (options?.params) {
-          params = options.params;
+          // Check if params has nested screen/params structure
+          if (options.params.screen && options.params.params) {
+            params = options.params.params;
+            console.log('[UniversalNavigation] Double-nested params detected:', params);
+          } else {
+            params = options.params;
+          }
+        } else if (options) {
+          // Options passed directly (e.g., { chatId: 1 })
+          // Exclude 'screen' and 'params' keys from options
+          const { screen, params: _, ...rest } = options;
+          if (Object.keys(rest).length > 0) {
+            params = rest as DesktopNavigationParams;
+            console.log('[UniversalNavigation] Direct options as params:', params);
+          }
         }
 
         // Map React Navigation screen names to desktop tab names
@@ -63,6 +93,13 @@ export const useUniversalNavigation = () => {
         };
 
         const desktopTab = screenToTabMap[tabName] || tabName;
+        console.log('[UniversalNavigation] Desktop navigation:', {
+          screenName,
+          tabName,
+          desktopTab,
+          params,
+          options
+        });
         desktopNavigation.navigateToTab(desktopTab, params);
       } else {
         // Mobile navigation - use React Navigation
