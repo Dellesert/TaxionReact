@@ -3,11 +3,13 @@
  * Кастомный заголовок окна для Electron приложения
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { useThemeStore } from '@shared/store/themeStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useTitleBarSearch } from '@shared/contexts/TitleBarSearchContext';
+import { useNotificationStore } from '@shared/store/notificationStore';
+import { TitleBarNotificationDropdown } from './TitleBarNotificationDropdown';
 
 interface CustomTitleBarProps {
   title?: string;
@@ -19,6 +21,10 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
   const theme = useThemeStore((state) => state.theme);
   const [hoveredButton, setHoveredButton] = useState<'minimize' | 'maximize' | 'close' | null>(null);
   const { searchQuery, placeholder, isVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const [notificationDropdownVisible, setNotificationDropdownVisible] = useState(false);
+  const [notificationIconPosition, setNotificationIconPosition] = useState({ x: 0, y: 0 });
+  const bellButtonRef = useRef<View>(null);
 
   // Показываем только в Electron (не в обычном браузере)
   if (Platform.OS !== 'web' || !window.electron) {
@@ -52,6 +58,30 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
     return { backgroundColor: theme.border };
   };
 
+  const handleNotificationClick = () => {
+    // Переключаем видимость
+    setNotificationDropdownVisible(!notificationDropdownVisible);
+
+    // Получаем позицию иконки колокольчика для web
+    if (Platform.OS === 'web' && bellButtonRef.current) {
+      try {
+        // @ts-ignore - Web-only method
+        const element = bellButtonRef.current;
+        // @ts-ignore
+        const rect = element.getBoundingClientRect ? element.getBoundingClientRect() : null;
+
+        if (rect) {
+          setNotificationIconPosition({
+            x: rect.left,
+            y: rect.bottom,
+          });
+        }
+      } catch (error) {
+        console.error('[TitleBar] Error getting bell position:', error);
+      }
+    }
+  };
+
   return (
     <View style={[styles.titleBar, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
       {/* Draggable area - Left side */}
@@ -64,7 +94,10 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
         </View>
       </View>
 
-      {/* Center - Search (если visible) */}
+      {/* Spacer for flex layout */}
+      <View style={{ flex: 1 }} />
+
+      {/* Center - Search (если visible) - absolute positioned */}
       {isVisible && (
         <View style={styles.searchContainer}>
           <View style={[styles.searchInputContainer, { backgroundColor: theme.input, borderColor: theme.inputBorder }]}>
@@ -102,6 +135,42 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
         </View>
       )}
 
+      {/* Notification Bell - Before window controls */}
+      <View
+        // @ts-ignore - ref type
+        ref={bellButtonRef}
+        style={styles.notificationBellContainer}
+      >
+        <View
+          style={styles.notificationBell}
+          // @ts-ignore - Web-only event handlers
+          onClick={handleNotificationClick}
+          onMouseEnter={(e: any) => {
+            if (e.currentTarget && e.currentTarget.style) {
+              e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+            }
+          }}
+          onMouseLeave={(e: any) => {
+            if (e.currentTarget && e.currentTarget.style) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          <Ionicons
+            name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
+            size={18}
+            color={theme.text}
+          />
+          {unreadCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+              <Text style={styles.badgeText}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
       {/* Window controls */}
       <View style={styles.controls}>
         <View
@@ -134,6 +203,13 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
           <Ionicons name="close" size={16} color={hoveredButton === 'close' ? '#FFFFFF' : theme.text} />
         </View>
       </View>
+
+      {/* Notification Dropdown */}
+      <TitleBarNotificationDropdown
+        visible={notificationDropdownVisible}
+        onClose={() => setNotificationDropdownVisible(false)}
+        anchorPosition={notificationIconPosition}
+      />
     </View>
   );
 };
@@ -214,6 +290,42 @@ const styles = StyleSheet.create({
     // @ts-ignore - Web-only styles
     cursor: 'pointer',
     transition: 'opacity 0.15s ease',
+  },
+  notificationBellContainer: {
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    flexShrink: 0,
+    // @ts-ignore - Web-only styles
+    WebkitAppRegion: 'no-drag',
+  },
+  notificationBell: {
+    position: 'relative',
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // @ts-ignore - Web-only styles
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+  },
+  badge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 12,
   },
   controls: {
     flexDirection: 'row',

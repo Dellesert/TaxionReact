@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Modal, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
@@ -85,6 +85,9 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   // Check if user is admin or super_admin
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
@@ -97,8 +100,13 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
     }
   };
 
-  // Filter items based on admin status
+  // Filter items based on admin status and Electron environment
   const visibleItems = NAV_ITEMS.filter(item => {
+    // Скрываем уведомления в Electron (они в titlebar)
+    if (item.name === 'Notifications' && isElectron) {
+      return false;
+    }
+    // Показываем админку только админам
     if (item.adminOnly) {
       return isAdmin;
     }
