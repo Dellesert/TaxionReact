@@ -57,6 +57,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withDevEnvironment.js",
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
       "./plugins/withPodfileModifications.js",

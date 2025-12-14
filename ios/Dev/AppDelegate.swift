@@ -1,7 +1,9 @@
 import Expo
 import FirebaseCore
+import FirebaseMessaging
 import React
 import ReactAppDependencyProvider
+import UserNotifications
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -27,6 +29,12 @@ public class AppDelegate: ExpoAppDelegate {
 // @generated begin @react-native-firebase/app-didFinishLaunchingWithOptions - expo prebuild (DO NOT MODIFY) sync-10e8520570672fd76b2403b7e1e27f5198a6349a
 FirebaseApp.configure()
 // @generated end @react-native-firebase/app-didFinishLaunchingWithOptions
+
+    // Register for remote notifications
+    UNUserNotificationCenter.current().delegate = self
+    Messaging.messaging().delegate = self
+    application.registerForRemoteNotifications()
+
     factory.startReactNative(
       withModuleName: "main",
       in: window,
@@ -53,6 +61,50 @@ FirebaseApp.configure()
   ) -> Bool {
     let result = RCTLinkingManager.application(application, continue: userActivity, restorationHandler: restorationHandler)
     return super.application(application, continue: userActivity, restorationHandler: restorationHandler) || result
+  }
+
+  // MARK: - Remote Notifications (APNs)
+  public override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    // Pass device token to Firebase
+    Messaging.messaging().apnsToken = deviceToken
+    super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+  }
+
+  public override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    print("[AppDelegate] Failed to register for remote notifications: \(error.localizedDescription)")
+    super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
+  }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+extension AppDelegate: UNUserNotificationCenterDelegate {
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    completionHandler([.banner, .badge, .sound])
+  }
+
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    completionHandler()
+  }
+}
+
+// MARK: - MessagingDelegate
+extension AppDelegate: MessagingDelegate {
+  public func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+    print("[AppDelegate] FCM Token: \(fcmToken ?? "nil")")
   }
 }
 

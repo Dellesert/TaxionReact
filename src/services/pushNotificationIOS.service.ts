@@ -107,14 +107,36 @@ class IOSPushNotificationService {
           return null;
         }
 
-        // Шаг 3: Получить APNs токен (для логирования)
-        const apnsToken = await messaging().getAPNSToken();
+        // Шаг 3: Получить APNs токен (ОБЯЗАТЕЛЬНО перед FCM)
+        // Ждем пока iOS зарегистрирует устройство в APNs
+        let apnsToken = await messaging().getAPNSToken();
+
+        // Если токен еще не готов, ждем с ретраями
+        if (!apnsToken) {
+          console.log('[PushIOS] ⏳ Waiting for APNS token...');
+          for (let i = 0; i < 10; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            apnsToken = await messaging().getAPNSToken();
+            if (apnsToken) break;
+          }
+        }
+
+        if (!apnsToken) {
+          console.log('[PushIOS] ❌ Failed to get APNS token after retries');
+          // Пробуем принудительно зарегистрировать в APNs
+          await messaging().registerDeviceForRemoteMessages();
+          apnsToken = await messaging().getAPNSToken();
+        }
+
         if (apnsToken) {
           this.apnsToken = apnsToken;
           console.log('[PushIOS] 📱 APNs Token:', apnsToken.substring(0, 20) + '...');
+        } else {
+          console.error('[PushIOS] ❌ Could not obtain APNS token');
+          return null;
         }
 
-        // Шаг 4: Получить FCM токен
+        // Шаг 4: Получить FCM токен (теперь когда APNS токен есть)
         const fcmToken = await messaging().getToken();
         this.fcmToken = fcmToken;
         console.log('[PushIOS] 📬 FCM Token:', fcmToken.substring(0, 20) + '...');
