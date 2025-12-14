@@ -16,6 +16,8 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    frame: false, // Remove default frame for custom titlebar
+    titleBarStyle: 'hidden', // Hide titlebar on macOS
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -229,6 +231,33 @@ function setupIPCHandlers() {
   // App info
   ipcMain.handle('app:version', async () => {
     return app.getVersion();
+  });
+
+  // Window controls for custom titlebar
+  ipcMain.on('window:minimize', () => {
+    if (mainWindow) {
+      mainWindow.minimize();
+    }
+  });
+
+  ipcMain.on('window:maximize', () => {
+    if (mainWindow) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow.maximize();
+      }
+    }
+  });
+
+  ipcMain.on('window:close', () => {
+    if (mainWindow) {
+      mainWindow.close();
+    }
+  });
+
+  ipcMain.handle('window:isMaximized', () => {
+    return mainWindow ? mainWindow.isMaximized() : false;
   });
 
   console.log('[IPC] Handlers registered successfully');

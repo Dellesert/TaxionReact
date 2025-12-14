@@ -20,9 +20,7 @@ contextBridge.exposeInMainWorld('electron', {
         'secure-storage:set',
         'secure-storage:get',
         'secure-storage:delete',
-        'window:minimize',
-        'window:maximize',
-        'window:close',
+        'window:isMaximized',
         'app:version',
       ];
 
@@ -39,6 +37,9 @@ contextBridge.exposeInMainWorld('electron', {
         'notification:show',
         'tray:update',
         'window:focus',
+        'window:minimize',
+        'window:maximize',
+        'window:close',
       ];
 
       if (validChannels.includes(channel)) {
@@ -89,6 +90,12 @@ contextBridge.exposeInMainWorld('electron', {
   app: {
     getVersion: () => ipcRenderer.invoke('app:version'),
   },
+
+  // Window controls for custom titlebar
+  minimize: () => ipcRenderer.send('window:minimize'),
+  maximize: () => ipcRenderer.send('window:maximize'),
+  close: () => ipcRenderer.send('window:close'),
+  isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
 });
 
 // Log preload script loaded

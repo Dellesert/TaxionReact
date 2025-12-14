@@ -23,6 +23,7 @@ import {
   getNavigationScreenByType,
   getNavigationParams,
 } from '@/features/notifications/utils/notificationFormatters';
+import { CustomTitleBar } from '@shared/components/common/CustomTitleBar';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -389,6 +390,7 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <CustomTitleBar />
       <NotificationProvider>
         <ActionModalProvider>
           <NetworkSyncProvider enabled={isAuthenticated}>
