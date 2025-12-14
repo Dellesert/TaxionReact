@@ -14,6 +14,7 @@ import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
 import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { useCalendarNavigation } from '../hooks/useCalendarNavigation';
@@ -28,6 +29,15 @@ const CalendarScreen: React.FC = () => {
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Integrate with TitleBar search in Electron
+  useTitleBarSearchIntegration({
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    placeholder: 'Поиск событий...',
+    enabled: true,
+  });
 
   // Custom hooks
   const {
@@ -92,9 +102,17 @@ const CalendarScreen: React.FC = () => {
     setSelectedView(view);
   };
 
+  // Filter events by search query
+  const filteredEvents = searchQuery
+    ? events.filter((event) =>
+        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : events;
+
   // Computed values
   const dateRangeText = formatDateRangeText(selectedDate, selectedView);
-  const sections = groupEventsByDate(events);
+  const sections = groupEventsByDate(filteredEvents);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
@@ -104,7 +122,7 @@ const CalendarScreen: React.FC = () => {
           /* Desktop View - Three Panel Layout */
           <CalendarDesktopView
             selectedDate={selectedDate}
-            events={events}
+            events={filteredEvents}
             sections={sections}
             isLoading={isLoading}
             refreshing={refreshing}
@@ -139,7 +157,7 @@ const CalendarScreen: React.FC = () => {
             ) : selectedView === 'month' ? (
               <MonthCalendarView
                 selectedDate={selectedDate}
-                events={events}
+                events={filteredEvents}
                 onDatePress={handleDatePress}
                 onEventPress={handleEventPress}
               />

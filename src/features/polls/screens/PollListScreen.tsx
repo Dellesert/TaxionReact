@@ -7,6 +7,7 @@ import { Poll, PollStatus } from '../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { usePollListData } from '../hooks/usePollListData';
 import { usePollListFilters } from '../hooks/usePollListFilters';
 import { PollStackParamList } from '@navigation/types';
@@ -62,6 +63,14 @@ const PollListScreen: React.FC = () => {
 
   // Permissions
   const canCreatePoll = canUserCreatePoll(currentUser?.role);
+
+  // Integrate with TitleBar search in Electron
+  useTitleBarSearchIntegration({
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    placeholder: 'Поиск опросов...',
+    enabled: true,
+  });
 
   // Server returns polls with vote priority (un-voted first, voted last)
   // We need to load enough data to show all polls matching the filter

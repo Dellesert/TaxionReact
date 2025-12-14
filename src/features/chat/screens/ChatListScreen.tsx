@@ -13,6 +13,7 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useChatSelection } from '@shared/contexts/ChatSelectionContext';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { Chat, ChatType } from '../types/chat.types';
 import { websocketService } from '@services/websocket.service';
 
@@ -88,6 +89,14 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
 
   // Get current user for author comparison
   const currentUser = useAuthStore((state) => state.user);
+
+  // Integrate with TitleBar search in Electron
+  useTitleBarSearchIntegration({
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    placeholder: 'Поиск чатов...',
+    enabled: true,
+  });
 
   const {
     handleDeleteChat,

@@ -33,6 +33,9 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
   // Desktop header content
   if (isDesktop) {
+    // Check if running in Electron
+    const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
     return (
       <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.desktopHeaderContent}>
@@ -41,8 +44,8 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
             <Text style={[styles.desktopTitle, { color: theme.text }]}>Календарь</Text>
           </View>
 
-          {/* Center - Search */}
-          {onSearchChange && (
+          {/* Center - Search (только для браузера, не Electron) */}
+          {!isElectron && onSearchChange && (
             <View style={styles.desktopCenter}>
               <View style={[styles.desktopSearchContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
                 <Ionicons name="search" size={20} color={theme.textSecondary} style={styles.searchIcon} />

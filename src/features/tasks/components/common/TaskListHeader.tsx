@@ -54,6 +54,9 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
 
   // Desktop header content
   if (isDesktop) {
+    // Check if running in Electron
+    const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
     return (
       <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.desktopHeaderContent}>
@@ -62,24 +65,26 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
             <Text style={[styles.desktopTitle, { color: theme.text }]}>Задачи</Text>
           </View>
 
-          {/* Center - Search */}
-          <View style={styles.desktopCenter}>
-            <View style={[styles.desktopSearchContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-              <Ionicons name="search" size={20} color={theme.textSecondary} style={styles.searchIcon} />
-              <TextInput
-                style={[styles.desktopSearchInput, { color: theme.text }]}
-                placeholder="Поиск задач..."
-                placeholderTextColor={theme.textSecondary}
-                value={searchQuery}
-                onChangeText={onSearchChange}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => onSearchChange('')} style={styles.clearButton}>
-                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-                </TouchableOpacity>
-              )}
+          {/* Center - Search (только для браузера, не Electron) */}
+          {!isElectron && (
+            <View style={styles.desktopCenter}>
+              <View style={[styles.desktopSearchContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                <Ionicons name="search" size={20} color={theme.textSecondary} style={styles.searchIcon} />
+                <TextInput
+                  style={[styles.desktopSearchInput, { color: theme.text }]}
+                  placeholder="Поиск задач..."
+                  placeholderTextColor={theme.textSecondary}
+                  value={searchQuery}
+                  onChangeText={onSearchChange}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => onSearchChange('')} style={styles.clearButton}>
+                    <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Right side - Actions */}
           <View style={styles.desktopRight}>

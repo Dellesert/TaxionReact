@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { ConnectionStatus } from '@shared/components/common/ConnectionStatus';
@@ -25,6 +25,9 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
 }) => {
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
   // Простая анимация fade для кнопок в header
   const buttonOpacity = useRef(new Animated.Value(1)).current;
@@ -77,13 +80,15 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
             <TouchableOpacity onPress={onToggleEditMode} style={styles.iconButton}>
               <Ionicons name="ellipsis-vertical" size={24} color={theme.error} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={onToggleSearch} style={[styles.iconButton, styles.searchButton]}>
-              <Ionicons
-                name={isSearchVisible ? 'close' : 'search'}
-                size={22}
-                color={theme.error}
-              />
-            </TouchableOpacity>
+            {!isElectron && (
+              <TouchableOpacity onPress={onToggleSearch} style={[styles.iconButton, styles.searchButton]}>
+                <Ionicons
+                  name={isSearchVisible ? 'close' : 'search'}
+                  size={22}
+                  color={theme.error}
+                />
+              </TouchableOpacity>
+            )}
           </Animated.View>
         ) : (
           <Animated.View >

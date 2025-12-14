@@ -7,6 +7,7 @@ import type { Task } from '../types/task.types';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { TaskStackParamList } from '@navigation/types';
 import CreateTaskModal from '../components/modals/CreateTaskModal';
 import { useTaskListData } from '../hooks/useTaskListData';
@@ -101,6 +102,14 @@ const TaskListScreen: React.FC = () => {
     activeTab,
     handleTabChange
   );
+
+  // Integrate with TitleBar search in Electron
+  useTitleBarSearchIntegration({
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    placeholder: 'Поиск задач...',
+    enabled: true,
+  });
 
   // Store the actual filter change handler in ref (inside useEffect to avoid setState during render)
   useEffect(() => {
