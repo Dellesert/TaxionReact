@@ -176,7 +176,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         data={messageListItems}
         extraData={messagesKey}
         drawDistance={Platform.OS === 'ios' ? 3000 : 3000}
-        estimatedItemSize={100}
+        estimatedItemSize={200}
         estimatedListSize={{ height: 800, width: 400 }}
         initialScrollIndex={initialScrollIndex}
         overrideItemLayout={(layout, item) => {
@@ -184,7 +184,37 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
           if (item.type === 'date') {
             layout.size = 40; // Разделитель даты - фиксированная высота
           } else {
-            layout.size = 100; // Средний размер сообщения (уменьшен для точности)
+            // Динамически вычисляем размер на основе контента сообщения
+            const message = item.data;
+            let estimatedSize = 80; // Базовый размер для текста
+
+            // Учитываем изображения
+            if (message.images && message.images.length > 0) {
+              if (message.images.length === 1) {
+                estimatedSize += 180; // Одно изображение 180x180
+              } else if (message.images.length <= 4) {
+                estimatedSize += 200; // Сетка 2x2 изображений
+              } else {
+                estimatedSize += 240; // Более 4 изображений
+              }
+            }
+
+            // Учитываем файлы
+            if (message.files && message.files.length > 0) {
+              estimatedSize += message.files.length * 60; // ~60px на файл
+            }
+
+            // Учитываем длинный текст (грубая оценка)
+            if (message.text && message.text.length > 200) {
+              estimatedSize += Math.min(100, Math.floor(message.text.length / 200) * 30);
+            }
+
+            // Учитываем reply-to сообщение
+            if (message.reply_to) {
+              estimatedSize += 50;
+            }
+
+            layout.size = estimatedSize;
           }
         }}
         getItemType={getItemType}
@@ -250,6 +280,15 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         inverted={true}
         keyboardShouldPersistTaps="handled"
         removeClippedSubviews={false}
+        // iOS-specific: предотвращает прыжки при загрузке старых сообщений
+        maintainVisibleContentPosition={
+          Platform.OS === 'ios'
+            ? {
+                minIndexForVisible: 0,
+                autoscrollToTopThreshold: 10,
+              }
+            : undefined
+        }
         onContentSizeChange={onContentSizeChange}
         onScroll={onScroll}
         scrollEventThrottle={16}

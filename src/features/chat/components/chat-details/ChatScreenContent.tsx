@@ -86,8 +86,6 @@ interface ChatScreenContentProps {
   onExitSelectionMode: () => void;
   canDeleteForEveryone: boolean;
 
-  // Visibility
-  shouldShowContent: boolean;
 }
 
 export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
@@ -151,7 +149,6 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   onBulkDelete,
   onExitSelectionMode,
   canDeleteForEveryone,
-  shouldShowContent,
 }) => {
   const { theme } = useTheme();
 
@@ -161,13 +158,6 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
       bottom: keyboardHeightAnim,
     };
   }, [keyboardHeightAnim]);
-
-  // ⚡ ОПТИМИЗАЦИЯ: Скрываем контент пока скролл не готов
-  // Это предотвращает "дергание" при загрузке из кеша
-  // При загрузке с сервера будут показаны скелетоны в MessageListComponent
-  if (!shouldShowContent) {
-    return <View style={styles.hiddenContent} />;
-  }
 
   return (
     <>

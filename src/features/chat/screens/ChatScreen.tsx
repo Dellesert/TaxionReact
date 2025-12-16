@@ -395,14 +395,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     return <View style={[styles.container, { backgroundColor: theme.background }]} />;
   }
 
-  // ⚡ ОПТИМИЗАЦИЯ: Показываем контент только когда:
-  // 1. contentReady (экран в фокусе)
-  // 2. !isScrollingToUnread (не происходит скролл к непрочитанным)
-  //
-  // Для загрузки из кеша это будет практически мгновенно!
-  // Для загрузки с сервера - покажутся скелетоны до готовности
-  const shouldShowContent = contentReady && !isScrollingToUnread;
-
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ChatScreenContent
@@ -466,7 +458,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onBulkDelete={onBulkDelete}
         onExitSelectionMode={handleExitSelectionMode}
         canDeleteForEveryone={canDeleteForEveryone}
-        shouldShowContent={shouldShowContent}
       />
 
       <ChatModals
