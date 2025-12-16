@@ -31,7 +31,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const wasAtBottomBeforeNewMessage = useRef<boolean>(true); // Был ли пользователь внизу перед новым сообщением
   const previousUnreadCount = useRef<number>(0); // Количество непрочитанных до прихода новых сообщений
   const hasCalculatedInitialIndex = useRef<boolean>(false); // Флаг, что индекс уже вычислен
-  const [isScrollingToUnread, setIsScrollingToUnread] = useState(false);
   const [scrollSessionKey, setScrollSessionKey] = useState(0);
   const lastScrollOffset = useRef<number>(0);
   const currentContentHeight = useRef<number>(0); // Текущая высота контента (обновляется при каждом вызове handleContentSizeChange)
@@ -121,24 +120,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Паддинг уменьшится и сообщения вернутся на место
   }, []);
 
-  // Счетчик для throttling логов (чтобы не спамить консоль)
-  const scrollLogCounter = useRef(0);
-
   // Обработчик скролла
   const handleScroll = useCallback((event: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
 
     // Сохраняем текущую позицию скролла
     lastScrollOffset.current = contentOffset.y;
-
-    // 🔍 ДИАГНОСТИКА iOS: Логируем каждый 20-й скролл чтобы не спамить
-    if (Platform.OS === 'ios') {
-      scrollLogCounter.current++;
-      if (scrollLogCounter.current === 1) {
-      }
-      if (initialScrolled && scrollLogCounter.current % 20 === 0) {
-      }
-    }
 
     // Для инвертированного списка (inverted=true):
     // offset.y начинается с отрицательных значений или малых при старте
@@ -314,14 +301,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         `chat_scroll_position_${chatId}`,
         JSON.stringify({ unreadIndex: firstUnreadIndex, timestamp: Date.now() })
       ).catch(err => console.warn('Failed to save scroll position:', err));
-    }
-
-    // ✅ ВРЕМЕННО ОТКЛЮЧЕНА коррекция скролла для теста
-    // Проверяем, можно ли обойтись без неё, полагаясь на точный estimatedItemSize
-    if (isLoadingOldMessages.current) {
-      isLoadingOldMessages.current = false;
-      contentHeightBeforeLoad.current = 0;
-      scrollOffsetBeforeLoad.current = 0;
     }
   }, [initialScrolled, firstUnreadIndex, unreadCount, chatId]);
 
@@ -766,15 +745,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     previousMessagesLength.current = 0; // Сбрасываем счетчик предыдущих сообщений
     previousLastMessageId.current = null; // Сбрасываем сохраненный ID последнего сообщения
     hasCalculatedInitialIndex.current = false; // ✅ Сбрасываем флаг вычисления индекса
-    setIsScrollingToUnread(false);
     setShowScrollToBottom(false);
     setShowDateHeader(false);
     setScrollSessionKey(prev => prev + 1); // Увеличиваем ключ для форсирования ремонтирования FlashList
     lastScrollOffset.current = 0;
     currentContentHeight.current = 0; // ✅ Сбрасываем текущую высоту контента
-    isLoadingOldMessages.current = false;
-    contentHeightBeforeLoad.current = 0;
-    scrollOffsetBeforeLoad.current = 0;
     isLoadingNewerMessages.current = false; // ✅ Сбрасываем флаг загрузки новых сообщений
     lastNewestMessageId.current = null; // ✅ Сбрасываем ID последнего загруженного сообщения
     isAnimatingToPin.current = false; // ✅ Сбрасываем флаг анимации
@@ -792,7 +767,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     userScrolledToBottom, // Возвращаем флаг намеренного скролла
     newMessagesCount, // Возвращаем количество новых сообщений ниже видимой области
     initialScrollIndex,
-    isScrollingToUnread, // Возвращаем новый флаг для управления видимостью UI
     scrollSessionKey, // Возвращаем ключ сеанса для FlashList
     handleScroll,
     handleLoadMore,

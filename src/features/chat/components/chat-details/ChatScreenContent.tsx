@@ -64,7 +64,6 @@ interface ChatScreenContentProps {
   showDateHeader: boolean;
   showScrollToBottom: boolean;
   newMessagesCount: number;
-  isScrollingToUnread: boolean;
   keyboardHeight: number;
   keyboardHeightAnim: Animated.Value;
 
@@ -132,7 +131,6 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   showDateHeader,
   showScrollToBottom,
   newMessagesCount,
-  isScrollingToUnread,
   keyboardHeight,
   keyboardHeightAnim,
   onSendMessage,

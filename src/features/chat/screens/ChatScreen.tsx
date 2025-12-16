@@ -129,7 +129,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     userScrolledToBottom,
     newMessagesCount,
     initialScrollIndex,
-    isScrollingToUnread,
     scrollSessionKey,
     handleScroll,
     handleLoadMore,
@@ -441,7 +440,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         showDateHeader={showDateHeader}
         showScrollToBottom={showScrollToBottom}
         newMessagesCount={newMessagesCount}
-        isScrollingToUnread={isScrollingToUnread}
         keyboardHeight={keyboardHeight}
         keyboardHeightAnim={keyboardHeightAnim}
         onSendMessage={handleSendMessage}
