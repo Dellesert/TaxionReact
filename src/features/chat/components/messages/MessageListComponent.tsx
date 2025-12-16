@@ -98,6 +98,33 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  // State to control list opacity - prevents showing partially rendered list
+  const [listOpacity] = React.useState(new Animated.Value(0));
+  const [hasRendered, setHasRendered] = React.useState(false);
+
+  // Show list with fade-in after initial render is complete
+  React.useEffect(() => {
+    if (messageListItems.length > 0 && !hasRendered) {
+      // Give FlashList time to render all items (one frame)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setHasRendered(true);
+          Animated.timing(listOpacity, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }).start();
+        });
+      });
+    }
+  }, [messageListItems.length, hasRendered, listOpacity]);
+
+  // Reset opacity when chat changes
+  React.useEffect(() => {
+    setHasRendered(false);
+    listOpacity.setValue(0);
+  }, [scrollSessionKey, listOpacity]);
+
   // Функция для определения типа элемента (помогает FlashList оптимизировать рендеринг)
   const getItemType = React.useCallback((item: MessageListItem) => {
     return item.type; // 'message' или 'date'
@@ -167,6 +194,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   return (
     <Animated.View style={{
       flex: 1,
+      opacity: listOpacity,
       transform: [{ translateY: animatedTranslateY }],
     }}>
       {/* @ts-ignore - FlashList типы могут быть устаревшими */}
@@ -175,10 +203,11 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         ref={listRef}
         data={messageListItems}
         extraData={messagesKey}
-        drawDistance={Platform.OS === 'ios' ? 3000 : 3000}
+        drawDistance={Platform.OS === 'ios' ? 5000 : 5000}
         estimatedItemSize={200}
         estimatedListSize={{ height: 800, width: 400 }}
         initialScrollIndex={initialScrollIndex}
+        removeClippedSubviews={false}
         overrideItemLayout={(layout, item) => {
           // Оптимизация: предоставляем более точные размеры для разных типов элементов
           if (item.type === 'date') {
