@@ -105,15 +105,18 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   // Show list with fade-in after initial render is complete
   React.useEffect(() => {
     if (messageListItems.length > 0 && !hasRendered) {
-      // Give FlashList time to render all items (one frame)
+      // Give FlashList time to render and position scroll (two frames + small delay)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          setHasRendered(true);
-          Animated.timing(listOpacity, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }).start();
+          // Additional small delay to ensure initialScrollIndex is applied
+          setTimeout(() => {
+            setHasRendered(true);
+            Animated.timing(listOpacity, {
+              toValue: 1,
+              duration: 150,
+              useNativeDriver: true,
+            }).start();
+          }, 50);
         });
       });
     }

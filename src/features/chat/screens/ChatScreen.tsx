@@ -286,6 +286,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
     const initializeChat = async () => {
       try {
+        // Reset scroll and state FIRST, before anything else
         resetScroll();
         resetChatState();
         setMessagesReady(false); // Reset messages ready state
@@ -309,9 +310,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         // Wait for messages to load before showing UI
         await loadMessages(chatIdNum);
 
-        // Small delay to ensure render completes and scroll position is calculated
-        await new Promise(resolve => setTimeout(resolve, 50));
-
         // Clear loader timeout if loading completed quickly
         if (loaderTimeout) {
           clearTimeout(loaderTimeout);
@@ -319,6 +317,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         }
 
         // Only update state if component is still mounted
+        // Set messages ready immediately - FlashList will handle initialScrollIndex internally
         if (isMounted) {
           setMessagesReady(true);
           setShowLoader(false); // Hide loader when ready

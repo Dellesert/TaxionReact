@@ -66,7 +66,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // ПРИОРИТЕТ 2: Скроллим к последнему сообщению (вниз)
     setHasReachedBottom(true);
     return messages.length - 1;
-  }, [messages.length, firstUnreadIndex, unreadCount, chatId]);
+  }, [messages.length, firstUnreadIndex, unreadCount]);
 
   // Оптимизация: функции в Zustand стабильны и не меняются
   const loadMoreMessages = useChatStore((state) => state.loadMoreMessages);
