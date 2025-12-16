@@ -108,6 +108,12 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                         (message.message_type === 'task' && message.task_data) ||
                         (isTaskMessage && parsedTaskData);
 
+  // Проверяем, есть ли файловые вложения (не изображения)
+  const hasFileAttachments = message.attachments?.some(a => {
+    const mimeType = a.mime_type || a.file_type || '';
+    return !mimeType.startsWith('image/');
+  });
+
   return (
     <TouchableOpacity
       ref={messageBubbleRef}
@@ -204,7 +210,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
           </>
         ) : (
           <>
-            <View style={styles.messageContent}>
+            <View style={[styles.messageContent, hasFileAttachments && styles.messageContentWithFiles]}>
               {messageContent && messageContent.length > 0 && (
                 <LinkifiedText
                   text={messageContent}
@@ -291,6 +297,9 @@ const styles = StyleSheet.create({
   },
   messageContent: {
     flexShrink: 1,
+  },
+  messageContentWithFiles: {
+    width: '100%',
   },
   messageText: {
     fontSize: 15,
