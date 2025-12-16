@@ -249,48 +249,30 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         onLongPress={onLongPress}
         delayLongPress={500}
       >
-        {Platform.OS === 'web' && blobUrls[attachment.id] ? (
-          <Image
-            source={{ uri: blobUrls[attachment.id] }}
-            style={styles.imagePreview}
-            contentFit="cover"
-            contentPosition="center"
-            transition={0}
-            cachePolicy="memory-disk"
-            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-            placeholderContentFit="cover"
-            recyclingKey={`attachment-${attachment.id}`}
-            responsivePolicy="initial"
-            allowDownscaling={true}
-            decodeFormat="rgb565"
-          />
-        ) : Platform.OS === 'web' && !blobUrls[attachment.id] ? (
-          <View style={[styles.imagePreview, { backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }]}>
-            <ActivityIndicator size="small" color={theme.primary} />
-          </View>
-        ) : (
-          <Image
-            source={{
-              uri: imageUri,
-              headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-            }}
-            style={styles.imagePreview}
-            contentFit="cover"
-            contentPosition="center"
-            transition={0}
-            cachePolicy="memory-disk"
-            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-            placeholderContentFit="cover"
-            priority={isVisible ? "high" : "low"}
-            recyclingKey={`attachment-${attachment.id}`}
-            responsivePolicy="initial"
-            allowDownscaling={true}
-            decodeFormat="rgb565"
-            onError={(error) => {
-              console.error('❌ Message image load error:', imageUri, error);
-            }}
-          />
-        )}
+        <Image
+          source={Platform.OS === 'web' && blobUrls[attachment.id]
+            ? { uri: blobUrls[attachment.id] }
+            : {
+                uri: imageUri,
+                headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+              }
+          }
+          style={styles.imagePreview}
+          contentFit="cover"
+          contentPosition="center"
+          transition={200}
+          cachePolicy="memory-disk"
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+          placeholderContentFit="cover"
+          priority={isVisible ? "high" : "low"}
+          recyclingKey={`attachment-${attachment.id}`}
+          responsivePolicy="initial"
+          allowDownscaling={true}
+          decodeFormat="rgb565"
+          onError={(error) => {
+            console.error('❌ Message image load error:', imageUri, error);
+          }}
+        />
         {showOverlay && hiddenCount > 0 && (
           <View style={styles.imageOverlay}>
             <Text style={styles.imageOverlayText}>+{hiddenCount}</Text>
