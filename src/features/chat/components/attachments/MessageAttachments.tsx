@@ -202,13 +202,17 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         // Use cache directory which is more reliable for temporary downloads
         const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
 
+        // Prepare headers for mobile download
+        const downloadHeaders: { [key: string]: string } = {};
+        if (!isPublicFile && sessionId) {
+          downloadHeaders['X-Session-ID'] = sessionId;
+        }
+
         const downloadResult = await FileSystem.downloadAsync(
           fileUrl,
           fileUri,
           {
-            headers: {
-              'X-Session-ID': sessionId,
-            },
+            headers: downloadHeaders,
           }
         );
 
