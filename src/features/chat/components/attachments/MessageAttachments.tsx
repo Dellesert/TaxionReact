@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fileName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
     includeFontPadding: false, // Android specific
   },
