@@ -71,7 +71,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
 
   // Load images with auth headers for web platform
   React.useEffect(() => {
-    if (Platform.OS !== 'web' || !sessionId || images.length === 0 || !isVisible) {
+    if (Platform.OS !== 'web' || images.length === 0 || !isVisible) {
       return;
     }
 
@@ -83,10 +83,18 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           // Используем thumbnail для превью в списке сообщений
           const thumbnailUrl = attachment.thumbnail_url || attachment.file_url;
           const imageUrl = replaceLocalhostWithIP(thumbnailUrl);
+
+          // Проверяем, является ли файл публичным (не требует авторизации)
+          const isPublicFile = imageUrl.includes('/files/public/');
+
+          // Добавляем заголовки авторизации только для защищенных файлов
+          const headers: HeadersInit = {};
+          if (!isPublicFile && sessionId) {
+            headers['X-Session-ID'] = sessionId;
+          }
+
           const response = await fetch(imageUrl, {
-            headers: {
-              'X-Session-ID': sessionId,
-            },
+            headers,
           });
 
           if (response.ok) {
@@ -113,7 +121,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         return {};
       });
     };
-  }, [Platform.OS, sessionId, imageIds, isVisible]);
+  }, [imageIds, isVisible, sessionId]);
 
   // Prepare image URLs with proper baseURL replacement for gallery
   // Для ImageViewer используем оригинальные изображения (file_url), а не thumbnails
@@ -140,22 +148,29 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
 
   const handleFileDownload = async (attachment: Attachment) => {
     try {
-      // Get auth session ID
-      const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
-      if (!sessionId) {
+      // Replace localhost with real IP
+      const fileUrl = replaceLocalhostWithIP(attachment.file_url);
+
+      // Проверяем, является ли файл публичным
+      const isPublicFile = fileUrl.includes('/files/public/');
+
+      // Get auth session ID (only needed for protected files)
+      const sessionId = !isPublicFile ? await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID) : null;
+
+      if (!isPublicFile && !sessionId) {
         showError('Необходима авторизация для скачивания файла');
         return;
       }
 
-      // Replace localhost with real IP
-      const fileUrl = replaceLocalhostWithIP(attachment.file_url);
-
       if (Platform.OS === 'web') {
         // Web: Download using blob
+        const headers: HeadersInit = {};
+        if (!isPublicFile && sessionId) {
+          headers['X-Session-ID'] = sessionId;
+        }
+
         const response = await fetch(fileUrl, {
-          headers: {
-            'X-Session-ID': sessionId,
-          },
+          headers,
         });
 
         if (!response.ok) {
@@ -239,6 +254,9 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
       ? blobUrls[attachment.id]
       : replaceLocalhostWithIP(thumbnailUri);
 
+    // Проверяем, является ли файл публичным (не требует авторизации)
+    const isPublicFile = imageUri.includes('/files/public/');
+
     return (
       <TouchableOpacity
         key={attachment.id || index}
@@ -254,7 +272,8 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
             ? { uri: blobUrls[attachment.id] }
             : {
                 uri: imageUri,
-                headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+                // Не передаем заголовки для публичных файлов
+                headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
               }
           }
           style={styles.imagePreview}
@@ -345,6 +364,20 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
       {/* Render file attachments */}
       {files.map((attachment, index) => {
         const fileIcon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
+        const decodedFileName = decodeFileName(attachment.file_name);
+
+        // Debug logging for iOS
+        if (Platform.OS === 'ios') {
+          console.log(`📄 [iOS] File attachment #${index}:`, {
+            id: attachment.id,
+            raw_file_name: attachment.file_name,
+            decoded_file_name: decodedFileName,
+            file_size: attachment.file_size,
+            mime_type: attachment.mime_type,
+            has_file_name: !!attachment.file_name,
+            file_name_length: attachment.file_name?.length || 0,
+          });
+        }
 
         return (
           <TouchableOpacity
@@ -357,17 +390,25 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
             <Ionicons name={fileIcon as any} size={24} color={theme.primary} />
             <View style={styles.fileInfo}>
               <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: '500',
-                  color: theme.text,
-                }}
+                style={[
+                  styles.fileName,
+                  { color: theme.text },
+                  Platform.OS === 'ios' && { color: theme.text, opacity: 1 }
+                ]}
                 numberOfLines={2}
                 ellipsizeMode="tail"
+                allowFontScaling={false}
               >
-                {decodeFileName(attachment.file_name)}
+                {decodedFileName || 'Файл без имени'}
               </Text>
-              <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+              <Text
+                style={[
+                  styles.fileSize,
+                  { color: theme.textSecondary },
+                  Platform.OS === 'ios' && { color: theme.textSecondary, opacity: 1 }
+                ]}
+                allowFontScaling={false}
+              >
                 {(attachment.file_size / 1024).toFixed(2)} KB
               </Text>
             </View>
@@ -417,6 +458,18 @@ const styles = StyleSheet.create({
   },
   fileInfo: {
     flex: 1,
+    minWidth: 0, // Fix for text overflow on iOS
+    justifyContent: 'center',
+  },
+  fileName: {
+    fontSize: 14,
+    fontWeight: '500',
+    includeFontPadding: false, // Android specific
+  },
+  fileSize: {
+    fontSize: 12,
+    marginTop: 2,
+    includeFontPadding: false, // Android specific
   },
   imageAttachment: {
     borderRadius: 8,
