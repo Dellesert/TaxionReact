@@ -70,7 +70,7 @@ export const useChatScreenState = () => {
           Animated.timing(keyboardHeightAnim, {
             toValue: height,
             duration: 120,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }).start();
         }
       }
@@ -101,7 +101,7 @@ export const useChatScreenState = () => {
           Animated.timing(keyboardHeightAnim, {
             toValue: 0,
             duration: 120,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }).start();
         }
       }

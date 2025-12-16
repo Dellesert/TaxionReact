@@ -150,10 +150,18 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  // Создаем анимированный стиль для поднятия инпута через bottom
+  // Создаем анимированный стиль для поднятия инпута через transform
+  // Используем translateY вместо bottom для совместимости с native driver
   const inputWrapperAnimatedStyle = useMemo(() => {
     return {
-      bottom: keyboardHeightAnim,
+      transform: [
+        {
+          translateY: keyboardHeightAnim.interpolate({
+            inputRange: [0, 1000],
+            outputRange: [0, -1000], // Двигаем вверх на высоту клавиатуры
+          }),
+        },
+      ],
     };
   }, [keyboardHeightAnim]);
 
@@ -271,6 +279,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    // bottom задается через анимированный стиль
+    bottom: 0,
   },
 });
