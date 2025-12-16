@@ -605,10 +605,29 @@ export const useChatStore = create<ChatState>()(
           include_unread_marker: true,
         });
 
-        // ✅ Messages are ALREADY in chronological order (oldest → newest)
-        // NO need to reverse!
-        messages = response.messages;
-        pinnedMessages = response.pinned_messages || [];
+        // ✅ OPTIMIZATION: If there are many unread messages (>10) and we have first_unread_id,
+        // load context around first unread instead of all latest messages
+        if (response.unread_info &&
+            response.unread_info.unread_count > 10 &&
+            response.unread_info.first_unread_id) {
+          console.log(`📬 Many unread messages (${response.unread_info.unread_count}), loading context around first unread...`);
+
+          const contextResponse = await chatApi.getMessageContext(
+            chatId,
+            response.unread_info.first_unread_id,
+            {
+              before: 10,  // 10 messages before first unread
+              after: 15,   // 15 messages after (including more unread)
+            }
+          );
+
+          messages = contextResponse.messages;
+          pinnedMessages = response.pinned_messages || [];
+        } else {
+          // Normal case: load latest messages
+          messages = response.messages;
+          pinnedMessages = response.pinned_messages || [];
+        }
       }
 
       set((state) => ({

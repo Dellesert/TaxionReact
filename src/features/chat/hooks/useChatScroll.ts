@@ -60,6 +60,15 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // ПРИОРИТЕТ 1: Если есть непрочитанные - скроллим к первому непрочитанному
     if (firstUnreadIndex !== -1 && unreadCount >= 1) {
       setHasReachedBottom(false);
+
+      // ✅ ОПТИМИЗАЦИЯ: Если много непрочитанных (>10), включаем jump context режим
+      // Это позволит пользователю подгружать новые сообщения постепенно при скролле вниз
+      if (unreadCount > 10) {
+        console.log(`📬 Many unread messages (${unreadCount}), enabling jump context mode`);
+        isInJumpContext.current = true;
+        setShowScrollToBottom(true);
+      }
+
       return firstUnreadIndex;
     }
 
