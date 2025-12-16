@@ -40,6 +40,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // State to track if messages are ready
   const [messagesReady, setMessagesReady] = useState(false);
+  // State to control delayed loader visibility
+  const [showLoader, setShowLoader] = useState(false);
 
   // Custom hooks for state management
   const {
@@ -280,12 +282,21 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // Chat initialization - wait for messages before showing UI
   useEffect(() => {
     let isMounted = true;
+    let loaderTimeout: NodeJS.Timeout | null = null;
 
     const initializeChat = async () => {
       try {
         resetScroll();
         resetChatState();
         setMessagesReady(false); // Reset messages ready state
+        setShowLoader(false); // Reset loader visibility
+
+        // Show loader only if loading takes longer than 1.5 seconds
+        loaderTimeout = setTimeout(() => {
+          if (isMounted && !messagesReady) {
+            setShowLoader(true);
+          }
+        }, 1500);
 
         const chat = getChatById(chatIdNum);
         const unreadCountToSave = chat?.unread_count ?? routeUnreadCount ?? 0;
@@ -301,9 +312,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         // Small delay to ensure render completes and scroll position is calculated
         await new Promise(resolve => setTimeout(resolve, 50));
 
+        // Clear loader timeout if loading completed quickly
+        if (loaderTimeout) {
+          clearTimeout(loaderTimeout);
+          loaderTimeout = null;
+        }
+
         // Only update state if component is still mounted
         if (isMounted) {
           setMessagesReady(true);
+          setShowLoader(false); // Hide loader when ready
         }
 
         // WebSocket connection
@@ -314,9 +332,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         websocketService.joinChat(chatIdNum);
       } catch (error) {
         console.error(`Failed to initialize chat ${chatIdNum}:`, error);
+        // Clear timeout on error
+        if (loaderTimeout) {
+          clearTimeout(loaderTimeout);
+          loaderTimeout = null;
+        }
         // Show UI even on error, so user can see error state
         if (isMounted) {
           setMessagesReady(true);
+          setShowLoader(false);
         }
       }
     };
@@ -325,6 +349,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
     return () => {
       isMounted = false;
+      // Clear timeout on unmount
+      if (loaderTimeout) {
+        clearTimeout(loaderTimeout);
+      }
       setActiveChat(null);
       // Leave chat room when component unmounts
       console.log(`🔴 Leaving chat room ${chatIdNum}`);
@@ -415,13 +443,22 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }, 100);
   };
 
-  // UI state - show loading until messages are ready
-  if (!isLayoutReady || !messagesReady) {
-    return (
-      <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
+  // UI state - show loading only if messages are not ready AND loader should be visible
+  // This creates a delayed loading indicator (appears only after 1.5s)
+  if (!messagesReady) {
+    if (showLoader) {
+      return (
+        <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.background }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      );
+    }
+    // If not ready but loader not visible yet, show empty screen (no flicker)
+    return <View style={[styles.container, { backgroundColor: theme.background }]} />;
+  }
+
+  if (!isLayoutReady) {
+    return <View style={[styles.container, { backgroundColor: theme.background }]} />;
   }
 
   return (
