@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
-import { View, StyleSheet, Keyboard, Platform, Animated } from 'react-native';
+import React, { useEffect, useMemo, useCallback, useState } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -37,6 +37,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Fixed input height
   const inputHeight = 72;
+
+  // State to track if messages are ready
+  const [messagesReady, setMessagesReady] = useState(false);
 
   // Custom hooks for state management
   const {
@@ -274,31 +277,54 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [setError]);
 
-  // Chat initialization - уменьшен массив зависимостей
+  // Chat initialization - wait for messages before showing UI
   useEffect(() => {
-    resetScroll();
-    resetChatState();
+    let isMounted = true;
 
-    const chat = getChatById(chatIdNum);
-    const unreadCountToSave = chat?.unread_count ?? routeUnreadCount ?? 0;
-    setSavedUnreadCount(unreadCountToSave);
+    const initializeChat = async () => {
+      try {
+        resetScroll();
+        resetChatState();
+        setMessagesReady(false); // Reset messages ready state
 
-    if (chat) {
-      setActiveChat(chat);
-    }
+        const chat = getChatById(chatIdNum);
+        const unreadCountToSave = chat?.unread_count ?? routeUnreadCount ?? 0;
+        setSavedUnreadCount(unreadCountToSave);
 
-    loadMessages(chatIdNum).catch((error) => {
-      console.error(`Failed to load messages for chat ${chatIdNum}:`, error);
-    });
+        if (chat) {
+          setActiveChat(chat);
+        }
 
-    // WebSocket connection
-    connectWebSocket();
+        // Wait for messages to load before showing UI
+        await loadMessages(chatIdNum);
 
-    // Join chat room for presence tracking
-    console.log(`🔵 Joining chat room ${chatIdNum}`);
-    websocketService.joinChat(chatIdNum);
+        // Small delay to ensure render completes and scroll position is calculated
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setMessagesReady(true);
+        }
+
+        // WebSocket connection
+        await connectWebSocket();
+
+        // Join chat room for presence tracking
+        console.log(`🔵 Joining chat room ${chatIdNum}`);
+        websocketService.joinChat(chatIdNum);
+      } catch (error) {
+        console.error(`Failed to initialize chat ${chatIdNum}:`, error);
+        // Show UI even on error, so user can see error state
+        if (isMounted) {
+          setMessagesReady(true);
+        }
+      }
+    };
+
+    initializeChat();
 
     return () => {
+      isMounted = false;
       setActiveChat(null);
       // Leave chat room when component unmounts
       console.log(`🔴 Leaving chat room ${chatIdNum}`);
@@ -389,9 +415,13 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }, 100);
   };
 
-  // UI state
-  if (!isLayoutReady) {
-    return <View style={[styles.container, { backgroundColor: theme.background }]} />;
+  // UI state - show loading until messages are ready
+  if (!isLayoutReady || !messagesReady) {
+    return (
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
   }
 
   return (
@@ -480,6 +510,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
 
 export default ChatScreen;

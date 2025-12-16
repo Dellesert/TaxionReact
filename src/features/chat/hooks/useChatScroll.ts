@@ -43,18 +43,18 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
-    // ⚠️ КРИТИЧЕСКИ ВАЖНО: Вычисляем ТОЛЬКО ОДИН РАЗ при первом рендере!
+    // Если нет сообщений - возвращаем undefined (не помечаем как вычисленное!)
+    if (messages.length === 0) {
+      return undefined;
+    }
+
+    // ⚠️ КРИТИЧЕСКИ ВАЖНО: Вычисляем ТОЛЬКО ОДИН РАЗ когда сообщения загружены!
     // Если уже вычисляли - возвращаем undefined (блокируем повторное вычисление)
     if (hasCalculatedInitialIndex.current) {
       return undefined;
     }
 
-    // Если нет сообщений - возвращаем undefined
-    if (messages.length === 0) {
-      return undefined;
-    }
-
-    // Помечаем что индекс вычислен (ПЕРЕД любыми return!)
+    // Помечаем что индекс вычислен (ТОЛЬКО когда есть сообщения!)
     hasCalculatedInitialIndex.current = true;
 
     // ПРИОРИТЕТ 1: Если есть непрочитанные - скроллим к первому непрочитанному
