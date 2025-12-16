@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../shared/constants/api.constants';
 import * as secureStorage from '../shared/utils/secureStorage';
 import { STORAGE_KEYS } from '../shared/constants/app.constants';
+import { Platform } from 'react-native';
 
 export interface FileUploadResponse {
   id: number;
@@ -64,49 +65,26 @@ class FileApi {
     // Auto-detect file type if not provided
     const finalFileType = fileType || determineFileType(mimeType);
 
-    // For React Native, use fetch API which properly handles file uploads
-    if ('uri' in file && !file.uri.startsWith('blob:')) {
-      const formData = new FormData();
-
-      // React Native needs the file in this exact format
-      formData.append('file', {
-        uri: file.uri,
-        name: file.name,
-        type: file.type,
-      } as any);
-
-      formData.append('file_type', finalFileType);
-      if (isPublic !== undefined) {
-        formData.append('is_public', String(isPublic));
-      }
-
-      const response = await fetch(`${this.baseUrl}/upload`, {
-        method: 'POST',
-        headers: {
-          'X-Session-ID': sessionId,
-          // Don't set Content-Type - let fetch set it with boundary
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-        throw new Error(errorData.error || `Upload failed with status ${response.status}`);
-      }
-
-      return await response.json();
-    }
-
-    // For web (File object or blob: URIs), use XMLHttpRequest
+    // Use XMLHttpRequest for all platforms - it supports progress tracking everywhere
     const formData = new FormData();
 
     if (file instanceof File) {
       formData.append('file', file, file.name);
-    } else {
-      // blob: URI - convert to File
-      const response = await fetch(file.uri);
-      const blob = await response.blob();
-      formData.append('file', blob, file.name);
+    } else if ('uri' in file) {
+      if (Platform.OS === 'web' || file.uri.startsWith('blob:')) {
+        // Web or blob: URI - convert to File/Blob
+        const response = await fetch(file.uri);
+        const blob = await response.blob();
+        formData.append('file', blob, file.name);
+      } else {
+        // React Native - use the file object directly
+        // FormData on React Native accepts objects with uri, name, and type properties
+        formData.append('file', {
+          uri: file.uri,
+          name: file.name,
+          type: file.type,
+        } as any);
+      }
     }
 
     formData.append('file_type', finalFileType);
@@ -117,7 +95,7 @@ class FileApi {
     const xhr = new XMLHttpRequest();
 
     return new Promise<FileUploadResponse>((resolve, reject) => {
-      // Track upload progress
+      // Track upload progress - works on all platforms!
       if (onProgress) {
         xhr.upload.addEventListener('progress', (event) => {
           if (event.lengthComputable) {

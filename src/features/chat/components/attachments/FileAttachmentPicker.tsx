@@ -218,18 +218,29 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+
+        // Set initial progress for this file (show at least 1% to indicate upload started)
+        const baseProgress = (i / files.length) * 100;
+        setProgress(Math.max(1, baseProgress));
+
         const uploadedFile = await fileApi.uploadFile(
           file,
           undefined,
           (fileProgress) => {
-            const totalProgress = ((i + fileProgress / 100) / files.length) * 100;
-            setProgress(totalProgress);
+            // Calculate total progress across all files
+            // baseProgress: progress from previously uploaded files
+            // fileProgress / 100 / files.length: current file's contribution to total progress
+            const totalProgress = baseProgress + (fileProgress / files.length);
+            setProgress(Math.min(99, totalProgress)); // Cap at 99% until all files are done
           },
           true  // Make chat attachments public so all chat members can access them
         );
 
         uploadedFiles.push(uploadedFile);
       }
+
+      // Set 100% when all files are uploaded
+      setProgress(100);
 
       const fileIds = uploadedFiles.map(f => f.id);
       onFilesSelected(fileIds);
