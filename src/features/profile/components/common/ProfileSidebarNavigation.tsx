@@ -60,7 +60,7 @@ const getSidebarStructure = (): SidebarGroup[] => {
       items: [
         { id: 'notifications', label: 'Уведомления', icon: 'notifications-outline', iconColor: '#E94444' },
         { id: 'theme', label: 'Тема оформления', icon: 'color-palette-outline', iconColor: '#44aae9ff' },
-        { id: 'storage', label: 'Хранилище', icon: 'server-outline', iconColor: '#10B981' },
+        { id: 'storage', label: 'Данные и память', icon: 'server-outline', iconColor: '#10B981' },
         { id: 'about', label: 'О приложении', icon: 'information-circle-outline', iconColor: '#3ed6ccff' },
       ],
     },

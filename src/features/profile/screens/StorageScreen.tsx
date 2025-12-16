@@ -418,7 +418,7 @@ export default function StorageScreen() {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color={theme.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Хранилище</Text>
+            <Text style={styles.headerTitle}>Данные и память</Text>
             <View style={styles.headerRight} />
           </View>
         </SafeAreaView>
@@ -436,7 +436,7 @@ export default function StorageScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Хранилище</Text>
+          <Text style={styles.headerTitle}>Данные и память</Text>
           <View style={styles.headerRight} />
         </View>
       </SafeAreaView>

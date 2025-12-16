@@ -97,7 +97,7 @@ export const ProfileSplitView: React.FC = () => {
       case 'storage':
         return (
           <ProfileContentArea
-            title="Хранилище и память"
+            title="Данные и память"
             description="Управление занятым местом и кешем"
           >
             <StorageContent />

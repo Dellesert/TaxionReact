@@ -188,7 +188,7 @@ const ProfileScreen: React.FC = () => {
             <ProfileMenuItem
               icon="server-outline"
               iconColor="#10B981"
-              text="Хранилище и память"
+              text="Данные и память"
               onPress={() => navigation.navigate('Storage')}
             />
             <ProfileMenuItem
