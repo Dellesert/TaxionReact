@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -11,6 +11,63 @@ interface PollResultsProps {
   isCreatorOrAdmin: boolean;
   onViewVoters: () => void;
 }
+
+// Component for overlapping avatars
+const OverlappingAvatars: React.FC<{
+  voters: any[];
+  maxDisplay?: number;
+  onPress: () => void;
+}> = ({ voters, maxDisplay = 5, onPress }) => {
+  const { theme } = useTheme();
+  const displayVoters = voters.slice(0, maxDisplay);
+  const remainingCount = voters.length - maxDisplay;
+
+  return (
+    <TouchableOpacity
+      style={styles.overlappingAvatarsContainer}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.avatarsRow}>
+        {displayVoters.map((voter, index) => (
+          <View
+            key={voter.user_id}
+            style={[
+              styles.avatarWrapper,
+              {
+                zIndex: displayVoters.length - index,
+                marginLeft: index > 0 ? -16 : 0,
+              },
+            ]}
+          >
+            <View style={[styles.avatarBorder, { borderColor: theme.backgroundSecondary }]}>
+              <Avatar name={voter.user_name} imageUrl={voter.avatar} size={32} />
+            </View>
+          </View>
+        ))}
+        {remainingCount > 0 && (
+          <View
+            style={[
+              styles.avatarWrapper,
+              {
+                zIndex: 0,
+                marginLeft: -16,
+              },
+            ]}
+          >
+            <View style={[styles.remainingCountCircle, {
+              backgroundColor: theme.primary,
+              borderColor: theme.backgroundSecondary,
+            }]}>
+              <Text style={styles.remainingCountText}>+{remainingCount}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+    </TouchableOpacity>
+  );
+};
 
 export const PollResults: React.FC<PollResultsProps> = ({
   poll,
@@ -25,78 +82,42 @@ export const PollResults: React.FC<PollResultsProps> = ({
       style={[styles.resultsContainer, { backgroundColor: theme.backgroundSecondary }]}
     >
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Результаты:</Text>
-      {poll.options.map((option) => (
-        <View key={option.id} style={styles.resultItem}>
-          <Text style={[styles.resultText, { color: theme.text }]}>{option.text}</Text>
-          <View style={[styles.resultBar, { backgroundColor: theme.border }]}>
-            <View
-              style={[
-                styles.resultBarFill,
-                {
-                  width: `${option.vote_percent || 0}%`,
-                  backgroundColor: theme.primary,
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.resultPercent}>
-            {option.vote_percent?.toFixed(1) || 0}%
-          </Text>
-          <Text style={styles.resultCount}>({option.vote_count || 0} голосов)</Text>
-        </View>
-      ))}
-      <View style={styles.totalVotes}>
-        <Text style={styles.totalVotesText}>
-          Всего голосов: {poll.total_votes || 0}
-        </Text>
-        {isCreatorOrAdmin && (
-          <TouchableOpacity
-            style={[styles.viewVotersButton, { borderColor: theme.primary }]}
-            onPress={onViewVoters}
-          >
-            <Ionicons name="people-outline" size={18} color={theme.primary} />
-            <Text style={[styles.viewVotersButtonText, { color: theme.primary }]}>
-              Кто проголосовал
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
 
-      {/* Voters Preview */}
-      {((isCreatorOrAdmin || poll.show_results) && votersPreview.length > 0) && (
-        <View
-          style={[
-            styles.votersPreviewSection,
-            { backgroundColor: theme.backgroundSecondary },
-          ]}
-        >
-          <Text style={[styles.votersPreviewTitle, { color: theme.text }]}>
-            Проголосовали ({poll.total_voters}):
-          </Text>
-          <View style={styles.votersPreviewList}>
-            {votersPreview.map((voter) => (
-              <View key={voter.user_id} style={styles.voterPreviewItem}>
-                <Avatar name={voter.user_name} imageUrl={voter.avatar} size={32} />
-                <Text
-                  style={[styles.voterPreviewName, { color: theme.text }]}
-                  numberOfLines={1}
-                >
-                  {voter.user_name}
-                </Text>
-              </View>
-            ))}
+      {/* Scrollable results section */}
+      <ScrollView
+        style={styles.resultsScrollView}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+      >
+        {poll.options.map((option) => (
+          <View key={option.id} style={styles.resultItem}>
+            <Text style={[styles.resultText, { color: theme.text }]}>{option.text}</Text>
+            <View style={[styles.resultBar, { backgroundColor: theme.border }]}>
+              <View
+                style={[
+                  styles.resultBarFill,
+                  {
+                    width: `${option.vote_percent || 0}%`,
+                    backgroundColor: theme.primary,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.resultPercent}>
+              {option.vote_percent?.toFixed(1) || 0}%
+            </Text>
+            <Text style={styles.resultCount}>({option.vote_count || 0} голосов)</Text>
           </View>
-          {poll.total_voters > 5 && (
-            <TouchableOpacity
-              style={[styles.viewAllVotersButton, { borderColor: theme.primary }]}
-              onPress={onViewVoters}
-            >
-              <Text style={[styles.viewAllVotersText, { color: theme.primary }]}>
-                Показать всех ({poll.total_voters})
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={theme.primary} />
-            </TouchableOpacity>
-          )}
+        ))}
+      </ScrollView>
+
+      {/* Voters Preview with overlapping avatars */}
+      {((isCreatorOrAdmin || poll.show_results) && votersPreview.length > 0) && (
+        <View style={[styles.votersPreviewSection, { borderTopColor: theme.border }]}>
+          <OverlappingAvatars
+            voters={votersPreview}
+            onPress={onViewVoters}
+          />
         </View>
       )}
     </View>
@@ -107,11 +128,15 @@ const styles = StyleSheet.create({
   resultsContainer: {
     padding: 16,
     marginTop: 16,
+    borderRadius: 12,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  resultsScrollView: {
+    maxHeight: 300,
   },
   resultItem: {
     marginBottom: 16,
@@ -139,69 +164,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
   },
-  totalVotes: {
-    marginTop: 8,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  totalVotesText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  viewVotersButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    gap: 6,
-  },
-  viewVotersButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   votersPreviewSection: {
     marginTop: 16,
-    padding: 16,
-    borderRadius: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
   },
-  votersPreviewTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  votersPreviewList: {
-    gap: 12,
-  },
-  voterPreviewItem: {
+  overlappingAvatarsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
   },
-  voterPreviewName: {
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
-  },
-  viewAllVotersButton: {
+  avatarsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarWrapper: {
+    position: 'relative',
+  },
+  avatarBorder: {
+    borderRadius: 18,
+    borderWidth: 2,
+    padding: 2,
+  },
+  remainingCountCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderRadius: 8,
   },
-  viewAllVotersText: {
-    fontSize: 14,
+  remainingCountText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '600',
   },
 });

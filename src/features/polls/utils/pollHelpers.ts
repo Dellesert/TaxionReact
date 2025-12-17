@@ -92,6 +92,15 @@ export const shouldShowResults = (
   // Always show results for creator/admin (unless revoting)
   if (isCreatorOrAdmin && !isRevoting) return true;
 
+  // Always show results for closed/archived/cancelled polls
+  if (
+    poll.status === 'closed' ||
+    poll.status === 'archived' ||
+    poll.status === 'cancelled'
+  ) {
+    return true;
+  }
+
   // For regular users
   if (!poll.show_results) return false;
 
