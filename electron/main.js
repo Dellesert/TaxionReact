@@ -7,8 +7,31 @@ const FileCache = require('./FileCache');
 const isDev = process.env.NODE_ENV !== 'production';
 
 let mainWindow;
+let splashWindow;
 let fileCache;
 let secureStore;
+
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    frame: false,
+    transparent: false,
+    alwaysOnTop: true,
+    resizable: false,
+    center: true,
+    icon: path.join(__dirname, '../assets/images/icon.png'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+
+  // Remove menu bar
+  splashWindow.setMenuBarVisibility(false);
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -57,9 +80,15 @@ function createWindow() {
     mainWindow.loadURL(startUrl);
   }
 
-  // Show window when ready
+  // Show window when ready and close splash
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+
+    // Close splash window after main window is shown
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.close();
+      splashWindow = null;
+    }
   });
 
   // Handle window close
@@ -93,6 +122,9 @@ function createWindow() {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Show splash screen first
+  createSplashWindow();
+
   // Initialize services
   fileCache = new FileCache();
   await fileCache.init();
@@ -102,6 +134,7 @@ app.whenReady().then(async () => {
   // Setup IPC handlers
   setupIPCHandlers();
 
+  // Create main window (splash will close when main window is ready)
   createWindow();
 
   // macOS: recreate window when dock icon is clicked
