@@ -273,8 +273,9 @@ const styles = StyleSheet.create({
     left: '50%',
     // @ts-ignore - Web-only styles
     transform: 'translateX(-50%)',
-    width: 400,
-    maxWidth: 400,
+    width: 300,
+    maxWidth: 300,
+    minWidth: 250,
     WebkitAppRegion: 'no-drag',
   },
   searchInputContainer: {
