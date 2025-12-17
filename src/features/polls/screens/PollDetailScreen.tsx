@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -250,6 +251,22 @@ const PollDetailScreen: React.FC = () => {
   // Show content skeleton only when loading and no poll data yet
   const showContentSkeleton = isLoading && !poll;
 
+  // Fade animation for content
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!showContentSkeleton && poll) {
+      // Fade in content when loaded
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      fadeAnim.setValue(0);
+    }
+  }, [showContentSkeleton, poll]);
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.card }]}
@@ -294,7 +311,7 @@ const PollDetailScreen: React.FC = () => {
 
         {/* Content - only show when loaded */}
         {!showContentSkeleton && !error && poll && (
-          <>
+          <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
             {/* Content - Desktop or Mobile Layout */}
             {isDesktop ? (
           <PollDesktopLayout
@@ -394,7 +411,7 @@ const PollDetailScreen: React.FC = () => {
             </ScrollView>
           </View>
         )}
-          </>
+          </Animated.View>
         )}
 
         {/* Modals */}
