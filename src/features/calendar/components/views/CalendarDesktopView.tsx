@@ -12,10 +12,9 @@ import { CalendarEmptyState } from '../states/CalendarEmptyState';
 import { EventDetailsPanel } from '../panels/EventDetailsPanel';
 import { EventListSkeleton } from '../states/EventListSkeleton';
 import { CalendarStatsPanel } from '../panels/CalendarStatsPanel';
-import { CalendarHeader } from '../navigation/CalendarHeader';
-import { CalendarToolbar } from '../navigation/CalendarToolbar';
+import { CompactCalendarToolbar } from '../navigation/CompactCalendarToolbar';
 import { WeekTimelineView } from './WeekTimelineView';
-import { WeekViewModeSelector } from '../navigation/WeekViewModeSelector';
+import { WeekModeContextBar } from '../navigation/WeekModeContextBar';
 import { UpcomingEventsCard } from '../panels/UpcomingEventsCard';
 
 interface CalendarDesktopViewProps {
@@ -105,25 +104,24 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Header - Search and Actions */}
-      <CalendarHeader
-        isDesktop={true}
-        searchQuery={searchQuery}
-        onAddPress={onAddPress}
-        onSearchChange={handleSearchChange}
-        onSearchClear={handleSearchClear}
-      />
-
-      {/* Toolbar - Navigation and View Selector */}
-      <CalendarToolbar
+      {/* Compact Toolbar - Combines header and navigation */}
+      <CompactCalendarToolbar
         selectedDate={selectedDate}
         selectedView={viewMode}
         onViewChange={handleViewModeChange}
-        onDateChange={handleDayPress}
         onToday={() => handleMonthNavigate('today')}
         onPrevious={() => handleMonthNavigate('prev')}
         onNext={() => handleMonthNavigate('next')}
+        onAddPress={onAddPress}
       />
+
+      {/* Week Mode Context Bar - Only shown when week view is active */}
+      {viewMode === 'week' && (
+        <WeekModeContextBar
+          selectedMode={weekDisplayMode}
+          onModeChange={setWeekDisplayMode}
+        />
+      )}
 
       {/* Main Content Area - 3 Column Layout */}
       <View style={styles.contentContainer}>
@@ -159,16 +157,6 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
 
         {/* Center Panel - Main Calendar View */}
         <View style={[styles.centerPanel, { backgroundColor: theme.background }]}>
-          {/* Week View Mode Selector - Only shown when week view is active */}
-          {viewMode === 'week' && (
-            <View style={[styles.weekModeSelectorContainer, { borderBottomColor: theme.border }]}>
-              <WeekViewModeSelector
-                selectedMode={weekDisplayMode}
-                onModeChange={setWeekDisplayMode}
-              />
-            </View>
-          )}
-
           {isLoading ? (
             <EventListSkeleton />
           ) : viewMode === 'week' ? (
@@ -251,13 +239,6 @@ const styles = StyleSheet.create({
   centerPanel: {
     flex: 1,
     minWidth: 0, // Important for flex shrinking
-  },
-  weekModeSelectorContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   rightSidebar: {
     width: 480,
