@@ -15,12 +15,13 @@ interface PollResultsProps {
 // Component for overlapping avatars
 const OverlappingAvatars: React.FC<{
   voters: any[];
+  totalVoters: number;
   maxDisplay?: number;
   onPress: () => void;
-}> = ({ voters, maxDisplay = 5, onPress }) => {
+}> = ({ voters, totalVoters, maxDisplay = 5, onPress }) => {
   const { theme } = useTheme();
   const displayVoters = voters.slice(0, maxDisplay);
-  const remainingCount = voters.length - maxDisplay;
+  const remainingCount = totalVoters - maxDisplay;
 
   return (
     <TouchableOpacity
@@ -50,8 +51,7 @@ const OverlappingAvatars: React.FC<{
             style={[
               styles.avatarWrapper,
               {
-                zIndex: 0,
-                marginLeft: -16,
+                marginLeft: -8,
               },
             ]}
           >
@@ -116,6 +116,7 @@ export const PollResults: React.FC<PollResultsProps> = ({
         <View style={[styles.votersPreviewSection, { borderTopColor: theme.border }]}>
           <OverlappingAvatars
             voters={votersPreview}
+            totalVoters={poll.total_voters || 0}
             onPress={onViewVoters}
           />
         </View>
@@ -165,15 +166,15 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   votersPreviewSection: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
   },
   overlappingAvatarsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 2,
   },
   avatarsRow: {
     flexDirection: 'row',
@@ -183,9 +184,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatarBorder: {
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 2,
-    padding: 2,
   },
   remainingCountCircle: {
     width: 32,
