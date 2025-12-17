@@ -57,12 +57,10 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
         { marginTop: isEditMode ? 0 : 0, marginBottom: isEditMode ? -4 : -4 },
       ]}
     >
-      {/* Left - Notifications (Mobile only) */}
-      {!isWideScreen && (
-        <View style={styles.headerLeft}>
-          <NotificationBell />
-        </View>
-      )}
+      {/* Left - Notifications (Mobile only) or Empty space (Desktop) */}
+      <View style={styles.headerLeft}>
+        {!isWideScreen && <NotificationBell />}
+      </View>
 
       {/* Center - Title or Connection Status */}
       {isConnected === false ? (
