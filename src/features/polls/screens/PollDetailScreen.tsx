@@ -107,7 +107,13 @@ const PollDetailScreen: React.FC = () => {
     ? poll.created_by === currentUser?.id || isUserSystemAdmin
     : false;
 
-  const hasActions = permissions.can_edit || permissions.can_delete_or_close;
+  // Check if user can revote (already voted, poll is active, not creator/admin, not already revoting)
+  const canRevote = poll?.user_has_voted &&
+                    !isRevoting &&
+                    poll?.status === 'active' &&
+                    !isCreatorOrAdmin;
+
+  const hasActions = permissions.can_edit || permissions.can_delete_or_close || canRevote;
 
   const showVotingUI = shouldShowVotingUI(
     poll,
@@ -420,6 +426,7 @@ const PollDetailScreen: React.FC = () => {
             poll={poll}
             canEdit={permissions.can_edit}
             canDeleteOrClose={permissions.can_delete_or_close}
+            canRevote={canRevote}
             onClose={() => setShowActionMenu(false)}
             onEdit={() => {
               setShowActionMenu(false);
@@ -432,6 +439,10 @@ const PollDetailScreen: React.FC = () => {
             onDelete={() => {
               setShowActionMenu(false);
               handleDeleteAction();
+            }}
+            onRevote={() => {
+              setShowActionMenu(false);
+              setIsRevoting(true);
             }}
             isDesktop={isDesktop}
           />

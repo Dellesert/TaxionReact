@@ -139,29 +139,6 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
           )
         : null}
 
-      {/* Revote button for users who already voted (not for admins/creators) - hidden on desktop */}
-      {poll.user_has_voted &&
-        !isRevoting &&
-        poll.status === 'active' &&
-        !isCreatorOrAdmin &&
-        !isDesktop && (
-          <TouchableOpacity
-            style={[
-              styles.revoteButton,
-              {
-                backgroundColor: theme.backgroundSecondary,
-                borderColor: theme.primary,
-              },
-            ]}
-            onPress={onRevote}
-          >
-            <Ionicons name="refresh" size={20} color={theme.primary} />
-            <Text style={[styles.revoteButtonText, { color: theme.primary }]}>
-              Переголосовать
-            </Text>
-          </TouchableOpacity>
-        )}
-
       {/* Toggle button to show/hide results for polls that allow viewing before voting (only on mobile) */}
       {!isDesktop &&
         poll.show_results &&
@@ -253,20 +230,6 @@ const styles = StyleSheet.create({
   },
   voteButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  revoteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    gap: 8,
-    marginTop: 24,
-  },
-  revoteButtonText: {
     fontSize: 15,
     fontWeight: '600',
   },

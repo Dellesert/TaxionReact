@@ -14,10 +14,12 @@ interface PollActionMenuProps {
   poll: Poll;
   canEdit: boolean;
   canDeleteOrClose: boolean;
+  canRevote?: boolean;
   onClose: () => void;
   onEdit: () => void;
   onClosePoll: () => void;
   onDelete: () => void;
+  onRevote?: () => void;
   isDesktop?: boolean;
   buttonPosition?: { x: number; y: number; width: number; height: number };
 }
@@ -27,10 +29,12 @@ export const PollActionMenu: React.FC<PollActionMenuProps> = ({
   poll,
   canEdit,
   canDeleteOrClose,
+  canRevote = false,
   onClose,
   onEdit,
   onClosePoll,
   onDelete,
+  onRevote,
   isDesktop = false,
   buttonPosition,
 }) => {
@@ -95,6 +99,17 @@ export const PollActionMenu: React.FC<PollActionMenuProps> = ({
   };
 
   const menuItems = [];
+
+  // Revote option (for users who already voted)
+  if (canRevote && onRevote) {
+    menuItems.push({
+      key: 'revote',
+      icon: 'refresh' as const,
+      label: 'Переголосовать',
+      color: theme.primary,
+      onPress: () => handleAction(onRevote),
+    });
+  }
 
   // Edit option
   if (canEdit) {

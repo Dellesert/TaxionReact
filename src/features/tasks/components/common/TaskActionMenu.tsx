@@ -1,17 +1,13 @@
-import React, { useRef, useEffect, useState } from 'react';
-import {
-  Modal,
-  View,
-  TouchableOpacity,
-  Text,
-  Animated,
-  Platform,
-  Dimensions,
-  StyleSheet,
-} from 'react-native';
+/**
+ * Task Action Menu
+ * Меню действий для задачи (редактировать, делегировать, удалить и т.д.)
+ */
+
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Task, TaskPermissions } from '../../types/task.types';
 import { useTheme } from '@shared/hooks/useTheme';
+import type { Task, TaskPermissions } from '../../types/task.types';
 
 interface TaskActionMenuProps {
   visible: boolean;
@@ -40,155 +36,169 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
   isDesktop = false,
   buttonPosition,
 }) => {
-  const { theme, isDark } = useTheme();
-  const [modalVisible, setModalVisible] = useState(false);
-  const backgroundOpacity = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+  const { theme } = useTheme();
+
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(300)).current;
+
+  // Internal visibility state to control Modal
+  const [isModalVisible, setIsModalVisible] = React.useState(false);
 
   useEffect(() => {
     if (visible) {
-      setModalVisible(true);
-      // Reset animation values before starting
-      backgroundOpacity.setValue(0);
-      slideAnim.setValue(Dimensions.get('window').height);
+      // Show modal immediately
+      setIsModalVisible(true);
 
+      // Reset to initial position first
+      fadeAnim.setValue(0);
+      slideAnim.setValue(300);
+
+      // Then show animations with small delay
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            damping: 20,
+            stiffness: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 50);
+    } else if (isModalVisible) {
+      // Hide animations
       Animated.parallel([
-        Animated.timing(backgroundOpacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          damping: 25,
-          stiffness: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else if (modalVisible) {
-      Animated.parallel([
-        Animated.timing(backgroundOpacity, {
+        Animated.timing(fadeAnim, {
           toValue: 0,
           duration: 200,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
-          toValue: Dimensions.get('window').height,
-          duration: 250,
+          toValue: 300,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start(() => {
-        setModalVisible(false);
+        // Hide modal after animation completes
+        setIsModalVisible(false);
       });
     }
-  }, [visible]);
+  }, [visible, fadeAnim, slideAnim, isModalVisible]);
 
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(backgroundOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: Dimensions.get('window').height,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-    });
-  };
-
-  const handleMenuItemPress = (onPress: () => void) => {
-    // Immediately hide modal without animation
-    setModalVisible(false);
-    // Call onClose and action immediately
+  const handleAction = (action: () => void) => {
     onClose();
-    // Use requestAnimationFrame to ensure modal is unmounted before action
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        onPress();
-      });
-    });
+    // Small delay to let modal close animation finish
+    setTimeout(action, 250);
   };
 
-  const renderMenuItem = (
-    icon: string,
-    title: string,
-    subtitle: string,
-    color: string,
-    onPress: () => void,
-    isDestructive = false
-  ) => (
-    <TouchableOpacity
+  const menuItems = [];
+
+  // Edit option
+  if (permissions.can_edit) {
+    menuItems.push({
+      key: 'edit',
+      icon: 'create-outline' as const,
+      label: 'Редактировать',
+      color: theme.text,
+      onPress: () => handleAction(onEdit),
+    });
+  }
+
+  // Delegate option (only for active tasks)
+  if (permissions.can_delegate && task?.status !== 'done' && task?.status !== 'cancelled') {
+    menuItems.push({
+      key: 'delegate',
+      icon: 'git-branch-outline' as const,
+      label: 'Передать задачу',
+      color: theme.text,
+      onPress: () => handleAction(onDelegate),
+    });
+  }
+
+  // Add subtask option
+  if (permissions.can_create_subtasks) {
+    menuItems.push({
+      key: 'subtask',
+      icon: 'add-circle-outline' as const,
+      label: 'Добавить подзадачу',
+      color: theme.text,
+      onPress: () => handleAction(onAddSubtask),
+    });
+  }
+
+  // Emergency complete option (only for active tasks)
+  if (permissions.can_emergency_complete && task?.status !== 'done') {
+    menuItems.push({
+      key: 'emergency',
+      icon: 'warning-outline' as const,
+      label: 'Аварийное завершение',
+      color: '#F59E0B',
+      onPress: () => handleAction(onEmergencyComplete),
+    });
+  }
+
+  // Delete option
+  if (permissions.can_delete) {
+    menuItems.push({
+      key: 'delete',
+      icon: 'trash-outline' as const,
+      label: 'Удалить',
+      color: '#EF4444',
+      onPress: () => handleAction(onDelete),
+    });
+  }
+
+  if (menuItems.length === 0) {
+    return null;
+  }
+
+  const renderMenu = () => (
+    <View
       style={[
-        isDesktop ? styles.menuItemDesktop : styles.menuItem,
-        !isDesktop && { backgroundColor: theme.backgroundSecondary }
+        styles.menu,
+        { backgroundColor: theme.card, borderColor: theme.border },
+        isDesktop && buttonPosition && {
+          position: 'absolute',
+          top: buttonPosition.y + buttonPosition.height + 8,
+          right: 16,
+        },
       ]}
-      onPress={() => handleMenuItemPress(onPress)}
     >
-      <View
-        style={[
-          styles.menuIconContainer,
-          {
-            backgroundColor: isDark ? `${color}26` : `${color}14`,
-          },
-        ]}
-      >
-        <Ionicons name={icon as any} size={20} color={color} />
-      </View>
-      <View style={styles.menuTextContainer}>
-        <Text
-          style={[
-            styles.menuTitle,
-            { color: isDestructive ? color : theme.text },
-          ]}
-        >
-          {title}
-        </Text>
-        {!isDesktop && (
-          <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      {!isDesktop && <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />}
-    </TouchableOpacity>
+      {menuItems.map((item, index) => (
+        <React.Fragment key={item.key}>
+          <TouchableOpacity
+            style={[
+              styles.menuItem,
+              index === menuItems.length - 1 && styles.menuItemLast,
+            ]}
+            onPress={item.onPress}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={item.icon} size={20} color={item.color} />
+            <Text style={[styles.menuItemText, { color: item.color }]}>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+          {index < menuItems.length - 1 && (
+            <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+          )}
+        </React.Fragment>
+      ))}
+    </View>
   );
 
-  // Calculate menu position for desktop dropdown
-  const calculateMenuPosition = () => {
-    if (!buttonPosition) return { top: 60 };
-
-    const windowHeight = Dimensions.get('window').height;
-    const estimatedMenuHeight = 300; // Approximate menu height
-    const spaceBelow = windowHeight - (buttonPosition.y + buttonPosition.height);
-    const spaceAbove = buttonPosition.y;
-
-    // If there's enough space below, show menu below the button
-    if (spaceBelow >= estimatedMenuHeight + 8) {
-      return { top: buttonPosition.y + buttonPosition.height + 8 };
-    }
-
-    // If there's enough space above, show menu above the button
-    if (spaceAbove >= estimatedMenuHeight + 8) {
-      return { bottom: windowHeight - buttonPosition.y + 8 };
-    }
-
-    // Otherwise, show it below but allow scrolling
-    return { top: buttonPosition.y + buttonPosition.height + 8 };
-  };
-
-  const menuPosition = calculateMenuPosition();
-
-  // Desktop Dropdown Render
   if (isDesktop) {
+    // Desktop: positioned menu
     return (
       <Modal
-        visible={visible}
+        visible={isModalVisible}
+        transparent
         animationType="fade"
-        transparent={true}
         onRequestClose={onClose}
       >
         <TouchableOpacity
@@ -196,178 +206,51 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
           activeOpacity={1}
           onPress={onClose}
         >
-          <View style={[
-            styles.desktopMenu,
-            menuPosition,
-            {
-              backgroundColor: theme.card,
-              shadowColor: theme.shadow || '#000',
-            }
-          ]}>
-            {/* Edit Task Option */}
-            {permissions.can_edit &&
-              renderMenuItem(
-                'create-outline',
-                'Редактировать',
-                'Изменить детали задачи',
-                '#3b82f6',
-                onEdit
-              )}
-
-            {/* Delegate Task Option */}
-            {permissions.can_delegate &&
-              task?.status !== 'done' &&
-              task?.status !== 'cancelled' &&
-              renderMenuItem(
-                'git-branch-outline',
-                'Передать задачу',
-                'Назначить другого исполнителя',
-                '#8b5cf6',
-                onDelegate
-              )}
-
-            {/* Add Subtask Option */}
-            {permissions.can_create_subtasks &&
-              renderMenuItem(
-                'add-circle-outline',
-                'Добавить подзадачу',
-                'Разбить задачу на этапы',
-                theme.primary,
-                onAddSubtask
-              )}
-
-            {/* Emergency Complete Option */}
-            {permissions.can_emergency_complete &&
-              task?.status !== 'done' &&
-              renderMenuItem(
-                'warning-outline',
-                'Аварийное завершение',
-                'Завершить просроченную задачу',
-                '#f59e0b',
-                onEmergencyComplete
-              )}
-
-            {/* Delete Task Option */}
-            {permissions.can_delete &&
-              renderMenuItem(
-                'trash-outline',
-                'Удалить задачу',
-                'Это действие нельзя отменить',
-                '#ef4444',
-                onDelete,
-                true
-              )}
-          </View>
+          {renderMenu()}
         </TouchableOpacity>
       </Modal>
     );
   }
 
-  // Mobile Bottom Sheet Render
+  // Mobile: bottom sheet
   return (
     <Modal
-      visible={modalVisible}
+      visible={isModalVisible}
       transparent
       animationType="none"
-      onRequestClose={handleClose}
+      onRequestClose={onClose}
     >
       <Animated.View
         style={[
-          styles.modalBackground,
+          styles.overlay,
           {
-            opacity: backgroundOpacity,
-          },
+            opacity: fadeAnim,
+          }
         ]}
       >
         <TouchableOpacity
-          style={{ flex: 1 }}
+          style={styles.overlayTouchable}
           activeOpacity={1}
-          onPress={handleClose}
+          onPress={onClose}
         />
         <Animated.View
           style={[
-            styles.menuContainer,
+            styles.bottomSheet,
             {
-              backgroundColor: theme.card,
               transform: [{ translateY: slideAnim }],
-              paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-            },
+            }
           ]}
-          onStartShouldSetResponder={() => true}
         >
-          {/* Handle Bar */}
-          <View style={styles.handleContainer}>
-            <View style={[styles.handle, { backgroundColor: theme.border }]} />
-          </View>
-
-          {/* Menu Items */}
-          <View style={styles.menuItemsContainer}>
-            {/* Edit Task Option */}
-            {permissions.can_edit &&
-              renderMenuItem(
-                'create-outline',
-                'Редактировать',
-                'Изменить детали задачи',
-                '#3b82f6',
-                onEdit
-              )}
-
-            {/* Delegate Task Option */}
-            {permissions.can_delegate &&
-              task?.status !== 'done' &&
-              task?.status !== 'cancelled' &&
-              renderMenuItem(
-                'git-branch-outline',
-                'Передать задачу',
-                'Назначить другого исполнителя',
-                '#8b5cf6',
-                onDelegate
-              )}
-
-            {/* Add Subtask Option */}
-            {permissions.can_create_subtasks &&
-              renderMenuItem(
-                'add-circle-outline',
-                'Добавить подзадачу',
-                'Разбить задачу на этапы',
-                theme.primary,
-                onAddSubtask
-              )}
-
-            {/* Emergency Complete Option */}
-            {permissions.can_emergency_complete &&
-              task?.status !== 'done' &&
-              renderMenuItem(
-                'warning-outline',
-                'Аварийное завершение',
-                'Завершить просроченную задачу',
-                '#f59e0b',
-                onEmergencyComplete
-              )}
-
-            {/* Delete Task Option */}
-            {permissions.can_delete &&
-              renderMenuItem(
-                'trash-outline',
-                'Удалить задачу',
-                'Это действие нельзя отменить',
-                '#ef4444',
-                onDelete,
-                true
-              )}
-
-            {/* Cancel Button */}
-            <View style={[styles.cancelSection, { borderTopColor: theme.border }]}>
-              <TouchableOpacity
-                style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
-                onPress={handleClose}
-              >
-                <Text style={[styles.cancelButtonText, { color: theme.text }]}>
-                  Отмена
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          {renderMenu()}
+          <TouchableOpacity
+            style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.cancelButtonText, { color: theme.text }]}>
+              Отмена
+            </Text>
+          </TouchableOpacity>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -375,90 +258,69 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
 };
 
 const styles = StyleSheet.create({
-  modalBackground: {
+  overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  menuContainer: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 8,
+  overlayTouchable: {
+    flex: 1,
   },
-  handleContainer: {
-    alignItems: 'center',
-    paddingVertical: 8,
+  desktopOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-  },
-  menuItemsContainer: {
+  bottomSheet: {
     paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  menu: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
+      },
+    }),
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    gap: 12,
+    minHeight: 52,
   },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+  menuItemLast: {
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
-  menuTextContainer: {
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: '500',
     flex: 1,
   },
-  menuTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  menuSubtitle: {
-    fontSize: 13,
-  },
-  cancelSection: {
-    borderTopWidth: 1,
-    marginTop: 16,
-    paddingTop: 16,
+  menuDivider: {
+    height: 1,
+    marginHorizontal: 16,
   },
   cancelButton: {
-    alignItems: 'center',
+    marginTop: 12,
     paddingVertical: 16,
     borderRadius: 12,
+    alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  // Desktop styles
-  desktopOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  desktopMenu: {
-    position: 'absolute',
-    right: 16,
-    minWidth: 240,
-    borderRadius: 12,
-    padding: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  menuItemDesktop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
   },
 });
