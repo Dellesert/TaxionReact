@@ -115,8 +115,13 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Main Content Area - Three Columns */}
-      <View style={styles.mainContent}>
+      {/* Main Content Area - Three Columns with Horizontal Scroll */}
+      <ScrollView
+        horizontal
+        style={styles.mainContentScrollView}
+        contentContainerStyle={styles.mainContent}
+        showsHorizontalScrollIndicator={true}
+      >
         {/* Left Column - Overview */}
         <View
           style={styles.column}
@@ -274,7 +279,7 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
             )}
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       {/* History Section (раскрывающаяся секция внизу) */}
       <View style={[styles.historySection, { borderTopColor: theme.border }]}>
@@ -333,15 +338,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  mainContent: {
+  mainContentScrollView: {
     flex: 1,
+  },
+  mainContent: {
     flexDirection: 'row',
     padding: 20,
     gap: 20,
+    minWidth: '100%',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   column: {
-    flex: 1,
-    minWidth: 380,
+    width: 360,
+    minWidth: 280,
   },
   scrollView: {
     flex: 1,
@@ -440,22 +450,22 @@ const styles = StyleSheet.create({
   },
   commentInputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 10,
     borderTopWidth: 1,
   },
   commentInput: {
     flex: 1,
-    minHeight: 44,
-    maxHeight: 120,
-    borderRadius: 22,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    fontSize: 15,
-    lineHeight: 20,
-    borderWidth: 2,
+    height: 40,
+    maxHeight: 100,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    lineHeight: 18,
+    borderWidth: 1.5,
     ...Platform.select({
       web: {
         transitionProperty: 'border-color, box-shadow',
@@ -465,11 +475,12 @@ const styles = StyleSheet.create({
     }),
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
     ...Platform.select({
       web: {
         transitionProperty: 'transform, box-shadow',
