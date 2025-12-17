@@ -145,6 +145,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
               onDatePress={handleDayPress}
               onEventPress={handleEventPress}
               isCompact={true}
+              viewMode={viewMode}
             />
 
             <CalendarStatsPanel

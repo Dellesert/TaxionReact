@@ -20,6 +20,7 @@ interface MonthCalendarViewProps {
   onDatePress: (date: Date) => void;
   onEventPress?: (event: Event) => void;
   isCompact?: boolean; // Desktop compact mode
+  viewMode?: 'day' | 'week'; // Current view mode
 }
 
 const WEEKDAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -30,10 +31,29 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
   onDatePress,
   onEventPress,
   isCompact = false,
+  viewMode = 'day',
 }) => {
   const { theme } = useTheme();
   const [selectedDayForSheet, setSelectedDayForSheet] = useState<Date | null>(null);
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+
+  // Calculate selected week range when in week view mode
+  const selectedWeekRange = useMemo(() => {
+    if (viewMode !== 'week') return null;
+
+    const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+
+    return { start: weekStart, end: weekEnd };
+  }, [selectedDate, viewMode]);
+
+  // Check if a date is in the selected week
+  const isInSelectedWeek = (date: Date): boolean => {
+    if (!selectedWeekRange) return false;
+
+    const time = date.getTime();
+    return time >= selectedWeekRange.start.getTime() && time <= selectedWeekRange.end.getTime();
+  };
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -99,10 +119,13 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     const isTodayDate = isToday(date);
 
     // Check if this day is the selected day (for desktop compact mode)
-    const isSelectedDay = isCompact &&
+    const isSelectedDay = isCompact && viewMode === 'day' &&
       date.getDate() === selectedDate.getDate() &&
       date.getMonth() === selectedDate.getMonth() &&
       date.getFullYear() === selectedDate.getFullYear();
+
+    // Check if this day is in the selected week (for week view mode)
+    const isInWeek = isCompact && viewMode === 'week' && isInSelectedWeek(date);
 
     // Create a normalized date at midnight local time to avoid timezone issues
     const normalizedDate = new Date(
@@ -149,10 +172,12 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
             isTodayDate && [styles.todayContainer, { borderColor: theme.primary }],
             isSelectedDay && !isTodayDate && [styles.selectedDayContainer, { backgroundColor: theme.backgroundSecondary }],
             isSelectedDay && isTodayDate && [styles.selectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary }],
+            isInWeek && !isTodayDate && [styles.weekSelectedContainer, { backgroundColor: theme.primary + '20' }],
+            isInWeek && isTodayDate && [styles.weekSelectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.primary + '20' }],
             !isCurrentMonth && styles.dayOutOfMonth,
             isDayHovered && isCurrentMonth && Platform.OS === 'web' && [
               styles.dayContentHovered,
-              !isTodayDate && !isSelectedDay && { backgroundColor: theme.backgroundSecondary }
+              !isTodayDate && !isSelectedDay && !isInWeek && { backgroundColor: theme.backgroundSecondary }
             ],
           ]}
         >
@@ -162,7 +187,8 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
               { color: isCurrentMonth ? theme.text : theme.textTertiary },
               isTodayDate && [styles.todayText, { color: theme.primary }],
               isSelectedDay && !isTodayDate && styles.selectedDayText,
-              isWeekend && isCurrentMonth && !isTodayDate && !isSelectedDay && { color: theme.primary },
+              isInWeek && !isTodayDate && styles.weekSelectedText,
+              isWeekend && isCurrentMonth && !isTodayDate && !isSelectedDay && !isInWeek && { color: theme.primary },
             ]}
           >
             {format(date, 'd')}
@@ -366,8 +392,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     // borderColor and backgroundColor set dynamically from theme
   },
+  weekSelectedContainer: {
+    // backgroundColor set dynamically from theme
+  },
+  weekSelectedTodayContainer: {
+    borderWidth: 2,
+    // borderColor and backgroundColor set dynamically from theme
+  },
   selectedDayText: {
     fontWeight: '700',
+  },
+  weekSelectedText: {
+    fontWeight: '600',
   },
   dayOutOfMonth: {
     opacity: 0.25,
