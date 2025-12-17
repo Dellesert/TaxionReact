@@ -14,7 +14,6 @@ import { EventListSkeleton } from '../states/EventListSkeleton';
 import { CalendarStatsPanel } from '../panels/CalendarStatsPanel';
 import { CompactCalendarToolbar } from '../navigation/CompactCalendarToolbar';
 import { WeekTimelineView } from './WeekTimelineView';
-import { WeekModeContextBar } from '../navigation/WeekModeContextBar';
 import { UpcomingEventsCard } from '../panels/UpcomingEventsCard';
 
 interface CalendarDesktopViewProps {
@@ -104,24 +103,18 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Compact Toolbar - Combines header and navigation */}
+      {/* Compact Toolbar - Combines header, navigation, and week mode selector */}
       <CompactCalendarToolbar
         selectedDate={selectedDate}
         selectedView={viewMode}
+        weekDisplayMode={weekDisplayMode}
         onViewChange={handleViewModeChange}
+        onWeekModeChange={setWeekDisplayMode}
         onToday={() => handleMonthNavigate('today')}
         onPrevious={() => handleMonthNavigate('prev')}
         onNext={() => handleMonthNavigate('next')}
         onAddPress={onAddPress}
       />
-
-      {/* Week Mode Context Bar - Only shown when week view is active */}
-      {viewMode === 'week' && (
-        <WeekModeContextBar
-          selectedMode={weekDisplayMode}
-          onModeChange={setWeekDisplayMode}
-        />
-      )}
 
       {/* Main Content Area - 3 Column Layout */}
       <View style={styles.contentContainer}>

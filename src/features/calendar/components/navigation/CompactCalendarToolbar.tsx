@@ -2,14 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { CalendarView } from '../../types/calendar.types';
+import { CalendarView, WeekDisplayMode } from '../../types/calendar.types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 interface CompactCalendarToolbarProps {
   selectedDate: Date;
   selectedView: CalendarView;
+  weekDisplayMode?: WeekDisplayMode;
   onViewChange: (view: CalendarView) => void;
+  onWeekModeChange?: (mode: WeekDisplayMode) => void;
   onToday: () => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -21,7 +23,9 @@ interface CompactCalendarToolbarProps {
 export const CompactCalendarToolbar: React.FC<CompactCalendarToolbarProps> = ({
   selectedDate,
   selectedView,
+  weekDisplayMode,
   onViewChange,
+  onWeekModeChange,
   onToday,
   onPrevious,
   onNext,
@@ -30,6 +34,12 @@ export const CompactCalendarToolbar: React.FC<CompactCalendarToolbarProps> = ({
   hasActiveFilters = false,
 }) => {
   const { theme } = useTheme();
+
+  const toggleWeekMode = () => {
+    if (onWeekModeChange && weekDisplayMode) {
+      onWeekModeChange(weekDisplayMode === 'timeline' ? 'list' : 'timeline');
+    }
+  };
 
   const getDateRangeText = () => {
     return format(selectedDate, 'MMMM yyyy', { locale: ru });
@@ -113,6 +123,23 @@ export const CompactCalendarToolbar: React.FC<CompactCalendarToolbarProps> = ({
 
         {/* Right Section - Actions */}
         <View style={styles.rightSection}>
+          {/* Week Mode Toggle - Only shown when week view is active */}
+          {selectedView === 'week' && weekDisplayMode && onWeekModeChange && (
+            <TouchableOpacity
+              onPress={toggleWeekMode}
+              style={[styles.actionButton, { borderColor: theme.border }]}
+            >
+              <Ionicons
+                name={weekDisplayMode === 'timeline' ? 'time-outline' : 'list-outline'}
+                size={18}
+                color={theme.text}
+              />
+              <Text style={[styles.actionButtonText, { color: theme.text }]}>
+                {weekDisplayMode === 'timeline' ? 'Шкала' : 'Список'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Filter Button */}
           {onFilterPress && (
             <TouchableOpacity
