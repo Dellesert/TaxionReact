@@ -2,6 +2,7 @@ import { API_BASE_URL } from '../shared/constants/api.constants';
 import * as secureStorage from '../shared/utils/secureStorage';
 import { STORAGE_KEYS } from '../shared/constants/app.constants';
 import { Platform } from 'react-native';
+import { ApiError, APIErrorResponse } from '@types/common.types';
 
 export interface FileUploadResponse {
   id: number;
@@ -111,34 +112,64 @@ class FileApi {
             const response = JSON.parse(xhr.responseText);
             resolve(response);
           } catch (error) {
-            reject(new Error('Failed to parse response'));
+            const apiError: ApiError = {
+              message: 'Failed to parse response',
+              status: xhr.status,
+            };
+            reject(apiError);
           }
         } else {
-          // Log full error response
-          console.error('Upload failed:', {
-            status: xhr.status,
-            statusText: xhr.statusText,
-            response: xhr.responseText
-          });
-          let errorMessage = `Upload failed with status ${xhr.status}`;
+          // Parse structured error response
           try {
-            const errorResponse = JSON.parse(xhr.responseText);
-            if (errorResponse.error) {
-              errorMessage += `: ${errorResponse.error}`;
-            }
+            const errorResponse: APIErrorResponse = JSON.parse(xhr.responseText);
+
+            // Create structured ApiError
+            const apiError: ApiError = {
+              message: errorResponse.error || `Upload failed with status ${xhr.status}`,
+              status: xhr.status,
+              error_code: errorResponse.error_code,
+              request_id: errorResponse.request_id,
+              fields: errorResponse.fields,
+              details: errorResponse,
+            };
+
+            console.error('[FileApi] Upload failed:', {
+              status: xhr.status,
+              error_code: errorResponse.error_code,
+              request_id: errorResponse.request_id,
+              message: errorResponse.error,
+            });
+
+            reject(apiError);
           } catch (e) {
-            // Unable to parse error response
+            // Unable to parse error response - create basic error
+            const apiError: ApiError = {
+              message: `Upload failed with status ${xhr.status}`,
+              status: xhr.status,
+            };
+            console.error('[FileApi] Upload failed (unparseable error):', {
+              status: xhr.status,
+              statusText: xhr.statusText,
+            });
+            reject(apiError);
           }
-          reject(new Error(errorMessage));
         }
       });
 
       xhr.addEventListener('error', () => {
-        reject(new Error('Network error during upload'));
+        const apiError: ApiError = {
+          message: 'Network error during upload',
+          status: 0,
+        };
+        reject(apiError);
       });
 
       xhr.addEventListener('abort', () => {
-        reject(new Error('Upload aborted'));
+        const apiError: ApiError = {
+          message: 'Upload aborted',
+          status: 0,
+        };
+        reject(apiError);
       });
 
       xhr.open('POST', `${this.baseUrl}/upload`);

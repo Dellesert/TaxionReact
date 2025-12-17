@@ -16,6 +16,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { fileApi, FileUploadResponse } from '@api/fileApi';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useInAppNotificationStore } from '@shared/store/inAppNotificationStore';
+import { formatFileUploadError } from '@shared/utils/errorUtils';
+import { ApiError } from '@types/common.types';
 
 interface FileAttachmentPickerProps {
   onFilesSelected: (fileIds: number[]) => void;
@@ -28,9 +31,39 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
 }) => {
   const { theme } = useTheme();
   const { showOptions } = useActionModal();
+  const showNotification = useInAppNotificationStore((state) => state.showNotification);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const [showMenu, setShowMenu] = useState(false);
+
+  /**
+   * Helper function to show error notification
+   */
+  const showErrorToast = (error: unknown, fallbackMessage: string) => {
+    let errorMessage = fallbackMessage;
+
+    // If it's a structured ApiError, format it properly
+    if (error && typeof error === 'object' && ('error_code' in error || 'details' in error)) {
+      errorMessage = formatFileUploadError(error as ApiError);
+    } else if (error instanceof Error) {
+      errorMessage = error.message || fallbackMessage;
+    }
+
+    // Show toast notification
+    showNotification({
+      id: Date.now(),
+      user_id: 0,
+      type: 'system',
+      title: 'Ошибка загрузки',
+      message: errorMessage,
+      is_read: false,
+      priority: 'high',
+      created_at: new Date().toISOString(),
+    });
+
+    // Call legacy onError callback if provided
+    onError?.(errorMessage);
+  };
 
   const handleCameraPick = async () => {
 
@@ -38,7 +71,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       const permission = await ImagePicker.requestCameraPermissionsAsync();
 
       if (!permission.granted) {
-        onError?.('Нужно разрешение для доступа к камере');
+        showErrorToast(new Error('Нужно разрешение для доступа к камере'), 'Нужно разрешение для доступа к камере');
         return;
       }
 
@@ -70,7 +103,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         await uploadFiles(fileObjects);
       }
     } catch (error) {
-      onError?.('Ошибка при съемке фото: ' + (error as Error).message);
+      showErrorToast(error, 'Ошибка при съемке фото');
     }
   };
 
@@ -80,7 +113,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
-        onError?.('Нужно разрешение для доступа к галерее');
+        showErrorToast(new Error('Нужно разрешение для доступа к галерее'), 'Нужно разрешение для доступа к галерее');
         return;
       }
 
@@ -115,7 +148,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         await uploadFiles(fileObjects);
       }
     } catch (error) {
-      onError?.('Ошибка при выборе изображения: ' + (error as Error).message);
+      showErrorToast(error, 'Ошибка при выборе изображения');
     }
   };
 
@@ -205,7 +238,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         })));
       }
     } catch (error) {
-      onError?.('Ошибка при выборе документа');
+      showErrorToast(error, 'Ошибка при выборе документа');
     }
   };
 
@@ -245,7 +278,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       const fileIds = uploadedFiles.map(f => f.id);
       onFilesSelected(fileIds);
     } catch (error) {
-      onError?.('Ошибка при загрузке файлов: ' + (error as Error).message);
+      showErrorToast(error, 'Ошибка при загрузке файлов');
     } finally {
       setUploading(false);
       setProgress(0);

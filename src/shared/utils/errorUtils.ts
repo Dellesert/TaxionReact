@@ -31,7 +31,20 @@ export enum ErrorCode {
   VALIDATION_PASSWORD_TOO_SHORT = 'VALIDATION_PASSWORD_TOO_SHORT',
   VALIDATION_PASSWORD_TOO_WEAK = 'VALIDATION_PASSWORD_TOO_WEAK',
 
+  // File Upload
+  FILE_NOT_FOUND = 'FILE_NOT_FOUND',
+  FILE_UPLOAD_FAILED = 'FILE_UPLOAD_FAILED',
+  FILE_DELETE_FAILED = 'FILE_DELETE_FAILED',
+  FILE_ACCESS_DENIED = 'FILE_ACCESS_DENIED',
+  FILE_INVALID_TYPE = 'FILE_INVALID_TYPE',
+  FILE_TOO_LARGE = 'FILE_TOO_LARGE',
+  FILE_NO_FILE_PROVIDED = 'FILE_NO_FILE_PROVIDED',
+  FILE_INVALID_FORMAT = 'FILE_INVALID_FORMAT',
+  FILE_THUMBNAIL_NOT_AVAILABLE = 'FILE_THUMBNAIL_NOT_AVAILABLE',
+
   // General
+  AUTH_UNAUTHORIZED = 'AUTH_UNAUTHORIZED',
+  BAD_REQUEST = 'BAD_REQUEST',
   INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
   USER_NOT_FOUND = 'USER_NOT_FOUND',
 }
@@ -62,7 +75,20 @@ const errorMessages: Record<ErrorCode, string> = {
   [ErrorCode.VALIDATION_PASSWORD_TOO_SHORT]: 'Пароль слишком короткий',
   [ErrorCode.VALIDATION_PASSWORD_TOO_WEAK]: 'Пароль слишком слабый. Используйте буквы, цифры и специальные символы.',
 
+  // File Upload
+  [ErrorCode.FILE_NOT_FOUND]: 'Файл не найден',
+  [ErrorCode.FILE_UPLOAD_FAILED]: 'Не удалось загрузить файл. Попробуйте еще раз.',
+  [ErrorCode.FILE_DELETE_FAILED]: 'Не удалось удалить файл',
+  [ErrorCode.FILE_ACCESS_DENIED]: 'Доступ к файлу запрещен',
+  [ErrorCode.FILE_INVALID_TYPE]: 'Недопустимый тип файла',
+  [ErrorCode.FILE_TOO_LARGE]: 'Файл слишком большой',
+  [ErrorCode.FILE_NO_FILE_PROVIDED]: 'Файл не выбран',
+  [ErrorCode.FILE_INVALID_FORMAT]: 'Неверный формат файла',
+  [ErrorCode.FILE_THUMBNAIL_NOT_AVAILABLE]: 'Миниатюра недоступна',
+
   // General
+  [ErrorCode.AUTH_UNAUTHORIZED]: 'Требуется авторизация',
+  [ErrorCode.BAD_REQUEST]: 'Неверный запрос',
   [ErrorCode.INTERNAL_SERVER_ERROR]: 'Внутренняя ошибка сервера. Попробуйте позже.',
   [ErrorCode.USER_NOT_FOUND]: 'Пользователь не найден',
 };
@@ -168,4 +194,42 @@ export function requiresPasskeyOnly(error: ApiError): boolean {
  */
 export function isSuperAdminWebOnly(error: ApiError): boolean {
   return isErrorCode(error, ErrorCode.AUTH_SUPER_ADMIN_WEB_ONLY);
+}
+
+/**
+ * Форматировать ошибку загрузки файла с учетом metadata
+ */
+export function formatFileUploadError(error: ApiError): string {
+  const errorCode = extractErrorCode(error);
+  let message = getErrorMessage(errorCode || '');
+
+  // Если есть metadata, добавляем дополнительную информацию
+  if (error.details && typeof error.details === 'object' && 'metadata' in error.details) {
+    const errorResponse = error.details as APIErrorResponse;
+    const metadata = errorResponse.metadata;
+
+    if (metadata) {
+      // Для ошибки FILE_TOO_LARGE показываем максимальный размер
+      if (errorCode === ErrorCode.FILE_TOO_LARGE && metadata.max_size_mb) {
+        message += ` Максимальный размер: ${metadata.max_size_mb} МБ`;
+      }
+
+      // Для ошибки FILE_INVALID_TYPE показываем разрешенные типы
+      if (errorCode === ErrorCode.FILE_INVALID_TYPE && metadata.allowed_types) {
+        const types = Array.isArray(metadata.allowed_types)
+          ? metadata.allowed_types.join(', ')
+          : metadata.allowed_types;
+        message += ` Разрешенные типы: ${types}`;
+      }
+    }
+  }
+
+  // Если есть field errors, показываем первую ошибку
+  const fieldErrors = extractFieldErrors(error);
+  if (fieldErrors.length > 0) {
+    const firstFieldError = fieldErrors[0];
+    message = firstFieldError.message || message;
+  }
+
+  return message;
 }
