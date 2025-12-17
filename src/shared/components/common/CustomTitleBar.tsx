@@ -5,6 +5,7 @@
 
 import React, { useState, useRef, useContext } from 'react';
 import { View, Text, TextInput, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { NavigationContainerRef } from '@react-navigation/native';
 import { useThemeStore } from '@shared/store/themeStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +21,7 @@ interface CustomTitleBarProps {
 }
 
 export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
-  title = 'Tachyon Messenger',
+  title = 'Тахион',
   navigationRef
 }) => {
   const isWideScreen = useIsWideScreen();
@@ -101,9 +102,11 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
       {/* Draggable area - Left side */}
       <View style={styles.dragArea}>
         <View style={styles.titleContainer}>
-          <View style={[styles.appIcon, { backgroundColor: theme.primary }]}>
-            <Text style={styles.appIconText}>T</Text>
-          </View>
+          <Image
+            source={require('../../../../assets/images/icon.png')}
+            style={styles.appIcon}
+            contentFit="cover"
+          />
           <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
         </View>
       </View>
@@ -260,13 +263,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appIconText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   title: {
     fontSize: 13,
