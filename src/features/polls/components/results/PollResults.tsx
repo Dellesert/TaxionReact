@@ -134,7 +134,8 @@ export const PollResults: React.FC<PollResultsProps> = ({
 const styles = StyleSheet.create({
   resultsContainer: {
     padding: spacing.lg,
-    marginTop: spacing.lg,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xxl,
     borderRadius: 12,
     ...shadows.sm,
   },
