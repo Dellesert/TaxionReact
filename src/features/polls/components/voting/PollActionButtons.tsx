@@ -20,7 +20,6 @@ interface PollActionButtonsProps {
   onCancelRevote: () => void;
   onToggleResults: () => void;
   onPublish: () => void;
-  onClose: () => void;
 }
 
 export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
@@ -39,7 +38,6 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
   onCancelRevote,
   onToggleResults,
   onPublish,
-  onClose,
 }) => {
   const { theme } = useTheme();
 
@@ -72,27 +70,6 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
             </TouchableOpacity>
           )}
         </>
-      )}
-
-      {/* Close poll button for active polls (hidden on desktop, shown in header) */}
-      {poll.status === 'active' && canDeleteOrClose && !isDesktop && (
-        <TouchableOpacity
-          style={[
-            styles.publishButton,
-            { backgroundColor: '#F59E0B', marginTop: 0 },
-          ]}
-          onPress={onClose}
-          disabled={isPublishing}
-        >
-          {isPublishing ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
-              <Text style={styles.publishButtonText}>Завершить опрос</Text>
-            </>
-          )}
-        </TouchableOpacity>
       )}
 
       {/* Comment input */}

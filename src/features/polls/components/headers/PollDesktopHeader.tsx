@@ -11,12 +11,10 @@ import type { Poll } from '../../types/poll.types';
 
 interface PollDesktopHeaderProps {
   poll: Poll;
-  canShare: boolean;
   canEdit: boolean;
   canDeleteOrClose: boolean;
   isDeleting: boolean;
   isPublishing: boolean;
-  onShare: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onPublish: () => void;
@@ -26,12 +24,10 @@ interface PollDesktopHeaderProps {
 
 export const PollDesktopHeader: React.FC<PollDesktopHeaderProps> = ({
   poll,
-  canShare,
   canEdit,
   canDeleteOrClose,
   isDeleting,
   isPublishing,
-  onShare,
   onEdit,
   onDelete,
   onPublish,
@@ -88,19 +84,6 @@ export const PollDesktopHeader: React.FC<PollDesktopHeaderProps> = ({
               <Ionicons name="lock-closed-outline" size={20} color="#F59E0B" />
               <Text style={[styles.actionButtonText, { color: '#F59E0B' }]}>
                 Завершить
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Share Button */}
-          {canShare && (
-            <TouchableOpacity
-              style={[styles.actionButton, { borderColor: theme.border }]}
-              onPress={onShare}
-            >
-              <Ionicons name="share-outline" size={20} color={theme.text} />
-              <Text style={[styles.actionButtonText, { color: theme.text }]}>
-                Поделиться
               </Text>
             </TouchableOpacity>
           )}

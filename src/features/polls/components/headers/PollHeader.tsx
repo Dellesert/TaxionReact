@@ -1,96 +1,82 @@
 import React from 'react';
-import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 
 interface PollHeaderProps {
-  canShare: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  isDeleting: boolean;
-  onShare: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  hasActions: boolean;
+  onOpenMenu: () => void;
   onClose: () => void;
 }
 
 export const PollHeader: React.FC<PollHeaderProps> = ({
-  canShare,
-  canEdit,
-  canDelete,
-  isDeleting,
-  onShare,
-  onEdit,
-  onDelete,
+  hasActions,
+  onOpenMenu,
   onClose,
 }) => {
   const { theme } = useTheme();
 
   return (
-    <View
-      style={[
-        styles.headerSection,
-        { backgroundColor: theme.card, borderBottomColor: theme.border },
-      ]}
-    >
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          style={[styles.headerButton, { backgroundColor: theme.backgroundTertiary }]}
-          onPress={onClose}
-        >
-          <Ionicons name="close" size={28} color={theme.error} />
-        </TouchableOpacity>
-        <View style={styles.headerButtons}>
-          {canShare && (
-            <TouchableOpacity style={styles.headerButton} onPress={onShare}>
-              <Ionicons name="share-outline" size={24} color={theme.error} />
-            </TouchableOpacity>
-          )}
-          {canEdit && (
-            <TouchableOpacity style={styles.headerButton} onPress={onEdit}>
-              <Ionicons name="create-outline" size={24} color={theme.error} />
-            </TouchableOpacity>
-          )}
-          {canDelete && (
+    <View style={{ borderBottomWidth: 1, borderBottomColor: theme.border }}>
+      <ScreenHeader
+        title="Опрос"
+        customContent={
+          <View style={styles.customHeader}>
+            {/* Left button - Close */}
             <TouchableOpacity
-              style={styles.headerButton}
-              onPress={onDelete}
-              disabled={isDeleting}
+              onPress={onClose}
+              style={styles.headerSideButton}
             >
-              {isDeleting ? (
-                <ActivityIndicator size="small" color="#EF4444" />
-              ) : (
-                <Ionicons name="trash-outline" size={24} color="#EF4444" />
-              )}
+              <Ionicons name="close" size={24} color={theme.error} />
             </TouchableOpacity>
-          )}
-        </View>
-      </View>
+
+            {/* Title */}
+            <View style={styles.headerTitleContainer}>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Опрос</Text>
+            </View>
+
+            {/* Right button - Menu (3 dots) */}
+            {hasActions && (
+              <TouchableOpacity
+                onPress={onOpenMenu}
+                style={styles.headerSideButton}
+              >
+                <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+            {/* Spacer if no actions to balance the layout */}
+            {!hasActions && <View style={styles.headerSideButton} />}
+          </View>
+        }
+        showDivider={false}
+        withShadow={false}
+        containerStyle={{ paddingTop: 14, paddingBottom: 14 }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  headerSection: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  headerRow: {
+  customHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  headerSideButton: {
+    minWidth: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -20,11 +21,11 @@ import { usePollVoting } from '../hooks/usePollVoting';
 import { usePollActions } from '../hooks/usePollActions';
 import { usePollPermissions } from '../hooks/usePollPermissions';
 import { PollDetailSkeleton } from '../components/states/PollDetailSkeleton';
-import SharePollModal from '../components/modals/SharePollModal';
 import EditPollModal from '../components/modals/EditPollModal';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { PollHeader } from '../components/headers/PollHeader';
 import { PollDesktopHeader } from '../components/headers/PollDesktopHeader';
+import { PollActionMenu } from '../components/common/PollActionMenu';
 import { PollInfo } from '../components/poll-details/PollInfo';
 import { PollVotingUI } from '../components/voting/PollVotingUI';
 import { PollResults } from '../components/results/PollResults';
@@ -91,21 +92,22 @@ const PollDetailScreen: React.FC = () => {
     handlePublish,
     handleClose,
     handleDelete,
-    handleSharePoll,
   } = usePollActions();
 
   const permissions = usePollPermissions(poll, currentUser?.id, currentUser?.role);
 
   // UI state
-  const [showShareModal, setShowShareModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
 
   // Derived state
   const isCreatorOrAdmin = poll
     ? poll.created_by === currentUser?.id || isUserSystemAdmin
     : false;
+
+  const hasActions = permissions.can_edit || permissions.can_delete_or_close;
 
   const showVotingUI = shouldShowVotingUI(
     poll,
@@ -139,42 +141,19 @@ const PollDetailScreen: React.FC = () => {
   useLayoutEffect(() => {
     if (isFromChat && poll) {
       navigation.setOptions({
-        title: poll.title,
-        headerRight: () => (
-          <View
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 8 }}
-          >
-            {permissions.can_share && (
-              <TouchableOpacity
-                onPress={() => setShowShareModal(true)}
-                style={{ padding: 4 }}
-              >
-                <Ionicons name="share-outline" size={24} color={theme.primary} />
-              </TouchableOpacity>
-            )}
-            {permissions.can_edit && (
-              <TouchableOpacity
-                onPress={() => setShowEditModal(true)}
-                style={{ padding: 4 }}
-              >
-                <Ionicons name="create-outline" size={24} color={theme.primary} />
-              </TouchableOpacity>
-            )}
-            {permissions.can_delete_or_close && (
-              <TouchableOpacity
-                onPress={() => poll && handleDeleteAction()}
-                style={{ padding: 4 }}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color="#EF4444" />
-                ) : (
-                  <Ionicons name="trash-outline" size={24} color="#EF4444" />
-                )}
-              </TouchableOpacity>
-            )}
+        headerTitle: () => (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 20, fontWeight: '600', color: theme.text }}>Опрос</Text>
           </View>
         ),
+        headerRight: hasActions ? () => (
+          <TouchableOpacity
+            onPress={() => setShowActionMenu(true)}
+            style={{ padding: 4, marginRight: 8 }}
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+          </TouchableOpacity>
+        ) : undefined,
       });
     }
   }, [
@@ -184,6 +163,8 @@ const PollDetailScreen: React.FC = () => {
     permissions,
     isDeleting,
     theme.primary,
+    theme.text,
+    hasActions,
   ]);
 
   // Handlers
@@ -243,15 +224,6 @@ const PollDetailScreen: React.FC = () => {
     );
   };
 
-  const handleShare = async (chatId: number) => {
-    if (!poll) return;
-    try {
-      await handleSharePoll(poll, chatId);
-    } catch (error) {
-      showError('Не удалось отправить опрос');
-    }
-  };
-
   const handleOpenChat = async (userId: number) => {
     try {
       const chat = await getOrCreateDirectChat(userId);
@@ -303,12 +275,10 @@ const PollDetailScreen: React.FC = () => {
           isDesktop ? (
             <PollDesktopHeader
               poll={poll}
-              canShare={permissions.can_share}
               canEdit={permissions.can_edit}
               canDeleteOrClose={permissions.can_delete_or_close}
               isDeleting={isDeleting}
               isPublishing={isPublishing}
-              onShare={() => setShowShareModal(true)}
               onEdit={() => setShowEditModal(true)}
               onDelete={handleDeleteAction}
               onPublish={handlePublishAction}
@@ -317,13 +287,8 @@ const PollDetailScreen: React.FC = () => {
             />
           ) : (
             <PollHeader
-              canShare={permissions.can_share}
-              canEdit={permissions.can_edit}
-              canDelete={permissions.can_delete_or_close}
-              isDeleting={isDeleting}
-              onShare={() => setShowShareModal(true)}
-              onEdit={() => setShowEditModal(true)}
-              onDelete={handleDeleteAction}
+              hasActions={hasActions}
+              onOpenMenu={() => setShowActionMenu(true)}
               onClose={() => navigation.goBack()}
             />
           )
@@ -360,7 +325,6 @@ const PollDetailScreen: React.FC = () => {
             }}
             onToggleResults={() => setShowResults(!showResults)}
             onPublish={handlePublishAction}
-            onClose={handleCloseAction}
             onViewVoters={() => navigation.navigate('PollVoters', { pollId: poll.id })}
           />
         ) : (
@@ -412,7 +376,6 @@ const PollDetailScreen: React.FC = () => {
                   }}
                   onToggleResults={() => setShowResults(!showResults)}
                   onPublish={handlePublishAction}
-                  onClose={handleCloseAction}
                 />
 
                 {/* Results */}
@@ -433,21 +396,12 @@ const PollDetailScreen: React.FC = () => {
 
         {/* Modals */}
         {poll && (
-          <>
-            <SharePollModal
-              visible={showShareModal}
-              onClose={() => setShowShareModal(false)}
-              poll={poll}
-              onShare={handleShare}
-            />
-
-            <EditPollModal
-              visible={showEditModal}
-              pollId={poll.id}
-              onClose={() => setShowEditModal(false)}
-              onPollUpdated={loadPollDetail}
-            />
-          </>
+          <EditPollModal
+            visible={showEditModal}
+            pollId={poll.id}
+            onClose={() => setShowEditModal(false)}
+            onPollUpdated={loadPollDetail}
+          />
         )}
 
         <UserProfileModal
@@ -459,6 +413,29 @@ const PollDetailScreen: React.FC = () => {
           }}
           onOpenChat={handleOpenChat}
         />
+
+        {poll && (
+          <PollActionMenu
+            visible={showActionMenu}
+            poll={poll}
+            canEdit={permissions.can_edit}
+            canDeleteOrClose={permissions.can_delete_or_close}
+            onClose={() => setShowActionMenu(false)}
+            onEdit={() => {
+              setShowActionMenu(false);
+              setShowEditModal(true);
+            }}
+            onClosePoll={() => {
+              setShowActionMenu(false);
+              handleCloseAction();
+            }}
+            onDelete={() => {
+              setShowActionMenu(false);
+              handleDeleteAction();
+            }}
+            isDesktop={isDesktop}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

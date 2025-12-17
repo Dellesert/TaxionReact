@@ -42,7 +42,6 @@ interface PollDesktopLayoutProps {
   onCancelRevote: () => void;
   onToggleResults: () => void;
   onPublish: () => void;
-  onClose: () => void;
   onViewVoters: () => void;
 }
 
@@ -72,7 +71,6 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
   onCancelRevote,
   onToggleResults,
   onPublish,
-  onClose,
   onViewVoters,
 }) => {
   const { theme } = useTheme();
@@ -245,7 +243,6 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
                     onCancelRevote={onCancelRevote}
                     onToggleResults={onToggleResults}
                     onPublish={onPublish}
-                    onClose={onClose}
                   />
                 </View>
               </View>
