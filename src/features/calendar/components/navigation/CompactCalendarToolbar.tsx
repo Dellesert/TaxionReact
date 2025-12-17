@@ -54,13 +54,8 @@ export const CompactCalendarToolbar: React.FC<CompactCalendarToolbarProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
       <View style={styles.content}>
-        {/* Left Section - Title & Navigation */}
+        {/* Left Section - Navigation */}
         <View style={styles.leftSection}>
-          <View style={styles.titleRow}>
-            <Ionicons name="calendar" size={22} color={theme.primary} />
-            <Text style={[styles.title, { color: theme.text }]}>Календарь</Text>
-          </View>
-
           <View style={styles.navigation}>
             <TouchableOpacity
               style={[styles.navButton, { backgroundColor: theme.backgroundSecondary }]}

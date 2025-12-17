@@ -37,6 +37,7 @@ const PollListScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const isFirstRender = useRef(true);
 
   // Custom hooks
@@ -168,6 +169,8 @@ const PollListScreen: React.FC = () => {
         onCreatePress={handleCreatePoll}
         onFilterButtonLayout={setFilterButtonPosition}
         isDesktop={isDesktop}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {/* Content */}
@@ -184,6 +187,8 @@ const PollListScreen: React.FC = () => {
             onRefresh={handleRefreshWrapper}
             onLoadMore={handleLoadMoreWrapper}
             onRetry={() => loadPolls(getFilters(), searchQuery)}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
           />
         ) : (
           <PollListContent

@@ -6,6 +6,8 @@ import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { PollFilter } from '../../utils/pollListHelpers';
 
+export type ViewMode = 'grid' | 'table';
+
 interface PollListHeaderProps {
   filter: PollFilter;
   searchQuery: string;
@@ -19,6 +21,8 @@ interface PollListHeaderProps {
   onCreatePress: () => void;
   onFilterButtonLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
   isDesktop?: boolean;
+  viewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
 }
 
 export const PollListHeader: React.FC<PollListHeaderProps> = ({
@@ -34,6 +38,8 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
   onCreatePress,
   onFilterButtonLayout,
   isDesktop = false,
+  viewMode = 'grid',
+  onViewModeChange,
 }) => {
   const { theme } = useTheme();
   const filterButtonRef = React.useRef<View>(null);
@@ -55,9 +61,48 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
     return (
       <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.desktopHeaderContent}>
-          {/* Left side - Title */}
+          {/* Left side - View Mode Switcher */}
           <View style={styles.desktopLeft}>
-            <Text style={[styles.desktopTitle, { color: theme.text }]}>Опросы</Text>
+            <View style={[styles.viewModeSwitcher, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+              <TouchableOpacity
+                style={[
+                  styles.viewModeButton,
+                  viewMode === 'grid' && { backgroundColor: theme.card },
+                ]}
+                onPress={() => onViewModeChange?.('grid')}
+              >
+                <Ionicons
+                  name="grid-outline"
+                  size={18}
+                  color={viewMode === 'grid' ? theme.primary : theme.textSecondary}
+                />
+                <Text style={[
+                  styles.viewModeButtonText,
+                  { color: viewMode === 'grid' ? theme.text : theme.textSecondary }
+                ]}>
+                  Сетка
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.viewModeButton,
+                  viewMode === 'table' && { backgroundColor: theme.card },
+                ]}
+                onPress={() => onViewModeChange?.('table')}
+              >
+                <Ionicons
+                  name="reorder-four-outline"
+                  size={18}
+                  color={viewMode === 'table' ? theme.primary : theme.textSecondary}
+                />
+                <Text style={[
+                  styles.viewModeButtonText,
+                  { color: viewMode === 'table' ? theme.text : theme.textSecondary }
+                ]}>
+                  Таблица
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Center - Search (только для браузера, не Electron) */}
@@ -259,7 +304,7 @@ const styles = StyleSheet.create({
   // Desktop styles
   desktopHeader: {
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     ...Platform.select({
       web: {
@@ -282,7 +327,33 @@ const styles = StyleSheet.create({
   },
   desktopLeft: {
     flexShrink: 0,
-    minWidth: 100,
+  },
+  viewModeSwitcher: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 4,
+    gap: 4,
+  },
+  viewModeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        transitionProperty: 'background-color',
+        transitionDuration: '0.15s',
+      },
+    }),
+  },
+  viewModeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   desktopTitle: {
     fontSize: 24,

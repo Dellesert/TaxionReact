@@ -270,6 +270,8 @@ const TaskListScreen: React.FC = () => {
         onTabChange={setActiveTab}
         onFilterButtonLayout={setFilterButtonPosition}
         isDesktop={isDesktop}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {/* Content - TaskViewSwitcher for Desktop, Swipe Navigation for Mobile */}
@@ -295,6 +297,7 @@ const TaskListScreen: React.FC = () => {
               loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
             }}
             onViewModeChange={setViewMode}
+            viewMode={viewMode}
           />
         ) : (
           <TaskListContent
