@@ -16,6 +16,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    icon: path.join(__dirname, '../assets/images/icon.png'), // App icon
     frame: false, // Remove default frame for custom titlebar
     titleBarStyle: 'hidden', // Hide titlebar on macOS
     webPreferences: {
