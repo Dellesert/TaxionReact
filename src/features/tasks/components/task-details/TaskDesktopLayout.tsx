@@ -133,6 +133,7 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
           >
             <View style={[
               styles.card,
@@ -185,6 +186,7 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
               style={styles.cardContent}
               contentContainerStyle={styles.cardScrollContent}
               showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
             >
               <TaskAttachmentsTab
                 attachments={attachments}
@@ -226,7 +228,7 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
                 )}
               </View>
             </View>
-            <ScrollView style={styles.cardContent} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.cardContent} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
               <View style={styles.commentsContent}>
                 <TaskCommentsTab
                   comments={comments}
@@ -319,6 +321,7 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
           <ScrollView
             style={[styles.historyContent, { backgroundColor: theme.card }]}
             showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
           >
             <TaskHistoryTab
               activities={activities}
@@ -346,15 +349,17 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 20,
     minWidth: '100%',
+    minHeight: '100%',
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
   column: {
     width: 360,
     minWidth: 280,
+    height: '100%',
   },
   scrollView: {
-    flex: 1,
+    height: '100%',
   },
   scrollContent: {
     paddingBottom: 20,
@@ -392,8 +397,9 @@ const styles = StyleSheet.create({
     }),
   },
   fullHeightCard: {
-    flex: 1,
+    height: '100%',
     display: 'flex',
+    flexDirection: 'column',
   },
   cardHeader: {
     flexDirection: 'row',
