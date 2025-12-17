@@ -185,8 +185,9 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
           </TouchableOpacity>
         )}
 
-      {/* Toggle button to show/hide results for polls that allow viewing before voting */}
-      {poll.show_results &&
+      {/* Toggle button to show/hide results for polls that allow viewing before voting (only on mobile) */}
+      {!isDesktop &&
+        poll.show_results &&
         !poll.show_results_after &&
         !poll.user_has_voted &&
         !isCreatorOrAdmin && (

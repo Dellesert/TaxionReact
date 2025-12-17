@@ -78,19 +78,18 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
   const { theme } = useTheme();
   const [hoveredSection, setHoveredSection] = useState<'info' | 'voting' | 'voters' | null>(null);
 
-  const showVotersColumn = showResultsSection && (isCreatorOrAdmin || poll.show_results) && poll.total_voters > 0;
+  const showVotersColumn = poll.total_voters > 0;
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContainer}
+      showsVerticalScrollIndicator={true}
+    >
       {/* Two Column Layout */}
       <View style={styles.mainContent}>
         {/* Left Column - Main Content */}
         <View style={styles.leftColumn}>
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
             {/* Poll Header Section */}
             <View style={[styles.pollHeaderSection, { backgroundColor: theme.card }]}>
               <Text style={[styles.pollTitle, { color: theme.text }]}>{poll.title}</Text>
@@ -251,16 +250,10 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
                 </View>
               </View>
             )}
-          </ScrollView>
         </View>
 
         {/* Right Column - Sidebar */}
         <View style={styles.rightColumn}>
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
             {/* About Section */}
             <View style={[styles.sidebarCard, { backgroundColor: theme.card }]}>
               <View style={styles.sidebarHeader}>
@@ -411,10 +404,9 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
                 </View>
               </View>
             )}
-          </ScrollView>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -422,32 +414,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContainer: {
+    flexGrow: 1,
+  },
   mainContent: {
-    flex: 1,
     flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
     padding: 24,
     gap: 24,
   },
   leftColumn: {
-    flex: 2,
+    flex: 0,
+    width: '100%',
+    maxWidth: 800,
     minWidth: 500,
+    gap: 20,
   },
   rightColumn: {
-    flex: 1,
-    minWidth: 350,
-    maxWidth: 420,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 24,
+    flex: 0,
+    width: 380,
+    minWidth: 380,
     gap: 20,
   },
 
   // Poll Header Section
   pollHeaderSection: {
-    padding: 24,
+    padding: 20,
     borderRadius: 16,
     marginBottom: 20,
     ...Platform.select({
@@ -464,9 +457,9 @@ const styles = StyleSheet.create({
     }),
   },
   pollTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    lineHeight: 36,
+    lineHeight: 32,
     marginBottom: 16,
     letterSpacing: -0.5,
   },
@@ -516,7 +509,7 @@ const styles = StyleSheet.create({
 
   // Main Content Card
   mainCard: {
-    padding: 28,
+    padding: 24,
     borderRadius: 16,
     ...Platform.select({
       web: {
