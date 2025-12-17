@@ -145,14 +145,14 @@ const PollDetailScreen: React.FC = () => {
 
   // Setup header for chat mode
   useLayoutEffect(() => {
-    if (isFromChat && poll) {
+    if (isFromChat) {
       navigation.setOptions({
         headerTitle: () => (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 20, fontWeight: '600', color: theme.text }}>Опрос</Text>
           </View>
         ),
-        headerRight: hasActions ? () => (
+        headerRight: hasActions && poll ? () => (
           <TouchableOpacity
             onPress={() => setShowActionMenu(true)}
             style={{ padding: 4, marginRight: 8 }}
@@ -247,28 +247,8 @@ const PollDetailScreen: React.FC = () => {
     }
   };
 
-  // Loading state
-  if (isLoading) {
-    return <PollDetailSkeleton isFromChat={isFromChat} />;
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-        <PollErrorState
-          error={error}
-          onRetry={loadPollDetail}
-          onGoBack={() => navigation.goBack()}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  // No poll loaded
-  if (!poll) {
-    return null;
-  }
+  // Show content skeleton only when loading and no poll data yet
+  const showContentSkeleton = isLoading && !poll;
 
   return (
     <SafeAreaView
@@ -276,9 +256,9 @@ const PollDetailScreen: React.FC = () => {
       edges={['top']}
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header */}
+        {/* Header - always show to prevent jumping */}
         {!isFromChat && (
-          isDesktop ? (
+          isDesktop && poll ? (
             <PollDesktopHeader
               poll={poll}
               canEdit={permissions.can_edit}
@@ -291,17 +271,32 @@ const PollDetailScreen: React.FC = () => {
               onClose={handleCloseAction}
               onBack={() => navigation.goBack()}
             />
-          ) : (
+          ) : !isDesktop && !showContentSkeleton ? (
             <PollHeader
               hasActions={hasActions}
               onOpenMenu={() => setShowActionMenu(true)}
               onClose={() => navigation.goBack()}
             />
-          )
+          ) : null
         )}
 
-        {/* Content - Desktop or Mobile Layout */}
-        {isDesktop ? (
+        {/* Loading state - content skeleton */}
+        {showContentSkeleton && <PollDetailSkeleton isFromChat={isFromChat} />}
+
+        {/* Error state */}
+        {!showContentSkeleton && error && (
+          <PollErrorState
+            error={error}
+            onRetry={loadPollDetail}
+            onGoBack={() => navigation.goBack()}
+          />
+        )}
+
+        {/* Content - only show when loaded */}
+        {!showContentSkeleton && !error && poll && (
+          <>
+            {/* Content - Desktop or Mobile Layout */}
+            {isDesktop ? (
           <PollDesktopLayout
             poll={poll}
             votersPreview={votersPreview}
@@ -398,6 +393,8 @@ const PollDetailScreen: React.FC = () => {
               </View>
             </ScrollView>
           </View>
+        )}
+          </>
         )}
 
         {/* Modals */}

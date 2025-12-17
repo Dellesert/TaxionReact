@@ -6,7 +6,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, ScrollView } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PollDetailSkeletonProps {
   isFromChat?: boolean;
@@ -14,7 +13,6 @@ interface PollDetailSkeletonProps {
 
 export const PollDetailSkeleton: React.FC<PollDetailSkeletonProps> = ({ isFromChat = false }) => {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -51,7 +49,7 @@ export const PollDetailSkeleton: React.FC<PollDetailSkeletonProps> = ({ isFromCh
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header (если не из чата) */}
       {!isFromChat && (
-        <View style={[styles.header, { backgroundColor: theme.card, paddingTop: insets.top, borderBottomColor: theme.border }]}>
+        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
           <View style={styles.headerContent}>
             {/* Back button */}
             <Animated.View style={[styles.backButton, dynamicStyles.line]} />
@@ -147,7 +145,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingBottom: 12,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
   headerContent: {
@@ -155,7 +153,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 8,
   },
   backButton: {
     width: 40,
