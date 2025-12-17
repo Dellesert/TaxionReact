@@ -63,22 +63,26 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
         <View style={styles.desktopHeaderContent}>
           {/* Left side - View Mode Switcher */}
           <View style={styles.desktopLeft}>
-            <View style={[styles.viewModeSwitcher, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+            <View style={[styles.viewModeSwitcher, { backgroundColor: theme.backgroundSecondary }]}>
               <TouchableOpacity
                 style={[
                   styles.viewModeButton,
-                  viewMode === 'grid' && { backgroundColor: theme.card },
+                  viewMode === 'grid' && [
+                    styles.viewButtonActive,
+                    { backgroundColor: theme.card },
+                  ],
                 ]}
                 onPress={() => onViewModeChange?.('grid')}
               >
                 <Ionicons
                   name="grid-outline"
-                  size={18}
+                  size={16}
                   color={viewMode === 'grid' ? theme.primary : theme.textSecondary}
                 />
                 <Text style={[
                   styles.viewModeButtonText,
-                  { color: viewMode === 'grid' ? theme.text : theme.textSecondary }
+                  { color: viewMode === 'grid' ? theme.primary : theme.textSecondary },
+                  viewMode === 'grid' && styles.viewButtonTextActive,
                 ]}>
                   Сетка
                 </Text>
@@ -86,18 +90,22 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
               <TouchableOpacity
                 style={[
                   styles.viewModeButton,
-                  viewMode === 'table' && { backgroundColor: theme.card },
+                  viewMode === 'table' && [
+                    styles.viewButtonActive,
+                    { backgroundColor: theme.card },
+                  ],
                 ]}
                 onPress={() => onViewModeChange?.('table')}
               >
                 <Ionicons
                   name="reorder-four-outline"
-                  size={18}
+                  size={16}
                   color={viewMode === 'table' ? theme.primary : theme.textSecondary}
                 />
                 <Text style={[
                   styles.viewModeButtonText,
-                  { color: viewMode === 'table' ? theme.text : theme.textSecondary }
+                  { color: viewMode === 'table' ? theme.primary : theme.textSecondary },
+                  viewMode === 'table' && styles.viewButtonTextActive,
                 ]}>
                   Таблица
                 </Text>
@@ -134,7 +142,7 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
                 onPress={handleFilterPress}
                 style={[styles.desktopButton, { borderColor: theme.border }]}
               >
-                <Ionicons name="filter" size={20} color={theme.text} />
+                <Ionicons name="filter" size={18} color={theme.text} />
                 <Text style={[styles.desktopButtonText, { color: theme.text }]}>
                   Фильтры
                 </Text>
@@ -148,7 +156,7 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
                 onPress={onCreatePress}
                 style={[styles.desktopButtonPrimary, { backgroundColor: theme.primary }]}
               >
-                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Ionicons name="add" size={18} color="#FFFFFF" />
                 <Text style={styles.desktopButtonPrimaryText}>Создать опрос</Text>
               </TouchableOpacity>
             )}
@@ -303,8 +311,7 @@ const styles = StyleSheet.create({
 
   // Desktop styles
   desktopHeader: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     ...Platform.select({
       web: {
@@ -323,7 +330,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 24,
+    paddingHorizontal: 0,
+    paddingVertical: 10,
+    gap: 12,
+    minHeight: 52,
   },
   desktopLeft: {
     flexShrink: 0,
@@ -331,29 +341,37 @@ const styles = StyleSheet.create({
   viewModeSwitcher: {
     flexDirection: 'row',
     borderRadius: 10,
-    borderWidth: 1,
-    padding: 4,
-    gap: 4,
+    padding: 3,
+    gap: 2,
   },
   viewModeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
     gap: 6,
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transitionProperty: 'background-color',
-        transitionDuration: '0.15s',
+        transition: 'all 0.2s ease',
       },
     }),
   },
   viewModeButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    letterSpacing: -0.2,
+    lineHeight: 16,
+  },
+  viewButtonActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  viewButtonTextActive: {
+    fontWeight: '700',
   },
   desktopTitle: {
     fontSize: 24,
@@ -423,23 +441,22 @@ const styles = StyleSheet.create({
   desktopRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flexShrink: 0,
   },
   desktopButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 2,
-    gap: 8,
+    gap: 6,
     position: 'relative',
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transitionProperty: 'background-color, border-color, transform',
-        transitionDuration: '0.15s',
+        transition: 'all 0.15s ease',
         boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
       },
       default: {
@@ -452,17 +469,18 @@ const styles = StyleSheet.create({
     }),
   },
   desktopButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.2,
+    lineHeight: 18,
   },
   desktopFilterIndicator: {
     position: 'absolute',
     top: -4,
     right: -4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     borderWidth: 2,
     borderColor: '#FFFFFF',
     ...Platform.select({
@@ -481,15 +499,14 @@ const styles = StyleSheet.create({
   desktopButtonPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    gap: 8,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 6,
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transitionProperty: 'transform, box-shadow',
-        transitionDuration: '0.15s',
+        transition: 'all 0.15s ease',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
       },
       default: {
@@ -502,9 +519,10 @@ const styles = StyleSheet.create({
     }),
   },
   desktopButtonPrimaryText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.2,
     color: '#FFFFFF',
+    lineHeight: 18,
   },
 });

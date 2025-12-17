@@ -278,6 +278,7 @@ const styles = StyleSheet.create({
   viewButtonText: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 16,
   },
   viewButtonTextActive: {
     fontWeight: '700',
@@ -316,6 +317,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.2,
+    lineHeight: 18,
   },
   filterIndicator: {
     position: 'absolute',
@@ -366,5 +368,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.2,
     color: '#FFFFFF',
+    lineHeight: 18,
   },
 });
