@@ -346,40 +346,29 @@ export default function App() {
           loadUnreadCount();
         },
         (response) => {
-          console.log('[App] 👆 Notification tapped:', response.notification.request.content.title);
-          const notificationData = response.notification.request.content.data || {};
+          let notificationData = response.notification.request.content.data || {};
 
-          console.log('[App] Notification data (iOS):', JSON.stringify(notificationData, null, 2));
+          // iOS иногда отправляет данные как строки - проверяем и парсим
+          if (typeof notificationData === 'string') {
+            try {
+              notificationData = JSON.parse(notificationData);
+            } catch (e) {
+              console.error('[App] Failed to parse notification data:', e);
+            }
+          }
 
           // Navigate using the same logic as in-app notifications
           const type = notificationData.type as string;
           const screenName = getNavigationScreenByType(type, notificationData);
           const params = getNavigationParams(type, notificationData);
 
-          console.log('[App] Push notification navigation (iOS):', {
-            type,
-            screenName,
-            params,
-            hasType: !!type,
-            hasScreenName: !!screenName,
-            hasParams: !!params,
-            dataKeys: Object.keys(notificationData),
-          });
-
           if (!screenName || !params) {
-            console.warn('[App] Cannot navigate - missing screenName or params:', {
-              screenName,
-              params,
-              type,
-              notificationData
-            });
             return;
           }
 
           // Navigate with retry mechanism for background->foreground transition
           const attemptNavigation = (retries = 0) => {
               if (navigationRef.current?.isReady()) {
-                console.log('[App] Navigation ready, navigating from tap...');
                 if (screenName === 'Tasks' && params.taskId) {
                   // Navigate to specific task
                   // @ts-ignore
@@ -416,10 +405,7 @@ export default function App() {
                   navigationRef.current.navigate(screenName, params);
                 }
               } else if (retries < 10) {
-                console.log('[App] Navigation not ready for tap, retrying...', retries + 1);
                 setTimeout(() => attemptNavigation(retries + 1), 300);
-              } else {
-                console.log('[App] Navigation failed after retries for tap');
               }
             };
 
@@ -432,24 +418,26 @@ export default function App() {
       import('expo-notifications').then(({ default: Notifications }) => {
         Notifications.getLastNotificationResponseAsync().then((response) => {
           if (response) {
-            console.log('[App] 🚀 App opened from notification:');
-            console.log('[App] Title:', response.notification.request.content.title);
-            console.log('[App] Body:', response.notification.request.content.body);
-            console.log('[App] Data:', JSON.stringify(response.notification.request.content.data));
-
             // Navigate to the appropriate screen
-            const notificationData = response.notification.request.content.data || {};
+            let notificationData = response.notification.request.content.data || {};
+
+            // iOS иногда отправляет данные как строки - проверяем и парсим
+            if (typeof notificationData === 'string') {
+              try {
+                notificationData = JSON.parse(notificationData);
+              } catch (e) {
+                console.error('[App] Failed to parse notification data:', e);
+              }
+            }
+
             const type = notificationData.type as string;
             const screenName = getNavigationScreenByType(type, notificationData);
             const params = getNavigationParams(type, notificationData);
-
-            console.log('[App] Cold start navigation:', { type, screenName, params });
 
             if (screenName && params) {
               // Wait for navigation to be ready (cold start may need more time)
               const attemptNavigation = (retries = 0) => {
                 if (navigationRef.current?.isReady()) {
-                  console.log('[App] Navigation ready, navigating...');
                   if (screenName === 'Tasks' && params.taskId) {
                     // Navigate to specific task
                     // @ts-ignore
@@ -487,18 +475,13 @@ export default function App() {
                   }
                 } else if (retries < 10) {
                   // Retry up to 10 times with 300ms delay (3 seconds total)
-                  console.log('[App] Navigation not ready, retrying...', retries + 1);
                   setTimeout(() => attemptNavigation(retries + 1), 300);
-                } else {
-                  console.log('[App] Navigation failed after retries');
                 }
               };
 
               // Start navigation attempt after a small delay
               setTimeout(() => attemptNavigation(), 500);
             }
-          } else {
-            console.log('[App] App opened normally (not from notification)');
           }
         });
       });

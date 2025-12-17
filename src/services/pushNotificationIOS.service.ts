@@ -223,15 +223,12 @@ class IOSPushNotificationService {
     onNotificationReceived?: (notification: Notifications.Notification) => void,
     onNotificationResponse?: (response: Notifications.NotificationResponse) => void
   ): void {
-    console.log('[PushIOS] Setting up notification listeners');
+    // Setup Firebase background message handler (for iOS background notifications)
+    this.setupFirebaseBackgroundHandler(onNotificationResponse);
 
     // Listener для входящих уведомлений (когда приложение открыто)
     this.notificationListener = Notifications.addNotificationReceivedListener(
       (notification) => {
-        console.log('[PushIOS] ✅ Notification received while app is OPEN:');
-        console.log('[PushIOS] Title:', notification.request.content.title);
-        console.log('[PushIOS] Body:', notification.request.content.body);
-        console.log('[PushIOS] Data:', JSON.stringify(notification.request.content.data));
         onNotificationReceived?.(notification);
       }
     );
@@ -239,15 +236,70 @@ class IOSPushNotificationService {
     // Listener для нажатий на уведомления
     this.responseListener = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        console.log('[PushIOS] ✅ Notification tapped:');
-        console.log('[PushIOS] Action:', response.actionIdentifier);
-        console.log('[PushIOS] Title:', response.notification.request.content.title);
-        console.log('[PushIOS] Data:', JSON.stringify(response.notification.request.content.data));
         onNotificationResponse?.(response);
       }
     );
+  }
 
-    console.log('[PushIOS] Notification listeners registered successfully');
+  /**
+   * Setup Firebase background notification handler
+   */
+  private setupFirebaseBackgroundHandler(
+    onNotificationResponse?: (response: Notifications.NotificationResponse) => void
+  ): void {
+    if (!firebaseMessaging) {
+      return;
+    }
+
+    // Handle background messages (when app is in background/quit)
+    firebaseMessaging().onNotificationOpenedApp((remoteMessage) => {
+      if (onNotificationResponse && remoteMessage.data) {
+        // Convert Firebase message to Expo notification format
+        const expoNotification: Notifications.NotificationResponse = {
+          notification: {
+            request: {
+              identifier: remoteMessage.messageId || String(Date.now()),
+              content: {
+                title: remoteMessage.notification?.title || null,
+                body: remoteMessage.notification?.body || null,
+                data: remoteMessage.data || {},
+              },
+              trigger: null,
+            },
+            date: Date.now(),
+          },
+          actionIdentifier: Notifications.DEFAULT_ACTION_IDENTIFIER,
+        };
+
+        onNotificationResponse(expoNotification);
+      }
+    });
+
+    // Check if app was opened by notification (cold start)
+    firebaseMessaging()
+      .getInitialNotification()
+      .then((remoteMessage) => {
+        if (remoteMessage && onNotificationResponse && remoteMessage.data) {
+          // Convert Firebase message to Expo notification format
+          const expoNotification: Notifications.NotificationResponse = {
+            notification: {
+              request: {
+                identifier: remoteMessage.messageId || String(Date.now()),
+                content: {
+                  title: remoteMessage.notification?.title || null,
+                  body: remoteMessage.notification?.body || null,
+                  data: remoteMessage.data || {},
+                },
+                trigger: null,
+              },
+              date: Date.now(),
+            },
+            actionIdentifier: Notifications.DEFAULT_ACTION_IDENTIFIER,
+          };
+
+          onNotificationResponse(expoNotification);
+        }
+      });
   }
 
   /**

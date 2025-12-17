@@ -40,6 +40,18 @@ export const getNavigationScreenByType = (
 /**
  * Получить параметры навигации для уведомления
  */
+/**
+ * Преобразует значение в число (FCM отправляет все как строки)
+ */
+const toNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const num = parseInt(value, 10);
+    return isNaN(num) ? undefined : num;
+  }
+  return undefined;
+};
+
 export const getNavigationParams = (
   type: string,
   data: Record<string, unknown>
@@ -48,23 +60,26 @@ export const getNavigationParams = (
     case 'message':
     case 'mention':
     case 'reaction':
-      if (data.chat_id) {
+      const chatId = toNumber(data.chat_id);
+      if (chatId) {
         return {
           screen: 'Chat',
-          params: { chatId: data.chat_id },
+          params: { chatId },
         };
       }
       return null;
     case 'task':
     case 'reminder':
       // If reminder has event_id, it's an event reminder - handle it separately
-      if (type === 'reminder' && data.event_id) {
-        return { eventId: data.event_id };
+      const eventIdFromReminder = toNumber(data.event_id);
+      if (type === 'reminder' && eventIdFromReminder) {
+        return { eventId: eventIdFromReminder };
       }
 
       // For task notifications
-      if (data.task_id) {
-        return { taskId: data.task_id };
+      const taskId = toNumber(data.task_id);
+      if (taskId) {
+        return { taskId };
       }
       // For grouped task notifications (e.g., overdue tasks, no progress tasks)
       if (data.task_ids && Array.isArray(data.task_ids) && data.task_ids.length > 0) {
@@ -77,15 +92,17 @@ export const getNavigationParams = (
           };
         } else {
           // Navigate to first task
-          return { taskId: data.task_ids[0] };
+          const firstTaskId = toNumber(data.task_ids[0]);
+          return firstTaskId ? { taskId: firstTaskId } : null;
         }
       }
       return null;
     case 'poll':
-      if (data.poll_id) {
+      const pollId = toNumber(data.poll_id);
+      if (pollId) {
         return {
           screen: 'PollDetail',
-          params: { pollId: data.poll_id },
+          params: { pollId },
         };
       }
       return null;
@@ -93,8 +110,9 @@ export const getNavigationParams = (
     case 'calendar':
       // For events, always navigate to calendar
       // If there's an event_id, we could potentially scroll to it in the future
-      if (data.event_id) {
-        return { eventId: data.event_id };
+      const eventId = toNumber(data.event_id);
+      if (eventId) {
+        return { eventId };
       }
       // Even without event_id, allow navigation to calendar
       return { navigateToCalendar: true };
