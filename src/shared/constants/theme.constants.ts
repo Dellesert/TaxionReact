@@ -16,6 +16,7 @@ export interface Theme {
   text: string;
   textSecondary: string;
   textTertiary: string;
+  textDisabled: string; // For disabled/inactive states
 
   // Primary colors
   primary: string;
@@ -55,6 +56,10 @@ export interface Theme {
 
   // Link color
   linkColor: string;
+
+  // Icon colors
+  iconPrimary: string;
+  iconSecondary: string;
 }
 
 export const lightTheme: Theme = {
@@ -68,6 +73,7 @@ export const lightTheme: Theme = {
   text: '#111827',
   textSecondary: '#6B7280',
   textTertiary: '#9CA3AF',
+  textDisabled: '#D1D5DB',
 
   // Primary colors
   primary: '#E94444',
@@ -106,6 +112,10 @@ export const lightTheme: Theme = {
 
   // Link color
   linkColor: '#1D4ED8',
+
+  // Icon colors
+  iconPrimary: '#111827',
+  iconSecondary: '#6B7280',
 };
 
 export const darkTheme: Theme = {
@@ -119,6 +129,7 @@ export const darkTheme: Theme = {
   text: '#F9FAFB',
   textSecondary: '#D1D5DB',
   textTertiary: '#9CA3AF',
+  textDisabled: '#6B7280',
 
   // Primary colors
   primary: '#EF4444',
@@ -158,6 +169,10 @@ export const darkTheme: Theme = {
 
   // Link color
   linkColor: '#60A5FA',
+
+  // Icon colors
+  iconPrimary: '#F9FAFB',
+  iconSecondary: '#D1D5DB',
 };
 
 export const themes: Record<Exclude<ThemeMode, 'system'>, Theme> = {

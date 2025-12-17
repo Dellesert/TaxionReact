@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Poll } from '../../types/poll.types';
+import { spacing, shadows } from '@shared/constants/design-system.constants';
 
 interface PollActionButtonsProps {
   poll: Poll;
@@ -46,8 +47,8 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
       {/* Draft warning and publish button */}
       {poll.status === 'draft' && (
         <>
-          <View style={styles.draftWarning}>
-            <Ionicons name="information-circle" size={24} color="#F59E0B" />
+          <View style={[styles.draftWarning, { borderColor: theme.warning }]}>
+            <Ionicons name="information-circle" size={24} color={theme.warning} />
             <Text style={styles.draftWarningText}>
               Это черновик. Опрос еще не опубликован и недоступен для голосования другим
               пользователям.
@@ -55,15 +56,16 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
           </View>
           {canDeleteOrClose && (
             <TouchableOpacity
-              style={[styles.publishButton, { backgroundColor: '#10B981' }]}
+              style={[styles.publishButton, { backgroundColor: theme.success }]}
               onPress={onPublish}
               disabled={isPublishing}
+              activeOpacity={0.8}
             >
               {isPublishing ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Ionicons name="rocket" size={20} color="#FFFFFF" />
+                  <Ionicons name="rocket" size={22} color="#FFFFFF" />
                   <Text style={styles.publishButtonText}>Опубликовать опрос</Text>
                 </>
               )}
@@ -83,10 +85,14 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
             <TextInput
               style={[
                 styles.textInput,
-                { color: theme.text, borderColor: theme.border },
+                {
+                  color: theme.text,
+                  borderColor: theme.border,
+                  backgroundColor: theme.backgroundSecondary,
+                },
               ]}
               placeholder="Добавьте комментарий..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={theme.inputPlaceholder}
               value={comment}
               onChangeText={onCommentChange}
               multiline
@@ -102,16 +108,20 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
           !showResults && (
             <>
               <TouchableOpacity
-                style={[styles.voteButton, { backgroundColor: theme.primary }]}
+                style={[styles.voteButton, { backgroundColor: theme.primary }, shadows.md]}
                 onPress={onVote}
                 disabled={isVoting}
+                activeOpacity={0.8}
               >
                 {isVoting ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.voteButtonText}>
-                    {isRevoting ? 'Изменить голос' : 'Проголосовать'}
-                  </Text>
+                  <>
+                    <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+                    <Text style={styles.voteButtonText}>
+                      {isRevoting ? 'Изменить голос' : 'Проголосовать'}
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
               {isRevoting && (
@@ -124,6 +134,7 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
                     },
                   ]}
                   onPress={onCancelRevote}
+                  activeOpacity={0.7}
                 >
                   <Text
                     style={[
@@ -138,33 +149,6 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
             </>
           )
         : null}
-
-      {/* Toggle button to show/hide results for polls that allow viewing before voting (only on mobile) */}
-      {!isDesktop &&
-        poll.show_results &&
-        !poll.show_results_after &&
-        !poll.user_has_voted &&
-        !isCreatorOrAdmin && (
-          <TouchableOpacity
-            style={[
-              styles.toggleResultsButton,
-              {
-                backgroundColor: theme.backgroundSecondary,
-                borderColor: theme.border,
-              },
-            ]}
-            onPress={onToggleResults}
-          >
-            <Ionicons
-              name={showResults ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
-              color={theme.primary}
-            />
-            <Text style={[styles.toggleResultsText, { color: theme.text }]}>
-              {showResults ? 'Скрыть результаты' : 'Посмотреть результаты'}
-            </Text>
-          </TouchableOpacity>
-        )}
     </View>
   );
 };
@@ -172,14 +156,13 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
 const styles = StyleSheet.create({
   draftWarning: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    margin: 16,
+    alignItems: 'flex-start',
+    padding: spacing.lg,
+    margin: spacing.lg,
     backgroundColor: '#FEF3C7',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    gap: 12,
+    borderWidth: 1.5,
+    gap: spacing.md,
   },
   draftWarningText: {
     flex: 1,
@@ -191,30 +174,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: spacing.lg,
     borderRadius: 12,
-    gap: 8,
-    marginTop: 24,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    ...shadows.sm,
   },
   publishButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 24,
   },
   commentContainer: {
-    padding: 16,
+    padding: spacing.lg,
     paddingTop: 0,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    lineHeight: 24,
+    marginBottom: spacing.md,
   },
   textInput: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 12,
+    padding: spacing.md,
     fontSize: 15,
+    lineHeight: 22,
     minHeight: 100,
     textAlignVertical: 'top',
   },
@@ -222,43 +209,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: spacing.lg + 2,
     borderRadius: 12,
-    marginBottom: 12,
-    gap: 8,
-    marginTop: 24,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
   },
   voteButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 24,
   },
   cancelRevoteButton: {
-    marginHorizontal: 16,
-    marginTop: -8,
-    marginBottom: 16,
-    padding: 12,
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     alignItems: 'center',
   },
   cancelRevoteButtonText: {
     fontSize: 15,
     fontWeight: '500',
-  },
-  toggleResultsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    gap: 8,
-  },
-  toggleResultsText: {
-    fontSize: 15,
-    fontWeight: '500',
+    lineHeight: 22,
   },
 });

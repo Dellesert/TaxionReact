@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Poll } from '../../types/poll.types';
+import { spacing, hitSlop } from '@shared/constants/design-system.constants';
 
 interface PollVotingUIProps {
   poll: Poll;
@@ -37,8 +38,10 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
   ) {
     return (
       <View style={styles.closedContainer}>
-        <Ionicons name="lock-closed" size={48} color="#6B7280" />
-        <Text style={styles.closedText}>Опрос завершен</Text>
+        <Ionicons name="lock-closed" size={56} color={theme.textDisabled} />
+        <Text style={[styles.closedText, { color: theme.textSecondary }]}>
+          Опрос завершен
+        </Text>
       </View>
     );
   }
@@ -48,8 +51,10 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
   if (poll.user_has_voted && !isRevoting) {
     return (
       <View style={styles.votedContainer}>
-        <Ionicons name="checkmark-circle" size={48} color="#10B981" />
-        <Text style={styles.votedText}>Вы уже проголосовали</Text>
+        <Ionicons name="checkmark-circle" size={56} color={theme.success} />
+        <Text style={[styles.votedText, { color: theme.success }]}>
+          Вы уже проголосовали
+        </Text>
       </View>
     );
   }
@@ -68,10 +73,16 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
               key={option.id}
               style={[
                 styles.optionButton,
-                { backgroundColor: theme.backgroundSecondary },
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  borderColor: theme.border,
+                },
                 selectedOptions.includes(option.id) && [
                   styles.optionSelected,
-                  { backgroundColor: theme.primary + '15' },
+                  {
+                    backgroundColor: theme.primary + '15',
+                    borderColor: theme.primary,
+                  },
                 ],
               ]}
               onPress={() => onOptionToggle(option.id)}
@@ -90,7 +101,7 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
                   }
                   size={24}
                   color={
-                    selectedOptions.includes(option.id) ? theme.primary : '#9CA3AF'
+                    selectedOptions.includes(option.id) ? theme.primary : theme.textTertiary
                   }
                 />
                 <Text
@@ -104,7 +115,9 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
                 </Text>
               </View>
               {option.description && (
-                <Text style={styles.optionDescription}>{option.description}</Text>
+                <Text style={[styles.optionDescription, { color: theme.textSecondary }]}>
+                  {option.description}
+                </Text>
               )}
             </TouchableOpacity>
           ))}
@@ -118,10 +131,14 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
           <TextInput
             style={[
               styles.textInput,
-              { color: theme.text, borderColor: theme.border },
+              {
+                color: theme.text,
+                borderColor: theme.border,
+                backgroundColor: theme.backgroundSecondary,
+              },
             ]}
             placeholder="Введите ваш ответ..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={theme.inputPlaceholder}
             value={textAnswer}
             onChangeText={onTextChange}
             multiline
@@ -136,12 +153,17 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Ваша оценка:</Text>
           <View style={styles.ratingStars}>
             {[1, 2, 3, 4, 5].map((star) => (
-              <TouchableOpacity key={star} onPress={() => onRatingChange(star)}>
+              <TouchableOpacity
+                key={star}
+                onPress={() => onRatingChange(star)}
+                hitSlop={hitSlop.sm}
+                activeOpacity={0.7}
+              >
                 <Ionicons
                   name={ratingValue && ratingValue >= star ? 'star' : 'star-outline'}
-                  size={40}
+                  size={44}
                   color={
-                    ratingValue && ratingValue >= star ? '#F59E0B' : '#D1D5DB'
+                    ratingValue && ratingValue >= star ? theme.warning : theme.textDisabled
                   }
                 />
               </TouchableOpacity>
@@ -157,10 +179,16 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
                   key={option.id}
                   style={[
                     styles.optionButton,
-                    { backgroundColor: theme.backgroundSecondary },
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: theme.border,
+                    },
                     selectedOptions.includes(option.id) && [
                       styles.optionSelected,
-                      { backgroundColor: theme.primary + '15' },
+                      {
+                        backgroundColor: theme.primary + '15',
+                        borderColor: theme.primary,
+                      },
                     ],
                   ]}
                   onPress={() => onSelectRatingOption(option.id)}
@@ -182,88 +210,90 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
 
 const styles = StyleSheet.create({
   optionsContainer: {
-    padding: 16,
+    padding: spacing.lg,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    lineHeight: 24,
+    marginBottom: spacing.md,
   },
   optionButton: {
-    padding: 16,
+    padding: spacing.lg,
     borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    marginBottom: spacing.md,
+    borderWidth: 1.5,
   },
   optionSelected: {
-    borderColor: '#3B82F6',
+    borderWidth: 2,
   },
   optionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   optionText: {
     flex: 1,
     fontSize: 15,
+    lineHeight: 22,
   },
   optionTextSelected: {
     fontWeight: '600',
   },
   optionDescription: {
     fontSize: 13,
-    color: '#6B7280',
-    marginTop: 8,
+    lineHeight: 18,
+    marginTop: spacing.sm,
     marginLeft: 36,
   },
   textInputContainer: {
-    padding: 16,
+    padding: spacing.lg,
   },
   textInput: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 12,
+    padding: spacing.md,
     fontSize: 15,
-    minHeight: 100,
+    lineHeight: 22,
+    minHeight: 120,
     textAlignVertical: 'top',
   },
   ratingContainer: {
-    padding: 16,
+    padding: spacing.lg,
   },
   ratingStars: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
-    marginVertical: 16,
+    gap: spacing.md,
+    marginVertical: spacing.xl,
   },
   ratingOptionsContainer: {
-    marginTop: 16,
+    marginTop: spacing.xl,
   },
   closedContainer: {
-    padding: 32,
+    padding: spacing.xxxl,
     alignItems: 'center',
+    gap: spacing.md,
   },
   closedText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 12,
+    lineHeight: 26,
   },
   votedContainer: {
-    padding: 32,
+    padding: spacing.xxxl,
     alignItems: 'center',
+    gap: spacing.md,
   },
   votedText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#10B981',
-    marginTop: 12,
+    lineHeight: 26,
   },
   errorText: {
     fontSize: 16,
-    color: '#EF4444',
-    marginTop: 12,
+    lineHeight: 24,
+    marginTop: spacing.md,
     textAlign: 'center',
   },
 });

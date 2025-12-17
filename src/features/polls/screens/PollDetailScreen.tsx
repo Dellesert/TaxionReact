@@ -35,6 +35,7 @@ import { PollErrorState } from '../components/states/PollErrorState';
 import { PollDesktopLayout } from '../components/poll-details/PollDesktopLayout';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { isSystemAdmin, shouldShowResults, shouldShowVotingUI } from '../utils/pollHelpers';
+import { spacing } from '@shared/constants/design-system.constants';
 
 type PollStackParamList = {
   PollList: undefined;
@@ -114,7 +115,15 @@ const PollDetailScreen: React.FC = () => {
                     poll?.status === 'active' &&
                     !isCreatorOrAdmin;
 
-  const hasActions = permissions.can_edit || permissions.can_delete_or_close || canRevote;
+  // Check if user can toggle results
+  const canToggleResults = poll &&
+                          !isDesktop &&
+                          poll.show_results &&
+                          !poll.show_results_after &&
+                          !poll.user_has_voted &&
+                          !isCreatorOrAdmin;
+
+  const hasActions = permissions.can_edit || permissions.can_delete_or_close || canRevote || canToggleResults;
 
   const showVotingUI = shouldShowVotingUI(
     poll,
@@ -441,6 +450,8 @@ const PollDetailScreen: React.FC = () => {
             canEdit={permissions.can_edit}
             canDeleteOrClose={permissions.can_delete_or_close}
             canRevote={canRevote}
+            canToggleResults={canToggleResults}
+            showResults={showResults}
             onClose={() => setShowActionMenu(false)}
             onEdit={() => {
               setShowActionMenu(false);
@@ -457,6 +468,10 @@ const PollDetailScreen: React.FC = () => {
             onRevote={() => {
               setShowActionMenu(false);
               setIsRevoting(true);
+            }}
+            onToggleResults={() => {
+              setShowActionMenu(false);
+              setShowResults(!showResults);
             }}
             isDesktop={isDesktop}
           />
@@ -481,11 +496,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 80,
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: spacing.lg,
+    gap: spacing.xl,
   },
 });
 

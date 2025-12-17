@@ -15,11 +15,14 @@ interface PollActionMenuProps {
   canEdit: boolean;
   canDeleteOrClose: boolean;
   canRevote?: boolean;
+  canToggleResults?: boolean;
+  showResults?: boolean;
   onClose: () => void;
   onEdit: () => void;
   onClosePoll: () => void;
   onDelete: () => void;
   onRevote?: () => void;
+  onToggleResults?: () => void;
   isDesktop?: boolean;
   buttonPosition?: { x: number; y: number; width: number; height: number };
 }
@@ -30,11 +33,14 @@ export const PollActionMenu: React.FC<PollActionMenuProps> = ({
   canEdit,
   canDeleteOrClose,
   canRevote = false,
+  canToggleResults = false,
+  showResults = false,
   onClose,
   onEdit,
   onClosePoll,
   onDelete,
   onRevote,
+  onToggleResults,
   isDesktop = false,
   buttonPosition,
 }) => {
@@ -99,6 +105,17 @@ export const PollActionMenu: React.FC<PollActionMenuProps> = ({
   };
 
   const menuItems = [];
+
+  // Toggle results option (for users who can view results before voting)
+  if (canToggleResults && onToggleResults) {
+    menuItems.push({
+      key: 'toggle-results',
+      icon: (showResults ? 'eye-off-outline' : 'eye-outline') as const,
+      label: showResults ? 'Скрыть результаты' : 'Посмотреть результаты',
+      color: theme.text,
+      onPress: () => handleAction(onToggleResults),
+    });
+  }
 
   // Revote option (for users who already voted)
   if (canRevote && onRevote) {

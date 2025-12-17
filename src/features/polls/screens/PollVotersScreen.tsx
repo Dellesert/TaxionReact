@@ -50,7 +50,7 @@ const PollVotersScreen: React.FC = () => {
   if (isLoading) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
+        style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}
         edges={['top']}
       >
         <View style={styles.centerContainer}>
@@ -64,7 +64,7 @@ const PollVotersScreen: React.FC = () => {
   if (error) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
+        style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}
         edges={['top']}
       >
         <PollErrorState error={error} onRetry={loadVoters} onGoBack={() => navigation.goBack()} />
@@ -76,7 +76,7 @@ const PollVotersScreen: React.FC = () => {
   if (!votersData || votersData.voters.length === 0) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
+        style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}
         edges={['top']}
       >
         <PollVotersHeader onBack={() => navigation.goBack()} />
@@ -87,7 +87,7 @@ const PollVotersScreen: React.FC = () => {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+      style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}
       edges={['top']}
     >
       {/* Header */}

@@ -5,6 +5,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
 import { Poll } from '../../types/poll.types';
 import { getPollStatusConfig, getPollTypeConfig, formatPollDate } from '../../utils/pollHelpers';
+import { spacing, hitSlop } from '@shared/constants/design-system.constants';
 
 interface PollInfoProps {
   poll: Poll;
@@ -34,16 +35,17 @@ export const PollInfo: React.FC<PollInfoProps> = ({ poll, onUserPress }) => {
       </View>
 
       {/* Info Row: Creator and Deadline */}
-      <View style={[styles.infoRow, { marginBottom: 16 }]}>
+      <View style={styles.infoRow}>
         <TouchableOpacity
           style={styles.creatorInfo}
           onPress={() => poll.created_by && onUserPress(poll.created_by)}
           activeOpacity={0.7}
+          hitSlop={hitSlop.sm}
         >
           <Avatar
             name={poll.creator?.name || 'Unknown'}
             imageUrl={poll.creator?.avatar}
-            size={20}
+            size={32}
           />
           <Text
             style={[styles.creatorText, { color: theme.textSecondary }]}
@@ -54,7 +56,7 @@ export const PollInfo: React.FC<PollInfoProps> = ({ poll, onUserPress }) => {
         </TouchableOpacity>
         {poll.end_time && poll.status === 'active' && (
           <View style={styles.deadlineInfo}>
-            <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+            <Ionicons name="calendar-outline" size={18} color={theme.iconSecondary} />
             <Text style={[styles.deadlineText, { color: theme.textSecondary }]}>
               до {formatPollDate(poll.end_time)}
             </Text>
@@ -75,14 +77,14 @@ export const PollInfo: React.FC<PollInfoProps> = ({ poll, onUserPress }) => {
       {/* Stats Row */}
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-          <Text style={styles.statText}>
+          <Ionicons name="calendar-outline" size={18} color={theme.iconSecondary} />
+          <Text style={[styles.statText, { color: theme.textSecondary }]}>
             Создан {new Date(poll.created_at).toLocaleDateString('ru-RU')}
           </Text>
         </View>
         <View style={styles.statItem}>
-          <Ionicons name="people-outline" size={16} color="#6B7280" />
-          <Text style={styles.statText}>
+          <Ionicons name="people-outline" size={18} color={theme.iconSecondary} />
+          <Text style={[styles.statText, { color: theme.textSecondary }]}>
             Проголосовало: {poll.total_voters || 0}
           </Text>
         </View>
@@ -93,63 +95,68 @@ export const PollInfo: React.FC<PollInfoProps> = ({ poll, onUserPress }) => {
 
 const styles = StyleSheet.create({
   pollTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
-    lineHeight: 30,
-    marginBottom: 16,
+    lineHeight: 32,
+    marginBottom: spacing.lg,
   },
   badgesRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
     borderRadius: 16,
   },
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#FFFFFF',
+    lineHeight: 16,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.xl,
   },
   creatorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
     flex: 1,
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   creatorText: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
     flexShrink: 1,
   },
   deadlineInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs + 2,
   },
   deadlineText: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
   descriptionSection: {
-    marginBottom: 16,
+    marginBottom: spacing.xl,
   },
   descriptionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    lineHeight: 24,
+    marginBottom: spacing.sm,
   },
   descriptionText: {
     fontSize: 15,
@@ -158,16 +165,16 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 16,
+    gap: spacing.lg,
+    marginBottom: spacing.lg,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.xs + 2,
   },
   statText: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

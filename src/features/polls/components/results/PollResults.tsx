@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
 import { Poll } from '../../types/poll.types';
+import { spacing, hitSlop, shadows } from '@shared/constants/design-system.constants';
 
 interface PollResultsProps {
   poll: Poll;
@@ -28,6 +29,7 @@ const OverlappingAvatars: React.FC<{
       style={styles.overlappingAvatarsContainer}
       onPress={onPress}
       activeOpacity={0.7}
+      hitSlop={hitSlop.sm}
     >
       <View style={styles.avatarsRow}>
         {displayVoters.map((voter, index) => (
@@ -37,12 +39,12 @@ const OverlappingAvatars: React.FC<{
               styles.avatarWrapper,
               {
                 zIndex: displayVoters.length - index,
-                marginLeft: index > 0 ? -16 : 0,
+                marginLeft: index > 0 ? -12 : 0,
               },
             ]}
           >
             <View style={[styles.avatarBorder, { borderColor: theme.backgroundSecondary }]}>
-              <Avatar name={voter.user_name} imageUrl={voter.avatar} size={32} />
+              <Avatar name={voter.user_name} imageUrl={voter.avatar} size={36} />
             </View>
           </View>
         ))}
@@ -51,7 +53,7 @@ const OverlappingAvatars: React.FC<{
             style={[
               styles.avatarWrapper,
               {
-                marginLeft: -8,
+                marginLeft: -12,
               },
             ]}
           >
@@ -64,7 +66,7 @@ const OverlappingAvatars: React.FC<{
           </View>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+      <Ionicons name="chevron-forward" size={20} color={theme.iconSecondary} />
     </TouchableOpacity>
   );
 };
@@ -91,8 +93,13 @@ export const PollResults: React.FC<PollResultsProps> = ({
       >
         {poll.options.map((option) => (
           <View key={option.id} style={styles.resultItem}>
-            <Text style={[styles.resultText, { color: theme.text }]}>{option.text}</Text>
-            <View style={[styles.resultBar, { backgroundColor: theme.border }]}>
+            <View style={styles.resultHeader}>
+              <Text style={[styles.resultText, { color: theme.text }]}>{option.text}</Text>
+              <Text style={[styles.resultPercent, { color: theme.text }]}>
+                {option.vote_percent?.toFixed(1) || 0}%
+              </Text>
+            </View>
+            <View style={[styles.resultBar, { backgroundColor: theme.borderLight }]}>
               <View
                 style={[
                   styles.resultBarFill,
@@ -103,10 +110,9 @@ export const PollResults: React.FC<PollResultsProps> = ({
                 ]}
               />
             </View>
-            <Text style={styles.resultPercent}>
-              {option.vote_percent?.toFixed(1) || 0}%
+            <Text style={[styles.resultCount, { color: theme.textSecondary }]}>
+              {option.vote_count || 0} {option.vote_count === 1 ? 'голос' : 'голосов'}
             </Text>
-            <Text style={styles.resultCount}>({option.vote_count || 0} голосов)</Text>
           </View>
         ))}
       </ScrollView>
@@ -127,54 +133,65 @@ export const PollResults: React.FC<PollResultsProps> = ({
 
 const styles = StyleSheet.create({
   resultsContainer: {
-    padding: 16,
-    marginTop: 16,
+    padding: spacing.lg,
+    marginTop: spacing.lg,
     borderRadius: 12,
+    ...shadows.sm,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    lineHeight: 24,
+    marginBottom: spacing.md,
   },
   resultsScrollView: {
     maxHeight: 300,
   },
   resultItem: {
-    marginBottom: 16,
+    marginBottom: spacing.xl,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
   },
   resultText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
-    marginBottom: 6,
+    lineHeight: 22,
+    flex: 1,
+    marginRight: spacing.md,
   },
   resultBar: {
-    height: 8,
-    borderRadius: 4,
+    height: 12,
+    borderRadius: 6,
     overflow: 'hidden',
-    marginBottom: 4,
+    marginBottom: spacing.xs + 2,
   },
   resultBarFill: {
     height: '100%',
+    borderRadius: 6,
   },
   resultPercent: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 15,
     fontWeight: '600',
+    lineHeight: 22,
   },
   resultCount: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: 13,
+    lineHeight: 18,
   },
   votersPreviewSection: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
   },
   overlappingAvatarsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 2,
+    paddingVertical: spacing.xs,
   },
   avatarsRow: {
     flexDirection: 'row',
@@ -184,20 +201,21 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatarBorder: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 2,
   },
   remainingCountCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   remainingCountText: {
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
   },
 });
