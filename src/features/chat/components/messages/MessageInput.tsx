@@ -38,6 +38,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 }) => {
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
+  const [inputHeight, setInputHeight] = useState(42); // Начальная высота инпута
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<AutoCorrectedTextInputRef>(null);
 
@@ -110,6 +111,15 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleCancelReply = () => {
     if (onCancelReply) onCancelReply();
+  };
+
+  // Обработчик изменения размера инпута на основе контента
+  const handleContentSizeChange = (event: any) => {
+    if (Platform.OS === 'web') {
+      const { contentSize } = event.nativeEvent;
+      const newHeight = Math.min(Math.max(42, contentSize.height), 120);
+      setInputHeight(newHeight);
+    }
   };
 
   // Обработчик клавиш для веба: Enter - отправка, Ctrl+Enter - новая строка
@@ -231,11 +241,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
         <AutoCorrectedTextInput
           ref={inputRef}
-          style={[styles.input, dynamicStyles.input]}
+          style={[
+            styles.input,
+            dynamicStyles.input,
+            Platform.OS === 'web' && { height: inputHeight }
+          ]}
           placeholder="Сообщение"
           placeholderTextColor={theme.inputPlaceholder}
           value={message}
           onChangeText={handleChangeText}
+          onContentSizeChange={handleContentSizeChange}
           multiline
           maxLength={4000}
           editable={!disabled}
@@ -266,7 +281,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-end', // Выравнивание по нижнему краю для кнопок
     paddingHorizontal: 16,
     paddingBottom: 24,
     paddingTop: 8,
@@ -278,17 +293,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
+    flexShrink: 0, // Не сжимать кнопку
   },
   input: {
     flex: 1,
+    minHeight: 42, // Минимальная высота равна высоте кнопок
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingTop: 13,
-    paddingBottom: 12,
+    paddingTop: Platform.OS === 'web' ? 11 : 13, // Меньший отступ сверху на web для выравнивания текста
+    paddingBottom: Platform.OS === 'web' ? 11 : 12, // Меньший отступ снизу на web
     fontSize: 15,
     lineHeight: 20,
     marginHorizontal: 8,
-    maxHeight: 120,
+    maxHeight: 120, // Максимальная высота (примерно 5 строк)
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none', // Убираем outline на web
+      },
+    }),
   },
   sendButton: {
     width: 42,
@@ -296,6 +318,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0, // Не сжимать кнопку
   },
   editIndicator: {
     flexDirection: 'row',
