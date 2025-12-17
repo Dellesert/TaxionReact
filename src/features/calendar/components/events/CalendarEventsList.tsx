@@ -21,26 +21,34 @@ export const CalendarEventsList: React.FC<CalendarEventsListProps> = ({
   const { theme } = useTheme();
 
   return (
-    <SectionList
-      sections={sections}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={({ item }) => <EventItem event={item} onPress={onEventPress} />}
-      renderSectionHeader={({ section: { title } }) => (
-        <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
-        </View>
-      )}
-      style={styles.list}
-      contentContainerStyle={styles.listContent}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
-    />
+    <View style={styles.container}>
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => <EventItem event={item} onPress={onEventPress} />}
+        renderSectionHeader={({ section: { title } }) => (
+          <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
+          </View>
+        )}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+  },
   list: {
     flex: 1,
+    width: '100%',
+    maxWidth: 600,
   },
   sectionHeader: {
     paddingHorizontal: 20,
