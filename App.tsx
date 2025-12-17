@@ -349,34 +349,63 @@ export default function App() {
           console.log('[App] 👆 Notification tapped:', response.notification.request.content.title);
           const notificationData = response.notification.request.content.data || {};
 
-          console.log('[App] Notification data:', notificationData);
+          console.log('[App] Notification data (iOS):', JSON.stringify(notificationData, null, 2));
 
           // Navigate using the same logic as in-app notifications
           const type = notificationData.type as string;
           const screenName = getNavigationScreenByType(type, notificationData);
           const params = getNavigationParams(type, notificationData);
 
-          console.log('[App] Push notification navigation:', {
+          console.log('[App] Push notification navigation (iOS):', {
             type,
             screenName,
-            params
+            params,
+            hasType: !!type,
+            hasScreenName: !!screenName,
+            hasParams: !!params,
+            dataKeys: Object.keys(notificationData),
           });
 
-          if (screenName && params) {
-            // Navigate with retry mechanism for background->foreground transition
-            const attemptNavigation = (retries = 0) => {
+          if (!screenName || !params) {
+            console.warn('[App] Cannot navigate - missing screenName or params:', {
+              screenName,
+              params,
+              type,
+              notificationData
+            });
+            return;
+          }
+
+          // Navigate with retry mechanism for background->foreground transition
+          const attemptNavigation = (retries = 0) => {
               if (navigationRef.current?.isReady()) {
                 console.log('[App] Navigation ready, navigating from tap...');
                 if (screenName === 'Tasks' && params.taskId) {
+                  // Navigate to specific task
                   // @ts-ignore
-                  navigationRef.current.navigate('TaskDetail', { taskId: params.taskId });
+                  navigationRef.current.navigate('Tasks', {
+                    screen: 'TaskDetail',
+                    params: { taskId: params.taskId }
+                  });
                 } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
+                  // Navigate to specific poll
                   const pollId = params.params?.pollId || params.pollId;
                   // @ts-ignore
-                  navigationRef.current.navigate('PollDetail', { pollId });
-                } else if (screenName === 'Chats' && params.screen === 'Chat') {
+                  navigationRef.current.navigate('Polls', {
+                    screen: 'PollDetail',
+                    params: { pollId }
+                  });
+                } else if (screenName === 'Chats' && params.screen === 'Chat' && params.params?.chatId) {
+                  // Navigate to specific chat
                   // @ts-ignore
-                  navigationRef.current.navigate('Chats', params);
+                  navigationRef.current.navigate('Chats', {
+                    screen: 'Chat',
+                    params: { chatId: params.params.chatId }
+                  });
+                } else if (screenName === 'Calendar') {
+                  // Navigate to calendar (with event if available)
+                  // @ts-ignore
+                  navigationRef.current.navigate('Calendar', params.eventId ? { eventId: params.eventId } : undefined);
                 } else if (params.screen) {
                   // Nested navigation
                   // @ts-ignore
@@ -394,9 +423,8 @@ export default function App() {
               }
             };
 
-            // Small delay then attempt navigation
-            setTimeout(() => attemptNavigation(), 100);
-          }
+          // Small delay then attempt navigation
+          setTimeout(() => attemptNavigation(), 100);
         }
       );
 
@@ -423,19 +451,37 @@ export default function App() {
                 if (navigationRef.current?.isReady()) {
                   console.log('[App] Navigation ready, navigating...');
                   if (screenName === 'Tasks' && params.taskId) {
+                    // Navigate to specific task
                     // @ts-ignore
-                    navigationRef.current.navigate('TaskDetail', { taskId: params.taskId });
+                    navigationRef.current.navigate('Tasks', {
+                      screen: 'TaskDetail',
+                      params: { taskId: params.taskId }
+                    });
                   } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
+                    // Navigate to specific poll
                     const pollId = params.params?.pollId || params.pollId;
                     // @ts-ignore
-                    navigationRef.current.navigate('PollDetail', { pollId });
-                  } else if (screenName === 'Chats' && params.screen === 'Chat') {
+                    navigationRef.current.navigate('Polls', {
+                      screen: 'PollDetail',
+                      params: { pollId }
+                    });
+                  } else if (screenName === 'Chats' && params.screen === 'Chat' && params.params?.chatId) {
+                    // Navigate to specific chat
                     // @ts-ignore
-                    navigationRef.current.navigate('Chats', params);
+                    navigationRef.current.navigate('Chats', {
+                      screen: 'Chat',
+                      params: { chatId: params.params.chatId }
+                    });
+                  } else if (screenName === 'Calendar') {
+                    // Navigate to calendar (with event if available)
+                    // @ts-ignore
+                    navigationRef.current.navigate('Calendar', params.eventId ? { eventId: params.eventId } : undefined);
                   } else if (params.screen) {
+                    // Nested navigation
                     // @ts-ignore
                     navigationRef.current.navigate(screenName, params);
                   } else {
+                    // Regular navigation
                     // @ts-ignore
                     navigationRef.current.navigate(screenName, params);
                   }
