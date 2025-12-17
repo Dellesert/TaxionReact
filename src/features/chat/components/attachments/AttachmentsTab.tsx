@@ -45,8 +45,36 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
+  // Адаптивная сетка для десктопа и мобильных устройств
   const screenWidth = Dimensions.get('window').width;
-  const imageSize = (screenWidth - 48) / 3; // 3 колонки с отступами
+  const isDesktop = screenWidth > 768;
+
+  // На десктопе используем до 6 колонок с максимальным размером 150px
+  // На мобильных - 3 колонки
+  const getImageDimensions = () => {
+    if (isDesktop) {
+      // Для десктопа: адаптивная сетка с колонками до 150px
+      const maxImageSize = 150;
+      const totalPadding = 48; // padding контейнера
+      const gap = 6; // gap между элементами
+
+      // Вычисляем количество колонок, которые поместятся
+      const availableWidth = screenWidth - totalPadding;
+      const columns = Math.floor(availableWidth / (maxImageSize + gap));
+      const clampedColumns = Math.max(3, Math.min(6, columns)); // От 3 до 6 колонок
+
+      // Вычисляем размер изображения с учетом gap
+      const totalGapWidth = gap * (clampedColumns - 1);
+      const imageSize = (availableWidth - totalGapWidth) / clampedColumns;
+
+      return Math.floor(imageSize);
+    } else {
+      // Для мобильных: 3 колонки как раньше
+      return (screenWidth - 48) / 3;
+    }
+  };
+
+  const imageSize = getImageDimensions();
 
   useEffect(() => {
     const loadSessionId = async () => {
@@ -388,6 +416,18 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
                   onPress={() => handleAttachmentPress(attachment, globalIndex)}
                   activeOpacity={0.8}
                 >
+                  {/* Placeholder/Loading state */}
+                  <View style={[
+                    styles.imagePlaceholder,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: theme.border,
+                    }
+                  ]}>
+                    <Ionicons name="image-outline" size={32} color={theme.textTertiary} />
+                  </View>
+
+                  {/* Actual image */}
                   <Image
                     source={{
                       uri: replaceLocalhostWithIP(attachment.thumbnail_url || attachment.file_url),
@@ -501,10 +541,23 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     padding: 12,
     gap: 6,
+    justifyContent: 'center',
   },
   imageContainer: {
     borderRadius: 8,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  imagePlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
   },
   image: {
     width: '100%',
