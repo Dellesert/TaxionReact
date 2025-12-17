@@ -2,6 +2,25 @@
  * Type definitions for Electron API exposed via contextBridge
  */
 
+export interface NotificationData {
+  screen?: 'Chat' | 'Task' | 'Poll' | 'Calendar';
+  chatId?: number;
+  taskId?: number;
+  pollId?: number;
+  eventId?: number;
+  [key: string]: any;
+}
+
+export interface NotificationResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface NotificationRegisterResponse extends NotificationResponse {
+  deviceId?: string;
+  platform?: string;
+}
+
 interface ElectronAPI {
   platform: string;
   isElectron: true;
@@ -34,6 +53,15 @@ interface ElectronAPI {
   maximize: () => void;
   close: () => void;
   isMaximized: () => Promise<boolean>;
+
+  // Notification API
+  notification: {
+    show: (title: string, body: string, data?: NotificationData) => Promise<NotificationResponse>;
+    register: (sessionId?: string) => Promise<NotificationRegisterResponse>;
+    unregister: () => Promise<NotificationResponse>;
+    setBadgeCount: (count: number) => Promise<NotificationResponse>;
+    onClicked: (callback: (data: NotificationData) => void) => () => void;
+  };
 }
 
 declare global {

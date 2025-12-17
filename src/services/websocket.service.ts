@@ -11,6 +11,8 @@ import { useInAppNotificationStore } from '@shared/store/inAppNotificationStore'
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import * as chatApi from '@/features/chat/api/chat.api';
+import { isElectron } from '@shared/utils/platform';
+import { electronPushNotificationService } from './pushNotificationElectron.service';
 
 type WSMessageType =
   // Messages
@@ -748,8 +750,25 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             // Add notification to the beginning of the list
             notificationStore.handleNewNotification(message.data);
 
-            // Show toast notification
-            inAppNotificationStore.showNotification(message.data);
+            // Show notification based on platform
+            try {
+              if (isElectron()) {
+                // Electron: Show native system notification
+                // Pass the complete notification data for proper navigation
+                electronPushNotificationService.showNotification(
+                  message.data.title || 'Tachyon Messenger',
+                  message.data.message || message.data.body || '',
+                  message.data // Pass full data object including type, chat_id, task_id, etc.
+                );
+              } else {
+                // Web/Mobile: Show in-app toast notification
+                inAppNotificationStore.showNotification(message.data);
+              }
+            } catch (error) {
+              console.error('[WS] Error showing notification:', error);
+              // Fallback to in-app notification if Electron notification fails
+              inAppNotificationStore.showNotification(message.data);
+            }
           }
           break;
 

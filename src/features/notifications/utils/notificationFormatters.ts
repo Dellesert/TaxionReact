@@ -28,6 +28,7 @@ export const getNavigationScreenByType = (
     case 'poll':
       return 'Polls';
     case 'event':
+    case 'calendar':
       return 'Calendar';
     case 'system':
       return null; // System notifications don't navigate anywhere
@@ -89,6 +90,7 @@ export const getNavigationParams = (
       }
       return null;
     case 'event':
+    case 'calendar':
       // For events, always navigate to calendar
       // If there's an event_id, we could potentially scroll to it in the future
       if (data.event_id) {

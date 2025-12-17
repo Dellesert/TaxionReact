@@ -11,6 +11,8 @@ import api from '@shared/api/axios.config';
 import { getFirebaseMessaging } from '@/config/firebase.config';
 import { getToken, onMessage, Unsubscribe } from 'firebase/messaging';
 import { iosPushNotificationService } from './pushNotificationIOS.service';
+import { isElectron } from '@shared/utils/platform';
+import { electronPushNotificationService } from './pushNotificationElectron.service';
 
 // Настройка обработки уведомлений
 Notifications.setNotificationHandler({
@@ -50,6 +52,12 @@ class PushNotificationService {
    */
   async registerForPushNotifications(): Promise<string | null> {
     console.log('[Push] registerForPushNotifications called, platform:', Platform.OS);
+
+    // Для Electron используем специальный сервис с нативными уведомлениями
+    if (isElectron()) {
+      console.log('[Push] Using Electron push notification service');
+      return electronPushNotificationService.registerForPushNotifications();
+    }
 
     // Для iOS используем специальный сервис с поддержкой Firebase FCM
     if (Platform.OS === 'ios') {
@@ -340,6 +348,12 @@ class PushNotificationService {
    * Установить badge count
    */
   async setBadgeCount(count: number): Promise<void> {
+    // Для Electron используем специальный метод
+    if (isElectron()) {
+      await electronPushNotificationService.setBadgeCount(count);
+      return;
+    }
+
     await Notifications.setBadgeCountAsync(count);
   }
 
@@ -361,6 +375,12 @@ class PushNotificationService {
    * Отменить регистрацию устройства (при logout)
    */
   async unregisterDevice(): Promise<void> {
+    // Для Electron используем специальный сервис
+    if (isElectron()) {
+      await electronPushNotificationService.unregister();
+      return;
+    }
+
     // Для iOS используем специальный сервис
     if (Platform.OS === 'ios') {
       await iosPushNotificationService.unregisterDevice();

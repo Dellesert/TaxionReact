@@ -22,6 +22,10 @@ contextBridge.exposeInMainWorld('electron', {
         'secure-storage:delete',
         'window:isMaximized',
         'app:version',
+        'notification:show',
+        'notification:register',
+        'notification:unregister',
+        'notification:setBadgeCount',
       ];
 
       if (validChannels.includes(channel)) {
@@ -34,7 +38,6 @@ contextBridge.exposeInMainWorld('electron', {
     // Send one-way messages to main process
     send: (channel, ...args) => {
       const validChannels = [
-        'notification:show',
         'tray:update',
         'window:focus',
         'window:minimize',
@@ -96,6 +99,23 @@ contextBridge.exposeInMainWorld('electron', {
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+
+  // Notification API
+  notification: {
+    show: (title, body, data) => ipcRenderer.invoke('notification:show', { title, body, data }),
+    register: (sessionId) => ipcRenderer.invoke('notification:register', sessionId),
+    unregister: () => ipcRenderer.invoke('notification:unregister'),
+    setBadgeCount: (count) => ipcRenderer.invoke('notification:setBadgeCount', count),
+    onClicked: (callback) => {
+      const subscription = (_event, ...args) => callback(...args);
+      ipcRenderer.on('notification:clicked', subscription);
+
+      // Return unsubscribe function
+      return () => {
+        ipcRenderer.removeListener('notification:clicked', subscription);
+      };
+    },
+  },
 });
 
 // Log preload script loaded

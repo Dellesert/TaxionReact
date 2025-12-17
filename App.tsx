@@ -26,6 +26,8 @@ import {
 import { CustomTitleBar } from '@shared/components/common/CustomTitleBar';
 import { TitleBarSearchProvider } from '@shared/contexts/TitleBarSearchContext';
 import { DesktopNavigationProvider } from '@shared/contexts/DesktopNavigationContext';
+import { isElectron } from '@shared/utils/platform';
+import { electronPushNotificationService } from '@/services/pushNotificationElectron.service';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -146,8 +148,8 @@ export default function App() {
       // Load unread notification count when user is authenticated
       loadUnreadCount();
 
-      // Web: Setup listeners for notification clicks
-      if (Platform.OS === 'web') {
+      // Web: Setup listeners for notification clicks (but not Electron)
+      if (Platform.OS === 'web' && !isElectron()) {
         const handleNotificationClick = (notificationData: Record<string, any>) => {
           const type = notificationData.type as string;
           const screenName = getNavigationScreenByType(type, notificationData);
@@ -219,6 +221,112 @@ export default function App() {
           cleanupServiceWorker?.();
           window.removeEventListener('message', handleWindowMessage);
         };
+      }
+
+      // Electron: Setup navigation callback for notification clicks
+      console.log('[App] Checking if Electron:', isElectron(), typeof window !== 'undefined' ? window.electron?.isElectron : 'window undefined');
+      if (isElectron()) {
+        console.log('[App] IS ELECTRON - Setting up notification callback');
+        electronPushNotificationService.setNavigationCallback((notificationData) => {
+          console.log('[App] Electron notification clicked:', notificationData);
+
+          if (!notificationData) {
+            console.log('[App] No notification data');
+            return;
+          }
+
+          if (!navigationRef.current?.isReady()) {
+            console.log('[App] Navigation not ready yet');
+            return;
+          }
+
+          // Prepare data for navigation helpers
+          // Backend sends: { type, data: { chat_id, task_id, etc }, ... }
+          // Navigation helpers expect: { type, chat_id, task_id, etc }
+          const flattenedData = {
+            ...notificationData,
+            ...(notificationData.data || {}), // Flatten nested data object
+          };
+
+          // Use the same navigation logic as web version
+          const type = flattenedData.type as string;
+          const screenName = getNavigationScreenByType(type, flattenedData);
+          const params = getNavigationParams(type, flattenedData);
+
+          console.log('[App] Electron notification navigation:', {
+            type,
+            screenName,
+            params,
+            originalData: notificationData,
+            flattenedData,
+          });
+
+          if (!screenName || !params) {
+            console.log('[App] Cannot navigate - missing screen or params');
+            return;
+          }
+
+          // Small delay to ensure window is focused and ready
+          setTimeout(() => {
+            try {
+              console.log('[App] Attempting navigation...', {
+                screenName,
+                params,
+                navigationReady: navigationRef.current?.isReady(),
+              });
+
+              if (screenName === 'Chats' && params.screen === 'Chat' && params.params?.chatId) {
+                // Navigate to specific chat (nested navigation)
+                console.log('[App] Navigating to Chat with chatId:', params.params.chatId);
+                // @ts-ignore
+                navigationRef.current?.navigate('Chats', {
+                  screen: 'Chat',
+                  params: { chatId: params.params.chatId }
+                });
+              } else if (screenName === 'Tasks' && params.taskId) {
+                // Navigate to specific task (nested navigation)
+                console.log('[App] Navigating to TaskDetail with taskId:', params.taskId);
+                // @ts-ignore
+                navigationRef.current?.navigate('Tasks', {
+                  screen: 'TaskDetail',
+                  params: { taskId: params.taskId }
+                });
+              } else if (screenName === 'Polls' && params.screen === 'PollDetail' && params.params?.pollId) {
+                // Navigate to specific poll (nested navigation)
+                console.log('[App] Navigating to PollDetail with pollId:', params.params.pollId);
+                // @ts-ignore
+                navigationRef.current?.navigate('Polls', {
+                  screen: 'PollDetail',
+                  params: { pollId: params.params.pollId }
+                });
+              } else if (screenName === 'Calendar') {
+                // Navigate to calendar (event detail if available)
+                console.log('[App] Navigating to Calendar', params.eventId ? `with eventId: ${params.eventId}` : '');
+                // @ts-ignore
+                navigationRef.current?.navigate('Calendar', params.eventId ? { eventId: params.eventId } : undefined);
+              } else {
+                console.log('[App] Unhandled navigation case:', {
+                  screenName,
+                  params,
+                  checks: {
+                    isChats: screenName === 'Chats',
+                    hasScreen: params.screen === 'Chat',
+                    hasChatId: params.params?.chatId,
+                    isTasks: screenName === 'Tasks',
+                    hasTaskId: params.taskId,
+                    isPolls: screenName === 'Polls',
+                    isPollDetail: params.screen === 'PollDetail',
+                    hasPollId: params.params?.pollId,
+                    isCalendar: screenName === 'Calendar',
+                    hasEventId: params.eventId,
+                  }
+                });
+              }
+            } catch (error) {
+              console.error('[App] Navigation error:', error);
+            }
+          }, 300);
+        });
       }
 
       // Register for push notifications

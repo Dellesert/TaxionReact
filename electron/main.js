@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, Notification } = require('electron');
 const path = require('path');
 const url = require('url');
 const Store = require('electron-store');
@@ -292,6 +292,111 @@ function setupIPCHandlers() {
 
   ipcMain.handle('window:isMaximized', () => {
     return mainWindow ? mainWindow.isMaximized() : false;
+  });
+
+  // Notification handlers
+  ipcMain.handle('notification:show', async (event, { title, body, data }) => {
+    try {
+      // Check if notifications are supported
+      if (!Notification.isSupported()) {
+        console.warn('[Notification] Notifications not supported on this system');
+        return { success: false, error: 'Notifications not supported' };
+      }
+
+      const notification = new Notification({
+        title: title || 'Tachyon Messenger',
+        body: body || '',
+        icon: path.join(__dirname, '../assets/images/icon.png'),
+        silent: false,
+        urgency: 'normal', // low, normal, critical
+      });
+
+      // Handle notification click
+      notification.on('click', () => {
+        console.log('[Notification] Notification clicked:', data);
+
+        // Focus the main window
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+          }
+          mainWindow.focus();
+
+          // Send notification data to renderer for navigation
+          mainWindow.webContents.send('notification:clicked', data);
+        }
+      });
+
+      // Handle notification close
+      notification.on('close', () => {
+        console.log('[Notification] Notification closed');
+      });
+
+      // Show the notification
+      notification.show();
+
+      return { success: true };
+    } catch (error) {
+      console.error('[Notification] Error showing notification:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('notification:register', async (event, sessionId) => {
+    try {
+      // Generate a unique device ID for this Electron installation
+      const { machineIdSync } = require('node-machine-id');
+      let deviceId;
+
+      try {
+        const machineId = machineIdSync();
+        deviceId = `electron-${machineId}`;
+      } catch (error) {
+        // Fallback to random UUID if machine-id fails
+        const { randomUUID } = require('crypto');
+        deviceId = `electron-${randomUUID()}`;
+      }
+
+      console.log('[Notification] Registering device:', deviceId);
+
+      return {
+        success: true,
+        deviceId,
+        platform: process.platform, // 'win32', 'darwin', 'linux'
+      };
+    } catch (error) {
+      console.error('[Notification] Error registering:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('notification:unregister', async (event) => {
+    try {
+      console.log('[Notification] Unregistering device');
+      // Cleanup logic if needed
+      return { success: true };
+    } catch (error) {
+      console.error('[Notification] Error unregistering:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('notification:setBadgeCount', async (event, count) => {
+    try {
+      if (process.platform === 'darwin') {
+        // macOS supports badge count
+        app.setBadgeCount(count);
+        console.log('[Notification] Badge count set to:', count);
+      } else if (process.platform === 'win32') {
+        // Windows: Set overlay icon (optional)
+        // You can implement overlay icon for Windows if needed
+        console.log('[Notification] Badge count not supported on Windows');
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('[Notification] Error setting badge count:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   console.log('[IPC] Handlers registered successfully');

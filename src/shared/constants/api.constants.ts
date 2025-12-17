@@ -208,6 +208,17 @@ export const API_ENDPOINTS = {
     PREFERENCES: '/notifications/preferences',
     UPDATE_PREFERENCES: '/notifications/preferences',
   },
+
+  // Devices (Push Notifications)
+  DEVICES: {
+    REGISTER: '/devices',
+    LIST: '/devices',
+    BY_ID: (id: string) => `/devices/${id}`,
+    UPDATE: (id: string) => `/devices/${id}`,
+    UNREGISTER: (id: string) => `/devices/${id}`,
+    VALIDATE: '/devices/validate',
+    STATS: '/devices/stats',
+  },
 } as const;
 
 // HTTP Status Codes
