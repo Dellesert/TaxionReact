@@ -3,7 +3,7 @@
  * Модальное окно для редактирования опроса
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,14 +16,20 @@ import {
   StatusBar,
   Switch,
   ActivityIndicator,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as pollApi from '../../api/poll.api';
 import { Poll, PollVisibility } from '../../types/poll.types';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface EditPollModalProps {
   visible: boolean;
@@ -39,12 +45,18 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
   onPollUpdated,
 }) => {
   const { theme, isDark } = useTheme();
+  const isDesktop = useIsWideScreen();
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [poll, setPoll] = useState<Poll | null>(null);
+
+  // Multi-step navigation
+  const [currentStep, setCurrentStep] = useState(1);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const totalSteps = 3;
 
   // Editable fields
   const [title, setTitle] = useState('');
@@ -139,12 +151,25 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
       // Add options only if not open_text type
       if (poll?.type !== 'open_text') {
         const filledOptions = options.filter((opt) => opt.text.trim());
-        updateData.options = filledOptions.map((opt, index) => ({
-          id: opt.id,
-          text: opt.text.trim(),
-          description: opt.description?.trim() || undefined,
-          position: index + 1,
-        }));
+        updateData.options = filledOptions.map((opt, index) => {
+          // For new options (without id), don't include id field at all
+          if (opt.id) {
+            // Existing option - include id
+            return {
+              id: opt.id,
+              text: opt.text.trim(),
+              description: opt.description?.trim() || undefined,
+              position: index + 1,
+            };
+          } else {
+            // New option - no id field
+            return {
+              text: opt.text.trim(),
+              description: opt.description?.trim() || undefined,
+              position: index + 1,
+            };
+          }
+        });
       }
 
       await pollApi.updatePoll(pollId, updateData);
@@ -168,6 +193,56 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
     }
   };
 
+  const handleClose = () => {
+    setCurrentStep(1);
+    slideAnim.setValue(0);
+    onClose();
+  };
+
+  const goToNextStep = () => {
+    if (currentStep < totalSteps) {
+      const nextStep = currentStep + 1;
+      const width = isDesktop ? 700 : SCREEN_WIDTH;
+      Animated.timing(slideAnim, {
+        toValue: -(nextStep - 1) * width,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      setCurrentStep(nextStep);
+    }
+  };
+
+  const goToPreviousStep = () => {
+    if (currentStep > 1) {
+      const prevStep = currentStep - 1;
+      const width = isDesktop ? 700 : SCREEN_WIDTH;
+      Animated.timing(slideAnim, {
+        toValue: -(prevStep - 1) * width,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      setCurrentStep(prevStep);
+    }
+  };
+
+  const canProceedFromStep = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        return title.trim().length > 0;
+      case 2:
+        if (poll?.type === 'open_text') return true;
+        const filledOptions = options.filter((opt) => opt.text.trim());
+        return filledOptions.length >= 2;
+      case 3:
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  // Calculate modal width for animations
+  const modalWidth = isDesktop ? 700 : SCREEN_WIDTH;
+
   if (isLoading) {
     return (
       <Modal visible={visible} transparent>
@@ -181,174 +256,271 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      transparent={false}
-      onRequestClose={onClose}
-      presentationStyle="fullScreen"
+      animationType={isDesktop ? "fade" : "slide"}
+      transparent={isDesktop}
+      onRequestClose={handleClose}
+      presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
     >
-      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
-        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
+      <View style={[
+        styles.modalOverlay,
+        isDesktop && styles.modalOverlayDesktop,
+        { backgroundColor: isDesktop ? 'rgba(0, 0, 0, 0.5)' : theme.card }
+      ]}>
+        <KeyboardAvoidingView
+          style={[
+            styles.container,
+            { backgroundColor: theme.card },
+            !isDesktop && { paddingTop: insets.top },
+            isDesktop && styles.containerDesktop
+          ]}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+        >
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <Ionicons name="close" size={28} color={theme.error} />
+          {/* Header */}
+          <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+              <Ionicons name="close" size={28} color={theme.textSecondary} />
             </TouchableOpacity>
+
+            <View style={styles.headerCenter}>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование опроса</Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+                Шаг {currentStep} из {totalSteps}
+              </Text>
+            </View>
+
+            <View style={styles.headerButton} />
           </View>
 
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Редактировать</Text>
+          {/* Progress Indicator */}
+          <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
+            <View style={styles.progressBar}>
+              {[1, 2, 3].map((step) => (
+                <View
+                  key={step}
+                  style={[
+                    styles.progressStep,
+                    { backgroundColor: theme.border },
+                    currentStep >= step && { backgroundColor: theme.primary },
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
 
-          <View style={styles.headerRight}>
+        {/* Multi-step Content */}
+        <View style={[styles.content, { backgroundColor: theme.background }]}>
+          <Animated.View
+            style={[
+              styles.stepsContainer,
+              {
+                transform: [{ translateX: slideAnim }],
+              },
+            ]}
+          >
+            {/* Step 1: Основная информация */}
+            <View style={[styles.stepContent, { width: modalWidth }]}>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.stepHeader}>
+                  <Text style={[styles.stepTitle, { color: theme.text }]}>Основная информация</Text>
+                  <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+                    Укажите название и описание опроса
+                  </Text>
+                </View>
+
+                <View style={[styles.card, { backgroundColor: theme.card }]}>
+                  <View style={styles.cardSection}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Название *</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Название опроса"
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={title}
+                      onChangeText={setTitle}
+                      maxLength={200}
+                    />
+                  </View>
+
+                  <View style={styles.cardSection}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Описание</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Опишите детали опроса..."
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={description}
+                      onChangeText={setDescription}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                      maxLength={500}
+                    />
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* Step 2: Варианты ответа */}
+            <View style={[styles.stepContent, { width: modalWidth }]}>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.stepHeader}>
+                  <Text style={[styles.stepTitle, { color: theme.text }]}>Варианты ответа</Text>
+                  <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+                    {poll?.type === 'open_text'
+                      ? 'Открытый опрос не требует вариантов ответа'
+                      : 'Отредактируйте варианты ответа'}
+                  </Text>
+                </View>
+
+                {poll?.type !== 'open_text' && (
+                  <View style={[styles.card, { backgroundColor: theme.card }]}>
+                    <View style={styles.cardSection}>
+                      <Text style={[styles.label, { color: theme.textSecondary }]}>Варианты ответа</Text>
+                      {options.map((option, index) => (
+                        <View key={index} style={styles.optionRow}>
+                          <TextInput
+                            style={[styles.optionInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                            placeholder={`Вариант ${index + 1}`}
+                            placeholderTextColor={theme.inputPlaceholder}
+                            value={option.text}
+                            onChangeText={(text) => updateOption(index, 'text', text)}
+                            maxLength={100}
+                          />
+                          {options.length > 2 && (
+                            <TouchableOpacity onPress={() => removeOption(index)} style={styles.removeButton}>
+                              <Ionicons name="close-circle" size={24} color={theme.error} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      ))}
+                      <TouchableOpacity onPress={addOption} style={[styles.addButton, { backgroundColor: theme.backgroundSecondary }]}>
+                        <Ionicons name="add" size={20} color={theme.primary} />
+                        <Text style={[styles.addButtonText, { color: theme.primary }]}>Добавить вариант</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Step 3: Настройки */}
+            <View style={[styles.stepContent, { width: modalWidth }]}>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.stepHeader}>
+                  <Text style={[styles.stepTitle, { color: theme.text }]}>Настройки</Text>
+                  <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+                    Укажите дополнительные параметры опроса
+                  </Text>
+                </View>
+
+                <View style={[styles.card, { backgroundColor: theme.card }]}>
+                  <View style={styles.cardSection}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Срок окончания</Text>
+                    <TouchableOpacity
+                      style={[styles.dateButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                      onPress={() => setShowEndDatePicker(true)}
+                    >
+                      <Ionicons name="calendar" size={20} color={theme.primary} />
+                      <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                        {endDate ? endDate.toLocaleDateString('ru-RU') : 'Выберите дату окончания'}
+                      </Text>
+                      {endDate && (
+                        <TouchableOpacity onPress={() => setEndDate(undefined)} style={styles.clearButton}>
+                          <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                        </TouchableOpacity>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.cardSection}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Дополнительно</Text>
+
+                    <View style={styles.switchRow}>
+                      <Text style={[styles.switchLabel, { color: theme.text }]}>Показывать результаты</Text>
+                      <Switch
+                        value={showResults}
+                        onValueChange={setShowResults}
+                        trackColor={{ false: theme.border, true: theme.primary }}
+                        thumbColor="#FFFFFF"
+                      />
+                    </View>
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+          </Animated.View>
+        </View>
+
+        {/* Bottom Navigation */}
+        <View style={[
+          styles.bottomNav,
+          {
+            backgroundColor: theme.card,
+            borderTopColor: theme.border,
+            paddingBottom: isDesktop ? 20 : insets.bottom
+          }
+        ]}>
+          {currentStep > 1 ? (
+            <TouchableOpacity
+              onPress={goToPreviousStep}
+              style={[styles.navButton, styles.backButton, { borderColor: theme.border }]}
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.text} />
+              <Text style={[styles.navButtonText, { color: theme.text }]}>Назад</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.navButton} />
+          )}
+
+          {currentStep < totalSteps ? (
+            <TouchableOpacity
+              onPress={goToNextStep}
+              disabled={!canProceedFromStep(currentStep)}
+              style={[
+                styles.navButton,
+                styles.nextButton,
+                { backgroundColor: theme.primary },
+                !canProceedFromStep(currentStep) && { backgroundColor: theme.backgroundTertiary }
+              ]}
+            >
+              <Text style={[styles.navButtonText, { color: '#FFFFFF' }, !canProceedFromStep(currentStep) && { color: theme.textTertiary }]}>
+                Далее
+              </Text>
+              <Ionicons name="arrow-forward" size={20} color={!canProceedFromStep(currentStep) ? theme.textTertiary : '#FFFFFF'} />
+            </TouchableOpacity>
+          ) : (
             <TouchableOpacity
               onPress={handleSubmit}
-              disabled={isSubmitting || !title.trim()}
-              style={[
-                styles.saveButton,
-                { backgroundColor: theme.error },
-                (!title.trim() || isSubmitting) && { backgroundColor: theme.backgroundTertiary }
-              ]}
+              disabled={isSubmitting}
+              style={[styles.navButton, styles.updateButton, { backgroundColor: theme.primary }]}
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Ionicons
-                  name="checkmark"
-                  size={24}
-                  color={(!title.trim() || isSubmitting) ? theme.textTertiary : '#FFFFFF'}
-                />
+                <>
+                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  <Text style={[styles.navButtonText, { color: '#FFFFFF' }]}>Сохранить</Text>
+                </>
               )}
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Content */}
-        <ScrollView
-          style={[styles.content, { backgroundColor: theme.background }]}
-          contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Название */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>НАЗВАНИЕ *</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-              placeholder="Название опроса"
-              placeholderTextColor={theme.inputPlaceholder}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={200}
-            />
-          </View>
-
-          {/* Описание */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>ОПИСАНИЕ</Text>
-            <TextInput
-              style={[styles.textArea, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-              placeholder="Опишите детали опроса..."
-              placeholderTextColor={theme.inputPlaceholder}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              maxLength={500}
-            />
-          </View>
-
-          {/* Варианты ответа */}
-          {poll?.type !== 'open_text' && (
-            <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-              <Text style={[styles.sectionLabel, { color: theme.text }]}>ВАРИАНТЫ ОТВЕТА</Text>
-              {options.map((option, index) => (
-                <View key={index} style={styles.optionRow}>
-                  <TextInput
-                    style={[styles.optionInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-                    placeholder={`Вариант ${index + 1}`}
-                    placeholderTextColor={theme.inputPlaceholder}
-                    value={option.text}
-                    onChangeText={(text) => updateOption(index, 'text', text)}
-                    maxLength={100}
-                  />
-                  {options.length > 2 && (
-                    <TouchableOpacity onPress={() => removeOption(index)} style={styles.removeButton}>
-                      <Ionicons name="close-circle" size={24} color={theme.error} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-              <TouchableOpacity onPress={addOption} style={[styles.addButton, { backgroundColor: theme.backgroundSecondary }]}>
-                <Ionicons name="add" size={20} color={theme.primary} />
-                <Text style={[styles.addButtonText, { color: theme.primary }]}>Добавить вариант</Text>
-              </TouchableOpacity>
-            </View>
           )}
-
-          {/* Дата окончания */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>СРОК ОКОНЧАНИЯ</Text>
-            <TouchableOpacity
-              style={[styles.dateButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-              onPress={() => setShowEndDatePicker(true)}
-            >
-              <Ionicons name="calendar" size={20} color={theme.primary} />
-              <Text style={[styles.dateButtonText, { color: theme.text }]}>
-                {endDate ? endDate.toLocaleDateString('ru-RU') : 'Выберите дату окончания'}
-              </Text>
-              {endDate && (
-                <TouchableOpacity onPress={() => setEndDate(undefined)} style={styles.clearButton}>
-                  <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-                </TouchableOpacity>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Настройки */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>НАСТРОЙКИ</Text>
-
-            <View style={styles.switchRow}>
-              <Text style={[styles.switchLabel, { color: theme.text }]}>Показывать результаты</Text>
-              <Switch
-                value={showResults}
-                onValueChange={setShowResults}
-                trackColor={{ false: theme.border, true: theme.primary }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-
-            <View style={styles.switchRow}>
-              <Text style={[styles.switchLabel, { color: theme.text }]}>Требовать комментарий</Text>
-              <Switch
-                value={requireComment}
-                onValueChange={setRequireComment}
-                trackColor={{ false: theme.border, true: theme.primary }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          </View>
-
-          {/* Информация о статусе */}
-          <View style={[styles.section, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text }]}>СТАТУС ОПРОСА</Text>
-            <View style={styles.infoRow}>
-              <Ionicons name="information-circle" size={20} color={theme.textSecondary} />
-              <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                Статус: {poll?.status === 'active' ? 'Активен' : poll?.status === 'completed' ? 'Завершён' : 'Черновик'}
-              </Text>
-            </View>
-            {poll?.votes_count !== undefined && (
-              <View style={styles.infoRow}>
-                <Ionicons name="people" size={20} color={theme.textSecondary} />
-                <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                  Проголосовало: {poll.votes_count}
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
+        </View>
 
         {/* Date Picker Modal */}
         {showEndDatePicker && (
@@ -361,14 +533,41 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
             mode="date"
           />
         )}
+      </KeyboardAvoidingView>
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+  },
+  modalOverlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   container: {
     flex: 1,
+  },
+  containerDesktop: {
+    width: 700,
+    maxHeight: '90%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.3,
+        shadowRadius: 60,
+        elevation: 24,
+      },
+    }),
   },
   loadingContainer: {
     flex: 1,
@@ -384,42 +583,69 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  headerLeft: {
-    width: 100,
-    alignItems: 'flex-start',
-  },
   headerButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  progressContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  progressBar: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  progressStep: {
     flex: 1,
-    textAlign: 'center',
-  },
-  headerRight: {
-    width: 100,
-    alignItems: 'flex-end',
-  },
-  saveButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 4,
+    borderRadius: 2,
   },
   content: {
     flex: 1,
+    overflow: 'hidden',
   },
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
+  stepsContainer: {
+    flexDirection: 'row',
+    flex: 1,
   },
-  sectionLabel: {
+  stepContent: {
+    padding: 20,
+  },
+  stepHeader: {
+    marginBottom: 24,
+  },
+  stepTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  stepSubtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  card: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  cardSection: {
+    marginBottom: 20,
+  },
+  label: {
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 12,
@@ -507,6 +733,34 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    flex: 1,
+  },
+  backButton: {
+    borderWidth: 1,
+  },
+  nextButton: {},
+  updateButton: {},
+  navButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
