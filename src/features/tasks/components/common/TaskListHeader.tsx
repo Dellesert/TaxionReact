@@ -8,8 +8,7 @@ import type { TaskFilter, StatusTab } from '../../utils/taskListHelpers';
 import type { TotalsByStatus } from '../../hooks/useTaskListData';
 import { TaskSearchBar } from './TaskSearchBar';
 import { TaskStatusTabs } from './TaskStatusTabs';
-
-export type ViewMode = 'board' | 'table';
+import { ViewControlGroup, ViewMode } from './ViewControlGroup';
 
 interface TaskListHeaderProps {
   filter: TaskFilter;
@@ -27,6 +26,9 @@ interface TaskListHeaderProps {
   isDesktop?: boolean;
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
+  expandAllSubtasks?: boolean;
+  onExpandAllToggle?: () => void;
+  subtaskCount?: number;
 }
 
 export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
@@ -45,6 +47,9 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
   isDesktop = false,
   viewMode = 'board',
   onViewModeChange,
+  expandAllSubtasks = false,
+  onExpandAllToggle,
+  subtaskCount = 0,
 }) => {
   const { theme } = useTheme();
   const filterButtonRef = React.useRef<View>(null);
@@ -66,56 +71,15 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
     return (
       <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.desktopHeaderContent}>
-          {/* Left side - View Mode Switcher */}
+          {/* Left side - View Control Group (View Mode + Expand All) */}
           <View style={styles.desktopLeft}>
-            <View style={[styles.viewModeSwitcher, { backgroundColor: theme.backgroundSecondary }]}>
-              <TouchableOpacity
-                style={[
-                  styles.viewModeButton,
-                  viewMode === 'board' && [
-                    styles.viewButtonActive,
-                    { backgroundColor: theme.card },
-                  ],
-                ]}
-                onPress={() => onViewModeChange?.('board')}
-              >
-                <Ionicons
-                  name="grid-outline"
-                  size={16}
-                  color={viewMode === 'board' ? theme.primary : theme.textSecondary}
-                />
-                <Text style={[
-                  styles.viewModeButtonText,
-                  { color: viewMode === 'board' ? theme.primary : theme.textSecondary },
-                  viewMode === 'board' && styles.viewButtonTextActive,
-                ]}>
-                  Доска
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.viewModeButton,
-                  viewMode === 'table' && [
-                    styles.viewButtonActive,
-                    { backgroundColor: theme.card },
-                  ],
-                ]}
-                onPress={() => onViewModeChange?.('table')}
-              >
-                <Ionicons
-                  name="reorder-four-outline"
-                  size={16}
-                  color={viewMode === 'table' ? theme.primary : theme.textSecondary}
-                />
-                <Text style={[
-                  styles.viewModeButtonText,
-                  { color: viewMode === 'table' ? theme.primary : theme.textSecondary },
-                  viewMode === 'table' && styles.viewButtonTextActive,
-                ]}>
-                  Таблица
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <ViewControlGroup
+              viewMode={viewMode}
+              onViewModeChange={(mode) => onViewModeChange?.(mode)}
+              expandedAll={expandAllSubtasks}
+              onExpandToggle={() => onExpandAllToggle?.()}
+              subtaskCount={subtaskCount}
+            />
           </View>
 
           {/* Center - Search (только для браузера, не Electron) */}
@@ -306,41 +270,6 @@ const styles = StyleSheet.create({
   },
   desktopLeft: {
     flexShrink: 0,
-  },
-  viewModeSwitcher: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
-    gap: 2,
-  },
-  viewModeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-      },
-    }),
-  },
-  viewModeButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-  viewButtonActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  viewButtonTextActive: {
-    fontWeight: '700',
   },
   desktopTitleContainer: {
     flexDirection: 'row',

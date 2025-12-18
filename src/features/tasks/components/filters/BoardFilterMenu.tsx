@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { AdvancedTaskFilters } from '../../utils/taskListHelpers';
@@ -44,15 +44,36 @@ export const BoardFilterMenu: React.FC<BoardFilterMenuProps> = ({
   isDesktop = false,
 }) => {
   const { theme, isDark } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
   const [tempFilters, setTempFilters] = useState<AdvancedTaskFilters>(currentFilters);
+
+  // Menu width (same as styles below)
+  const menuWidth = isDesktop ? 380 : 320;
 
   // Calculate menu position
   const menuTop = buttonPosition
     ? buttonPosition.y + buttonPosition.height + (Platform.OS === 'ios' ? 4 : 8)
     : isDesktop ? 70 : 60;
 
-  const menuRight = buttonPosition?.x ? undefined : 16;
-  const menuLeft = buttonPosition?.x;
+  // Smart positioning: check if menu fits on the right, otherwise align to right edge
+  let menuRight: number | undefined;
+  let menuLeft: number | undefined;
+
+  if (buttonPosition?.x !== undefined) {
+    // Calculate if menu would overflow on the right
+    const wouldOverflow = buttonPosition.x + menuWidth > windowWidth - 16;
+
+    if (wouldOverflow) {
+      // Align menu to right edge of screen with padding
+      menuRight = 16;
+    } else {
+      // Position menu from the left edge of the button
+      menuLeft = buttonPosition.x;
+    }
+  } else {
+    // Fallback: align to right
+    menuRight = 16;
+  }
 
   // Toggle priority
   const togglePriority = (priority: TaskPriority) => {

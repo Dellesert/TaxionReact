@@ -21,7 +21,7 @@ import { BoardFilterMenu } from '../components/filters/BoardFilterMenu';
 import { MobileFilterMenu } from '../components/filters/MobileFilterMenu';
 import { TaskViewSwitcher, ViewMode } from '../components/common/TaskViewSwitcher';
 import type { StatusTab, AdvancedTaskFilters, TaskFilter } from '../utils/taskListHelpers';
-import { TASKS_PER_PAGE, buildAdvancedTaskFilters } from '../utils/taskListHelpers';
+import { TASKS_PER_PAGE, buildAdvancedTaskFilters, getTasksWithSubtasks, STATUS_TABS_ORDER } from '../utils/taskListHelpers';
 
 type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
 
@@ -253,6 +253,11 @@ const TaskListScreen: React.FC = () => {
 
   const canCreateTask = user?.role !== 'employee';
 
+  // Count total tasks with subtasks across all columns (for expand all button)
+  const totalTasksWithSubtasks = STATUS_TABS_ORDER.reduce((count, status) => {
+    return count + getTasksWithSubtasks(tasks[status]).length;
+  }, 0);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
       {/* Header */}
@@ -272,6 +277,9 @@ const TaskListScreen: React.FC = () => {
         isDesktop={isDesktop}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        expandAllSubtasks={expandAllSubtasks}
+        onExpandAllToggle={handleExpandAllToggle}
+        subtaskCount={totalTasksWithSubtasks}
       />
 
       {/* Content - TaskViewSwitcher for Desktop, Swipe Navigation for Mobile */}

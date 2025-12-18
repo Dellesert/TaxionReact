@@ -3,8 +3,7 @@ import { StyleSheet, useWindowDimensions, View, ScrollView } from 'react-native'
 import type { Task } from '../../types/task.types';
 import type { StatusTab, TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus } from '../../hooks/useTaskListData';
 import { TaskKanbanColumn } from './TaskKanbanColumn';
-import { ExpandAllSubtasksButton } from '../common/ExpandAllSubtasksButton';
-import { getTasksWithSubtasks, STATUS_TABS_ORDER } from '../../utils/taskListHelpers';
+import { STATUS_TABS_ORDER } from '../../utils/taskListHelpers';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 
 interface TaskKanbanBoardProps {
@@ -62,24 +61,8 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
     columnWidth = width - CONTAINER_PADDING - COLUMN_MARGINS;
   }
 
-  // Count total tasks with subtasks across all columns
-  const totalTasksWithSubtasks = STATUS_TABS_ORDER.reduce((count, status) => {
-    return count + getTasksWithSubtasks(tasks[status]).length;
-  }, 0);
-
-  const totalAllTasks = totals.new + totals.in_progress + totals.review + totals.done;
-
   return (
     <View style={styles.container}>
-      {/* Expand All Subtasks Button */}
-      {totalAllTasks > 0 && totalTasksWithSubtasks > 0 && (
-        <ExpandAllSubtasksButton
-          expanded={expandAllSubtasks}
-          count={totalTasksWithSubtasks}
-          onToggle={onExpandAllToggle}
-        />
-      )}
-
       {/* Kanban Columns */}
       <ScrollView
         horizontal
