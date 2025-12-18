@@ -5,8 +5,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { PollFilter } from '../../utils/pollListHelpers';
-
-export type ViewMode = 'grid' | 'table';
+import { PollViewControlGroup, ViewMode } from '../common/PollViewControlGroup';
 
 interface PollListHeaderProps {
   filter: PollFilter;
@@ -61,56 +60,12 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
     return (
       <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.desktopHeaderContent}>
-          {/* Left side - View Mode Switcher */}
+          {/* Left side - View Control Group */}
           <View style={styles.desktopLeft}>
-            <View style={[styles.viewModeSwitcher, { backgroundColor: theme.backgroundSecondary }]}>
-              <TouchableOpacity
-                style={[
-                  styles.viewModeButton,
-                  viewMode === 'grid' && [
-                    styles.viewButtonActive,
-                    { backgroundColor: theme.card },
-                  ],
-                ]}
-                onPress={() => onViewModeChange?.('grid')}
-              >
-                <Ionicons
-                  name="grid-outline"
-                  size={16}
-                  color={viewMode === 'grid' ? theme.primary : theme.textSecondary}
-                />
-                <Text style={[
-                  styles.viewModeButtonText,
-                  { color: viewMode === 'grid' ? theme.primary : theme.textSecondary },
-                  viewMode === 'grid' && styles.viewButtonTextActive,
-                ]}>
-                  Сетка
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.viewModeButton,
-                  viewMode === 'table' && [
-                    styles.viewButtonActive,
-                    { backgroundColor: theme.card },
-                  ],
-                ]}
-                onPress={() => onViewModeChange?.('table')}
-              >
-                <Ionicons
-                  name="reorder-four-outline"
-                  size={16}
-                  color={viewMode === 'table' ? theme.primary : theme.textSecondary}
-                />
-                <Text style={[
-                  styles.viewModeButtonText,
-                  { color: viewMode === 'table' ? theme.primary : theme.textSecondary },
-                  viewMode === 'table' && styles.viewButtonTextActive,
-                ]}>
-                  Таблица
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <PollViewControlGroup
+              viewMode={viewMode}
+              onViewModeChange={(mode) => onViewModeChange?.(mode)}
+            />
           </View>
 
           {/* Center - Search (только для браузера, не Electron) */}
@@ -337,41 +292,6 @@ const styles = StyleSheet.create({
   },
   desktopLeft: {
     flexShrink: 0,
-  },
-  viewModeSwitcher: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
-    gap: 2,
-  },
-  viewModeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-      },
-    }),
-  },
-  viewModeButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-  viewButtonActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  viewButtonTextActive: {
-    fontWeight: '700',
   },
   desktopTitle: {
     fontSize: 24,
