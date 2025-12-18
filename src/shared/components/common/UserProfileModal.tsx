@@ -113,6 +113,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
+  // Получение полного имени (ФИО)
+  const getFullName = () => {
+    if (!user) return null;
+
+    const parts = [
+      user.last_name,
+      user.first_name,
+      user.middle_name,
+    ].filter(Boolean);
+
+    return parts.length > 0 ? parts.join(' ') : null;
+  };
+
+  // Получение короткого имени для отображения
+  const getDisplayName = () => {
+    if (!user) return 'Без имени';
+    return user.name || user.email;
+  };
+
   const dynamicStyles = StyleSheet.create({
     overlay: {
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -185,9 +204,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               name={user.name || user.email}
               size={80}
             />
-            <Text style={[styles.userName, { color: theme.text }]}>
-              {user.name || 'Без имени'}
-            </Text>
+            {getFullName() ? (
+              <>
+                <Text style={[styles.userName, { color: theme.text }]}>
+                  {getFullName()}
+                </Text>
+                <Text style={[styles.userShortName, { color: theme.textSecondary }]}>
+                  {getDisplayName()}
+                </Text>
+              </>
+            ) : (
+              <Text style={[styles.userName, { color: theme.text }]}>
+                {getDisplayName()}
+              </Text>
+            )}
             <View style={styles.statusBadge}>
               <View
                 style={[
@@ -423,6 +453,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     marginTop: 16,
+  },
+  userShortName: {
+    fontSize: 16,
+    fontWeight: '400',
+    marginTop: 4,
   },
   statusBadge: {
     flexDirection: 'row',
