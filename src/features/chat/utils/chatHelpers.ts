@@ -1,4 +1,5 @@
 import { Chat } from '../types/chat.types';
+import { getChatDisplayName } from './chatUtils';
 
 export type ChatFilter = 'all' | 'group' | 'private' | 'favorite';
 
@@ -9,14 +10,17 @@ export const FILTER_TABS_ORDER: ChatFilter[] = ['all', 'private', 'group', 'favo
 
 /**
  * Filter chats by search query
+ * Для личных чатов ищет по имени собеседника, для групповых - по названию чата
  */
-export const filterChatsBySearch = (chats: Chat[], searchQuery: string): Chat[] => {
+export const filterChatsBySearch = (chats: Chat[], searchQuery: string, currentUserId?: number): Chat[] => {
   if (!searchQuery.trim()) return chats;
 
   const query = searchQuery.toLowerCase().trim();
   return chats.filter((chat) => {
-    const chatName = chat.name || '';
-    return chatName.toLowerCase().includes(query);
+    // Используем getChatDisplayName для получения корректного имени чата
+    // Для личных чатов это будет имя собеседника, для групповых - название чата
+    const displayName = getChatDisplayName(chat, currentUserId);
+    return displayName.toLowerCase().includes(query);
   });
 };
 

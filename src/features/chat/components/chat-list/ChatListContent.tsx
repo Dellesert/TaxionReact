@@ -11,6 +11,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { Chat } from '../../types/chat.types';
 import { ChatFilter, filterChatsBySearch, combineTabChats } from '../../utils/chatHelpers';
 import { useChatStore } from '@shared/store/chatStore';
+import { useAuthStore } from '@shared/store/authStore';
 
 export interface ChatListContentRef {
   scrollToTop: (filter?: ChatFilter, animated?: boolean) => void;
@@ -76,6 +77,9 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
 
   // Get typing users from chatStore
   const typingUsers = useChatStore((state) => state.typingUsers);
+
+  // Get current user ID for chat filtering
+  const currentUser = useAuthStore((state) => state.user);
 
   // Refs for FlashList instances per tab
   const listRefs = useRef<Record<ChatFilter, any>>({
@@ -153,7 +157,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
 
 
       // Apply client-side search filter
-      const tabChats = filterChatsBySearch(tabChatsFromStore, searchQuery);
+      const tabChats = filterChatsBySearch(tabChatsFromStore, searchQuery, currentUser?.id);
 
       // Create a hash of relevant chat properties to force re-render when they change
       const chatsHash = tabChats.map(c => `${c.id}-${c.is_favorite}-${c.unread_count}-${c.is_pinned}`).join(',');
@@ -208,6 +212,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
       renderChatItem,
       onRefresh,
       onLoadMore,
+      currentUser?.id,
     ]
   );
 
