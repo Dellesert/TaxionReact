@@ -28,6 +28,7 @@ const AuthNavigator: React.FC = () => {
         headerShown: false,
         animation: 'fade',
       }}
+      initialRouteName="Login"
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="TwoFactor" component={TwoFactorScreen} />

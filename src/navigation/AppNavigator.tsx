@@ -44,10 +44,11 @@ const linking: LinkingOptions<RootStackParamList> = {
   config: {
     screens: {
       Auth: {
+        path: '',
         screens: {
           Login: 'login',
           TwoFactor: 'two-factor',
-          AcceptInvitation: 'accept-invitation/:token?',
+          AcceptInvitation: 'invite/:token?',
           ResetPassword: 'reset-password/:token',
           ForgotPassword: 'forgot-password',
         },

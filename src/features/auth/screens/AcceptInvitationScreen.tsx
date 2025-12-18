@@ -58,12 +58,14 @@ const AcceptInvitationScreen: React.FC = () => {
       duration: 600,
       useNativeDriver: true,
     }).start();
+  }, []);
 
-    // Если токен уже есть (пришли по deep link), сразу валидируем
-    if (initialToken) {
+  // Auto-validate token if provided via deep link
+  useEffect(() => {
+    if (initialToken && initialToken.trim()) {
       handleValidateCode();
     }
-  }, []);
+  }, [initialToken]);
 
   // Handlers
   const handleValidateCode = async () => {
