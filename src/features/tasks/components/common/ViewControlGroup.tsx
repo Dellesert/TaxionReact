@@ -168,8 +168,10 @@ const styles = StyleSheet.create({
     }),
   },
   buttonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
+    letterSpacing: -0.2,
+    lineHeight: 18,
     ...Platform.select({
       web: {
         userSelect: 'none',

@@ -367,8 +367,9 @@ const styles = StyleSheet.create({
   desktopButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 36,
+    minHeight: 44, // Accessibility: minimum touch target
     paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 2,
     gap: 6,
@@ -419,8 +420,9 @@ const styles = StyleSheet.create({
   desktopButtonPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 36,
+    minHeight: 44, // Accessibility: minimum touch target
     paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 10,
     gap: 6,
     ...Platform.select({
