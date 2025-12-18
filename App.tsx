@@ -143,7 +143,6 @@ export default function App() {
   // Connect/disconnect WebSocket and register for push notifications based on auth state
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('[App] User authenticated - setting up push notifications');
       websocketService.connect();
       // Load unread notification count when user is authenticated
       loadUnreadCount();
@@ -154,12 +153,6 @@ export default function App() {
           const type = notificationData.type as string;
           const screenName = getNavigationScreenByType(type, notificationData);
           const params = getNavigationParams(type, notificationData);
-
-          console.log('[App] Notification click navigation:', {
-            type,
-            screenName,
-            params
-          });
 
           if (screenName && params && navigationRef.current?.isReady()) {
             // Small delay to ensure app is ready
@@ -188,8 +181,6 @@ export default function App() {
         let cleanupServiceWorker: (() => void) | undefined;
         if ('serviceWorker' in navigator) {
           const handleServiceWorkerMessage = (event: MessageEvent) => {
-            console.log('[App] Service Worker message:', event.data);
-
             if (event.data.type === 'NOTIFICATION_CLICK') {
               handleNotificationClick(event.data.data || {});
             }
@@ -207,8 +198,6 @@ export default function App() {
           // Проверяем origin для безопасности
           if (event.origin !== window.location.origin) return;
 
-          console.log('[App] Window message:', event.data);
-
           if (event.data.type === 'NOTIFICATION_CLICK') {
             handleNotificationClick(event.data.data || {});
           }
@@ -224,19 +213,14 @@ export default function App() {
       }
 
       // Electron: Setup navigation callback for notification clicks
-      console.log('[App] Checking if Electron:', isElectron(), typeof window !== 'undefined' ? window.electron?.isElectron : 'window undefined');
       if (isElectron()) {
-        console.log('[App] IS ELECTRON - Setting up notification callback');
         electronPushNotificationService.setNavigationCallback((notificationData) => {
-          console.log('[App] Electron notification clicked:', notificationData);
 
           if (!notificationData) {
-            console.log('[App] No notification data');
             return;
           }
 
           if (!navigationRef.current?.isReady()) {
-            console.log('[App] Navigation not ready yet');
             return;
           }
 
@@ -253,31 +237,15 @@ export default function App() {
           const screenName = getNavigationScreenByType(type, flattenedData);
           const params = getNavigationParams(type, flattenedData);
 
-          console.log('[App] Electron notification navigation:', {
-            type,
-            screenName,
-            params,
-            originalData: notificationData,
-            flattenedData,
-          });
-
           if (!screenName || !params) {
-            console.log('[App] Cannot navigate - missing screen or params');
             return;
           }
 
           // Small delay to ensure window is focused and ready
           setTimeout(() => {
             try {
-              console.log('[App] Attempting navigation...', {
-                screenName,
-                params,
-                navigationReady: navigationRef.current?.isReady(),
-              });
-
               if (screenName === 'Chats' && params.screen === 'Chat' && params.params?.chatId) {
                 // Navigate to specific chat (nested navigation)
-                console.log('[App] Navigating to Chat with chatId:', params.params.chatId);
                 // @ts-ignore
                 navigationRef.current?.navigate('Chats', {
                   screen: 'Chat',
@@ -285,7 +253,6 @@ export default function App() {
                 });
               } else if (screenName === 'Tasks' && params.taskId) {
                 // Navigate to specific task (nested navigation)
-                console.log('[App] Navigating to TaskDetail with taskId:', params.taskId);
                 // @ts-ignore
                 navigationRef.current?.navigate('Tasks', {
                   screen: 'TaskDetail',
@@ -293,7 +260,6 @@ export default function App() {
                 });
               } else if (screenName === 'Polls' && params.screen === 'PollDetail' && params.params?.pollId) {
                 // Navigate to specific poll (nested navigation)
-                console.log('[App] Navigating to PollDetail with pollId:', params.params.pollId);
                 // @ts-ignore
                 navigationRef.current?.navigate('Polls', {
                   screen: 'PollDetail',
@@ -301,26 +267,9 @@ export default function App() {
                 });
               } else if (screenName === 'Calendar') {
                 // Navigate to calendar (event detail if available)
-                console.log('[App] Navigating to Calendar', params.eventId ? `with eventId: ${params.eventId}` : '');
                 // @ts-ignore
                 navigationRef.current?.navigate('Calendar', params.eventId ? { eventId: params.eventId } : undefined);
               } else {
-                console.log('[App] Unhandled navigation case:', {
-                  screenName,
-                  params,
-                  checks: {
-                    isChats: screenName === 'Chats',
-                    hasScreen: params.screen === 'Chat',
-                    hasChatId: params.params?.chatId,
-                    isTasks: screenName === 'Tasks',
-                    hasTaskId: params.taskId,
-                    isPolls: screenName === 'Polls',
-                    isPollDetail: params.screen === 'PollDetail',
-                    hasPollId: params.params?.pollId,
-                    isCalendar: screenName === 'Calendar',
-                    hasEventId: params.eventId,
-                  }
-                });
               }
             } catch (error) {
               console.error('[App] Navigation error:', error);
@@ -332,16 +281,13 @@ export default function App() {
       // Register for push notifications
       pushNotificationService.registerForPushNotifications().then((token) => {
         if (token) {
-          console.log('[App] ✅ Push notifications registered, token:', token.substring(0, 20) + '...');
         } else {
-          console.log('[App] ❌ Failed to register push notifications');
         }
       });
 
       // Setup notification listeners
       pushNotificationService.setupNotificationListeners(
         (notification) => {
-          console.log('[App] 📬 Notification received in app:', notification.request.content.title);
           // Reload unread count when notification received
           loadUnreadCount();
         },
@@ -486,7 +432,6 @@ export default function App() {
         });
       });
     } else {
-      console.log('[App] User logged out - cleaning up push notifications');
       websocketService.disconnect();
       pushNotificationService.removeNotificationListeners();
       pushNotificationService.unregisterDevice();

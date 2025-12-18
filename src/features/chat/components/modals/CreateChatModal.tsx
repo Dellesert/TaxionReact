@@ -24,12 +24,6 @@ export const CreateChatModal: React.FC<CreateChatModalProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  console.log('🎯 CreateChatModal rendered with:', {
-    visible,
-    initialChatType,
-    hasOnChatCreated: !!onChatCreated,
-  });
-
   if (!visible) return null;
 
   // Different max width for private vs group chats
@@ -71,7 +65,6 @@ export const CreateChatModal: React.FC<CreateChatModalProps> = ({
               params: {
                 initialChatType,
                 onChatCreated: (chat: Chat) => {
-                  console.log('🎯 CreateChatModal: onChatCreated wrapper called');
                   if (onChatCreated) {
                     onChatCreated(chat);
                   } else {
@@ -83,10 +76,8 @@ export const CreateChatModal: React.FC<CreateChatModalProps> = ({
             navigation={{
               goBack: onClose,
               navigate: () => {
-                console.log('🚫 Navigation blocked in desktop modal');
               },
               replace: () => {
-                console.log('🚫 Navigation.replace blocked in desktop modal');
               },
             } as any}
           />

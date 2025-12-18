@@ -27,12 +27,6 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
   const isWideScreen = useIsWideScreen();
   const desktopNav = useContext(DesktopNavigationContext);
 
-  console.log('[CustomTitleBar] Context:', {
-    isWideScreen,
-    hasDesktopNav: !!desktopNav,
-    hasNavigateToTab: !!desktopNav?.navigateToTab
-  });
-
   const theme = useThemeStore((state) => state.theme);
   const [hoveredButton, setHoveredButton] = useState<'minimize' | 'maximize' | 'close' | null>(null);
   const { searchQuery, placeholder, isVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
