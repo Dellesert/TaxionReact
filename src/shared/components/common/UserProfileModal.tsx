@@ -4,13 +4,18 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Platform, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
 import { User } from '@/types/user.types';
 import { getUserById } from '@api/user.api';
+import { useAuthStore } from '@shared/store';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && SCREEN_WIDTH >= 768;
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -31,9 +36,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const currentUser = useAuthStore((state) => state.user);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Проверка, является ли профиль текущим пользователем
+  const isOwnProfile = currentUser?.id === userId;
 
   useEffect(() => {
     if (visible && userId) {
@@ -58,16 +67,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   };
 
   if (!visible) return null;
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Не указано';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -144,73 +143,66 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     },
   });
 
-  return (
-    <Modal
-      visible={visible}
-      transparent={false}
-      animationType="slide"
-      onRequestClose={onClose}
-      presentationStyle="fullScreen"
-    >
-      <View style={[styles.safeArea, dynamicStyles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={[styles.header, dynamicStyles.header]}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={28} color={theme.error} />
-              </TouchableOpacity>
+  const renderContent = () => (
+    <>
+      {/* Header */}
+      <View style={[styles.header, dynamicStyles.header]}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={28} color={theme.error} />
+          </TouchableOpacity>
+        </View>
+        <Text style={[styles.title, dynamicStyles.title]}>Профиль</Text>
+        <View style={styles.headerRight} />
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Загрузка профиля...
+          </Text>
+        </View>
+      ) : error ? (
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.error} />
+          <Text style={[styles.loadingText, { color: theme.error }]}>
+            {error}
+          </Text>
+          <TouchableOpacity
+            onPress={loadUser}
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
+          >
+            <Text style={styles.retryButtonText}>Попробовать снова</Text>
+          </TouchableOpacity>
+        </View>
+      ) : user ? (
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+          {/* Avatar and Name */}
+          <View style={styles.avatarSection}>
+            <Avatar
+              imageUrl={user.avatar}
+              name={user.name || user.email}
+              size={80}
+            />
+            <Text style={[styles.userName, { color: theme.text }]}>
+              {user.name || 'Без имени'}
+            </Text>
+            <View style={styles.statusBadge}>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: getStatusColor(user.status) },
+                ]}
+              />
+              <Text style={[styles.statusText, { color: theme.textSecondary }]}>
+                {getStatusText(user.status)}
+              </Text>
             </View>
-            <Text style={[styles.title, dynamicStyles.title]}>Профиль</Text>
-            <View style={styles.headerRight} />
           </View>
 
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.primary} />
-              <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
-                Загрузка профиля...
-              </Text>
-            </View>
-          ) : error ? (
-            <View style={styles.loadingContainer}>
-              <Ionicons name="alert-circle-outline" size={48} color={theme.error} />
-              <Text style={[styles.loadingText, { color: theme.error }]}>
-                {error}
-              </Text>
-              <TouchableOpacity
-                onPress={loadUser}
-                style={[styles.retryButton, { backgroundColor: theme.primary }]}
-              >
-                <Text style={styles.retryButtonText}>Попробовать снова</Text>
-              </TouchableOpacity>
-            </View>
-          ) : user ? (
-            <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-              {/* Avatar and Name */}
-              <View style={styles.avatarSection}>
-                <Avatar
-                  imageUrl={user.avatar}
-                  name={user.name || user.email}
-                  size={80}
-                />
-                <Text style={[styles.userName, { color: theme.text }]}>
-                  {user.name || 'Без имени'}
-                </Text>
-              <View style={styles.statusBadge}>
-                <View
-                  style={[
-                    styles.statusDot,
-                    { backgroundColor: getStatusColor(user.status) },
-                  ]}
-                />
-                <Text style={[styles.statusText, { color: theme.textSecondary }]}>
-                  {getStatusText(user.status)}
-                </Text>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
+          {/* Action Buttons */}
+          {!isOwnProfile && (
             <View style={styles.actionsSection}>
               {onOpenChat && (
                 <TouchableOpacity
@@ -249,78 +241,140 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </TouchableOpacity>
               )}
             </View>
+          )}
 
-            {/* Main Info */}
-            <View style={[styles.section, dynamicStyles.section]}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
-                Основная информация
-              </Text>
+          {/* Main Info */}
+          <View style={[styles.section, dynamicStyles.section]}>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+              Основная информация
+            </Text>
 
-              <View style={[styles.infoRow, dynamicStyles.infoRow]}>
-                <Ionicons name="mail-outline" size={20} color={theme.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={[styles.label, dynamicStyles.label]}>Email</Text>
-                  <Text style={[styles.value, dynamicStyles.value]}>
-                    {user.email}
-                  </Text>
-                </View>
-              </View>
-
-              {user.position && (
-                <View style={[styles.infoRow, dynamicStyles.infoRow]}>
-                  <Ionicons name="briefcase-outline" size={20} color={theme.primary} />
-                  <View style={styles.infoContent}>
-                    <Text style={[styles.label, dynamicStyles.label]}>Должность</Text>
-                    <Text style={[styles.value, dynamicStyles.value]}>
-                      {user.position}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {user.phone && (
-                <View style={[styles.infoRow, dynamicStyles.infoRow]}>
-                  <Ionicons name="call-outline" size={20} color={theme.primary} />
-                  <View style={styles.infoContent}>
-                    <Text style={[styles.label, dynamicStyles.label]}>Телефон</Text>
-                    <Text style={[styles.value, dynamicStyles.value]}>
-                      {user.phone}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {(user.department_name || user.department?.name) && (
-                <View style={[styles.infoRow, dynamicStyles.infoRow]}>
-                  <Ionicons name="business-outline" size={20} color={theme.primary} />
-                  <View style={styles.infoContent}>
-                    <Text style={[styles.label, dynamicStyles.label]}>Отдел</Text>
-                    <Text style={[styles.value, dynamicStyles.value]}>
-                      {user.department_name || user.department?.name}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={[styles.infoRow, dynamicStyles.infoRow, { borderBottomWidth: 0 }]}>
-                <Ionicons name="person-outline" size={20} color={theme.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={[styles.label, dynamicStyles.label]}>Роль</Text>
-                  <Text style={[styles.value, dynamicStyles.value]}>
-                    {getRoleText(user.role)}
-                  </Text>
-                </View>
+            <View style={[styles.infoRow, dynamicStyles.infoRow]}>
+              <Ionicons name="mail-outline" size={20} color={theme.primary} />
+              <View style={styles.infoContent}>
+                <Text style={[styles.label, dynamicStyles.label]}>Email</Text>
+                <Text style={[styles.value, dynamicStyles.value]}>
+                  {user.email}
+                </Text>
               </View>
             </View>
-          </ScrollView>
-          ) : null}
+
+            {user.position && (
+              <View style={[styles.infoRow, dynamicStyles.infoRow]}>
+                <Ionicons name="briefcase-outline" size={20} color={theme.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={[styles.label, dynamicStyles.label]}>Должность</Text>
+                  <Text style={[styles.value, dynamicStyles.value]}>
+                    {user.position}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {user.phone && (
+              <View style={[styles.infoRow, dynamicStyles.infoRow]}>
+                <Ionicons name="call-outline" size={20} color={theme.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={[styles.label, dynamicStyles.label]}>Телефон</Text>
+                  <Text style={[styles.value, dynamicStyles.value]}>
+                    {user.phone}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {user.department?.name && (
+              <View style={[styles.infoRow, dynamicStyles.infoRow]}>
+                <Ionicons name="business-outline" size={20} color={theme.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={[styles.label, dynamicStyles.label]}>Отдел</Text>
+                  <Text style={[styles.value, dynamicStyles.value]}>
+                    {user.department.name}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={[styles.infoRow, dynamicStyles.infoRow, { borderBottomWidth: 0 }]}>
+              <Ionicons name="person-outline" size={20} color={theme.primary} />
+              <View style={styles.infoContent}>
+                <Text style={[styles.label, dynamicStyles.label]}>Роль</Text>
+                <Text style={[styles.value, dynamicStyles.value]}>
+                  {getRoleText(user.role)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      ) : null}
+    </>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={isDesktop}
+      animationType={isDesktop ? 'fade' : 'slide'}
+      onRequestClose={onClose}
+      presentationStyle={isDesktop ? 'overFullScreen' : 'fullScreen'}
+    >
+      {isDesktop ? (
+        // Desktop version: centered modal with overlay
+        <TouchableOpacity
+          style={[styles.desktopOverlay, dynamicStyles.overlay]}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <TouchableOpacity
+            style={[styles.desktopModal, dynamicStyles.container]}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.container}>
+              {renderContent()}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      ) : (
+        // Mobile version: fullscreen
+        <View style={[styles.safeArea, dynamicStyles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+          <View style={styles.container}>
+            {renderContent()}
+          </View>
         </View>
-      </View>
+      )}
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  // Desktop styles
+  desktopOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  desktopModal: {
+    width: '100%',
+    maxWidth: 600,
+    maxHeight: '90%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.2)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 40,
+        elevation: 10,
+      },
+    }),
+  },
+  // Mobile styles
   safeArea: {
     flex: 1,
   },
