@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -31,6 +32,138 @@ interface EventDetailModalProps {
   onClose: () => void;
   onEventUpdated: () => void;
 }
+
+interface EventActionMenuProps {
+  visible: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+}
+
+const EventActionMenu: React.FC<EventActionMenuProps> = ({
+  visible,
+  onClose,
+  onEdit,
+  onDelete,
+  isDeleting,
+}) => {
+  const { theme } = useTheme();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setIsModalVisible(true);
+      fadeAnim.setValue(0);
+      slideAnim.setValue(300);
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            damping: 20,
+            stiffness: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 50);
+    } else if (isModalVisible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 300,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIsModalVisible(false);
+      });
+    }
+  }, [visible, fadeAnim, slideAnim, isModalVisible]);
+
+  const handleAction = (action: () => void) => {
+    onClose();
+    setTimeout(action, 250);
+  };
+
+  if (!isModalVisible) return null;
+
+  return (
+    <Modal
+      visible={isModalVisible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+    >
+      <Animated.View
+        style={[
+          styles.menuOverlay,
+          { opacity: fadeAnim }
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.menuOverlayTouchable}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+        <Animated.View
+          style={[
+            styles.menuBottomSheet,
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          <View style={[styles.menu, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleAction(onEdit)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="create-outline" size={20} color={theme.text} />
+              <Text style={[styles.menuItemText, { color: theme.text }]}>
+                Редактировать
+              </Text>
+            </TouchableOpacity>
+            <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleAction(onDelete)}
+              activeOpacity={0.7}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              )}
+              <Text style={[styles.menuItemText, { color: '#EF4444' }]}>
+                Удалить
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={[styles.menuCancelButton, { backgroundColor: theme.backgroundSecondary }]}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.menuCancelButtonText, { color: theme.text }]}>
+              Отмена
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
 
 interface ParticipantGroupProps {
   participants: any[];
@@ -177,6 +310,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [localEvent, setLocalEvent] = useState<Event | null>(event);
@@ -308,30 +442,22 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
           <View style={{ height: insets.top }} />
           <View style={styles.headerTop}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={theme.text} />
-            </TouchableOpacity>
-            {canManage && (
-              <View style={styles.headerActions}>
+            <View style={styles.headerSide}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Событие</Text>
+            <View style={[styles.headerSide, styles.headerSideRight]}>
+              {canManage && (
                 <TouchableOpacity
-                  onPress={() => setShowEditModal(true)}
-                  style={[styles.iconActionButton, { backgroundColor: theme.backgroundSecondary }]}
+                  onPress={() => setShowActionMenu(true)}
+                  style={styles.menuButton}
                 >
-                  <Ionicons name="create-outline" size={20} color={theme.primary} />
+                  <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleDelete}
-                  style={[styles.iconActionButton, { backgroundColor: theme.backgroundSecondary }]}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? (
-                    <ActivityIndicator size="small" color={theme.primary} />
-                  ) : (
-                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
+            </View>
           </View>
         </View>
 
@@ -616,6 +742,15 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         </ScrollView>
       </View>
 
+      {/* Action Menu */}
+      <EventActionMenu
+        visible={showActionMenu}
+        onClose={() => setShowActionMenu(false)}
+        onEdit={() => setShowEditModal(true)}
+        onDelete={handleDelete}
+        isDeleting={isDeleting}
+      />
+
       {/* Edit Event Modal */}
       {showEditModal && (
         <CreateEventModal
@@ -676,6 +811,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  headerSide: {
+    minWidth: 80,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerSideRight: {
+    justifyContent: 'flex-end',
+  },
   closeButton: {
     width: 36,
     height: 36,
@@ -683,24 +826,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 8,
   },
-  eventTypeIndicator: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginLeft: 'auto',
-  },
-  iconActionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   eventTitle: {
     fontSize: 24,
@@ -915,6 +1045,60 @@ const styles = StyleSheet.create({
   },
   showMoreText: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+  menuButton: {
+    padding: 4,
+    marginRight: 8,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  menuOverlayTouchable: {
+    flex: 1,
+  },
+  menuBottomSheet: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  menu: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 12,
+    minHeight: 52,
+  },
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+  },
+  menuDivider: {
+    height: 1,
+    marginHorizontal: 16,
+  },
+  menuCancelButton: {
+    marginTop: 12,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  menuCancelButtonText: {
+    fontSize: 16,
     fontWeight: '600',
   },
 });
