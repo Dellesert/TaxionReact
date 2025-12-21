@@ -39,12 +39,12 @@ const OverlappingAvatars: React.FC<{
               styles.avatarWrapper,
               {
                 zIndex: displayVoters.length - index,
-                marginLeft: index > 0 ? -12 : 0,
+                marginLeft: index > 0 ? -10 : 0,
               },
             ]}
           >
             <View style={[styles.avatarBorder, { borderColor: theme.backgroundSecondary }]}>
-              <Avatar name={voter.user_name} imageUrl={voter.avatar} size={36} />
+              <Avatar name={voter.user_name} imageUrl={voter.avatar} size={28} />
             </View>
           </View>
         ))}
@@ -53,7 +53,7 @@ const OverlappingAvatars: React.FC<{
             style={[
               styles.avatarWrapper,
               {
-                marginLeft: -12,
+                marginLeft: -10,
               },
             ]}
           >
@@ -202,21 +202,21 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatarBorder: {
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 2,
   },
   remainingCountCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   remainingCountText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    lineHeight: 16,
+    lineHeight: 14,
   },
 });

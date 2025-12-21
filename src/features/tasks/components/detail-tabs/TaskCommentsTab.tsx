@@ -1,10 +1,12 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskComment } from '../../types/task.types';
@@ -77,6 +79,63 @@ const EditCommentInput: React.FC<{
   );
 };
 
+// Компонент меню действий для комментария
+const CommentActionMenu: React.FC<{
+  visible: boolean;
+  position: { x: number; y: number } | null;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  theme: any;
+}> = ({ visible, position, onClose, onEdit, onDelete, theme }) => {
+  if (!position) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.menuOverlay} onPress={onClose}>
+        <View
+          style={[
+            styles.menuContainer,
+            {
+              backgroundColor: theme.card,
+              position: 'absolute',
+              top: position.y,
+              right: 16,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              onClose();
+              onEdit();
+            }}
+          >
+            <Ionicons name="create-outline" size={20} color={theme.primary} />
+            <Text style={[styles.menuItemText, { color: theme.text }]}>Редактировать</Text>
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              onClose();
+              onDelete();
+            }}
+          >
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            <Text style={[styles.menuItemText, { color: '#ef4444' }]}>Удалить</Text>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+};
+
 interface TaskCommentsTabProps {
   comments: TaskComment[];
   hasMoreComments: boolean;
@@ -109,6 +168,25 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
   setEditingCommentText,
 }) => {
   const { theme } = useTheme();
+  const [menuState, setMenuState] = useState<{
+    commentId: number;
+    position: { x: number; y: number };
+  } | null>(null);
+  const buttonRefs = useRef<{ [key: number]: TouchableOpacity | null }>({});
+
+  const openMenu = (commentId: number) => {
+    const buttonRef = buttonRefs.current[commentId];
+    if (buttonRef) {
+      buttonRef.measure((_x, _y, _width, height, _pageX, pageY) => {
+        setMenuState({
+          commentId,
+          position: { x: 0, y: pageY + height + 4 },
+        });
+      });
+    }
+  };
+
+  const closeMenu = () => setMenuState(null);
 
   if (comments.length === 0) {
     return (
@@ -158,17 +236,13 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
                   </Text>
                 </View>
                 {isMyComment && !isEditing && (
-                  <View style={{ flexDirection: 'row', gap: 4, marginLeft: 8 }}>
-                    <TouchableOpacity onPress={() => onEditComment(comment)} style={{ padding: 4 }}>
-                      <Ionicons name="create-outline" size={16} color={theme.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => onDeleteComment(comment.id)}
-                      style={{ padding: 4 }}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity
+                    ref={(ref) => { buttonRefs.current[comment.id] = ref; }}
+                    onPress={() => openMenu(comment.id)}
+                    style={styles.menuButton}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
                 )}
               </View>
               {isEditing ? (
@@ -202,6 +276,23 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
             <Text style={[styles.loadMoreText, { color: theme.primary }]}>Загрузить еще</Text>
           )}
         </TouchableOpacity>
+      )}
+
+      {/* Comment Action Menu */}
+      {menuState !== null && (
+        <CommentActionMenu
+          visible={true}
+          position={menuState.position}
+          onClose={closeMenu}
+          onEdit={() => {
+            const comment = comments.find(c => c.id === menuState.commentId);
+            if (comment) onEditComment(comment);
+          }}
+          onDelete={() => {
+            onDeleteComment(menuState.commentId);
+          }}
+          theme={theme}
+        />
       )}
     </View>
   );
@@ -277,5 +368,38 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  menuButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  menuContainer: {
+    borderRadius: 12,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: 1,
+    marginHorizontal: 16,
   },
 });

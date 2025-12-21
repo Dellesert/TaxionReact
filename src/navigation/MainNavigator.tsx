@@ -20,7 +20,7 @@ import PollNavigator from './PollNavigator';
 import AdminNavigator from './AdminNavigator';
 import ProfileNavigator from './ProfileNavigator';
 import NotificationNavigator from './NotificationNavigator';
-import CalendarScreen from '@/features/calendar/screens/CalendarScreen';
+import CalendarNavigator from './CalendarNavigator';
 import { AnimatedTabBar } from '@shared/components/navigation/AnimatedTabBar';
 import { SideNavBar } from '@shared/components/navigation/SideNavBar';
 
@@ -51,7 +51,7 @@ const MainNavigatorContent: React.FC = () => {
         case 'Chats':
           return <ChatNavigator />;
         case 'Calendar':
-          return <CalendarScreen />;
+          return <CalendarNavigator />;
         case 'Notifications':
           return <NotificationNavigator />;
         case 'Admin':
@@ -168,8 +168,26 @@ const MainNavigatorContent: React.FC = () => {
       />
        <Tab.Screen
         name="Calendar"
-        component={CalendarScreen}
-        options={{ tabBarLabel: 'События' }}
+        component={CalendarNavigator}
+        options={({ route }) => ({
+          tabBarLabel: 'События',
+          tabBarStyle: ((route) => {
+            const routeName = getFocusedRouteNameFromRoute(route) ?? 'CalendarMain';
+            if (routeName === 'EventDetail') {
+              // Скрываем табы на экране детального просмотра события
+              return { display: 'none' };
+            }
+            // Показываем табы на остальных экранах
+            return {
+              backgroundColor: theme.backgroundSecondary,
+              borderTopWidth: 1,
+              borderTopColor: theme.border,
+              height: 85,
+              paddingTop: 6,
+              paddingHorizontal: 12,
+            };
+          })(route),
+        })}
       />
       <Tab.Screen
         name="Profile"

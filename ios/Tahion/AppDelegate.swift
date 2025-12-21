@@ -1,9 +1,9 @@
 import Expo
 import FirebaseCore
 import FirebaseMessaging
+import UserNotifications
 import React
 import ReactAppDependencyProvider
-import UserNotifications
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -34,7 +34,6 @@ FirebaseApp.configure()
     UNUserNotificationCenter.current().delegate = self
     Messaging.messaging().delegate = self
     application.registerForRemoteNotifications()
-
     factory.startReactNative(
       withModuleName: "main",
       in: window,
@@ -63,33 +62,32 @@ FirebaseApp.configure()
     return super.application(application, continue: userActivity, restorationHandler: restorationHandler) || result
   }
 
-  // MARK: - Remote Notifications (APNs)
+  // MARK: - Push Notifications
+
   public override func application(
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
-    // Pass device token to Firebase
     Messaging.messaging().apnsToken = deviceToken
-    super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
 
   public override func application(
     _ application: UIApplication,
     didFailToRegisterForRemoteNotificationsWithError error: Error
   ) {
-    print("[AppDelegate] Failed to register for remote notifications: \(error.localizedDescription)")
-    super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
+    print("Failed to register for remote notifications: \(error.localizedDescription)")
   }
 }
 
 // MARK: - UNUserNotificationCenterDelegate
+
 extension AppDelegate: UNUserNotificationCenterDelegate {
   public func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
-    completionHandler([.banner, .badge, .sound])
+    completionHandler([[.banner, .sound, .badge]])
   }
 
   public func userNotificationCenter(
@@ -102,9 +100,15 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 }
 
 // MARK: - MessagingDelegate
+
 extension AppDelegate: MessagingDelegate {
-  public func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-    print("[AppDelegate] FCM Token: \(fcmToken ?? "nil")")
+  public func messaging(
+    _ messaging: Messaging,
+    didReceiveRegistrationToken fcmToken: String?
+  ) {
+    if let fcmToken = fcmToken {
+      print("FCM Token: \(fcmToken)")
+    }
   }
 }
 

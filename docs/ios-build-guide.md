@@ -1,5 +1,21 @@
 # iOS Build Guide
 
+## ⚠️ Чеклист перед сборкой
+
+**Обязательно выполнить после каждого `expo prebuild`:**
+
+- [ ] Добавить импорты в AppDelegate.swift (`FirebaseMessaging`, `UserNotifications`)
+- [ ] Добавить регистрацию push notifications в `didFinishLaunchingWithOptions`
+- [ ] Добавить методы делегатов для push notifications
+- [ ] Добавить extension-ы `UNUserNotificationCenterDelegate` и `MessagingDelegate`
+- [ ] Проверить `*.entitlements` файл (должен содержать `aps-environment` и `com.apple.developer.associated-domains`)
+- [ ] Для Production: убедиться, что Associated Domains включен в Apple Developer Console
+- [ ] Проверить наличие файла `apple-app-site-association` на сервере
+
+**См. подробные инструкции в разделах 3 и "Настройка Passkey"**
+
+---
+
 ## Окружения
 
 Проект поддерживает два окружения:
@@ -31,16 +47,18 @@ APP_ENV=development npx expo prebuild --clean --platform ios
 cd ios && LANG=en_US.UTF-8 pod install && cd ..
 ```
 
-### 3. Добавить push notifications в AppDelegate.swift
+### 3. Добавить push notifications и passkey в AppDelegate.swift
 
-После prebuild нужно добавить код для push notifications в `ios/Dev/AppDelegate.swift`:
+⚠️ **ВАЖНО:** После каждого prebuild необходимо вручную добавлять этот код!
+
+#### 3.1. Добавить импорты в `ios/Dev/AppDelegate.swift`:
 
 ```swift
 import FirebaseMessaging
 import UserNotifications
 ```
 
-И в `didFinishLaunchingWithOptions` после `FirebaseApp.configure()`:
+#### 3.2. Добавить регистрацию в `didFinishLaunchingWithOptions` после `FirebaseApp.configure()`:
 
 ```swift
 // Register for remote notifications
@@ -49,7 +67,92 @@ Messaging.messaging().delegate = self
 application.registerForRemoteNotifications()
 ```
 
-Также добавить методы делегатов (см. полный пример в существующем AppDelegate.swift).
+#### 3.3. Добавить методы для push notifications после основного класса:
+
+```swift
+// MARK: - Push Notifications
+
+public override func application(
+  _ application: UIApplication,
+  didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+) {
+  Messaging.messaging().apnsToken = deviceToken
+}
+
+public override func application(
+  _ application: UIApplication,
+  didFailToRegisterForRemoteNotificationsWithError error: Error
+) {
+  print("Failed to register for remote notifications: \(error.localizedDescription)")
+}
+```
+
+#### 3.4. Добавить extension-ы в конец файла перед `ReactNativeDelegate`:
+
+```swift
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    completionHandler([[.banner, .sound, .badge]])
+  }
+
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    completionHandler()
+  }
+}
+
+// MARK: - MessagingDelegate
+
+extension AppDelegate: MessagingDelegate {
+  public func messaging(
+    _ messaging: Messaging,
+    didReceiveRegistrationToken fcmToken: String?
+  ) {
+    if let fcmToken = fcmToken {
+      print("FCM Token: \(fcmToken)")
+    }
+  }
+}
+```
+
+#### 3.5. Проверить entitlements файл `ios/Dev/Dev.entitlements`:
+
+Убедитесь, что файл содержит:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>aps-environment</key>
+    <string>development</string>
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+      <string>webcredentials:taxion.fusioninsight.cloud</string>
+    </array>
+  </dict>
+</plist>
+```
+
+**Важно:** Для passkey также необходимо настроить файл на сервере:
+- URL: `https://taxion.fusioninsight.cloud/.well-known/apple-app-site-association`
+- Содержимое:
+```json
+{
+  "webcredentials": {
+    "apps": [ "QNVQ55232N.com.dellesert.tachyon-messenger.dev" ]
+  }
+}
+```
 
 ### 4. Собрать архив
 
@@ -122,9 +225,124 @@ APP_ENV=production npx expo prebuild --clean --platform ios
 cd ios && LANG=en_US.UTF-8 pod install && cd ..
 ```
 
-### 3. Добавить push notifications в AppDelegate.swift
+### 3. Добавить push notifications и passkey в AppDelegate.swift
 
-Аналогично dev сборке, добавить код для push в `ios/Tahion/AppDelegate.swift`.
+⚠️ **ВАЖНО:** После каждого prebuild необходимо вручную добавлять этот код!
+
+#### 3.1. Добавить импорты в `ios/Tahion/AppDelegate.swift`:
+
+```swift
+import FirebaseMessaging
+import UserNotifications
+```
+
+#### 3.2. Добавить регистрацию в `didFinishLaunchingWithOptions` после `FirebaseApp.configure()`:
+
+```swift
+// Register for remote notifications
+UNUserNotificationCenter.current().delegate = self
+Messaging.messaging().delegate = self
+application.registerForRemoteNotifications()
+```
+
+#### 3.3. Добавить методы для push notifications после основного класса:
+
+```swift
+// MARK: - Push Notifications
+
+public override func application(
+  _ application: UIApplication,
+  didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+) {
+  Messaging.messaging().apnsToken = deviceToken
+}
+
+public override func application(
+  _ application: UIApplication,
+  didFailToRegisterForRemoteNotificationsWithError error: Error
+) {
+  print("Failed to register for remote notifications: \(error.localizedDescription)")
+}
+```
+
+#### 3.4. Добавить extension-ы в конец файла перед `ReactNativeDelegate`:
+
+```swift
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    completionHandler([[.banner, .sound, .badge]])
+  }
+
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    completionHandler()
+  }
+}
+
+// MARK: - MessagingDelegate
+
+extension AppDelegate: MessagingDelegate {
+  public func messaging(
+    _ messaging: Messaging,
+    didReceiveRegistrationToken fcmToken: String?
+  ) {
+    if let fcmToken = fcmToken {
+      print("FCM Token: \(fcmToken)")
+    }
+  }
+}
+```
+
+#### 3.5. Проверить entitlements файл `ios/Tahion/Tahion.entitlements`:
+
+Убедитесь, что файл содержит:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>aps-environment</key>
+    <string>production</string>
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+      <string>webcredentials:taxion.fusioninsight.cloud</string>
+    </array>
+  </dict>
+</plist>
+```
+
+#### 3.6. Проверить Associated Domains в Apple Developer Console
+
+**Перед сборкой убедитесь:**
+
+1. Откройте [Apple Developer Console](https://developer.apple.com/account)
+2. Перейдите в **Certificates, Identifiers & Profiles** → **Identifiers**
+3. Найдите `com.dellesert.tachyon-messenger`
+4. Убедитесь, что включена capability **Associated Domains**
+5. Сохраните изменения
+6. Перейдите в **Profiles** и пересоздайте профиль для App Store
+
+**Для passkey также необходимо настроить файл на сервере:**
+- URL: `https://taxion.fusioninsight.cloud/.well-known/apple-app-site-association`
+- Содержимое:
+```json
+{
+  "webcredentials": {
+    "apps": [ "QNVQ55232N.com.dellesert.tachyon-messenger" ]
+  }
+}
+```
+- Файл должен отдаваться с заголовком `Content-Type: application/json`
 
 ### 4. Собрать архив (Release)
 
@@ -186,10 +404,13 @@ xcrun altool --upload-app \
 
 ## Быстрые команды
 
+⚠️ **ВАЖНО:** Эти команды НЕ включают настройку push notifications и passkey!
+После выполнения команды обязательно выполните шаги из раздела 3 (добавление кода в AppDelegate.swift и проверка entitlements).
+
 ### Dev Client (одной командой)
 
 ```bash
-# Полная сборка dev client
+# Полная сборка dev client (БЕЗ push notifications и passkey)
 rm -rf ios && \
 APP_ENV=development npx expo prebuild --platform ios && \
 cd ios && LANG=en_US.UTF-8 pod install && cd .. && \
@@ -200,10 +421,16 @@ xcodebuild -exportArchive -archivePath ios/build/Dev.xcarchive \
   -exportPath ios/build/ipa-dev -exportOptionsPlist ios/build/ExportOptions.plist
 ```
 
+**После выполнения команды:**
+1. Откройте `ios/Dev/AppDelegate.swift`
+2. Добавьте код push notifications и passkey (см. раздел 3)
+3. Проверьте `ios/Dev/Dev.entitlements`
+4. Пересоберите архив командой xcodebuild
+
 ### Release (одной командой)
 
 ```bash
-# Полная сборка release
+# Полная сборка release (БЕЗ push notifications и passkey)
 rm -rf ios && \
 APP_ENV=production npx expo prebuild --platform ios && \
 cd ios && LANG=en_US.UTF-8 pod install && cd .. && \
@@ -211,7 +438,21 @@ xcodebuild -workspace ios/Tahion.xcworkspace -scheme Tahion -configuration Relea
   -archivePath ios/build/Tahion.xcarchive archive \
   CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=QNVQ55232N -allowProvisioningUpdates && \
 xcodebuild -exportArchive -archivePath ios/build/Tahion.xcarchive \
-  -exportPath ios/build/ipa-release -exportOptionsPlist ios/build/ExportOptions-AppStore.plist
+  -exportPath ios/build/ipa-release -exportOptionsPlist ios/build/ExportOptions-AppStore.plist -allowProvisioningUpdates
+```
+
+**После выполнения команды:**
+1. Откройте `ios/Tahion/AppDelegate.swift`
+2. Добавьте код push notifications и passkey (см. раздел 3)
+3. Проверьте `ios/Tahion/Tahion.entitlements`
+4. Убедитесь, что Associated Domains включен в Apple Developer Console
+5. Пересоберите архив и экспорт:
+```bash
+xcodebuild -workspace ios/Tahion.xcworkspace -scheme Tahion -configuration Release -sdk iphoneos \
+  -archivePath ios/build/Tahion.xcarchive archive \
+  CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=QNVQ55232N -allowProvisioningUpdates && \
+xcodebuild -exportArchive -archivePath ios/build/Tahion.xcarchive \
+  -exportPath ios/build/ipa-release -exportOptionsPlist ios/build/ExportOptions-AppStore.plist -allowProvisioningUpdates
 ```
 
 ---
@@ -247,6 +488,65 @@ cd ios && rm -rf Pods Podfile.lock && pod install
 
 ---
 
+## Настройка Passkey (Associated Domains)
+
+### Требования для работы Passkey
+
+Для работы passkey необходимо настроить файл `apple-app-site-association` на вашем сервере.
+
+#### 1. Создать файл на сервере
+
+**URL:** `https://taxion.fusioninsight.cloud/.well-known/apple-app-site-association`
+
+**Содержимое для Production:**
+```json
+{
+  "webcredentials": {
+    "apps": [ "QNVQ55232N.com.dellesert.tachyon-messenger" ]
+  }
+}
+```
+
+**Содержимое для Development:**
+```json
+{
+  "webcredentials": {
+    "apps": [
+      "QNVQ55232N.com.dellesert.tachyon-messenger",
+      "QNVQ55232N.com.dellesert.tachyon-messenger.dev"
+    ]
+  }
+}
+```
+
+#### 2. Настроить сервер
+
+Файл должен:
+- Быть доступен по HTTPS
+- Отдаваться с заголовком `Content-Type: application/json`
+- Быть без расширения `.json` (только `apple-app-site-association`)
+- Находиться в директории `.well-known/`
+
+#### 3. Проверить файл
+
+Откройте в браузере:
+```
+https://taxion.fusioninsight.cloud/.well-known/apple-app-site-association
+```
+
+Должен отобразиться JSON с вашими app IDs.
+
+#### 4. Проверить в Apple CDN (опционально)
+
+Apple кэширует файл на своих серверах. Проверить можно здесь:
+```
+https://app-site-association.cdn-apple.com/a/v1/taxion.fusioninsight.cloud
+```
+
+**Примечание:** Apple обновляет кэш автоматически, но это может занять до 24 часов.
+
+---
+
 ## Структура файлов
 
 ```
@@ -258,7 +558,11 @@ TaxionReact/
 │   └── withPodfileModifications.js
 ├── ios/
 │   ├── Dev/                      # Dev проект (после prebuild с APP_ENV=development)
+│   │   ├── AppDelegate.swift     # ⚠️ Требует ручного добавления push/passkey кода
+│   │   └── Dev.entitlements      # ⚠️ Проверить Associated Domains
 │   ├── Tahion/                   # Production проект (после prebuild с APP_ENV=production)
+│   │   ├── AppDelegate.swift     # ⚠️ Требует ручного добавления push/passkey кода
+│   │   └── Tahion.entitlements   # ⚠️ Проверить Associated Domains
 │   └── build/
 │       ├── Dev.xcarchive
 │       ├── Tahion.xcarchive

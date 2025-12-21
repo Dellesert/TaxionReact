@@ -16,6 +16,8 @@ import {
   StatusBar,
   ActivityIndicator,
   Animated,
+  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,6 +76,24 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [assigneeId, setAssigneeId] = useState<number | undefined>(undefined);
 
   const [isCreating, setIsCreating] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Track keyboard visibility
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const priorities: {
     value: TaskPriority;
@@ -282,314 +302,361 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         ]}>
           <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
-            <Ionicons name="close" size={28} color={theme.textSecondary} />
-          </TouchableOpacity>
+        {/* Header - hide when keyboard is visible */}
+        {!isKeyboardVisible && (
+          <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+              <Ionicons name="close" size={28} color={theme.textSecondary} />
+            </TouchableOpacity>
 
-          <View style={styles.headerCenter}>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Создание задачи</Text>
-            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-              Шаг {getDisplayStep()} из {getTotalSteps()}
-            </Text>
+            <View style={styles.headerCenter}>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Создание задачи</Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+                Шаг {getDisplayStep()} из {getTotalSteps()}
+              </Text>
+            </View>
+
+            <View style={styles.headerButton} />
           </View>
+        )}
 
-          <View style={styles.headerButton} />
-        </View>
-
-        {/* Progress Indicator */}
-        <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
-          <View style={styles.progressBar}>
-            {[1, 2, 3, 4].slice(0, getTotalSteps()).map((step) => (
-              <View
-                key={step}
-                style={[
-                  styles.progressStep,
-                  { backgroundColor: theme.border },
-                  getDisplayStep() >= step && { backgroundColor: theme.primary },
-                ]}
-              />
-            ))}
+        {/* Compact header when keyboard is visible */}
+        {isKeyboardVisible && (
+          <View style={[styles.compactHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <TouchableOpacity onPress={handleClose} style={styles.compactHeaderButton}>
+              <Ionicons name="close" size={24} color={theme.textSecondary} />
+            </TouchableOpacity>
+            <Text style={[styles.compactHeaderTitle, { color: theme.text }]}>{getStepTitle()}</Text>
+            <View style={styles.compactHeaderButton} />
           </View>
-        </View>
+        )}
 
-        {/* Content */}
-        <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
-          <ScrollView
-            style={[styles.content, { backgroundColor: theme.background }]}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.stepContainer}>
-              <Text style={[styles.stepTitle, { color: theme.text }]}>{getStepTitle()}</Text>
+        {/* Progress Indicator - hide when keyboard is visible */}
+        {!isKeyboardVisible && (
+          <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
+            <View style={styles.progressBar}>
+              {[1, 2, 3, 4].slice(0, getTotalSteps()).map((step) => (
+                <View
+                  key={step}
+                  style={[
+                    styles.progressStep,
+                    { backgroundColor: theme.border },
+                    getDisplayStep() >= step && { backgroundColor: theme.primary },
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        )}
 
-              {/* Step 1: Title */}
-              {currentStep === 1 && (
-                <View style={styles.stepContent}>
-                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
-                    Введите краткое и понятное название для новой задачи
-                  </Text>
-                  <TextInput
-                    style={[styles.largeInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Например: Подготовить отчет..."
-                    placeholderTextColor={theme.inputPlaceholder}
-                    value={title}
-                    onChangeText={setTitle}
-                    maxLength={100}
-                    autoFocus
-                    multiline
-                  />
-                  <Text style={[styles.charCount, { color: theme.textTertiary }]}>
-                    {title.length}/100
-                  </Text>
-                </View>
-              )}
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
+        >
+          {/* Content */}
+          <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
+            <ScrollView
+              style={[styles.content, { backgroundColor: theme.background }]}
+              contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 10 : 20 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={[styles.stepContainer, isKeyboardVisible && styles.stepContainerCompact]}>
+                {!isKeyboardVisible && (
+                  <Text style={[styles.stepTitle, { color: theme.text }]}>{getStepTitle()}</Text>
+                )}
 
-              {/* Step 2: Content Type Selection */}
-              {currentStep === 2 && (
-                <View style={styles.stepContent}>
-                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
-                    Выберите, как вы хотите структурировать задачу
-                  </Text>
-                  {contentTypes.map((item) => (
-                    <TouchableOpacity
-                      key={item.type}
-                      onPress={() => setContentType(item.type)}
-                      style={[
-                        styles.contentTypeCard,
-                        { backgroundColor: theme.card, borderColor: theme.border },
-                        contentType === item.type && { borderColor: theme.primary, borderWidth: 2 },
-                      ]}
-                    >
-                      <View style={[styles.contentTypeIcon, { backgroundColor: contentType === item.type ? theme.primary : theme.backgroundSecondary }]}>
-                        <Ionicons name={item.icon as any} size={28} color={contentType === item.type ? '#FFFFFF' : theme.primary} />
-                      </View>
-                      <View style={styles.contentTypeInfo}>
-                        <Text style={[styles.contentTypeTitle, { color: theme.text }]}>{item.title}</Text>
-                        <Text style={[styles.contentTypeDescription, { color: theme.textSecondary }]}>{item.description}</Text>
-                      </View>
-                      {contentType === item.type && (
-                        <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {/* Step 3: Content Input (Checklist or Description) */}
-              {currentStep === 3 && contentType === 'checklist' && (
-                <View style={styles.stepContent}>
-                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
-                    Добавьте пункты в чек-лист для отслеживания прогресса выполнения
-                  </Text>
-
-                  {/* Add item input */}
-                  <View style={styles.addChecklistContainer}>
-                    <TextInput
-                      style={[styles.checklistInput, { flex: 1, backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                      placeholder="Добавить пункт..."
-                      placeholderTextColor={theme.inputPlaceholder}
-                      value={newItemText}
-                      onChangeText={setNewItemText}
-                      onSubmitEditing={handleAddItem}
-                      returnKeyType="done"
-                      multiline
-                      textAlignVertical="top"
-                      maxLength={200}
-                    />
-                    <TouchableOpacity
-                      onPress={handleAddItem}
-                      style={[styles.addButton, { backgroundColor: newItemText.trim() ? theme.primary : theme.backgroundSecondary }]}
-                      disabled={!newItemText.trim()}
-                    >
-                      <Ionicons name="add" size={24} color={newItemText.trim() ? '#FFFFFF' : theme.textTertiary} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Render checklist items */}
-                  {checklistItems.length > 0 && (
-                    <View style={styles.checklistItemsContainer}>
-                      {checklistItems.map((item, index) => (
-                        <View key={index} style={[styles.checklistItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                          <View style={[styles.checkbox, { borderColor: theme.border }]} />
-                          <Text style={[styles.itemText, { color: theme.text }]} numberOfLines={2}>{item}</Text>
-                          <TouchableOpacity onPress={() => handleRemoveItem(index)} style={styles.removeButton}>
-                            <Ionicons name="close-circle" size={20} color={theme.error} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {checklistItems.length === 0 && (
-                    <View style={[styles.emptyState, { backgroundColor: theme.card }]}>
-                      <Ionicons name="list-outline" size={48} color={theme.textTertiary} />
-                      <Text style={[styles.emptyStateText, { color: theme.textTertiary }]}>
-                        Добавьте первый пункт в чек-лист
+                {/* Step 1: Title */}
+                {currentStep === 1 && (
+                  <View style={styles.stepContent}>
+                    {!isKeyboardVisible && (
+                      <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                        Введите краткое и понятное название для новой задачи
                       </Text>
+                    )}
+                    <TextInput
+                      style={[
+                        styles.largeInput,
+                        { backgroundColor: theme.card, borderColor: theme.border, color: theme.text },
+                        isKeyboardVisible && styles.largeInputCompact
+                      ]}
+                      placeholder="Например: Подготовить отчет..."
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={title}
+                      onChangeText={setTitle}
+                      maxLength={100}
+                      autoFocus
+                      multiline
+                    />
+                    {!isKeyboardVisible && (
+                      <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+                        {title.length}/100
+                      </Text>
+                    )}
+                  </View>
+                )}
+
+                {/* Step 2: Content Type Selection */}
+                {currentStep === 2 && (
+                  <View style={styles.stepContent}>
+                    <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                      Выберите, как вы хотите структурировать задачу
+                    </Text>
+                    {contentTypes.map((item) => (
+                      <TouchableOpacity
+                        key={item.type}
+                        onPress={() => setContentType(item.type)}
+                        style={[
+                          styles.contentTypeCard,
+                          { backgroundColor: theme.card, borderColor: theme.border },
+                          contentType === item.type && { borderColor: theme.primary, borderWidth: 2 },
+                        ]}
+                      >
+                        <View style={[styles.contentTypeIcon, { backgroundColor: contentType === item.type ? theme.primary : theme.backgroundSecondary }]}>
+                          <Ionicons name={item.icon as any} size={28} color={contentType === item.type ? '#FFFFFF' : theme.primary} />
+                        </View>
+                        <View style={styles.contentTypeInfo}>
+                          <Text style={[styles.contentTypeTitle, { color: theme.text }]}>{item.title}</Text>
+                          <Text style={[styles.contentTypeDescription, { color: theme.textSecondary }]}>{item.description}</Text>
+                        </View>
+                        {contentType === item.type && (
+                          <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Step 3: Content Input (Checklist or Description) */}
+                {currentStep === 3 && contentType === 'checklist' && (
+                  <View style={styles.stepContent}>
+                    <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                      Добавьте пункты в чек-лист для отслеживания прогресса выполнения
+                    </Text>
+
+                    {/* Add item input */}
+                    <View style={styles.addChecklistContainer}>
+                      <TextInput
+                        style={[styles.checklistInput, { flex: 1, backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                        placeholder="Добавить пункт..."
+                        placeholderTextColor={theme.inputPlaceholder}
+                        value={newItemText}
+                        onChangeText={setNewItemText}
+                        onSubmitEditing={handleAddItem}
+                        returnKeyType="done"
+                        multiline
+                        textAlignVertical="top"
+                        maxLength={200}
+                      />
+                      <TouchableOpacity
+                        onPress={handleAddItem}
+                        style={[styles.addButton, { backgroundColor: newItemText.trim() ? theme.primary : theme.backgroundSecondary }]}
+                        disabled={!newItemText.trim()}
+                      >
+                        <Ionicons name="add" size={24} color={newItemText.trim() ? '#FFFFFF' : theme.textTertiary} />
+                      </TouchableOpacity>
                     </View>
-                  )}
-                </View>
-              )}
 
-              {currentStep === 3 && contentType === 'description' && (
-                <View style={styles.stepContent}>
-                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
-                    Опишите детали задачи, требования или любую другую важную информацию
-                  </Text>
-                  <TextInput
-                    style={[styles.textArea, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Введите описание задачи..."
-                    placeholderTextColor={theme.inputPlaceholder}
-                    value={description}
-                    onChangeText={setDescription}
-                    multiline
-                    numberOfLines={8}
-                    textAlignVertical="top"
-                    maxLength={500}
-                  />
-                  <Text style={[styles.charCount, { color: theme.textTertiary }]}>
-                    {description.length}/500
-                  </Text>
-                </View>
-              )}
+                    {/* Render checklist items */}
+                    {checklistItems.length > 0 && (
+                      <View style={styles.checklistItemsContainer}>
+                        {checklistItems.map((item, index) => (
+                          <View key={index} style={[styles.checklistItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                            <View style={[styles.checkbox, { borderColor: theme.border }]} />
+                            <Text style={[styles.itemText, { color: theme.text }]} numberOfLines={2}>{item}</Text>
+                            <TouchableOpacity onPress={() => handleRemoveItem(index)} style={styles.removeButton}>
+                              <Ionicons name="close-circle" size={20} color={theme.error} />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
 
-              {/* Step 4: Details (Priority, Date, Assignee) */}
-              {currentStep === 4 && (
-                <View style={styles.stepContent}>
-                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
-                    Укажите приоритет, срок выполнения и исполнителя
-                  </Text>
+                    {checklistItems.length === 0 && (
+                      <View style={[styles.emptyState, { backgroundColor: theme.card }]}>
+                        <Ionicons name="list-outline" size={48} color={theme.textTertiary} />
+                        <Text style={[styles.emptyStateText, { color: theme.textTertiary }]}>
+                          Добавьте первый пункт в чек-лист
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
 
-                  {/* Priority */}
-                  <View style={styles.detailSection}>
-                    <Text style={[styles.detailLabel, { color: theme.text }]}>Приоритет</Text>
-                    <View style={styles.priorityRow}>
-                      {priorities.map((p) => (
-                        <TouchableOpacity
-                          key={p.value}
-                          onPress={() => setPriority(p.value)}
-                          style={[
-                            styles.priorityChip,
-                            { backgroundColor: theme.card, borderColor: theme.border },
-                            priority === p.value && {
-                              backgroundColor: p.color,
-                              borderColor: p.color,
-                            },
-                          ]}
-                        >
-                          <Text
+                {currentStep === 3 && contentType === 'description' && (
+                  <View style={styles.stepContent}>
+                    <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                      Опишите детали задачи, требования или любую другую важную информацию
+                    </Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Введите описание задачи..."
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={description}
+                      onChangeText={setDescription}
+                      multiline
+                      numberOfLines={8}
+                      textAlignVertical="top"
+                      maxLength={500}
+                    />
+                    <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+                      {description.length}/500
+                    </Text>
+                  </View>
+                )}
+
+                {/* Step 4: Details (Priority, Date, Assignee) */}
+                {currentStep === 4 && (
+                  <View style={styles.stepContent}>
+                    <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                      Укажите приоритет, срок выполнения и исполнителя
+                    </Text>
+
+                    {/* Priority */}
+                    <View style={styles.detailSection}>
+                      <Text style={[styles.detailLabel, { color: theme.text }]}>Приоритет</Text>
+                      <View style={styles.priorityRow}>
+                        {priorities.map((p) => (
+                          <TouchableOpacity
+                            key={p.value}
+                            onPress={() => setPriority(p.value)}
                             style={[
-                              styles.priorityChipText,
-                              { color: theme.text },
-                              priority === p.value && { color: '#FFFFFF', fontWeight: '600' },
+                              styles.priorityChip,
+                              { backgroundColor: theme.card, borderColor: theme.border },
+                              priority === p.value && {
+                                backgroundColor: p.color,
+                                borderColor: p.color,
+                              },
                             ]}
                           >
-                            {p.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                            <Text
+                              style={[
+                                styles.priorityChipText,
+                                { color: theme.text },
+                                priority === p.value && { color: '#FFFFFF', fontWeight: '600' },
+                              ]}
+                            >
+                              {p.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     </View>
-                  </View>
 
-                  {/* Due Date */}
-                  <View style={styles.detailSection}>
-                    <Text style={[styles.detailLabel, { color: theme.text }]}>Срок выполнения (необязательно)</Text>
-                    <TouchableOpacity
-                      style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                      onPress={() => setShowDatePicker(true)}
-                    >
-                      <Ionicons name="calendar-outline" size={20} color={theme.primary} />
-                      <Text style={[styles.dateButtonText, { color: dueDate ? theme.text : theme.textTertiary }]}>
-                        {dueDate
-                          ? format(dueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
-                          : 'Выберите дату и время'}
-                      </Text>
-                      {dueDate && (
-                        <TouchableOpacity onPress={() => setDueDate(undefined)} style={styles.clearButton}>
-                          <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-                        </TouchableOpacity>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Assignee */}
-                  {!isEmployee && (
+                    {/* Due Date */}
                     <View style={styles.detailSection}>
-                      <Text style={[styles.detailLabel, { color: theme.text }]}>Исполнитель (необязательно)</Text>
-                      <UserSelector
-                        selectedUserIds={assigneeId ? [assigneeId] : []}
-                        onSelectionChange={(ids) => setAssigneeId(ids[0])}
-                        multiSelect={false}
-                        placeholder="Выберите исполнителя"
-                        modalTitle="Выбрать исполнителя"
-                        filterForTaskAssignment={true}
-                      />
+                      <Text style={[styles.detailLabel, { color: theme.text }]}>Срок выполнения (необязательно)</Text>
+                      <TouchableOpacity
+                        style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                        onPress={() => setShowDatePicker(true)}
+                      >
+                        <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                        <Text style={[styles.dateButtonText, { color: dueDate ? theme.text : theme.textTertiary }]}>
+                          {dueDate
+                            ? format(dueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
+                            : 'Выберите дату и время'}
+                        </Text>
+                        {dueDate && (
+                          <TouchableOpacity onPress={() => setDueDate(undefined)} style={styles.clearButton}>
+                            <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                          </TouchableOpacity>
+                        )}
+                      </TouchableOpacity>
                     </View>
-                  )}
 
-                  {isEmployee && (
-                    <View style={[styles.infoSection, { backgroundColor: theme.backgroundSecondary }]}>
-                      <Ionicons name="information-circle" size={20} color={theme.primary} />
-                      <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                        Задача будет автоматически назначена вам
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          </ScrollView>
-        </Animated.View>
+                    {/* Assignee */}
+                    {!isEmployee && (
+                      <View style={styles.detailSection}>
+                        <Text style={[styles.detailLabel, { color: theme.text }]}>Исполнитель (необязательно)</Text>
+                        <UserSelector
+                          selectedUserIds={assigneeId ? [assigneeId] : []}
+                          onSelectionChange={(ids) => setAssigneeId(ids[0])}
+                          multiSelect={false}
+                          placeholder="Выберите исполнителя"
+                          modalTitle="Выбрать исполнителя"
+                          filterForTaskAssignment={true}
+                        />
+                      </View>
+                    )}
 
-        {/* Bottom Navigation */}
-        <View style={[
-          styles.bottomNav,
-          {
-            backgroundColor: theme.card,
-            borderTopColor: theme.border,
-            paddingBottom: isDesktop ? 20 : insets.bottom
-          }
-        ]}>
-          {currentStep > 1 ? (
-            <TouchableOpacity
-              onPress={goToPreviousStep}
-              style={[styles.navButton, styles.backButton, { borderColor: theme.border }]}
-            >
-              <Ionicons name="arrow-back" size={20} color={theme.text} />
-              <Text style={[styles.navButtonText, { color: theme.text }]}>Назад</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.navButton} />
-          )}
+                    {isEmployee && (
+                      <View style={[styles.infoSection, { backgroundColor: theme.backgroundSecondary }]}>
+                        <Ionicons name="information-circle" size={20} color={theme.primary} />
+                        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                          Задача будет автоматически назначена вам
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          </Animated.View>
 
-          {currentStep < 4 ? (
-            <TouchableOpacity
-              onPress={goToNextStep}
-              style={[styles.navButton, styles.nextButton, { backgroundColor: theme.primary }]}
-            >
-              <Text style={[styles.navButtonText, { color: '#FFFFFF' }]}>Далее</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={handleCreateTask}
-              disabled={isCreating}
-              style={[styles.navButton, styles.createButton, { backgroundColor: theme.primary }]}
-            >
-              {isCreating ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  <Text style={[styles.navButtonText, { color: '#FFFFFF' }]}>Создать</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
+          {/* Bottom Navigation */}
+          <View style={[
+            styles.bottomNav,
+            isKeyboardVisible && styles.bottomNavCompact,
+            {
+              backgroundColor: theme.card,
+              borderTopColor: theme.border,
+              paddingBottom: isKeyboardVisible ? 8 : (isDesktop ? 20 : Math.max(insets.bottom, 16))
+            }
+          ]}>
+            {currentStep > 1 ? (
+              <TouchableOpacity
+                onPress={goToPreviousStep}
+                style={[
+                  styles.navButton,
+                  styles.backButton,
+                  isKeyboardVisible && styles.navButtonCompact,
+                  { borderColor: theme.border }
+                ]}
+              >
+                <Ionicons name="arrow-back" size={isKeyboardVisible ? 18 : 20} color={theme.text} />
+                <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: theme.text }]}>Назад</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.navButton, isKeyboardVisible && styles.navButtonCompact]} />
+            )}
+
+            {currentStep < 4 ? (
+              <TouchableOpacity
+                onPress={goToNextStep}
+                style={[
+                  styles.navButton,
+                  styles.nextButton,
+                  isKeyboardVisible && styles.navButtonCompact,
+                  { backgroundColor: theme.primary }
+                ]}
+              >
+                <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: '#FFFFFF' }]}>Далее</Text>
+                <Ionicons name="arrow-forward" size={isKeyboardVisible ? 18 : 20} color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={handleCreateTask}
+                disabled={isCreating}
+                style={[
+                  styles.navButton,
+                  styles.createButton,
+                  isKeyboardVisible && styles.navButtonCompact,
+                  { backgroundColor: theme.primary }
+                ]}
+              >
+                {isCreating ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={isKeyboardVisible ? 18 : 20} color="#FFFFFF" />
+                    <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: '#FFFFFF' }]}>Создать</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </KeyboardAvoidingView>
 
         {/* Date Picker Modal */}
         {showDatePicker && (
@@ -610,6 +677,9 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
 const styles = StyleSheet.create({
   modalOverlay: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
     flex: 1,
   },
   modalOverlayDesktop: {
@@ -645,6 +715,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
+  },
+  compactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  compactHeaderButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactHeaderTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   headerButton: {
     width: 44,
@@ -683,6 +773,10 @@ const styles = StyleSheet.create({
   stepContainer: {
     padding: 20,
   },
+  stepContainerCompact: {
+    padding: 12,
+    paddingTop: 8,
+  },
   stepTitle: {
     fontSize: 28,
     fontWeight: '700',
@@ -704,6 +798,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  largeInputCompact: {
+    minHeight: 60,
+    paddingVertical: 12,
   },
   charCount: {
     fontSize: 13,
@@ -870,6 +968,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     gap: 12,
   },
+  bottomNavCompact: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    gap: 8,
+  },
   navButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -880,6 +983,12 @@ const styles = StyleSheet.create({
     gap: 8,
     flex: 1,
   },
+  navButtonCompact: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
+  },
   backButton: {
     borderWidth: 1,
   },
@@ -888,6 +997,9 @@ const styles = StyleSheet.create({
   navButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  navButtonTextCompact: {
+    fontSize: 14,
   },
 });
 

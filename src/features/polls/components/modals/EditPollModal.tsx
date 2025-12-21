@@ -19,6 +19,7 @@ import {
   Animated,
   Dimensions,
   KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +27,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as pollApi from '../../api/poll.api';
-import { Poll, PollVisibility } from '../../types/poll.types';
+import { Poll } from '../../types/poll.types';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -51,7 +52,25 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [poll, setPoll] = useState<Poll | null>(null);
+
+  // Track keyboard visibility
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   // Multi-step navigation
   const [currentStep, setCurrentStep] = useState(1);
@@ -243,16 +262,6 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
   // Calculate modal width for animations
   const modalWidth = isDesktop ? 700 : SCREEN_WIDTH;
 
-  if (isLoading) {
-    return (
-      <Modal visible={visible} transparent>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      </Modal>
-    );
-  }
-
   return (
     <Modal
       visible={visible}
@@ -261,57 +270,82 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
     >
+      {isLoading ? (
+        <View style={[styles.loadingContainer, { backgroundColor: theme.card }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      ) : (
       <View style={[
         styles.modalOverlay,
         isDesktop && styles.modalOverlayDesktop,
         { backgroundColor: isDesktop ? 'rgba(0, 0, 0, 0.5)' : theme.card }
       ]}>
-        <KeyboardAvoidingView
+        <View
           style={[
             styles.container,
             { backgroundColor: theme.card },
             !isDesktop && { paddingTop: insets.top },
             isDesktop && styles.containerDesktop
           ]}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
         >
           <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
-          {/* Header */}
-          <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-            <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
-              <Ionicons name="close" size={28} color={theme.textSecondary} />
-            </TouchableOpacity>
+          {/* Header - hide when keyboard is visible */}
+          {!isKeyboardVisible && (
+            <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+              <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+                <Ionicons name="close" size={28} color={theme.textSecondary} />
+              </TouchableOpacity>
 
-            <View style={styles.headerCenter}>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование опроса</Text>
-              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                Шаг {currentStep} из {totalSteps}
+              <View style={styles.headerCenter}>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование опроса</Text>
+                <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+                  Шаг {currentStep} из {totalSteps}
+                </Text>
+              </View>
+
+              <View style={styles.headerButton} />
+            </View>
+          )}
+
+          {/* Compact header when keyboard is visible */}
+          {isKeyboardVisible && (
+            <View style={[styles.compactHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+              <TouchableOpacity onPress={handleClose} style={styles.compactHeaderButton}>
+                <Ionicons name="close" size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+              <Text style={[styles.compactHeaderTitle, { color: theme.text }]}>
+                {currentStep === 1 ? 'Основная информация' : currentStep === 2 ? 'Варианты ответа' : 'Настройки'}
               </Text>
+              <View style={styles.compactHeaderButton} />
             </View>
+          )}
 
-            <View style={styles.headerButton} />
-          </View>
-
-          {/* Progress Indicator */}
-          <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
-            <View style={styles.progressBar}>
-              {[1, 2, 3].map((step) => (
-                <View
-                  key={step}
-                  style={[
-                    styles.progressStep,
-                    { backgroundColor: theme.border },
-                    currentStep >= step && { backgroundColor: theme.primary },
-                  ]}
-                />
-              ))}
+          {/* Progress Indicator - hide when keyboard is visible */}
+          {!isKeyboardVisible && (
+            <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
+              <View style={styles.progressBar}>
+                {[1, 2, 3].map((step) => (
+                  <View
+                    key={step}
+                    style={[
+                      styles.progressStep,
+                      { backgroundColor: theme.border },
+                      currentStep >= step && { backgroundColor: theme.primary },
+                    ]}
+                  />
+                ))}
+              </View>
             </View>
-          </View>
+          )}
 
-        {/* Multi-step Content */}
-        <View style={[styles.content, { backgroundColor: theme.background }]}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
+        >
+          {/* Multi-step Content */}
+          <View style={[styles.content, { backgroundColor: theme.background }]}>
           <Animated.View
             style={[
               styles.stepsContainer,
@@ -321,19 +355,21 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
             ]}
           >
             {/* Step 1: Основная информация */}
-            <View style={[styles.stepContent, { width: modalWidth }]}>
+            <View style={[styles.stepContent, isKeyboardVisible && styles.stepContentCompact, { width: modalWidth }]}>
               <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 20 : 100 }}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                <View style={styles.stepHeader}>
-                  <Text style={[styles.stepTitle, { color: theme.text }]}>Основная информация</Text>
-                  <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
-                    Укажите название и описание опроса
-                  </Text>
-                </View>
+                {!isKeyboardVisible && (
+                  <View style={styles.stepHeader}>
+                    <Text style={[styles.stepTitle, { color: theme.text }]}>Основная информация</Text>
+                    <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+                      Укажите название и описание опроса
+                    </Text>
+                  </View>
+                )}
 
                 <View style={[styles.card, { backgroundColor: theme.card }]}>
                   <View style={styles.cardSection}>
@@ -470,22 +506,28 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
         {/* Bottom Navigation */}
         <View style={[
           styles.bottomNav,
+          isKeyboardVisible && styles.bottomNavCompact,
           {
             backgroundColor: theme.card,
             borderTopColor: theme.border,
-            paddingBottom: isDesktop ? 20 : insets.bottom
+            paddingBottom: isKeyboardVisible ? 8 : (isDesktop ? 20 : Math.max(insets.bottom, 16))
           }
         ]}>
           {currentStep > 1 ? (
             <TouchableOpacity
               onPress={goToPreviousStep}
-              style={[styles.navButton, styles.backButton, { borderColor: theme.border }]}
+              style={[
+                styles.navButton,
+                styles.backButton,
+                isKeyboardVisible && styles.navButtonCompact,
+                { borderColor: theme.border }
+              ]}
             >
-              <Ionicons name="arrow-back" size={20} color={theme.text} />
-              <Text style={[styles.navButtonText, { color: theme.text }]}>Назад</Text>
+              <Ionicons name="arrow-back" size={isKeyboardVisible ? 18 : 20} color={theme.text} />
+              <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: theme.text }]}>Назад</Text>
             </TouchableOpacity>
           ) : (
-            <View style={styles.navButton} />
+            <View style={[styles.navButton, isKeyboardVisible && styles.navButtonCompact]} />
           )}
 
           {currentStep < totalSteps ? (
@@ -495,27 +537,33 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
               style={[
                 styles.navButton,
                 styles.nextButton,
+                isKeyboardVisible && styles.navButtonCompact,
                 { backgroundColor: theme.primary },
                 !canProceedFromStep(currentStep) && { backgroundColor: theme.backgroundTertiary }
               ]}
             >
-              <Text style={[styles.navButtonText, { color: '#FFFFFF' }, !canProceedFromStep(currentStep) && { color: theme.textTertiary }]}>
+              <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: '#FFFFFF' }, !canProceedFromStep(currentStep) && { color: theme.textTertiary }]}>
                 Далее
               </Text>
-              <Ionicons name="arrow-forward" size={20} color={!canProceedFromStep(currentStep) ? theme.textTertiary : '#FFFFFF'} />
+              <Ionicons name="arrow-forward" size={isKeyboardVisible ? 18 : 20} color={!canProceedFromStep(currentStep) ? theme.textTertiary : '#FFFFFF'} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               onPress={handleSubmit}
               disabled={isSubmitting}
-              style={[styles.navButton, styles.updateButton, { backgroundColor: theme.primary }]}
+              style={[
+                styles.navButton,
+                styles.updateButton,
+                isKeyboardVisible && styles.navButtonCompact,
+                { backgroundColor: theme.primary }
+              ]}
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  <Text style={[styles.navButtonText, { color: '#FFFFFF' }]}>Сохранить</Text>
+                  <Ionicons name="checkmark" size={isKeyboardVisible ? 18 : 20} color="#FFFFFF" />
+                  <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: '#FFFFFF' }]}>Сохранить</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -533,14 +581,19 @@ const EditPollModal: React.FC<EditPollModalProps> = ({
             mode="date"
           />
         )}
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+        </View>
       </View>
+      )}
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
   modalOverlay: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
     flex: 1,
   },
   modalOverlayDesktop: {
@@ -573,7 +626,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   header: {
     flexDirection: 'row',
@@ -761,6 +813,43 @@ const styles = StyleSheet.create({
   navButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Compact styles for keyboard visible state
+  compactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  compactHeaderButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactHeaderTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  stepContentCompact: {
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  bottomNavCompact: {
+    paddingTop: 8,
+    paddingHorizontal: 16,
+  },
+  navButtonCompact: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  navButtonTextCompact: {
+    fontSize: 14,
   },
 });
 

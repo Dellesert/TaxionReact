@@ -54,6 +54,15 @@ export type PollStackParamList = {
   };
 };
 
+// Calendar Stack
+export type CalendarStackParamList = {
+  CalendarMain: undefined;
+  EventDetail: {
+    eventId: number;
+    fromChat?: boolean;
+  };
+};
+
 // Admin Stack
 export type AdminStackParamList = {
   AdminHub: undefined;
@@ -91,7 +100,7 @@ export type NotificationStackParamList = {
 export type MainTabParamList = {
   Chats: NavigatorScreenParams<ChatStackParamList>;
   Tasks: NavigatorScreenParams<TaskStackParamList>;
-  Calendar: undefined;
+  Calendar: NavigatorScreenParams<CalendarStackParamList>;
   Polls: NavigatorScreenParams<PollStackParamList>;
   Notifications: NavigatorScreenParams<NotificationStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;

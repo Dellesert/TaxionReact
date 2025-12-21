@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -18,6 +17,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@shared/components/common/Avatar';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
+import { ActionMenu } from '@shared/components/common/ActionMenu';
 import CreateEventModal from '../modals/CreateEventModal';
 
 interface EventDetailsPanelProps {
@@ -37,6 +37,7 @@ interface ParticipantGroupProps {
   theme: any;
   onUserPress: (userId: number) => void;
 }
+
 
 const ParticipantGroup: React.FC<ParticipantGroupProps> = ({
   participants: groupParticipants,
@@ -171,6 +172,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
 
   const myParticipation = user && event.participants ? event.participants.find(p => p.user_id === user.id) : null;
   const isCreator = user && event.created_by === user.id;
@@ -292,32 +294,28 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Compact Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={theme.text} />
+      {/* Header with centered title and action menu */}
+      <View style={[styles.headerBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={onClose} style={styles.backButton}>
+            <Ionicons name="close" size={24} color={theme.primary} />
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            Событие
+          </Text>
+        </View>
+
+        <View style={styles.headerRight}>
           {canManage && (
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                onPress={() => setShowEditModal(true)}
-                style={[styles.iconActionButton, { backgroundColor: theme.backgroundSecondary }]}
-              >
-                <Ionicons name="create-outline" size={20} color={theme.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleDelete}
-                style={[styles.iconActionButton, { backgroundColor: theme.backgroundSecondary }]}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color={theme.primary} />
-                ) : (
-                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                )}
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={() => setShowActionMenu(true)}
+              style={styles.actionMenuButton}
+            >
+              <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -529,13 +527,13 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               activeOpacity={0.7}
             >
               <Avatar
-                name={event.creator.name}
+                name={isCreator ? 'Я' : event.creator.name}
                 imageUrl={event.creator.avatar}
                 size={40}
               />
               <View style={styles.creatorInfo}>
                 <Text style={[styles.creatorName, { color: theme.text }]}>
-                  {event.creator.name}
+                  {isCreator ? 'Я' : event.creator.name}
                 </Text>
                 <Text style={[styles.creatorLabel, { color: theme.textSecondary }]}>
                   Организатор
@@ -624,6 +622,30 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           setSelectedUserId(null);
         }}
       />
+
+      {/* Action Menu */}
+      <ActionMenu
+        visible={showActionMenu}
+        onClose={() => setShowActionMenu(false)}
+        isDesktop={true}
+        items={[
+          {
+            key: 'edit',
+            icon: 'create-outline',
+            label: 'Редактировать',
+            color: theme.text,
+            onPress: () => setShowEditModal(true),
+          },
+          {
+            key: 'delete',
+            icon: 'trash-outline',
+            label: 'Удалить',
+            color: '#EF4444',
+            onPress: handleDelete,
+            disabled: isDeleting,
+          },
+        ]}
+      />
     </View>
   );
 };
@@ -632,42 +654,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  headerTop: {
+  headerBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    minHeight: 56,
   },
-  closeButton: {
-    width: 36,
-    height: 36,
+  headerLeft: {
+    width: 60,
+    alignItems: 'flex-start',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerCenter: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    paddingHorizontal: 8,
   },
-  eventTypeIndicator: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  headerActions: {
+  headerRight: {
+    width: 60,
     flexDirection: 'row',
-    gap: 8,
-    marginLeft: 'auto',
-  },
-  iconActionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    paddingRight: 8,
+  },
+  actionMenuButton: {
+    padding: 4,
   },
   eventTitle: {
     fontSize: 24,

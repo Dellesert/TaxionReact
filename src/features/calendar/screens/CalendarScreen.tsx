@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Event, CalendarView } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/states/EventListSkeleton';
 import CreateEventModal from '../components/modals/CreateEventModal';
-import { EventDetailModal } from '../components/modals/EventDetailModal';
 import { MonthCalendarView } from '../components/views/MonthCalendarView';
 import { CalendarHeader } from '../components/navigation/CalendarHeader';
 import { CalendarDateNavigation } from '../components/navigation/CalendarDateNavigation';
@@ -19,16 +20,22 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { useCalendarNavigation } from '../hooks/useCalendarNavigation';
 import { formatDateRangeText, groupEventsByDate } from '../utils/calendarHelpers';
-import * as calendarApi from '../api/calendar.api';
+
+type CalendarStackParamList = {
+  CalendarMain: undefined;
+  EventDetail: { eventId: number };
+};
+
+type CalendarNavigationProp = NativeStackNavigationProp<CalendarStackParamList, 'CalendarMain'>;
 
 const CalendarScreen: React.FC = () => {
   const { theme } = useTheme();
   const { showError } = useNotification();
   const isWideScreen = useIsWideScreen();
+  const navigation = useNavigation<CalendarNavigationProp>();
 
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Integrate with TitleBar search in Electron
@@ -61,16 +68,9 @@ const CalendarScreen: React.FC = () => {
   }, [selectedDate, selectedView]);
 
   // Handlers
-  const handleEventPress = async (event: Event) => {
-    try {
-      // Load full event details with participants
-      const fullEvent = await calendarApi.getEvent(event.id);
-      setSelectedEvent(fullEvent);
-    } catch (error) {
-      console.error('Failed to load event details:', error);
-      // Fallback to showing event without full details
-      setSelectedEvent(event);
-    }
+  const handleEventPress = (event: Event) => {
+    // Navigate to event detail screen
+    navigation.navigate('EventDetail', { eventId: event.id });
   };
 
   const handleAddEvent = () => {
@@ -83,7 +83,6 @@ const CalendarScreen: React.FC = () => {
   };
 
   const handleEventUpdated = () => {
-    setSelectedEvent(null);
     loadEvents();
   };
 
@@ -181,16 +180,6 @@ const CalendarScreen: React.FC = () => {
         onClose={() => setShowCreateModal(false)}
         onEventCreated={handleEventCreated}
       />
-
-      {/* Event Detail Modal - Only for mobile */}
-      {!isWideScreen && (
-        <EventDetailModal
-          visible={!!selectedEvent}
-          event={selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-          onEventUpdated={handleEventUpdated}
-        />
-      )}
     </SafeAreaView>
   );
 };
