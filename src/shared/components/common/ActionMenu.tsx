@@ -3,7 +3,7 @@
  * Универсальный компонент меню действий (bottom sheet на мобильном, dropdown на десктопе)
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -23,8 +23,6 @@ interface ActionMenuProps {
   onClose: () => void;
   isDesktop?: boolean;
   buttonPosition?: { x: number; y: number; width: number; height: number };
-  /** Задержка перед вызовом action (для завершения анимации закрытия) */
-  actionDelay?: number;
 }
 
 export const ActionMenu: React.FC<ActionMenuProps> = ({
@@ -33,7 +31,6 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
   onClose,
   isDesktop = false,
   buttonPosition,
-  actionDelay = 250,
 }) => {
   const { theme } = useTheme();
 
@@ -44,10 +41,14 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
   // Internal visibility state to control Modal
   const [isModalVisible, setIsModalVisible] = React.useState(false);
 
+  // Store pending action to execute after modal closes
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     if (visible) {
       // Show modal immediately
       setIsModalVisible(true);
+      pendingActionRef.current = null;
 
       // Reset to initial position first
       fadeAnim.setValue(0);
@@ -88,15 +89,23 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
       ]).start(() => {
         // Hide modal after animation completes
         setIsModalVisible(false);
+
+        // Execute pending action after modal is fully closed
+        if (pendingActionRef.current) {
+          const action = pendingActionRef.current;
+          pendingActionRef.current = null;
+          // Small delay to ensure modal is fully unmounted
+          setTimeout(action, 50);
+        }
       });
     }
   }, [visible, fadeAnim, slideAnim, isModalVisible]);
 
-  const handleAction = (action: () => void) => {
+  const handleAction = useCallback((action: () => void) => {
+    // Store action to execute after close animation
+    pendingActionRef.current = action;
     onClose();
-    // Small delay to let modal close animation finish
-    setTimeout(action, actionDelay);
-  };
+  }, [onClose]);
 
   if (items.length === 0) {
     return null;
