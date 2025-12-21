@@ -80,9 +80,8 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
           style={[
             styles.commentInput,
             {
-              backgroundColor: theme.backgroundSecondary,
+              backgroundColor: theme.input,
               color: theme.text,
-              borderColor: theme.border,
             },
           ]}
           placeholder="Написать комментарий..."
@@ -105,7 +104,7 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
           ) : (
             <Ionicons
               name="send"
-              size={20}
+              size={16}
               color={newComment?.trim() ? '#FFFFFF' : theme.textTertiary}
             />
           )}
@@ -271,17 +270,18 @@ const styles = StyleSheet.create({
   commentInput: {
     flex: 1,
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingTop: 11,
+    paddingBottom: 11,
     fontSize: 15,
-    minHeight: 44,
-    maxHeight: 100,
-    borderWidth: 1,
+    lineHeight: 20,
+    minHeight: 42,
+    maxHeight: 120,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
