@@ -174,10 +174,17 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   // В веб-версии добавляем дополнительный отступ из-за особенностей рендеринга инвертированного списка
   const baseBottomPadding = inputHeight + insetsBottom + (Platform.OS === 'web' ? 40 : 20);
 
-  // Вместо анимации padding - анимируем translateY всего списка
+  // Отслеживаем размеры контента и viewport
+  const [contentHeight, setContentHeight] = React.useState(0);
+  const [viewportHeight, setViewportHeight] = React.useState(0);
+
+  // Определяем нужно ли поднимать список: только если контента больше чем экран
+  const shouldLiftList = contentHeight > viewportHeight * 1.2;
+
+  // Анимируем translateY только если контента достаточно
   const animatedTranslateY = keyboardHeightAnim.interpolate({
     inputRange: [0, 1000],
-    outputRange: [0, -1000], // Двигаем список вверх на высоту клавиатуры
+    outputRange: shouldLiftList ? [0, -1000] : [0, 0], // Двигаем только если контента много
   });
 
   if (showSkeletons) {
@@ -194,12 +201,29 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
     return <ChatEmptyMessages />;
   }
 
+  // Обработчик изменения размера контента
+  const handleContentSizeChangeInternal = React.useCallback((width: number, height: number) => {
+    setContentHeight(height);
+    onContentSizeChange(width, height);
+  }, [onContentSizeChange]);
+
+  // Обработчик layout для получения размера viewport
+  const handleLayout = React.useCallback((event: any) => {
+    const { height } = event.nativeEvent.layout;
+    if (height > 0) {
+      setViewportHeight(height);
+    }
+  }, []);
+
   return (
-    <Animated.View style={{
-      flex: 1,
-      opacity: listOpacity,
-      transform: [{ translateY: animatedTranslateY }],
-    }}>
+    <Animated.View
+      style={{
+        flex: 1,
+        opacity: listOpacity,
+        transform: [{ translateY: animatedTranslateY }],
+      }}
+      onLayout={handleLayout}
+    >
       {/* @ts-ignore - FlashList типы могут быть устаревшими */}
       <FlashList
         key={`chat-${chatId}-session-${scrollSessionKey}`}
@@ -321,7 +345,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
               }
             : undefined
         }
-        onContentSizeChange={onContentSizeChange}
+        onContentSizeChange={handleContentSizeChangeInternal}
         onScroll={onScroll}
         scrollEventThrottle={16}
         onViewableItemsChanged={handleViewableItemsChanged}
