@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, TouchableOpacity, Text, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, TouchableOpacity, Text, TextInput, ActivityIndicator, StyleSheet, Keyboard, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task } from '../../types/task.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -41,6 +41,27 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
   bottomInset,
 }) => {
   const { theme } = useTheme();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  // Calculate bottom position based on keyboard
+  const bottomPosition = keyboardHeight > 0 ? keyboardHeight : bottomInset + 80;
 
   // Comments tab: show comment input
   if (activeTab === 'comments' && !isDelegatedByMe && task.status !== 'done') {
@@ -51,7 +72,7 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
           {
             backgroundColor: theme.background,
             borderTopColor: theme.border,
-            bottom: bottomInset + 80,
+            bottom: bottomPosition,
           },
         ]}
       >
