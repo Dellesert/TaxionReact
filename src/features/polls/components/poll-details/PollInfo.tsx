@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAuthStore } from '@shared/store/authStore';
 import { Avatar } from '@shared/components/common/Avatar';
 import { Poll } from '../../types/poll.types';
 import { getPollStatusConfig, getPollTypeConfig, formatPollDate } from '../../utils/pollHelpers';
@@ -14,9 +15,13 @@ interface PollInfoProps {
 
 export const PollInfo: React.FC<PollInfoProps> = ({ poll, onUserPress }) => {
   const { theme } = useTheme();
+  const { user } = useAuthStore();
 
   const statusConfig = getPollStatusConfig(poll.status);
   const typeConfig = getPollTypeConfig(poll.type);
+
+  const isCurrentUser = user && poll.created_by === user.id;
+  const creatorName = isCurrentUser ? 'Я' : (poll.creator?.name || 'Unknown');
 
   return (
     <View>
@@ -43,7 +48,7 @@ export const PollInfo: React.FC<PollInfoProps> = ({ poll, onUserPress }) => {
           hitSlop={hitSlop.sm}
         >
           <Avatar
-            name={poll.creator?.name || 'Unknown'}
+            name={creatorName}
             imageUrl={poll.creator?.avatar}
             size={32}
           />
@@ -51,7 +56,7 @@ export const PollInfo: React.FC<PollInfoProps> = ({ poll, onUserPress }) => {
             style={[styles.creatorText, { color: theme.textSecondary }]}
             numberOfLines={1}
           >
-            {poll.creator?.name || 'Unknown'}
+            {creatorName}
           </Text>
         </TouchableOpacity>
         {poll.end_time && poll.status === 'active' && (

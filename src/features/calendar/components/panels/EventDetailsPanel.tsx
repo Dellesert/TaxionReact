@@ -648,13 +648,13 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               activeOpacity={0.7}
             >
               <Avatar
-                name={event.creator.name}
+                name={isCreator ? 'Я' : event.creator.name}
                 imageUrl={event.creator.avatar}
                 size={40}
               />
               <View style={styles.creatorInfo}>
                 <Text style={[styles.creatorName, { color: theme.text }]}>
-                  {event.creator.name}
+                  {isCreator ? 'Я' : event.creator.name}
                 </Text>
                 <Text style={[styles.creatorLabel, { color: theme.textSecondary }]}>
                   Организатор

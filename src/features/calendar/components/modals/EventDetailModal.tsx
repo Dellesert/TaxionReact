@@ -745,13 +745,13 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 activeOpacity={0.7}
               >
                 <Avatar
-                  name={displayEvent.creator.name}
+                  name={isCreator ? 'Я' : displayEvent.creator.name}
                   imageUrl={displayEvent.creator.avatar}
                   size={40}
                 />
                 <View style={styles.creatorInfo}>
                   <Text style={[styles.creatorName, { color: theme.text }]}>
-                    {displayEvent.creator.name}
+                    {isCreator ? 'Я' : displayEvent.creator.name}
                   </Text>
                   <Text style={[styles.creatorLabel, { color: theme.textSecondary }]}>
                     Организатор
