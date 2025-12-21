@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.lg,
-    gap: spacing.xl,
+    gap: spacing.xs,
   },
 });
 
