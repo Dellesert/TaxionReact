@@ -478,6 +478,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         highlightedMessageId={highlightedMessageId}
         initialScrollIndex={safeInitialScrollIndex}
         scrollSessionKey={scrollSessionKey}
+        hasReachedBottom={hasReachedBottom}
         onContentSizeChange={handleContentSizeChange}
         onScroll={handleScroll}
         onViewableItemsChanged={onViewableItemsChanged}

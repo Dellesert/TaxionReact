@@ -25,6 +25,7 @@ interface MessageListComponentProps {
   inputHeight: number;
   insetsBottom: number;
   keyboardHeightAnim: Animated.Value; // Анимированная высота клавиатуры
+  hasReachedBottom: boolean; // Флаг что пользователь внизу списка
   listRef: React.RefObject<any>;
   highlightedMessageId: number | null;
   initialScrollIndex?: number;
@@ -69,6 +70,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   inputHeight,
   insetsBottom,
   keyboardHeightAnim,
+  hasReachedBottom,
   listRef,
   highlightedMessageId,
   initialScrollIndex,
@@ -178,13 +180,13 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   const [contentHeight, setContentHeight] = React.useState(0);
   const [viewportHeight, setViewportHeight] = React.useState(0);
 
-  // Определяем нужно ли поднимать список: только если контента больше чем экран
-  const shouldLiftList = contentHeight > viewportHeight * 1.2;
+  // Определяем нужно ли поднимать список: только если пользователь внизу И контента больше чем экран
+  const shouldLiftList = hasReachedBottom && contentHeight > viewportHeight * 1.2;
 
-  // Анимируем translateY только если контента достаточно
+  // Анимируем translateY только если пользователь внизу и контента достаточно
   const animatedTranslateY = keyboardHeightAnim.interpolate({
     inputRange: [0, 1000],
-    outputRange: shouldLiftList ? [0, -1000] : [0, 0], // Двигаем только если контента много
+    outputRange: shouldLiftList ? [0, -1000] : [0, 0], // Двигаем только если внизу И контента много
   });
 
   if (showSkeletons) {

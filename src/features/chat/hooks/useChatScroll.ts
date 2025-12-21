@@ -101,9 +101,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Handle keyboard show - for inverted list
   const handleKeyboardWillShow = useCallback((keyboardHeight: number) => {
-    // Скроллим список вниз на высоту клавиатуры после небольшой задержки
-    // чтобы дать время padding начать анимацию
-    if (listRef.current && initialScrolled && messages.length > 0) {
+    // Скроллим список вниз на высоту клавиатуры ТОЛЬКО если пользователь внизу
+    // Если пользователь просматривает старые сообщения - не трогаем позицию скролла
+    if (listRef.current && initialScrolled && messages.length > 0 && hasReachedBottom) {
       setTimeout(() => {
         const currentOffset = lastScrollOffset.current;
         const newOffset = currentOffset + keyboardHeight;
@@ -116,7 +116,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         }
       }, 10);
     }
-  }, [initialScrolled, messages.length]);
+  }, [initialScrolled, messages.length, hasReachedBottom]);
 
   // Handle keyboard animation progress - не используется
   const handleKeyboardAnimating = useCallback((_currentHeight: number, _targetHeight: number) => {

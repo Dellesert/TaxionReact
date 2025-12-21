@@ -26,6 +26,7 @@ interface ChatScreenContentProps {
   highlightedMessageId: number | null;
   initialScrollIndex: number | null;
   scrollSessionKey: number;
+  hasReachedBottom: boolean;
 
   // Message list handlers
   onContentSizeChange: (width: number, height: number) => void;
@@ -103,6 +104,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   highlightedMessageId,
   initialScrollIndex,
   scrollSessionKey,
+  hasReachedBottom,
   onContentSizeChange,
   onScroll,
   onViewableItemsChanged,
@@ -195,6 +197,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           inputHeight={inputHeight}
           insetsBottom={insetsBottom}
           keyboardHeightAnim={keyboardHeightAnim}
+          hasReachedBottom={hasReachedBottom}
           listRef={listRef}
           highlightedMessageId={highlightedMessageId}
           initialScrollIndex={initialScrollIndex}
