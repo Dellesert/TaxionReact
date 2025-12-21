@@ -5,8 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Modal,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -19,6 +17,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@shared/components/common/Avatar';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
+import { ActionMenu } from '@shared/components/common/ActionMenu';
 import CreateEventModal from '../modals/CreateEventModal';
 
 interface EventDetailsPanelProps {
@@ -39,126 +38,6 @@ interface ParticipantGroupProps {
   onUserPress: (userId: number) => void;
 }
 
-interface EventActionMenuProps {
-  visible: boolean;
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  isDeleting: boolean;
-  theme: any;
-}
-
-const MENU_WIDTH = 200;
-
-const EventActionMenu: React.FC<EventActionMenuProps> = ({
-  visible,
-  onClose,
-  onEdit,
-  onDelete,
-  isDeleting,
-  theme,
-}) => {
-  if (!visible) return null;
-
-  const menuItems = [
-    {
-      key: 'edit',
-      icon: 'create-outline' as const,
-      label: 'Редактировать',
-      color: theme.text,
-      onPress: onEdit,
-    },
-    {
-      key: 'delete',
-      icon: 'trash-outline' as const,
-      label: 'Удалить',
-      color: '#EF4444',
-      onPress: onDelete,
-      disabled: isDeleting,
-    },
-  ];
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <TouchableOpacity
-        style={actionMenuStyles.overlay}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <View
-          style={[
-            actionMenuStyles.menu,
-            { backgroundColor: theme.card },
-          ]}
-        >
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              style={actionMenuStyles.menuItem}
-              onPress={item.onPress}
-              activeOpacity={0.7}
-              disabled={item.disabled}
-            >
-              <Ionicons name={item.icon} size={20} color={item.color} />
-              <Text style={[actionMenuStyles.menuItemText, { color: item.color }]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-};
-
-const actionMenuStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  menu: {
-    position: 'absolute',
-    top: 164,
-    right: 16,
-    minWidth: MENU_WIDTH,
-    borderRadius: 12,
-    padding: 8,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        elevation: 10,
-      },
-    }),
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderRadius: 8,
-    gap: 12,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-      },
-    }),
-  },
-  menuItemText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-});
 
 const ParticipantGroup: React.FC<ParticipantGroupProps> = ({
   participants: groupParticipants,
@@ -745,19 +624,27 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
       />
 
       {/* Action Menu */}
-      <EventActionMenu
+      <ActionMenu
         visible={showActionMenu}
         onClose={() => setShowActionMenu(false)}
-        onEdit={() => {
-          setShowActionMenu(false);
-          setTimeout(() => setShowEditModal(true), 250);
-        }}
-        onDelete={() => {
-          setShowActionMenu(false);
-          setTimeout(() => handleDelete(), 250);
-        }}
-        isDeleting={isDeleting}
-        theme={theme}
+        isDesktop={true}
+        items={[
+          {
+            key: 'edit',
+            icon: 'create-outline',
+            label: 'Редактировать',
+            color: theme.text,
+            onPress: () => setShowEditModal(true),
+          },
+          {
+            key: 'delete',
+            icon: 'trash-outline',
+            label: 'Удалить',
+            color: '#EF4444',
+            onPress: handleDelete,
+            disabled: isDeleting,
+          },
+        ]}
       />
     </View>
   );

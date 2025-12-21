@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Animated,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -23,6 +21,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '@shared/components/common/Avatar';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
+import { ActionMenu } from '@shared/components/common/ActionMenu';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import CreateEventModal from './CreateEventModal';
 
@@ -45,211 +44,6 @@ interface ParticipantGroupProps {
   onUserPress: (userId: number) => void;
 }
 
-interface EventActionMenuProps {
-  visible: boolean;
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  isDeleting: boolean;
-  theme: any;
-}
-
-const EventActionMenu: React.FC<EventActionMenuProps> = ({
-  visible,
-  onClose,
-  onEdit,
-  onDelete,
-  isDeleting,
-  theme,
-}) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(300)).current;
-  const [isModalVisible, setIsModalVisible] = React.useState(false);
-
-  useEffect(() => {
-    if (visible) {
-      setIsModalVisible(true);
-      fadeAnim.setValue(0);
-      slideAnim.setValue(300);
-
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.spring(slideAnim, {
-            toValue: 0,
-            damping: 20,
-            stiffness: 300,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }, 50);
-    } else if (isModalVisible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 300,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setIsModalVisible(false);
-      });
-    }
-  }, [visible, fadeAnim, slideAnim, isModalVisible]);
-
-  if (!isModalVisible) return null;
-
-  const menuItems = [
-    {
-      key: 'edit',
-      icon: 'create-outline' as const,
-      label: 'Редактировать',
-      color: theme.text,
-      onPress: onEdit,
-    },
-    {
-      key: 'delete',
-      icon: 'trash-outline' as const,
-      label: 'Удалить',
-      color: '#EF4444',
-      onPress: onDelete,
-      disabled: isDeleting,
-    },
-  ];
-
-  return (
-    <Modal
-      visible={isModalVisible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      <Animated.View style={[actionMenuStyles.overlay, { opacity: fadeAnim }]}>
-        <TouchableOpacity
-          style={actionMenuStyles.overlayTouchable}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-        <Animated.View
-          style={[
-            actionMenuStyles.bottomSheet,
-            { transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <View
-            style={[
-              actionMenuStyles.menu,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            {menuItems.map((item, index) => (
-              <React.Fragment key={item.key}>
-                <TouchableOpacity
-                  style={[
-                    actionMenuStyles.menuItem,
-                    index === menuItems.length - 1 && actionMenuStyles.menuItemLast,
-                  ]}
-                  onPress={item.onPress}
-                  activeOpacity={0.7}
-                  disabled={item.disabled}
-                >
-                  <Ionicons name={item.icon} size={20} color={item.color} />
-                  <Text style={[actionMenuStyles.menuItemText, { color: item.color }]}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-                {index < menuItems.length - 1 && (
-                  <View style={[actionMenuStyles.menuDivider, { backgroundColor: theme.border }]} />
-                )}
-              </React.Fragment>
-            ))}
-          </View>
-          <TouchableOpacity
-            style={[actionMenuStyles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Text style={[actionMenuStyles.cancelButtonText, { color: theme.text }]}>
-              Отмена
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
-  );
-};
-
-const actionMenuStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  overlayTouchable: {
-    flex: 1,
-  },
-  bottomSheet: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  menu: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 5,
-      },
-    }),
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    gap: 12,
-    minHeight: 52,
-  },
-  menuItemLast: {
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-  },
-  menuItemText: {
-    fontSize: 16,
-    fontWeight: '500',
-    flex: 1,
-  },
-  menuDivider: {
-    height: 1,
-    marginHorizontal: 16,
-  },
-  cancelButton: {
-    marginTop: 12,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
 
 const ParticipantGroup: React.FC<ParticipantGroupProps> = ({
   participants: groupParticipants,
@@ -862,19 +656,26 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
       />
 
       {/* Action Menu */}
-      <EventActionMenu
+      <ActionMenu
         visible={showActionMenu}
         onClose={() => setShowActionMenu(false)}
-        onEdit={() => {
-          setShowActionMenu(false);
-          setTimeout(() => setShowEditModal(true), 250);
-        }}
-        onDelete={() => {
-          setShowActionMenu(false);
-          handleDelete();
-        }}
-        isDeleting={isDeleting}
-        theme={theme}
+        items={[
+          {
+            key: 'edit',
+            icon: 'create-outline',
+            label: 'Редактировать',
+            color: theme.text,
+            onPress: () => setShowEditModal(true),
+          },
+          {
+            key: 'delete',
+            icon: 'trash-outline',
+            label: 'Удалить',
+            color: '#EF4444',
+            onPress: handleDelete,
+            disabled: isDeleting,
+          },
+        ]}
       />
     </Modal>
   );
