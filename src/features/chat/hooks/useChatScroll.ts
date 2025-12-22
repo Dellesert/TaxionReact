@@ -609,18 +609,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       const performSeamlessScroll = async () => {
         try {
-          const currentVisibleIndex = lastVisibleMessageIndex.current;
-          const currentMessages = messages;
-
           isAnimatingToPin.current = true;
 
-          // ШАГ 1: Сначала загружаем контекст
-          console.log('📍 Phase 1: Loading context first...');
-
+          // ШАГ 1: Загружаем контекст сообщения
+          console.log('📍 Phase 1: Loading context...');
           const jumpToMessage = useChatStore.getState().jumpToMessage;
           await jumpToMessage(chatId, messageId);
-
-          console.log('📍 Phase 2: Context loaded');
 
           // Устанавливаем флаги jump контекста
           isInJumpContext.current = true;
@@ -629,8 +623,16 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           setNewMessagesCount(0);
           setFirstNewMessageIndex(-1);
 
-          // Даём время FlashList обновиться
-          await new Promise(resolve => setTimeout(resolve, 150));
+          // ШАГ 2: Ждём стабилизации layout через requestAnimationFrame
+          // Два кадра гарантируют, что FlashList отрисовал новые данные
+          console.log('📍 Phase 2: Waiting for layout...');
+          await new Promise<void>(resolve => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                resolve();
+              });
+            });
+          });
 
           const updatedMessages = useChatStore.getState().messages[chatId] || [];
           const targetIndex = updatedMessages.findIndex(m => m.id === messageId);
@@ -640,90 +642,52 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           previousMessagesLength.current = updatedMessages.length;
 
           if (targetIndex !== -1) {
-            // Проверяем направление списка
+            // ШАГ 3: Позиционируем список близко к цели
+            const OFFSET_ITEMS = 15; // Сколько элементов от цели начинаем
+
             const isInverted = updatedMessages.length >= 2 &&
               new Date(updatedMessages[0].created_at) > new Date(updatedMessages[updatedMessages.length - 1].created_at);
 
-            console.log('  List inverted:', isInverted);
-
-            // ШАГ 2: Многошаговый плавный скролл для непрерывности
-            // Создаём несколько промежуточных точек для цепочки анимаций
-            const WINDOW_SIZE = 24;
-            let scrollStart: number;
-            let step1: number;
-            let step2: number;
-            let step3: number;
-
+            let startIndex: number;
             if (isInverted) {
-              // Inverted: 0=новое (внизу), большой индекс=старое (вверху)
-              scrollStart = Math.max(0, targetIndex - WINDOW_SIZE);
-              step1 = Math.max(0, targetIndex - Math.floor(WINDOW_SIZE * 0.75));
-              step2 = Math.max(0, targetIndex - Math.floor(WINDOW_SIZE * 0.5));
-              step3 = Math.max(0, targetIndex - Math.floor(WINDOW_SIZE * 0.25));
+              // Для inverted списка: цель имеет больший индекс (старые сверху)
+              startIndex = Math.max(0, targetIndex - OFFSET_ITEMS);
             } else {
-              // Normal: 0=старое (вверху), большой индекс=новое (внизу)
-              scrollStart = Math.min(updatedMessages.length - 1, targetIndex + WINDOW_SIZE);
-              step1 = Math.min(updatedMessages.length - 1, targetIndex + Math.floor(WINDOW_SIZE * 0.75));
-              step2 = Math.min(updatedMessages.length - 1, targetIndex + Math.floor(WINDOW_SIZE * 0.5));
-              step3 = Math.min(updatedMessages.length - 1, targetIndex + Math.floor(WINDOW_SIZE * 0.25));
+              startIndex = Math.min(updatedMessages.length - 1, targetIndex + OFFSET_ITEMS);
             }
 
-            console.log('📍 Phase 4: Multi-step scroll path:', scrollStart, '→', step1, '→', step2, '→', step3, '→', targetIndex);
+            console.log('📍 Phase 4: Smooth scroll from', startIndex, 'to', targetIndex);
 
-            // Прыгаем к стартовой точке
+            // Тихо прыгаем к стартовой позиции
             listRef.current?.scrollToIndex({
-              index: scrollStart,
+              index: startIndex,
               animated: false,
               viewPosition: 0.5,
             });
 
-            // Создаём непрерывную цепочку скроллов с перекрытием
-            setTimeout(() => {
+            // ШАГ 4: Даём один кадр на позиционирование, затем плавно скроллим к цели
+            requestAnimationFrame(() => {
               listRef.current?.scrollToIndex({
-                index: step1,
+                index: targetIndex,
                 animated: true,
                 viewPosition: 0.5,
               });
 
+              // Снимаем флаг анимации после завершения
               setTimeout(() => {
-                listRef.current?.scrollToIndex({
-                  index: step2,
-                  animated: true,
-                  viewPosition: 0.5,
-                });
+                isAnimatingToPin.current = false;
+              }, 600);
 
+              // Подсветка сообщения
+              setTimeout(() => {
+                setHighlightedMessageId(messageId);
                 setTimeout(() => {
-                  listRef.current?.scrollToIndex({
-                    index: step3,
-                    animated: true,
-                    viewPosition: 0.5,
-                  });
-
-                  setTimeout(() => {
-                    listRef.current?.scrollToIndex({
-                      index: targetIndex,
-                      animated: true,
-                      viewPosition: 0.5,
-                    });
-
-                    // Снимаем флаг анимации
-                    setTimeout(() => {
-                      isAnimatingToPin.current = false;
-                    }, 600);
-
-                    // Подсветка
-                    setTimeout(() => {
-                      setHighlightedMessageId(messageId);
-                      setTimeout(() => {
-                        setHighlightedMessageId(null);
-                      }, 2000);
-                    }, 400);
-                  }, 150); // Шаг 4
-                }, 150); // Шаг 3
-              }, 150); // Шаг 2
-            }, 50); // Шаг 1
+                  setHighlightedMessageId(null);
+                }, 2000);
+              }, 400);
+            });
           } else {
-            console.error('📍 ERROR: Target not found');
+            console.error('📍 ERROR: Target not found after context load');
             isAnimatingToPin.current = false;
           }
         } catch (error) {
