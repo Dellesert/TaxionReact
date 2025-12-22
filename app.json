@@ -43,6 +43,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.tachyonmessenger",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
