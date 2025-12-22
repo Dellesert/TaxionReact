@@ -58,19 +58,13 @@ export const useChatScreenState = () => {
         if (Platform.OS === 'ios') {
           // ВАЖНО: НЕ используем LayoutAnimation для списка сообщений
           // т.к. inverted FlashList неправильно реагирует на изменение layout
-          // Вместо этого используем только Animated.Value + scrollToOffset в useChatScroll
-          //
-          // LayoutAnimation.configureNext({
-          //   duration: event.duration,
-          //   update: {
-          //     type: LayoutAnimation.Types.keyboard,
-          //   },
-          // });
+          // Вместо этого используем только Animated.Value + translateY
 
           // Используем Animated.timing для плавной анимации
+          // Используем 200ms вместо системной длительности для более быстрой анимации
           Animated.timing(keyboardHeightAnim, {
             toValue: height,
-            duration: event.duration || 250,
+            duration: 200,
             useNativeDriver: true,
           }).start();
         } else {
@@ -96,9 +90,10 @@ export const useChatScreenState = () => {
 
         if (Platform.OS === 'ios') {
           // НЕ используем LayoutAnimation - см. комментарий в keyboardWillShow
+          // Используем 200ms для более быстрой анимации
           Animated.timing(keyboardHeightAnim, {
             toValue: 0,
-            duration: event.duration || 250,
+            duration: 200,
             useNativeDriver: true,
           }).start();
         } else {
