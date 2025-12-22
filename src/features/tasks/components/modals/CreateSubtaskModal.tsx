@@ -168,7 +168,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   };
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
+    // Убрали setShowDatePicker(false) - теперь DatePickerModal сам управляет закрытием через onClose
     if (selectedDate) {
       setDueDate(selectedDate);
     }

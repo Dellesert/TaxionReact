@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, Platform, TouchableWithoutFeedback, Animated, StyleSheet } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTheme } from '@shared/hooks/useTheme';
 
 // Динамический импорт для веба
@@ -48,13 +48,8 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  // Для Android: используем ref чтобы отслеживать, был ли обработан onChange
-  const isProcessingRef = useRef(false);
-
   useEffect(() => {
     if (visible) {
-      // Сбрасываем флаг обработки при открытии
-      isProcessingRef.current = false;
 
       // Анимация появления
       Animated.parallel([
@@ -120,53 +115,102 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
     );
   }
 
-  // Android: возвращаем только DateTimePicker (он сам показывает нативный диалог)
-  if (Platform.OS === 'android' && visible) {
-    const handleAndroidChange = (event: any, selectedDate?: Date) => {
-      // Предотвращаем множественные вызовы
-      if (isProcessingRef.current) {
-        return;
+  // Android: используем императивный API для избежания нативного crash при dismiss
+  const hasOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    if (!visible) {
+      hasOpenedRef.current = false;
+      return;
+    }
+
+    if (hasOpenedRef.current) return;
+    hasOpenedRef.current = true;
+
+    const openPicker = () => {
+      try {
+        if (mode === 'datetime') {
+          // Для datetime: сначала открываем date picker, затем time picker
+          DateTimePickerAndroid.open({
+            value: value,
+            mode: 'date',
+            minimumDate: minimumDate,
+            maximumDate: maximumDate,
+            onChange: (dateEvent, selectedDate) => {
+              if (dateEvent.type === 'dismissed') {
+                onClose();
+                return;
+              }
+
+              if (dateEvent.type === 'set' && selectedDate) {
+                // Теперь открываем time picker
+                DateTimePickerAndroid.open({
+                  value: selectedDate,
+                  mode: 'time',
+                  is24Hour: true,
+                  onChange: (timeEvent, selectedTime) => {
+                    if (timeEvent.type === 'dismissed') {
+                      // Пользователь отменил выбор времени - полная отмена
+                      onClose();
+                    } else if (timeEvent.type === 'set' && selectedTime) {
+                      // Комбинируем дату и время
+                      const combined = new Date(selectedDate);
+                      combined.setHours(selectedTime.getHours());
+                      combined.setMinutes(selectedTime.getMinutes());
+                      combined.setSeconds(0);
+                      combined.setMilliseconds(0);
+                      onChange({ type: 'set' }, combined);
+                      onClose();
+                    }
+                  },
+                });
+              }
+            },
+          });
+        } else {
+          // Одиночный режим (date или time)
+          DateTimePickerAndroid.open({
+            value: value,
+            mode: mode,
+            is24Hour: true,
+            minimumDate: mode === 'date' ? minimumDate : undefined,
+            maximumDate: mode === 'date' ? maximumDate : undefined,
+            onChange: (event, selectedDate) => {
+              if (event.type === 'set' && selectedDate) {
+                onChange(event, selectedDate);
+              }
+              onClose();
+            },
+          });
+        }
+      } catch (error) {
+        console.log('[DatePicker] Android imperative API error:', error);
+        onClose();
       }
-      isProcessingRef.current = true;
-
-      // Откладываем вызовы для предотвращения конфликта с нативным dismiss
-      // Используем более длинную задержку для гарантии завершения нативного кода
-      setTimeout(() => {
-        try {
-          // Если пользователь подтвердил выбор (нажал OK), передаем дату
-          if (event.type === 'set' && selectedDate) {
-            onChange(event, selectedDate);
-          }
-        } catch (error) {
-          // Подавляем любые ошибки при вызове onChange
-          console.log('[DatePicker] Suppressed error in onChange:', error);
-        }
-
-        // Закрываем модальное окно
-        try {
-          onClose();
-        } catch (error) {
-          // Подавляем любые ошибки при закрытии
-          console.log('[DatePicker] Suppressed error in onClose:', error);
-        }
-      }, 200);
     };
 
-    try {
-      return (
-        <DateTimePicker
-          value={value}
-          mode={mode}
-          display="default"
-          onChange={handleAndroidChange}
-          minimumDate={minimumDate}
-          maximumDate={maximumDate}
-        />
-      );
-    } catch (error) {
-      console.log('[DatePicker] Suppressed error in render:', error);
-      return null;
-    }
+    openPicker();
+  }, [visible, value, mode, minimumDate, maximumDate, onChange, onClose]);
+
+  // Cleanup: закрываем picker при размонтировании
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'android') {
+        try {
+          DateTimePickerAndroid.dismiss('date');
+          DateTimePickerAndroid.dismiss('time');
+        } catch (e) {
+          // Игнорируем ошибки dismiss
+        }
+      }
+    };
+  }, []);
+
+  if (Platform.OS === 'android') {
+    // Императивный API создаёт нативные диалоги, React компонент не нужен
+    return null;
   }
 
   // Web: показываем модальное окно с react-datepicker

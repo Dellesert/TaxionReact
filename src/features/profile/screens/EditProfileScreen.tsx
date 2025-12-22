@@ -58,9 +58,7 @@ const EditProfileScreen: React.FC = () => {
   const positionInputRef = useRef<TextInput>(null);
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
+    // Убрали setShowDatePicker(false) - теперь DatePickerModal сам управляет закрытием через onClose
     if (selectedDate) {
       setBirthDate(selectedDate);
     }

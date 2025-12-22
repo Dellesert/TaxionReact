@@ -214,9 +214,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   };
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
+    // Убрали setShowDatePicker(false) - теперь DatePickerModal сам управляет закрытием через onClose
     if (selectedDate) {
       setDueDate(selectedDate);
     }

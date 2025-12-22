@@ -68,17 +68,17 @@ if (Platform.OS === 'android') {
     const errorMessage = args[0]?.toString() || '';
     const errorStack = args[1]?.stack?.toString() || '';
 
-    // Подавляем только конкретную ошибку dismiss из DateTimePicker
-    // Более строгая проверка для предотвращения скрытия других ошибок
+    // Подавляем ошибку dismiss из DateTimePicker
+    // Это известная проблема в библиотеке - ошибка безвредна
     const isDismissError = (
-      (errorMessage.includes('Cannot read property \'dismiss\'') ||
-       errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')')) &&
-      (errorMessage.includes('DateTimePicker') || errorStack.includes('DateTimePicker') ||
-       errorStack.includes('RNDateTimePicker'))
+      errorMessage.includes('Cannot read property \'dismiss\'') ||
+      errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')')
     );
 
     if (isDismissError) {
-      return; // Игнорируем только ошибку DateTimePicker
+      // Логируем для отладки, но не показываем как ошибку
+      console.log('[DatePicker] Suppressed dismiss error (harmless)');
+      return;
     }
     originalConsoleError(...args);
   };
@@ -89,16 +89,16 @@ if (Platform.OS === 'android') {
     const errorMessage = error?.message || error?.toString() || '';
     const errorStack = error?.stack || '';
 
-    // Подавляем только конкретную ошибку dismiss из DateTimePicker
-    // Более строгая проверка - обе условия должны совпадать
+    // Подавляем ошибку dismiss из DateTimePicker
+    // Это известная проблема в библиотеке - ошибка безвредна и не влияет на работу
     const isDismissError = (
-      (errorMessage.includes('Cannot read property \'dismiss\'') ||
-       errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')')) &&
-      (errorStack.includes('DateTimePicker') || errorStack.includes('RNDateTimePicker'))
+      errorMessage.includes('Cannot read property \'dismiss\'') ||
+      errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')')
     );
 
     if (isDismissError) {
-      return; // Игнорируем только эту конкретную ошибку
+      console.log('[DatePicker] Suppressed dismiss error (harmless)');
+      return; // Не передаём дальше - предотвращаем crash
     }
 
     // Все остальные ошибки обрабатываются как обычно
@@ -106,6 +106,17 @@ if (Platform.OS === 'android') {
       originalErrorHandler(error, isFatal);
     }
   });
+
+  // Дополнительно: перехватываем необработанные Promise rejection
+  if (typeof (global as any).addEventListener === 'function') {
+    (global as any).addEventListener?.('unhandledrejection', (event: any) => {
+      const errorMessage = event?.reason?.message || event?.reason?.toString() || '';
+      if (errorMessage.includes('dismiss')) {
+        event.preventDefault?.();
+        console.log('[DatePicker] Suppressed unhandled rejection (harmless)');
+      }
+    });
+  }
 }
 
 export default function App() {

@@ -291,7 +291,6 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           recyclingKey={`attachment-${attachment.id}`}
           responsivePolicy="initial"
           allowDownscaling={true}
-          decodeFormat="rgb565"
           onError={(error) => {
             console.error('❌ Message image load error:', imageUri, error);
           }}

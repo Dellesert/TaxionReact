@@ -265,9 +265,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
   };
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowEndDatePicker(false);
-    }
+    // Убрали setShowEndDatePicker(false) - теперь DatePickerModal сам управляет закрытием через onClose
     if (selectedDate) {
       setEndDate(selectedDate);
     }
