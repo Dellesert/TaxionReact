@@ -145,9 +145,15 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
               }
 
               if (dateEvent.type === 'set' && selectedDate) {
+                // Для time picker используем выбранную дату с текущим временем как начальное значение
+                const initialTimeValue = new Date(selectedDate);
+                const now = new Date();
+                initialTimeValue.setHours(now.getHours());
+                initialTimeValue.setMinutes(now.getMinutes());
+
                 // Теперь открываем time picker
                 DateTimePickerAndroid.open({
-                  value: selectedDate,
+                  value: initialTimeValue,
                   mode: 'time',
                   is24Hour: true,
                   onChange: (timeEvent, selectedTime) => {
@@ -161,7 +167,18 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
                       combined.setMinutes(selectedTime.getMinutes());
                       combined.setSeconds(0);
                       combined.setMilliseconds(0);
-                      onChange({ type: 'set' }, combined);
+
+                      // Если есть minimumDate и результат в прошлом, корректируем
+                      if (minimumDate && combined < minimumDate) {
+                        // Используем minimumDate + 1 минута
+                        const corrected = new Date(minimumDate);
+                        corrected.setMinutes(corrected.getMinutes() + 1);
+                        corrected.setSeconds(0);
+                        corrected.setMilliseconds(0);
+                        onChange({ type: 'set' }, corrected);
+                      } else {
+                        onChange({ type: 'set' }, combined);
+                      }
                       onClose();
                     }
                   },
