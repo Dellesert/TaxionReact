@@ -106,26 +106,22 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // onLoad может вызываться слишком рано, поэтому используем увеличенную задержку
     // чтобы гарантировать завершение initialScrollIndex анимации
     setTimeout(() => {
-      console.log('[useChatScroll] FlashList initial scroll complete');
       isInitialScrollComplete.current = true;
-    }, 300); // Увеличили с 100 до 300ms для надёжности
+    }, 300);
   }, []);
 
   // Дополнительно: устанавливаем isInitialScrollComplete когда initialScrolled становится true
   // Это страховка на случай если onLoad не вызвался
   useEffect(() => {
     if (initialScrolled && !isInitialScrollComplete.current) {
-      // Даём дополнительное время после initialScrolled
       setTimeout(() => {
-        console.log('[useChatScroll] Setting isInitialScrollComplete via initialScrolled fallback');
         isInitialScrollComplete.current = true;
       }, 200);
     }
   }, [initialScrolled]);
 
   // Handle keyboard show - for inverted list
-  const handleKeyboardWillShow = useCallback((keyboardHeight: number) => {
-    console.log('[useChatScroll] handleKeyboardWillShow called, setting isKeyboardAnimating = true');
+  const handleKeyboardWillShow = useCallback((_keyboardHeight: number) => {
     // Устанавливаем флаг что клавиатура анимируется - игнорируем scroll events
     isKeyboardAnimating.current = true;
 
@@ -213,10 +209,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Не меняем hasReachedBottom во время анимации клавиатуры
     // т.к. scroll events при анимации не отражают реальное намерение пользователя
     if (isKeyboardAnimating.current) {
-      console.log('[useChatScroll] handleScroll: ignoring due to keyboard animation');
       return;
     }
-    console.log('[useChatScroll] handleScroll: isAtBottom =', isAtBottom, 'isKeyboardAnimating =', isKeyboardAnimating.current);
 
     if (isAtBottom) {
       // Если мы в контексте после jump и достигли низа загруженных сообщений - загружаем следующую партию

@@ -189,19 +189,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   const hasEnoughContent = !isLayoutReady || contentHeight > viewportHeight * 1.2;
   const shouldLiftList = hasReachedBottom && hasEnoughContent;
 
-  // DEBUG: Логируем состояние для диагностики
-  React.useEffect(() => {
-    console.log('[MessageList] shouldLiftList:', shouldLiftList, {
-      hasReachedBottom,
-      isLayoutReady,
-      hasEnoughContent,
-      contentHeight,
-      viewportHeight,
-    });
-  }, [shouldLiftList, hasReachedBottom, isLayoutReady, hasEnoughContent, contentHeight, viewportHeight]);
-
-  // DEBUG: Логируем каждый рендер
-  console.log('[MessageList] RENDER - shouldLiftList:', shouldLiftList, 'outputRange:', shouldLiftList ? '[0, -1000] (lift up)' : '[0, 0] (stay)');
 
   // Анимируем translateY для поднятия списка вместе с клавиатурой
   // Теперь БЕЗ LayoutAnimation - вся анимация через Animated.Value
@@ -377,8 +364,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         scrollEventThrottle={16}
         onViewableItemsChanged={handleViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        onLoad={(info: { elapsedTimeInMs: number }) => {
-          console.log('[MessageList] FlashList onLoad, elapsed:', info.elapsedTimeInMs);
+        onLoad={() => {
           onFlashListLoad?.();
         }}
         onScrollToIndexFailed={(info: any) => {
