@@ -19,6 +19,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
   const [userScrolledToBottom, setUserScrolledToBottom] = useState(false); // Флаг намеренного скролла
+  const isKeyboardAnimating = useRef(false); // Флаг анимации клавиатуры - игнорируем scroll events
   const [newMessagesCount, setNewMessagesCount] = useState(0); // Количество новых сообщений ниже текущей позиции
   const [firstNewMessageIndex, setFirstNewMessageIndex] = useState<number>(-1); // Индекс первого нового непрочитанного сообщения
   const canTrackUserScroll = useRef(false); // Разрешение отслеживать скролл пользователя
@@ -40,6 +41,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const isLoadingNewerMessages = useRef<boolean>(false); // Флаг загрузки более новых сообщений (при скролле вниз в jump context)
   const lastNewestMessageId = useRef<number | null>(null); // ID последнего загруженного сообщения при incremental load
   const isAnimatingToPin = useRef<boolean>(false); // Флаг анимации к закрепленному сообщению
+  const isInitialScrollComplete = useRef<boolean>(false); // Флаг что FlashList завершил начальный скролл
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
@@ -99,24 +101,45 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   // Ref для handleLoadMore чтобы избежать циклической зависимости
   const handleLoadMoreRef = useRef<(() => Promise<void>) | null>(null);
 
+  // Callback когда FlashList завершает загрузку и начальное позиционирование
+  const handleFlashListLoad = useCallback(() => {
+    // onLoad может вызываться слишком рано, поэтому используем увеличенную задержку
+    // чтобы гарантировать завершение initialScrollIndex анимации
+    setTimeout(() => {
+      console.log('[useChatScroll] FlashList initial scroll complete');
+      isInitialScrollComplete.current = true;
+    }, 300); // Увеличили с 100 до 300ms для надёжности
+  }, []);
+
+  // Дополнительно: устанавливаем isInitialScrollComplete когда initialScrolled становится true
+  // Это страховка на случай если onLoad не вызвался
+  useEffect(() => {
+    if (initialScrolled && !isInitialScrollComplete.current) {
+      // Даём дополнительное время после initialScrolled
+      setTimeout(() => {
+        console.log('[useChatScroll] Setting isInitialScrollComplete via initialScrolled fallback');
+        isInitialScrollComplete.current = true;
+      }, 200);
+    }
+  }, [initialScrolled]);
+
   // Handle keyboard show - for inverted list
   const handleKeyboardWillShow = useCallback((keyboardHeight: number) => {
-    // Скроллим список вниз на высоту клавиатуры ТОЛЬКО если пользователь внизу
-    // Если пользователь просматривает старые сообщения - не трогаем позицию скролла
-    if (listRef.current && initialScrolled && messages.length > 0 && hasReachedBottom) {
-      setTimeout(() => {
-        const currentOffset = lastScrollOffset.current;
-        const newOffset = currentOffset + keyboardHeight;
+    console.log('[useChatScroll] handleKeyboardWillShow called, setting isKeyboardAnimating = true');
+    // Устанавливаем флаг что клавиатура анимируется - игнорируем scroll events
+    isKeyboardAnimating.current = true;
 
-        if (listRef.current) {
-          listRef.current.scrollToOffset({
-            offset: newOffset,
-            animated: true, // Используем анимацию для плавности
-          });
-        }
-      }, 10);
-    }
-  }, [initialScrolled, messages.length, hasReachedBottom]);
+    // iOS: НЕ вызываем scrollToOffset - полагаемся только на translateY анимацию
+    // Это предотвращает race condition с initialScrollIndex на инвертированном списке
+    // translateY анимация (в MessageListComponent) уже поднимает список на нужную высоту
+
+    // Сбрасываем флаг после завершения анимации клавиатуры
+    // iOS анимация ~300ms, но scroll events могут приходить с задержкой
+    // Используем 500ms чтобы гарантированно игнорировать все scroll events от анимации
+    setTimeout(() => {
+      isKeyboardAnimating.current = false;
+    }, 500);
+  }, []);
 
   // Handle keyboard animation progress - не используется
   const handleKeyboardAnimating = useCallback((_currentHeight: number, _targetHeight: number) => {
@@ -125,8 +148,14 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Handle keyboard hide - for inverted list
   const handleKeyboardWillHide = useCallback(() => {
-    // При скрытии клавиатуры также ничего не делаем
-    // Паддинг уменьшится и сообщения вернутся на место
+    // Устанавливаем флаг что клавиатура анимируется - игнорируем scroll events
+    isKeyboardAnimating.current = true;
+
+    // Сбрасываем флаг после завершения анимации клавиатуры
+    // iOS анимация ~300ms, но scroll events могут приходить с задержкой
+    setTimeout(() => {
+      isKeyboardAnimating.current = false;
+    }, 500);
   }, []);
 
   // Обработчик скролла
@@ -180,6 +209,14 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     // Проверяем достигли ли низа списка
     const isAtBottom = distanceFromBottom <= 500;
+
+    // Не меняем hasReachedBottom во время анимации клавиатуры
+    // т.к. scroll events при анимации не отражают реальное намерение пользователя
+    if (isKeyboardAnimating.current) {
+      console.log('[useChatScroll] handleScroll: ignoring due to keyboard animation');
+      return;
+    }
+    console.log('[useChatScroll] handleScroll: isAtBottom =', isAtBottom, 'isKeyboardAnimating =', isKeyboardAnimating.current);
 
     if (isAtBottom) {
       // Если мы в контексте после jump и достигли низа загруженных сообщений - загружаем следующую партию
@@ -762,6 +799,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isLoadingNewerMessages.current = false; // ✅ Сбрасываем флаг загрузки новых сообщений
     lastNewestMessageId.current = null; // ✅ Сбрасываем ID последнего загруженного сообщения
     isAnimatingToPin.current = false; // ✅ Сбрасываем флаг анимации
+    isKeyboardAnimating.current = false; // ✅ Сбрасываем флаг анимации клавиатуры
+    isInitialScrollComplete.current = false; // ✅ Сбрасываем флаг завершения начального скролла
   }, []);
 
   return {
@@ -788,5 +827,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     onViewableItemsChanged,
     viewabilityConfig,
     resetScroll,
+    handleFlashListLoad,
   };
 };

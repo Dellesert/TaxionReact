@@ -52,6 +52,7 @@ interface MessageListComponentProps {
   onToggleMessageSelection?: (messageId: number) => void;
   chatType?: 'private' | 'group' | 'channel';
   userRole?: 'owner' | 'admin' | 'member';
+  onFlashListLoad?: () => void;
 }
 
 /**
@@ -97,6 +98,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   onToggleMessageSelection,
   chatType,
   userRole,
+  onFlashListLoad,
 }) => {
   const { theme } = useTheme();
 
@@ -181,12 +183,34 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   const [viewportHeight, setViewportHeight] = React.useState(0);
 
   // Определяем нужно ли поднимать список: только если пользователь внизу И контента больше чем экран
-  const shouldLiftList = hasReachedBottom && contentHeight > viewportHeight * 1.2;
+  // Если размеры ещё не инициализированы - доверяем hasReachedBottom
+  // Это важно для первого рендера когда onLayout ещё не вызван
+  const isLayoutReady = viewportHeight > 0 && contentHeight > 0;
+  const hasEnoughContent = !isLayoutReady || contentHeight > viewportHeight * 1.2;
+  const shouldLiftList = hasReachedBottom && hasEnoughContent;
 
-  // Анимируем translateY только если пользователь внизу и контента достаточно
+  // DEBUG: Логируем состояние для диагностики
+  React.useEffect(() => {
+    console.log('[MessageList] shouldLiftList:', shouldLiftList, {
+      hasReachedBottom,
+      isLayoutReady,
+      hasEnoughContent,
+      contentHeight,
+      viewportHeight,
+    });
+  }, [shouldLiftList, hasReachedBottom, isLayoutReady, hasEnoughContent, contentHeight, viewportHeight]);
+
+  // DEBUG: Логируем каждый рендер
+  console.log('[MessageList] RENDER - shouldLiftList:', shouldLiftList, 'outputRange:', shouldLiftList ? '[0, -1000] (lift up)' : '[0, 0] (stay)');
+
+  // Анимируем translateY для поднятия списка вместе с клавиатурой
+  // Теперь БЕЗ LayoutAnimation - вся анимация через Animated.Value
+  // Логика:
+  // - Если пользователь внизу (shouldLiftList=true): поднимаем список вверх на высоту клавиатуры
+  // - Если пользователь НЕ внизу (shouldLiftList=false): не двигаем, сохраняем позицию
   const animatedTranslateY = keyboardHeightAnim.interpolate({
     inputRange: [0, 1000],
-    outputRange: shouldLiftList ? [0, -1000] : [0, 0], // Двигаем только если внизу И контента много
+    outputRange: shouldLiftList ? [0, -1000] : [0, 0], // Поднимаем только если внизу
   });
 
   if (showSkeletons) {
@@ -222,6 +246,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
       style={{
         flex: 1,
         opacity: listOpacity,
+        // Теперь без LayoutAnimation - используем translateY для поднятия списка
         transform: [{ translateY: animatedTranslateY }],
       }}
       onLayout={handleLayout}
@@ -352,6 +377,10 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         scrollEventThrottle={16}
         onViewableItemsChanged={handleViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        onLoad={(info: { elapsedTimeInMs: number }) => {
+          console.log('[MessageList] FlashList onLoad, elapsed:', info.elapsedTimeInMs);
+          onFlashListLoad?.();
+        }}
         onScrollToIndexFailed={(info: any) => {
           // ✅ ОПТИМИЗАЦИЯ: Минимальный fallback - просто логируем для отладки
           // Основную логику плавного скролла обрабатывает handleReplyPress

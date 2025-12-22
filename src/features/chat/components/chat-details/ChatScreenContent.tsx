@@ -29,6 +29,7 @@ interface ChatScreenContentProps {
   hasReachedBottom: boolean;
 
   // Message list handlers
+  onFlashListLoad?: () => void;
   onContentSizeChange: (width: number, height: number) => void;
   onScroll: (event: any) => void;
   onViewableItemsChanged: any;
@@ -105,6 +106,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   initialScrollIndex,
   scrollSessionKey,
   hasReachedBottom,
+  onFlashListLoad,
   onContentSizeChange,
   onScroll,
   onViewableItemsChanged,
@@ -224,6 +226,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           onToggleMessageSelection={onToggleMessageSelection}
           chatType={chatType}
           userRole={userRole}
+          onFlashListLoad={onFlashListLoad}
         />
 
         <ScrollToBottomButton

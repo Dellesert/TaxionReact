@@ -56,15 +56,23 @@ export const useChatScreenState = () => {
         }
 
         if (Platform.OS === 'ios') {
-          // Use LayoutAnimation on iOS for perfect sync with keyboard
-          LayoutAnimation.configureNext({
-            duration: event.duration,
-            update: {
-              type: LayoutAnimation.Types.keyboard,
-            },
-          });
-          // Update Animated.Value immediately (LayoutAnimation handles visual transition)
-          keyboardHeightAnim.setValue(height);
+          // ВАЖНО: НЕ используем LayoutAnimation для списка сообщений
+          // т.к. inverted FlashList неправильно реагирует на изменение layout
+          // Вместо этого используем только Animated.Value + scrollToOffset в useChatScroll
+          //
+          // LayoutAnimation.configureNext({
+          //   duration: event.duration,
+          //   update: {
+          //     type: LayoutAnimation.Types.keyboard,
+          //   },
+          // });
+
+          // Используем Animated.timing для плавной анимации
+          Animated.timing(keyboardHeightAnim, {
+            toValue: height,
+            duration: event.duration || 250,
+            useNativeDriver: true,
+          }).start();
         } else {
           // Use Animated.timing on Android
           Animated.timing(keyboardHeightAnim, {
@@ -87,15 +95,12 @@ export const useChatScreenState = () => {
         }
 
         if (Platform.OS === 'ios') {
-          // Use LayoutAnimation on iOS for perfect sync with keyboard
-          LayoutAnimation.configureNext({
-            duration: event.duration,
-            update: {
-              type: LayoutAnimation.Types.keyboard,
-            },
-          });
-          // Update Animated.Value immediately (LayoutAnimation handles visual transition)
-          keyboardHeightAnim.setValue(0);
+          // НЕ используем LayoutAnimation - см. комментарий в keyboardWillShow
+          Animated.timing(keyboardHeightAnim, {
+            toValue: 0,
+            duration: event.duration || 250,
+            useNativeDriver: true,
+          }).start();
         } else {
           // Use Animated.timing on Android
           Animated.timing(keyboardHeightAnim, {
