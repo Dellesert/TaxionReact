@@ -42,6 +42,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const lastNewestMessageId = useRef<number | null>(null); // ID последнего загруженного сообщения при incremental load
   const isAnimatingToPin = useRef<boolean>(false); // Флаг анимации к закрепленному сообщению
   const isInitialScrollComplete = useRef<boolean>(false); // Флаг что FlashList завершил начальный скролл
+  const [isPositionReady, setIsPositionReady] = useState<boolean>(false); // Флаг что позиция скролла готова для показа списка
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
@@ -59,8 +60,10 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Помечаем что индекс вычислен (ТОЛЬКО когда есть сообщения!)
     hasCalculatedInitialIndex.current = true;
 
-    // ПРИОРИТЕТ 1: Если есть непрочитанные - скроллим к первому непрочитанному
-    if (firstUnreadIndex !== -1 && unreadCount >= 1) {
+    // ПРИОРИТЕТ 1: Если есть непрочитанные И их >= 5 - скроллим к первому непрочитанному
+    // Если < 5 непрочитанных - открываем чат внизу (последние сообщения)
+    if (firstUnreadIndex !== -1 && unreadCount >= 5) {
+      console.log(`📍 initialScrollIndex: scrolling to unread at index ${firstUnreadIndex} (${unreadCount} unread)`);
       setHasReachedBottom(false);
 
       // ✅ ОПТИМИЗАЦИЯ: Если много непрочитанных (>10), включаем jump context режим
@@ -75,8 +78,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
 
     // ПРИОРИТЕТ 2: Скроллим к последнему сообщению (вниз)
+    // Для inverted FlashList: не передаём initialScrollIndex, чтобы показать начало
+    // Начало inverted списка = визуально низ экрана (новые сообщения)
+    // После рендера дополнительно вызовем scrollToEnd для гарантии
+    console.log(`📍 initialScrollIndex: scrolling to bottom (unreadCount: ${unreadCount}, firstUnreadIndex: ${firstUnreadIndex}, messagesLength: ${messages.length})`);
     setHasReachedBottom(true);
-    return messages.length - 1;
+    return undefined; // undefined = FlashList начинает с начала = низ для inverted
   }, [messages.length, firstUnreadIndex, unreadCount]);
 
   // Оптимизация: функции в Zustand стабильны и не меняются
@@ -98,17 +105,80 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [messages.length, initialScrolled]);
 
+  // ✅ Позиционирование скролла теперь происходит в handleFlashListLoad,
+  // когда listRef гарантированно готов
+
   // Ref для handleLoadMore чтобы избежать циклической зависимости
   const handleLoadMoreRef = useRef<(() => Promise<void>) | null>(null);
 
+  // Ref для хранения актуальных значений для handleFlashListLoad
+  const scrollPositionDataRef = useRef({
+    isPositionReady: false,
+    messagesLength: 0,
+    firstUnreadIndex: -1,
+    unreadCount: 0,
+  });
+
+  // Обновляем ref при изменении значений
+  scrollPositionDataRef.current = {
+    isPositionReady,
+    messagesLength: messages.length,
+    firstUnreadIndex,
+    unreadCount,
+  };
+
   // Callback когда FlashList завершает загрузку и начальное позиционирование
+  // ВСЯ логика позиционирования теперь здесь, потому что listRef гарантированно готов
+  // Используем ref чтобы иметь актуальные значения без пересоздания callback
   const handleFlashListLoad = useCallback(() => {
-    // onLoad может вызываться слишком рано, поэтому используем увеличенную задержку
-    // чтобы гарантировать завершение initialScrollIndex анимации
+    const data = scrollPositionDataRef.current;
+    console.log('📍 handleFlashListLoad called:', data);
+
+    // onLoad может вызываться слишком рано, поэтому используем задержку
     setTimeout(() => {
       isInitialScrollComplete.current = true;
-    }, 300);
-  }, []);
+
+      // Перечитываем актуальные данные после timeout
+      const currentData = scrollPositionDataRef.current;
+
+      // Пропускаем если позиция уже готова
+      if (currentData.isPositionReady) {
+        console.log('📍 Position already ready, skipping');
+        return;
+      }
+
+      if (currentData.messagesLength === 0) {
+        console.log('📍 No messages, setting ready');
+        setIsPositionReady(true);
+        return;
+      }
+
+      // СЛУЧАЙ 1: >= 5 непрочитанных - центрируем плашку
+      if (currentData.firstUnreadIndex !== -1 && currentData.unreadCount >= 5) {
+        console.log('📍 Centering unread banner at index:', currentData.firstUnreadIndex);
+        if (listRef.current) {
+          // Для inverted списка: viewPosition: 0.5 = центр
+          // viewOffset отрицательный сдвигает вверх к баннеру
+          listRef.current.scrollToIndex({
+            index: currentData.firstUnreadIndex,
+            animated: false,
+            viewPosition: 0.5,
+            viewOffset: -30,
+          });
+        }
+        setIsPositionReady(true);
+        return;
+      }
+
+      // СЛУЧАЙ 2: < 5 непрочитанных - скроллим к низу (последние сообщения)
+      // Используем scrollToEnd - он используется в handleScrollToBottom и работает для показа низа
+      console.log('📍 Scrolling to bottom (< 5 unread), messagesLength:', currentData.messagesLength);
+      if (listRef.current) {
+        listRef.current.scrollToEnd({ animated: false });
+      }
+      setIsPositionReady(true);
+    }, 100);
+  }, []); // Пустые зависимости - используем ref для актуальных данных
 
   // Дополнительно: устанавливаем isInitialScrollComplete когда initialScrolled становится true
   // Это страховка на случай если onLoad не вызвался
@@ -751,6 +821,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isAnimatingToPin.current = false; // ✅ Сбрасываем флаг анимации
     isKeyboardAnimating.current = false; // ✅ Сбрасываем флаг анимации клавиатуры
     isInitialScrollComplete.current = false; // ✅ Сбрасываем флаг завершения начального скролла
+    setIsPositionReady(false); // ✅ Сбрасываем флаг готовности позиции
   }, []);
 
   return {
@@ -766,6 +837,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     newMessagesCount, // Возвращаем количество новых сообщений ниже видимой области
     initialScrollIndex,
     scrollSessionKey, // Возвращаем ключ сеанса для FlashList
+    isPositionReady, // Флаг готовности позиции для показа списка
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,

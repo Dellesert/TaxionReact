@@ -53,6 +53,7 @@ interface MessageListComponentProps {
   chatType?: 'private' | 'group' | 'channel';
   userRole?: 'owner' | 'admin' | 'member';
   onFlashListLoad?: () => void;
+  isPositionReady?: boolean; // Флаг готовности позиции скролла для показа списка
 }
 
 /**
@@ -99,6 +100,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   chatType,
   userRole,
   onFlashListLoad,
+  isPositionReady = true, // По умолчанию true для обратной совместимости
 }) => {
   const { theme } = useTheme();
 
@@ -106,25 +108,23 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   const [listOpacity] = React.useState(new Animated.Value(0));
   const [hasRendered, setHasRendered] = React.useState(false);
 
-  // Show list with fade-in after initial render is complete
+  // Show list with fade-in after initial render is complete AND position is ready
+  // isPositionReady гарантирует что скролл к непрочитанным завершён
   React.useEffect(() => {
-    if (messageListItems.length > 0 && !hasRendered) {
-      // Give FlashList time to render and position scroll (two frames + small delay)
+    if (messageListItems.length > 0 && !hasRendered && isPositionReady) {
+      // Give FlashList time to render and position scroll (two frames)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          // Additional small delay to ensure initialScrollIndex is applied
-          setTimeout(() => {
-            setHasRendered(true);
-            Animated.timing(listOpacity, {
-              toValue: 1,
-              duration: 150,
-              useNativeDriver: true,
-            }).start();
-          }, 50);
+          setHasRendered(true);
+          Animated.timing(listOpacity, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }).start();
         });
       });
     }
-  }, [messageListItems.length, hasRendered, listOpacity]);
+  }, [messageListItems.length, hasRendered, listOpacity, isPositionReady]);
 
   // Reset opacity when chat changes
   React.useEffect(() => {

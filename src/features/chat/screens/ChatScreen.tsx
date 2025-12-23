@@ -149,6 +149,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     viewabilityConfig,
     resetScroll,
     handleFlashListLoad,
+    isPositionReady,
   } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount, currentUser?.id);
 
   const chatFromStore = chats.find((c) => c.id === chatIdNum);
@@ -489,6 +490,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         initialScrollIndex={safeInitialScrollIndex}
         scrollSessionKey={scrollSessionKey}
         hasReachedBottom={hasReachedBottom}
+        isPositionReady={isPositionReady}
         onFlashListLoad={handleFlashListLoad}
         onContentSizeChange={handleContentSizeChange}
         onScroll={handleScroll}

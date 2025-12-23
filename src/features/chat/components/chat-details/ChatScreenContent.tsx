@@ -27,6 +27,7 @@ interface ChatScreenContentProps {
   initialScrollIndex: number | null;
   scrollSessionKey: number;
   hasReachedBottom: boolean;
+  isPositionReady?: boolean; // Флаг готовности позиции скролла для показа списка
 
   // Message list handlers
   onFlashListLoad?: () => void;
@@ -106,6 +107,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   initialScrollIndex,
   scrollSessionKey,
   hasReachedBottom,
+  isPositionReady,
   onFlashListLoad,
   onContentSizeChange,
   onScroll,
@@ -227,6 +229,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           chatType={chatType}
           userRole={userRole}
           onFlashListLoad={onFlashListLoad}
+          isPositionReady={isPositionReady}
         />
 
         <ScrollToBottomButton
