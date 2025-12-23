@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -161,7 +161,12 @@ const CalendarScreen: React.FC = () => {
                 onEventPress={handleEventPress}
               />
             ) : sections.length === 0 ? (
-              <CalendarEmptyState />
+              <ScrollView
+                contentContainerStyle={styles.emptyStateContainer}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+              >
+                <CalendarEmptyState />
+              </ScrollView>
             ) : (
               <CalendarEventsList
                 sections={sections}
@@ -190,6 +195,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  emptyStateContainer: {
+    flexGrow: 1,
   },
 });
 

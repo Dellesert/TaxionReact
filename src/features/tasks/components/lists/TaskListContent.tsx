@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator, RefreshControl, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, ActivityIndicator, RefreshControl, StyleSheet, Dimensions, Platform, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, SharedValue } from 'react-native-reanimated';
@@ -82,10 +82,20 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
             )}
 
             {totalAllTasks === 0 ? (
-          <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={true} />
-        ) : tabTotal === 0 ? (
-          <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={false} />
-        ) : (
+              <ScrollView
+                contentContainerStyle={styles.emptyStateContainer}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              >
+                <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={true} />
+              </ScrollView>
+            ) : tabTotal === 0 ? (
+              <ScrollView
+                contentContainerStyle={styles.emptyStateContainer}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              >
+                <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={false} />
+              </ScrollView>
+            ) : (
           <FlashList
             data={tabTasks}
             keyExtractor={(item) => item.id.toString()}
@@ -159,5 +169,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: SCREEN_WIDTH * 4,
     height: '100%',
+  },
+  emptyStateContainer: {
+    flexGrow: 1,
   },
 });

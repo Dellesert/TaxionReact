@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform, RefreshControl } from 'react-native';
 import { Event, CalendarView } from '../../types/calendar.types';
 import { EventSection } from '../../utils/calendarHelpers';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -161,7 +161,12 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
               />
             ) : (
               sections.length === 0 ? (
-                <CalendarEmptyState />
+                <ScrollView
+                  contentContainerStyle={styles.emptyStateContainer}
+                  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                >
+                  <CalendarEmptyState />
+                </ScrollView>
               ) : (
                 <CalendarEventsList
                   sections={sections}
@@ -172,7 +177,12 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
               )
             )
           ) : sections.length === 0 ? (
-            <CalendarEmptyState />
+            <ScrollView
+              contentContainerStyle={styles.emptyStateContainer}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            >
+              <CalendarEmptyState />
+            </ScrollView>
           ) : (
             <CalendarEventsList
               sections={sections}
@@ -250,5 +260,8 @@ const styles = StyleSheet.create({
   },
   rightSidebarContent: {
     padding: 16,
+  },
+  emptyStateContainer: {
+    flexGrow: 1,
   },
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, RefreshControl, StyleSheet, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Poll } from '../../types/poll.types';
 import { PollItem } from './PollItem';
@@ -72,7 +72,14 @@ export const PollListContent: React.FC<PollListContentProps> = ({
 
   // Empty state
   if (polls.length === 0 && !isLoading) {
-    return <PollListEmptyState />;
+    return (
+      <ScrollView
+        contentContainerStyle={styles.emptyStateContainer}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <PollListEmptyState />
+      </ScrollView>
+    );
   }
 
   // List
@@ -117,5 +124,8 @@ const styles = StyleSheet.create({
   },
   gridLoadMoreContainer: {
     width: '100%',
+  },
+  emptyStateContainer: {
+    flexGrow: 1,
   },
 });
