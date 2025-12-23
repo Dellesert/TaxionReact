@@ -284,6 +284,14 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       return;
     }
 
+    // Не пытаемся загружать старые сообщения если в чате только 1 сообщение
+    // или если ID сообщения выглядит как временный (слишком большой - от Date.now())
+    // Это предотвращает ошибку "Invalid message ID" при отправке первого сообщения
+    if (messages.length === 1 || oldestMessage.id > 1700000000000) {
+      setHasMoreMessages(false);
+      return;
+    }
+
     // Устанавливаем ID до начала загрузки для предотвращения дублирования
     lastOldestMessageId.current = oldestMessage.id;
 
