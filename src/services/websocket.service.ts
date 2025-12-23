@@ -723,17 +723,20 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
         case 'user_presence':
           // Debounce user_presence updates to reduce spam
-          const userId = message.data.user_id;
+          const presenceUserId = message.data.user_id;
           const now = Date.now();
-          const lastUpdate = this.lastPresenceUpdate.get(userId) || 0;
+          const lastUpdate = this.lastPresenceUpdate.get(presenceUserId) || 0;
+
+          console.log('[WS] user_presence received:', message.data);
 
           if (now - lastUpdate < this.presenceDebounceMs) {
+            console.log('[WS] user_presence debounced for user:', presenceUserId);
             // Skip this duplicate update
             break;
           }
 
           // Update timestamp and process
-          this.lastPresenceUpdate.set(userId, now);
+          this.lastPresenceUpdate.set(presenceUserId, now);
 
           // Clean up old entries if map is getting too large
           this.cleanupPresenceMap();

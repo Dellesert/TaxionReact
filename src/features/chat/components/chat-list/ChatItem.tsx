@@ -664,6 +664,12 @@ const styles = StyleSheet.create({
   },
 });
 
+// Helper function to get member statuses hash for comparison
+const getMemberStatusHash = (members: any[] | undefined): string => {
+  if (!members) return '';
+  return members.map(m => `${m.user_id}:${m.user?.status || 'unknown'}`).join(',');
+};
+
 // Оптимизация: используем React.memo для предотвращения лишних ре-рендеров
 export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => {
   // Check if typing users changed
@@ -672,6 +678,11 @@ export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => 
   const typingChanged = prevTypingCount !== nextTypingCount ||
     (prevTypingCount > 0 && nextTypingCount > 0 &&
       JSON.stringify(prevProps.typingUsers) !== JSON.stringify(nextProps.typingUsers));
+
+  // Check if member online status changed (for online indicator)
+  const prevMemberStatus = getMemberStatusHash(prevProps.chat.members);
+  const nextMemberStatus = getMemberStatusHash(nextProps.chat.members);
+  const memberStatusChanged = prevMemberStatus !== nextMemberStatus;
 
   return (
     prevProps.chat.id === nextProps.chat.id &&
@@ -683,6 +694,7 @@ export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => 
     prevProps.chat.is_muted === nextProps.chat.is_muted &&
     prevProps.isEditMode === nextProps.isEditMode &&
     prevProps.isSelected === nextProps.isSelected &&
-    !typingChanged
+    !typingChanged &&
+    !memberStatusChanged
   );
 });

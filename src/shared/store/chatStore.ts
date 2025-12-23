@@ -1690,38 +1690,79 @@ export const useChatStore = create<ChatState>()(
     // Update user status in all chats where user is a member
     const { user_id, status, last_seen, last_active_at } = presence;
 
+    console.log('[Presence] Received:', { user_id, status, last_seen, last_active_at });
+
     // Use last_active_at if available (from API), otherwise fall back to last_seen
     const lastActiveTime = last_active_at || last_seen;
 
-    set((state) => ({
-      chats: state.chats.map((chat) => {
-        if (!chat.members) return chat;
+    let updatedCount = 0;
 
-        // Check if user is a member of this chat
-        const hasMember = chat.members.some(m => m.user_id === user_id);
-        if (!hasMember) return chat;
+    // Helper function to update chat members with new presence
+    const updateChatMembers = (chat: Chat): Chat => {
+      if (!chat.members) {
+        return chat;
+      }
 
-        // Update the member's user status
-        const updatedMembers = chat.members.map(member => {
-          if (member.user_id === user_id && member.user) {
-            const updatedUser = {
-              ...member.user,
-              status,
-              last_seen_at: lastActiveTime || member.user.last_seen_at,
-              // Also update last_active_at if it exists in the user object
-              ...(last_active_at ? { last_active_at } : {}),
-            };
-            return {
-              ...member,
-              user: updatedUser,
-            };
-          }
-          return member;
-        });
+      // Check if user is a member of this chat
+      const memberIndex = chat.members.findIndex(m => m.user_id === user_id);
+      if (memberIndex === -1) {
+        return chat;
+      }
 
-        return { ...chat, members: updatedMembers };
-      }),
-    }));
+      const member = chat.members[memberIndex];
+
+      // Debug: Check if member.user exists
+      if (!member.user) {
+        console.log(`[Presence] Chat ${chat.id}: member ${user_id} has no user object, skipping`);
+        return chat;
+      }
+
+      console.log(`[Presence] Updating chat ${chat.id}: user ${user_id} status ${member.user.status} -> ${status}`);
+      updatedCount++;
+
+      // Update the member's user status
+      const updatedMembers = chat.members.map(m => {
+        if (m.user_id === user_id && m.user) {
+          const updatedUser = {
+            ...m.user,
+            status,
+            last_seen_at: lastActiveTime || m.user.last_seen_at,
+            // Also update last_active_at if it exists in the user object
+            ...(last_active_at ? { last_active_at } : {}),
+          };
+          return {
+            ...m,
+            user: updatedUser,
+          };
+        }
+        return m;
+      });
+
+      return { ...chat, members: updatedMembers };
+    };
+
+    set((state) => {
+      // Update chats array
+      const updatedChats = state.chats.map(updateChatMembers);
+
+      // Update tabs (pinnedChats and regularChats in each tab)
+      const updatedTabs = { ...state.tabs };
+      (Object.keys(updatedTabs) as TabName[]).forEach(tabKey => {
+        const tab = updatedTabs[tabKey];
+        updatedTabs[tabKey] = {
+          ...tab,
+          pinnedChats: tab.pinnedChats.map(updateChatMembers),
+          regularChats: tab.regularChats.map(updateChatMembers),
+        };
+      });
+
+      console.log(`[Presence] Updated ${updatedCount} chats for user ${user_id} to status: ${status}`);
+
+      return {
+        chats: updatedChats,
+        tabs: updatedTabs,
+      };
+    });
   },
 
   handleMessageRead: (chatId: number, messageId: number, userId?: number) => {

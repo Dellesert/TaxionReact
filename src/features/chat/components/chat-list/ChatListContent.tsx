@@ -50,7 +50,7 @@ interface ChatListContentProps {
 
 export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentProps>(({
   chatFilter,
-  tabs,
+  tabs: tabsFromProps,
   searchQuery,
   isLoading,
   refreshing,
@@ -77,6 +77,28 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
 
   // Get typing users from chatStore
   const typingUsers = useChatStore((state) => state.typingUsers);
+
+  // Subscribe to tabs directly from store for real-time presence updates
+  // Using a custom equality function to detect member status changes
+  const tabs = useChatStore((state) => state.tabs);
+
+  // Create a version counter that changes when any member status changes
+  // This forces re-render when presence updates happen
+  const tabsVersion = useChatStore((state) => {
+    let hash = '';
+    const tabKeys = ['all', 'private', 'group', 'favorite'] as const;
+    for (const key of tabKeys) {
+      const tab = state.tabs[key];
+      for (const chat of [...tab.pinnedChats, ...tab.regularChats]) {
+        if (chat.members) {
+          for (const m of chat.members) {
+            hash += `${m.user_id}:${m.user?.status || 'unknown'},`;
+          }
+        }
+      }
+    }
+    return hash;
+  });
 
   // Get current user ID for chat filtering
   const currentUser = useAuthStore((state) => state.user);
@@ -160,7 +182,11 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
       const tabChats = filterChatsBySearch(tabChatsFromStore, searchQuery, currentUser?.id);
 
       // Create a hash of relevant chat properties to force re-render when they change
-      const chatsHash = tabChats.map(c => `${c.id}-${c.is_favorite}-${c.unread_count}-${c.is_pinned}`).join(',');
+      // Include member status for online indicator updates
+      const chatsHash = tabChats.map(c => {
+        const memberStatus = c.members?.map(m => `${m.user_id}:${m.user?.status}`).join('|') || '';
+        return `${c.id}-${c.is_favorite}-${c.unread_count}-${c.is_pinned}-${memberStatus}`;
+      }).join(',');
 
       return (
         <View key={filterKey} style={{ width: containerWidth, height: '100%' }}>
@@ -174,7 +200,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
               data={tabChats}
               keyExtractor={(item: Chat) => item.id.toString()}
               renderItem={renderChatItem}
-              extraData={{ isEditMode, selectedChats, typingUsers, chatsHash }}
+              extraData={{ isEditMode, selectedChats, typingUsers, chatsHash, tabsVersion }}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
@@ -200,6 +226,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
     },
     [
       tabs,
+      tabsVersion,
       searchQuery,
       isLoading,
       refreshing,
