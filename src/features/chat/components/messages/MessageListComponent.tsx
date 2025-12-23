@@ -182,6 +182,21 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   const [contentHeight, setContentHeight] = React.useState(0);
   const [viewportHeight, setViewportHeight] = React.useState(0);
 
+  // Обработчик изменения размера контента
+  // ВАЖНО: все хуки должны вызываться до условных return!
+  const handleContentSizeChangeInternal = React.useCallback((width: number, height: number) => {
+    setContentHeight(height);
+    onContentSizeChange(width, height);
+  }, [onContentSizeChange]);
+
+  // Обработчик layout для получения размера viewport
+  const handleLayout = React.useCallback((event: any) => {
+    const { height } = event.nativeEvent.layout;
+    if (height > 0) {
+      setViewportHeight(height);
+    }
+  }, []);
+
   // Определяем нужно ли поднимать список: только если пользователь внизу И контента больше чем экран
   // Если размеры ещё не инициализированы - доверяем hasReachedBottom
   // Это важно для первого рендера когда onLayout ещё не вызван
@@ -213,20 +228,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   if (showEmptyState) {
     return <ChatEmptyMessages />;
   }
-
-  // Обработчик изменения размера контента
-  const handleContentSizeChangeInternal = React.useCallback((width: number, height: number) => {
-    setContentHeight(height);
-    onContentSizeChange(width, height);
-  }, [onContentSizeChange]);
-
-  // Обработчик layout для получения размера viewport
-  const handleLayout = React.useCallback((event: any) => {
-    const { height } = event.nativeEvent.layout;
-    if (height > 0) {
-      setViewportHeight(height);
-    }
-  }, []);
 
   return (
     <Animated.View
