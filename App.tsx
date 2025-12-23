@@ -457,17 +457,71 @@ export default function App() {
 
   // Handle app state changes (foreground/background)
   useEffect(() => {
+    // Web/Electron: Handle visibility change and window focus
+    if (Platform.OS === 'web') {
+      const handleVisibilityChange = () => {
+        if (!isAuthenticated) return;
+
+        if (document.hidden) {
+          // Tab/window hidden - send away status
+          websocketService.sendPresence('away');
+        } else {
+          // Tab/window visible - send online status
+          if (!websocketService.isConnected()) {
+            websocketService.reconnect();
+          }
+          websocketService.sendPresence('online');
+          loadUnreadCount();
+        }
+      };
+
+      // For Electron: also handle window blur/focus
+      const handleWindowBlur = () => {
+        if (isAuthenticated && isElectron()) {
+          websocketService.sendPresence('away');
+        }
+      };
+
+      const handleWindowFocus = () => {
+        if (isAuthenticated && isElectron()) {
+          if (!websocketService.isConnected()) {
+            websocketService.reconnect();
+          }
+          websocketService.sendPresence('online');
+          loadUnreadCount();
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('blur', handleWindowBlur);
+      window.addEventListener('focus', handleWindowFocus);
+
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('blur', handleWindowBlur);
+        window.removeEventListener('focus', handleWindowFocus);
+      };
+    }
+
+    // Native (iOS/Android): Handle AppState changes
     let appState = AppState.currentState;
 
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      // When app goes to background/inactive, send offline status
+      if (nextAppState.match(/inactive|background/) && appState === 'active' && isAuthenticated) {
+        // Send away/offline status when app goes to background
+        websocketService.sendPresence('away');
+      }
 
       // When app comes to foreground, reconnect WebSocket if needed
       if (appState.match(/inactive|background/) && nextAppState === 'active' && isAuthenticated) {
-
         // Check if WebSocket is still connected
         if (!websocketService.isConnected()) {
           await websocketService.reconnect();
         }
+
+        // Send online status when app comes to foreground
+        websocketService.sendPresence('online');
 
         // Reload unread notification count when app becomes active
         loadUnreadCount();

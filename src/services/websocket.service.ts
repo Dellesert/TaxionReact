@@ -302,6 +302,24 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
   }
 
   /**
+   * Send user presence status (online/offline/away)
+   * Called when app goes to background/foreground
+   */
+  sendPresence(status: 'online' | 'offline' | 'away'): void {
+    if (!this.isConnected()) {
+      console.log('[WS] Cannot send presence - not connected');
+      return;
+    }
+
+    console.log('[WS] Sending presence:', status);
+    this.send({
+      type: 'user_presence',
+      chat_id: 0, // Global presence, not chat-specific
+      data: { status },
+    });
+  }
+
+  /**
    * Handle WebSocket open
    */
   private handleOpen(event: Event): void {
