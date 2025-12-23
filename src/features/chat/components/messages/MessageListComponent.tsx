@@ -355,7 +355,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
           Platform.OS === 'ios'
             ? {
                 minIndexForVisible: 0,
-                autoscrollToTopThreshold: 10,
               }
             : undefined
         }
