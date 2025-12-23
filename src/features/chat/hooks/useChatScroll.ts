@@ -553,29 +553,71 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         });
       });
 
-      // ✅ ПСЕВДО-АНИМАЦИЯ: Такая же стратегия как в handleReplyPress
-      // Сначала прыгаем близко к низу без анимации, затем плавно доводим
+      // ✅ ПЛАВНАЯ НЕПРЕРЫВНАЯ АНИМАЦИЯ
+      // Многоступенчатый скролл через промежуточные точки для эффекта непрерывного движения
       const updatedMessages = useChatStore.getState().messages[chatId] || [];
 
       if (updatedMessages.length > 0 && listRef.current) {
-        // Для inverted списка: index 0 = самое новое сообщение (внизу экрана)
-        // Начинаем с позиции ~15 элементов от низа
-        const OFFSET_ITEMS = 15;
-        const startIndex = Math.min(OFFSET_ITEMS, updatedMessages.length - 1);
+        // Определяем промежуточные точки для плавного скролла
+        // Чем больше сообщений, тем больше промежуточных точек
+        const totalMessages = updatedMessages.length;
 
-        // Шаг 1: Тихо прыгаем к стартовой позиции (близко к низу, но не в самом низу)
+        // Создаём массив индексов для плавного перехода
+        // Начинаем примерно с середины и двигаемся к началу (низу в inverted списке)
+        const steps: number[] = [];
+
+        if (totalMessages > 30) {
+          // Много сообщений - делаем 3-4 промежуточные точки
+          steps.push(Math.min(25, totalMessages - 1));  // Далеко
+          steps.push(Math.min(12, totalMessages - 1));  // Средне
+          steps.push(Math.min(5, totalMessages - 1));   // Близко
+          steps.push(0);                                 // Цель (низ)
+        } else if (totalMessages > 15) {
+          // Среднее количество - 2 промежуточные точки
+          steps.push(Math.min(12, totalMessages - 1));
+          steps.push(Math.min(4, totalMessages - 1));
+          steps.push(0);
+        } else {
+          // Мало сообщений - просто плавный скролл
+          steps.push(0);
+        }
+
+        // Шаг 1: Тихо прыгаем к первой (самой дальней) точке
+        const firstStep = steps[0];
         listRef.current.scrollToIndex({
-          index: startIndex,
+          index: firstStep,
           animated: false,
           viewPosition: 0.5,
         });
 
-        // Шаг 2: Даём один кадр на позиционирование, затем плавно скроллим к низу
-        requestAnimationFrame(() => {
-          listRef.current?.scrollToEnd({
-            animated: true,
-          });
-        });
+        // Шаг 2: Последовательно анимируем через все точки
+        let stepIndex = 1;
+        const animateNextStep = () => {
+          if (stepIndex >= steps.length || !listRef.current) {
+            // Финальный scrollToEnd для гарантии достижения низа
+            listRef.current?.scrollToEnd({ animated: true });
+            return;
+          }
+
+          const nextIndex = steps[stepIndex];
+          stepIndex++;
+
+          if (nextIndex === 0) {
+            // Последний шаг - используем scrollToEnd
+            listRef.current?.scrollToEnd({ animated: true });
+          } else {
+            listRef.current?.scrollToIndex({
+              index: nextIndex,
+              animated: true,
+              viewPosition: 0.5,
+            });
+            // Следующий шаг через короткий интервал (перекрытие анимаций для плавности)
+            setTimeout(animateNextStep, 150);
+          }
+        };
+
+        // Начинаем анимацию сразу после позиционирования
+        requestAnimationFrame(animateNextStep);
       } else {
         // Fallback если нет сообщений
         listRef.current?.scrollToEnd({
