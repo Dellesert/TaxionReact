@@ -63,13 +63,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // ПРИОРИТЕТ 1: Если есть непрочитанные И их >= 5 - скроллим к первому непрочитанному
     // Если < 5 непрочитанных - открываем чат внизу (последние сообщения)
     if (firstUnreadIndex !== -1 && unreadCount >= 5) {
-      console.log(`📍 initialScrollIndex: scrolling to unread at index ${firstUnreadIndex} (${unreadCount} unread)`);
       setHasReachedBottom(false);
 
       // ✅ ОПТИМИЗАЦИЯ: Если много непрочитанных (>10), включаем jump context режим
       // Это позволит пользователю подгружать новые сообщения постепенно при скролле вниз
       if (unreadCount > 10) {
-        console.log(`📬 Many unread messages (${unreadCount}), enabling jump context mode`);
         isInJumpContext.current = true;
         setShowScrollToBottom(true);
       }
@@ -81,7 +79,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Для inverted FlashList: не передаём initialScrollIndex, чтобы показать начало
     // Начало inverted списка = визуально низ экрана (новые сообщения)
     // После рендера дополнительно вызовем scrollToEnd для гарантии
-    console.log(`📍 initialScrollIndex: scrolling to bottom (unreadCount: ${unreadCount}, firstUnreadIndex: ${firstUnreadIndex}, messagesLength: ${messages.length})`);
     setHasReachedBottom(true);
     return undefined; // undefined = FlashList начинает с начала = низ для inverted
   }, [messages.length, firstUnreadIndex, unreadCount]);
@@ -131,9 +128,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   // ВСЯ логика позиционирования теперь здесь, потому что listRef гарантированно готов
   // Используем ref чтобы иметь актуальные значения без пересоздания callback
   const handleFlashListLoad = useCallback(() => {
-    const data = scrollPositionDataRef.current;
-    console.log('📍 handleFlashListLoad called:', data);
-
     // onLoad может вызываться слишком рано, поэтому используем задержку
     setTimeout(() => {
       isInitialScrollComplete.current = true;
@@ -143,19 +137,16 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       // Пропускаем если позиция уже готова
       if (currentData.isPositionReady) {
-        console.log('📍 Position already ready, skipping');
         return;
       }
 
       if (currentData.messagesLength === 0) {
-        console.log('📍 No messages, setting ready');
         setIsPositionReady(true);
         return;
       }
 
       // СЛУЧАЙ 1: >= 5 непрочитанных - центрируем плашку
       if (currentData.firstUnreadIndex !== -1 && currentData.unreadCount >= 5) {
-        console.log('📍 Centering unread banner at index:', currentData.firstUnreadIndex);
         if (listRef.current) {
           // Для inverted списка: viewPosition: 0.5 = центр
           // viewOffset отрицательный сдвигает вверх к баннеру
@@ -172,7 +163,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       // СЛУЧАЙ 2: < 5 непрочитанных - скроллим к низу (последние сообщения)
       // Используем scrollToEnd - он используется в handleScrollToBottom и работает для показа низа
-      console.log('📍 Scrolling to bottom (< 5 unread), messagesLength:', currentData.messagesLength);
       if (listRef.current) {
         listRef.current.scrollToEnd({ animated: false });
       }
@@ -290,7 +280,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
         // Проверяем что мы еще не загружали от этого сообщения
         if (newestMessage && lastNewestMessageId.current !== newestMessage.id) {
-          console.log('📍 Reached bottom in jump context, loading next batch after message:', newestMessage.id);
           lastNewestMessageId.current = newestMessage.id;
           isLoadingNewerMessages.current = true;
 
@@ -304,7 +293,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
             // Если больше нет сообщений - значит достигли самого последнего, выходим из jump context
             if (!hasMore) {
-              console.log('📍 No more messages after, exiting jump context');
               isInJumpContext.current = false;
               lastNewestMessageId.current = null;
             }
@@ -541,14 +529,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(async () => {
-    console.log('📍 handleScrollToBottom called, isInJumpContext:', isInJumpContext.current, 'newMessagesCount:', newMessagesCount);
     const loadMessages = useChatStore.getState().loadMessages;
 
     // ПРИОРИТЕТ 1: Если мы в контексте после jump - перезагружаем последние сообщения
     const wasInJumpContext = isInJumpContext.current;
     if (wasInJumpContext) {
-      console.log('📍 In jump context, loading fresh messages...');
-
       // Сбрасываем флаги сразу
       isInJumpContext.current = false;
       lastNewestMessageId.current = null;
@@ -586,7 +571,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     // ПРИОРИТЕТ 2: Проверяем, есть ли новые непрочитанные сообщения
     if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
-      console.log('📍 Scrolling to first new message at index:', firstNewMessageIndex);
       // Если есть новые непрочитанные - скроллим к первому новому
       listRef.current?.scrollToIndex({
         index: firstNewMessageIndex,
@@ -597,7 +581,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // Счетчик обнулится когда пользователь доскроллит до низа
     } else {
       // Просто скроллим в самый низ
-      console.log('📍 Scrolling to bottom (normal)');
       listRef.current?.scrollToEnd({
         animated: true,
       });
@@ -611,19 +594,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Скролл к конкретному сообщению
   const handleReplyPress = useCallback(async (messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
-    console.log('⚪ useChatScroll.handleReplyPress CALLED with messageId:', messageId);
-    console.log('⚪ Current messages array length:', messages.length);
-
     const messageIndex = messages.findIndex(m => m.id === messageId);
-    console.log('⚪ Found messageIndex:', messageIndex);
 
     if (messageIndex !== -1) {
       // ✅ ФИНАЛЬНАЯ СТРАТЕГИЯ: Как в Telegram - мгновенный прыжок + короткая доводка
 
       const currentVisibleIndex = lastVisibleMessageIndex.current;
       const distance = Math.abs(messageIndex - currentVisibleIndex);
-
-      console.log(`📍 Scrolling to pinned message: distance=${distance} items`);
 
       // Для близких элементов (< 10) - обычная анимация работает отлично
       if (distance < 10) {
@@ -642,8 +619,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       // ✅ ДЛЯ ДАЛЬНИХ ЭЛЕМЕНТОВ: Плавная анимация как в Telegram
       // Просто используем scrollToIndex с анимацией - FlashList сам сделает плавный переход
-
-      console.log(`📍 Smooth scroll to pinned message: distance=${distance} items`);
 
       // Один плавный скролл с анимацией
       listRef.current?.scrollToIndex({
@@ -667,14 +642,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // 3. Незаметно подменяем сообщения во время скролла
       // 4. Продолжаем скролл уже к закрепленному в новом контексте
 
-      console.log('📍 Starting seamless scroll to pinned message...');
-
       const performSeamlessScroll = async () => {
         try {
           isAnimatingToPin.current = true;
 
           // ШАГ 1: Загружаем контекст сообщения
-          console.log('📍 Phase 1: Loading context...');
           const jumpToMessage = useChatStore.getState().jumpToMessage;
           await jumpToMessage(chatId, messageId);
 
@@ -687,7 +659,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
           // ШАГ 2: Ждём стабилизации layout через requestAnimationFrame
           // Два кадра гарантируют, что FlashList отрисовал новые данные
-          console.log('📍 Phase 2: Waiting for layout...');
           await new Promise<void>(resolve => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
@@ -698,8 +669,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
           const updatedMessages = useChatStore.getState().messages[chatId] || [];
           const targetIndex = updatedMessages.findIndex(m => m.id === messageId);
-
-          console.log('📍 Phase 3: Ready to scroll, total:', updatedMessages.length, 'target:', targetIndex);
 
           previousMessagesLength.current = updatedMessages.length;
 
@@ -717,8 +686,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
             } else {
               startIndex = Math.min(updatedMessages.length - 1, targetIndex + OFFSET_ITEMS);
             }
-
-            console.log('📍 Phase 4: Smooth scroll from', startIndex, 'to', targetIndex);
 
             // Тихо прыгаем к стартовой позиции
             listRef.current?.scrollToIndex({
