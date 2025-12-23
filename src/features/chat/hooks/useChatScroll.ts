@@ -41,6 +41,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const isLoadingNewerMessages = useRef<boolean>(false); // Флаг загрузки более новых сообщений (при скролле вниз в jump context)
   const lastNewestMessageId = useRef<number | null>(null); // ID последнего загруженного сообщения при incremental load
   const isAnimatingToPin = useRef<boolean>(false); // Флаг анимации к закрепленному сообщению
+  const isScrollingToUnread = useRef<boolean>(false); // Флаг скролла к непрочитанным (по кнопке)
   const isInitialScrollComplete = useRef<boolean>(false); // Флаг что FlashList завершил начальный скролл
   const [isPositionReady, setIsPositionReady] = useState<boolean>(false); // Флаг что позиция скролла готова для показа списка
 
@@ -314,14 +315,27 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // только если:
       // 1. Прошло достаточно времени после инициализации (canTrackUserScroll)
       // 2. Пользователь уже уходил от низа (hasScrolledAwayFromBottom) - это гарантирует намеренность
-      if (initialScrolled && canTrackUserScroll.current && hasScrolledAwayFromBottom.current) {
+      // 3. НЕ идет программный скролл к непрочитанным (isScrollingToUnread) - чтобы не скрывать баннер сразу
+      if (initialScrolled && canTrackUserScroll.current && hasScrolledAwayFromBottom.current && !isScrollingToUnread.current) {
         setUserScrolledToBottom(true);
       }
-      setShowScrollToBottom(false);
-      setShowDateHeader(false);
-      // Обнуляем счетчик новых сообщений при достижении низа
-      setNewMessagesCount(0);
-      setFirstNewMessageIndex(-1); // Сбрасываем индекс первого нового сообщения
+
+      // НЕ сбрасываем состояния если идёт программный скролл к непрочитанным
+      // Это нужно чтобы плашка "Новые сообщения" осталась видимой после скролла к ней
+      if (!isScrollingToUnread.current) {
+        setShowScrollToBottom(false);
+        setShowDateHeader(false);
+
+        // Сбрасываем счетчик и индекс новых сообщений только когда пользователь
+        // РЕАЛЬНО достиг самого низа (< 100px), а не просто близко к низу (< 500px)
+        // Это нужно чтобы плашка "Новые сообщения" оставалась видимой пока пользователь
+        // не доскроллит до самого конца
+        const isReallyAtBottom = distanceFromBottom <= 100;
+        if (isReallyAtBottom) {
+          setNewMessagesCount(0);
+          setFirstNewMessageIndex(-1);
+        }
+      }
     } else {
       setHasReachedBottom(false);
       wasAtBottomBeforeNewMessage.current = false; // Запоминаем что пользователь НЕ внизу
@@ -616,16 +630,45 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       return;
     }
 
-    // ПРИОРИТЕТ 2: Проверяем, есть ли новые непрочитанные сообщения
+    // ПРИОРИТЕТ 2: Проверяем, есть ли новые сообщения пришедшие во время просмотра
+    // firstNewMessageIndex - индекс первого нового сообщения, которое пришло пока пользователь скроллил вверх
+    // Это отличается от firstUnreadIndex, который устанавливается при открытии чата
     if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
-      // Если есть новые непрочитанные - скроллим к первому новому
+      // Устанавливаем флаг чтобы handleScroll не скрывал баннер автоматически
+      isScrollingToUnread.current = true;
+
+      // Скроллим к первому новому сообщению
+      // viewPosition: 0.5 показывает элемент в центре экрана
+      // viewOffset: -30 сдвигает чуть выше чтобы плашка "Новые сообщения" была видна
       listRef.current?.scrollToIndex({
         index: firstNewMessageIndex,
         animated: true,
-        viewPosition: 0.5, // Показываем в центре экрана
+        viewPosition: 0.5,
+        viewOffset: -30, // Сдвиг вверх чтобы баннер "Новые сообщения" был виден
       });
-      // Не обнуляем счетчик сразу - дадим пользователю прочитать
-      // Счетчик обнулится когда пользователь доскроллит до низа
+
+      // Сбрасываем флаг после завершения анимации скролла (~500ms)
+      // Это даёт пользователю время увидеть баннер и непрочитанные сообщения
+      setTimeout(() => {
+        isScrollingToUnread.current = false;
+      }, 500);
+
+      // НЕ обнуляем счетчик - он сбросится когда пользователь сам доскроллит до низа
+      // Это позволяет видеть плашку "Новые сообщения" и счетчик на кнопке
+    } else if (firstUnreadIndex !== -1 && unreadCount >= 1) {
+      // ПРИОРИТЕТ 3: Если есть непрочитанные с момента открытия чата
+      isScrollingToUnread.current = true;
+
+      listRef.current?.scrollToIndex({
+        index: firstUnreadIndex,
+        animated: true,
+        viewPosition: 0.5,
+        viewOffset: -30,
+      });
+
+      setTimeout(() => {
+        isScrollingToUnread.current = false;
+      }, 500);
     } else {
       // Просто скроллим в самый низ
       listRef.current?.scrollToEnd({
@@ -637,7 +680,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       setFirstNewMessageIndex(-1);
       setShowScrollToBottom(false);
     }
-  }, [messages.length, newMessagesCount, firstNewMessageIndex, chatId]);
+  }, [messages.length, newMessagesCount, firstNewMessageIndex, firstUnreadIndex, unreadCount, chatId]);
 
   // Скролл к конкретному сообщению
   const handleReplyPress = useCallback(async (messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
@@ -833,6 +876,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isLoadingNewerMessages.current = false; // ✅ Сбрасываем флаг загрузки новых сообщений
     lastNewestMessageId.current = null; // ✅ Сбрасываем ID последнего загруженного сообщения
     isAnimatingToPin.current = false; // ✅ Сбрасываем флаг анимации
+    isScrollingToUnread.current = false; // ✅ Сбрасываем флаг скролла к непрочитанным
     isKeyboardAnimating.current = false; // ✅ Сбрасываем флаг анимации клавиатуры
     isInitialScrollComplete.current = false; // ✅ Сбрасываем флаг завершения начального скролла
     setIsPositionReady(false); // ✅ Сбрасываем флаг готовности позиции
@@ -849,6 +893,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     hasReachedBottom,
     userScrolledToBottom, // Возвращаем флаг намеренного скролла
     newMessagesCount, // Возвращаем количество новых сообщений ниже видимой области
+    firstNewMessageIndex, // Индекс первого нового сообщения (для плашки при скролле вверх)
     initialScrollIndex,
     scrollSessionKey, // Возвращаем ключ сеанса для FlashList
     isPositionReady, // Флаг готовности позиции для показа списка

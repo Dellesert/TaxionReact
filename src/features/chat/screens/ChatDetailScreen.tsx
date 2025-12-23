@@ -76,6 +76,8 @@ const ChatDetailScreen: React.FC = () => {
             messageListItems={messages.map(msg => ({ type: 'message' as const, data: msg }))}
             messagesKey={`chat-${chatId}`}
             firstUnreadIndex={-1}
+            firstNewMessageIndex={-1}
+            newMessagesCount={0}
             unreadCount={0}
             showUnreadBanner={false}
             initialUnreadCount={0}

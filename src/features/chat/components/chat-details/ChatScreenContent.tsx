@@ -15,6 +15,7 @@ interface ChatScreenContentProps {
   messageListItems: any[];
   messagesKey: string;
   firstUnreadIndex: number;
+  firstNewMessageIndex: number; // Индекс первого нового сообщения (пришедшего во время скролла вверх)
   unreadCount: number;
   showUnreadBanner: boolean;
   initialUnreadCount: number;
@@ -95,6 +96,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   messageListItems,
   messagesKey,
   firstUnreadIndex,
+  firstNewMessageIndex,
   unreadCount,
   showUnreadBanner,
   initialUnreadCount,
@@ -193,6 +195,8 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           messageListItems={messageListItems}
           messagesKey={messagesKey}
           firstUnreadIndex={firstUnreadIndex}
+          firstNewMessageIndex={firstNewMessageIndex}
+          newMessagesCount={newMessagesCount}
           unreadCount={unreadCount}
           showUnreadBanner={showUnreadBanner}
           initialUnreadCount={initialUnreadCount}

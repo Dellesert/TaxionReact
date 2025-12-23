@@ -9,14 +9,15 @@ import { useTheme } from '@shared/hooks/useTheme';
 
 interface UnreadMessagesBannerProps {
   unreadCount: number;
+  isNewMessages?: boolean; // Если true - показываем "Новые сообщения" вместо счетчика
 }
 
-export const UnreadMessagesBanner: React.FC<UnreadMessagesBannerProps> = ({ unreadCount }) => {
+export const UnreadMessagesBanner: React.FC<UnreadMessagesBannerProps> = ({ unreadCount, isNewMessages }) => {
   const { theme } = useTheme();
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.background, // 15 = ~8% opacity
+      backgroundColor: theme.background,
       borderColor: theme.textTertiary + 45,
     },
     text: {
@@ -24,10 +25,15 @@ export const UnreadMessagesBanner: React.FC<UnreadMessagesBannerProps> = ({ unre
     },
   });
 
+  // Текст баннера
+  const bannerText = isNewMessages
+    ? 'Новые сообщения'
+    : `${unreadCount} ${unreadCount === 1 ? 'непрочитанное сообщение' : 'непрочитанных сообщений'}`;
+
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       <Text style={[styles.text, dynamicStyles.text]}>
-        {unreadCount} {unreadCount === 1 ? 'непрочитанное сообщение' : 'непрочитанных сообщений'}
+        {bannerText}
       </Text>
     </View>
   );

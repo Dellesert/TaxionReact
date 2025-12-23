@@ -17,6 +17,8 @@ interface MessageListComponentProps {
   messageListItems: MessageListItem[];
   messagesKey: string;
   firstUnreadIndex: number;
+  firstNewMessageIndex: number; // Индекс первого нового сообщения (пришедшего во время скролла вверх)
+  newMessagesCount: number; // Количество новых сообщений (пришедших во время скролла вверх)
   unreadCount: number;
   showUnreadBanner: boolean;
   initialUnreadCount: number; // Количество непрочитанных при входе в чат
@@ -64,6 +66,8 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   messageListItems,
   messagesKey,
   firstUnreadIndex,
+  firstNewMessageIndex,
+  newMessagesCount,
   unreadCount,
   showUnreadBanner,
   initialUnreadCount,
@@ -303,15 +307,26 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
           const message = item.data;
 
           // Показываем встроенный баннер при наличии непрочитанных
-          // firstUnreadIndex - это индекс самого СТАРОГО непрочитанного сообщения (где должен быть баннер)
-          const shouldShowInlineBanner =
+          // Есть два случая:
+          // 1. firstUnreadIndex - индекс непрочитанных при открытии чата (показываем showUnreadBanner)
+          // 2. firstNewMessageIndex - индекс новых сообщений пришедших во время скролла вверх
+          const shouldShowUnreadBanner =
             index === firstUnreadIndex &&
             unreadCount >= 1 &&
             showUnreadBanner;
 
+          // Показываем баннер для новых сообщений (пришедших во время просмотра чата)
+          // НО только если это НЕ тот же индекс что и firstUnreadIndex (чтобы не дублировать)
+          const shouldShowNewMessageBanner =
+            index === firstNewMessageIndex &&
+            firstNewMessageIndex !== -1 &&
+            firstNewMessageIndex !== firstUnreadIndex &&
+            newMessagesCount > 0;
+
           return (
             <>
-              {shouldShowInlineBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
+              {shouldShowUnreadBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
+              {shouldShowNewMessageBanner && <UnreadMessagesBanner unreadCount={newMessagesCount} />}
               <MessageItem
                 message={message}
                 chatType={chatType}
