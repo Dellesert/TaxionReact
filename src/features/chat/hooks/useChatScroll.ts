@@ -469,55 +469,40 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // ПРИОРИТЕТ 1: Если мы в контексте после jump - перезагружаем последние сообщения
     const wasInJumpContext = isInJumpContext.current;
     if (wasInJumpContext) {
-      console.log('📍 In jump context, animating scroll...');
+      console.log('📍 In jump context, loading fresh messages...');
 
       // Сбрасываем флаги сразу
       isInJumpContext.current = false;
       lastNewestMessageId.current = null;
 
-      // Сначала делаем псевдо-анимацию скролла на текущем контенте
-      const currentHeight = currentContentHeight.current;
-      const currentOffset = lastScrollOffset.current;
+      // Загружаем последние сообщения
+      await loadMessages(chatId);
 
-      // Шаг 1: Скроллим на 30% вниз от текущей позиции
-      listRef.current?.scrollToOffset({
-        offset: currentOffset + (currentHeight - currentOffset) * 0.3,
+      // ✅ ВАЖНО: Сбрасываем lastOldestMessageId чтобы можно было снова подгружать старые сообщения
+      lastOldestMessageId.current = null;
+
+      // Ждём стабилизации layout через requestAnimationFrame
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      });
+
+      // Плавный скролл к первому элементу (в inverted списке index 0 = самое новое сообщение внизу)
+      listRef.current?.scrollToEnd({
         animated: true,
       });
 
-      // Шаг 2: Скроллим на 60% (через 120ms)
+      // Сбрасываем состояния после анимации
       setTimeout(() => {
-        listRef.current?.scrollToOffset({
-          offset: currentOffset + (currentHeight - currentOffset) * 0.6,
-          animated: true,
-        });
-
-        // Шаг 3: Скроллим на 90% (через еще 120ms)
-        setTimeout(() => {
-          listRef.current?.scrollToOffset({
-            offset: currentOffset + (currentHeight - currentOffset) * 0.9,
-            animated: true,
-          });
-
-          // Шаг 4: Загружаем последние сообщения и скроллим в самый низ (через еще 120ms)
-          setTimeout(async () => {
-            await loadMessages(chatId);
-
-            // После загрузки скроллим в самый низ
-            setTimeout(() => {
-              listRef.current?.scrollToOffset({
-                offset: 999999,
-                animated: true,
-              });
-              setHasReachedBottom(true);
-              setUserScrolledToBottom(true);
-              setNewMessagesCount(0);
-              setFirstNewMessageIndex(-1);
-              setShowScrollToBottom(false);
-            }, 100);
-          }, 120);
-        }, 120);
-      }, 120);
+        setHasReachedBottom(true);
+        setUserScrolledToBottom(true);
+        setNewMessagesCount(0);
+        setFirstNewMessageIndex(-1);
+        setShowScrollToBottom(false);
+      }, 400);
       return;
     }
 
@@ -535,8 +520,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     } else {
       // Просто скроллим в самый низ
       console.log('📍 Scrolling to bottom (normal)');
-      listRef.current?.scrollToOffset({
-        offset: 999999,
+      listRef.current?.scrollToEnd({
         animated: true,
       });
       setHasReachedBottom(true);
