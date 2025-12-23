@@ -199,7 +199,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
             >
-              <ChatEmptyState />
+              <ChatEmptyState searchQuery={searchQuery} />
             </ScrollView>
           ) : (
             <FlashList
