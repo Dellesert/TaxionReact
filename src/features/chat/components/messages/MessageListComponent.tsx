@@ -303,13 +303,10 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 
           // Показываем встроенный баннер при наличии непрочитанных
           // firstUnreadIndex - это индекс самого СТАРОГО непрочитанного сообщения (где должен быть баннер)
-          // ВАЖНО: Не показываем баннер если все непрочитанные - это только новые сообщения (initialUnreadCount === 0)
-          // Это происходит когда пользователь был внизу чата и ему пришли новые сообщения с автоскроллом
           const shouldShowInlineBanner =
             index === firstUnreadIndex &&
             unreadCount >= 1 &&
-            showUnreadBanner &&
-            initialUnreadCount > 0; // Показываем только если при входе были непрочитанные
+            showUnreadBanner;
 
           return (
             <>
