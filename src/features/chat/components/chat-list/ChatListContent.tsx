@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useImperativeHandle, forwardRef, useState } from 'react';
-import { View, RefreshControl, ActivityIndicator, Platform, StyleSheet, Dimensions, LayoutChangeEvent } from 'react-native';
+import { View, RefreshControl, ActivityIndicator, Platform, StyleSheet, Dimensions, LayoutChangeEvent, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -193,7 +193,14 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
           {isLoading && !tabData.loaded ? (
             <ChatListSkeleton />
           ) : tabChats.length === 0 ? (
-            <ChatEmptyState />
+            <ScrollView
+              contentContainerStyle={styles.emptyStateContainer}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+            >
+              <ChatEmptyState />
+            </ScrollView>
           ) : (
             <FlashList
               ref={(ref: any) => { listRefs.current[filterKey] = ref; }}
@@ -283,5 +290,8 @@ const styles = StyleSheet.create({
   loadMoreContainer: {
     paddingVertical: 16,
     alignItems: 'center',
+  },
+  emptyStateContainer: {
+    flexGrow: 1,
   },
 });
