@@ -7,7 +7,12 @@ import { useAuthStore } from '@shared/store/authStore';
  *
  * ОПТИМИЗАЦИЯ: Использует комбинированные селекторы для снижения ре-рендеров на 25-35%
  */
-export const useChatMessages = (chatId: number, ignoreReadReceipts = false, savedUnreadCount = 0) => {
+export const useChatMessages = (
+  chatId: number,
+  ignoreReadReceipts = false,
+  savedUnreadCount = 0,
+  firstUnreadMessageId: number | null = null
+) => {
   // Оптимизация: комбинируем селекторы для уменьшения подписок
   // Используем стабильную функцию селектора (React будет сравнивать результат)
   const allMessages = useChatStore((state) => state.messages);
@@ -35,13 +40,32 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
   }, [messages]);
 
   // Вычисляем индекс первого непрочитанного сообщения и их количество
-  const { firstUnreadIndex, unreadCount } = useMemo(() => {
+  const { firstUnreadIndex, unreadCount, detectedFirstUnreadId } = useMemo(() => {
     if (!currentUser || messages.length === 0) {
-      return { firstUnreadIndex: -1, unreadCount: 0 };
+      return { firstUnreadIndex: -1, unreadCount: 0, detectedFirstUnreadId: null };
     }
 
     let firstUnreadIndex = -1; // Индекс первого непрочитанного (перед которым показывать баннер)
     let count = 0;
+    let detectedFirstUnreadId: number | null = null;
+
+    // Если у нас уже есть зафиксированный ID первого непрочитанного сообщения,
+    // используем его для определения позиции баннера
+    if (firstUnreadMessageId !== null) {
+      // Находим индекс зафиксированного сообщения
+      const fixedIndex = messages.findIndex(m => m.id === firstUnreadMessageId);
+      if (fixedIndex !== -1) {
+        firstUnreadIndex = fixedIndex;
+        // Считаем все сообщения от других пользователей начиная с этого индекса
+        for (let i = fixedIndex; i < messages.length; i++) {
+          const message = messages[i];
+          if (message.sender_id !== currentUser.id) {
+            count++;
+          }
+        }
+      }
+      return { firstUnreadIndex, unreadCount: count, detectedFirstUnreadId: firstUnreadMessageId };
+    }
 
     if (ignoreReadReceipts) {
       // При входе в чат используем savedUnreadCount (сохраненный ДО WebSocket)
@@ -56,6 +80,7 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
           if (message.sender_id !== currentUser.id) {
             // Это непрочитанное сообщение
             firstUnreadIndex = i; // Обновляем индекс (самое старое непрочитанное)
+            detectedFirstUnreadId = message.id; // Запоминаем ID для фиксации
             count++;
 
             if (count >= targetUnreadCount) {
@@ -75,6 +100,7 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
 
         if (isUnread) {
           firstUnreadIndex = i; // Обновляем (самое старое непрочитанное)
+          detectedFirstUnreadId = message.id;
           count++;
         }
       }
@@ -89,8 +115,8 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
     //
     // Поиск идет с конца к началу, чтобы найти самое старое непрочитанное (наименьший индекс)
 
-    return { firstUnreadIndex, unreadCount: count };
-  }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount, chatId]);
+    return { firstUnreadIndex, unreadCount: count, detectedFirstUnreadId };
+  }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount, chatId, firstUnreadMessageId]);
 
   return {
     messages,
@@ -98,5 +124,6 @@ export const useChatMessages = (chatId: number, ignoreReadReceipts = false, save
     messagesKey,
     firstUnreadIndex,
     unreadCount,
+    detectedFirstUnreadId,
   };
 };

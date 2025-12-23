@@ -23,6 +23,8 @@ export const useChatScreenState = () => {
   const [ignoreReadReceipts, setIgnoreReadReceipts] = useState(true);
   const [initialUnreadCount, setInitialUnreadCount] = useState(0);
   const [savedUnreadCount, setSavedUnreadCount] = useState(0);
+  // ID первого непрочитанного сообщения - фиксируется при входе в чат
+  const [firstUnreadMessageId, setFirstUnreadMessageId] = useState<number | null>(null);
   const [chatData, setChatData] = useState<Chat | null>(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
 
@@ -117,6 +119,7 @@ export const useChatScreenState = () => {
     setShowUnreadBanner(true);
     setIgnoreReadReceipts(true);
     setInitialUnreadCount(0);
+    setFirstUnreadMessageId(null);
   }, []);
 
   return {
@@ -151,6 +154,8 @@ export const useChatScreenState = () => {
     setInitialUnreadCount,
     savedUnreadCount,
     setSavedUnreadCount,
+    firstUnreadMessageId,
+    setFirstUnreadMessageId,
 
     // Chat data
     chatData,

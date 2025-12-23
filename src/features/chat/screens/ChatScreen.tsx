@@ -69,6 +69,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     setInitialUnreadCount,
     savedUnreadCount,
     setSavedUnreadCount,
+    firstUnreadMessageId,
+    setFirstUnreadMessageId,
     chatData,
     setChatData,
     setIsLoadingChat,
@@ -97,8 +99,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const currentUser = useAuthStore((state) => state.user);
 
   // Data hooks
-  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount } =
-    useChatMessages(chatIdNum, ignoreReadReceipts, savedUnreadCount);
+  const { messages, messageListItems, messagesKey, firstUnreadIndex, unreadCount, detectedFirstUnreadId } =
+    useChatMessages(chatIdNum, ignoreReadReceipts, savedUnreadCount, firstUnreadMessageId);
 
   const {
     editingMessage,
@@ -360,12 +362,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [chatIdNum, connectWebSocket]); // Значительно уменьшен массив зависимостей!
 
-  // Запоминаем начальное количество непрочитанных при первой загрузке
+  // Запоминаем начальное количество непрочитанных и ID первого непрочитанного при первой загрузке
   useEffect(() => {
     if (messages.length > 0 && ignoreReadReceipts && unreadCount > 0 && initialUnreadCount === 0) {
       setInitialUnreadCount(unreadCount);
     }
-  }, [messages.length, ignoreReadReceipts, unreadCount, initialUnreadCount]);
+    // Фиксируем ID первого непрочитанного сообщения при первом обнаружении
+    if (detectedFirstUnreadId !== null && firstUnreadMessageId === null && showUnreadBanner) {
+      setFirstUnreadMessageId(detectedFirstUnreadId);
+    }
+  }, [messages.length, ignoreReadReceipts, unreadCount, initialUnreadCount, detectedFirstUnreadId, firstUnreadMessageId, showUnreadBanner]);
 
   // Отключаем игнорирование read_receipts и скрываем баннер после намеренной прокрутки вниз или открытия клавиатуры
   useEffect(() => {
@@ -375,6 +381,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       // Скрываем баннер при открытии клавиатуры (пользователь начал печатать = прочитал сообщения)
       if (keyboardHeight > 0 && showUnreadBanner) {
         setShowUnreadBanner(false);
+        setFirstUnreadMessageId(null); // Сбрасываем фиксированный ID
       }
     }
   }, [initialScrolled, ignoreReadReceipts, userScrolledToBottom, keyboardHeight, showUnreadBanner]);
@@ -387,6 +394,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
           await markChatAsRead(chatIdNum);
           if (showUnreadBanner) {
             setShowUnreadBanner(false);
+            setFirstUnreadMessageId(null); // Сбрасываем фиксированный ID
           }
         } catch (error: any) {
           // Игнорируем ошибки 403 - пользователь может не иметь доступа
@@ -437,6 +445,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     // После отправки сообщения скроллим вниз и скрываем баннер (пользователь активно участвует в диалоге)
     if (showUnreadBanner) {
       setShowUnreadBanner(false);
+      setFirstUnreadMessageId(null); // Сбрасываем фиксированный ID
     }
     setTimeout(() => {
       handleScrollToBottom();
