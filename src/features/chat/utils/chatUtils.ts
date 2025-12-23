@@ -8,22 +8,11 @@ import { User } from '@/types/user.types';
 
 /**
  * Получить отображаемое имя чата
- * Для личных чатов возвращает имя собеседника
+ * Бекенд уже возвращает правильное имя для личных чатов (имя собеседника)
  * Для групповых чатов возвращает название чата
  */
 export const getChatDisplayName = (chat: Chat, currentUserId?: number): string => {
-  // Для личных чатов показываем имя собеседника
-  if (chat.type === 'private' && chat.members && currentUserId) {
-    const otherMember = chat.members.find(
-      (member) => member.user_id !== currentUserId
-    );
-
-    if (otherMember?.user) {
-      return otherMember.user.full_name || otherMember.user.name || otherMember.user.email;
-    }
-  }
-
-  // Для групповых чатов или если не удалось найти собеседника
+  // Бекенд уже подставил правильное имя для всех типов чатов
   return chat.name || 'Без названия';
 };
 
@@ -44,38 +33,23 @@ export const getPersonalChatCompanion = (chat: Chat, currentUserId?: number): Us
 
 /**
  * Получить аватар для отображения чата
- * Для личных чатов возвращает аватар собеседника
+ * Бекенд уже возвращает правильный аватар для личных чатов (аватар собеседника)
  * Для групповых чатов возвращает аватар чата
  */
 export const getChatDisplayAvatar = (chat: Chat, currentUserId?: number): string | undefined => {
-  // Для личных чатов показываем аватар собеседника
-  if (chat.type === 'private') {
-    const companion = getPersonalChatCompanion(chat, currentUserId);
-    if (companion?.avatar) {
-      return companion.avatar;
-    }
-  }
-
-  // Для групповых чатов или если не удалось найти собеседника
-  return chat.avatar || chat.avatar;
+  // Бекенд уже подставил правильный аватар для всех типов чатов
+  return chat.avatar;
 };
 
 /**
  * Получить thumbnail аватара для отображения чата в списках
- * Для личных чатов возвращает avatar_thumbnail собеседника
- * Для групповых чатов возвращает avatar_thumbnail чата
+ * Бекенд уже возвращает правильный avatar для личных чатов
+ * Используем его как thumbnail (на бекенде нет отдельного поля avatar_thumbnail для чатов)
  */
 export const getChatDisplayAvatarThumbnail = (chat: Chat, currentUserId?: number): string | undefined => {
-  // Для личных чатов показываем thumbnail аватара собеседника
-  if (chat.type === 'private') {
-    const companion = getPersonalChatCompanion(chat, currentUserId);
-    if (companion?.avatar_thumbnail) {
-      return companion.avatar_thumbnail;
-    }
-  }
-
-  // Для групповых чатов возвращаем thumbnail (когда будет поддержка)
-  return chat.avatar_thumbnail;
+  // Бекенд уже подставил правильный аватар для всех типов чатов
+  // Используем основной avatar как thumbnail
+  return chat.avatar;
 };
 
 /**
