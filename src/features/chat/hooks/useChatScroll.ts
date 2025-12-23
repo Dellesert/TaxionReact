@@ -553,10 +553,35 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         });
       });
 
-      // Плавный скролл к первому элементу (в inverted списке index 0 = самое новое сообщение внизу)
-      listRef.current?.scrollToEnd({
-        animated: true,
-      });
+      // ✅ ПСЕВДО-АНИМАЦИЯ: Такая же стратегия как в handleReplyPress
+      // Сначала прыгаем близко к низу без анимации, затем плавно доводим
+      const updatedMessages = useChatStore.getState().messages[chatId] || [];
+
+      if (updatedMessages.length > 0 && listRef.current) {
+        // Для inverted списка: index 0 = самое новое сообщение (внизу экрана)
+        // Начинаем с позиции ~15 элементов от низа
+        const OFFSET_ITEMS = 15;
+        const startIndex = Math.min(OFFSET_ITEMS, updatedMessages.length - 1);
+
+        // Шаг 1: Тихо прыгаем к стартовой позиции (близко к низу, но не в самом низу)
+        listRef.current.scrollToIndex({
+          index: startIndex,
+          animated: false,
+          viewPosition: 0.5,
+        });
+
+        // Шаг 2: Даём один кадр на позиционирование, затем плавно скроллим к низу
+        requestAnimationFrame(() => {
+          listRef.current?.scrollToEnd({
+            animated: true,
+          });
+        });
+      } else {
+        // Fallback если нет сообщений
+        listRef.current?.scrollToEnd({
+          animated: true,
+        });
+      }
 
       // Сбрасываем состояния после анимации
       setTimeout(() => {
