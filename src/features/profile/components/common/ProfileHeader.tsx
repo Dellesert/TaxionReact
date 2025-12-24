@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -17,6 +17,18 @@ interface ProfileHeaderProps {
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+
+  const departmentOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (user.department) {
+      Animated.timing(departmentOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [user.department]);
 
   // Pre-calculate top padding to prevent layout shift on iOS
   // Only apply safe area top padding on native platforms
@@ -75,11 +87,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
       paddingVertical: 4,
       borderRadius: 16,
       marginTop: 8,
+      minHeight: 26,
     },
     departmentText: {
       fontSize: 14,
       color: '#FFFFFF',
       fontWeight: '500',
+      lineHeight: 18,
     },
     userPosition: {
       fontSize: 14,
@@ -112,9 +126,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
       </View>
       <Text style={dynamicStyles.userEmail}>{user.email}</Text>
       {user.department && (
-        <View style={dynamicStyles.departmentBadge}>
+        <Animated.View style={[dynamicStyles.departmentBadge, { opacity: departmentOpacity }]}>
           <Text style={dynamicStyles.departmentText}>{user.department.name}</Text>
-        </View>
+        </Animated.View>
       )}
       {user.position && <Text style={dynamicStyles.userPosition}>{user.position}</Text>}
     </View>
