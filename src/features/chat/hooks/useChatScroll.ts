@@ -442,16 +442,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       return;
     }
 
-    // ВАЖНО: Пропускаем эту логику если мы в jump context
-    // В этом случае добавление сообщений в конец - это инкрементальная загрузка, а не новые сообщения
-    if (isInJumpContext.current) {
-      previousMessagesLength.current = messages.length;
-      if (messages.length > 0) {
-        previousLastMessageId.current = messages[messages.length - 1].id;
-      }
-      return;
-    }
-
     // Проверяем, появились ли новые сообщения
     const newMessagesAdded = messages.length - previousMessagesLength.current;
 
@@ -473,6 +463,26 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         return;
       }
 
+      // В jump context нужно различать:
+      // 1. Инкрементальная загрузка (loadMoreMessagesAfter) - ID <= lastNewestMessageId
+      // 2. Реальные новые сообщения от WebSocket - ID > lastNewestMessageId
+      //
+      // Если мы в jump context И lastNewestMessageId установлен И новое сообщение <= этого ID,
+      // значит это инкрементальная загрузка, пропускаем
+      if (isInJumpContext.current && lastNewestMessageId.current !== null) {
+        // Проверяем, это инкрементальная загрузка или реальные новые сообщения
+        // Инкрементальная загрузка добавляет сообщения с ID близкими к lastNewestMessageId
+        // Реальные новые сообщения будут иметь ID значительно больше
+        const isIncrementalLoad = currentLastId <= lastNewestMessageId.current ||
+          (currentLastId - lastNewestMessageId.current) < 100; // Небольшой буфер для batch загрузки
+
+        if (isIncrementalLoad) {
+          previousMessagesLength.current = messages.length;
+          previousLastMessageId.current = currentLastId;
+          return;
+        }
+      }
+
       // Это новые сообщения в конце массива
       const newMessages = messages.slice(previousMessagesLength.current);
       const newFromOthers = newMessages.filter(msg => msg.sender_id !== currentUserId).length;
@@ -483,7 +493,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         //
         // Если пользователь внизу или близко к низу - автоматически прокручиваем к новому сообщению
         // Если пользователь далеко от низа (скроллил вверх) - показываем счетчик новых сообщений
-        const shouldAutoScroll = isNearBottom.current;
+        // В jump context пользователь всегда далеко от реального низа, поэтому не автоскроллим
+        const shouldAutoScroll = isNearBottom.current && !isInJumpContext.current;
 
         if (shouldAutoScroll) {
           // Небольшая задержка для корректного рендера нового сообщения
@@ -525,7 +536,32 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const handleScrollToBottom = useCallback(async () => {
     const loadMessages = useChatStore.getState().loadMessages;
 
-    // ПРИОРИТЕТ 1: Если мы в контексте после jump - перезагружаем последние сообщения
+    // ПРИОРИТЕТ 1: Проверяем, есть ли новые сообщения пришедшие во время просмотра
+    // Это важнее чем jump context, потому что пользователь хочет видеть новые сообщения
+    if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
+      // Устанавливаем флаг чтобы handleScroll не скрывал баннер автоматически
+      isScrollingToUnread.current = true;
+
+      // Скроллим к первому новому сообщению
+      // viewPosition: 0.5 показывает элемент в центре экрана
+      // viewOffset: -30 сдвигает чуть выше чтобы плашка "Новые сообщения" была видна
+      listRef.current?.scrollToIndex({
+        index: firstNewMessageIndex,
+        animated: true,
+        viewPosition: 0.5,
+        viewOffset: -30,
+      });
+
+      // Сбрасываем флаг после завершения анимации скролла (~500ms)
+      setTimeout(() => {
+        isScrollingToUnread.current = false;
+      }, 500);
+
+      // НЕ обнуляем счетчик - он сбросится когда пользователь сам доскроллит до низа
+      return;
+    }
+
+    // ПРИОРИТЕТ 2: Если мы в контексте после jump - перезагружаем последние сообщения
     const wasInJumpContext = isInJumpContext.current;
     if (wasInJumpContext) {
       // Сбрасываем флаги сразу
@@ -630,33 +666,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       return;
     }
 
-    // ПРИОРИТЕТ 2: Проверяем, есть ли новые сообщения пришедшие во время просмотра
-    // firstNewMessageIndex - индекс первого нового сообщения, которое пришло пока пользователь скроллил вверх
-    // Это отличается от firstUnreadIndex, который устанавливается при открытии чата
-    if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
-      // Устанавливаем флаг чтобы handleScroll не скрывал баннер автоматически
-      isScrollingToUnread.current = true;
-
-      // Скроллим к первому новому сообщению
-      // viewPosition: 0.5 показывает элемент в центре экрана
-      // viewOffset: -30 сдвигает чуть выше чтобы плашка "Новые сообщения" была видна
-      listRef.current?.scrollToIndex({
-        index: firstNewMessageIndex,
-        animated: true,
-        viewPosition: 0.5,
-        viewOffset: -30, // Сдвиг вверх чтобы баннер "Новые сообщения" был виден
-      });
-
-      // Сбрасываем флаг после завершения анимации скролла (~500ms)
-      // Это даёт пользователю время увидеть баннер и непрочитанные сообщения
-      setTimeout(() => {
-        isScrollingToUnread.current = false;
-      }, 500);
-
-      // НЕ обнуляем счетчик - он сбросится когда пользователь сам доскроллит до низа
-      // Это позволяет видеть плашку "Новые сообщения" и счетчик на кнопке
-    } else if (firstUnreadIndex !== -1 && unreadCount >= 1) {
-      // ПРИОРИТЕТ 3: Если есть непрочитанные с момента открытия чата
+    // ПРИОРИТЕТ 3: Если есть непрочитанные с момента открытия чата
+    if (firstUnreadIndex !== -1 && unreadCount >= 1) {
       isScrollingToUnread.current = true;
 
       listRef.current?.scrollToIndex({
