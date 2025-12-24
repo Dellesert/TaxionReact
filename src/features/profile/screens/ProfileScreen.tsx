@@ -158,13 +158,13 @@ const ProfileScreen: React.FC = () => {
                 icon="business-outline"
                 iconColor="#e944d6ff"
                 text="Управление отделами"
-                onPress={() => navigation.navigate('Admin', { screen: 'Departments' })}
+                onPress={() => navigation.navigate('Departments')}
               />
               <ProfileMenuItem
                 icon="people-outline"
                 iconColor="#e99444ff"
                 text="Управление пользователями"
-                onPress={() => navigation.navigate('Admin', { screen: 'Users' })}
+                onPress={() => navigation.navigate('Users')}
                 isLast
               />
             </ProfileMenuSection>

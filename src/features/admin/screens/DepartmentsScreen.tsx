@@ -9,6 +9,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -124,6 +125,30 @@ const DepartmentsScreen: React.FC = () => {
       flex: 1,
       backgroundColor: isDark ? theme.background : '#F3F4F6',
     },
+    header: {
+      paddingHorizontal: 16,
+      paddingTop: Platform.OS === 'ios' ? 0 : 20,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      backgroundColor: theme.backgroundSecondary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      padding: 8,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.text,
+      flex: 1,
+      textAlign: 'center',
+    },
+    headerRight: {
+      width: 40,
+    },
     departmentCard: {
       backgroundColor: theme.backgroundSecondary,
       borderRadius: 16,
@@ -160,6 +185,15 @@ const DepartmentsScreen: React.FC = () => {
 
   return (
     <View style={[styles.safeArea, { backgroundColor: theme.card }]}>
+      <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={theme.primary} />
+          </TouchableOpacity>
+          <Text style={dynamicStyles.headerTitle}>Управление отделами</Text>
+          <View style={dynamicStyles.headerRight} />
+        </View>
+      </SafeAreaView>
       <View style={[dynamicStyles.container]}>
         {/* Search Bar with Create Button */}
         <View style={[styles.searchContainer, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>

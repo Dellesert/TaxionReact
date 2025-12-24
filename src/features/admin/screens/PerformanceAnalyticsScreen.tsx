@@ -13,6 +13,7 @@ import {
   Platform,
   RefreshControl,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,10 @@ import {
 const PerformanceAnalyticsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+  const { width } = useWindowDimensions();
+
+  // На экранах меньше 600px показываем одну карточку в ряд
+  const isSmallScreen = width < 600;
   const { showError } = useNotification();
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
@@ -182,8 +187,7 @@ const PerformanceAnalyticsScreen: React.FC = () => {
       marginHorizontal: -8,
     },
     performerCardWrapper: {
-      width: '100%',
-      maxWidth: '50%',
+      width: isSmallScreen ? '100%' : '50%',
       paddingHorizontal: 8,
       marginBottom: 16,
     },

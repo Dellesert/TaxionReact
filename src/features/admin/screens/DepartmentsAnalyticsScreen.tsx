@@ -13,6 +13,7 @@ import {
   Platform,
   RefreshControl,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +29,15 @@ import {
 const DepartmentsAnalyticsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+  const { width } = useWindowDimensions();
   const { showError } = useNotification();
+
+  // Адаптивная ширина карточек: 1 на мобильных, 2 на планшетах, 3 на десктопе
+  const getCardWidth = () => {
+    if (width < 600) return '100%';
+    if (width < 900) return '50%';
+    return '33.333%';
+  };
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
   const [isLoading, setIsLoading] = useState(true);
@@ -162,8 +171,7 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
       marginHorizontal: -8,
     },
     departmentCardWrapper: {
-      width: '100%',
-      maxWidth: '33.333%',
+      width: getCardWidth(),
       paddingHorizontal: 8,
       marginBottom: 16,
     },

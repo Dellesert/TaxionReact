@@ -20,6 +20,9 @@ import MetricsAnalyticsScreen from '@/features/admin/screens/MetricsAnalyticsScr
 import PerformanceAnalyticsScreen from '@/features/admin/screens/PerformanceAnalyticsScreen';
 import DepartmentsAnalyticsScreen from '@/features/admin/screens/DepartmentsAnalyticsScreen';
 import SecurityAnalyticsScreen from '@/features/admin/screens/SecurityAnalyticsScreen';
+import DepartmentsScreen from '@/features/admin/screens/DepartmentsScreen';
+import EditDepartmentScreen from '@/features/admin/screens/EditDepartmentScreen';
+import UsersScreen from '@/features/admin/screens/UsersScreen';
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
@@ -35,6 +38,9 @@ export type ProfileStackParamList = {
   PerformanceAnalytics: undefined;
   DepartmentsAnalytics: undefined;
   SecurityAnalytics: undefined;
+  Departments: undefined;
+  EditDepartment: { departmentId: number };
+  Users: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -82,6 +88,9 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Screen name="PerformanceAnalytics" component={PerformanceAnalyticsScreen} />
       <Stack.Screen name="DepartmentsAnalytics" component={DepartmentsAnalyticsScreen} />
       <Stack.Screen name="SecurityAnalytics" component={SecurityAnalyticsScreen} />
+      <Stack.Screen name="Departments" component={DepartmentsScreen} />
+      <Stack.Screen name="EditDepartment" component={EditDepartmentScreen} />
+      <Stack.Screen name="Users" component={UsersScreen} />
     </Stack.Navigator>
   );
 };

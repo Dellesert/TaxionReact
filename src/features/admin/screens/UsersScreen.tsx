@@ -178,7 +178,7 @@ const UsersScreen: React.FC = () => {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Profile' as any)}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Управление пользователями</Text>

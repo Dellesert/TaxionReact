@@ -13,6 +13,7 @@ import {
   Platform,
   RefreshControl,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +28,11 @@ import {
 const SecurityAnalyticsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+  const { width } = useWindowDimensions();
   const { showError } = useNotification();
+
+  // На мобильных экранах показываем одну карточку в ряд
+  const isSmallScreen = width < 600;
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -200,8 +205,7 @@ const SecurityAnalyticsScreen: React.FC = () => {
       marginBottom: 24,
     },
     statsCardWrapper: {
-      width: '100%',
-      maxWidth: '50%',
+      width: isSmallScreen ? '100%' : '50%',
       paddingHorizontal: 8,
       marginBottom: 16,
     },
@@ -261,8 +265,7 @@ const SecurityAnalyticsScreen: React.FC = () => {
       marginHorizontal: -8,
     },
     activityCardWrapper: {
-      width: '100%',
-      maxWidth: '50%',
+      width: isSmallScreen ? '100%' : '50%',
       paddingHorizontal: 8,
       marginBottom: 16,
     },
