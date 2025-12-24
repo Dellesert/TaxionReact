@@ -1,10 +1,14 @@
-const { app, BrowserWindow, ipcMain, safeStorage, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, Notification, protocol, net } = require('electron');
 const path = require('path');
 const url = require('url');
+const fs = require('fs');
 const Store = require('electron-store');
 const FileCache = require('./FileCache');
 
-const isDev = process.env.NODE_ENV !== 'production';
+const isDev = !app.isPackaged;
+
+// Get the dist path for production
+const getDistPath = () => path.join(__dirname, '../dist');
 
 let mainWindow;
 let splashWindow;
@@ -71,13 +75,20 @@ function createWindow() {
       console.error('[Electron] Failed to load:', errorCode, errorDescription);
     });
   } else {
-    // Production: load from build folder
-    const startUrl = url.format({
-      pathname: path.join(__dirname, '../dist/index.html'),
-      protocol: 'file:',
-      slashes: true,
+    // Production: load using https://app.local which is intercepted by protocol handler
+    console.log('[Electron] Loading production with https://app.local');
+
+    mainWindow.loadURL('https://app.local/index.html').catch(err => {
+      console.error('[Electron] Failed to load:', err);
     });
-    mainWindow.loadURL(startUrl);
+
+    // Add error handler for renderer process in production too
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      console.error('[Electron] Failed to load:', errorCode, errorDescription);
+    });
+
+    // Open DevTools temporarily to debug
+    mainWindow.webContents.openDevTools();
   }
 
   // Show window when ready and close splash
@@ -122,7 +133,75 @@ function createWindow() {
 
 // App lifecycle
 app.whenReady().then(async () => {
-  // Show splash screen first
+  // Register custom protocol for production to serve files correctly
+  if (!isDev) {
+    // MIME types map
+    const mimeTypes = {
+      '.html': 'text/html',
+      '.js': 'application/javascript',
+      '.css': 'text/css',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.ico': 'image/x-icon',
+      '.ttf': 'font/ttf',
+      '.woff': 'font/woff',
+      '.woff2': 'font/woff2',
+    };
+
+    protocol.handle('https', (request) => {
+      const requestUrl = new URL(request.url);
+
+      // Only handle our app's requests
+      if (requestUrl.host === 'app.local') {
+        const distPath = getDistPath();
+        let filePath = path.join(distPath, decodeURIComponent(requestUrl.pathname));
+        let ext = path.extname(filePath).toLowerCase();
+
+        console.log('[Protocol] Request:', requestUrl.pathname);
+        console.log('[Protocol] Dist path:', distPath);
+        console.log('[Protocol] Full path:', filePath);
+
+        // Check if file exists
+        let fileExists = false;
+        try {
+          fs.accessSync(filePath);
+          fileExists = true;
+          console.log('[Protocol] File exists:', fileExists);
+        } catch (e) {
+          fileExists = false;
+          console.log('[Protocol] File not found, error:', e.message);
+        }
+
+        // SPA fallback: if no extension and file doesn't exist, serve index.html
+        if (!fileExists && (!ext || ext === '')) {
+          filePath = path.join(distPath, 'index.html');
+          ext = '.html';
+          console.log('[Protocol] SPA fallback to:', filePath);
+        }
+
+        try {
+          const data = fs.readFileSync(filePath);
+          const mimeType = mimeTypes[ext] || 'application/octet-stream';
+
+          return new Response(data, {
+            status: 200,
+            headers: { 'Content-Type': mimeType }
+          });
+        } catch (err) {
+          console.error('[Protocol] Read error:', err.message);
+          return new Response('Not Found', { status: 404 });
+        }
+      }
+
+      // Pass through other https requests
+      return net.fetch(request);
+    });
+  }
+
   createSplashWindow();
 
   // Initialize services
