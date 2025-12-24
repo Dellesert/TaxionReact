@@ -35,7 +35,7 @@ interface AuthState {
   initialize: () => Promise<void>;
   login: (credentials: LoginDto) => Promise<void>;
   register: (userData: RegisterDto) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (options?: { skipApi?: boolean }) => Promise<void>;
   refreshUser: () => Promise<void>;
   setUser: (user: User) => void;
   clearError: () => void;
@@ -178,8 +178,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   /**
    * Logout user (Session mode)
+   * @param options.skipApi - Skip API call (useful when session already invalidated on server)
    */
-  logout: async () => {
+  logout: async (options?: { skipApi?: boolean }) => {
     try {
       set({ isLoading: true });
 
@@ -187,13 +188,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       websocketService.disconnect();
 
       // Call logout API to invalidate session on server
-      if (!isMockMode()) {
+      if (!isMockMode() && !options?.skipApi) {
         try {
           await authApi.logout();
         } catch (error) {
           console.error('Logout API call failed:', error);
         }
-      } else {
+      } else if (isMockMode()) {
         console.log('🔧 Mock logout - skipping API call');
       }
 

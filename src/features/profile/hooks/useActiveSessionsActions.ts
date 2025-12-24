@@ -4,9 +4,9 @@
  */
 
 import { Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useAuthStore } from '@shared/store';
 import * as sessionApi from '@api/session.api';
 import { getDeleteSessionMessage, getDeleteAllOtherMessage } from '../utils/activeSessionsFormatters';
 import { getOtherSessionsCount } from '../utils/activeSessionsHelpers';
@@ -17,9 +17,9 @@ export const useActiveSessionsActions = (
   sessions: ActiveSession[],
   loadSessions: () => Promise<void>
 ) => {
-  const navigation = useNavigation();
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
+  const logout = useAuthStore((state) => state.logout);
 
   /**
    * Delete a single session
@@ -34,8 +34,8 @@ export const useActiveSessionsActions = (
         showSuccess('Сессия удалена');
 
         if (isCurrentSession) {
-          // If deleted current session, logout
-          navigation.goBack();
+          // If deleted current session, logout locally (session already invalidated on server)
+          await logout({ skipApi: true });
         } else {
           // Reload sessions list
           loadSessions();

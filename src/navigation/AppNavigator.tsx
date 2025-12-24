@@ -97,7 +97,7 @@ const AppNavigator = React.forwardRef<any, AppNavigatorProps>((props, ref) => {
   if (isInitializing) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.primary }}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+        <ActivityIndicator size="large" color="rgba(255, 255, 255, 0.7)" />
       </View>
     );
   }
