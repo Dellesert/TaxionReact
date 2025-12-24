@@ -182,10 +182,12 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
       const tabChats = filterChatsBySearch(tabChatsFromStore, searchQuery, currentUser?.id);
 
       // Create a hash of relevant chat properties to force re-render when they change
-      // Include member status for online indicator updates
+      // Include member status for online indicator updates and read status for checkmarks
       const chatsHash = tabChats.map(c => {
         const memberStatus = c.members?.map(m => `${m.user_id}:${m.user?.status}`).join('|') || '';
-        return `${c.id}-${c.is_favorite}-${c.unread_count}-${c.is_pinned}-${memberStatus}`;
+        const readByLength = c.last_message?.read_by?.length || 0;
+        const deliveredLength = c.last_message?.delivered_to?.length || 0;
+        return `${c.id}-${c.is_favorite}-${c.unread_count}-${c.is_pinned}-${memberStatus}-${readByLength}-${deliveredLength}`;
       }).join(',');
 
       return (

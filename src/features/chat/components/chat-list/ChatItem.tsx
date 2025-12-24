@@ -684,6 +684,16 @@ export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => 
   const nextMemberStatus = getMemberStatusHash(nextProps.chat.members);
   const memberStatusChanged = prevMemberStatus !== nextMemberStatus;
 
+  // Check if read status of last message changed (для галочек прочтения)
+  const prevReadByLength = prevProps.chat.last_message?.read_by?.length || 0;
+  const nextReadByLength = nextProps.chat.last_message?.read_by?.length || 0;
+  const readStatusChanged = prevReadByLength !== nextReadByLength;
+
+  // Check if delivered status changed
+  const prevDeliveredLength = prevProps.chat.last_message?.delivered_to?.length || 0;
+  const nextDeliveredLength = nextProps.chat.last_message?.delivered_to?.length || 0;
+  const deliveredStatusChanged = prevDeliveredLength !== nextDeliveredLength;
+
   return (
     prevProps.chat.id === nextProps.chat.id &&
     prevProps.chat.last_message?.id === nextProps.chat.last_message?.id &&
@@ -695,6 +705,8 @@ export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => 
     prevProps.isEditMode === nextProps.isEditMode &&
     prevProps.isSelected === nextProps.isSelected &&
     !typingChanged &&
-    !memberStatusChanged
+    !memberStatusChanged &&
+    !readStatusChanged &&
+    !deliveredStatusChanged
   );
 });
