@@ -15,7 +15,8 @@ export const useChatMessages = (
 ) => {
   // Оптимизация: комбинируем селекторы для уменьшения подписок
   // Используем стабильную функцию селектора (React будет сравнивать результат)
-  const allMessages = useChatStore((state) => state.messages);
+  // ВАЖНО: Подписываемся на конкретный массив сообщений чата, а не на весь объект messages
+  const chatMessages = useChatStore((state) => state.messages[chatId]);
   const chat = useChatStore((state) => state.chats.find(c => c.id === chatId));
   const currentUser = useAuthStore((state) => state.user);
 
@@ -24,19 +25,35 @@ export const useChatMessages = (
   // - индекс 0 (старое сообщение) показывается ВВЕРХУ
   // - последний индекс (новое сообщение) показывается ВНИЗУ
   const messages = useMemo(() => {
-    const msgs = allMessages[chatId] || [];
-    return [...msgs]; // Прямой порядок: старые → новые
-  }, [allMessages, chatId]);
+    if (!chatMessages) return [];
+    return [...chatMessages]; // Прямой порядок: старые → новые
+  }, [chatMessages]);
 
   // Создаем список элементов для отображения (только сообщения)
   const messageListItems = useMemo(() => {
     if (messages.length === 0) return [];
-    return messages.map((message) => ({ type: 'message' as const, data: message }));
+    return messages.map((message) => ({
+      type: 'message' as const,
+      data: message,
+    }));
   }, [messages]);
 
   // Создаем ключ для extraData чтобы FlatList перерисовывался при изменениях
   const messagesKey = useMemo(() => {
-    return messages.map(m => `${m.id}-${m.read_receipts?.length || 0}-${m.delivered_to?.length || 0}`).join(',');
+    const key = messages.map(m =>
+      `${m.id}-${m.read_by?.length || 0}-${m.read_receipts?.length || 0}-${m.delivered_to?.length || 0}`
+    ).join(',');
+    // DEBUG: Логируем изменения messagesKey для отладки read status
+    if (__DEV__) {
+      console.log('[useChatMessages] messagesKey updated, last 3 messages status:',
+        messages.slice(-3).map(m => ({
+          id: m.id,
+          read_by: m.read_by?.length || 0,
+          read_receipts: m.read_receipts?.length || 0
+        }))
+      );
+    }
+    return key;
   }, [messages]);
 
   // Вычисляем индекс первого непрочитанного сообщения и их количество

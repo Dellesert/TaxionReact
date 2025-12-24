@@ -377,8 +377,9 @@ export default React.memo(MessageItem, (prevProps, nextProps) => {
   }
 
   // Сравниваем ID пользователей, прочитавших сообщение
-  const prevReadByIds = prevReadBy.map(r => r.user_id).sort().join(',');
-  const nextReadByIds = nextReadBy.map(r => r.user_id).sort().join(',');
+  // read_by это number[], не массив объектов!
+  const prevReadByIds = [...prevReadBy].sort((a, b) => a - b).join(',');
+  const nextReadByIds = [...nextReadBy].sort((a, b) => a - b).join(',');
 
   if (prevReadByIds !== nextReadByIds) {
     return false;

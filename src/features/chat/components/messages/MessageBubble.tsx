@@ -417,6 +417,33 @@ export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, next
     return false;
   }
 
+  // Проверяем статусы отправки (для MessageStatus)
+  if ((prevProps.message as any).sending !== (nextProps.message as any).sending ||
+      (prevProps.message as any).failed !== (nextProps.message as any).failed) {
+    return false;
+  }
+
+  // Проверяем read_by (для зелёных галочек "прочитано")
+  const prevReadBy = prevProps.message.read_by || [];
+  const nextReadBy = nextProps.message.read_by || [];
+  if (prevReadBy.length !== nextReadBy.length) {
+    return false;
+  }
+
+  // Проверяем read_receipts
+  const prevReceipts = prevProps.message.read_receipts || [];
+  const nextReceipts = nextProps.message.read_receipts || [];
+  if (prevReceipts.length !== nextReceipts.length) {
+    return false;
+  }
+
+  // Проверяем delivered_to (для серых галочек "доставлено")
+  const prevDelivered = prevProps.message.delivered_to || [];
+  const nextDelivered = nextProps.message.delivered_to || [];
+  if (prevDelivered.length !== nextDelivered.length) {
+    return false;
+  }
+
   // Все проверки пройдены - не нужно обновлять
   return true;
 });
