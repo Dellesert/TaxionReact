@@ -57,7 +57,7 @@ const ChangePasswordScreen: React.FC = () => {
     }
 
     if (newPassword.length < 6) {
-      showError('Новый пароль должен содержать минимум 6 символов');
+      showError('Новый пароль должен содержать минимум 8 символов');
       return;
     }
 
