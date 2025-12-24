@@ -339,11 +339,11 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           showsVerticalScrollIndicator={false}
         >
           {/* Event Title */}
-          <View style={[styles.section, { borderBottomColor: theme.border }]}>
+          <View style={[styles.section, { borderBottomWidth: 0 }]}>
             <Text style={[styles.eventTitle, { color: theme.text }]}>{displayEvent.title}</Text>
 
-            {/* Response buttons for participants */}
-            {myParticipation && (
+            {/* Response buttons for participants (not for personal events) */}
+            {myParticipation && displayEvent.type !== 'personal' && (
               <View style={styles.responseSection}>
                 <Text style={[styles.responseSectionLabel, { color: theme.textSecondary }]}>
                   {isCreator ? 'Организатор' : 'Ваш ответ'}
@@ -435,8 +435,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
               </View>
             )}
 
-            {/* Participation stats */}
-            {participants.length > 0 && (
+            {/* Participation stats (not for personal events) */}
+            {participants.length > 0 && displayEvent.type !== 'personal' && (
               <View style={styles.statsContainer}>
                 {acceptedParticipants.length > 0 && (
                   <View style={[styles.statBadge, { backgroundColor: '#10B98120' }]}>
@@ -530,8 +530,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             </View>
           )}
 
-          {/* Creator */}
-          {displayEvent.creator && (
+          {/* Creator (not for personal events) */}
+          {displayEvent.creator && displayEvent.type !== 'personal' && (
             <View style={[styles.section, { borderBottomColor: theme.border }]}>
               <TouchableOpacity
                 style={styles.creatorContainer}
@@ -556,8 +556,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             </View>
           )}
 
-          {/* Participants */}
-          {participants.length > 0 && (
+          {/* Participants (not for personal events) */}
+          {participants.length > 0 && displayEvent.type !== 'personal' && (
             <View style={[styles.section, { borderBottomColor: theme.border }]}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Участники</Text>
 

@@ -96,8 +96,8 @@ const AppNavigator = React.forwardRef<any, AppNavigatorProps>((props, ref) => {
   // Show loading screen while initializing
   if (isInitializing) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
-        <ActivityIndicator size="large" color="#DC2626" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.primary }}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
       </View>
     );
   }

@@ -37,9 +37,14 @@
       }
     },
     "android": {
+      "splash": {
+        "image": "./assets/images/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#E94444"
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E94444"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.tachyonmessenger",

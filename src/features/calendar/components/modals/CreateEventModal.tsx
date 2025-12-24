@@ -77,7 +77,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState<Step>(1);
-  const totalSteps = 4;
 
   // Step 1: Basic info
   const [title, setTitle] = useState('');
@@ -91,14 +90,13 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [allDay, setAllDay] = useState(false);
   const [location, setLocation] = useState('');
 
-  // Step 3: Participants
-  const [audienceType, setAudienceType] = useState<AudienceType>('all');
-  const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
-  const [isPrivate, setIsPrivate] = useState(false);
-
-  // Step 4: Settings
+  // Step 3: Event type and color
   const [eventType, setEventType] = useState<EventType>('meeting');
   const [color, setColor] = useState('#3B82F6');
+
+  // Step 4: Participants (only for non-personal events)
+  const [audienceType, setAudienceType] = useState<AudienceType>('all');
+  const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -133,7 +131,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       setLocation(editEvent.location || '');
       setEventType(editEvent.type);
       setColor(editEvent.color);
-      setIsPrivate(editEvent.is_private);
 
       if (editEvent.participants && editEvent.participants.length > 0) {
         const participantIds = editEvent.participants.map(p => p.user_id);
@@ -166,7 +163,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setLocation('');
     setEventType('meeting');
     setColor('#3B82F6');
-    setIsPrivate(false);
     setAudienceType('all');
     setSelectedParticipants([]);
     slideAnim.setValue(0);
@@ -185,7 +181,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       }
     }
 
-    if (currentStep === 3) {
+    if (currentStep === 4) {
       if (audienceType === 'department' && !user?.department_id) {
         showError('Вы не принадлежите ни к одному отделу');
         return;
@@ -196,7 +192,9 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       }
     }
 
-    if (currentStep < 4) {
+    // Skip step 4 (participants) for personal events
+    const maxStep = shouldShowParticipantsStep ? 4 : 3;
+    if (currentStep < maxStep) {
       setCurrentStep((currentStep + 1) as Step);
     }
   };
@@ -221,10 +219,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     try {
       setIsLoading(true);
 
-      // Determine participant_ids based on audience type (only if not private)
+      // Determine participant_ids based on audience type (only if not personal event)
       let participantIds: number[] | undefined = undefined;
+      const isPersonalEvent = eventType === 'personal';
 
-      if (!isPrivate) {
+      if (!isPersonalEvent) {
         if (audienceType === 'selected_users') {
           participantIds = selectedParticipants;
         } else if (audienceType === 'department') {
@@ -262,7 +261,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         location: location.trim() || undefined,
         type: eventType,
         color,
-        is_private: isPrivate,
+        is_private: isPersonalEvent,
         participant_ids: participantIds,
       };
 
@@ -326,12 +325,25 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   };
 
+  // Check if participants step should be shown (not personal event)
+  const shouldShowParticipantsStep = eventType !== 'personal';
+
+  // Calculate actual step number for display
+  const getDisplayStep = (step: Step): number => {
+    if (!shouldShowParticipantsStep && step === 4) {
+      return 3; // When skipping participants, step 4 becomes step 3
+    }
+    return step;
+  };
+
+  const getActualTotalSteps = () => shouldShowParticipantsStep ? 4 : 3;
+
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return 'Основная информация';
       case 2: return 'Время и место';
-      case 3: return 'Участники';
-      case 4: return 'Настройки';
+      case 3: return 'Тип события';
+      case 4: return 'Участники';
       default: return '';
     }
   };
@@ -371,7 +383,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 {isEditMode ? 'Редактирование события' : 'Создание события'}
               </Text>
               <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                Шаг {currentStep} из {totalSteps}
+                Шаг {getDisplayStep(currentStep)} из {getActualTotalSteps()}
               </Text>
             </View>
 
@@ -394,13 +406,13 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         {!isKeyboardVisible && (
           <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
             <View style={styles.progressBar}>
-              {[1, 2, 3, 4].map((step) => (
+              {Array.from({ length: getActualTotalSteps() }, (_, i) => i + 1).map((step) => (
                 <View
                   key={step}
                   style={[
                     styles.progressStep,
                     { backgroundColor: theme.border },
-                    currentStep >= step && { backgroundColor: theme.primary },
+                    getDisplayStep(currentStep) >= step && { backgroundColor: theme.primary },
                   ]}
                 />
               ))}
@@ -525,33 +537,94 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </View>
               )}
 
-              {/* Step 3: Participants */}
+              {/* Step 3: Event Type */}
               {currentStep === 3 && (
                 <View style={styles.stepContent}>
                   <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
-                    Настройте видимость и участников события
+                    Выберите тип и цвет для события
                   </Text>
 
-                  {/* Private Toggle */}
                   <View style={styles.section}>
-                    <View style={styles.switchRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.switchLabel, { color: theme.text }]}>Приватное событие</Text>
-                        <Text style={[styles.helperText, { color: theme.textTertiary, marginTop: 4 }]}>
-                          Приватные события видны только вам
-                        </Text>
-                      </View>
-                      <Switch
-                        value={isPrivate}
-                        onValueChange={setIsPrivate}
-                        trackColor={{ false: theme.border, true: theme.primary }}
-                        thumbColor="#FFFFFF"
-                      />
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Тип события *</Text>
+                    <View style={styles.eventTypeRow}>
+                      {EVENT_TYPES.map((type) => (
+                        <TouchableOpacity
+                          key={type.value}
+                          style={[
+                            styles.eventTypeCard,
+                            { backgroundColor: theme.card, borderColor: theme.border },
+                            eventType === type.value && {
+                              backgroundColor: theme.primary + '15',
+                              borderColor: theme.primary,
+                              borderWidth: 2,
+                            },
+                          ]}
+                          onPress={() => setEventType(type.value)}
+                        >
+                          <Ionicons
+                            name={type.icon as any}
+                            size={24}
+                            color={eventType === type.value ? theme.primary : theme.textSecondary}
+                          />
+                          <Text style={[
+                            styles.eventTypeLabel,
+                            { color: theme.text },
+                            eventType === type.value && { color: theme.primary, fontWeight: '600' }
+                          ]}>
+                            {type.label}
+                          </Text>
+                          {eventType === type.value && (
+                            <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
+                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))}
                     </View>
                   </View>
 
-                  {/* Audience selection - only shown if not private and user can add participants */}
-                  {!isPrivate && canAddParticipants && (
+                  {/* Info about personal events */}
+                  {eventType === 'personal' && (
+                    <View style={[styles.infoSection, { backgroundColor: theme.backgroundSecondary }]}>
+                      <Ionicons name="information-circle" size={20} color={theme.primary} />
+                      <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                        Личные события видны только вам и не имеют участников
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Цвет</Text>
+                    <View style={styles.colorRow}>
+                      {EVENT_COLORS.map((c) => (
+                        <TouchableOpacity
+                          key={c.value}
+                          style={[
+                            styles.colorOption,
+                            { backgroundColor: c.value },
+                            color === c.value && styles.colorOptionSelected,
+                          ]}
+                          onPress={() => setColor(c.value)}
+                        >
+                          {color === c.value && (
+                            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Step 4: Participants (only for non-personal events) */}
+              {currentStep === 4 && shouldShowParticipantsStep && (
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                    Выберите участников события
+                  </Text>
+
+                  {/* Audience selection - only shown if user can add participants */}
+                  {canAddParticipants && (
                     <>
                       <View style={styles.section}>
                         <Text style={[styles.label, { color: theme.textSecondary }]}>Аудитория</Text>
@@ -612,8 +685,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     </>
                   )}
 
-                  {/* Info message if not private and can't add participants */}
-                  {!isPrivate && !canAddParticipants && (
+                  {/* Info message if user can't add participants */}
+                  {!canAddParticipants && (
                     <View style={[styles.infoSection, { backgroundColor: theme.backgroundSecondary }]}>
                       <Ionicons name="information-circle" size={20} color={theme.primary} />
                       <Text style={[styles.infoText, { color: theme.textSecondary }]}>
@@ -621,75 +694,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       </Text>
                     </View>
                   )}
-                </View>
-              )}
-
-              {/* Step 4: Settings */}
-              {currentStep === 4 && (
-                <View style={styles.stepContent}>
-                  <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
-                    Выберите тип и цвет для события
-                  </Text>
-
-                  <View style={styles.section}>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>Тип события *</Text>
-                    <View style={styles.eventTypeRow}>
-                      {EVENT_TYPES.map((type) => (
-                        <TouchableOpacity
-                          key={type.value}
-                          style={[
-                            styles.eventTypeCard,
-                            { backgroundColor: theme.card, borderColor: theme.border },
-                            eventType === type.value && {
-                              backgroundColor: theme.primary + '15',
-                              borderColor: theme.primary,
-                              borderWidth: 2,
-                            },
-                          ]}
-                          onPress={() => setEventType(type.value)}
-                        >
-                          <Ionicons
-                            name={type.icon as any}
-                            size={24}
-                            color={eventType === type.value ? theme.primary : theme.textSecondary}
-                          />
-                          <Text style={[
-                            styles.eventTypeLabel,
-                            { color: theme.text },
-                            eventType === type.value && { color: theme.primary, fontWeight: '600' }
-                          ]}>
-                            {type.label}
-                          </Text>
-                          {eventType === type.value && (
-                            <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
-                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  <View style={styles.section}>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>Цвет</Text>
-                    <View style={styles.colorRow}>
-                      {EVENT_COLORS.map((c) => (
-                        <TouchableOpacity
-                          key={c.value}
-                          style={[
-                            styles.colorOption,
-                            { backgroundColor: c.value },
-                            color === c.value && styles.colorOptionSelected,
-                          ]}
-                          onPress={() => setColor(c.value)}
-                        >
-                          {color === c.value && (
-                            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
                 </View>
               )}
             </View>
@@ -723,7 +727,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               <View style={[styles.navButton, isKeyboardVisible && styles.navButtonCompact]} />
             )}
 
-            {currentStep < 4 ? (
+            {currentStep < getActualTotalSteps() ? (
               <TouchableOpacity
                 onPress={goToNextStep}
                 style={[
