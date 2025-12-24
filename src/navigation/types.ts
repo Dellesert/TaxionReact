@@ -56,7 +56,9 @@ export type PollStackParamList = {
 
 // Calendar Stack
 export type CalendarStackParamList = {
-  CalendarMain: undefined;
+  CalendarMain: {
+    eventId?: number; // Для открытия события из уведомления
+  } | undefined;
   EventDetail: {
     eventId: number;
     fromChat?: boolean;

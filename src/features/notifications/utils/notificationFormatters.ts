@@ -4,14 +4,34 @@
  */
 
 /**
- * Получить название экрана для навигации по типу уведомления
- * @param type - тип уведомления
- * @param data - данные уведомления (для определения типа по содержимому)
+ * Получить название экрана для навигации по action из уведомления
+ * Приоритет: используем action если есть, иначе fallback на type
+ * @param data - данные уведомления (должны содержать action или type)
  */
 export const getNavigationScreenByType = (
   type: string,
   data?: Record<string, unknown>
 ): string | null => {
+  // Приоритет: используем action если есть (бэкенд отправляет это поле!)
+  const action = data?.action as string | undefined;
+
+  if (action) {
+    switch (action) {
+      case 'open_chat':
+        return 'Chats';
+      case 'open_task':
+        return 'Tasks';
+      case 'open_event':
+        return 'Calendar';
+      case 'open_poll':
+        return 'Polls';
+      case 'open_app':
+      default:
+        return null; // Просто открыть приложение без навигации
+    }
+  }
+
+  // Fallback на старую логику для обратной совместимости
   // Special case: если это reminder с event_id, то это напоминание о событии
   if (type === 'reminder' && data?.event_id) {
     return 'Calendar';
@@ -56,6 +76,84 @@ export const getNavigationParams = (
   type: string,
   data: Record<string, unknown>
 ): Record<string, unknown> | null => {
+  // Приоритет: используем action если есть
+  const action = data?.action as string | undefined;
+
+  if (action) {
+    switch (action) {
+      case 'open_chat': {
+        const chatId = toNumber(data.chat_id);
+        const messageId = toNumber(data.message_id); // Для прокрутки к сообщению
+        if (chatId) {
+          return {
+            screen: 'Chat',
+            params: {
+              chatId,
+              ...(messageId && { messageId }), // Добавляем message_id если есть
+            },
+          };
+        }
+        return null;
+      }
+
+      case 'open_task': {
+        const taskId = toNumber(data.task_id);
+        const subtaskId = toNumber(data.subtask_id); // Для подзадач
+        const commentId = toNumber(data.comment_id); // Для комментариев
+
+        if (taskId) {
+          return {
+            taskId,
+            ...(subtaskId && { subtaskId }), // Добавляем subtask_id если есть
+            ...(commentId && { commentId }), // Добавляем comment_id если есть
+          };
+        }
+
+        // Для групповых уведомлений задач
+        if (data.task_ids && Array.isArray(data.task_ids) && data.task_ids.length > 0) {
+          if (data.category) {
+            return {
+              filterCategory: data.category,
+              taskIds: data.task_ids,
+            };
+          } else {
+            const firstTaskId = toNumber(data.task_ids[0]);
+            return firstTaskId ? { taskId: firstTaskId } : null;
+          }
+        }
+        return null;
+      }
+
+      case 'open_event': {
+        const eventId = toNumber(data.event_id);
+        if (eventId) {
+          return { eventId };
+        }
+        return { navigateToCalendar: true };
+      }
+
+      case 'open_poll': {
+        const pollId = toNumber(data.poll_id);
+        const commentId = toNumber(data.comment_id); // Для комментариев к опросам
+        if (pollId) {
+          return {
+            screen: 'PollDetail',
+            params: {
+              pollId,
+              ...(commentId && { commentId }),
+            },
+          };
+        }
+        return null;
+      }
+
+      case 'open_app':
+      default:
+        return null;
+    }
+  }
+
+  // Fallback на старую логику для обратной совместимости
   switch (type) {
     case 'message':
     case 'mention':

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Event, CalendarView } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/states/EventListSkeleton';
@@ -22,21 +22,37 @@ import { useCalendarNavigation } from '../hooks/useCalendarNavigation';
 import { formatDateRangeText, groupEventsByDate } from '../utils/calendarHelpers';
 
 type CalendarStackParamList = {
-  CalendarMain: undefined;
+  CalendarMain: {
+    eventId?: number;
+  } | undefined;
   EventDetail: { eventId: number };
 };
 
 type CalendarNavigationProp = NativeStackNavigationProp<CalendarStackParamList, 'CalendarMain'>;
+type CalendarRouteProp = RouteProp<CalendarStackParamList, 'CalendarMain'>;
 
 const CalendarScreen: React.FC = () => {
   const { theme } = useTheme();
   const { showError } = useNotification();
   const isWideScreen = useIsWideScreen();
   const navigation = useNavigation<CalendarNavigationProp>();
+  const route = useRoute<CalendarRouteProp>();
 
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Handle navigation from notification (with eventId parameter)
+  useEffect(() => {
+    const eventId = route.params?.eventId;
+    if (eventId) {
+      console.log('[Calendar] Opening event from notification:', eventId);
+      // Navigate to event detail immediately
+      setTimeout(() => {
+        navigation.navigate('EventDetail', { eventId });
+      }, 100);
+    }
+  }, [route.params?.eventId, navigation]);
 
   // Integrate with TitleBar search in Electron
   useTitleBarSearchIntegration({

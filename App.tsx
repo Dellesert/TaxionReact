@@ -257,29 +257,59 @@ export default function App() {
             try {
               if (screenName === 'Chats' && params.screen === 'Chat' && params.params?.chatId) {
                 // Navigate to specific chat (nested navigation)
+                const chatId = params.params.chatId;
+                const messageId = params.params.messageId;
+                console.log('[App Electron] Navigating to Chat:', chatId, messageId ? `messageId: ${messageId}` : '');
                 // @ts-ignore
                 navigationRef.current?.navigate('Chats', {
                   screen: 'Chat',
-                  params: { chatId: params.params.chatId }
+                  params: {
+                    chatId,
+                    ...(messageId && { messageId }),
+                  }
                 });
               } else if (screenName === 'Tasks' && params.taskId) {
                 // Navigate to specific task (nested navigation)
+                const subtaskId = params.subtaskId;
+                const commentId = params.commentId;
+                console.log('[App Electron] Navigating to Task:', params.taskId, subtaskId ? `subtaskId: ${subtaskId}` : '', commentId ? `commentId: ${commentId}` : '');
                 // @ts-ignore
                 navigationRef.current?.navigate('Tasks', {
                   screen: 'TaskDetail',
-                  params: { taskId: params.taskId }
+                  params: {
+                    taskId: params.taskId,
+                    ...(subtaskId && { subtaskId }),
+                    ...(commentId && { commentId }),
+                  }
                 });
               } else if (screenName === 'Polls' && params.screen === 'PollDetail' && params.params?.pollId) {
                 // Navigate to specific poll (nested navigation)
+                const pollId = params.params.pollId;
+                const commentId = params.params.commentId;
+                console.log('[App Electron] Navigating to Poll:', pollId, commentId ? `commentId: ${commentId}` : '');
                 // @ts-ignore
                 navigationRef.current?.navigate('Polls', {
                   screen: 'PollDetail',
-                  params: { pollId: params.params.pollId }
+                  params: {
+                    pollId,
+                    ...(commentId && { commentId }),
+                  }
                 });
               } else if (screenName === 'Calendar') {
                 // Navigate to calendar (event detail if available)
-                // @ts-ignore
-                navigationRef.current?.navigate('Calendar', params.eventId ? { eventId: params.eventId } : undefined);
+                if (params.eventId) {
+                  console.log('[App Electron] Navigating to Calendar with eventId:', params.eventId);
+                  // @ts-ignore
+                  navigationRef.current?.navigate('Calendar', {
+                    screen: 'CalendarMain',
+                    params: { eventId: params.eventId },
+                    initial: false,
+                  });
+                } else {
+                  console.log('[App Electron] Navigating to Calendar without eventId');
+                  // @ts-ignore
+                  navigationRef.current?.navigate('Calendar');
+                }
               } else {
               }
             } catch (error) {
@@ -303,6 +333,7 @@ export default function App() {
           loadUnreadCount();
         },
         (response) => {
+          console.log('[App] 🔔 Notification clicked!');
           let notificationData = response.notification.request.content.data || {};
 
           // iOS иногда отправляет данные как строки - проверяем и парсим
@@ -314,44 +345,80 @@ export default function App() {
             }
           }
 
+          console.log('[App] Notification data:', JSON.stringify(notificationData));
+
           // Navigate using the same logic as in-app notifications
           const type = notificationData.type as string;
+          const action = notificationData.action as string;
+
+          console.log('[App] Type:', type, 'Action:', action);
+
           const screenName = getNavigationScreenByType(type, notificationData);
           const params = getNavigationParams(type, notificationData);
 
+          console.log('[App] Screen:', screenName, 'Params:', JSON.stringify(params));
+
           if (!screenName || !params) {
+            console.log('[App] ⚠️ No screen or params for navigation');
             return;
           }
 
           // Navigate with retry mechanism for background->foreground transition
           const attemptNavigation = (retries = 0) => {
               if (navigationRef.current?.isReady()) {
+                console.log('[App] ✅ Navigation ready, navigating to:', screenName);
+
                 if (screenName === 'Tasks' && params.taskId) {
                   // Navigate to specific task
                   // @ts-ignore
                   navigationRef.current.navigate('Tasks', {
                     screen: 'TaskDetail',
-                    params: { taskId: params.taskId }
+                    params: {
+                      taskId: params.taskId,
+                      ...(params.subtaskId && { subtaskId: params.subtaskId }),
+                      ...(params.commentId && { commentId: params.commentId }),
+                    }
                   });
                 } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
                   // Navigate to specific poll
                   const pollId = params.params?.pollId || params.pollId;
+                  const commentId = params.params?.commentId || params.commentId;
                   // @ts-ignore
                   navigationRef.current.navigate('Polls', {
                     screen: 'PollDetail',
-                    params: { pollId }
+                    params: {
+                      pollId,
+                      ...(commentId && { commentId }),
+                    }
                   });
                 } else if (screenName === 'Chats' && params.screen === 'Chat' && params.params?.chatId) {
                   // Navigate to specific chat
+                  const chatId = params.params.chatId;
+                  const messageId = params.params.messageId;
                   // @ts-ignore
                   navigationRef.current.navigate('Chats', {
                     screen: 'Chat',
-                    params: { chatId: params.params.chatId }
+                    params: {
+                      chatId,
+                      ...(messageId && { messageId }), // Для прокрутки к сообщению
+                    }
                   });
                 } else if (screenName === 'Calendar') {
                   // Navigate to calendar (with event if available)
-                  // @ts-ignore
-                  navigationRef.current.navigate('Calendar', params.eventId ? { eventId: params.eventId } : undefined);
+                  if (params.eventId) {
+                    console.log('[App] Navigating to Calendar with eventId:', params.eventId);
+                    // Navigate to Calendar tab first, then to CalendarMain with eventId
+                    // @ts-ignore
+                    navigationRef.current.navigate('Calendar', {
+                      screen: 'CalendarMain',
+                      params: { eventId: params.eventId },
+                      initial: false,
+                    });
+                  } else {
+                    console.log('[App] Navigating to Calendar without eventId');
+                    // @ts-ignore
+                    navigationRef.current.navigate('Calendar');
+                  }
                 } else if (params.screen) {
                   // Nested navigation
                   // @ts-ignore
@@ -362,7 +429,10 @@ export default function App() {
                   navigationRef.current.navigate(screenName, params);
                 }
               } else if (retries < 10) {
+                console.log(`[App] ⏳ Navigation not ready, retry ${retries + 1}/10`);
                 setTimeout(() => attemptNavigation(retries + 1), 300);
+              } else {
+                console.error('[App] ❌ Failed to navigate after 10 retries');
               }
             };
 
@@ -375,6 +445,7 @@ export default function App() {
       import('expo-notifications').then(({ default: Notifications }) => {
         Notifications.getLastNotificationResponseAsync().then((response) => {
           if (response) {
+            console.log('[App] 🚀 App opened from notification (cold start)');
             // Navigate to the appropriate screen
             let notificationData = response.notification.request.content.data || {};
 
@@ -387,40 +458,75 @@ export default function App() {
               }
             }
 
+            console.log('[App] Cold start notification data:', JSON.stringify(notificationData));
+
             const type = notificationData.type as string;
+            const action = notificationData.action as string;
+
+            console.log('[App] Type:', type, 'Action:', action);
+
             const screenName = getNavigationScreenByType(type, notificationData);
             const params = getNavigationParams(type, notificationData);
+
+            console.log('[App] Screen:', screenName, 'Params:', JSON.stringify(params));
 
             if (screenName && params) {
               // Wait for navigation to be ready (cold start may need more time)
               const attemptNavigation = (retries = 0) => {
                 if (navigationRef.current?.isReady()) {
+                  console.log('[App] ✅ Navigation ready (cold start), navigating to:', screenName);
+
                   if (screenName === 'Tasks' && params.taskId) {
                     // Navigate to specific task
                     // @ts-ignore
                     navigationRef.current.navigate('Tasks', {
                       screen: 'TaskDetail',
-                      params: { taskId: params.taskId }
+                      params: {
+                        taskId: params.taskId,
+                        ...(params.subtaskId && { subtaskId: params.subtaskId }),
+                        ...(params.commentId && { commentId: params.commentId }),
+                      }
                     });
                   } else if (screenName === 'Polls' && (params.screen === 'PollDetail' || params.params?.pollId)) {
                     // Navigate to specific poll
                     const pollId = params.params?.pollId || params.pollId;
+                    const commentId = params.params?.commentId || params.commentId;
                     // @ts-ignore
                     navigationRef.current.navigate('Polls', {
                       screen: 'PollDetail',
-                      params: { pollId }
+                      params: {
+                        pollId,
+                        ...(commentId && { commentId }),
+                      }
                     });
                   } else if (screenName === 'Chats' && params.screen === 'Chat' && params.params?.chatId) {
                     // Navigate to specific chat
+                    const chatId = params.params.chatId;
+                    const messageId = params.params.messageId;
                     // @ts-ignore
                     navigationRef.current.navigate('Chats', {
                       screen: 'Chat',
-                      params: { chatId: params.params.chatId }
+                      params: {
+                        chatId,
+                        ...(messageId && { messageId }),
+                      }
                     });
                   } else if (screenName === 'Calendar') {
                     // Navigate to calendar (with event if available)
-                    // @ts-ignore
-                    navigationRef.current.navigate('Calendar', params.eventId ? { eventId: params.eventId } : undefined);
+                    if (params.eventId) {
+                      console.log('[App] Navigating to Calendar with eventId (cold start):', params.eventId);
+                      // Navigate to Calendar tab first, then to CalendarMain with eventId
+                      // @ts-ignore
+                      navigationRef.current.navigate('Calendar', {
+                        screen: 'CalendarMain',
+                        params: { eventId: params.eventId },
+                        initial: false,
+                      });
+                    } else {
+                      console.log('[App] Navigating to Calendar without eventId (cold start)');
+                      // @ts-ignore
+                      navigationRef.current.navigate('Calendar');
+                    }
                   } else if (params.screen) {
                     // Nested navigation
                     // @ts-ignore
@@ -432,12 +538,17 @@ export default function App() {
                   }
                 } else if (retries < 10) {
                   // Retry up to 10 times with 300ms delay (3 seconds total)
+                  console.log(`[App] ⏳ Navigation not ready (cold start), retry ${retries + 1}/10`);
                   setTimeout(() => attemptNavigation(retries + 1), 300);
+                } else {
+                  console.error('[App] ❌ Failed to navigate after 10 retries (cold start)');
                 }
               };
 
               // Start navigation attempt after a small delay
               setTimeout(() => attemptNavigation(), 500);
+            } else {
+              console.log('[App] ⚠️ No screen or params for cold start navigation');
             }
           }
         });

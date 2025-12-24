@@ -25,6 +25,114 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/**
+ * Создание Android Notification Channels
+ * Соответствует типам уведомлений с бэкенда
+ */
+async function setupAndroidNotificationChannels(): Promise<void> {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  try {
+    // 1. Messages - высокий приоритет, звук
+    await Notifications.setNotificationChannelAsync('messages', {
+      name: 'Сообщения',
+      description: 'Уведомления о новых сообщениях в чатах',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      enableVibrate: true,
+      vibrationPattern: [0, 250, 250, 250],
+      showBadge: true,
+      enableLights: true,
+      lightColor: '#0066FF',
+    });
+
+    // 2. Tasks - средний приоритет
+    await Notifications.setNotificationChannelAsync('tasks', {
+      name: 'Задачи',
+      description: 'Уведомления о задачах и их изменениях',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: 'default',
+      enableVibrate: true,
+      vibrationPattern: [0, 200, 200],
+      showBadge: true,
+    });
+
+    // 3. Calendar - высокий приоритет (важные события)
+    await Notifications.setNotificationChannelAsync('calendar', {
+      name: 'Календарь',
+      description: 'События календаря и встречи',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      enableVibrate: true,
+      vibrationPattern: [0, 300, 200, 300],
+      showBadge: true,
+      enableLights: true,
+      lightColor: '#FF6600',
+    });
+
+    // 4. Mentions - высокий приоритет
+    await Notifications.setNotificationChannelAsync('mentions', {
+      name: 'Упоминания',
+      description: 'Когда вас упоминают в сообщениях',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      enableVibrate: true,
+      vibrationPattern: [0, 250, 100, 250],
+      showBadge: true,
+      enableLights: true,
+      lightColor: '#FF0066',
+    });
+
+    // 5. Reminders - высокий приоритет (критичные напоминания)
+    await Notifications.setNotificationChannelAsync('reminders', {
+      name: 'Напоминания',
+      description: 'Напоминания о событиях и задачах',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      enableVibrate: true,
+      vibrationPattern: [0, 400, 200, 400],
+      showBadge: true,
+      enableLights: true,
+      lightColor: '#FFAA00',
+    });
+
+    // 6. Polls - средний приоритет
+    await Notifications.setNotificationChannelAsync('polls', {
+      name: 'Опросы',
+      description: 'Уведомления об опросах',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: 'default',
+      enableVibrate: true,
+      showBadge: true,
+    });
+
+    // 7. System - средний приоритет
+    await Notifications.setNotificationChannelAsync('system', {
+      name: 'Системные',
+      description: 'Системные уведомления',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: 'default',
+      showBadge: false,
+    });
+
+    // 8. Announcements - средний приоритет
+    await Notifications.setNotificationChannelAsync('announcements', {
+      name: 'Объявления',
+      description: 'Важные объявления',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: 'default',
+      enableVibrate: true,
+      showBadge: true,
+    });
+
+    console.log('[Push] Android notification channels created successfully');
+  } catch (error) {
+    console.error('[Push] Error creating notification channels:', error);
+  }
+}
+
 export interface PushNotificationState {
   token: string | null;
   notification: Notifications.Notification | null;
@@ -72,6 +180,9 @@ class PushNotificationService {
 
     // Для Android используем стандартный Expo Notifications (FCM токен)
     console.log('[Push] Using Android push notification service');
+
+    // Создаем Android Notification Channels перед регистрацией
+    await setupAndroidNotificationChannels();
 
     // Проверяем, что это физическое устройство
     console.log('[Push] Device.isDevice:', Device.isDevice);
@@ -403,3 +514,6 @@ class PushNotificationService {
 }
 
 export const pushNotificationService = PushNotificationService.getInstance();
+
+// Экспортируем функцию для инициализации каналов
+export { setupAndroidNotificationChannels };
