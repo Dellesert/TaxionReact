@@ -35,7 +35,6 @@ const ChangePasswordScreen: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -44,32 +43,31 @@ const ChangePasswordScreen: React.FC = () => {
   const confirmPasswordInputRef = useRef<TextInput>(null);
 
   const handleChangePassword = async () => {
-    setError(null);
     Keyboard.dismiss();
 
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError('Заполните все поля');
+      showError('Заполните все поля');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Новые пароли не совпадают');
+      showError('Новые пароли не совпадают');
       return;
     }
 
     if (newPassword.length < 6) {
-      setError('Новый пароль должен содержать минимум 6 символов');
+      showError('Новый пароль должен содержать минимум 6 символов');
       return;
     }
 
     if (newPassword.length > 100) {
-      setError('Новый пароль не должен превышать 100 символов');
+      showError('Новый пароль не должен превышать 100 символов');
       return;
     }
 
     if (currentPassword === newPassword) {
-      setError('Новый пароль должен отличаться от текущего');
+      showError('Новый пароль должен отличаться от текущего');
       return;
     }
 
@@ -84,7 +82,6 @@ const ChangePasswordScreen: React.FC = () => {
       showSuccess('Пароль успешно изменён');
       navigation.goBack();
     } catch (err: any) {
-      setError(err.message || 'Не удалось изменить пароль');
       showError(err.message || 'Не удалось изменить пароль');
     } finally {
       setIsLoading(false);
@@ -226,16 +223,6 @@ const ChangePasswordScreen: React.FC = () => {
               </Text>
             </View>
 
-            {error && (
-              <View style={[styles.errorContainer, {
-                borderLeftColor: theme.error,
-              }]}>
-                <Text style={styles.errorText}>
-                  {error}
-                </Text>
-              </View>
-            )}
-
             <TouchableOpacity
               style={[
                 styles.button,
@@ -331,17 +318,6 @@ const styles = StyleSheet.create({
   },
   passwordHintText: {
     fontSize: 12,
-  },
-  errorContainer: {
-    backgroundColor: '#7F1D1D',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-  },
-  errorText: {
-    color: '#FCA5A5',
-    fontSize: 14,
   },
   button: {
     borderRadius: 12,
