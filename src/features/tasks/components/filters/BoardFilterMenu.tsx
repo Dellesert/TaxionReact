@@ -103,7 +103,7 @@ export const BoardFilterMenu: React.FC<BoardFilterMenuProps> = ({
       hasSubtasks: null,
       hasOverdueDeadline: false,
       isDelegated: false,
-      sortBy: 'created_at',
+      sortBy: 'updated_at',
       sortDirection: 'desc',
     };
     setTempFilters(defaultFilters);
@@ -118,7 +118,7 @@ export const BoardFilterMenu: React.FC<BoardFilterMenuProps> = ({
     tempFilters.hasSubtasks !== null ||
     tempFilters.hasOverdueDeadline ||
     tempFilters.isDelegated ||
-    tempFilters.sortBy !== 'created_at' ||
+    tempFilters.sortBy !== 'updated_at' ||
     tempFilters.sortDirection !== 'desc';
 
   return (

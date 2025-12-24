@@ -282,6 +282,8 @@ export interface TaskListFilters {
   due_date_from?: ISODateString;
   due_date_to?: ISODateString;
   search?: string;
+  sort_by?: 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'title' | 'progress_percentage';
+  sort_order?: 'asc' | 'desc';
 }
 
 // Task Statistics

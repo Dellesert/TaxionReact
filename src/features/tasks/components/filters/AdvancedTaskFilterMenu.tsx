@@ -106,7 +106,7 @@ export const AdvancedTaskFilterMenu: React.FC<AdvancedTaskFilterMenuProps> = ({
       hasSubtasks: null,
       hasOverdueDeadline: false,
       isDelegated: false,
-      sortBy: 'created_at',
+      sortBy: 'updated_at',
       sortDirection: 'desc',
     };
     setTempFilters(defaultFilters);

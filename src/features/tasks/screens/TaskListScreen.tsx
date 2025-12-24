@@ -53,7 +53,7 @@ const TaskListScreen: React.FC = () => {
     hasSubtasks: null,
     hasOverdueDeadline: false,
     isDelegated: false,
-    sortBy: 'created_at',
+    sortBy: 'updated_at',
     sortDirection: 'desc',
   });
 
