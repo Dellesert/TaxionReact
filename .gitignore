@@ -63,6 +63,7 @@ nul
 
 # Electron
 dist-electron/
+electron/resources/icon.ico
 *.exe
 *.dmg
 *.AppImage
