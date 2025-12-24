@@ -372,9 +372,29 @@ const EventDetailScreen: React.FC = () => {
     );
   };
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return format(date, 'd MMMM yyyy, HH:mm', { locale: ru });
+  const formatDateRange = (startTime: string, endTime: string) => {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    // Check if same day
+    const isSameDay =
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth() &&
+      start.getDate() === end.getDate();
+
+    if (isSameDay) {
+      // Same day: "29 декабря 2025, 17:00–20:00"
+      const dateStr = format(start, 'd MMMM yyyy', { locale: ru });
+      const startTimeStr = format(start, 'HH:mm', { locale: ru });
+      const endTimeStr = format(end, 'HH:mm', { locale: ru });
+      return { singleLine: `${dateStr}, ${startTimeStr}–${endTimeStr}` };
+    } else {
+      // Different days: show both dates separately
+      return {
+        start: format(start, 'd MMMM yyyy, HH:mm', { locale: ru }),
+        end: format(end, 'd MMMM yyyy, HH:mm', { locale: ru }),
+      };
+    }
   };
 
   // Group participants by status
@@ -583,16 +603,26 @@ const EventDetailScreen: React.FC = () => {
                   <Text style={[styles.infoCardValue, { color: theme.text }]}>
                     {format(new Date(event.start_time), 'd MMMM yyyy', { locale: ru })}
                   </Text>
-                ) : (
-                  <>
-                    <Text style={[styles.infoCardValue, { color: theme.text }]}>
-                      {formatDateTime(event.start_time)}
-                    </Text>
-                    <Text style={[styles.infoCardSubValue, { color: theme.textSecondary }]}>
-                      до {formatDateTime(event.end_time)}
-                    </Text>
-                  </>
-                )}
+                ) : (() => {
+                  const dateRange = formatDateRange(event.start_time, event.end_time);
+                  if ('singleLine' in dateRange) {
+                    return (
+                      <Text style={[styles.infoCardValue, { color: theme.text }]}>
+                        {dateRange.singleLine}
+                      </Text>
+                    );
+                  }
+                  return (
+                    <>
+                      <Text style={[styles.infoCardValue, { color: theme.text }]}>
+                        {dateRange.start}
+                      </Text>
+                      <Text style={[styles.infoCardSubValue, { color: theme.textSecondary }]}>
+                        до {dateRange.end}
+                      </Text>
+                    </>
+                  );
+                })()}
               </View>
             </View>
 
