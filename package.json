@@ -33,9 +33,12 @@
     },
     "files": [
       "electron/**/*",
-      "dist/**/*",
-      "!node_modules/**/*",
-      "!**/fsevents/**/*",
+      {
+        "from": "dist",
+        "to": "dist",
+        "filter": ["**/*"]
+      },
+      "!**/fsevents",
       "node_modules/electron-store/**/*",
       "node_modules/conf/**/*",
       "node_modules/node-machine-id/**/*",
