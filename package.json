@@ -13,66 +13,39 @@
     "generate:icons": "node scripts/generate-icons.js",
     "electron": "cross-env NODE_ENV=development electron ./electron/main.js",
     "electron:dev": "concurrently \"npm run start\" \"wait-on http://localhost:8093 && npm run electron\"",
-    "electron:prebuild": "npm run generate:icons && npm run build:web && node scripts/fix-electron-paths.js",
+    "electron:prebuild": "npm run generate:icons && npm run build:web && node scripts/fix-electron-paths.js && cd electron && npm install && cd ..",
     "electron:build": "npm run electron:prebuild && electron-builder",
     "electron:build:win": "npm run electron:prebuild && electron-builder --win",
     "electron:build:mac": "npm run electron:prebuild && electron-builder --mac",
     "electron:build:linux": "npm run electron:prebuild && electron-builder --linux",
-    "electron:pack:win": "npm run electron:prebuild && electron-builder --win --dir"
+    "electron:pack:win": "npm run electron:prebuild && electron-builder --win --dir",
+    "electron:apply-icon": "node scripts/apply-icon.js"
   },
   "build": {
     "appId": "com.dellesert.tachyon-messenger",
     "productName": "Tachyon Messenger",
     "extends": null,
     "extraMetadata": {
-      "main": "electron/main.js"
+      "main": "main.js"
     },
     "directories": {
       "output": "dist-electron",
-      "buildResources": "electron/resources"
+      "buildResources": "electron/resources",
+      "app": "electron"
     },
     "files": [
-      "electron/**/*",
+      "**/*",
       {
-        "from": "dist",
+        "from": "../dist",
         "to": "dist",
-        "filter": ["**/*"]
-      },
-      "!**/fsevents",
-      "node_modules/electron-store/**/*",
-      "node_modules/conf/**/*",
-      "node_modules/node-machine-id/**/*",
-      "node_modules/atomically/**/*",
-      "node_modules/env-paths/**/*",
-      "node_modules/ajv/**/*",
-      "node_modules/ajv-formats/**/*",
-      "node_modules/dot-prop/**/*",
-      "node_modules/debounce-fn/**/*",
-      "node_modules/json-schema-typed/**/*",
-      "node_modules/onetime/**/*",
-      "node_modules/pkg-up/**/*",
-      "node_modules/semver/**/*",
-      "node_modules/mimic-fn/**/*",
-      "node_modules/find-up/**/*",
-      "node_modules/locate-path/**/*",
-      "node_modules/p-locate/**/*",
-      "node_modules/p-limit/**/*",
-      "node_modules/p-try/**/*",
-      "node_modules/yocto-queue/**/*",
-      "node_modules/path-exists/**/*",
-      "node_modules/is-obj/**/*",
-      "node_modules/type-fest/**/*",
-      "node_modules/fast-deep-equal/**/*",
-      "node_modules/json-schema-traverse/**/*",
-      "node_modules/require-from-string/**/*",
-      "node_modules/uri-js/**/*",
-      "node_modules/punycode/**/*",
-      "node_modules/fast-uri/**/*",
-      "package.json"
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "extraResources": [
       {
-        "from": "assets/images/icon_alpha.png",
+        "from": "electron/../assets/images/icon_alpha.png",
         "to": "assets/images/icon_alpha.png"
       },
       {
@@ -82,27 +55,37 @@
     ],
     "asar": true,
     "asarUnpack": [
-      "node_modules/node-machine-id/**/*"
+      "**/node_modules/node-machine-id/**/*"
     ],
     "npmRebuild": false,
+    "buildDependenciesFromSource": false,
+    "nodeGypRebuild": false,
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "electron/resources/icon.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "electron/resources/icon.png",
       "category": "public.app-category.social-networking"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Network",
       "icon": "electron/resources/icon.png"
     },
@@ -190,9 +173,9 @@
     "jest": "^29.2.1",
     "jest-expo": "~54.0.14",
     "patch-package": "^8.0.1",
-    "png-to-ico": "^3.0.1",
     "postinstall-postinstall": "^2.1.0",
     "react-test-renderer": "19.0.0",
+    "sharp": "^0.34.5",
     "typescript": "~5.9.2",
     "wait-on": "^9.0.3"
   },

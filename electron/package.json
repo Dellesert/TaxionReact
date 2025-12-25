@@ -1,0 +1,11 @@
+{
+  "name": "tachyon-messenger",
+  "version": "1.0.0",
+  "main": "main.js",
+  "author": "Dellesert",
+  "description": "Tachyon Messenger - Cross-platform messaging app",
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "node-machine-id": "^1.1.12"
+  }
+}

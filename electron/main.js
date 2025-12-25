@@ -19,7 +19,13 @@ if (!isDev) {
 }
 
 // Get the dist path for production
-const getDistPath = () => path.join(__dirname, '../dist');
+// In packaged app, dist is in the same directory as main.js inside asar
+const getDistPath = () => {
+  if (isDev) {
+    return path.join(__dirname, '../dist');
+  }
+  return path.join(__dirname, 'dist');
+};
 
 // Get icon path - different for dev vs production
 const getIconPath = () => {
