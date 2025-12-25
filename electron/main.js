@@ -7,8 +7,33 @@ const FileCache = require('./FileCache');
 
 const isDev = !app.isPackaged;
 
+// Suppress console in production to avoid console window
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+if (!isDev) {
+  console.log = () => {};
+  console.error = () => {};
+  console.warn = () => {};
+}
+
 // Get the dist path for production
 const getDistPath = () => path.join(__dirname, '../dist');
+
+// Get icon path - different for dev vs production
+const getIconPath = () => {
+  if (isDev) {
+    return path.join(__dirname, '../assets/images/icon.png');
+  } else {
+    // In production, use the icon from resources folder
+    // Windows needs .ico, other platforms use .png
+    if (process.platform === 'win32') {
+      return path.join(process.resourcesPath, 'icon.ico');
+    }
+    return path.join(process.resourcesPath, 'assets/images/icon_alpha.png');
+  }
+};
 
 let mainWindow;
 let splashWindow;
@@ -24,7 +49,7 @@ function createSplashWindow() {
     alwaysOnTop: true,
     resizable: false,
     center: true,
-    icon: path.join(__dirname, '../assets/images/icon.png'),
+    icon: getIconPath(),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -43,7 +68,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    icon: path.join(__dirname, '../assets/images/icon.png'), // App icon
+    icon: getIconPath(), // App icon
     frame: false, // Remove default frame for custom titlebar
     titleBarStyle: 'hidden', // Hide titlebar on macOS
     webPreferences: {
@@ -403,7 +428,7 @@ function setupIPCHandlers() {
       const notification = new Notification({
         title: title || 'Tachyon Messenger',
         body: body || '',
-        icon: path.join(__dirname, '../assets/images/icon.png'),
+        icon: getIconPath(),
         silent: false,
         urgency: 'normal', // low, normal, critical
       });

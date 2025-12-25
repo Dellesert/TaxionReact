@@ -74,6 +74,10 @@
       {
         "from": "assets/images/icon_alpha.png",
         "to": "assets/images/icon_alpha.png"
+      },
+      {
+        "from": "electron/resources/icon.ico",
+        "to": "icon.ico"
       }
     ],
     "asar": true,

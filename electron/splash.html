@@ -36,6 +36,22 @@
       animation: pulse 2s ease-in-out infinite;
     }
 
+    /* SVG fallback logo when image fails to load */
+    .logo-fallback {
+      width: 120px;
+      height: 120px;
+      animation: pulse 2s ease-in-out infinite;
+      display: none;
+    }
+
+    .logo-fallback.show {
+      display: block;
+    }
+
+    .logo.hidden {
+      display: none;
+    }
+
     .app-name {
       color: white;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -84,9 +100,48 @@
 </head>
 <body>
   <div class="splash-container">
-    <img src="../assets/images/icon_alpha.png" alt="Tachyon Logo" class="logo">
+    <img id="logo" alt="Tachyon Logo" class="logo">
+    <!-- SVG fallback -->
+    <svg class="logo-fallback" id="logo-fallback" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="45" fill="white" opacity="0.9"/>
+      <text x="50" y="60" text-anchor="middle" font-size="40" font-weight="bold" fill="#E94444">T</text>
+    </svg>
     <div class="app-name">Тахион</div>
     <div class="loading-spinner"></div>
   </div>
+  <script>
+    const logo = document.getElementById('logo');
+    const fallback = document.getElementById('logo-fallback');
+
+    // Try multiple paths in order
+    const paths = [
+      '../assets/images/icon_alpha.png',           // Dev path
+      './icon_alpha.png',                           // Same directory
+      'icon_alpha.png'                              // Current directory
+    ];
+
+    let pathIndex = 0;
+
+    function tryNextPath() {
+      if (pathIndex < paths.length) {
+        logo.src = paths[pathIndex];
+        pathIndex++;
+      } else {
+        // All paths failed, show SVG fallback
+        logo.classList.add('hidden');
+        fallback.classList.add('show');
+      }
+    }
+
+    logo.onerror = tryNextPath;
+    logo.onload = function() {
+      // Image loaded successfully
+      logo.classList.remove('hidden');
+      fallback.classList.remove('show');
+    };
+
+    // Start loading
+    tryNextPath();
+  </script>
 </body>
 </html>
