@@ -135,6 +135,7 @@ const styles = StyleSheet.create({
   column: {
     borderRadius: 12,
     marginHorizontal: 6,
+    marginBottom: 24,
     overflow: 'hidden',
     ...Platform.select({
       web: {
