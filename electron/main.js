@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, Notification, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, Notification, protocol, net, session } = require('electron');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
@@ -51,6 +51,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      webSecurity: false, // Disable web security to avoid CORS with app:// protocol
     },
     title: 'Tachyon Messenger',
     show: false, // Don't show until ready
@@ -75,10 +76,10 @@ function createWindow() {
       console.error('[Electron] Failed to load:', errorCode, errorDescription);
     });
   } else {
-    // Production: load using https://app.local which is intercepted by protocol handler
-    console.log('[Electron] Loading production with https://app.local');
+    // Production: load using app:// protocol
+    console.log('[Electron] Loading production with app:// protocol');
 
-    mainWindow.loadURL('https://app.local/index.html').catch(err => {
+    mainWindow.loadURL('app://local/index.html').catch(err => {
       console.error('[Electron] Failed to load:', err);
     });
 
@@ -86,9 +87,6 @@ function createWindow() {
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
       console.error('[Electron] Failed to load:', errorCode, errorDescription);
     });
-
-    // Open DevTools temporarily to debug
-    mainWindow.webContents.openDevTools();
   }
 
   // Show window when ready and close splash
@@ -131,9 +129,17 @@ function createWindow() {
   });
 }
 
+// Register custom protocol scheme before app is ready (MUST be before app.whenReady)
+if (!isDev) {
+  protocol.registerSchemesAsPrivileged([{
+    scheme: 'app',
+    privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true }
+  }]);
+}
+
 // App lifecycle
 app.whenReady().then(async () => {
-  // Register custom protocol for production to serve files correctly
+  // Register custom protocol handler for production
   if (!isDev) {
     // MIME types map
     const mimeTypes = {
@@ -152,53 +158,65 @@ app.whenReady().then(async () => {
       '.woff2': 'font/woff2',
     };
 
-    protocol.handle('https', (request) => {
+    protocol.handle('app', (request) => {
       const requestUrl = new URL(request.url);
+      const distPath = getDistPath();
+      let filePath = path.join(distPath, decodeURIComponent(requestUrl.pathname));
+      let ext = path.extname(filePath).toLowerCase();
 
-      // Only handle our app's requests
-      if (requestUrl.host === 'app.local') {
-        const distPath = getDistPath();
-        let filePath = path.join(distPath, decodeURIComponent(requestUrl.pathname));
-        let ext = path.extname(filePath).toLowerCase();
-
-        console.log('[Protocol] Request:', requestUrl.pathname);
-        console.log('[Protocol] Dist path:', distPath);
-        console.log('[Protocol] Full path:', filePath);
-
-        // Check if file exists
-        let fileExists = false;
-        try {
-          fs.accessSync(filePath);
-          fileExists = true;
-          console.log('[Protocol] File exists:', fileExists);
-        } catch (e) {
-          fileExists = false;
-          console.log('[Protocol] File not found, error:', e.message);
-        }
-
-        // SPA fallback: if no extension and file doesn't exist, serve index.html
-        if (!fileExists && (!ext || ext === '')) {
-          filePath = path.join(distPath, 'index.html');
-          ext = '.html';
-          console.log('[Protocol] SPA fallback to:', filePath);
-        }
-
-        try {
-          const data = fs.readFileSync(filePath);
-          const mimeType = mimeTypes[ext] || 'application/octet-stream';
-
-          return new Response(data, {
-            status: 200,
-            headers: { 'Content-Type': mimeType }
-          });
-        } catch (err) {
-          console.error('[Protocol] Read error:', err.message);
-          return new Response('Not Found', { status: 404 });
-        }
+      // Check if file exists
+      let fileExists = false;
+      try {
+        fs.accessSync(filePath);
+        fileExists = true;
+      } catch (e) {
+        fileExists = false;
       }
 
-      // Pass through other https requests
-      return net.fetch(request);
+      // SPA fallback: if no extension and file doesn't exist, serve index.html
+      if (!fileExists && (!ext || ext === '')) {
+        filePath = path.join(distPath, 'index.html');
+        ext = '.html';
+      }
+
+      try {
+        const data = fs.readFileSync(filePath);
+        const mimeType = mimeTypes[ext] || 'application/octet-stream';
+
+        return new Response(data, {
+          status: 200,
+          headers: { 'Content-Type': mimeType }
+        });
+      } catch (err) {
+        console.error('[Protocol] Read error:', err.message);
+        return new Response('Not Found', { status: 404 });
+      }
+    });
+  }
+
+  // Disable CORS for API requests in production
+  if (!isDev) {
+    // Disable proxy to avoid ERR_PROXY_CONNECTION_FAILED
+    session.defaultSession.setProxy({ mode: 'direct' });
+
+    session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+      // Remove origin header for external API requests to avoid CORS preflight
+      if (!details.url.startsWith('app://')) {
+        delete details.requestHeaders['Origin'];
+      }
+      callback({ requestHeaders: details.requestHeaders });
+    });
+
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      // Add CORS headers to responses
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Access-Control-Allow-Origin': ['*'],
+          'Access-Control-Allow-Headers': ['*'],
+          'Access-Control-Allow-Methods': ['*'],
+        }
+      });
     });
   }
 
