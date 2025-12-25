@@ -571,8 +571,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // Загружаем последние сообщения
       await loadMessages(chatId);
 
-      // ✅ ВАЖНО: Сбрасываем lastOldestMessageId чтобы можно было снова подгружать старые сообщения
+      // ✅ ВАЖНО: Сбрасываем флаги чтобы можно было снова подгружать старые сообщения
       lastOldestMessageId.current = null;
+      setHasMoreMessages(true);
 
       // Ждём стабилизации layout через requestAnimationFrame
       await new Promise<void>(resolve => {
