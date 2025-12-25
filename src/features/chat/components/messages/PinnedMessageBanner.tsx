@@ -3,7 +3,7 @@
  * Баннер для отображения закрепленных сообщений в верхней части чата
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -27,6 +27,12 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
 }) => {
   const { theme } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const isScrolling = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentIndexRef = useRef(currentIndex);
+
+  // Синхронизируем ref с state
+  currentIndexRef.current = currentIndex;
 
   // Check if user can unpin messages
   const canUnpin = React.useMemo(() => {
@@ -57,23 +63,53 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
   const hasMore = sortedMessages.length > 1;
 
   // Переключение на следующее закрепленное сообщение
-  const handleNext = (e: any) => {
+  const handleNext = useCallback((e: any) => {
     e.stopPropagation();
     if (hasMore) {
       setCurrentIndex((prev) => (prev + 1) % sortedMessages.length);
     }
-  };
+  }, [hasMore, sortedMessages.length]);
 
   // Обработка клика на баннер: показать текущее сообщение и переключить на следующее
-  const handleBannerPress = () => {
-    // Прокручиваем к текущему сообщению
-    onPress(currentMessage.id);
+  const handleBannerPress = useCallback(() => {
+    // Если уже идёт скролл - игнорируем повторные нажатия
+    if (isScrolling.current) {
+      return;
+    }
 
-    // Если есть несколько закрепленных сообщений, переключаемся на следующее
+    // Получаем актуальное текущее сообщение через ref
+    const actualIndex = currentIndexRef.current;
+    const actualMessage = sortedMessages[actualIndex] || sortedMessages[0];
+    const messageIdToScrollTo = actualMessage.id;
+
+    console.log('[PinnedBanner] Press:', {
+      actualIndex,
+      messageIdToScrollTo,
+      sortedMessagesIds: sortedMessages.map(m => m.id),
+      currentIndexRef: currentIndexRef.current,
+    });
+
+    // Устанавливаем флаг блокировки
+    isScrolling.current = true;
+
+    // Очищаем предыдущий таймаут если был
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
+    // Прокручиваем к сообщению
+    onPress(messageIdToScrollTo);
+
+    // Переключаемся на следующее сообщение в баннере ПОСЛЕ начала скролла
     if (hasMore) {
       setCurrentIndex((prev) => (prev + 1) % sortedMessages.length);
     }
-  };
+
+    // Снимаем блокировку через 800мс (время на анимацию скролла)
+    scrollTimeoutRef.current = setTimeout(() => {
+      isScrolling.current = false;
+    }, 800);
+  }, [hasMore, sortedMessages, onPress]);
 
   // Открепить текущее сообщение
   const handleUnpin = (e: any) => {

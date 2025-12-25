@@ -695,7 +695,18 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Скролл к конкретному сообщению
   const handleReplyPress = useCallback(async (messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
+    console.log('[handleReplyPress] Called with messageId:', messageId, 'messages.length:', messages.length);
+
+    // Если уже идёт анимация к другому сообщению - прерываем её
+    // Это важно для последовательных нажатий на закреплённые сообщения
+    if (isAnimatingToPin.current) {
+      isAnimatingToPin.current = false;
+      // Небольшая пауза чтобы предыдущая анимация успела прерваться
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
     const messageIndex = messages.findIndex(m => m.id === messageId);
+    console.log('[handleReplyPress] messageIndex:', messageIndex, 'isInJumpContext:', isInJumpContext.current);
 
     if (messageIndex !== -1) {
       // ✅ ФИНАЛЬНАЯ СТРАТЕГИЯ: Как в Telegram - мгновенный прыжок + короткая доводка
@@ -744,12 +755,24 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // 4. Продолжаем скролл уже к закрепленному в новом контексте
 
       const performSeamlessScroll = async () => {
+        // Сохраняем ID целевого сообщения для проверки актуальности
+        const targetMessageId = messageId;
+        console.log('[performSeamlessScroll] Starting for messageId:', targetMessageId);
+
         try {
           isAnimatingToPin.current = true;
 
           // ШАГ 1: Загружаем контекст сообщения
           const jumpToMessage = useChatStore.getState().jumpToMessage;
+          console.log('[performSeamlessScroll] Calling jumpToMessage...');
           await jumpToMessage(chatId, messageId);
+          console.log('[performSeamlessScroll] jumpToMessage completed');
+
+          // Проверяем, не была ли анимация прервана (пользователь нажал на другое сообщение)
+          if (!isAnimatingToPin.current) {
+            console.log('[performSeamlessScroll] Animation was interrupted after jumpToMessage');
+            return;
+          }
 
           // Устанавливаем флаги jump контекста
           isInJumpContext.current = true;
@@ -768,13 +791,29 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
             });
           });
 
+          // Повторная проверка после ожидания
+          if (!isAnimatingToPin.current) {
+            console.log('[performSeamlessScroll] Animation was interrupted after RAF');
+            return;
+          }
+
           const updatedMessages = useChatStore.getState().messages[chatId] || [];
-          const targetIndex = updatedMessages.findIndex(m => m.id === messageId);
+          const targetIndex = updatedMessages.findIndex(m => m.id === targetMessageId);
+          console.log('[performSeamlessScroll] After jump - updatedMessages.length:', updatedMessages.length, 'targetIndex:', targetIndex);
 
           previousMessagesLength.current = updatedMessages.length;
 
           if (targetIndex !== -1) {
-            // ШАГ 3: Позиционируем список близко к цели
+            // ШАГ 3: Ждём пока React обновит FlashList с новыми данными
+            // Используем setTimeout чтобы дать React время на ре-рендер
+            await new Promise<void>(resolve => setTimeout(resolve, 100));
+
+            // Проверка прерывания после ожидания
+            if (!isAnimatingToPin.current) {
+              console.log('[performSeamlessScroll] Animation interrupted after waiting for render');
+              return;
+            }
+
             const OFFSET_ITEMS = 15; // Сколько элементов от цели начинаем
 
             const isInverted = updatedMessages.length >= 2 &&
@@ -788,6 +827,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
               startIndex = Math.min(updatedMessages.length - 1, targetIndex + OFFSET_ITEMS);
             }
 
+            console.log('[performSeamlessScroll] Scrolling - isInverted:', isInverted, 'startIndex:', startIndex, 'targetIndex:', targetIndex);
+
             // Тихо прыгаем к стартовой позиции
             listRef.current?.scrollToIndex({
               index: startIndex,
@@ -795,27 +836,34 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
               viewPosition: 0.5,
             });
 
-            // ШАГ 4: Даём один кадр на позиционирование, затем плавно скроллим к цели
-            requestAnimationFrame(() => {
-              listRef.current?.scrollToIndex({
-                index: targetIndex,
-                animated: true,
-                viewPosition: 0.5,
-              });
+            // ШАГ 4: Даём время на позиционирование, затем плавно скроллим к цели
+            await new Promise<void>(resolve => setTimeout(resolve, 50));
 
-              // Снимаем флаг анимации после завершения
-              setTimeout(() => {
-                isAnimatingToPin.current = false;
-              }, 600);
+            // Финальная проверка перед анимацией
+            if (!isAnimatingToPin.current) {
+              console.log('[performSeamlessScroll] Animation interrupted before final scroll');
+              return;
+            }
 
-              // Подсветка сообщения
-              setTimeout(() => {
-                setHighlightedMessageId(messageId);
-                setTimeout(() => {
-                  setHighlightedMessageId(null);
-                }, 2000);
-              }, 400);
+            console.log('[performSeamlessScroll] Final scroll to targetIndex:', targetIndex);
+            listRef.current?.scrollToIndex({
+              index: targetIndex,
+              animated: true,
+              viewPosition: 0.5,
             });
+
+            // Снимаем флаг анимации после завершения
+            setTimeout(() => {
+              isAnimatingToPin.current = false;
+            }, 600);
+
+            // Подсветка сообщения
+            setTimeout(() => {
+              setHighlightedMessageId(targetMessageId);
+              setTimeout(() => {
+                setHighlightedMessageId(null);
+              }, 2000);
+            }, 400);
           } else {
             console.error('📍 ERROR: Target not found after context load');
             isAnimatingToPin.current = false;
