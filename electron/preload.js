@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('electron', {
         'notification:register',
         'notification:unregister',
         'notification:setBadgeCount',
+        'updater:check',
+        'updater:getStatus',
       ];
 
       if (validChannels.includes(channel)) {
@@ -115,6 +117,22 @@ contextBridge.exposeInMainWorld('electron', {
         ipcRenderer.removeListener('notification:clicked', subscription);
       };
     },
+  },
+
+  // Updater API
+  updater: {
+    /**
+     * Check for updates
+     * @param {boolean} silent - If true, don't show "no updates" dialog
+     * @returns {Promise<{hasUpdate: boolean, version?: string, error?: string}>}
+     */
+    checkForUpdates: (silent = false) => ipcRenderer.invoke('updater:check', silent),
+
+    /**
+     * Get updater status
+     * @returns {Promise<{currentVersion: string, lastCheckTime: Date|null, autoCheckEnabled: boolean}>}
+     */
+    getStatus: () => ipcRenderer.invoke('updater:getStatus'),
   },
 });
 

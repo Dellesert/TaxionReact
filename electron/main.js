@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain, safeStorage, Notification, protocol, net, session } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, Notification, protocol, net, session, Menu } = require('electron');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
 const Store = require('electron-store');
 const FileCache = require('./FileCache');
+const { AppUpdater } = require('./updater');
 
 const isDev = !app.isPackaged;
 
@@ -45,6 +46,7 @@ let mainWindow;
 let splashWindow;
 let fileCache;
 let secureStore;
+let updater;
 
 function createSplashWindow() {
   splashWindow = new BrowserWindow({
@@ -129,6 +131,10 @@ function createWindow() {
       splashWindow.close();
       splashWindow = null;
     }
+
+    // Initialize updater and start auto-check
+    updater = new AppUpdater(mainWindow);
+    updater.startAutoCheck();
   });
 
   // Handle window close
@@ -525,6 +531,32 @@ function setupIPCHandlers() {
       console.error('[Notification] Error setting badge count:', error);
       return { success: false, error: error.message };
     }
+  });
+
+  // Updater handlers
+  ipcMain.handle('updater:check', async (event, silent = false) => {
+    try {
+      if (!updater) {
+        // Create updater if not exists (for dev mode manual check)
+        updater = new AppUpdater(mainWindow);
+      }
+      const result = await updater.checkForUpdates(silent);
+      return result;
+    } catch (error) {
+      console.error('[Updater] Error in IPC handler:', error);
+      return { hasUpdate: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('updater:getStatus', async () => {
+    if (!updater) {
+      return {
+        currentVersion: app.getVersion(),
+        lastCheckTime: null,
+        autoCheckEnabled: false,
+      };
+    }
+    return updater.getStatus();
   });
 
   console.log('[IPC] Handlers registered successfully');

@@ -4,7 +4,7 @@
  */
 
 export const APP_VERSION = '1.0.0';
-export const APP_BUILD = '736';
+export const APP_BUILD = '737';
 export const APP_NAME = 'Tachyon Messenger';
 export const COMPANY_NAME = 'Tachyon Technologies';
 export const SUPPORT_EMAIL = 'support@taxion.ru';

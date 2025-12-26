@@ -3,8 +3,9 @@
  * Полная логика экрана "О приложении" без header
  */
 
-import React from 'react';
-import { View, StyleSheet, ScrollView, Platform, Text } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Platform, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAboutActions } from '../../hooks/useAboutActions';
 import { AboutLogo } from '../about/AboutLogo';
@@ -24,9 +25,14 @@ import {
 } from '../../utils/aboutConstants';
 import { formatVersionText, formatCopyrightText, getPlatformName } from '../../utils/aboutHelpers';
 
+// Check if running in Electron
+const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!(window as any).electron;
+
 const AboutContent: React.FC = () => {
   const { theme } = useTheme();
   const { handleOpenWebsite, handleOpenEmail } = useAboutActions();
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
 
   const handleContactPress = (action: 'website' | 'email') => {
     if (action === 'website') {
@@ -35,6 +41,32 @@ const AboutContent: React.FC = () => {
       handleOpenEmail();
     }
   };
+
+  const handleCheckUpdate = useCallback(async () => {
+    if (!isElectron) return;
+
+    setIsCheckingUpdate(true);
+    setUpdateStatus(null);
+
+    try {
+      const electron = (window as any).electron;
+      const result = await electron.updater.checkForUpdates(false);
+
+      if (result.error) {
+        setUpdateStatus('Ошибка проверки');
+      } else if (result.hasUpdate) {
+        setUpdateStatus(`Доступна версия ${result.version}`);
+      } else {
+        setUpdateStatus('Установлена последняя версия');
+      }
+    } catch (error) {
+      setUpdateStatus('Ошибка проверки');
+    } finally {
+      setIsCheckingUpdate(false);
+      // Clear status after 5 seconds
+      setTimeout(() => setUpdateStatus(null), 5000);
+    }
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -67,7 +99,33 @@ const AboutContent: React.FC = () => {
         <AboutSection title="Информация">
           <AboutInfoRow label="Версия" value={APP_VERSION} />
           <AboutInfoRow label="Сборка" value={APP_BUILD} />
-          <AboutInfoRow label="Платформа" value={getPlatformName()} isLast />
+          <AboutInfoRow label="Платформа" value={getPlatformName()} isLast={!isElectron} />
+
+          {/* Update check button - only in Electron */}
+          {isElectron && (
+            <TouchableOpacity
+              style={[
+                styles.updateButton,
+                { backgroundColor: theme.backgroundSecondary, borderTopColor: theme.borderLight },
+              ]}
+              onPress={handleCheckUpdate}
+              disabled={isCheckingUpdate}
+            >
+              {isCheckingUpdate ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Ionicons name="refresh-outline" size={20} color={theme.primary} />
+              )}
+              <Text style={[styles.updateButtonText, { color: theme.text }]}>
+                {isCheckingUpdate ? 'Проверка...' : 'Проверить обновления'}
+              </Text>
+              {updateStatus && (
+                <Text style={[styles.updateStatus, { color: theme.textSecondary }]}>
+                  {updateStatus}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
         </AboutSection>
 
         {/* Contact Section */}
@@ -105,6 +163,21 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  updateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+  },
+  updateButtonText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 15,
+  },
+  updateStatus: {
+    fontSize: 13,
   },
 });
 
