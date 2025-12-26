@@ -26,6 +26,7 @@ import {
   setCacheLimit,
   getCacheUsagePercent,
 } from '@shared/storage';
+import { isElectron, getElectronAPI } from '@shared/utils/platform';
 
 interface CacheInfo {
   mmkv: StorageInfo;
@@ -34,6 +35,10 @@ interface CacheInfo {
   totalCache: number;
   cacheLimit: number;
   usagePercent: number;
+  electronMediaCache?: {
+    totalSize: number;
+    fileCount: number;
+  };
 }
 
 const CACHE_LIMIT_OPTIONS = [
@@ -63,6 +68,7 @@ const StorageContent: React.FC = () => {
     try {
       const mmkvInfo = await getStorageSize();
       let documentCacheSize = 0;
+      let electronMediaCache: { totalSize: number; fileCount: number } | undefined;
 
       if (isNative && FileSystem.cacheDirectory) {
         try {
@@ -72,6 +78,18 @@ const StorageContent: React.FC = () => {
           }
         } catch (e) {
           // Cache directory might not exist
+        }
+      }
+
+      // Get Electron media cache stats
+      if (isElectron()) {
+        try {
+          const electron = getElectronAPI();
+          if (electron?.cache?.stats) {
+            electronMediaCache = await electron.cache.stats();
+          }
+        } catch (e) {
+          console.error('[Storage] Failed to get Electron cache stats:', e);
         }
       }
 
@@ -88,6 +106,7 @@ const StorageContent: React.FC = () => {
         totalCache: mmkvInfo.totalSize + documentCacheSize,
         cacheLimit,
         usagePercent,
+        electronMediaCache,
       });
     } catch (error) {
       console.error('Failed to load cache info:', error);
@@ -140,6 +159,19 @@ const StorageContent: React.FC = () => {
             try {
               await Image.clearDiskCache();
               await Image.clearMemoryCache();
+
+              // Clear Electron media cache
+              if (isElectron()) {
+                try {
+                  const electron = getElectronAPI();
+                  if (electron?.cache?.clear) {
+                    await electron.cache.clear();
+                  }
+                } catch (e) {
+                  console.error('[Storage] Failed to clear Electron cache:', e);
+                }
+              }
+
               await loadCacheInfo();
               Alert.alert('Готово', 'Кэш изображений очищен');
             } catch (error) {
@@ -177,6 +209,18 @@ const StorageContent: React.FC = () => {
                   }
                 } catch (e) {
                   // Some files might not be deletable
+                }
+              }
+
+              // Clear Electron media cache
+              if (isElectron()) {
+                try {
+                  const electron = getElectronAPI();
+                  if (electron?.cache?.clear) {
+                    await electron.cache.clear();
+                  }
+                } catch (e) {
+                  console.error('[Storage] Failed to clear Electron cache:', e);
                 }
               }
 
@@ -437,10 +481,18 @@ const StorageContent: React.FC = () => {
                 </View>
                 <View style={styles.rowTextContainer}>
                   <Text style={styles.rowTitle}>Изображения</Text>
-                  <Text style={styles.rowSubtitle}>Аватарки и фото в чатах</Text>
+                  <Text style={styles.rowSubtitle}>
+                    {cacheInfo?.electronMediaCache
+                      ? `${cacheInfo.electronMediaCache.fileCount} файлов`
+                      : 'Аватарки и фото в чатах'}
+                  </Text>
                 </View>
               </View>
-              <Text style={styles.rowValue}>Системный</Text>
+              <Text style={styles.rowValue}>
+                {cacheInfo?.electronMediaCache
+                  ? formatBytes(cacheInfo.electronMediaCache.totalSize)
+                  : 'Системный'}
+              </Text>
             </View>
           </View>
         </View>
@@ -472,7 +524,7 @@ const StorageContent: React.FC = () => {
         </View>
 
         {/* Cache Limit Settings */}
-        {isNative && (
+        {(isNative || isElectron()) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Настройки</Text>
             <View style={styles.card}>
@@ -496,7 +548,7 @@ const StorageContent: React.FC = () => {
         )}
 
         {/* Clear Actions */}
-        {isNative && (
+        {(isNative || isElectron()) && (
           <>
             <View style={[styles.section, { marginTop: 32 }]}>
               <Text style={styles.sectionTitle}>Действия</Text>

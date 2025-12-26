@@ -7,6 +7,8 @@ import React, { useState, useMemo, ReactNode } from 'react';
 import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { API_BASE_URL } from '@shared/constants/api.constants';
+import { useCachedImage } from '@shared/hooks/useCachedMedia';
+import { isElectron } from '@shared/utils/platform';
 
 interface AvatarProps {
   name?: string;
@@ -65,9 +67,20 @@ const AvatarComponent: React.FC<AvatarProps> = ({
     return fixedUrl;
   }, [imageUrl, thumbnailUrl, useOriginal, size]);
 
+  // Use Electron FileCache for caching images (only in Electron)
+  const inElectron = isElectron();
+  const { localPath: cachedPath, loading: cacheLoading } = useCachedImage(
+    inElectron ? finalUrl : null
+  );
+
   // Prepare image source with headers if needed
   // OPTIMIZATION: Use stable object reference by stringifying for cache key
   const imageSource = useMemo(() => {
+    // In Electron, use cached local path if available
+    if (inElectron && cachedPath) {
+      return cachedPath;
+    }
+
     if (!finalUrl) return null;
 
     // If it's a public URL or already includes full path, return string directly
@@ -78,7 +91,7 @@ const AvatarComponent: React.FC<AvatarProps> = ({
 
     // Otherwise, it might be a relative path - use as is
     return finalUrl;
-  }, [finalUrl]);
+  }, [finalUrl, inElectron, cachedPath]);
 
   const getInitials = (fullName: string): string => {
     const names = fullName.trim().split(' ');
@@ -114,7 +127,8 @@ const AvatarComponent: React.FC<AvatarProps> = ({
   };
 
   // Check if we should show the image or fallback to initials
-  const shouldShowImage = imageSource && !imageError;
+  // In Electron, wait for cache to be ready (not loading) before showing image
+  const shouldShowImage = imageSource && !imageError && !(inElectron && cacheLoading && !cachedPath);
 
   const avatarContent = (
     <>
