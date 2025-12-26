@@ -352,7 +352,7 @@ export default function StorageScreen() {
       flex: 1,
     },
     scrollContent: {
-      paddingBottom: 100,
+      paddingBottom: Platform.OS === 'web' ? 100 : 140,
     },
     section: {
       marginTop: 24,

@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 24,
-    paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 100 : 24,
+    paddingBottom: Platform.OS === 'web' ? 100 : 140,
   },
   formContainer: {
     width: '100%',

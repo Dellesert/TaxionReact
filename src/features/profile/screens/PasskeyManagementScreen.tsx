@@ -102,7 +102,7 @@ const PasskeyManagementScreen: React.FC = () => {
         </View>
       </SafeAreaView>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <PasskeyInfoCard />
 
         <AddPasskeyButton
@@ -173,6 +173,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: Platform.OS === 'web' ? 100 : 140,
   },
   section: {
     marginBottom: 16,
