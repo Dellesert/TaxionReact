@@ -46,6 +46,7 @@ interface ChatListContentProps {
   onTogglePinned: (chatId: number) => void;
   onMarkAsRead: (chatId: number) => void;
   onDeleteChat: (chatId: number, clearHistory?: boolean) => void;
+  onClearHistory: (chatId: number) => void;
 }
 
 export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentProps>(({
@@ -68,6 +69,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
   onTogglePinned,
   onMarkAsRead,
   onDeleteChat,
+  onClearHistory,
 }, ref) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -154,6 +156,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
           onTogglePinned={() => handleTogglePinnedWithScroll(item.id)}
           onMarkAsRead={() => onMarkAsRead(item.id)}
           onDelete={onDeleteChat}
+          onClearHistory={() => onClearHistory(item.id)}
         />
       );
     },
@@ -165,6 +168,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
       handleTogglePinnedWithScroll,
       onMarkAsRead,
       onDeleteChat,
+      onClearHistory,
       typingUsers,
     ]
   );

@@ -56,7 +56,7 @@ interface ChatScreenContentProps {
   onToggleMessageSelection: (messageId: number) => void;
 
   // Chat props
-  chatType: string | undefined;
+  chatType: 'private' | 'group' | 'channel' | 'saved' | undefined;
   userRole: string;
 
   // Pinned messages

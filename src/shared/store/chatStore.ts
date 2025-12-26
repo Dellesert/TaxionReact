@@ -853,13 +853,44 @@ export const useChatStore = create<ChatState>()(
     try {
       await chatApi.clearChatHistory(chatId);
 
-      // Очищаем сообщения локально
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [chatId]: [],
-        },
-      }));
+      // Очищаем сообщения локально и обновляем last_message в чате
+      set((state) => {
+        // Функция для обновления last_message в чате
+        const updateChatLastMessage = (chat: Chat): Chat => {
+          if (chat.id === chatId) {
+            return { ...chat, last_message: undefined };
+          }
+          return chat;
+        };
+
+        // Обновляем чаты во всех табах
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (tab.loaded) {
+            updatedTabs[tabKey as TabName] = {
+              ...tab,
+              pinnedChats: tab.pinnedChats.map(updateChatLastMessage),
+              regularChats: tab.regularChats.map(updateChatLastMessage),
+            };
+          }
+        });
+
+        // Обновляем текущий список чатов
+        const currentTabData = updatedTabs[state.currentTab];
+        const updatedChats = currentTabData
+          ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
+          : state.chats.map(updateChatLastMessage);
+
+        return {
+          messages: {
+            ...state.messages,
+            [chatId]: [],
+          },
+          tabs: updatedTabs,
+          chats: updatedChats,
+        };
+      });
     } catch (error: any) {
       console.error(`❌ Failed to clear chat history for chat ${chatId}:`, error);
       set({ error: error.message || 'Failed to clear chat history' });
@@ -1057,7 +1088,13 @@ export const useChatStore = create<ChatState>()(
           if (chatIndex !== -1) {
             const chat = { ...tab.regularChats[chatIndex], is_pinned: true };
             const newRegularChats = tab.regularChats.filter(c => c.id !== chatId);
-            const newPinnedChats = [chat, ...tab.pinnedChats];
+            // Add new pinned chat at the end (but saved chat always stays first)
+            const newPinnedChats = [...tab.pinnedChats, chat].sort((a, b) => {
+              // Saved chat always first
+              if (a.type === 'saved' && b.type !== 'saved') return -1;
+              if (a.type !== 'saved' && b.type === 'saved') return 1;
+              return 0; // Keep relative order for other chats
+            });
 
             updatedTabs[tabKey as TabName] = {
               ...tab,

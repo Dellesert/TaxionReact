@@ -19,6 +19,7 @@ interface ChatItemProps {
   onLongPress?: (chat: Chat) => void;
   onMarkAsRead?: (chatId: number) => void;
   onDelete?: (chatId: number, clearHistory?: boolean) => void;
+  onClearHistory?: (chatId: number) => void;
   onToggleFavorite?: (chatId: number) => void;
   onTogglePinned?: (chatId: number) => void;
   isEditMode?: boolean;
@@ -27,11 +28,12 @@ interface ChatItemProps {
   typingUsers?: TypingIndicator[];
 }
 
-const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRead, onDelete, onToggleFavorite, onTogglePinned, isEditMode, isSelected, itemIndex = 0, typingUsers = [] }) => {
+const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRead, onDelete, onClearHistory, onToggleFavorite, onTogglePinned, isEditMode, isSelected, itemIndex = 0, typingUsers = [] }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showClearSavedModal, setShowClearSavedModal] = useState(false);
   const [clearHistory, setClearHistory] = useState(false);
 
   // Prefetch hook for preloading chat messages
@@ -234,6 +236,16 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     onDelete?.(chat.id, clearHistory);
   };
 
+  const handleClearSaved = () => {
+    setShowContextMenu(false);
+    setShowClearSavedModal(true);
+  };
+
+  const handleConfirmClearSaved = () => {
+    setShowClearSavedModal(false);
+    onClearHistory?.(chat.id);
+  };
+
   const handleToggleFavorite = () => {
     setShowContextMenu(false);
     onToggleFavorite?.(chat.id);
@@ -299,12 +311,18 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
           ]}
         >
           <View style={styles.avatarContainer}>
-            <Avatar
-              imageUrl={getChatAvatar()}
-              thumbnailUrl={getChatAvatarThumbnail()}
-              name={getChatName()}
-              size={50}
-            />
+            {chat.type === 'saved' ? (
+              <View style={styles.savedChatAvatar}>
+                <Ionicons name="bookmark" size={24} color="#FFFFFF" />
+              </View>
+            ) : (
+              <Avatar
+                imageUrl={getChatAvatar()}
+                thumbnailUrl={getChatAvatarThumbnail()}
+                name={getChatName()}
+                size={50}
+              />
+            )}
             {getCompanionOnlineStatus() && (
               <View style={[styles.onlineIndicator, { borderColor: theme.backgroundSecondary }]} />
             )}
@@ -424,57 +442,73 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
               {/* Разделитель */}
               <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleToggleFavorite}
-              >
-                <Ionicons
-                  name={chat.is_favorite ? "star" : "star-outline"}
-                  size={22}
-                  color={chat.is_favorite ? theme.warning : theme.text}
-                />
-                <Text style={[styles.menuText, { color: theme.text }]}>
-                  {chat.is_favorite ? 'Удалить из избранного' : 'Добавить в избранное'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Закрепить/открепить */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleTogglePinned}
-              >
-                <Ionicons
-                  name={chat.is_pinned ? "pin" : "pin-outline"}
-                  size={22}
-                  color={chat.is_pinned ? theme.primary : theme.text}
-                />
-                <Text style={[styles.menuText, { color: theme.text }]}>
-                  {chat.is_pinned ? 'Открепить' : 'Закрепить'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Пометить как прочитанное */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleMarkAsRead}
-              >
-                <Ionicons name="checkmark-done-outline" size={22} color={theme.text} />
-                <Text style={[styles.menuText, { color: theme.text }]}>
-                  Пометить как прочитанное
-                </Text>
-              </TouchableOpacity>
-
-              {/* Удалить */}
-              {onDelete && (
+              {/* Для saved чата - только очистить */}
+              {chat.type === 'saved' ? (
                 <TouchableOpacity
                   style={styles.menuItem}
-                  onPress={handleDelete}
+                  onPress={handleClearSaved}
                 >
                   <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
                   <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
-                    Удалить
+                    Очистить избранное
                   </Text>
                 </TouchableOpacity>
+              ) : (
+                <>
+                  {/* Избранное */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleToggleFavorite}
+                  >
+                    <Ionicons
+                      name={chat.is_favorite ? "star" : "star-outline"}
+                      size={22}
+                      color={chat.is_favorite ? theme.warning : theme.text}
+                    />
+                    <Text style={[styles.menuText, { color: theme.text }]}>
+                      {chat.is_favorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Закрепить/открепить */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleTogglePinned}
+                  >
+                    <Ionicons
+                      name={chat.is_pinned ? "pin" : "pin-outline"}
+                      size={22}
+                      color={chat.is_pinned ? theme.primary : theme.text}
+                    />
+                    <Text style={[styles.menuText, { color: theme.text }]}>
+                      {chat.is_pinned ? 'Открепить' : 'Закрепить'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Пометить как прочитанное */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleMarkAsRead}
+                  >
+                    <Ionicons name="checkmark-done-outline" size={22} color={theme.text} />
+                    <Text style={[styles.menuText, { color: theme.text }]}>
+                      Пометить как прочитанное
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Удалить */}
+                  {onDelete && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={handleDelete}
+                    >
+                      <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
+                      <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
+                        Удалить
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
             </View>
           </Pressable>
@@ -505,6 +539,27 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
           },
         ]}
         onDismiss={() => setShowDeleteModal(false)}
+      />
+
+      {/* Clear Saved Chat Modal */}
+      <ActionModal
+        visible={showClearSavedModal}
+        title="Очистить избранное"
+        message="Вы уверены, что хотите удалить все сообщения из избранного?"
+        actions={[
+          {
+            text: 'Отмена',
+            style: 'cancel',
+            onPress: () => setShowClearSavedModal(false),
+          },
+          {
+            text: 'Очистить',
+            style: 'destructive',
+            icon: 'trash-outline',
+            onPress: handleConfirmClearSaved,
+          },
+        ]}
+        onDismiss={() => setShowClearSavedModal(false)}
       />
     </>
   );
@@ -539,6 +594,14 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
+  },
+  savedChatAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   onlineIndicator: {
     position: 'absolute',

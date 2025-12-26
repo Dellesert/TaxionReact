@@ -105,6 +105,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
     handleTogglePinned,
     handleMarkAsRead,
     handleToggleFavorite,
+    handleClearHistory,
   } = useChatListActions();
 
   // Handler declarations (before hook usage)
@@ -402,6 +403,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
           onTogglePinned={handleTogglePinned}
           onMarkAsRead={handleMarkAsRead}
           onDeleteChat={handleDeleteChat}
+          onClearHistory={handleClearHistory}
         />
       </View>
 

@@ -14,6 +14,7 @@ interface ChatHeaderProps {
   isConnected: boolean;
   onBackPress: () => void;
   onHeaderPress: () => void;
+  isSavedChat?: boolean;
 }
 
 /**
@@ -40,6 +41,7 @@ export const ChatHeader = {
     isPrivateChat,
     isConnected,
     onHeaderPress,
+    isSavedChat,
   }: Omit<ChatHeaderProps, 'displayAvatar' | 'onBackPress'>) => {
     const { theme } = useTheme();
 
@@ -51,6 +53,26 @@ export const ChatHeader = {
       subtitle = statusText; // Show typing indicator or online status for both private and group chats
     } else if (!isPrivateChat && membersText) {
       subtitle = membersText; // Fallback to member count for group chats
+    }
+
+    // For saved chat, render non-interactive title
+    if (isSavedChat) {
+      return (
+        <View style={{ alignItems: 'center', width: '100%', maxWidth: 220 }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '600',
+              color: theme.text,
+              maxWidth: '100%',
+            }}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {displayName}
+          </Text>
+        </View>
+      );
     }
 
     return (
@@ -95,7 +117,27 @@ export const ChatHeader = {
     displayAvatar,
     displayName,
     onHeaderPress,
-  }: Pick<ChatHeaderProps, 'displayAvatar' | 'displayName' | 'onHeaderPress'>) => {
+    isSavedChat,
+  }: Pick<ChatHeaderProps, 'displayAvatar' | 'displayName' | 'onHeaderPress' | 'isSavedChat'>) => {
+    // For saved chat, render non-interactive bookmark icon
+    if (isSavedChat) {
+      return (
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: '#3B82F6',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 0,
+          }}
+        >
+          <Ionicons name="bookmark" size={18} color="#FFFFFF" />
+        </View>
+      );
+    }
+
     return (
       <TouchableOpacity
         onPress={onHeaderPress}

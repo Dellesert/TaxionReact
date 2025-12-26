@@ -52,7 +52,7 @@ interface MessageListComponentProps {
   selectedMessages?: Set<number>;
   onEnterSelectionMode?: (messageId: number) => void;
   onToggleMessageSelection?: (messageId: number) => void;
-  chatType?: 'private' | 'group' | 'channel';
+  chatType?: 'private' | 'group' | 'channel' | 'saved';
   userRole?: 'owner' | 'admin' | 'member';
   onFlashListLoad?: () => void;
   isPositionReady?: boolean; // Флаг готовности позиции скролла для показа списка
@@ -230,7 +230,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   }
 
   if (showEmptyState) {
-    return <ChatEmptyMessages />;
+    return <ChatEmptyMessages chatType={chatType} />;
   }
 
   return (
@@ -329,7 +329,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
               {shouldShowNewMessageBanner && <UnreadMessagesBanner unreadCount={newMessagesCount} />}
               <MessageItem
                 message={message}
-                chatType={chatType}
+                chatType={chatType === 'saved' ? 'private' : chatType}
                 onReply={onReply}
                 onEdit={onEdit}
                 onDelete={onDelete}

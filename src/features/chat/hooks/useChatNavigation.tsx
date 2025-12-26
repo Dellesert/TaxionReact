@@ -66,6 +66,7 @@ export const useChatNavigation = ({
   );
 
   const isPrivateChat = chat?.type === 'private';
+  const isSavedChat = chat?.type === 'saved';
 
   const statusText = useMemo(
     () => (companion ? getUserStatusText(companion) : ''),
@@ -83,12 +84,15 @@ export const useChatNavigation = ({
 
   // Setup navigation header
   useEffect(() => {
-    const handleHeaderPress = () => {
-      (navigation as any).navigate('ChatSettings', {
-        chatId,
-        chatName: displayName,
-      });
-    };
+    // For saved chat, don't navigate to settings
+    const handleHeaderPress = isSavedChat
+      ? () => {} // No-op for saved chat
+      : () => {
+          (navigation as any).navigate('ChatSettings', {
+            chatId,
+            chatName: displayName,
+          });
+        };
 
     navigation.setOptions({
       headerLeft: () => <ChatHeader.Left onBackPress={() => navigation.goBack()} />,
@@ -100,6 +104,7 @@ export const useChatNavigation = ({
           isPrivateChat={isPrivateChat}
           isConnected={isConnected}
           onHeaderPress={handleHeaderPress}
+          isSavedChat={isSavedChat}
         />
       ),
       headerTitleAlign: 'center' as const,
@@ -108,6 +113,7 @@ export const useChatNavigation = ({
           displayAvatar={displayAvatar}
           displayName={displayName}
           onHeaderPress={handleHeaderPress}
+          isSavedChat={isSavedChat}
         />
       ),
     });
@@ -120,6 +126,7 @@ export const useChatNavigation = ({
     statusText,
     membersText,
     isPrivateChat,
+    isSavedChat,
     isConnected,
     navigation,
   ]);

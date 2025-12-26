@@ -7,7 +7,7 @@ import { ISODateString } from '@/types/common.types';
 import { User } from '@/types/user.types';
 
 // Chat Types
-export type ChatType = 'private' | 'group' | 'channel';
+export type ChatType = 'private' | 'group' | 'channel' | 'saved';
 
 // Message Types
 export type MessageType = 'text' | 'image' | 'file' | 'voice' | 'video' | 'system' | 'poll' | 'task';

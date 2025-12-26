@@ -13,6 +13,7 @@ export const useChatListActions = () => {
     unpinChat,
     markChatAsRead,
     toggleFavorite,
+    clearChatHistory,
     chats,
   } = useChatStore();
 
@@ -150,6 +151,21 @@ export const useChatListActions = () => {
     [toggleFavorite]
   );
 
+  /**
+   * Clear chat history (for saved chat)
+   */
+  const handleClearHistory = useCallback(
+    async (chatId: number) => {
+      try {
+        await clearChatHistory(chatId);
+      } catch (error) {
+        console.error('Failed to clear chat history:', error);
+        throw error;
+      }
+    },
+    [clearChatHistory]
+  );
+
   return {
     handleDeleteChat,
     handleDeleteSelectedChats,
@@ -159,5 +175,6 @@ export const useChatListActions = () => {
     handleTogglePinned,
     handleMarkAsRead,
     handleToggleFavorite,
+    handleClearHistory,
   };
 };
