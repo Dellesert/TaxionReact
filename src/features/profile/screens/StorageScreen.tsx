@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
 import { useTheme } from '@shared/hooks/useTheme';
 import {
@@ -33,11 +33,49 @@ import {
 interface CacheInfo {
   mmkv: StorageInfo;
   imageCache: number;
+  imageCacheFileCount: number;
   documentCache: number;
   totalCache: number;
   cacheLimit: number;
   usagePercent: number;
 }
+
+/**
+ * Recursively calculate directory size on native platforms
+ */
+const getDirectorySize = async (dirPath: string): Promise<{ size: number; fileCount: number }> => {
+  if (!isNative) return { size: 0, fileCount: 0 };
+
+  try {
+    // Ensure path ends without trailing slash for getInfoAsync
+    const normalizedPath = dirPath.endsWith('/') ? dirPath.slice(0, -1) : dirPath;
+    const dirInfo = await FileSystem.getInfoAsync(normalizedPath);
+    if (!dirInfo.exists) return { size: 0, fileCount: 0 };
+
+    // If it's a file, return its size
+    if (!('isDirectory' in dirInfo) || !dirInfo.isDirectory) {
+      return { size: 'size' in dirInfo ? (dirInfo.size || 0) : 0, fileCount: 1 };
+    }
+
+    // List directory contents
+    const files = await FileSystem.readDirectoryAsync(normalizedPath);
+    let totalSize = 0;
+    let totalFiles = 0;
+
+    for (const file of files) {
+      // Use proper path separator
+      const filePath = `${normalizedPath}/${file}`;
+      const result = await getDirectorySize(filePath);
+      totalSize += result.size;
+      totalFiles += result.fileCount;
+    }
+
+    return { size: totalSize, fileCount: totalFiles };
+  } catch (e) {
+    console.log('[Storage] getDirectorySize error:', dirPath, e);
+    return { size: 0, fileCount: 0 };
+  }
+};
 
 // Варианты лимита кэша
 const CACHE_LIMIT_OPTIONS = [
@@ -65,24 +103,80 @@ export default function StorageScreen() {
 
   const loadCacheInfo = useCallback(async () => {
     setIsLoading(true);
+    console.log('[Storage] loadCacheInfo called, isNative:', isNative, 'Platform:', Platform.OS);
     try {
       const mmkvInfo = await getStorageSize();
       let documentCacheSize = 0;
+      let imageCacheSize = 0;
+      let imageCacheFileCount = 0;
 
-      // Get document cache size (expo-file-system cache)
-      if (isNative && FileSystem.cacheDirectory) {
+      // Get cache directory from legacy expo-file-system
+      const cacheDir = FileSystem.cacheDirectory;
+      console.log('[Storage] cacheDir:', cacheDir);
+
+      if (isNative && cacheDir) {
+        console.log('[Storage] Cache directory:', cacheDir);
+
+        // Known image cache directory names used by expo-image/SDWebImage/Coil
+        const imageCacheDirs = [
+          'image_manager_disk_cache',  // expo-image default
+          'image_cache',               // alternative name
+          'ImageCache',                // iOS SDWebImage
+          'coil_disk_cache',           // Android Coil (used by expo-image)
+          'image_disk_cache',          // Coil alternative
+          'http-cache',                // HTTP cache
+        ];
+
+        // Scan cacheDirectory
         try {
-          const cacheDir = await FileSystem.getInfoAsync(FileSystem.cacheDirectory);
-          if (cacheDir.exists && 'size' in cacheDir) {
-            documentCacheSize = cacheDir.size || 0;
+          const allFiles = await FileSystem.readDirectoryAsync(cacheDir);
+          console.log('[Storage] Cache contents:', allFiles);
+
+          for (const file of allFiles) {
+            const filePath = `${cacheDir}${file}`;
+            const isImageCache = imageCacheDirs.some(
+              dir => file.toLowerCase().includes(dir.toLowerCase())
+            );
+
+            const stats = await getDirectorySize(filePath);
+            console.log('[Storage] Item:', file, 'isImage:', isImageCache, stats);
+
+            if (isImageCache) {
+              imageCacheSize += stats.size;
+              imageCacheFileCount += stats.fileCount;
+            } else {
+              documentCacheSize += stats.size;
+            }
           }
         } catch (e) {
-          // Cache directory might not exist
+          console.log('[Storage] Error reading cache directory:', e);
+        }
+
+        // Also check documentDirectory for Android Coil cache
+        const docDir = FileSystem.documentDirectory;
+        if (docDir) {
+          console.log('[Storage] Document directory:', docDir);
+          try {
+            const docFiles = await FileSystem.readDirectoryAsync(docDir);
+            console.log('[Storage] Document contents:', docFiles);
+
+            for (const file of docFiles) {
+              const isImageCache = imageCacheDirs.some(
+                dir => file.toLowerCase().includes(dir.toLowerCase())
+              );
+              if (isImageCache) {
+                const filePath = `${docDir}${file}`;
+                const stats = await getDirectorySize(filePath);
+                imageCacheSize += stats.size;
+                imageCacheFileCount += stats.fileCount;
+                console.log('[Storage] Image cache in docs:', file, stats);
+              }
+            }
+          } catch (e) {
+            // Document directory scan failed
+          }
         }
       }
-
-      // expo-image cache size is not directly accessible, estimate based on usage
-      const imageCacheEstimate = 0; // Will show as "Управляется системой"
 
       const [cacheLimit, usagePercent] = await Promise.all([
         getCacheLimit(),
@@ -91,9 +185,10 @@ export default function StorageScreen() {
 
       setCacheInfo({
         mmkv: mmkvInfo,
-        imageCache: imageCacheEstimate,
+        imageCache: imageCacheSize,
+        imageCacheFileCount,
         documentCache: documentCacheSize,
-        totalCache: mmkvInfo.totalSize + documentCacheSize,
+        totalCache: mmkvInfo.totalSize + documentCacheSize + imageCacheSize,
         cacheLimit,
         usagePercent,
       });
@@ -178,11 +273,12 @@ export default function StorageScreen() {
               await Image.clearMemoryCache();
 
               // Clear file cache
-              if (isNative && FileSystem.cacheDirectory) {
+              const clearCacheDir = FileSystem.cacheDirectory;
+              if (isNative && clearCacheDir) {
                 try {
-                  const files = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory);
+                  const files = await FileSystem.readDirectoryAsync(clearCacheDir);
                   for (const file of files) {
-                    await FileSystem.deleteAsync(`${FileSystem.cacheDirectory}${file}`, { idempotent: true });
+                    await FileSystem.deleteAsync(`${clearCacheDir}${file}`, { idempotent: true });
                   }
                 } catch (e) {
                   // Some files might not be deletable
@@ -516,10 +612,18 @@ export default function StorageScreen() {
                 </View>
                 <View style={styles.rowTextContainer}>
                   <Text style={styles.rowTitle}>Изображения</Text>
-                  <Text style={styles.rowSubtitle}>Аватарки и фото в чатах</Text>
+                  <Text style={styles.rowSubtitle}>
+                    {isNative && cacheInfo?.imageCacheFileCount !== undefined
+                      ? `${cacheInfo.imageCacheFileCount} файлов`
+                      : 'Аватарки и фото в чатах'}
+                  </Text>
                 </View>
               </View>
-              <Text style={styles.rowValue}>Системный</Text>
+              <Text style={styles.rowValue}>
+                {isNative
+                  ? formatBytes(cacheInfo?.imageCache || 0)
+                  : 'Системный'}
+              </Text>
             </View>
           </View>
         </View>

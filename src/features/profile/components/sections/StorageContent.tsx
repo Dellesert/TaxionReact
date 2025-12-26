@@ -14,7 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
 import { useTheme } from '@shared/hooks/useTheme';
 import {
@@ -31,6 +31,7 @@ import { isElectron, getElectronAPI } from '@shared/utils/platform';
 interface CacheInfo {
   mmkv: StorageInfo;
   imageCache: number;
+  imageCacheFileCount: number;
   documentCache: number;
   totalCache: number;
   cacheLimit: number;
@@ -40,6 +41,43 @@ interface CacheInfo {
     fileCount: number;
   };
 }
+
+/**
+ * Recursively calculate directory size on native platforms
+ */
+const getDirectorySize = async (dirPath: string): Promise<{ size: number; fileCount: number }> => {
+  if (!isNative) return { size: 0, fileCount: 0 };
+
+  try {
+    // Ensure path ends without trailing slash for getInfoAsync
+    const normalizedPath = dirPath.endsWith('/') ? dirPath.slice(0, -1) : dirPath;
+    const dirInfo = await FileSystem.getInfoAsync(normalizedPath);
+    if (!dirInfo.exists) return { size: 0, fileCount: 0 };
+
+    // If it's a file, return its size
+    if (!('isDirectory' in dirInfo) || !dirInfo.isDirectory) {
+      return { size: 'size' in dirInfo ? (dirInfo.size || 0) : 0, fileCount: 1 };
+    }
+
+    // List directory contents
+    const files = await FileSystem.readDirectoryAsync(normalizedPath);
+    let totalSize = 0;
+    let totalFiles = 0;
+
+    for (const file of files) {
+      // Use proper path separator
+      const filePath = `${normalizedPath}/${file}`;
+      const result = await getDirectorySize(filePath);
+      totalSize += result.size;
+      totalFiles += result.fileCount;
+    }
+
+    return { size: totalSize, fileCount: totalFiles };
+  } catch (e) {
+    console.log('[Storage] getDirectorySize error:', dirPath, e);
+    return { size: 0, fileCount: 0 };
+  }
+};
 
 const CACHE_LIMIT_OPTIONS = [
   { label: '1 ГБ', value: 1 * 1024 * 1024 * 1024 },
@@ -68,16 +106,48 @@ const StorageContent: React.FC = () => {
     try {
       const mmkvInfo = await getStorageSize();
       let documentCacheSize = 0;
+      let imageCacheSize = 0;
+      let imageCacheFileCount = 0;
       let electronMediaCache: { totalSize: number; fileCount: number } | undefined;
 
-      if (isNative && FileSystem.cacheDirectory) {
+      // Get cache directory from legacy expo-file-system
+      const cacheDir = FileSystem.cacheDirectory;
+
+      if (isNative && cacheDir) {
+        console.log('[Storage] Cache directory:', cacheDir);
+
+        // List all cache directories to find image cache
         try {
-          const cacheDir = await FileSystem.getInfoAsync(FileSystem.cacheDirectory);
-          if (cacheDir.exists && 'size' in cacheDir) {
-            documentCacheSize = cacheDir.size || 0;
+          const allFiles = await FileSystem.readDirectoryAsync(cacheDir);
+          console.log('[Storage] Cache contents:', allFiles);
+
+          // Known image cache directory names used by expo-image/SDWebImage/Glide
+          const imageCacheDirs = [
+            'image_manager_disk_cache',  // expo-image default
+            'image_cache',               // alternative name
+            'ImageCache',                // iOS SDWebImage
+            'com.bumptech.glide',        // Android Glide
+            'http-cache',                // HTTP cache
+          ];
+
+          for (const file of allFiles) {
+            const filePath = `${cacheDir}${file}`;
+            const isImageCache = imageCacheDirs.some(
+              dir => file.toLowerCase().includes(dir.toLowerCase())
+            );
+
+            const stats = await getDirectorySize(filePath);
+
+            if (isImageCache) {
+              imageCacheSize += stats.size;
+              imageCacheFileCount += stats.fileCount;
+              console.log('[Storage] Image cache found:', file, stats);
+            } else {
+              documentCacheSize += stats.size;
+            }
           }
         } catch (e) {
-          // Cache directory might not exist
+          console.log('[Storage] Error reading cache directory:', e);
         }
       }
 
@@ -93,7 +163,6 @@ const StorageContent: React.FC = () => {
         }
       }
 
-      const imageCacheEstimate = 0;
       const [cacheLimit, usagePercent] = await Promise.all([
         getCacheLimit(),
         getCacheUsagePercent(),
@@ -101,9 +170,10 @@ const StorageContent: React.FC = () => {
 
       setCacheInfo({
         mmkv: mmkvInfo,
-        imageCache: imageCacheEstimate,
+        imageCache: imageCacheSize,
+        imageCacheFileCount,
         documentCache: documentCacheSize,
-        totalCache: mmkvInfo.totalSize + documentCacheSize,
+        totalCache: mmkvInfo.totalSize + documentCacheSize + imageCacheSize,
         cacheLimit,
         usagePercent,
         electronMediaCache,
@@ -201,11 +271,12 @@ const StorageContent: React.FC = () => {
               await Image.clearDiskCache();
               await Image.clearMemoryCache();
 
-              if (isNative && FileSystem.cacheDirectory) {
+              const clearCacheDir = FileSystem.cacheDirectory;
+              if (isNative && clearCacheDir) {
                 try {
-                  const files = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory);
+                  const files = await FileSystem.readDirectoryAsync(clearCacheDir);
                   for (const file of files) {
-                    await FileSystem.deleteAsync(`${FileSystem.cacheDirectory}${file}`, { idempotent: true });
+                    await FileSystem.deleteAsync(`${clearCacheDir}${file}`, { idempotent: true });
                   }
                 } catch (e) {
                   // Some files might not be deletable
@@ -482,16 +553,33 @@ const StorageContent: React.FC = () => {
                 <View style={styles.rowTextContainer}>
                   <Text style={styles.rowTitle}>Изображения</Text>
                   <Text style={styles.rowSubtitle}>
-                    {cacheInfo?.electronMediaCache
-                      ? `${cacheInfo.electronMediaCache.fileCount} файлов`
-                      : 'Аватарки и фото в чатах'}
+                    {(() => {
+                      // Electron: use electronMediaCache
+                      if (cacheInfo?.electronMediaCache) {
+                        return `${cacheInfo.electronMediaCache.fileCount} файлов`;
+                      }
+                      // Native: use imageCacheFileCount
+                      if (isNative && cacheInfo?.imageCacheFileCount) {
+                        return `${cacheInfo.imageCacheFileCount} файлов`;
+                      }
+                      return 'Аватарки и фото в чатах';
+                    })()}
                   </Text>
                 </View>
               </View>
               <Text style={styles.rowValue}>
-                {cacheInfo?.electronMediaCache
-                  ? formatBytes(cacheInfo.electronMediaCache.totalSize)
-                  : 'Системный'}
+                {(() => {
+                  // Electron: use electronMediaCache
+                  if (isElectron() && cacheInfo?.electronMediaCache) {
+                    return formatBytes(cacheInfo.electronMediaCache.totalSize);
+                  }
+                  // Native: always show size (even if 0)
+                  if (isNative) {
+                    return formatBytes(cacheInfo?.imageCache || 0);
+                  }
+                  // Web: browser manages cache
+                  return 'Системный';
+                })()}
               </Text>
             </View>
           </View>
