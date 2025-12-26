@@ -48,6 +48,71 @@ let fileCache;
 let secureStore;
 let updater;
 
+// Store for window state (size, position)
+const windowStateStore = new Store({ name: 'window-state' });
+
+function getWindowState() {
+  const defaults = {
+    width: 1200,
+    height: 800,
+    x: undefined,
+    y: undefined,
+    isMaximized: false,
+  };
+
+  const state = windowStateStore.get('windowState', defaults);
+
+  // Validate that the window is within screen bounds
+  const { screen } = require('electron');
+  const displays = screen.getAllDisplays();
+
+  // Check if saved position is on any display
+  if (state.x !== undefined && state.y !== undefined) {
+    const isOnScreen = displays.some(display => {
+      const { x, y, width, height } = display.bounds;
+      return (
+        state.x >= x &&
+        state.x < x + width &&
+        state.y >= y &&
+        state.y < y + height
+      );
+    });
+
+    if (!isOnScreen) {
+      // Reset to center if off-screen
+      state.x = undefined;
+      state.y = undefined;
+    }
+  }
+
+  return state;
+}
+
+function saveWindowState() {
+  if (!mainWindow) return;
+
+  const isMaximized = mainWindow.isMaximized();
+
+  // Don't save bounds if maximized (save the restored bounds instead)
+  if (!isMaximized) {
+    const bounds = mainWindow.getBounds();
+    windowStateStore.set('windowState', {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      isMaximized: false,
+    });
+  } else {
+    // Just update the maximized flag, keep previous bounds
+    const current = windowStateStore.get('windowState', {});
+    windowStateStore.set('windowState', {
+      ...current,
+      isMaximized: true,
+    });
+  }
+}
+
 function createSplashWindow() {
   splashWindow = new BrowserWindow({
     width: 400,
@@ -71,9 +136,13 @@ function createSplashWindow() {
 }
 
 function createWindow() {
+  const windowState = getWindowState();
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: windowState.width,
+    height: windowState.height,
+    x: windowState.x,
+    y: windowState.y,
     minWidth: 800,
     minHeight: 600,
     icon: getIconPath(), // App icon
@@ -89,6 +158,16 @@ function createWindow() {
     title: 'Tachyon Messenger',
     show: false, // Don't show until ready
   });
+
+  // Restore maximized state
+  if (windowState.isMaximized) {
+    mainWindow.maximize();
+  }
+
+  // Save window state on resize, move, and close
+  mainWindow.on('resize', saveWindowState);
+  mainWindow.on('move', saveWindowState);
+  mainWindow.on('close', saveWindowState);
 
   // Load the app
   if (isDev) {
