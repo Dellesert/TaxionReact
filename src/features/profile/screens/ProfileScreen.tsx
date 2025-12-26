@@ -10,6 +10,7 @@ import { ProfileHeader } from '../components/common/ProfileHeader';
 import { ProfileMenuSection } from '../components/common/ProfileMenuSection';
 import { ProfileMenuItem } from '../components/common/ProfileMenuItem';
 import { getThemeLabel, isAdmin } from '../utils/profileHelpers';
+import { APP_VERSION, APP_BUILD } from '../utils/aboutConstants';
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -215,8 +216,8 @@ const ProfileScreen: React.FC = () => {
 
           {/* Version Info */}
           <View style={dynamicStyles.versionInfo}>
-            <Text style={dynamicStyles.versionText}>Версия 1.0.0</Text>
-            <Text style={dynamicStyles.versionText}>© 2025 Tachyon Messenger</Text>
+            <Text style={dynamicStyles.versionText}>Версия {APP_VERSION} ({APP_BUILD})</Text>
+            <Text style={dynamicStyles.versionText}>© {new Date().getFullYear()} Tachyon Messenger</Text>
           </View>
         </View>
       </ScrollView>
