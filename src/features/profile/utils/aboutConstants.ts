@@ -3,8 +3,12 @@
  * Константы для экрана "О приложении"
  */
 
-export const APP_VERSION = '1.0.0';
-export const APP_BUILD = '737';
+import Constants from 'expo-constants';
+
+// Версия берется автоматически из app.json
+export const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
+// Build номер из нативных настроек (ios.buildNumber / android.versionCode)
+export const APP_BUILD = Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode ?? '1';
 export const APP_NAME = 'Tachyon Messenger';
 export const COMPANY_NAME = 'Tachyon Technologies';
 export const SUPPORT_EMAIL = 'support@taxion.ru';

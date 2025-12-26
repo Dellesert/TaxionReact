@@ -17,6 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dellesert.tachyon-messenger",
+      "buildNumber": "738",
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -48,6 +49,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.tachyonmessenger",
+      "versionCode": 738,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
