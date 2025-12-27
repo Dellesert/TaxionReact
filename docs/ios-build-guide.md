@@ -389,6 +389,8 @@ xcodebuild -exportArchive \
 ```
 
 ### 6. Загрузить в App Store Connect
+Пользователь сам загружает через Transporter.app
+
 
 ```bash
 xcrun altool --upload-app \
@@ -397,9 +399,6 @@ xcrun altool --upload-app \
   -u YOUR_APPLE_ID \
   -p YOUR_APP_SPECIFIC_PASSWORD
 ```
-
-Или через Transporter.app.
-
 ---
 
 ## Быстрые команды
