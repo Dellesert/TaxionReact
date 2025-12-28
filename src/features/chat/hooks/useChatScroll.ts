@@ -44,6 +44,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const isScrollingToUnread = useRef<boolean>(false); // Флаг скролла к непрочитанным (по кнопке)
   const isInitialScrollComplete = useRef<boolean>(false); // Флаг что FlashList завершил начальный скролл
   const [isPositionReady, setIsPositionReady] = useState<boolean>(false); // Флаг что позиция скролла готова для показа списка
+  const isJumpInProgress = useRef<boolean>(false); // Флаг что идёт jump к сообщению (замена массива)
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
@@ -463,6 +464,21 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         return;
       }
 
+      // Проверяем что это не замена массива (jump context)
+      // Если previousLastMessageId существует, но его нет в текущем массиве -
+      // значит массив был полностью заменён (jump), а не дополнен
+      if (previousLastMessageId.current !== null) {
+        const prevMsgExists = messages.some(m => m.id === previousLastMessageId.current);
+        if (!prevMsgExists) {
+          // Массив был заменён - синхронизируем состояние и выходим
+          previousMessagesLength.current = messages.length;
+          previousLastMessageId.current = currentLastId;
+          setNewMessagesCount(0);
+          setFirstNewMessageIndex(-1);
+          return;
+        }
+      }
+
       // В jump context нужно различать:
       // 1. Инкрементальная загрузка (loadMoreMessagesAfter) - ID <= lastNewestMessageId
       // 2. Реальные новые сообщения от WebSocket - ID > lastNewestMessageId
@@ -536,32 +552,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const handleScrollToBottom = useCallback(async () => {
     const loadMessages = useChatStore.getState().loadMessages;
 
-    // ПРИОРИТЕТ 1: Проверяем, есть ли новые сообщения пришедшие во время просмотра
-    // Это важнее чем jump context, потому что пользователь хочет видеть новые сообщения
-    if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
-      // Устанавливаем флаг чтобы handleScroll не скрывал баннер автоматически
-      isScrollingToUnread.current = true;
-
-      // Скроллим к первому новому сообщению
-      // viewPosition: 0.5 показывает элемент в центре экрана
-      // viewOffset: -30 сдвигает чуть выше чтобы плашка "Новые сообщения" была видна
-      listRef.current?.scrollToIndex({
-        index: firstNewMessageIndex,
-        animated: true,
-        viewPosition: 0.5,
-        viewOffset: -30,
-      });
-
-      // Сбрасываем флаг после завершения анимации скролла (~500ms)
-      setTimeout(() => {
-        isScrollingToUnread.current = false;
-      }, 500);
-
-      // НЕ обнуляем счетчик - он сбросится когда пользователь сам доскроллит до низа
-      return;
-    }
-
-    // ПРИОРИТЕТ 2: Если мы в контексте после jump - перезагружаем последние сообщения
+    // ПРИОРИТЕТ 1: Если мы в контексте после jump - СНАЧАЛА перезагружаем последние сообщения
+    // Это важно потому что в jump context загружен только частичный массив,
+    // и новые сообщения от WebSocket могут не отображаться корректно
     const wasInJumpContext = isInJumpContext.current;
     if (wasInJumpContext) {
       // Сбрасываем флаги сразу
@@ -570,6 +563,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       // Загружаем последние сообщения
       await loadMessages(chatId);
+
+      // Синхронизируем refs с новым массивом для предотвращения ложных "новых" сообщений
+      const freshMessages = useChatStore.getState().messages[chatId] || [];
+      previousMessagesLength.current = freshMessages.length;
+      if (freshMessages.length > 0) {
+        previousLastMessageId.current = freshMessages[freshMessages.length - 1].id;
+      }
 
       // ✅ ВАЖНО: Сбрасываем флаги чтобы можно было снова подгружать старые сообщения
       lastOldestMessageId.current = null;
@@ -667,6 +667,31 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       return;
     }
 
+    // ПРИОРИТЕТ 2: Проверяем, есть ли новые сообщения пришедшие во время просмотра
+    // (когда НЕ в jump context - в jump context мы уже перезагрузили сообщения выше)
+    if (newMessagesCount > 0 && firstNewMessageIndex !== -1) {
+      // Устанавливаем флаг чтобы handleScroll не скрывал баннер автоматически
+      isScrollingToUnread.current = true;
+
+      // Скроллим к первому новому сообщению
+      // viewPosition: 0.5 показывает элемент в центре экрана
+      // viewOffset: -30 сдвигает чуть выше чтобы плашка "Новые сообщения" была видна
+      listRef.current?.scrollToIndex({
+        index: firstNewMessageIndex,
+        animated: true,
+        viewPosition: 0.5,
+        viewOffset: -30,
+      });
+
+      // Сбрасываем флаг после завершения анимации скролла (~500ms)
+      setTimeout(() => {
+        isScrollingToUnread.current = false;
+      }, 500);
+
+      // НЕ обнуляем счетчик - он сбросится когда пользователь сам доскроллит до низа
+      return;
+    }
+
     // ПРИОРИТЕТ 3: Если есть непрочитанные с момента открытия чата
     if (firstUnreadIndex !== -1 && unreadCount >= 1) {
       isScrollingToUnread.current = true;
@@ -760,6 +785,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         const targetMessageId = messageId;
         console.log('[performSeamlessScroll] Starting for messageId:', targetMessageId);
 
+        // Устанавливаем флаг что идёт jump операция - это предотвратит ложное обновление счётчика
+        isJumpInProgress.current = true;
+
         try {
           isAnimatingToPin.current = true;
 
@@ -768,6 +796,18 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           console.log('[performSeamlessScroll] Calling jumpToMessage...');
           await jumpToMessage(chatId, messageId);
           console.log('[performSeamlessScroll] jumpToMessage completed');
+
+          // Синхронизируем refs с новым массивом сразу после загрузки
+          // Это предотвращает ложное определение "новых" сообщений в useEffect
+          const freshMessages = useChatStore.getState().messages[chatId] || [];
+          previousMessagesLength.current = freshMessages.length;
+          if (freshMessages.length > 0) {
+            previousLastMessageId.current = freshMessages[freshMessages.length - 1].id;
+          }
+
+          // Сбрасываем флаг jump сразу после синхронизации refs
+          // Теперь новые сообщения от WebSocket будут корректно обрабатываться
+          isJumpInProgress.current = false;
 
           // Проверяем, не была ли анимация прервана (пользователь нажал на другое сообщение)
           if (!isAnimatingToPin.current) {
@@ -872,6 +912,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         } catch (error) {
           console.error('📍 ERROR:', error);
           isAnimatingToPin.current = false;
+          isJumpInProgress.current = false; // На случай если ошибка до синхронизации refs
         }
       };
 
@@ -940,6 +981,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isKeyboardAnimating.current = false; // ✅ Сбрасываем флаг анимации клавиатуры
     isInitialScrollComplete.current = false; // ✅ Сбрасываем флаг завершения начального скролла
     setIsPositionReady(false); // ✅ Сбрасываем флаг готовности позиции
+    isJumpInProgress.current = false; // ✅ Сбрасываем флаг jump операции
   }, []);
 
   return {
