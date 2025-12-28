@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dellesert.tachyon-messenger",
-      "buildNumber": "739",
+      "buildNumber": "4",
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
       "googleServicesFile": "./GoogleService-Info.plist",
