@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { usePasswordPolicy } from '@shared/hooks/usePasswordPolicy';
 import { ErrorDisplay } from '../common/ErrorDisplay';
 
 interface ResetPasswordFormProps {
@@ -26,6 +27,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
   onCancel,
 }) => {
   const { theme } = useTheme();
+  const { getPasswordHint } = usePasswordPolicy();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -97,7 +99,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
 
       <View style={styles.hint}>
         <Text style={[styles.hintText, { color: theme.textSecondary }]}>
-          Пароль должен содержать минимум 8 символов
+          {getPasswordHint()}
         </Text>
       </View>
 

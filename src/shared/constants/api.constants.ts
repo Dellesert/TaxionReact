@@ -37,6 +37,11 @@ export const API_ENDPOINTS = {
     PASSKEY_UPDATE: (id: number) => `/auth/passkey/${id}`,
   },
 
+  // Settings (public)
+  SETTINGS: {
+    PASSWORD_POLICY: '/password-policy',
+  },
+
   // User
   USER: {
     PROFILE: '/profile',

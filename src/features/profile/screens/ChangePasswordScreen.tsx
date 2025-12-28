@@ -22,6 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { usePasswordPolicy } from '@shared/hooks/usePasswordPolicy';
 import { updatePassword } from '@api/user.api';
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -30,6 +31,7 @@ const ChangePasswordScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
+  const { validatePassword, getPasswordHint } = usePasswordPolicy();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -56,13 +58,10 @@ const ChangePasswordScreen: React.FC = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      showError('Новый пароль должен содержать минимум 8 символов');
-      return;
-    }
-
-    if (newPassword.length > 100) {
-      showError('Новый пароль не должен превышать 100 символов');
+    // Use dynamic password validation from server policy
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      showError(passwordValidation.error || 'Некорректный пароль');
       return;
     }
 
@@ -219,7 +218,7 @@ const ChangePasswordScreen: React.FC = () => {
 
             <View style={styles.passwordHint}>
               <Text style={[styles.passwordHintText, { color: theme.textSecondary }]}>
-                Пароль должен содержать минимум 6 символов (максимум 100)
+                {getPasswordHint()} (максимум 100)
               </Text>
             </View>
 

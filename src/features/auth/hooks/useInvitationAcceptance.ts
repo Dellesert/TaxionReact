@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { validatePassword, validatePasswordConfirmation, parseInvitationError } from '../utils/invitationHelpers';
+import { validatePasswordConfirmation, parseInvitationError } from '../utils/invitationHelpers';
+import { usePasswordPolicy } from '@shared/hooks/usePasswordPolicy';
 import * as invitationApi from '../api/invitation.api';
 
 interface UseInvitationAcceptanceReturn {
@@ -12,10 +13,11 @@ interface UseInvitationAcceptanceReturn {
  */
 export const useInvitationAcceptance = (): UseInvitationAcceptanceReturn => {
   const [isLoading, setIsLoading] = useState(false);
+  const { validatePassword } = usePasswordPolicy();
 
   const acceptInvitation = useCallback(
     async (code: string, password: string, confirmPassword: string): Promise<void> => {
-      // Validate password
+      // Validate password using dynamic policy
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
         throw new Error(passwordValidation.error);
@@ -42,7 +44,7 @@ export const useInvitationAcceptance = (): UseInvitationAcceptanceReturn => {
         setIsLoading(false);
       }
     },
-    []
+    [validatePassword]
   );
 
   return {

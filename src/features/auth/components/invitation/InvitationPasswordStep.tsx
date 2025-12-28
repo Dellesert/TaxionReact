@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { InvitationData } from '../../utils/invitationHelpers';
 import { InvitationInfoBox } from './InvitationInfoBox';
 import { useTheme } from '@shared/hooks/useTheme';
+import { usePasswordPolicy } from '@shared/hooks/usePasswordPolicy';
 
 interface InvitationPasswordStepProps {
   invitationData: InvitationData | null;
@@ -35,6 +36,7 @@ export const InvitationPasswordStep: React.FC<InvitationPasswordStepProps> = ({
   onBack,
 }) => {
   const { theme } = useTheme();
+  const { getPasswordHint } = usePasswordPolicy();
 
   return (
     <View style={[styles.form, { backgroundColor: theme.card }]}>
@@ -57,7 +59,7 @@ export const InvitationPasswordStep: React.FC<InvitationPasswordStepProps> = ({
             ]}
             value={password}
             onChangeText={onPasswordChange}
-            placeholder="Минимум 8 символов"
+            placeholder={getPasswordHint()}
             placeholderTextColor={theme.inputPlaceholder}
             secureTextEntry={!showPassword}
             autoCapitalize="none"

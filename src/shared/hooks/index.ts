@@ -23,3 +23,6 @@ export { useOptimisticPoll, clearAllPendingPollOperations } from './useOptimisti
 // Event/Calendar optimizations
 export { useEventPrefetch, getEventFromCache, clearAllEventCache } from './useEventPrefetch';
 export { useOptimisticEvent, clearAllPendingEventOperations } from './useOptimisticEvent';
+
+// Password policy
+export { usePasswordPolicy, prefetchPasswordPolicy, clearPasswordPolicyCache } from './usePasswordPolicy';
