@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { useTheme } from '@shared/hooks/useTheme';
+import { MobileViewMode } from '../../hooks/useMobileCalendarState';
 
 interface CalendarHeaderProps {
   searchQuery?: string;
@@ -13,6 +14,9 @@ interface CalendarHeaderProps {
   onFilterPress?: () => void;
   hasActiveFilters?: boolean;
   isDesktop?: boolean;
+  // Mobile view mode props
+  viewMode?: MobileViewMode;
+  onViewModeToggle?: () => void;
 }
 
 export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
@@ -23,6 +27,8 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   onFilterPress,
   hasActiveFilters = false,
   isDesktop = false,
+  viewMode,
+  onViewModeToggle,
 }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -107,9 +113,23 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
         <Text style={[styles.title, { color: theme.text }]}>Календарь</Text>
 
-        <TouchableOpacity onPress={onAddPress} style={styles.addButton}>
-          <Ionicons name="add" size={30} color={theme.primary} />
-        </TouchableOpacity>
+        <View style={styles.rightButtons}>
+          {/* View Mode Toggle Button */}
+          {onViewModeToggle && (
+            <TouchableOpacity onPress={onViewModeToggle} style={styles.viewToggleButton}>
+              <Ionicons
+                name={viewMode === 'week' ? 'calendar-outline' : 'list-outline'}
+                size={24}
+                color={theme.primary}
+              />
+            </TouchableOpacity>
+          )}
+
+          {/* Add Button */}
+          <TouchableOpacity onPress={onAddPress} style={styles.addButton}>
+            <Ionicons name="add" size={30} color={theme.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -140,6 +160,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: 'center',
+  },
+  rightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewToggleButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addButton: {
     width: 40,

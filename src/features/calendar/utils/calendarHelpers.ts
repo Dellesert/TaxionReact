@@ -1,4 +1,4 @@
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay, eachDayOfInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Event } from '../types/calendar.types';
 
@@ -134,4 +134,35 @@ export const getViewLabel = (view: 'day' | 'week' | 'month'): string => {
     default:
       return '';
   }
+};
+
+/**
+ * Get Monday of the week containing the given date
+ */
+export const getWeekMonday = (date: Date): Date => {
+  return startOfWeek(date, { weekStartsOn: 1 });
+};
+
+/**
+ * Get array of 7 days for the week (Monday to Sunday)
+ */
+export const getWeekDays = (weekStartDate: Date): Date[] => {
+  return eachDayOfInterval({
+    start: weekStartDate,
+    end: addDays(weekStartDate, 6),
+  });
+};
+
+/**
+ * Format short weekday name (Пн, Вт, ...)
+ */
+export const formatWeekDayShort = (date: Date): string => {
+  return format(date, 'EEEEEE', { locale: ru });
+};
+
+/**
+ * Check if two dates are the same day
+ */
+export const areSameDay = (date1: Date, date2: Date): boolean => {
+  return isSameDay(date1, date2);
 };

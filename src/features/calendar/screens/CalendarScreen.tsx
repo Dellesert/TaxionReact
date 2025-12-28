@@ -8,8 +8,7 @@ import { EventListSkeleton } from '../components/states/EventListSkeleton';
 import CreateEventModal from '../components/modals/CreateEventModal';
 import { MonthCalendarView } from '../components/views/MonthCalendarView';
 import { CalendarHeader } from '../components/navigation/CalendarHeader';
-import { CalendarDateNavigation } from '../components/navigation/CalendarDateNavigation';
-import { CalendarViewSelector } from '../components/navigation/CalendarViewSelector';
+import { WeekDayStrip } from '../components/navigation/WeekDayStrip';
 import { CalendarEventsList } from '../components/events/CalendarEventsList';
 import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
 import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
@@ -19,7 +18,9 @@ import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchInt
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { useCalendarNavigation } from '../hooks/useCalendarNavigation';
-import { formatDateRangeText, groupEventsByDate } from '../utils/calendarHelpers';
+import { useMobileCalendarState } from '../hooks/useMobileCalendarState';
+import { useMobileCalendarData } from '../hooks/useMobileCalendarData';
+import { groupEventsByDate } from '../utils/calendarHelpers';
 
 type CalendarStackParamList = {
   CalendarMain: {
@@ -30,6 +31,109 @@ type CalendarStackParamList = {
 
 type CalendarNavigationProp = NativeStackNavigationProp<CalendarStackParamList, 'CalendarMain'>;
 type CalendarRouteProp = RouteProp<CalendarStackParamList, 'CalendarMain'>;
+
+// Mobile Calendar Content Component
+interface MobileCalendarContentProps {
+  onAddPress: () => void;
+  onEventPress: (event: Event) => void;
+  searchQuery: string;
+}
+
+const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
+  onAddPress,
+  onEventPress,
+  searchQuery,
+}) => {
+  const { showError } = useNotification();
+
+  // Mobile calendar state
+  const {
+    weekStartDate,
+    selectedDate,
+    viewMode,
+    weekDays,
+    handleDayPress,
+    handlePrevWeek,
+    handleNextWeek,
+    handleMonthDateSelect,
+    toggleViewMode,
+    getEventsDateRange,
+  } = useMobileCalendarState();
+
+  // Get date range for data fetching
+  const { startDate, endDate } = getEventsDateRange();
+
+  // Fetch events for the current range
+  const { events, isLoading, refreshing, loadEvents, handleRefresh } = useMobileCalendarData(
+    startDate,
+    endDate
+  );
+
+  // Load events when date range changes
+  useEffect(() => {
+    loadEvents().catch(() => showError('Не удалось загрузить события'));
+  }, [startDate, endDate]);
+
+  // Filter events by search query
+  const filteredEvents = searchQuery
+    ? events.filter(
+        (event) =>
+          event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          event.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : events;
+
+  // Group events for list display
+  const sections = groupEventsByDate(filteredEvents);
+
+  return (
+    <>
+      {/* Header with view mode toggle */}
+      <CalendarHeader
+        onAddPress={onAddPress}
+        viewMode={viewMode}
+        onViewModeToggle={toggleViewMode}
+      />
+
+      {/* Week day strip (only in week mode) */}
+      {viewMode === 'week' && (
+        <WeekDayStrip
+          weekDays={weekDays}
+          selectedDate={selectedDate}
+          onDayPress={handleDayPress}
+          onSwipeLeft={handleNextWeek}
+          onSwipeRight={handlePrevWeek}
+        />
+      )}
+
+      {/* Content: Month calendar or Events list */}
+      {viewMode === 'month' ? (
+        <MonthCalendarView
+          selectedDate={weekStartDate}
+          events={filteredEvents}
+          onDatePress={handleMonthDateSelect}
+          onEventPress={onEventPress}
+        />
+      ) : isLoading ? (
+        <EventListSkeleton />
+      ) : sections.length === 0 ? (
+        <ScrollView
+          contentContainerStyle={styles.emptyStateContainer}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        >
+          <CalendarEmptyState />
+        </ScrollView>
+      ) : (
+        <CalendarEventsList
+          sections={sections}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          onEventPress={onEventPress}
+        />
+      )}
+    </>
+  );
+};
 
 const CalendarScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -62,14 +166,11 @@ const CalendarScreen: React.FC = () => {
     enabled: true,
   });
 
-  // Custom hooks
+  // Custom hooks for desktop
   const {
     selectedDate,
     selectedView,
     setSelectedView,
-    handlePrevious,
-    handleNext,
-    handleToday,
     handleDatePress,
   } = useCalendarNavigation();
 
@@ -117,7 +218,7 @@ const CalendarScreen: React.FC = () => {
     setSelectedView(view);
   };
 
-  // Filter events by search query
+  // Filter events by search query (for desktop)
   const filteredEvents = searchQuery
     ? events.filter((event) =>
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -125,8 +226,7 @@ const CalendarScreen: React.FC = () => {
       )
     : events;
 
-  // Computed values
-  const dateRangeText = formatDateRangeText(selectedDate, selectedView);
+  // Computed values (for desktop)
   const sections = groupEventsByDate(filteredEvents);
 
   return (
@@ -150,48 +250,12 @@ const CalendarScreen: React.FC = () => {
             onAddPress={handleAddEvent}
           />
         ) : (
-          /* Mobile View - Original Layout */
-          <>
-            {/* Header */}
-            <CalendarHeader onAddPress={handleAddEvent} />
-
-            {/* Date Navigation */}
-            <CalendarDateNavigation
-              dateRangeText={dateRangeText}
-              onPrevious={handlePrevious}
-              onNext={handleNext}
-              onToday={handleToday}
-            />
-
-            {/* View Selector Pills */}
-            <CalendarViewSelector selectedView={selectedView} onViewChange={setSelectedView} />
-
-            {/* Events List or Month Calendar */}
-            {isLoading ? (
-              <EventListSkeleton />
-            ) : selectedView === 'month' ? (
-              <MonthCalendarView
-                selectedDate={selectedDate}
-                events={filteredEvents}
-                onDatePress={handleDatePress}
-                onEventPress={handleEventPress}
-              />
-            ) : sections.length === 0 ? (
-              <ScrollView
-                contentContainerStyle={styles.emptyStateContainer}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-              >
-                <CalendarEmptyState />
-              </ScrollView>
-            ) : (
-              <CalendarEventsList
-                sections={sections}
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                onEventPress={handleEventPress}
-              />
-            )}
-          </>
+          /* Mobile View - New Week Strip Layout */
+          <MobileCalendarContent
+            onAddPress={handleAddEvent}
+            onEventPress={handleEventPress}
+            searchQuery={searchQuery}
+          />
         )}
       </View>
 
