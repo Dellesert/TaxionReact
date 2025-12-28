@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -16,6 +17,7 @@ const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user, refreshUser } = useAuthStore();
   const { theme, mode, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { isUploadingAvatar, handleChangeAvatar } = useProfileAvatar();
   const { isLoggingOut, handleLogout, handleThemePress } = useProfileActions();
 
@@ -95,10 +97,27 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
+      {Platform.OS === 'ios' && <StatusBar style="light" />}
+      {/* Fixed status bar background for iOS Dynamic Island */}
+      {Platform.OS === 'ios' && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top,
+            backgroundColor: theme.primary,
+            zIndex: 10,
+          }}
+        />
+      )}
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: theme.primary }}
         contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        contentInsetAdjustmentBehavior="never"
       >
         {/* User Info */}
         <ProfileHeader user={user} />
