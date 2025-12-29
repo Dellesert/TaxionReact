@@ -23,6 +23,23 @@ import { PAGINATION } from '@shared/constants/api.constants';
 const inFlightUserRequests = new Map<number, Promise<any>>();
 
 /**
+ * Merges updated message with existing message, preserving forward-related fields.
+ * This is needed because some API endpoints (pin, unpin, reaction) may not return
+ * forward-related fields (original_sender, etc.) in the response.
+ */
+const mergeMessageWithForwardFields = (existingMsg: Message | undefined, updatedMsg: Message): Message => {
+  return {
+    ...existingMsg,
+    ...updatedMsg,
+    // Preserve forward-related fields if they exist locally but not in update
+    original_sender: updatedMsg.original_sender || existingMsg?.original_sender,
+    original_sender_id: updatedMsg.original_sender_id ?? existingMsg?.original_sender_id,
+    is_forwarded: updatedMsg.is_forwarded ?? existingMsg?.is_forwarded,
+    forwarded_from_message_id: updatedMsg.forwarded_from_message_id ?? existingMsg?.forwarded_from_message_id,
+  } as Message;
+};
+
+/**
  * Get user with request deduplication
  * Prevents multiple parallel requests for the same user
  */
@@ -795,14 +812,29 @@ export const useChatStore = create<ChatState>()(
   updateMessage: async (messageId: number, content: string) => {
     try {
       const updatedMessage = await chatApi.updateMessage(messageId, { content });
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
-            msg.id === messageId ? updatedMessage : msg
-          ),
-        },
-      }));
+      set((state) => {
+        const existingMessages = state.messages[updatedMessage.chat_id] || [];
+        const existingMsg = existingMessages.find(m => m.id === messageId);
+
+        // Мержим сообщение, сохраняя forward-related поля
+        const mergedMessage = {
+          ...existingMsg,
+          ...updatedMessage,
+          original_sender: updatedMessage.original_sender || existingMsg?.original_sender,
+          original_sender_id: updatedMessage.original_sender_id ?? existingMsg?.original_sender_id,
+          is_forwarded: updatedMessage.is_forwarded ?? existingMsg?.is_forwarded,
+          forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? existingMsg?.forwarded_from_message_id,
+        };
+
+        return {
+          messages: {
+            ...state.messages,
+            [updatedMessage.chat_id]: existingMessages.map((msg) =>
+              msg.id === messageId ? mergedMessage : msg
+            ),
+          },
+        };
+      });
     } catch (error: any) {
       set({ error: error.message || 'Failed to update message' });
       throw error;
@@ -930,22 +962,36 @@ export const useChatStore = create<ChatState>()(
   pinMessage: async (messageId: number) => {
     try {
       const updatedMessage = await chatApi.pinMessage(messageId);
-      // Обновляем сообщение локально ПОЛНОСТЬЮ с сервера (включая poll_data)
+      // Обновляем сообщение локально, сохраняя forward-related поля
       set((state) => {
         const chatId = updatedMessage.chat_id;
         const existingPinned = state.pinnedMessages[chatId] || [];
+        const existingMessages = state.messages[chatId] || [];
+
+        // Находим существующее сообщение для мержа forward-related полей
+        const existingMsg = existingMessages.find(m => m.id === messageId);
+
+        // Мержим сообщение, сохраняя forward-related поля
+        const mergedMessage = {
+          ...existingMsg,
+          ...updatedMessage,
+          original_sender: updatedMessage.original_sender || existingMsg?.original_sender,
+          original_sender_id: updatedMessage.original_sender_id ?? existingMsg?.original_sender_id,
+          is_forwarded: updatedMessage.is_forwarded ?? existingMsg?.is_forwarded,
+          forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? existingMsg?.forwarded_from_message_id,
+        };
 
         // Добавляем в закрепленные (если еще нет)
         const isAlreadyPinned = existingPinned.some(m => m.id === messageId);
         const newPinned = isAlreadyPinned
-          ? existingPinned.map(m => m.id === messageId ? updatedMessage : m)
-          : [updatedMessage, ...existingPinned]; // Добавляем в начало
+          ? existingPinned.map(m => m.id === messageId ? mergedMessage : m)
+          : [mergedMessage, ...existingPinned]; // Добавляем в начало
 
         return {
           messages: {
             ...state.messages,
-            [chatId]: (state.messages[chatId] || []).map((msg) =>
-              msg.id === messageId ? updatedMessage : msg
+            [chatId]: existingMessages.map((msg) =>
+              msg.id === messageId ? mergedMessage : msg
             ),
           },
           pinnedMessages: {
@@ -963,10 +1009,24 @@ export const useChatStore = create<ChatState>()(
   unpinMessage: async (messageId: number) => {
     try {
       const updatedMessage = await chatApi.unpinMessage(messageId);
-      // Обновляем сообщение локально ПОЛНОСТЬЮ с сервера (включая poll_data)
+      // Обновляем сообщение локально, сохраняя forward-related поля
       set((state) => {
         const chatId = updatedMessage.chat_id;
         const existingPinned = state.pinnedMessages[chatId] || [];
+        const existingMessages = state.messages[chatId] || [];
+
+        // Находим существующее сообщение для мержа forward-related полей
+        const existingMsg = existingMessages.find(m => m.id === messageId);
+
+        // Мержим сообщение, сохраняя forward-related поля
+        const mergedMessage = {
+          ...existingMsg,
+          ...updatedMessage,
+          original_sender: updatedMessage.original_sender || existingMsg?.original_sender,
+          original_sender_id: updatedMessage.original_sender_id ?? existingMsg?.original_sender_id,
+          is_forwarded: updatedMessage.is_forwarded ?? existingMsg?.is_forwarded,
+          forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? existingMsg?.forwarded_from_message_id,
+        };
 
         // Удаляем из закрепленных
         const newPinned = existingPinned.filter(m => m.id !== messageId);
@@ -974,8 +1034,8 @@ export const useChatStore = create<ChatState>()(
         return {
           messages: {
             ...state.messages,
-            [chatId]: (state.messages[chatId] || []).map((msg) =>
-              msg.id === messageId ? updatedMessage : msg
+            [chatId]: existingMessages.map((msg) =>
+              msg.id === messageId ? mergedMessage : msg
             ),
           },
           pinnedMessages: {
@@ -998,14 +1058,29 @@ export const useChatStore = create<ChatState>()(
   addReaction: async (messageId: number, emoji: string) => {
     try {
       const updatedMessage = await chatApi.addReaction(messageId, { emoji });
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
-            msg.id === messageId ? updatedMessage : msg
-          ),
-        },
-      }));
+      set((state) => {
+        const existingMessages = state.messages[updatedMessage.chat_id] || [];
+        const existingMsg = existingMessages.find(m => m.id === messageId);
+
+        // Мержим сообщение, сохраняя forward-related поля
+        const mergedMessage = {
+          ...existingMsg,
+          ...updatedMessage,
+          original_sender: updatedMessage.original_sender || existingMsg?.original_sender,
+          original_sender_id: updatedMessage.original_sender_id ?? existingMsg?.original_sender_id,
+          is_forwarded: updatedMessage.is_forwarded ?? existingMsg?.is_forwarded,
+          forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? existingMsg?.forwarded_from_message_id,
+        };
+
+        return {
+          messages: {
+            ...state.messages,
+            [updatedMessage.chat_id]: existingMessages.map((msg) =>
+              msg.id === messageId ? mergedMessage : msg
+            ),
+          },
+        };
+      });
     } catch (error: any) {
       set({ error: error.message || 'Failed to add reaction' });
     }
@@ -1014,14 +1089,29 @@ export const useChatStore = create<ChatState>()(
   removeReaction: async (messageId: number, emoji: string) => {
     try {
       const updatedMessage = await chatApi.removeReaction(messageId, emoji);
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [updatedMessage.chat_id]: (state.messages[updatedMessage.chat_id] || []).map((msg) =>
-            msg.id === messageId ? updatedMessage : msg
-          ),
-        },
-      }));
+      set((state) => {
+        const existingMessages = state.messages[updatedMessage.chat_id] || [];
+        const existingMsg = existingMessages.find(m => m.id === messageId);
+
+        // Мержим сообщение, сохраняя forward-related поля
+        const mergedMessage = {
+          ...existingMsg,
+          ...updatedMessage,
+          original_sender: updatedMessage.original_sender || existingMsg?.original_sender,
+          original_sender_id: updatedMessage.original_sender_id ?? existingMsg?.original_sender_id,
+          is_forwarded: updatedMessage.is_forwarded ?? existingMsg?.is_forwarded,
+          forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? existingMsg?.forwarded_from_message_id,
+        };
+
+        return {
+          messages: {
+            ...state.messages,
+            [updatedMessage.chat_id]: existingMessages.map((msg) =>
+              msg.id === messageId ? mergedMessage : msg
+            ),
+          },
+        };
+      });
     } catch (error: any) {
       set({ error: error.message || 'Failed to remove reaction' });
     }
@@ -1583,18 +1673,39 @@ export const useChatStore = create<ChatState>()(
     }
 
     set((state) => {
-      // Update messages
+      // Update messages with merge logic to preserve important fields
       const updatedMessages = {
         ...state.messages,
-        [message.chat_id]: (state.messages[message.chat_id] || []).map((msg) =>
-          msg.id === message.id ? updatedMessage : msg
-        ),
+        [message.chat_id]: (state.messages[message.chat_id] || []).map((msg) => {
+          if (msg.id !== message.id) return msg;
+
+          // Merge: keep local original_sender if WebSocket didn't provide it
+          // This handles cases like pin/unpin where WS may not include all relations
+          return {
+            ...msg, // Keep existing local data as base
+            ...updatedMessage, // Override with WebSocket data
+            // Preserve forward-related fields if they exist locally but not in update
+            original_sender: updatedMessage.original_sender || msg.original_sender,
+            original_sender_id: updatedMessage.original_sender_id ?? msg.original_sender_id,
+            is_forwarded: updatedMessage.is_forwarded ?? msg.is_forwarded,
+            forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? msg.forwarded_from_message_id,
+          };
+        }),
       };
 
       // Helper function to update last_message in chat if needed
       const updateChatLastMessage = (chat: Chat) => {
         if (chat.id === message.chat_id && chat.last_message?.id === message.id) {
-          return { ...chat, last_message: updatedMessage };
+          // Merge last_message to preserve forward-related fields
+          const mergedLastMessage = {
+            ...chat.last_message,
+            ...updatedMessage,
+            original_sender: updatedMessage.original_sender || chat.last_message?.original_sender,
+            original_sender_id: updatedMessage.original_sender_id ?? chat.last_message?.original_sender_id,
+            is_forwarded: updatedMessage.is_forwarded ?? chat.last_message?.is_forwarded,
+            forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? chat.last_message?.forwarded_from_message_id,
+          };
+          return { ...chat, last_message: mergedLastMessage };
         }
         return chat;
       };
