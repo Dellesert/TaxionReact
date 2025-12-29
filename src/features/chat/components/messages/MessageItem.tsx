@@ -173,11 +173,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         {((!isOwnMessage && !selectionMode && !isSavedChat) || isSavedForwardedMessage) && (
           <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
             <Avatar
-              imageUrl={sender?.avatar}
-              thumbnailUrl={sender?.avatar_thumbnail}
-              name={sender?.name || `User ${message.sender_id}`}
+              imageUrl={isSavedForwardedMessage && message.original_sender ? message.original_sender.avatar : sender?.avatar}
+              thumbnailUrl={isSavedForwardedMessage && message.original_sender ? message.original_sender.avatar_thumbnail : sender?.avatar_thumbnail}
+              name={isSavedForwardedMessage && message.original_sender ? (message.original_sender.name || `User ${message.original_sender_id}`) : (sender?.name || `User ${message.sender_id}`)}
               size={32}
-              userId={sender?.id}
+              userId={isSavedForwardedMessage && message.original_sender ? message.original_sender.id : sender?.id}
               style={styles.avatar}
             />
           </TouchableOpacity>
