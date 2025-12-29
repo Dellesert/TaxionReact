@@ -11,7 +11,6 @@ interface TaskKanbanBoardProps {
   totals: TotalsByStatus;
   loading: LoadingByStatus;
   canLoadMore: CanLoadMoreByStatus;
-  subtasksCache: Record<number, Task[]>;
   expandAllSubtasks: boolean;
   refreshing?: boolean;
   searchQuery: string;
@@ -26,12 +25,10 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
   totals,
   loading,
   canLoadMore,
-  subtasksCache,
   expandAllSubtasks,
   searchQuery,
   onTaskPress,
   onLoadMore,
-  onExpandAllToggle,
 }) => {
   const { width } = useWindowDimensions();
   const isWideScreen = useIsWideScreen();
@@ -78,7 +75,6 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
             total={totals[status]}
             loading={loading[status]}
             canLoadMore={canLoadMore[status]}
-            subtasksCache={subtasksCache}
             expandAllSubtasks={expandAllSubtasks}
             onTaskPress={onTaskPress}
             onLoadMore={() => onLoadMore(status)}

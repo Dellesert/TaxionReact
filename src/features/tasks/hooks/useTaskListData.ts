@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { Task } from '../types/task.types';
 import type { StatusTab } from '../utils/taskListHelpers';
-import { TASKS_PER_PAGE, removeDuplicateTasks, getTasksWithSubtasks } from '../utils/taskListHelpers';
+import { TASKS_PER_PAGE, removeDuplicateTasks } from '../utils/taskListHelpers';
 import * as taskApi from '../api/task.api';
 import { useTaskStore } from '@shared/store/taskStore';
 
@@ -47,13 +47,11 @@ export interface UseTaskListDataReturn {
     limit: number,
     offset: number,
     append: boolean,
-    filters: Record<string, any>,
-    onSubtasksLoad?: (taskIds: number[]) => Promise<void>
+    filters: Record<string, any>
   ) => Promise<void>;
   loadAllTasks: (
     silentUpdate: boolean,
-    filters: Record<string, any>,
-    onSubtasksLoad?: (taskIds: number[]) => Promise<void>
+    filters: Record<string, any>
   ) => Promise<void>;
   resetCanLoadMore: () => void;
   setIsInitialLoading: (loading: boolean) => void;
@@ -95,8 +93,7 @@ export const useTaskListData = (): UseTaskListDataReturn => {
     limit: number = TASKS_PER_PAGE,
     offset: number = 0,
     append: boolean = false,
-    filters: Record<string, any>,
-    onSubtasksLoad?: (taskIds: number[]) => Promise<void>
+    filters: Record<string, any>
   ) => {
     try {
       if (append) {
@@ -106,12 +103,8 @@ export const useTaskListData = (): UseTaskListDataReturn => {
       const response = await taskApi.getTasksByStatus(status, limit, offset, filters);
       const fetchedTasks = response.data || [];
 
-      // Load subtasks for tasks that have them
-      const tasksWithSubtasks = getTasksWithSubtasks(fetchedTasks);
-      if (tasksWithSubtasks.length > 0 && onSubtasksLoad) {
-        const taskIds = tasksWithSubtasks.map(t => t.id);
-        await onSubtasksLoad(taskIds);
-      }
+      // Note: subtasks are now included inline in the API response (task.subtasks)
+      // No need for separate subtasks loading
 
       if (append) {
         // Get current tasks from store to calculate unique tasks
@@ -140,8 +133,7 @@ export const useTaskListData = (): UseTaskListDataReturn => {
 
   const loadAllTasks = useCallback(async (
     silentUpdate: boolean = false,
-    filters: Record<string, any>,
-    onSubtasksLoad?: (taskIds: number[]) => Promise<void>
+    filters: Record<string, any>
   ) => {
     try {
       // Check current store state for tasks
@@ -166,7 +158,7 @@ export const useTaskListData = (): UseTaskListDataReturn => {
 
       await Promise.all(
         statusesToLoad.map(status =>
-          loadTasksByStatus(status, TASKS_PER_PAGE, 0, false, filtersWithoutStatus, onSubtasksLoad)
+          loadTasksByStatus(status, TASKS_PER_PAGE, 0, false, filtersWithoutStatus)
         )
       );
 

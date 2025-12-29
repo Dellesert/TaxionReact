@@ -14,7 +14,6 @@ interface TaskKanbanColumnProps {
   total: number;
   loading: boolean;
   canLoadMore: boolean;
-  subtasksCache: Record<number, Task[]>;
   expandAllSubtasks: boolean;
   onTaskPress: (task: Task) => void;
   onLoadMore: () => void;
@@ -28,7 +27,6 @@ export const TaskKanbanColumn: React.FC<TaskKanbanColumnProps> = ({
   total,
   loading,
   canLoadMore,
-  subtasksCache,
   expandAllSubtasks,
   onTaskPress,
   onLoadMore,
@@ -103,21 +101,18 @@ export const TaskKanbanColumn: React.FC<TaskKanbanColumnProps> = ({
           </View>
         ) : (
           <View style={styles.taskList}>
-            {tasks.map((item) => {
-              const subtasks = subtasksCache[item.id];
-              return (
-                <View key={item.id} style={styles.taskItem}>
-                  <TaskItem
-                    task={item}
-                    onPress={onTaskPress}
-                    subtasks={subtasks}
-                    onSubtaskPress={onTaskPress}
-                    forceExpanded={expandAllSubtasks}
-                    isKanbanMode={true}
-                  />
-                </View>
-              );
-            })}
+            {tasks.map((item) => (
+              <View key={item.id} style={styles.taskItem}>
+                <TaskItem
+                  task={item}
+                  onPress={onTaskPress}
+                  subtasks={item.subtasks}
+                  onSubtaskPress={onTaskPress}
+                  forceExpanded={expandAllSubtasks}
+                  isKanbanMode={true}
+                />
+              </View>
+            ))}
             {loading && hasMore && (
               <View style={styles.loadMoreContainer}>
                 <ActivityIndicator size="small" color={theme.primary} />

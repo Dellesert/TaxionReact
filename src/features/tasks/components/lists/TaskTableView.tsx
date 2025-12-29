@@ -19,7 +19,6 @@ interface TaskTableViewProps {
   tasks: TasksByStatus;
   totals: TotalsByStatus;
   loading: LoadingByStatus;
-  subtasksCache: Record<number, Task[]>;
   searchQuery: string;
   advancedFilters: AdvancedTaskFilters;
   onTaskPress: (task: Task) => void;
@@ -30,7 +29,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   tasks,
   totals,
   loading,
-  subtasksCache,
   searchQuery,
   advancedFilters,
   onTaskPress,
@@ -89,7 +87,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
       // If task is expanded and has subtasks, add them
       if (expandedTaskIds.has(task.id)) {
-        const taskSubtasks = subtasksCache[task.id] || [];
+        const taskSubtasks = task.subtasks || [];
         taskSubtasks.forEach(subtask => {
           addTaskWithSubtasks(subtask, level + 1);
         });
@@ -101,7 +99,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     });
 
     return result;
-  }, [allTasks, expandedTaskIds, subtasksCache]);
+  }, [allTasks, expandedTaskIds]);
 
   // Get permissions for selected task
   const permissions = useTaskPermissions(selectedTask);
@@ -128,7 +126,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   // Task actions hook
   const { handleStatusChange, handleEmergencyComplete, handleDeleteTask } = useTaskActions(
     currentActionTask,
-    subtasksCache[currentActionTask?.id || 0] || [],
+    currentActionTask?.subtasks || [],
     () => {
       onTaskUpdated?.();
       setShowActionMenu(false);
@@ -354,7 +352,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
               </View>
             ) : (
               tasksWithSubtasks.map(({ task, level, isSubtask }, index) => {
-                const hasSubtasks = (subtasksCache[task.id]?.length || 0) > 0;
+                const hasSubtasks = (task.subtasks?.length || 0) > 0;
                 const isExpanded = expandedTaskIds.has(task.id);
 
                 const isHovered = hoveredRowId === task.id;
@@ -476,7 +474,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                           <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
                             <Ionicons name="git-branch-outline" size={12} color={theme.textSecondary} />
                             <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                              {subtasksCache[task.id]?.length || 0}
+                              {task.subtasks?.length || task.subtask_count || 0}
                             </Text>
                           </View>
 

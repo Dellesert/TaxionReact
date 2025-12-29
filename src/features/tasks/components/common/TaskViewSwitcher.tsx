@@ -18,7 +18,6 @@ interface TaskViewSwitcherProps {
   loading: LoadingByStatus;
   canLoadMore: CanLoadMoreByStatus;
   isInitialLoading?: boolean;
-  subtasksCache: Record<number, Task[]>;
   expandAllSubtasks: boolean;
   refreshing?: boolean;
   searchQuery: string;
@@ -83,7 +82,6 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
                 totals={props.totals}
                 loading={props.loading}
                 canLoadMore={props.canLoadMore}
-                subtasksCache={props.subtasksCache}
                 expandAllSubtasks={props.expandAllSubtasks}
                 refreshing={props.refreshing}
                 searchQuery={props.searchQuery}
@@ -99,7 +97,6 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
                 tasks={props.tasks}
                 totals={props.totals}
                 loading={props.loading}
-                subtasksCache={props.subtasksCache}
                 searchQuery={props.searchQuery}
                 advancedFilters={props.advancedFilters}
                 onTaskPress={props.onTaskPress}

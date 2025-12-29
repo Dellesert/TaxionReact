@@ -21,7 +21,6 @@ interface TaskListContentProps {
   loading: LoadingByStatus;
   canLoadMore: CanLoadMoreByStatus;
   isInitialLoading: boolean;
-  subtasksCache: Record<number, Task[]>;
   expandAllSubtasks: boolean;
   refreshing: boolean;
   searchQuery: string;
@@ -40,7 +39,6 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
   loading,
   canLoadMore,
   isInitialLoading,
-  subtasksCache,
   expandAllSubtasks,
   refreshing,
   searchQuery,
@@ -100,21 +98,17 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
             data={tabTasks}
             keyExtractor={(item) => item.id.toString()}
             estimatedItemSize={100}
-            renderItem={({ item }) => {
-              const subtasks = subtasksCache[item.id];
-
-              return (
-                <View style={styles.taskItem}>
-                  <TaskItem
-                    task={item}
-                    onPress={onTaskPress}
-                    subtasks={subtasks}
-                    onSubtaskPress={onTaskPress}
-                    forceExpanded={expandAllSubtasks}
-                  />
-                </View>
-              );
-            }}
+            renderItem={({ item }) => (
+              <View style={styles.taskItem}>
+                <TaskItem
+                  task={item}
+                  onPress={onTaskPress}
+                  subtasks={item.subtasks}
+                  onSubtaskPress={onTaskPress}
+                  forceExpanded={expandAllSubtasks}
+                />
+              </View>
+            )}
             contentContainerStyle={styles.taskList}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

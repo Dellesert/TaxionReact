@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,7 +12,6 @@ import { TaskStackParamList } from '@navigation/types';
 import CreateTaskModal from '../components/modals/CreateTaskModal';
 import { useTaskListData } from '../hooks/useTaskListData';
 import { useTaskListFilters } from '../hooks/useTaskListFilters';
-import { useSubtasksCache } from '../hooks/useSubtasksCache';
 import { useTaskSwipeGesture } from '../hooks/useTaskSwipeGesture';
 import { TaskListHeader } from '../components/common/TaskListHeader';
 import { TaskListContent } from '../components/lists/TaskListContent';
@@ -29,7 +28,6 @@ const TaskListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const { user } = useAuthStore();
-  const { width } = useWindowDimensions();
   const isWideScreen = useIsWideScreen();
 
   // Use the same logic as MainNavigator
@@ -71,8 +69,6 @@ const TaskListScreen: React.FC = () => {
     resetCanLoadMore,
   } = useTaskListData();
 
-  const { subtasksCache, loadSubtasksForMultipleTasks } = useSubtasksCache();
-
   const handleFilterChangeRef = useRef<(() => void) | undefined>(undefined);
 
   const {
@@ -85,7 +81,6 @@ const TaskListScreen: React.FC = () => {
     toggleSearch,
     toggleFilterMenu,
     closeFilterMenu,
-    buildFilters,
   } = useTaskListFilters(() => {
     if (handleFilterChangeRef.current) {
       handleFilterChangeRef.current();
@@ -115,14 +110,14 @@ const TaskListScreen: React.FC = () => {
   useEffect(() => {
     handleFilterChangeRef.current = () => {
       const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
-      loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+      loadAllTasks(true, apiFilters);
     };
-  }, [loadAllTasks, advancedFilters, searchQuery, user?.id, loadSubtasksForMultipleTasks]);
+  }, [loadAllTasks, advancedFilters, searchQuery, user?.id]);
 
   // Initial load on mount
   useEffect(() => {
     const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
-    loadAllTasks(false, apiFilters, loadSubtasksForMultipleTasks);
+    loadAllTasks(false, apiFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -134,7 +129,7 @@ const TaskListScreen: React.FC = () => {
         return;
       }
       const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
-      loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+      loadAllTasks(true, apiFilters);
     });
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,7 +145,7 @@ const TaskListScreen: React.FC = () => {
     setRefreshing(true);
     resetCanLoadMore();
     const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
-    await loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+    await loadAllTasks(true, apiFilters);
     setRefreshing(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advancedFilters, searchQuery, user?.id]);
@@ -167,8 +162,7 @@ const TaskListScreen: React.FC = () => {
       TASKS_PER_PAGE,
       currentTasks.length,
       true,
-      apiFilters,
-      loadSubtasksForMultipleTasks
+      apiFilters
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, totals, advancedFilters, searchQuery, user?.id]);
@@ -183,7 +177,7 @@ const TaskListScreen: React.FC = () => {
 
   const handleTaskCreated = useCallback(() => {
     const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
-    loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+    loadAllTasks(true, apiFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advancedFilters, searchQuery, user?.id]);
 
@@ -199,8 +193,8 @@ const TaskListScreen: React.FC = () => {
 
     // Immediately reload data with new filters
     const apiFilters = buildAdvancedTaskFilters(newFilters, searchQuery, user?.id);
-    loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
-  }, [setFilter, closeFilterMenu, searchQuery, user?.id, loadAllTasks, loadSubtasksForMultipleTasks]);
+    loadAllTasks(true, apiFilters);
+  }, [setFilter, closeFilterMenu, searchQuery, user?.id, loadAllTasks]);
 
   // Handler for simple filter change (mobile/board)
   const handleSimpleFilterChange = useCallback((newFilter: TaskFilter) => {
@@ -214,8 +208,8 @@ const TaskListScreen: React.FC = () => {
 
     // Immediately reload data with new filters
     const apiFilters = buildAdvancedTaskFilters(newFilters, searchQuery, user?.id);
-    loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
-  }, [advancedFilters, setFilter, closeFilterMenu, searchQuery, user?.id, loadAllTasks, loadSubtasksForMultipleTasks]);
+    loadAllTasks(true, apiFilters);
+  }, [advancedFilters, setFilter, closeFilterMenu, searchQuery, user?.id, loadAllTasks]);
 
   // Sync advancedFilters.baseFilter when old filter changes (for backward compatibility)
   useEffect(() => {
@@ -235,9 +229,9 @@ const TaskListScreen: React.FC = () => {
 
       // Reload data with cleared status filters
       const apiFilters = buildAdvancedTaskFilters(clearedFilters, searchQuery, user?.id);
-      loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+      loadAllTasks(true, apiFilters);
     }
-  }, [viewMode, isDesktop, advancedFilters.statuses.length, searchQuery, user?.id, loadAllTasks, loadSubtasksForMultipleTasks]);
+  }, [viewMode, isDesktop, advancedFilters.statuses.length, searchQuery, user?.id, loadAllTasks]);
 
   // Check if any advanced filters are active
   const hasActiveFilters =
@@ -291,7 +285,6 @@ const TaskListScreen: React.FC = () => {
             loading={loading}
             canLoadMore={canLoadMore}
             isInitialLoading={isInitialLoading}
-            subtasksCache={subtasksCache}
             expandAllSubtasks={expandAllSubtasks}
             refreshing={refreshing}
             searchQuery={searchQuery}
@@ -302,7 +295,7 @@ const TaskListScreen: React.FC = () => {
             onExpandAllToggle={handleExpandAllToggle}
             onTaskUpdated={() => {
               const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
-              loadAllTasks(true, apiFilters, loadSubtasksForMultipleTasks);
+              loadAllTasks(true, apiFilters);
             }}
             onViewModeChange={setViewMode}
             viewMode={viewMode}
@@ -315,7 +308,6 @@ const TaskListScreen: React.FC = () => {
             loading={loading}
             canLoadMore={canLoadMore}
             isInitialLoading={isInitialLoading}
-            subtasksCache={subtasksCache}
             expandAllSubtasks={expandAllSubtasks}
             refreshing={refreshing}
             searchQuery={searchQuery}
