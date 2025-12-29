@@ -134,7 +134,10 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
     // Определяем префикс отправителя
     let senderPrefix = '';
-    if (chat.type === 'private') {
+    if (chat.type === 'saved') {
+      // В избранном не показываем префикс отправителя
+      senderPrefix = '';
+    } else if (chat.type === 'private') {
       // В личных чатах показываем только "Вы:" для своих сообщений
       senderPrefix = isCurrentUser ? 'Вы: ' : '';
     } else {
