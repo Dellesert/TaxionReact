@@ -66,6 +66,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
   const renderChatItem = ({ item }: { item: Chat }) => {
     const displayName = getChatDisplayName(item, currentUser?.id);
     const avatarUrl = getChatDisplayAvatar(item, currentUser?.id);
+    const isSavedChat = item.type === 'saved';
 
     return (
       <TouchableOpacity
@@ -73,7 +74,13 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
         onPress={() => handleForward(item.id)}
         disabled={isForwarding}
       >
-        <Avatar imageUrl={avatarUrl} name={displayName} size={48} />
+        {isSavedChat ? (
+          <View style={styles.savedChatAvatar}>
+            <Ionicons name="bookmark" size={24} color="#FFFFFF" />
+          </View>
+        ) : (
+          <Avatar imageUrl={avatarUrl} name={displayName} size={48} />
+        )}
         <View style={styles.chatInfo}>
           <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>
             {displayName}
@@ -228,6 +235,14 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
+  },
+  savedChatAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chatInfo: {
     flex: 1,
