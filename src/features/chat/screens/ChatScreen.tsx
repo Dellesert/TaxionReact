@@ -11,12 +11,14 @@ import { useChatScroll } from '../hooks/useChatScroll';
 import { useChatScreenState } from '../hooks/useChatScreenState';
 import { useSelectionMode } from '../hooks/useSelectionMode';
 import { useChatNavigation } from '../hooks/useChatNavigation';
+import { useMessageSearch } from '../hooks/useMessageSearch';
 import { websocketService } from '@services/websocket.service';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatScreenContent } from '../components/chat-details/ChatScreenContent';
 import { ChatModals } from '../components/modals/ChatModals';
+import { MessageSearchOverlay } from '../components/search/MessageSearchOverlay';
 import {
   canDeleteForEveryone as checkCanDeleteForEveryone,
   getUserRoleInChat,
@@ -30,7 +32,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
  * Refactored Chat Screen - Clean and modular
  */
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { chatId, chatName, unreadCount: routeUnreadCount } = route.params;
+  const { chatId, chatName, unreadCount: routeUnreadCount, openSearch: shouldOpenSearch } = route.params;
   const chatIdNum = useMemo(() => Number(chatId), [chatId]);
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -153,6 +155,40 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     isPositionReady,
   } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount, currentUser?.id);
 
+  // Message search - callback for navigating to search results
+  const handleNavigateToSearchResult = useCallback((messageId: number) => {
+    scrollToMessage(messageId, setHighlightedMessageId);
+  }, [scrollToMessage, setHighlightedMessageId]);
+
+  const {
+    isSearchVisible,
+    searchQuery,
+    searchResults,
+    totalResults,
+    currentIndex,
+    isLoading: isSearchLoading,
+    hasMore: hasMoreSearchResults,
+    openSearch,
+    closeSearch,
+    setSearchQuery,
+    navigateToPrev,
+    navigateToNext,
+    navigateToResult,
+    loadMoreResults,
+  } = useMessageSearch({
+    chatId: chatIdNum,
+    onNavigateToMessage: handleNavigateToSearchResult,
+  });
+
+  // Автоматически открыть поиск если передан параметр openSearch
+  useEffect(() => {
+    if (shouldOpenSearch && messagesReady) {
+      openSearch();
+      // Сбрасываем параметр чтобы поиск не открывался повторно
+      navigation.setParams({ openSearch: undefined });
+    }
+  }, [shouldOpenSearch, messagesReady, openSearch, navigation]);
+
   const chatFromStore = chats.find((c) => c.id === chatIdNum);
   const chat = chatData || chatFromStore;
 
@@ -261,6 +297,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     currentUserId: currentUser?.id,
     typingUserNames,
     isConnected,
+    onSearchPress: openSearch,
   });
 
   // Оптимизация: useCallback для стабилизации WebSocket подключения
@@ -555,6 +592,23 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
           setPollModalVisible(false);
           setSelectedPollId(null);
         }}
+      />
+
+      {/* Message Search Overlay */}
+      <MessageSearchOverlay
+        isVisible={isSearchVisible}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onClose={closeSearch}
+        results={searchResults}
+        total={totalResults}
+        currentIndex={currentIndex}
+        isLoading={isSearchLoading}
+        onResultPress={navigateToResult}
+        onNavigatePrev={navigateToPrev}
+        onNavigateNext={navigateToNext}
+        hasMore={hasMoreSearchResults}
+        onLoadMore={loadMoreResults}
       />
     </View>
   );

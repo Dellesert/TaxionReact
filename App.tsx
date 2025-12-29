@@ -11,6 +11,7 @@ import { NavigationContainerRef } from '@react-navigation/native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from '@shared/store/authStore';
 import { useThemeStore } from '@shared/store/themeStore';
+import { useChatStore } from '@shared/store/chatStore';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { websocketService } from './src/services/websocket.service';
 import { pushNotificationService } from './src/services/pushNotification.service';
@@ -583,6 +584,15 @@ export default function App() {
           }
           websocketService.sendPresence('online');
           loadUnreadCount();
+
+          // Silently refresh chat list and unread count to get messages received while tab was hidden
+          const chatStore = useChatStore.getState();
+          chatStore.silentRefreshCurrentTab().catch((error) => {
+            console.error('[App] Failed to refresh chats on visibility change:', error);
+          });
+          chatStore.loadUnreadCount().catch((error) => {
+            console.error('[App] Failed to refresh chat unread count on visibility change:', error);
+          });
         }
       };
 
@@ -600,6 +610,15 @@ export default function App() {
           }
           websocketService.sendPresence('online');
           loadUnreadCount();
+
+          // Silently refresh chat list and unread count to get messages received while window was unfocused
+          const chatStore = useChatStore.getState();
+          chatStore.silentRefreshCurrentTab().catch((error) => {
+            console.error('[App] Failed to refresh chats on window focus:', error);
+          });
+          chatStore.loadUnreadCount().catch((error) => {
+            console.error('[App] Failed to refresh chat unread count on window focus:', error);
+          });
         }
       };
 
@@ -636,6 +655,16 @@ export default function App() {
 
         // Reload unread notification count when app becomes active
         loadUnreadCount();
+
+        // Silently refresh chat list and unread count to get messages received while app was in background
+        // This ensures new messages from push notifications are visible and badge is updated
+        const chatStore = useChatStore.getState();
+        chatStore.silentRefreshCurrentTab().catch((error) => {
+          console.error('[App] Failed to refresh chats on foreground:', error);
+        });
+        chatStore.loadUnreadCount().catch((error) => {
+          console.error('[App] Failed to refresh chat unread count on foreground:', error);
+        });
       }
 
       appState = nextAppState;

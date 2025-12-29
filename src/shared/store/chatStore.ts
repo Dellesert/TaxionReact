@@ -108,6 +108,7 @@ interface ChatState {
   loadTabData: (tabName: TabName) => Promise<void>;
   loadMoreChats: () => Promise<void>;
   refreshCurrentTab: () => Promise<void>;
+  silentRefreshCurrentTab: () => Promise<void>;
   switchTab: (tabName: TabName) => void;
   loadUnreadCount: () => Promise<void>;
   // Legacy support - keeping for backward compatibility but will use new tab logic
@@ -358,6 +359,79 @@ export const useChatStore = create<ChatState>()(
 
     // Reload tab data
     await get().loadTabData(currentTab);
+  },
+
+  // Silent refresh - updates data without showing loading indicator
+  // Used when app comes to foreground to fetch new messages
+  silentRefreshCurrentTab: async () => {
+    const { currentTab, isLoading } = get();
+
+    // Skip if already loading
+    if (isLoading) {
+      return;
+    }
+
+    try {
+      // Determine filters based on tab
+      const typeMap: Record<TabName, 'private' | 'group' | undefined> = {
+        all: undefined,
+        private: 'private',
+        group: 'group',
+        favorite: undefined,
+      };
+
+      const type = typeMap[currentTab];
+      const isFavorite = currentTab === 'favorite';
+
+      // 1. Load all pinned chats for this tab
+      const pinnedResponse = await chatApi.getPinnedChats(type);
+      let pinnedChats = pinnedResponse.chats;
+
+      // Filter favorites if needed
+      if (isFavorite) {
+        pinnedChats = pinnedChats.filter(c => c.is_favorite);
+      }
+
+      // Enrich pinned chats with user data
+      pinnedChats = await Promise.all(pinnedChats.map(enrichChatWithUsers));
+
+      // 2. Load first page of regular chats
+      const limit = 15;
+      const filters: any = {};
+      if (type) filters.type = type;
+      if (isFavorite) filters.is_favorite = true;
+
+      const regularResponse = await chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined);
+
+      // Filter out pinned chats from regular chats
+      const pinnedIds = new Set(pinnedChats.map(c => c.id));
+      let regularChats = regularResponse.chats.filter(c => !pinnedIds.has(c.id));
+
+      // Enrich regular chats with user data
+      regularChats = await Promise.all(regularChats.map(enrichChatWithUsers));
+
+      // Update state silently (no isLoading changes)
+      set(state => ({
+        tabs: {
+          ...state.tabs,
+          [currentTab]: {
+            pinnedChats,
+            regularChats,
+            offset: limit,
+            hasMore: regularResponse.hasMore,
+            loaded: true,
+          }
+        },
+        chats: [...pinnedChats, ...regularChats],
+        hasMoreChats: regularResponse.hasMore,
+        totalChats: regularResponse.total,
+      }));
+
+      console.log('[ChatStore] Silent refresh completed for tab:', currentTab);
+    } catch (error: any) {
+      // Silent fail - don't update error state, just log
+      console.error('[ChatStore] Silent refresh failed:', error);
+    }
   },
 
   loadChats: async (append = false, filters) => {

@@ -18,6 +18,7 @@ export type ChatStackParamList = {
     chatId: number;
     chatName?: string;
     unreadCount?: number; // Количество непрочитанных сообщений
+    openSearch?: boolean; // Автоматически открыть поиск при переходе
   };
   ChatSettings: {
     chatId: number;

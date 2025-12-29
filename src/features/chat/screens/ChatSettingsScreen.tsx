@@ -101,7 +101,12 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Handlers
   const handleSearchMessages = () => {
-    // TODO: Implement message search
+    // Возвращаемся на экран чата и открываем поиск
+    navigation.navigate('Chat', {
+      chatId,
+      chatName: chatName || undefined,
+      openSearch: true,
+    });
   };
 
   const handleAddMembers = async () => {

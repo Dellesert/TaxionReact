@@ -708,7 +708,7 @@ function normalizeMessage(msg: any): Message {
 }
 
 /**
- * Search messages
+ * Search messages (deprecated - use searchMessagesInChat instead)
  */
 export const searchMessages = async (
   params: SearchMessagesParams
@@ -725,6 +725,48 @@ export const searchMessages = async (
     { params: queryParams }
   );
   return response.data.data;
+};
+
+/**
+ * Search messages in a specific chat
+ * @param chatId - ID чата для поиска
+ * @param query - Поисковый запрос (минимум 1 символ, максимум 200)
+ * @param limit - Количество результатов (по умолчанию 20, максимум 100)
+ * @param offset - Смещение для пагинации
+ */
+export interface SearchMessagesInChatResponse {
+  messages: Message[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  query: string;
+}
+
+export const searchMessagesInChat = async (
+  chatId: number,
+  query: string,
+  limit: number = 20,
+  offset: number = 0
+): Promise<SearchMessagesInChatResponse> => {
+  const queryParams = {
+    q: query,
+    limit: Math.min(limit, 100),
+    offset,
+  };
+
+  const response = await api.get<SearchMessagesInChatResponse>(
+    `/chats/${chatId}/messages/search`,
+    { params: queryParams }
+  );
+
+  // Normalize messages
+  const normalizedMessages = (response.data.messages || []).map(msg => normalizeMessage(msg));
+
+  return {
+    ...response.data,
+    messages: normalizedMessages,
+  };
 };
 
 // ============= Reactions =============

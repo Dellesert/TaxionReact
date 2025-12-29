@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@shared/components/common/Avatar';
-import { ConnectionStatus } from '@shared/components/common/ConnectionStatus';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface ChatHeaderProps {
@@ -14,6 +13,7 @@ interface ChatHeaderProps {
   isConnected: boolean;
   onBackPress: () => void;
   onHeaderPress: () => void;
+  onSearchPress?: () => void;
   isSavedChat?: boolean;
 }
 
@@ -117,39 +117,62 @@ export const ChatHeader = {
     displayAvatar,
     displayName,
     onHeaderPress,
+    onSearchPress,
     isSavedChat,
-  }: Pick<ChatHeaderProps, 'displayAvatar' | 'displayName' | 'onHeaderPress' | 'isSavedChat'>) => {
-    // For saved chat, render non-interactive bookmark icon
+  }: Pick<ChatHeaderProps, 'displayAvatar' | 'displayName' | 'onHeaderPress' | 'onSearchPress' | 'isSavedChat'>) => {
+    const { theme } = useTheme();
+
+    // For saved chat, render non-interactive bookmark icon with search
     if (isSavedChat) {
       return (
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: '#3B82F6',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 0,
-          }}
-        >
-          <Ionicons name="bookmark" size={18} color="#FFFFFF" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {onSearchPress && (
+            <TouchableOpacity
+              onPress={onSearchPress}
+              activeOpacity={0.7}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="search" size={22} color={theme.primary} />
+            </TouchableOpacity>
+          )}
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: '#3B82F6',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="bookmark" size={18} color="#FFFFFF" />
+          </View>
         </View>
       );
     }
 
     return (
-      <TouchableOpacity
-        onPress={onHeaderPress}
-        activeOpacity={0.7}
-        style={{ marginRight: 0 }}
-      >
-        <Avatar
-          imageUrl={displayAvatar}
-          name={displayName}
-          size={36}
-        />
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        {onSearchPress && (
+          <TouchableOpacity
+            onPress={onSearchPress}
+            activeOpacity={0.7}
+            style={{ padding: 4 }}
+          >
+            <Ionicons name="search" size={22} color={theme.primary} />
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          onPress={onHeaderPress}
+          activeOpacity={0.7}
+        >
+          <Avatar
+            imageUrl={displayAvatar}
+            name={displayName}
+            size={36}
+          />
+        </TouchableOpacity>
+      </View>
     );
   },
 };

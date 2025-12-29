@@ -17,6 +17,7 @@ interface UseChatNavigationProps {
   currentUserId: number | undefined;
   typingUserNames: string[];
   isConnected: boolean;
+  onSearchPress?: () => void;
 }
 
 /**
@@ -29,6 +30,7 @@ export const useChatNavigation = ({
   currentUserId,
   typingUserNames,
   isConnected,
+  onSearchPress,
 }: UseChatNavigationProps) => {
   const navigation = useNavigation();
 
@@ -113,6 +115,7 @@ export const useChatNavigation = ({
           displayAvatar={displayAvatar}
           displayName={displayName}
           onHeaderPress={handleHeaderPress}
+          onSearchPress={onSearchPress}
           isSavedChat={isSavedChat}
         />
       ),
@@ -128,6 +131,7 @@ export const useChatNavigation = ({
     isPrivateChat,
     isSavedChat,
     isConnected,
+    onSearchPress,
     navigation,
   ]);
 
