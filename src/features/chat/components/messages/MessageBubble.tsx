@@ -8,7 +8,7 @@ import { MessageAttachments } from '../attachments/MessageAttachments';
 import PollMessageCard from './PollMessageCard';
 import TaskMessageCard from './TaskMessageCard';
 import { MessageStatus } from '../common/MessageStatus';
-import { formatTime, parseForwardedMessage, getDisplayContent } from '../../utils/message.utils';
+import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName } from '../../utils/message.utils';
 import { LinkifiedText } from '../common/LinkifiedText';
 
 interface MessageBubbleProps {
@@ -27,6 +27,8 @@ interface MessageBubbleProps {
   messageBubbleRef: React.RefObject<View>;
   onRetryMessage?: (messageId: number) => void;
   isVisible?: boolean;
+  isSavedChat?: boolean;
+  isForwarded?: boolean;
 }
 
 /**
@@ -48,6 +50,8 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   messageBubbleRef,
   onRetryMessage,
   isVisible = true,
+  isSavedChat = false,
+  isForwarded = false,
 }) => {
   const { theme } = useTheme();
 
@@ -55,9 +59,11 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   // Бэкенд больше НЕ фильтрует контент в WebSocket
   const displayContent = getDisplayContent(message, currentUserId);
 
-  // Парсим пересланное сообщение
-  const { header: forwardHeader, content: messageContent } = parseForwardedMessage(displayContent);
-  const isForwarded = forwardHeader !== null;
+  // Парсим пересланное сообщение (поддерживает как новый, так и старый формат)
+  const { header: forwardHeader, content: messageContent } = parseForwardedMessage(message);
+
+  // Получаем имя оригинального отправителя для нового формата
+  const originalSenderName = message.is_forwarded ? getOriginalSenderName(message) : null;
 
   // Проверяем, является ли сообщение задачей (встроенной в текст)
   const taskDataMatch = displayContent.match(/\[TASK_DATA\](.*?)\[\/TASK_DATA\]/s);
@@ -136,25 +142,31 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
       style={[
         styles.messageBubble,
         !isCardMessage && dynamicStyles.messageBubble,
-        isOwnMessage && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
+        // В Избранном: свои сообщения как "own", пересланные как "other"
+        isSavedChat && !isForwarded && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
+        isSavedChat && isForwarded && styles.savedForwardedBubble,
+        !isSavedChat && isOwnMessage && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
         isHighlighted && [styles.highlightedBubble, { backgroundColor: theme.primary + '40' }],
         isCardMessage && { backgroundColor: 'transparent', padding: 0 },
       ]}
     >
       {/* Уголок - просто используем ::before/::after эффект через позиционирование */}
 
-      {/* Заголовок пересланного сообщения */}
-      {forwardHeader && (
-        <View style={[styles.forwardHeader, { backgroundColor: isOwnMessage ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)' }]}>
+      {/* Заголовок пересланного сообщения (скрыт в Избранном) */}
+      {(message.is_forwarded || forwardHeader) && !isSavedChat && (
+        <View style={[
+          styles.forwardHeader,
+          { backgroundColor: isOwnMessage ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)' }
+        ]}>
           <Ionicons name="arrow-redo-outline" size={14} color={theme.primary} style={{ marginRight: 6 }} />
           <Text style={[styles.forwardHeaderText, { color: theme.primary }]}>
-            {forwardHeader.replace('📩 ', '')}
+            {originalSenderName ? `Переслано от ${originalSenderName}` : forwardHeader?.replace('📩 ', '')}
           </Text>
         </View>
       )}
 
-      {/* Имя отправителя для чужих сообщений */}
-      {!isOwnMessage && !forwardHeader && (
+      {/* Имя отправителя для чужих сообщений (не показываем если уже показан заголовок пересылки) */}
+      {!isOwnMessage && !forwardHeader && !message.is_forwarded && (
         <Text style={[styles.senderName, dynamicStyles.senderName]}>
           {sender?.name || `User ${message.sender_id}`}
         </Text>
@@ -374,6 +386,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
   },
+  savedMessageBubble: {
+    maxWidth: '100%',
+    width: '100%',
+    borderRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  savedForwardedBubble: {
+    // Пересланные сообщения в Избранном - стиль "чужого" сообщения
+    borderRadius: 18,
+    borderBottomLeftRadius: 3,
+  },
+  savedForwardHeader: {
+    marginBottom: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
 });
 
 // Мемоизация MessageBubble для оптимизации производительности
@@ -384,8 +414,12 @@ export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, next
     prevProps.message.content !== nextProps.message.content ||
     prevProps.message.is_edited !== nextProps.message.is_edited ||
     prevProps.message.is_deleted !== nextProps.message.is_deleted ||
+    prevProps.message.is_forwarded !== nextProps.message.is_forwarded ||
+    prevProps.message.original_sender_id !== nextProps.message.original_sender_id ||
     prevProps.isHighlighted !== nextProps.isHighlighted ||
-    prevProps.isOwnMessage !== nextProps.isOwnMessage
+    prevProps.isOwnMessage !== nextProps.isOwnMessage ||
+    prevProps.isSavedChat !== nextProps.isSavedChat ||
+    prevProps.isForwarded !== nextProps.isForwarded
   ) {
     return false;
   }

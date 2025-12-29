@@ -148,36 +148,25 @@ export const useChatActions = (chatId: number) => {
     if (!forwardingMessage) return;
 
     try {
-      const senderName = forwardingMessage.sender?.name ||
-                        forwardingMessage.sender?.email?.split('@')[0] ||
-                        `User ${forwardingMessage.sender_id}`;
-
-      const sourceChat = getChatById(chatId);
-      let sourceChatName = '';
-
-      if (sourceChat && sourceChat.type === 'group') {
-        const fullName = getChatDisplayName(sourceChat, currentUser?.id);
-        sourceChatName = fullName.length > 25 ? fullName.substring(0, 25) + '...' : fullName;
-      }
-
-      const forwardPrefix = `📩 Переслано от ${senderName}${sourceChatName ? ` (${sourceChatName})` : ''}`;
-      const separator = '\n─────────────\n';
-
       // Получаем file_ids из вложений сообщения
       const fileIds = forwardingMessage.attachments?.length > 0
         ? forwardingMessage.attachments.map((attachment: any) => attachment.file_id)
         : undefined;
 
-      // Если это опрос - пересылаем как опрос
+      // Используем новый API с forward_from_message_id
+      // Бэкенд автоматически скопирует контент, тип, файлы и сохранит оригинального отправителя
       if (forwardingMessage.message_type === 'poll' && forwardingMessage.poll_data) {
-        const forwardedContent = `${forwardPrefix}${separator}${forwardingMessage.content}`;
-        await sendMessage(targetChatId, forwardedContent, undefined, fileIds, {
+        // Для опросов передаём poll_data
+        await sendMessage(targetChatId, '', undefined, fileIds, {
           type: 'poll',
           poll_data: forwardingMessage.poll_data,
+          forward_from_message_id: forwardingMessage.id,
         });
       } else {
-        const forwardedContent = `${forwardPrefix}${separator}${forwardingMessage.content}`;
-        await sendMessage(targetChatId, forwardedContent, undefined, fileIds);
+        // Для обычных сообщений просто передаём forward_from_message_id
+        await sendMessage(targetChatId, '', undefined, fileIds, {
+          forward_from_message_id: forwardingMessage.id,
+        });
       }
 
       // Не удаляем сообщение из исходного чата при пересылке

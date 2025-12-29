@@ -330,6 +330,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
               <MessageItem
                 message={message}
                 chatType={chatType === 'saved' ? 'private' : chatType}
+                isSavedChat={chatType === 'saved'}
                 onReply={onReply}
                 onEdit={onEdit}
                 onDelete={onDelete}

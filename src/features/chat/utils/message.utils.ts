@@ -2,6 +2,8 @@
  * Утилиты для работы с сообщениями
  */
 
+import { Message } from '../types/chat.types';
+
 /**
  * Форматирует дату сообщения в формат "часы:минуты"
  */
@@ -22,30 +24,89 @@ export const isImageFile = (mimeType: string): boolean => {
 
 /**
  * Проверяет, является ли сообщение пересланным
+ * Поддерживает как новый формат (is_forwarded), так и старый (по префиксу в контенте)
  */
-export const isForwardedMessage = (content: string): boolean => {
-  return content.startsWith('📩 Переслано от ');
+export const isForwardedMessage = (message: Message | string): boolean => {
+  // Если передан объект Message - используем новое поле is_forwarded
+  if (typeof message === 'object' && message !== null) {
+    // Сначала проверяем новое поле
+    if (message.is_forwarded === true) {
+      return true;
+    }
+    // Fallback для старых сообщений - проверка по префиксу в контенте
+    return message.content?.startsWith('📩 Переслано от ') ?? false;
+  }
+  // Если передана строка (обратная совместимость)
+  return typeof message === 'string' && message.startsWith('📩 Переслано от ');
+};
+
+/**
+ * Получает имя оригинального отправителя пересланного сообщения
+ */
+export const getOriginalSenderName = (message: Message): string | null => {
+  // Новый формат - используем original_sender
+  if (message.original_sender) {
+    return message.original_sender.first_name ||
+           message.original_sender.name ||
+           message.original_sender.email?.split('@')[0] ||
+           `User ${message.original_sender_id}`;
+  }
+
+  // Fallback для старых сообщений - парсим из контента
+  if (message.content?.startsWith('📩 Переслано от ')) {
+    const match = message.content.match(/^📩 Переслано от ([^:]+):/);
+    if (match) {
+      return match[1].trim();
+    }
+  }
+
+  return null;
 };
 
 /**
  * Парсит пересланное сообщение, извлекая заголовок и контент
+ * Поддерживает как новый формат (original_sender), так и старый (парсинг из контента)
  */
-export const parseForwardedMessage = (content: string): { header: string | null; content: string } => {
-  if (!isForwardedMessage(content)) {
+export const parseForwardedMessage = (message: Message | string): { header: string | null; content: string } => {
+  // Если передан объект Message
+  if (typeof message === 'object' && message !== null) {
+    // Новый формат - сообщение с is_forwarded и original_sender
+    if (message.is_forwarded && message.original_sender) {
+      const senderName = getOriginalSenderName(message);
+      return {
+        header: `📩 Переслано от ${senderName}`,
+        content: message.content || ''
+      };
+    }
+
+    // Fallback для старых сообщений
+    return parseForwardedMessageFromContent(message.content || '');
+  }
+
+  // Если передана строка (обратная совместимость)
+  return parseForwardedMessageFromContent(message);
+};
+
+/**
+ * Внутренняя функция для парсинга старого формата пересланных сообщений
+ * @deprecated Используйте parseForwardedMessage с объектом Message
+ */
+const parseForwardedMessageFromContent = (content: string): { header: string | null; content: string } => {
+  if (!content.startsWith('📩 Переслано от ')) {
     return { header: null, content };
   }
 
   const lines = content.split('\n');
-  const header = lines[0]; // "📩 Переслано от ..."
+  const header = lines[0]; // "📩 Переслано от ...:"
 
-  // Находим разделитель и берём контент после него
+  // Поддержка старого формата с разделителем (для обратной совместимости)
   const separatorIndex = content.indexOf('─────────────');
   if (separatorIndex !== -1) {
-    const parsedContent = content.substring(separatorIndex + 13).trim(); // +13 для длины разделителя
+    const parsedContent = content.substring(separatorIndex + 13).trim();
     return { header, content: parsedContent };
   }
 
-  // Если разделителя нет, возвращаем всё кроме первой строки
+  // Новый формат: заголовок с двоеточием, контент со второй строки
   return { header, content: lines.slice(1).join('\n').trim() };
 };
 

@@ -94,6 +94,11 @@ export interface Message {
   delivered_to?: number[]; // Локальное поле - список user IDs кто получил сообщение через WebSocket
   poll_data?: MessagePollData; // Данные опроса для сообщений типа 'poll'
   task_data?: MessageTaskData; // Данные задачи для сообщений типа 'task'
+  // Forward-related fields
+  forwarded_from_message_id?: number; // ID оригинального сообщения
+  original_sender_id?: number; // ID оригинального отправителя
+  original_sender?: User; // Данные оригинального отправителя
+  is_forwarded?: boolean; // Флаг пересланного сообщения
 }
 
 // Chat Member Interface
@@ -165,6 +170,8 @@ export interface SendMessageDto {
   poll_id?: number; // ID of poll to share
   task_id?: number; // ID of task to share
   poll_data?: any;  // Poll data object for backend
+  // Forward-related field
+  forward_from_message_id?: number; // ID сообщения для пересылки
 }
 
 // Update Message DTO

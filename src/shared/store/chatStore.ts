@@ -768,7 +768,9 @@ export const useChatStore = create<ChatState>()(
 
   sendMessage: async (chatId: number, content: string, replyToId?: number, fileIds?: number[], extraData?: any) => {
     try {
-      if (!content.trim() && (!fileIds || fileIds.length === 0)) {
+      // При пересылке контент может быть пустым - бэкенд скопирует из оригинала
+      const isForwarding = extraData?.forward_from_message_id != null;
+      if (!content.trim() && (!fileIds || fileIds.length === 0) && !isForwarding) {
         throw new Error('Message content or files are required');
       }
 

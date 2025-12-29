@@ -22,6 +22,7 @@ import { getOrCreateDirectChat } from '../../api/chat.api';
 interface MessageItemProps {
   message: Message;
   chatType?: 'private' | 'group' | 'channel';
+  isSavedChat?: boolean;
   onReply?: (message: Message) => void;
   onEdit?: (message: Message) => void;
   onDelete?: (messageId: number, deleteFor: 'everyone' | 'me') => void;
@@ -51,6 +52,7 @@ interface MessageItemProps {
 export const MessageItem: React.FC<MessageItemProps> = ({
   message,
   chatType,
+  isSavedChat = false,
   onReply,
   onEdit,
   onDelete,
@@ -90,7 +92,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
   const isOwnMessage = message.sender_id === currentUser?.id;
   const isAdmin = userRole === 'owner' || userRole === 'admin';
-  const isForwarded = isForwardedMessage(message.content);
+  // Используем новое поле is_forwarded с fallback на старый формат
+  const isForwarded = isForwardedMessage(message);
+
+  // В чате Избранное: свои сообщения справа, пересланные слева
+  const isSavedOwnMessage = isSavedChat && !isForwarded;
+  const isSavedForwardedMessage = isSavedChat && isForwarded;
 
   const handleLongPress = () => {
     messageBubbleRef.current?.measureInWindow((x, y, width, height) => {
@@ -155,9 +162,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       )}
 
       {/* Контейнер для аватара и сообщения */}
-      <View style={[styles.container, isOwnMessage && styles.ownMessageContainer]}>
-        {/* Аватар отправителя (только для чужих сообщений) */}
-        {!isOwnMessage && !selectionMode && (
+      <View style={[
+        styles.container,
+        isOwnMessage && !isSavedChat && styles.ownMessageContainer,
+        // В Избранном: свои сообщения справа, пересланные слева
+        isSavedOwnMessage && styles.savedOwnMessageContainer,
+        isSavedForwardedMessage && styles.savedForwardedContainer,
+      ]}>
+        {/* Аватар отправителя (для чужих сообщений и пересланных в Избранном) */}
+        {((!isOwnMessage && !selectionMode && !isSavedChat) || isSavedForwardedMessage) && (
           <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7}>
             <Avatar
               imageUrl={sender?.avatar}
@@ -187,6 +200,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           messageBubbleRef={messageBubbleRef}
           onRetryMessage={onRetryMessage}
           isVisible={isVisible}
+          isSavedChat={isSavedChat}
+          isForwarded={isForwarded}
         />
       </View>
 
@@ -302,7 +317,7 @@ const styles = StyleSheet.create({
   outerContainer: {
     flexDirection: 'row',
     marginVertical: 4,
-    marginHorizontal: 16,
+    marginHorizontal: 8,
     alignItems: 'center',
   },
   container: {
@@ -331,6 +346,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  savedChatContainer: {
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  savedOwnMessageContainer: {
+    flexDirection: 'row-reverse',
+  },
+  savedForwardedContainer: {
+    flexDirection: 'row',
+  },
 });
 
 // Оптимизация: используем React.memo для предотвращения лишних ре-рендеров (15-20% снижение ре-рендеров)
@@ -342,9 +367,12 @@ export default React.memo(MessageItem, (prevProps, nextProps) => {
     prevProps.message.is_edited !== nextProps.message.is_edited ||
     prevProps.message.is_deleted !== nextProps.message.is_deleted ||
     prevProps.message.is_pinned !== nextProps.message.is_pinned ||
+    prevProps.message.is_forwarded !== nextProps.message.is_forwarded ||
+    prevProps.message.original_sender_id !== nextProps.message.original_sender_id ||
     prevProps.isHighlighted !== nextProps.isHighlighted ||
     prevProps.selectionMode !== nextProps.selectionMode ||
     prevProps.isSelected !== nextProps.isSelected ||
+    prevProps.isSavedChat !== nextProps.isSavedChat ||
     // Оптимистичные обновления - проверяем статус отправки
     (prevProps.message as any).sending !== (nextProps.message as any).sending ||
     (prevProps.message as any).failed !== (nextProps.message as any).failed
