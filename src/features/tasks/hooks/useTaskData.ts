@@ -46,17 +46,8 @@ export const useTaskData = (taskId: string) => {
       setAccessDenied(false);
       const response = await taskApi.getTask(taskIdNum);
 
-      // If this is a subtask, ALWAYS load delegation chain from parent task
-      if (response.parent_task_id) {
-        try {
-          const parentDelegationChain = await taskApi.getDelegationChain(response.parent_task_id);
-          if (parentDelegationChain && parentDelegationChain.length > 0) {
-            response.delegation_chain = parentDelegationChain;
-          }
-        } catch (error) {
-          console.error('Failed to load parent delegation chain:', error);
-        }
-      }
+      // Note: delegation_chain is now included inline in the API response
+      // For subtasks, the backend now includes the parent's delegation_chain
 
       // Load checklists for the task
       try {

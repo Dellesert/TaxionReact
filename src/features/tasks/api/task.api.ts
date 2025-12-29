@@ -93,26 +93,8 @@ export const getTasks = async (
     };
   }
 
-  // Load delegation chains for delegated tasks
-  if (result.data && result.data.length > 0) {
-    const delegatedTasks = result.data.filter(
-      (task) => task.delegated_from_user_id || task.original_assignee_id
-    );
-
-    if (delegatedTasks.length > 0) {
-      // Load delegation chains in parallel
-      await Promise.all(
-        delegatedTasks.map(async (task) => {
-          try {
-            const delegationChain = await getDelegationChain(task.id);
-            task.delegation_chain = delegationChain;
-          } catch (error) {
-            console.error(`Failed to load delegation chain for task ${task.id}:`, error);
-          }
-        })
-      );
-    }
-  }
+  // Note: delegation_chain is now included inline in the API response
+  // No need for separate delegation chain loading
 
   return result;
 };
@@ -177,16 +159,8 @@ export const getTask = async (id: number): Promise<Task> => {
     task = response.data as any;
   }
 
-  // Always try to load delegation chain (important for subtasks of delegated tasks)
-  try {
-    const delegationChain = await getDelegationChain(id);
-    // Only set if delegation chain exists and is not empty
-    if (delegationChain && delegationChain.length > 0) {
-      task.delegation_chain = delegationChain;
-    }
-  } catch (error) {
-    // Silently ignore if delegation chain doesn't exist (not all tasks have delegation)
-  }
+  // Note: delegation_chain is now included inline in the API response
+  // No need for separate delegation chain loading
 
   return task;
 };
