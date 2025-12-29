@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Event } from '../types/calendar.types';
 import { mockGetEvents, isMockMode } from '@shared/utils/mockData';
 import * as calendarApi from '../api/calendar.api';
@@ -31,8 +31,12 @@ export const useMobileCalendarData = (
   const setEventsForRange = useCalendarStore((state) => state.setEventsForRange);
   const getEventsForRange = useCalendarStore((state) => state.getEventsForRange);
 
-  // Calculate range key
-  const rangeKey = useMemo(() => createRangeKey(startDate, endDate), [startDate, endDate]);
+  // Memoize date timestamps to prevent unnecessary recalculations
+  const startTime = startDate.getTime();
+  const endTime = endDate.getTime();
+
+  // Calculate range key using stable timestamps
+  const rangeKey = useMemo(() => createRangeKey(startDate, endDate), [startTime, endTime]);
 
   // Try to get cached events
   const cachedEvents = getEventsForRange(rangeKey);
@@ -50,10 +54,15 @@ export const useMobileCalendarData = (
     }
   }, [rangeKey, getEventsForRange]);
 
+  // Use ref to store the latest dates to avoid recreating loadEvents
+  const datesRef = useRef({ startDate, endDate, rangeKey });
+  datesRef.current = { startDate, endDate, rangeKey };
+
   const loadEvents = useCallback(async () => {
+    const { startDate: start, endDate: end, rangeKey: key } = datesRef.current;
     try {
       // Only show loading if no cached data
-      const cached = getEventsForRange(rangeKey);
+      const cached = getEventsForRange(key);
       if (!cached) {
         setIsLoading(true);
       }
@@ -63,15 +72,15 @@ export const useMobileCalendarData = (
         setEvents(mockEvents);
       } else {
         const filters = {
-          start: startDate.toISOString(),
-          end: endDate.toISOString(),
+          start: start.toISOString(),
+          end: end.toISOString(),
         };
 
         const response = await calendarApi.getEvents(filters, 100, 0);
         setEvents(response.events);
 
         // Save to cache
-        setEventsForRange(rangeKey, response.events);
+        setEventsForRange(key, response.events);
       }
     } catch (error) {
       console.error('Failed to load events:', error);
@@ -79,7 +88,7 @@ export const useMobileCalendarData = (
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, rangeKey, setEventsForRange, getEventsForRange]);
+  }, [setEventsForRange, getEventsForRange]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

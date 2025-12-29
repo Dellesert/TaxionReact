@@ -7,10 +7,12 @@ import Animated, {
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
-import { format, isToday } from 'date-fns';
+import { format, isToday, isSameDay, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { areSameDay } from '../../utils/calendarHelpers';
+import { Event } from '../../types/calendar.types';
 
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 500;
@@ -18,6 +20,7 @@ const VELOCITY_THRESHOLD = 500;
 interface WeekDayStripProps {
   weekDays: Date[];
   selectedDate: Date | null;
+  events?: Event[];
   onDayPress: (date: Date) => void;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
@@ -26,6 +29,7 @@ interface WeekDayStripProps {
 export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
   weekDays,
   selectedDate,
+  events = [],
   onDayPress,
   onSwipeLeft,
   onSwipeRight,
@@ -40,6 +44,17 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
       return areSameDay(date, selectedDate);
     },
     [selectedDate]
+  );
+
+  // Check if a date has events
+  const hasEventsOnDate = useCallback(
+    (date: Date): boolean => {
+      return events.some((event) => {
+        const eventDate = parseISO(event.start_time);
+        return isSameDay(eventDate, date);
+      });
+    },
+    [events]
   );
 
   // Swipe gesture handler
@@ -78,51 +93,84 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-      <GestureDetector gesture={swipeGesture}>
-        <Animated.View style={[styles.weekContainer, animatedStyle]}>
-          {weekDays.map((date) => {
-            const isSelected = isDateSelected(date);
-            const isTodayDate = isToday(date);
-            const dayOfWeek = format(date, 'EEEEEE', { locale: ru });
-            const dayNumber = format(date, 'd');
+      <View style={styles.rowContainer}>
+        {/* Left Arrow */}
+        <TouchableOpacity
+          style={styles.arrowButton}
+          onPress={onSwipeRight}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={24} color={theme.textSecondary} />
+        </TouchableOpacity>
 
-            return (
-              <TouchableOpacity
-                key={date.toISOString()}
-                style={styles.dayContainer}
-                onPress={() => onDayPress(date)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.dayOfWeek,
-                    { color: isSelected ? theme.primary : theme.textSecondary },
-                  ]}
-                >
-                  {dayOfWeek}
-                </Text>
-                <View
-                  style={[
-                    styles.dayNumberContainer,
-                    isSelected && { backgroundColor: theme.primary },
-                    isTodayDate && !isSelected && { borderColor: theme.primary, borderWidth: 2 },
-                  ]}
+        {/* Week Days */}
+        <GestureDetector gesture={swipeGesture}>
+          <Animated.View style={[styles.weekContainer, animatedStyle]}>
+            {weekDays.map((date) => {
+              const isSelected = isDateSelected(date);
+              const isTodayDate = isToday(date);
+              const hasEvents = hasEventsOnDate(date);
+              const dayOfWeek = format(date, 'EEEEEE', { locale: ru });
+              const dayNumber = format(date, 'd');
+
+              return (
+                <TouchableOpacity
+                  key={date.toISOString()}
+                  style={styles.dayContainer}
+                  onPress={() => onDayPress(date)}
+                  activeOpacity={0.7}
                 >
                   <Text
                     style={[
-                      styles.dayNumber,
-                      { color: isSelected ? '#FFFFFF' : isTodayDate ? theme.primary : theme.text },
-                      isSelected && styles.dayNumberSelected,
+                      styles.dayOfWeek,
+                      { color: isSelected ? theme.primary : theme.textSecondary },
                     ]}
                   >
-                    {dayNumber}
+                    {dayOfWeek}
                   </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </Animated.View>
-      </GestureDetector>
+                  <View
+                    style={[
+                      styles.dayNumberContainer,
+                      isSelected && { backgroundColor: theme.primary },
+                      isTodayDate && !isSelected && { borderColor: theme.primary, borderWidth: 2 },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayNumber,
+                        { color: isSelected ? '#FFFFFF' : isTodayDate ? theme.primary : theme.text },
+                        isSelected && styles.dayNumberSelected,
+                      ]}
+                    >
+                      {dayNumber}
+                    </Text>
+                  </View>
+                  {/* Event indicator dot */}
+                  <View style={styles.dotContainer}>
+                    {hasEvents && (
+                      <View
+                        style={[
+                          styles.eventDot,
+                          { backgroundColor: isSelected ? theme.primary : theme.textSecondary },
+                        ]}
+                      />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </Animated.View>
+        </GestureDetector>
+
+        {/* Right Arrow */}
+        <TouchableOpacity
+          style={styles.arrowButton}
+          onPress={onSwipeLeft}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-forward" size={24} color={theme.textSecondary} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -130,10 +178,20 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingVertical: 12,
-    paddingHorizontal: 8,
     borderBottomWidth: 1,
   },
+  rowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  arrowButton: {
+    width: 32,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   weekContainer: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -162,5 +220,16 @@ const styles = StyleSheet.create({
   },
   dayNumberSelected: {
     fontWeight: '600',
+  },
+  dotContainer: {
+    height: 6,
+    marginTop: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eventDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
 });

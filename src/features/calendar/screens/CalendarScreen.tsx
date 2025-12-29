@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { endOfWeek } from 'date-fns';
 import { Event, CalendarView } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/states/EventListSkeleton';
 import CreateEventModal from '../components/modals/CreateEventModal';
 import { MonthCalendarView } from '../components/views/MonthCalendarView';
 import { CalendarHeader } from '../components/navigation/CalendarHeader';
 import { WeekDayStrip } from '../components/navigation/WeekDayStrip';
+import { MonthNavigationStrip } from '../components/navigation/MonthNavigationStrip';
 import { CalendarEventsList } from '../components/events/CalendarEventsList';
 import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
 import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
@@ -52,27 +54,62 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
     selectedDate,
     viewMode,
     weekDays,
+    currentMonth,
     handleDayPress,
     handlePrevWeek,
     handleNextWeek,
+    handlePrevMonth,
+    handleNextMonth,
     handleMonthDateSelect,
     toggleViewMode,
     getEventsDateRange,
+    getMonthDateRange,
   } = useMobileCalendarState();
 
-  // Get date range for data fetching
+  // Get date range for data fetching (may be single day or whole week)
   const { startDate, endDate } = getEventsDateRange();
 
-  // Fetch events for the current range
+  // Calculate week end for fetching week events (for dot indicators)
+  const weekEndDate = useMemo(
+    () => endOfWeek(weekStartDate, { weekStartsOn: 1 }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [weekStartDate.getTime()]
+  );
+
+  // Fetch events for the display range (selected day or week)
   const { events, isLoading, refreshing, loadEvents, handleRefresh } = useMobileCalendarData(
     startDate,
     endDate
   );
 
+  // Fetch events for the whole week (for dot indicators on WeekDayStrip)
+  const { events: weekEvents, loadEvents: loadWeekEvents } = useMobileCalendarData(weekStartDate, weekEndDate);
+
+  // Get month date range for month view
+  const { startDate: monthStartDate, endDate: monthEndDate } = getMonthDateRange();
+
+  // Fetch events for the month view
+  const { events: monthEvents, loadEvents: loadMonthEvents } = useMobileCalendarData(monthStartDate, monthEndDate);
+
   // Load events when date range changes
   useEffect(() => {
     loadEvents().catch(() => showError('Не удалось загрузить события'));
-  }, [startDate, endDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate.getTime(), endDate.getTime()]);
+
+  // Load week events for dot indicators
+  useEffect(() => {
+    loadWeekEvents().catch(() => console.error('Failed to load week events for dots'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStartDate.getTime(), weekEndDate.getTime()]);
+
+  // Load month events when in month view
+  useEffect(() => {
+    if (viewMode === 'month') {
+      loadMonthEvents().catch(() => console.error('Failed to load month events'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, monthStartDate.getTime(), monthEndDate.getTime()]);
 
   // Filter events by search query
   const filteredEvents = searchQuery
@@ -100,6 +137,7 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
         <WeekDayStrip
           weekDays={weekDays}
           selectedDate={selectedDate}
+          events={weekEvents}
           onDayPress={handleDayPress}
           onSwipeLeft={handleNextWeek}
           onSwipeRight={handlePrevWeek}
@@ -108,12 +146,19 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
 
       {/* Content: Month calendar or Events list */}
       {viewMode === 'month' ? (
-        <MonthCalendarView
-          selectedDate={weekStartDate}
-          events={filteredEvents}
-          onDatePress={handleMonthDateSelect}
-          onEventPress={onEventPress}
-        />
+        <>
+          <MonthNavigationStrip
+            currentMonth={currentMonth}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+          />
+          <MonthCalendarView
+            selectedDate={currentMonth}
+            events={monthEvents}
+            onDatePress={handleMonthDateSelect}
+            onEventPress={onEventPress}
+          />
+        </>
       ) : isLoading ? (
         <EventListSkeleton />
       ) : sections.length === 0 ? (
