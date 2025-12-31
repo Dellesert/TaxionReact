@@ -49,6 +49,13 @@ export const useMessageSearch = ({
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Используем ref для callback чтобы избежать пересоздания performSearch
+  const onNavigateToMessageRef = useRef(onNavigateToMessage);
+  onNavigateToMessageRef.current = onNavigateToMessage;
+
+  // Ref для отслеживания последнего выполненного запроса (предотвращает дублирование)
+  const lastSearchQueryRef = useRef<string>('');
+
   // Выполнить поиск
   const performSearch = useCallback(
     async (query: string, newOffset: number = 0, append: boolean = false) => {
@@ -57,6 +64,12 @@ export const useMessageSearch = ({
         setTotalResults(0);
         setCurrentIndex(0);
         setHasMore(false);
+        lastSearchQueryRef.current = '';
+        return;
+      }
+
+      // Предотвращаем дублирование запроса с тем же query и offset=0
+      if (!append && newOffset === 0 && lastSearchQueryRef.current === query) {
         return;
       }
 
@@ -71,6 +84,11 @@ export const useMessageSearch = ({
       try {
         const response = await searchMessagesInChat(chatId, query, PAGE_SIZE, newOffset);
 
+        // Обновляем ref только для новых поисков (не append)
+        if (!append) {
+          lastSearchQueryRef.current = query;
+        }
+
         if (append) {
           setSearchResults((prev) => [...prev, ...response.messages]);
         } else {
@@ -84,7 +102,7 @@ export const useMessageSearch = ({
 
         // Если есть результаты и это новый поиск, перейти к первому
         if (!append && response.messages.length > 0) {
-          onNavigateToMessage(response.messages[0].id);
+          onNavigateToMessageRef.current(response.messages[0].id);
         }
       } catch (error: any) {
         if (error.name !== 'AbortError') {
@@ -94,7 +112,7 @@ export const useMessageSearch = ({
         setIsLoading(false);
       }
     },
-    [chatId, onNavigateToMessage]
+    [chatId] // Убрали onNavigateToMessage из зависимостей
   );
 
   // Debounced поиск при изменении запроса
@@ -135,6 +153,7 @@ export const useMessageSearch = ({
     setCurrentIndex(0);
     setHasMore(false);
     setOffset(0);
+    lastSearchQueryRef.current = '';
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -146,21 +165,21 @@ export const useMessageSearch = ({
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
       setCurrentIndex(newIndex);
-      onNavigateToMessage(searchResults[newIndex].id);
+      onNavigateToMessageRef.current(searchResults[newIndex].id);
     }
-  }, [currentIndex, searchResults, onNavigateToMessage]);
+  }, [currentIndex, searchResults]);
 
   // Навигация к следующему результату
   const navigateToNext = useCallback(() => {
     if (currentIndex < searchResults.length - 1) {
       const newIndex = currentIndex + 1;
       setCurrentIndex(newIndex);
-      onNavigateToMessage(searchResults[newIndex].id);
+      onNavigateToMessageRef.current(searchResults[newIndex].id);
     } else if (hasMore) {
       // Загружаем ещё результаты и переходим к следующему
       loadMoreResults();
     }
-  }, [currentIndex, searchResults, hasMore, onNavigateToMessage]);
+  }, [currentIndex, searchResults, hasMore]);
 
   // Навигация к конкретному результату
   const navigateToResult = useCallback(
@@ -169,9 +188,9 @@ export const useMessageSearch = ({
       if (index !== -1) {
         setCurrentIndex(index);
       }
-      onNavigateToMessage(messageId);
+      onNavigateToMessageRef.current(messageId);
     },
-    [searchResults, onNavigateToMessage]
+    [searchResults]
   );
 
   // Загрузить больше результатов

@@ -6,6 +6,7 @@ import { ScrollToBottomButton } from '../common/ScrollToBottomButton';
 import { MessageListComponent } from '../messages/MessageListComponent';
 import { MessageInput } from '../messages/MessageInput';
 import { SelectionModeToolbar } from '../common/SelectionModeToolbar';
+import { SearchNavigationBar } from '../search/SearchNavigationBar';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { Message, Chat } from '../../types/chat.types';
 
@@ -89,6 +90,14 @@ interface ChatScreenContentProps {
   onExitSelectionMode: () => void;
   canDeleteForEveryone: boolean;
 
+  // Search props
+  isSearchVisible?: boolean;
+  searchQuery?: string;
+  searchTotal?: number;
+  searchCurrentIndex?: number;
+  isSearchLoading?: boolean;
+  onNavigatePrev?: () => void;
+  onNavigateNext?: () => void;
 }
 
 export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
@@ -155,6 +164,13 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   onBulkDelete,
   onExitSelectionMode,
   canDeleteForEveryone,
+  isSearchVisible,
+  searchQuery,
+  searchTotal,
+  searchCurrentIndex,
+  isSearchLoading,
+  onNavigatePrev,
+  onNavigateNext,
 }) => {
   const { theme } = useTheme();
 
@@ -253,7 +269,16 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           inputWrapperAnimatedStyle,
         ]}
       >
-        {selectionMode ? (
+        {isSearchVisible ? (
+          <SearchNavigationBar
+            total={searchTotal ?? 0}
+            currentIndex={searchCurrentIndex ?? 0}
+            isLoading={isSearchLoading ?? false}
+            onNavigatePrev={onNavigatePrev ?? (() => {})}
+            onNavigateNext={onNavigateNext ?? (() => {})}
+            searchQuery={searchQuery ?? ''}
+          />
+        ) : selectionMode ? (
           <SelectionModeToolbar
             selectedCount={selectedMessages.size}
             onCancel={onExitSelectionMode}

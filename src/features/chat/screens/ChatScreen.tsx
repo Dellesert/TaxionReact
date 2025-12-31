@@ -163,18 +163,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const {
     isSearchVisible,
     searchQuery,
-    searchResults,
     totalResults,
     currentIndex,
     isLoading: isSearchLoading,
-    hasMore: hasMoreSearchResults,
     openSearch,
     closeSearch,
     setSearchQuery,
     navigateToPrev,
     navigateToNext,
-    navigateToResult,
-    loadMoreResults,
   } = useMessageSearch({
     chatId: chatIdNum,
     onNavigateToMessage: handleNavigateToSearchResult,
@@ -575,6 +571,13 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onBulkDelete={onBulkDelete}
         onExitSelectionMode={handleExitSelectionMode}
         canDeleteForEveryone={canDeleteForEveryone}
+        isSearchVisible={isSearchVisible}
+        searchQuery={searchQuery}
+        searchTotal={totalResults}
+        searchCurrentIndex={currentIndex}
+        isSearchLoading={isSearchLoading}
+        onNavigatePrev={navigateToPrev}
+        onNavigateNext={navigateToNext}
       />
 
       <ChatModals
@@ -600,15 +603,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onClose={closeSearch}
-        results={searchResults}
-        total={totalResults}
-        currentIndex={currentIndex}
-        isLoading={isSearchLoading}
-        onResultPress={navigateToResult}
-        onNavigatePrev={navigateToPrev}
-        onNavigateNext={navigateToNext}
-        hasMore={hasMoreSearchResults}
-        onLoadMore={loadMoreResults}
       />
     </View>
   );
