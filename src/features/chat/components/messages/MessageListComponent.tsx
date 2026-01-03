@@ -27,6 +27,7 @@ interface MessageListComponentProps {
   inputHeight: number;
   insetsBottom: number;
   keyboardHeightAnim: Animated.Value; // Анимированная высота клавиатуры
+  keyboardHeight: number; // Текущая высота клавиатуры (для расчёта shouldLift)
   hasReachedBottom: boolean; // Флаг что пользователь внизу списка
   listRef: React.RefObject<any>;
   highlightedMessageId: number | null;
@@ -77,6 +78,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   inputHeight,
   insetsBottom,
   keyboardHeightAnim,
+  keyboardHeight,
   hasReachedBottom,
   listRef,
   highlightedMessageId,
@@ -203,23 +205,57 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
     }
   }, []);
 
-  // Определяем нужно ли поднимать список: только если пользователь внизу И контента больше чем экран
-  // Если размеры ещё не инициализированы - доверяем hasReachedBottom
-  // Это важно для первого рендера когда onLayout ещё не вызван
+  // Определяем нужно ли поднимать список: только если клавиатура перекрывает последнее сообщение
+  // Для inverted списка: сообщения отображаются снизу, последнее сообщение внизу экрана
   const isLayoutReady = viewportHeight > 0 && contentHeight > 0;
-  const hasEnoughContent = !isLayoutReady || contentHeight > viewportHeight * 1.2;
-  const shouldLiftList = hasReachedBottom && hasEnoughContent;
+
+  // Логика для inverted списка:
+  // - contentHeight = общая высота контента (сообщения + paddings)
+  // - viewportHeight = видимая область
+  // - Если contentHeight < viewportHeight, сообщения занимают только часть экрана
+  // - Сообщения начинаются от inputHeight и идут вверх
+  // - Нужно проверить: достигают ли сообщения зоны клавиатуры
+  //
+  // Пространство над сообщениями = viewportHeight - contentHeight (когда мало сообщений)
+  // Если это пространство >= keyboardHeight, клавиатура не закрывает сообщения
+
+  const shouldLiftList = React.useMemo(() => {
+    // Если layout не готов - по умолчанию поднимаем (безопасный вариант)
+    if (!isLayoutReady) {
+      return hasReachedBottom;
+    }
+
+    // Если контента больше чем viewport - используем hasReachedBottom (как раньше)
+    if (contentHeight >= viewportHeight) {
+      return hasReachedBottom;
+    }
+
+    // Мало контента: проверяем перекрывает ли клавиатура сообщения
+    // Свободное пространство над сообщениями (для inverted списка это пространство сверху)
+    const freeSpaceAboveMessages = viewportHeight - contentHeight;
+
+    // Клавиатура перекрывает сообщения если она выше чем свободное пространство
+    const keyboardCoversMessages = keyboardHeight > freeSpaceAboveMessages;
+
+    // ВАЖНО: когда мало контента и нет скролла, пользователь всегда "внизу"
+    // Поэтому не проверяем hasReachedBottom, а только keyboardCoversMessages
+    return keyboardCoversMessages;
+  }, [isLayoutReady, contentHeight, viewportHeight, keyboardHeight, hasReachedBottom]);
 
 
   // Анимируем translateY для поднятия списка вместе с клавиатурой
   // Теперь БЕЗ LayoutAnimation - вся анимация через Animated.Value
   // Логика:
-  // - Если пользователь внизу (shouldLiftList=true): поднимаем список вверх на высоту клавиатуры
-  // - Если пользователь НЕ внизу (shouldLiftList=false): не двигаем, сохраняем позицию
-  const animatedTranslateY = keyboardHeightAnim.interpolate({
-    inputRange: [0, 1000],
-    outputRange: shouldLiftList ? [0, -1000] : [0, 0], // Поднимаем только если внизу
-  });
+  // - Если shouldLiftList=true: поднимаем список вверх на высоту клавиатуры
+  // - Если shouldLiftList=false: не двигаем, сохраняем позицию
+  //
+  // ВАЖНО: useMemo гарантирует что interpolate пересоздаётся при изменении shouldLiftList
+  const animatedTranslateY = React.useMemo(() => {
+    return keyboardHeightAnim.interpolate({
+      inputRange: [0, 1000],
+      outputRange: shouldLiftList ? [0, -1000] : [0, 0],
+    });
+  }, [keyboardHeightAnim, shouldLiftList]);
 
   if (showSkeletons) {
     return (

@@ -225,6 +225,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           inputHeight={inputHeight}
           insetsBottom={insetsBottom}
           keyboardHeightAnim={keyboardHeightAnim}
+          keyboardHeight={keyboardHeight}
           hasReachedBottom={hasReachedBottom}
           listRef={listRef}
           highlightedMessageId={highlightedMessageId}

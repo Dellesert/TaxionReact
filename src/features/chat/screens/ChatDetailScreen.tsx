@@ -86,10 +86,11 @@ const ChatDetailScreen: React.FC = () => {
             inputHeight={60}
             insetsBottom={insets.bottom}
             keyboardHeightAnim={keyboardHeightAnim}
+            keyboardHeight={0}
+            hasReachedBottom={true}
             listRef={flatListRef}
             highlightedMessageId={null}
             scrollSessionKey={0}
-            isRestoringPosition={{ current: false }}
             onContentSizeChange={() => {}}
             onScroll={() => {}}
             onViewableItemsChanged={null}
