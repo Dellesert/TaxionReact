@@ -31,11 +31,12 @@ import { decodeFileName } from '../../utils/file.utils';
 
 interface AttachmentsTabProps {
   chatId: number;
+  onForwardImage?: (attachment: Attachment) => void;
 }
 
 type AttachmentType = 'images' | 'files' | 'links';
 
-export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
+export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwardImage }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
   const [selectedType, setSelectedType] = useState<AttachmentType>('images');
@@ -488,6 +489,16 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId }) => {
         imageUrls={imageUrls}
         initialIndex={selectedImageIndex}
         onClose={handleCloseImageViewer}
+        onForward={onForwardImage ? (imageUrl: string) => {
+          // Находим attachment по URL
+          const attachment = imageAttachments.find(
+            (att) => replaceLocalhostWithIP(att.file_url) === imageUrl
+          );
+          if (attachment) {
+            setShowImageViewer(false);
+            onForwardImage(attachment);
+          }
+        } : undefined}
       />
     </>
   );

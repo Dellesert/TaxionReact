@@ -18,6 +18,9 @@ import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { ChatDetailTabs, TabType } from '../components/common/ChatDetailTabs';
 import { ParticipantsTab } from '../components/chat-details/ParticipantsTab';
 import { AttachmentsTab } from '../components/attachments/AttachmentsTab';
+import { ForwardMessageModal } from '../components/modals/ForwardMessageModal';
+import { Message, Attachment } from '../types/chat.types';
+import { sendMessage } from '../api/chat.api';
 
 // Hooks
 import { useChatSettingsData } from '../hooks/useChatSettingsData';
@@ -82,6 +85,9 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     role: string;
   } | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('participants');
+
+  // Forward image state
+  const [forwardingAttachment, setForwardingAttachment] = useState<Attachment | null>(null);
 
   // Permissions
   const creatorId = getCreatorId(chat);
@@ -255,6 +261,21 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
     return actions;
   }, [isCreator, isUploadingAvatar, changeAvatar, theme.error, handleDeletePress]);
 
+  // Handle forward image to chat
+  const handleForwardToChat = async (targetChatId: number) => {
+    if (!forwardingAttachment) return;
+
+    try {
+      await sendMessage(targetChatId, {
+        content: '',
+        file_ids: [forwardingAttachment.file_id],
+      });
+      setForwardingAttachment(null);
+    } catch (error) {
+      console.error('Failed to forward image:', error);
+    }
+  };
+
   const dynamicStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.backgroundSecondary,
@@ -316,7 +337,12 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
           />
         )}
 
-        {activeTab === 'attachments' && <AttachmentsTab chatId={chatId} />}
+        {activeTab === 'attachments' && (
+          <AttachmentsTab
+            chatId={chatId}
+            onForwardImage={setForwardingAttachment}
+          />
+        )}
       </ScrollView>
 
       {/* Add Members Modal */}
@@ -481,6 +507,22 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
           },
         ]}
         onDismiss={() => setShowDeleteModal(false)}
+      />
+
+      {/* Forward Image Modal */}
+      <ForwardMessageModal
+        visible={!!forwardingAttachment}
+        message={forwardingAttachment ? {
+          id: 0,
+          chat_id: chatId,
+          sender_id: currentUser?.id || 0,
+          content: '',
+          message_type: 'text',
+          created_at: new Date().toISOString(),
+          attachments: [forwardingAttachment],
+        } as Message : null}
+        onClose={() => setForwardingAttachment(null)}
+        onForward={handleForwardToChat}
       />
     </SafeAreaView>
   );
