@@ -248,6 +248,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       swipeY.value = 0;
       backgroundOpacity.value = 1;
       controlsOpacity.value = 1;
+      headerOpacity.value = 1;
       setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
       }, 50);
