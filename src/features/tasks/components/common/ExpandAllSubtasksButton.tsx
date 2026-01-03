@@ -13,8 +13,6 @@ export const ExpandAllSubtasksButton: React.FC<ExpandAllSubtasksButtonProps> = (
   count,
   onToggle,
 }) => {
-  if (count === 0) return null;
-
   return (
     <TouchableOpacity
       style={styles.expandAllButton}

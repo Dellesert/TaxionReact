@@ -22,8 +22,6 @@ export const ViewControlGroup: React.FC<ViewControlGroupProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  const showExpandButton = subtaskCount > 0;
-
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}>
       {/* Board View Button */}
@@ -87,33 +85,29 @@ export const ViewControlGroup: React.FC<ViewControlGroupProps> = ({
       </TouchableOpacity>
 
       {/* Divider */}
-      {showExpandButton && (
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-      )}
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
       {/* Expand All Button */}
-      {showExpandButton && (
-        <TouchableOpacity
-          style={styles.button}
-          onPress={onExpandToggle}
-          accessibilityLabel={
-            expandedAll
-              ? `Свернуть все подзадачи (${subtaskCount})`
-              : `Развернуть все подзадачи (${subtaskCount})`
-          }
-          accessibilityRole="button"
-          accessibilityState={{ expanded: expandedAll }}
-        >
-          <Ionicons
-            name={expandedAll ? 'chevron-up' : 'chevron-down'}
-            size={16}
-            color={theme.textSecondary}
-          />
-          <Text style={[styles.buttonText, { color: theme.textSecondary }]}>
-            {expandedAll ? 'Свернуть' : 'Все'} ({subtaskCount})
-          </Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={onExpandToggle}
+        accessibilityLabel={
+          expandedAll
+            ? `Свернуть все подзадачи (${subtaskCount})`
+            : `Развернуть все подзадачи (${subtaskCount})`
+        }
+        accessibilityRole="button"
+        accessibilityState={{ expanded: expandedAll }}
+      >
+        <Ionicons
+          name={expandedAll ? 'chevron-up' : 'chevron-down'}
+          size={16}
+          color={theme.textSecondary}
+        />
+        <Text style={[styles.buttonText, { color: theme.textSecondary }]}>
+          {expandedAll ? 'Свернуть' : 'Все'} ({subtaskCount})
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
