@@ -51,6 +51,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const scrollToBottomStartTime = useRef<number>(0); // Время начала анимации
   const scrollAnimationPhase = useRef<'waiting' | 'animating' | 'done'>('done'); // Фаза анимации
   const scrollCooldownUntil = useRef<number>(0); // Время до которого игнорируем изменения messagesKey
+  const scrollTargetIndex = useRef<number | null>(null); // Целевой индекс для скролла (null = scrollToEnd)
   const SCROLL_STABILIZATION_DELAY = 200; // ms ждём стабилизации messagesKey
   const SCROLL_ANIMATION_MAX_DURATION = 2000; // максимум 2 секунды на всё
   const SCROLL_COOLDOWN_DURATION = 1500; // ms период охлаждения после завершения анимации (увеличено для надёжности)
@@ -197,14 +198,27 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   useEffect(() => {
     const now = Date.now();
 
+    // Хелпер для скролла к целевой позиции
+    const scrollToTarget = (animated: boolean) => {
+      if (scrollTargetIndex.current !== null) {
+        // Скроллим к конкретному индексу (непрочитанные сообщения)
+        listRef.current?.scrollToIndex({
+          index: scrollTargetIndex.current,
+          animated,
+          viewPosition: 0.5,
+          viewOffset: -30,
+        });
+      } else {
+        // Скроллим в самый низ
+        listRef.current?.scrollToEnd({ animated });
+      }
+    };
+
     // Период охлаждения - после завершения анимации игнорируем изменения некоторое время
-    // Но при этом принудительно возвращаем к низу если позиция сбилась
+    // Но при этом принудительно возвращаем к целевой позиции если она сбилась
     if (scrollCooldownUntil.current > now) {
-      console.log('[ScrollToBottom] Cooldown active, forcing scrollToEnd');
-      // Во время cooldown - просто повторяем scrollToEnd без анимации
-      // Это гарантирует что позиция не сбивается от поздних re-render'ов
-      // Используем scrollToEnd вместо scrollToOffset(0) для inverted списка
-      listRef.current?.scrollToEnd({ animated: false });
+      console.log('[ScrollToBottom] Cooldown active, forcing scroll to target');
+      scrollToTarget(false);
       return;
     }
 
@@ -213,20 +227,33 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     if (scrollAnimationPhase.current === 'done') return;
 
     const elapsed = now - scrollToBottomStartTime.current;
-    console.log('[ScrollToBottom] messagesKey changed, phase:', scrollAnimationPhase.current, 'elapsed:', elapsed);
+    console.log('[ScrollToBottom] messagesKey changed, phase:', scrollAnimationPhase.current, 'elapsed:', elapsed, 'targetIndex:', scrollTargetIndex.current);
 
     // Таймаут - форсируем финальный скролл без анимации
     if (elapsed > SCROLL_ANIMATION_MAX_DURATION) {
-      console.log('[ScrollToBottom] Timeout reached, forcing final scrollToEnd');
-      listRef.current?.scrollToEnd({ animated: false });
+      console.log('[ScrollToBottom] Timeout reached, forcing final scroll');
+      const wasScrollingToUnread = scrollTargetIndex.current !== null;
+      scrollToTarget(false);
       isScrollToBottomAnimating.current = false;
       scrollAnimationPhase.current = 'done';
-      scrollCooldownUntil.current = now + SCROLL_COOLDOWN_DURATION;
-      setHasReachedBottom(true);
-      setUserScrolledToBottom(true);
-      setNewMessagesCount(0);
-      setFirstNewMessageIndex(-1);
-      setShowScrollToBottom(false);
+      // Сбрасываем состояния только если скроллили в низ (не к непрочитанным)
+      if (!wasScrollingToUnread) {
+        // Устанавливаем период охлаждения ТОЛЬКО для скролла к низу
+        scrollCooldownUntil.current = now + SCROLL_COOLDOWN_DURATION;
+        setHasReachedBottom(true);
+        setUserScrolledToBottom(true);
+        setNewMessagesCount(0);
+        setFirstNewMessageIndex(-1);
+        setShowScrollToBottom(false);
+      } else {
+        // Для скролла к непрочитанным - не устанавливаем cooldown
+        // Устанавливаем флаг чтобы handleScroll не скрывал плашку
+        isScrollingToUnread.current = true;
+        setTimeout(() => {
+          isScrollingToUnread.current = false;
+        }, 1000);
+      }
+      scrollTargetIndex.current = null;
       return;
     }
 
@@ -235,25 +262,43 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       if (!isScrollToBottomAnimating.current) return;
 
       if (scrollAnimationPhase.current === 'waiting') {
-        console.log('[ScrollToBottom] Stabilized! Starting animated scrollToEnd');
+        console.log('[ScrollToBottom] Stabilized! Starting animated scroll, targetIndex:', scrollTargetIndex.current);
         // messagesKey стабилен 200мс - запускаем плавную анимацию
         scrollAnimationPhase.current = 'animating';
-        listRef.current?.scrollToEnd({ animated: true });
+
+        // Если скроллим к непрочитанным - устанавливаем флаг
+        if (scrollTargetIndex.current !== null) {
+          isScrollingToUnread.current = true;
+        }
+
+        scrollToTarget(true);
 
         // Через 400мс (время анимации iOS) - финализируем
         setTimeout(() => {
-          console.log('[ScrollToBottom] Animation complete, finalizing with non-animated scrollToEnd');
+          console.log('[ScrollToBottom] Animation complete, finalizing');
+          const wasScrollingToUnread = scrollTargetIndex.current !== null;
           // Гарантируем финальную позицию (на случай прерывания анимации re-render'ом)
-          listRef.current?.scrollToEnd({ animated: false });
+          scrollToTarget(false);
           isScrollToBottomAnimating.current = false;
           scrollAnimationPhase.current = 'done';
-          // Устанавливаем период охлаждения - будем принудительно возвращать к низу
-          scrollCooldownUntil.current = Date.now() + SCROLL_COOLDOWN_DURATION;
-          setHasReachedBottom(true);
-          setUserScrolledToBottom(true);
-          setNewMessagesCount(0);
-          setFirstNewMessageIndex(-1);
-          setShowScrollToBottom(false);
+          // Сбрасываем состояния только если скроллили в низ (не к непрочитанным)
+          if (!wasScrollingToUnread) {
+            // Устанавливаем период охлаждения ТОЛЬКО для скролла к низу
+            // Для скролла к непрочитанным cooldown не нужен - пользователь останется на месте
+            scrollCooldownUntil.current = Date.now() + SCROLL_COOLDOWN_DURATION;
+            setHasReachedBottom(true);
+            setUserScrolledToBottom(true);
+            setNewMessagesCount(0);
+            setFirstNewMessageIndex(-1);
+            setShowScrollToBottom(false);
+          } else {
+            // Для скролла к непрочитанным - не устанавливаем cooldown
+            // Сбрасываем флаг после завершения - увеличенный таймаут для надёжности
+            setTimeout(() => {
+              isScrollingToUnread.current = false;
+            }, 1000);
+          }
+          scrollTargetIndex.current = null;
         }, 400);
       }
     }, SCROLL_STABILIZATION_DELAY);
@@ -684,6 +729,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       lastOldestMessageId.current = null;
       setHasMoreMessages(true);
 
+      // ВАЖНО: Сбрасываем счётчики новых сообщений - они содержат устаревшие индексы из jump context
+      // После loadMessages нужно использовать ТОЛЬКО пересчитанный actualFirstUnreadIndex
+      setNewMessagesCount(0);
+      setFirstNewMessageIndex(-1);
+
       // Ждём стабилизации layout через requestAnimationFrame
       await new Promise<void>(resolve => {
         requestAnimationFrame(() => {
@@ -693,12 +743,22 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         });
       });
 
-      // Фаза 1: Тихий прыжок близко к низу (15 сообщений от низа)
-      // Это позиционирует нас близко, чтобы финальная анимация была короткой и быстрой
+      // При выходе из jump context ВСЕГДА скроллим в низ:
+      // - loadMessages загружает только последние 10-20 сообщений
+      // - Если непрочитанные есть, они все будут видны внизу экрана
+      // - Плашка появится автоматически когда React обновит firstUnreadIndex
+      // - Это избегает проблемы с мерцанием плашки в неправильном месте
+      console.log('[ScrollToBottom] Will scroll to bottom (jump context exit)');
+      scrollTargetIndex.current = null; // null означает scrollToEnd
+
+      // Фаза 1: Тихий прыжок близко к целевой позиции
       const totalMessages = freshMessages.length;
-      console.log('[ScrollToBottom] Phase 1: Jump to index near bottom, totalMessages:', totalMessages);
+      const targetIdx = scrollTargetIndex.current ?? 0; // 0 = самый низ для inverted
+      console.log('[ScrollToBottom] Phase 1: Jump near target, totalMessages:', totalMessages, 'targetIndex:', targetIdx);
+
       if (listRef.current && totalMessages > 0) {
-        const jumpIndex = Math.min(15, totalMessages - 1);
+        // Прыгаем к позиции немного выше целевой (чтобы финальная анимация была короткой)
+        const jumpIndex = Math.min(targetIdx + 15, totalMessages - 1);
         console.log('[ScrollToBottom] Jumping to index:', jumpIndex);
         listRef.current.scrollToIndex({
           index: jumpIndex,
@@ -1031,6 +1091,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isScrollToBottomAnimating.current = false; // ✅ Сбрасываем флаг анимации скролла к низу
     scrollAnimationPhase.current = 'done'; // ✅ Сбрасываем фазу анимации
     scrollCooldownUntil.current = 0; // ✅ Сбрасываем период охлаждения
+    scrollTargetIndex.current = null; // ✅ Сбрасываем целевой индекс скролла
   }, []);
 
   return {
