@@ -2,7 +2,7 @@
   "expo": {
     "name": "Тахион",
     "slug": "tachyon-messenger",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tachyon",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dellesert.tachyon-messenger",
-      "buildNumber": "5",
+      "buildNumber": "1",
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
       "googleServicesFile": "./GoogleService-Info.plist",

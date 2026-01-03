@@ -34,7 +34,6 @@ FirebaseApp.configure()
     UNUserNotificationCenter.current().delegate = self
     Messaging.messaging().delegate = self
     application.registerForRemoteNotifications()
-
     factory.startReactNative(
       withModuleName: "main",
       in: window,
