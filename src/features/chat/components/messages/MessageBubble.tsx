@@ -29,6 +29,7 @@ interface MessageBubbleProps {
   isVisible?: boolean;
   isSavedChat?: boolean;
   isForwarded?: boolean;
+  searchQuery?: string;
 }
 
 /**
@@ -52,6 +53,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   isVisible = true,
   isSavedChat = false,
   isForwarded = false,
+  searchQuery,
 }) => {
   const { theme } = useTheme();
 
@@ -231,6 +233,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                     dynamicStyles.messageText,
                     isOwnMessage && dynamicStyles.ownMessageText,
                   ]}
+                  searchQuery={searchQuery}
                 />
               )}
 
@@ -419,7 +422,8 @@ export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, next
     prevProps.isHighlighted !== nextProps.isHighlighted ||
     prevProps.isOwnMessage !== nextProps.isOwnMessage ||
     prevProps.isSavedChat !== nextProps.isSavedChat ||
-    prevProps.isForwarded !== nextProps.isForwarded
+    prevProps.isForwarded !== nextProps.isForwarded ||
+    prevProps.searchQuery !== nextProps.searchQuery
   ) {
     return false;
   }

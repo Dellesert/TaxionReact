@@ -3,7 +3,7 @@
 ## ⚠️ Чеклист перед сборкой
 
 **Обязательно выполнить после каждого `expo prebuild`:**
-
+- [ ] Поменять версию сборки +1 в app.json 
 - [ ] Добавить импорты в AppDelegate.swift (`FirebaseMessaging`, `UserNotifications`)
 - [ ] Добавить регистрацию push notifications в `didFinishLaunchingWithOptions`
 - [ ] Добавить методы делегатов для push notifications

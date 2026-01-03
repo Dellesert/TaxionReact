@@ -43,6 +43,7 @@ interface MessageItemProps {
   onToggleSelection?: (messageId: number) => void;
   onRetryMessage?: (messageId: number) => void;
   isVisible?: boolean; // Добавляем флаг видимости для ленивой загрузки
+  searchQuery?: string; // Поисковый запрос для подсветки текста
 }
 
 /**
@@ -73,6 +74,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onToggleSelection,
   onRetryMessage,
   isVisible = true, // По умолчанию видим
+  searchQuery,
 }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
@@ -202,6 +204,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           isVisible={isVisible}
           isSavedChat={isSavedChat}
           isForwarded={isForwarded}
+          searchQuery={searchQuery}
         />
       </View>
 
@@ -373,6 +376,7 @@ export default React.memo(MessageItem, (prevProps, nextProps) => {
     prevProps.selectionMode !== nextProps.selectionMode ||
     prevProps.isSelected !== nextProps.isSelected ||
     prevProps.isSavedChat !== nextProps.isSavedChat ||
+    prevProps.searchQuery !== nextProps.searchQuery ||
     // Оптимистичные обновления - проверяем статус отправки
     (prevProps.message as any).sending !== (nextProps.message as any).sending ||
     (prevProps.message as any).failed !== (nextProps.message as any).failed

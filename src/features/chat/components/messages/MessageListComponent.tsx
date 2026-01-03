@@ -56,6 +56,7 @@ interface MessageListComponentProps {
   userRole?: 'owner' | 'admin' | 'member';
   onFlashListLoad?: () => void;
   isPositionReady?: boolean; // Флаг готовности позиции скролла для показа списка
+  searchQuery?: string; // Поисковый запрос для подсветки текста в сообщениях
 }
 
 /**
@@ -105,6 +106,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   userRole,
   onFlashListLoad,
   isPositionReady = true, // По умолчанию true для обратной совместимости
+  searchQuery,
 }) => {
   const { theme } = useTheme();
 
@@ -349,6 +351,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
                 onEnterSelectionMode={onEnterSelectionMode}
                 onToggleSelection={onToggleMessageSelection}
                 isVisible={viewableIndices.has(index)}
+                searchQuery={searchQuery}
               />
             </>
           );

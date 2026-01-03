@@ -6,6 +6,7 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 interface LinkifiedTextProps {
   text: string;
   style?: StyleProp<TextStyle>;
+  searchQuery?: string;
 }
 
 type LinkType = 'url' | 'email' | 'phone' | 'text';
@@ -13,13 +14,14 @@ type LinkType = 'url' | 'email' | 'phone' | 'text';
 interface TextPart {
   text: string;
   type: LinkType;
+  isSearchMatch?: boolean;
 }
 
 /**
  * Компонент для отображения текста с кликабельными ссылками
  * Поддерживает URL-адреса (http, https), email и телефонные номера
  */
-export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style }) => {
+export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style, searchQuery }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
 
@@ -28,9 +30,63 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style }) => 
   const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
   const phoneRegex = /(\+?\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9})/g;
 
+  // Функция для разбиения текста по поисковому запросу
+  const applySearchHighlight = (parts: TextPart[], query: string): TextPart[] => {
+    if (!query || query.trim().length === 0) {
+      return parts;
+    }
+
+    const result: TextPart[] = [];
+    const lowerQuery = query.toLowerCase();
+
+    for (const part of parts) {
+      const lowerText = part.text.toLowerCase();
+      let lastIdx = 0;
+      let searchIdx = lowerText.indexOf(lowerQuery, lastIdx);
+
+      if (searchIdx === -1) {
+        // Нет совпадений в этой части
+        result.push(part);
+        continue;
+      }
+
+      // Разбиваем часть на подчасти с выделением
+      while (searchIdx !== -1) {
+        // Текст до совпадения
+        if (searchIdx > lastIdx) {
+          result.push({
+            text: part.text.substring(lastIdx, searchIdx),
+            type: part.type,
+            isSearchMatch: false,
+          });
+        }
+
+        // Само совпадение (сохраняем оригинальный регистр)
+        result.push({
+          text: part.text.substring(searchIdx, searchIdx + query.length),
+          type: part.type,
+          isSearchMatch: true,
+        });
+
+        lastIdx = searchIdx + query.length;
+        searchIdx = lowerText.indexOf(lowerQuery, lastIdx);
+      }
+
+      // Оставшийся текст после последнего совпадения
+      if (lastIdx < part.text.length) {
+        result.push({
+          text: part.text.substring(lastIdx),
+          type: part.type,
+          isSearchMatch: false,
+        });
+      }
+    }
+
+    return result;
+  };
+
   const parseText = (inputText: string): TextPart[] => {
     const parts: TextPart[] = [];
-    let remainingText = inputText;
 
     // Находим все совпадения для всех типов ссылок
     const allMatches: { index: number; text: string; type: LinkType }[] = [];
@@ -87,7 +143,10 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style }) => 
       });
     }
 
-    return parts.length > 0 ? parts : [{ text: inputText, type: 'text' }];
+    const baseParts = parts.length > 0 ? parts : [{ text: inputText, type: 'text' as LinkType }];
+
+    // Применяем подсветку поиска
+    return applySearchHighlight(baseParts, searchQuery || '');
   };
 
   const handleLinkPress = async (linkText: string, type: LinkType) => {
@@ -115,23 +174,46 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style }) => 
 
   const parts = parseText(text);
 
+  // Стиль для подсветки найденного текста
+  const searchHighlightStyle = {
+    backgroundColor: '#FFEB3B',
+    color: '#000',
+    borderRadius: 2,
+  };
+
   return (
     <Text style={style}>
       {parts.map((part, index) => {
+        // Базовый стиль для ссылок
+        const linkStyle = part.type !== 'text' ? {
+          color: theme.linkColor || '#4A9EFF',
+          textDecorationLine: 'underline' as const,
+        } : {};
+
+        // Добавляем подсветку поиска если нужно
+        const highlightStyle = part.isSearchMatch ? searchHighlightStyle : {};
+
         if (part.type !== 'text') {
           return (
             <Text
               key={index}
-              style={{
-                color: theme.linkColor || '#4A9EFF',
-                textDecorationLine: 'underline'
-              }}
+              style={[linkStyle, highlightStyle]}
               onPress={() => handleLinkPress(part.text, part.type)}
             >
               {part.text}
             </Text>
           );
         }
+
+        // Для обычного текста проверяем нужна ли подсветка
+        if (part.isSearchMatch) {
+          return (
+            <Text key={index} style={highlightStyle}>
+              {part.text}
+            </Text>
+          );
+        }
+
         return <Text key={index}>{part.text}</Text>;
       })}
     </Text>

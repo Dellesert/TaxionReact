@@ -578,6 +578,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         isSearchLoading={isSearchLoading}
         onNavigatePrev={navigateToPrev}
         onNavigateNext={navigateToNext}
+        activeSearchQuery={isSearchVisible && searchQuery ? searchQuery : undefined}
       />
 
       <ChatModals

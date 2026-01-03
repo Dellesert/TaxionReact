@@ -61,22 +61,9 @@ export const SearchNavigationBar: React.FC<SearchNavigationBarProps> = ({
         </Text>
       </View>
 
+      {/* Кнопки инвертированы: chevron-up вызывает Next, chevron-down вызывает Prev
+          потому что список сообщений инвертирован (новые сообщения внизу) */}
       <View style={styles.navigationButtons}>
-        <TouchableOpacity
-          onPress={onNavigatePrev}
-          style={[
-            styles.navButton,
-            { backgroundColor: theme.backgroundTertiary },
-            !canNavigatePrev && styles.navButtonDisabled,
-          ]}
-          disabled={!canNavigatePrev}
-        >
-          <Ionicons
-            name="chevron-up"
-            size={24}
-            color={canNavigatePrev ? theme.text : theme.textTertiary}
-          />
-        </TouchableOpacity>
         <TouchableOpacity
           onPress={onNavigateNext}
           style={[
@@ -87,9 +74,24 @@ export const SearchNavigationBar: React.FC<SearchNavigationBarProps> = ({
           disabled={!canNavigateNext}
         >
           <Ionicons
-            name="chevron-down"
+            name="chevron-up"
             size={24}
             color={canNavigateNext ? theme.text : theme.textTertiary}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onNavigatePrev}
+          style={[
+            styles.navButton,
+            { backgroundColor: theme.backgroundTertiary },
+            !canNavigatePrev && styles.navButtonDisabled,
+          ]}
+          disabled={!canNavigatePrev}
+        >
+          <Ionicons
+            name="chevron-down"
+            size={24}
+            color={canNavigatePrev ? theme.text : theme.textTertiary}
           />
         </TouchableOpacity>
       </View>

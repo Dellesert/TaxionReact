@@ -98,6 +98,9 @@ interface ChatScreenContentProps {
   isSearchLoading?: boolean;
   onNavigatePrev?: () => void;
   onNavigateNext?: () => void;
+
+  // Search highlight - активный поисковый запрос для подсветки текста
+  activeSearchQuery?: string;
 }
 
 export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
@@ -171,6 +174,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   isSearchLoading,
   onNavigatePrev,
   onNavigateNext,
+  activeSearchQuery,
 }) => {
   const { theme } = useTheme();
 
@@ -250,6 +254,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           userRole={userRole}
           onFlashListLoad={onFlashListLoad}
           isPositionReady={isPositionReady}
+          searchQuery={activeSearchQuery}
         />
 
         <ScrollToBottomButton
