@@ -23,6 +23,7 @@ interface UseMessageSearchResult {
   openSearch: () => void;
   closeSearch: () => void;
   setSearchQuery: (query: string) => void;
+  submitSearch: () => void;
   navigateToPrev: () => void;
   navigateToNext: () => void;
   navigateToResult: (messageId: number) => void;
@@ -46,8 +47,8 @@ export const useMessageSearch = ({
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
 
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Используем ref для callback чтобы избежать пересоздания performSearch
   const onNavigateToMessageRef = useRef(onNavigateToMessage);
@@ -56,11 +57,16 @@ export const useMessageSearch = ({
   // Ref для отслеживания последнего выполненного запроса (предотвращает дублирование)
   const lastSearchQueryRef = useRef<string>('');
 
+  // Ref для доступа к результатам без пересоздания performSearch
+  const searchResultsRef = useRef<Message[]>([]);
+
   // Выполнить поиск
+  // navigateToFirst - перейти к первому результату (только при явном submit)
   const performSearch = useCallback(
-    async (query: string, newOffset: number = 0, append: boolean = false) => {
+    async (query: string, newOffset: number = 0, append: boolean = false, navigateToFirst: boolean = false) => {
       if (query.length < MIN_QUERY_LENGTH) {
         setSearchResults([]);
+        searchResultsRef.current = [];
         setTotalResults(0);
         setCurrentIndex(0);
         setHasMore(false);
@@ -70,6 +76,14 @@ export const useMessageSearch = ({
 
       // Предотвращаем дублирование запроса с тем же query и offset=0
       if (!append && newOffset === 0 && lastSearchQueryRef.current === query) {
+        // Если это submit и результаты уже есть - просто навигируем
+        if (navigateToFirst) {
+          const results = searchResultsRef.current;
+          if (results.length > 0) {
+            setCurrentIndex(0);
+            onNavigateToMessageRef.current(results[0].id);
+          }
+        }
         return;
       }
 
@@ -90,8 +104,11 @@ export const useMessageSearch = ({
         }
 
         if (append) {
-          setSearchResults((prev) => [...prev, ...response.messages]);
+          const newResults = [...searchResultsRef.current, ...response.messages];
+          searchResultsRef.current = newResults;
+          setSearchResults(newResults);
         } else {
+          searchResultsRef.current = response.messages;
           setSearchResults(response.messages);
           setCurrentIndex(0);
         }
@@ -100,8 +117,8 @@ export const useMessageSearch = ({
         setHasMore(response.has_more);
         setOffset(newOffset);
 
-        // Если есть результаты и это новый поиск, перейти к первому
-        if (!append && response.messages.length > 0) {
+        // Если есть результаты и явно запрошена навигация, перейти к первому
+        if (navigateToFirst && !append && response.messages.length > 0) {
           onNavigateToMessageRef.current(response.messages[0].id);
         }
       } catch (error: any) {
@@ -112,10 +129,10 @@ export const useMessageSearch = ({
         setIsLoading(false);
       }
     },
-    [chatId] // Убрали onNavigateToMessage из зависимостей
+    [chatId]
   );
 
-  // Debounced поиск при изменении запроса
+  // Debounced поиск при изменении запроса (только подсчет, без навигации)
   useEffect(() => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -123,13 +140,15 @@ export const useMessageSearch = ({
 
     if (searchQuery.length >= MIN_QUERY_LENGTH) {
       debounceTimer.current = setTimeout(() => {
-        performSearch(searchQuery, 0, false);
+        performSearch(searchQuery, 0, false, false);
       }, DEBOUNCE_DELAY);
     } else {
       setSearchResults([]);
+      searchResultsRef.current = [];
       setTotalResults(0);
       setCurrentIndex(0);
       setHasMore(false);
+      lastSearchQueryRef.current = '';
     }
 
     return () => {
@@ -137,6 +156,13 @@ export const useMessageSearch = ({
         clearTimeout(debounceTimer.current);
       }
     };
+  }, [searchQuery, performSearch]);
+
+  // Явный запуск поиска (по нажатию кнопки "Найти" на клавиатуре)
+  const submitSearch = useCallback(() => {
+    if (searchQuery.length >= MIN_QUERY_LENGTH) {
+      performSearch(searchQuery, 0, false, true);
+    }
   }, [searchQuery, performSearch]);
 
   // Открыть поиск
@@ -149,6 +175,7 @@ export const useMessageSearch = ({
     setIsSearchVisible(false);
     setSearchQuery('');
     setSearchResults([]);
+    searchResultsRef.current = [];
     setTotalResults(0);
     setCurrentIndex(0);
     setHasMore(false);
@@ -224,6 +251,7 @@ export const useMessageSearch = ({
     openSearch,
     closeSearch,
     setSearchQuery,
+    submitSearch,
     navigateToPrev,
     navigateToNext,
     navigateToResult,

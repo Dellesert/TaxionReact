@@ -282,6 +282,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             onNavigatePrev={onNavigatePrev ?? (() => {})}
             onNavigateNext={onNavigateNext ?? (() => {})}
             searchQuery={searchQuery ?? ''}
+            hideNavigation={keyboardHeight > 0}
           />
         ) : selectionMode ? (
           <SelectionModeToolbar

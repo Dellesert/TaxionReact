@@ -16,6 +16,7 @@ interface SearchNavigationBarProps {
   onNavigatePrev: () => void;
   onNavigateNext: () => void;
   searchQuery: string;
+  hideNavigation?: boolean;
 }
 
 export const SearchNavigationBar: React.FC<SearchNavigationBarProps> = ({
@@ -25,6 +26,7 @@ export const SearchNavigationBar: React.FC<SearchNavigationBarProps> = ({
   onNavigatePrev,
   onNavigateNext,
   searchQuery,
+  hideNavigation,
 }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -63,38 +65,40 @@ export const SearchNavigationBar: React.FC<SearchNavigationBarProps> = ({
 
       {/* Кнопки инвертированы: chevron-up вызывает Next, chevron-down вызывает Prev
           потому что список сообщений инвертирован (новые сообщения внизу) */}
-      <View style={styles.navigationButtons}>
-        <TouchableOpacity
-          onPress={onNavigateNext}
-          style={[
-            styles.navButton,
-            { backgroundColor: theme.backgroundTertiary },
-            !canNavigateNext && styles.navButtonDisabled,
-          ]}
-          disabled={!canNavigateNext}
-        >
-          <Ionicons
-            name="chevron-up"
-            size={24}
-            color={canNavigateNext ? theme.text : theme.textTertiary}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onNavigatePrev}
-          style={[
-            styles.navButton,
-            { backgroundColor: theme.backgroundTertiary },
-            !canNavigatePrev && styles.navButtonDisabled,
-          ]}
-          disabled={!canNavigatePrev}
-        >
-          <Ionicons
-            name="chevron-down"
-            size={24}
-            color={canNavigatePrev ? theme.text : theme.textTertiary}
-          />
-        </TouchableOpacity>
-      </View>
+      {!hideNavigation && (
+        <View style={styles.navigationButtons}>
+          <TouchableOpacity
+            onPress={onNavigateNext}
+            style={[
+              styles.navButton,
+              { backgroundColor: theme.backgroundTertiary },
+              !canNavigateNext && styles.navButtonDisabled,
+            ]}
+            disabled={!canNavigateNext}
+          >
+            <Ionicons
+              name="chevron-up"
+              size={24}
+              color={canNavigateNext ? theme.text : theme.textTertiary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onNavigatePrev}
+            style={[
+              styles.navButton,
+              { backgroundColor: theme.backgroundTertiary },
+              !canNavigatePrev && styles.navButtonDisabled,
+            ]}
+            disabled={!canNavigatePrev}
+          >
+            <Ionicons
+              name="chevron-down"
+              size={24}
+              color={canNavigatePrev ? theme.text : theme.textTertiary}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };

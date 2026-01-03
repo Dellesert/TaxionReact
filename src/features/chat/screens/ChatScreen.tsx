@@ -169,6 +169,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     openSearch,
     closeSearch,
     setSearchQuery,
+    submitSearch,
     navigateToPrev,
     navigateToNext,
   } = useMessageSearch({
@@ -603,6 +604,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         isVisible={isSearchVisible}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        onSubmitSearch={submitSearch}
         onClose={closeSearch}
       />
     </View>

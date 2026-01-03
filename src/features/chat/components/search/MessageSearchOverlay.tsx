@@ -19,6 +19,7 @@ interface MessageSearchOverlayProps {
   isVisible: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onSubmitSearch: () => void;
   onClose: () => void;
 }
 
@@ -26,6 +27,7 @@ export const MessageSearchOverlay: React.FC<MessageSearchOverlayProps> = ({
   isVisible,
   searchQuery,
   onSearchChange,
+  onSubmitSearch,
   onClose,
 }) => {
   const { theme } = useTheme();
@@ -79,6 +81,7 @@ export const MessageSearchOverlay: React.FC<MessageSearchOverlayProps> = ({
           placeholderTextColor={theme.inputPlaceholder}
           value={searchQuery}
           onChangeText={onSearchChange}
+          onSubmitEditing={onSubmitSearch}
           returnKeyType="search"
           autoCapitalize="none"
           autoCorrect={false}
