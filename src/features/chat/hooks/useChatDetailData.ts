@@ -45,6 +45,9 @@ export const useChatDetailData = (chatId: number): UseChatDetailDataReturn => {
     }
   }, [chatId, loadMessages, showError]);
 
+  // Get clearTypingUsers function from store
+  const clearTypingUsers = useChatStore((state) => state.clearTypingUsers);
+
   // Join/Leave chat room via WebSocket for presence tracking
   useEffect(() => {
     if (!isValidChatId(chatId)) {
@@ -59,8 +62,10 @@ export const useChatDetailData = (chatId: number): UseChatDetailDataReturn => {
     return () => {
       console.log(`🔴 Leaving chat room ${chatId}`);
       websocketService.leaveChat(chatId);
+      // Clear typing indicators to prevent stale "typing..." state
+      clearTypingUsers(chatId);
     };
-  }, [chatId]);
+  }, [chatId, clearTypingUsers]);
 
   // ОПТИМИЗАЦИЯ: Удалена предзагрузка пользователей
   // Backend теперь всегда возвращает sender в сообщениях, поэтому кэш не нужен

@@ -22,6 +22,11 @@ import { PAGINATION } from '@shared/constants/api.constants';
 // In-flight user requests cache to prevent duplicate requests
 const inFlightUserRequests = new Map<number, Promise<any>>();
 
+// Typing indicator auto-clear timeouts (chatId_userId -> timeout)
+// Auto-clears typing indicator after 5 seconds if no stop event received
+const typingTimeouts = new Map<string, NodeJS.Timeout>();
+const TYPING_TIMEOUT_MS = 5000;
+
 /**
  * Merges updated message with existing message, preserving forward-related fields.
  * This is needed because some API endpoints (pin, unpin, reaction) may not return
@@ -149,6 +154,7 @@ interface ChatState {
   handleChatDelete: (chatId: number) => void;
   handleTypingStart: (chatId: number, typing: TypingIndicator) => void;
   handleTypingStop: (chatId: number, userId: number) => void;
+  clearTypingUsers: (chatId: number) => void;
   handleUserJoin: (chatId: number, userId?: number) => void;
   handleUserLeave: (chatId: number, userId?: number) => void;
   handleUserPresence: (presence: any) => void;
@@ -1893,6 +1899,21 @@ export const useChatStore = create<ChatState>()(
       }
     }
 
+    // Clear existing timeout for this user (reset timer on new typing event)
+    const timeoutKey = `${chatId}_${typing.user_id}`;
+    const existingTimeout = typingTimeouts.get(timeoutKey);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Set auto-clear timeout (5 seconds)
+    // This ensures typing indicator is cleared even if stop event is lost
+    const timeout = setTimeout(() => {
+      typingTimeouts.delete(timeoutKey);
+      get().handleTypingStop(chatId, typing.user_id);
+    }, TYPING_TIMEOUT_MS);
+    typingTimeouts.set(timeoutKey, timeout);
+
     set((state) => {
       const currentTyping = state.typingUsers[chatId] || [];
       const alreadyTyping = currentTyping.some((t) => t.user_id === typing.user_id);
@@ -1909,12 +1930,35 @@ export const useChatStore = create<ChatState>()(
   },
 
   handleTypingStop: (chatId: number, userId: number) => {
+    // Clear timeout when stop event received
+    const timeoutKey = `${chatId}_${userId}`;
+    const existingTimeout = typingTimeouts.get(timeoutKey);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      typingTimeouts.delete(timeoutKey);
+    }
+
     set((state) => ({
       typingUsers: {
         ...state.typingUsers,
         [chatId]: (state.typingUsers[chatId] || []).filter((t) => t.user_id !== userId),
       },
     }));
+  },
+
+  clearTypingUsers: (chatId: number) => {
+    // Clear all timeouts for this chat
+    typingTimeouts.forEach((timeout, key) => {
+      if (key.startsWith(`${chatId}_`)) {
+        clearTimeout(timeout);
+        typingTimeouts.delete(key);
+      }
+    });
+
+    set((state) => {
+      const { [chatId]: _, ...rest } = state.typingUsers;
+      return { typingUsers: rest };
+    });
   },
 
   handleUserJoin: (chatId: number, userId?: number) => {
