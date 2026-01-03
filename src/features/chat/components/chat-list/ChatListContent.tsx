@@ -202,7 +202,13 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
             <ScrollView
               contentContainerStyle={styles.emptyStateContainer}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={theme.textSecondary}
+                  colors={[theme.primary]}
+                  progressBackgroundColor={theme.card}
+                />
               }
             >
               <ChatEmptyState searchQuery={searchQuery} />
@@ -215,7 +221,13 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
               renderItem={renderChatItem}
               extraData={{ isEditMode, selectedChats, typingUsers, chatsHash, tabsVersion }}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={theme.textSecondary}
+                  colors={[theme.primary]}
+                  progressBackgroundColor={theme.card}
+                />
               }
               contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
               onEndReached={() => {
