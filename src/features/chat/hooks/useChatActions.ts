@@ -150,12 +150,17 @@ export const useChatActions = (chatId: number) => {
     try {
       // Получаем file_ids из вложений сообщения
       const fileIds = forwardingMessage.attachments?.length > 0
-        ? forwardingMessage.attachments.map((attachment: any) => attachment.file_id)
+        ? forwardingMessage.attachments.map((attachment: any) => attachment.file_id).filter((id: number) => id > 0)
         : undefined;
 
-      // Используем новый API с forward_from_message_id
-      // Бэкенд автоматически скопирует контент, тип, файлы и сохранит оригинального отправителя
-      if (forwardingMessage.message_type === 'poll' && forwardingMessage.poll_data) {
+      // Если id = 0, это означает пересылку только файлов (например, из ImageViewer)
+      // В этом случае не используем forward_from_message_id
+      const isFileOnlyForward = forwardingMessage.id === 0 && fileIds && fileIds.length > 0;
+
+      if (isFileOnlyForward) {
+        // Пересылка только файлов без ссылки на оригинальное сообщение
+        await sendMessage(targetChatId, '', undefined, fileIds, {});
+      } else if (forwardingMessage.message_type === 'poll' && forwardingMessage.poll_data) {
         // Для опросов передаём poll_data
         await sendMessage(targetChatId, '', undefined, fileIds, {
           type: 'poll',

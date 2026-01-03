@@ -311,6 +311,36 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           setShowImageViewer(false);
           setSelectedImageIndex(0);
         }}
+        onForward={onForward ? (imageUrl: string) => {
+          // Находим attachment по URL (imageUrls - это объект {id: url})
+          const imageUrlEntries = Object.entries(imageUrls);
+          const foundEntry = imageUrlEntries.find(([, url]) => url === imageUrl);
+
+          if (!foundEntry) {
+            console.error('Attachment not found for URL:', imageUrl);
+            return;
+          }
+
+          const attachmentId = parseInt(foundEntry[0], 10);
+          const originalAttachment = message.attachments?.find(
+            (att) => att.id === attachmentId
+          );
+
+          if (!originalAttachment) {
+            console.error('Attachment not found for id:', attachmentId);
+            return;
+          }
+
+          // Создаем сообщение с id: 0 для пересылки только файла
+          const imageMessage: Message = {
+            ...message,
+            id: 0, // id: 0 означает пересылку только файлов
+            content: '',
+            attachments: [originalAttachment],
+          };
+          setShowImageViewer(false);
+          onForward(imageMessage);
+        } : undefined}
       />
     </View>
   );
