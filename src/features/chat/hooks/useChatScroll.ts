@@ -9,7 +9,7 @@ import { getDateLabel } from '@shared/utils/dateHelpers';
  *
  * ОПТИМИЗАЦИЯ: Мемоизация селекторов для снижения ре-рендеров
  */
-export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex: number, unreadCount: number, currentUserId?: number) => {
+export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex: number, unreadCount: number, currentUserId?: number, messagesKey?: string) => {
   const listRef = useRef<FlatList<any>>(null);
   const [initialScrolled, setInitialScrolled] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -45,6 +45,15 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const isInitialScrollComplete = useRef<boolean>(false); // Флаг что FlashList завершил начальный скролл
   const [isPositionReady, setIsPositionReady] = useState<boolean>(false); // Флаг что позиция скролла готова для показа списка
   const isJumpInProgress = useRef<boolean>(false); // Флаг что идёт jump к сообщению (замена массива)
+
+  // ✅ Refs для двухфазной анимации скролла из jump context
+  const isScrollToBottomAnimating = useRef<boolean>(false); // Флаг активной анимации скролла к низу
+  const scrollToBottomStartTime = useRef<number>(0); // Время начала анимации
+  const scrollAnimationPhase = useRef<'waiting' | 'animating' | 'done'>('done'); // Фаза анимации
+  const scrollCooldownUntil = useRef<number>(0); // Время до которого игнорируем изменения messagesKey
+  const SCROLL_STABILIZATION_DELAY = 200; // ms ждём стабилизации messagesKey
+  const SCROLL_ANIMATION_MAX_DURATION = 2000; // максимум 2 секунды на всё
+  const SCROLL_COOLDOWN_DURATION = 1500; // ms период охлаждения после завершения анимации (увеличено для надёжности)
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
@@ -182,6 +191,76 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [initialScrolled]);
 
+  // ✅ useEffect для отслеживания стабилизации messagesKey и запуска плавной анимации
+  // Этот эффект срабатывает каждый раз когда messagesKey меняется
+  // Если мы в режиме анимации скролла к низу - ждём стабилизации перед анимацией
+  useEffect(() => {
+    const now = Date.now();
+
+    // Период охлаждения - после завершения анимации игнорируем изменения некоторое время
+    // Но при этом принудительно возвращаем к низу если позиция сбилась
+    if (scrollCooldownUntil.current > now) {
+      console.log('[ScrollToBottom] Cooldown active, forcing scrollToEnd');
+      // Во время cooldown - просто повторяем scrollToEnd без анимации
+      // Это гарантирует что позиция не сбивается от поздних re-render'ов
+      // Используем scrollToEnd вместо scrollToOffset(0) для inverted списка
+      listRef.current?.scrollToEnd({ animated: false });
+      return;
+    }
+
+    // Пропускаем если не в режиме анимации или анимация уже завершена
+    if (!isScrollToBottomAnimating.current) return;
+    if (scrollAnimationPhase.current === 'done') return;
+
+    const elapsed = now - scrollToBottomStartTime.current;
+    console.log('[ScrollToBottom] messagesKey changed, phase:', scrollAnimationPhase.current, 'elapsed:', elapsed);
+
+    // Таймаут - форсируем финальный скролл без анимации
+    if (elapsed > SCROLL_ANIMATION_MAX_DURATION) {
+      console.log('[ScrollToBottom] Timeout reached, forcing final scrollToEnd');
+      listRef.current?.scrollToEnd({ animated: false });
+      isScrollToBottomAnimating.current = false;
+      scrollAnimationPhase.current = 'done';
+      scrollCooldownUntil.current = now + SCROLL_COOLDOWN_DURATION;
+      setHasReachedBottom(true);
+      setUserScrolledToBottom(true);
+      setNewMessagesCount(0);
+      setFirstNewMessageIndex(-1);
+      setShowScrollToBottom(false);
+      return;
+    }
+
+    // Ждём стабилизации messagesKey перед запуском анимации
+    const stabilizationTimer = setTimeout(() => {
+      if (!isScrollToBottomAnimating.current) return;
+
+      if (scrollAnimationPhase.current === 'waiting') {
+        console.log('[ScrollToBottom] Stabilized! Starting animated scrollToEnd');
+        // messagesKey стабилен 200мс - запускаем плавную анимацию
+        scrollAnimationPhase.current = 'animating';
+        listRef.current?.scrollToEnd({ animated: true });
+
+        // Через 400мс (время анимации iOS) - финализируем
+        setTimeout(() => {
+          console.log('[ScrollToBottom] Animation complete, finalizing with non-animated scrollToEnd');
+          // Гарантируем финальную позицию (на случай прерывания анимации re-render'ом)
+          listRef.current?.scrollToEnd({ animated: false });
+          isScrollToBottomAnimating.current = false;
+          scrollAnimationPhase.current = 'done';
+          // Устанавливаем период охлаждения - будем принудительно возвращать к низу
+          scrollCooldownUntil.current = Date.now() + SCROLL_COOLDOWN_DURATION;
+          setHasReachedBottom(true);
+          setUserScrolledToBottom(true);
+          setNewMessagesCount(0);
+          setFirstNewMessageIndex(-1);
+          setShowScrollToBottom(false);
+        }, 400);
+      }
+    }, SCROLL_STABILIZATION_DELAY);
+
+    return () => clearTimeout(stabilizationTimer);
+  }, [messagesKey]);
+
   // Handle keyboard show - for inverted list
   const handleKeyboardWillShow = useCallback((_keyboardHeight: number) => {
     // Устанавливаем флаг что клавиатура анимируется - игнорируем scroll events
@@ -272,6 +351,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // т.к. scroll events при анимации не отражают реальное намерение пользователя
     if (isKeyboardAnimating.current) {
       return;
+    }
+
+    // Если пользователь скроллит вручную далеко от низа во время анимации к низу - отменяем анимацию
+    // Это позволяет пользователю прервать автоскролл если он хочет остаться наверху
+    if (isScrollToBottomAnimating.current && distanceFromBottom > 800) {
+      isScrollToBottomAnimating.current = false;
+      scrollAnimationPhase.current = 'done';
     }
 
     // Проверяем близость к низу (порог ~5 сообщений ≈ 500px)
@@ -552,14 +638,37 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const handleScrollToBottom = useCallback(async () => {
     const loadMessages = useChatStore.getState().loadMessages;
 
+    // Сбрасываем предыдущую анимацию если она была активна (быстрые повторные нажатия)
+    if (isScrollToBottomAnimating.current) {
+      isScrollToBottomAnimating.current = false;
+      scrollAnimationPhase.current = 'done';
+    }
+
     // ПРИОРИТЕТ 1: Если мы в контексте после jump - СНАЧАЛА перезагружаем последние сообщения
     // Это важно потому что в jump context загружен только частичный массив,
     // и новые сообщения от WebSocket могут не отображаться корректно
     const wasInJumpContext = isInJumpContext.current;
+    console.log('[ScrollToBottom] handleScrollToBottom called, wasInJumpContext:', wasInJumpContext);
     if (wasInJumpContext) {
-      // Сбрасываем флаги сразу
+      // ✅ ДВУХФАЗНАЯ АНИМАЦИЯ СКРОЛЛА К НИЗУ
+      // Проблема: После loadMessages приходят async обновления read_receipts,
+      // которые меняют messagesKey и вызывают re-render FlashList,
+      // что сбрасывает/прерывает анимацию скролла.
+      //
+      // Решение:
+      // 1. Фаза 1: Тихий прыжок близко к низу (без анимации)
+      // 2. Фаза 2: Ждём стабилизации messagesKey (200мс без изменений)
+      // 3. Фаза 3: Плавный scrollToOffset(0) - короткая надёжная анимация
+      // 4. Fallback: scrollToOffset(0, animated: false) гарантирует результат
+
+      // Сбрасываем флаги
       isInJumpContext.current = false;
       lastNewestMessageId.current = null;
+
+      // Отмечаем начало процесса анимации
+      isScrollToBottomAnimating.current = true;
+      scrollToBottomStartTime.current = Date.now();
+      scrollAnimationPhase.current = 'waiting';
 
       // Загружаем последние сообщения
       await loadMessages(chatId);
@@ -571,7 +680,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         previousLastMessageId.current = freshMessages[freshMessages.length - 1].id;
       }
 
-      // ✅ ВАЖНО: Сбрасываем флаги чтобы можно было снова подгружать старые сообщения
+      // Сбрасываем флаги чтобы можно было снова подгружать старые сообщения
       lastOldestMessageId.current = null;
       setHasMoreMessages(true);
 
@@ -584,86 +693,23 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         });
       });
 
-      // ✅ ПЛАВНАЯ НЕПРЕРЫВНАЯ АНИМАЦИЯ
-      // Многоступенчатый скролл через промежуточные точки для эффекта непрерывного движения
-      const updatedMessages = useChatStore.getState().messages[chatId] || [];
-
-      if (updatedMessages.length > 0 && listRef.current) {
-        // Определяем промежуточные точки для плавного скролла
-        // Чем больше сообщений, тем больше промежуточных точек
-        const totalMessages = updatedMessages.length;
-
-        // Создаём массив индексов для плавного перехода
-        // Начинаем примерно с середины и двигаемся к началу (низу в inverted списке)
-        const steps: number[] = [];
-
-        if (totalMessages > 30) {
-          // Много сообщений - делаем 3-4 промежуточные точки
-          steps.push(Math.min(25, totalMessages - 1));  // Далеко
-          steps.push(Math.min(12, totalMessages - 1));  // Средне
-          steps.push(Math.min(5, totalMessages - 1));   // Близко
-          steps.push(0);                                 // Цель (низ)
-        } else if (totalMessages > 15) {
-          // Среднее количество - 2 промежуточные точки
-          steps.push(Math.min(12, totalMessages - 1));
-          steps.push(Math.min(4, totalMessages - 1));
-          steps.push(0);
-        } else {
-          // Мало сообщений - просто плавный скролл
-          steps.push(0);
-        }
-
-        // Шаг 1: Тихо прыгаем к первой (самой дальней) точке
-        const firstStep = steps[0];
+      // Фаза 1: Тихий прыжок близко к низу (15 сообщений от низа)
+      // Это позиционирует нас близко, чтобы финальная анимация была короткой и быстрой
+      const totalMessages = freshMessages.length;
+      console.log('[ScrollToBottom] Phase 1: Jump to index near bottom, totalMessages:', totalMessages);
+      if (listRef.current && totalMessages > 0) {
+        const jumpIndex = Math.min(15, totalMessages - 1);
+        console.log('[ScrollToBottom] Jumping to index:', jumpIndex);
         listRef.current.scrollToIndex({
-          index: firstStep,
+          index: jumpIndex,
           animated: false,
           viewPosition: 0.5,
         });
-
-        // Шаг 2: Последовательно анимируем через все точки
-        let stepIndex = 1;
-        const animateNextStep = () => {
-          if (stepIndex >= steps.length || !listRef.current) {
-            // Финальный scrollToEnd для гарантии достижения низа
-            listRef.current?.scrollToEnd({ animated: true });
-            return;
-          }
-
-          const nextIndex = steps[stepIndex];
-          stepIndex++;
-
-          if (nextIndex === 0) {
-            // Последний шаг - используем scrollToEnd
-            listRef.current?.scrollToEnd({ animated: true });
-          } else {
-            listRef.current?.scrollToIndex({
-              index: nextIndex,
-              animated: true,
-              viewPosition: 0.5,
-            });
-            // Следующий шаг через короткий интервал (перекрытие анимаций для плавности)
-            setTimeout(animateNextStep, 150);
-          }
-        };
-
-        // Начинаем анимацию сразу после позиционирования
-        requestAnimationFrame(animateNextStep);
-      } else {
-        // Fallback если нет сообщений
-        listRef.current?.scrollToEnd({
-          animated: true,
-        });
       }
 
-      // Сбрасываем состояния после анимации
-      setTimeout(() => {
-        setHasReachedBottom(true);
-        setUserScrolledToBottom(true);
-        setNewMessagesCount(0);
-        setFirstNewMessageIndex(-1);
-        setShowScrollToBottom(false);
-      }, 400);
+      // Фаза 2 и 3 будут выполнены useEffect после стабилизации messagesKey
+      // (см. useEffect с зависимостью [messagesKey] выше)
+      console.log('[ScrollToBottom] Phase 1 complete, waiting for messagesKey stabilization...');
       return;
     }
 
@@ -982,6 +1028,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isInitialScrollComplete.current = false; // ✅ Сбрасываем флаг завершения начального скролла
     setIsPositionReady(false); // ✅ Сбрасываем флаг готовности позиции
     isJumpInProgress.current = false; // ✅ Сбрасываем флаг jump операции
+    isScrollToBottomAnimating.current = false; // ✅ Сбрасываем флаг анимации скролла к низу
+    scrollAnimationPhase.current = 'done'; // ✅ Сбрасываем фазу анимации
+    scrollCooldownUntil.current = 0; // ✅ Сбрасываем период охлаждения
   }, []);
 
   return {

@@ -153,7 +153,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     resetScroll,
     handleFlashListLoad,
     isPositionReady,
-  } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount, currentUser?.id);
+  } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount, currentUser?.id, messagesKey);
 
   // Message search - callback for navigating to search results
   const handleNavigateToSearchResult = useCallback((messageId: number) => {
