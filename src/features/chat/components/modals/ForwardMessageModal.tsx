@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   TextInput,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -100,11 +101,10 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={true}
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
     >
-      <View style={styles.modalContainer}>
-        <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+      <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
           {/* Заголовок */}
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <Text style={[styles.title, { color: theme.text }]}>Переслать сообщение</Text>
@@ -163,7 +163,6 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
               <ActivityIndicator size="large" color={theme.primary} />
             </View>
           )}
-        </View>
       </View>
     </Modal>
   );
@@ -172,14 +171,6 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    height: '80%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
