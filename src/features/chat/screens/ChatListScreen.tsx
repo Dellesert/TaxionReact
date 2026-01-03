@@ -83,12 +83,16 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
     loadAllTabs,
     switchTab,
     refreshData,
+    silentRefreshCurrentTab,
     handleLoadMore,
     loadUnreadCount,
   } = useChatData();
 
   // Get current user for author comparison
   const currentUser = useAuthStore((state) => state.user);
+
+  // Get refreshing state from store
+  const isRefreshingChats = useChatStore((state) => state.isRefreshingChats);
 
   // Integrate with TitleBar search in Electron
   useTitleBarSearchIntegration({
@@ -126,20 +130,21 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
   }, [loadAllTabs]);
 
 
-  // Update unread count when screen gains focus
+  // Update unread count and refresh chats when screen gains focus
   // Smart scroll: scroll to top only if user sent a new message
   useFocusEffect(
     useCallback(() => {
       const checkAndScroll = async () => {
-        // Always update unread count badge
-        await loadUnreadCount();
+        // Refresh chat list and unread count
+        await Promise.all([silentRefreshCurrentTab(), loadUnreadCount()]);
 
         // Check if we should scroll to top after returning from chat
         if (lastOpenedChatRef.current && currentUser) {
           const { id, lastMessageId } = lastOpenedChatRef.current;
 
           // Get current chat data from store (updated via WebSocket)
-          const currentChat = chats.find((c) => c.id === id);
+          const currentChats = useChatStore.getState().chats;
+          const currentChat = currentChats.find((c) => c.id === id);
           const currentLastMessage = currentChat?.last_message;
 
           // Check if:
@@ -176,7 +181,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
       };
 
       checkAndScroll();
-    }, [loadUnreadCount, chats, currentUser])
+    }, [silentRefreshCurrentTab, loadUnreadCount, currentUser])
   );
 
   // Monitor WebSocket connection status
@@ -351,6 +356,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
             <ChatListHeader
               isEditMode={isEditMode}
               isConnected={isConnected}
+              isRefreshing={isRefreshingChats}
               onToggleEditMode={toggleEditMode}
               onToggleSearch={() => setIsSearchVisible(!isSearchVisible)}
               onNewChat={handleNewChat}

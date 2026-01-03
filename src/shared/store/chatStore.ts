@@ -99,6 +99,7 @@ interface ChatState {
   pinnedMessages: Record<number, Message[]>; // Закрепленные сообщения по chatId
   isLoading: boolean;
   isLoadingMore: boolean;
+  isRefreshingChats: boolean;
   error: string | null;
   typingUsers: Record<number, TypingIndicator[]>;
   totalUnreadCount: number;
@@ -227,6 +228,7 @@ export const useChatStore = create<ChatState>()(
       pinnedMessages: {},
       isLoading: false,
       isLoadingMore: false,
+      isRefreshingChats: false,
       error: null,
       typingUsers: {},
       totalUnreadCount: preloadedUnreadCount,
@@ -243,7 +245,7 @@ export const useChatStore = create<ChatState>()(
       return;
     }
 
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, isRefreshingChats: true, error: null });
 
     try {
       // Determine filters based on tab
@@ -301,6 +303,7 @@ export const useChatStore = create<ChatState>()(
             }
           },
           isLoading: false,
+          isRefreshingChats: false,
         };
 
         // Обновляем chats и hasMoreChats только для текущего таба
@@ -317,7 +320,7 @@ export const useChatStore = create<ChatState>()(
       // No need to join chats - WebSocket delivers events via personal user channel
     } catch (error: any) {
       console.error(`❌ Failed to load tab "${tabName}":`, error);
-      set({ error: error.message || `Failed to load ${tabName} chats`, isLoading: false });
+      set({ error: error.message || `Failed to load ${tabName} chats`, isLoading: false, isRefreshingChats: false });
     }
   },
 
@@ -343,6 +346,9 @@ export const useChatStore = create<ChatState>()(
   refreshCurrentTab: async () => {
     const { currentTab } = get();
 
+    // Set refreshing flag
+    set({ isRefreshingChats: true });
+
     // Reset tab data
     set(state => ({
       tabs: {
@@ -358,18 +364,25 @@ export const useChatStore = create<ChatState>()(
     }));
 
     // Reload tab data
-    await get().loadTabData(currentTab);
+    try {
+      await get().loadTabData(currentTab);
+    } finally {
+      set({ isRefreshingChats: false });
+    }
   },
 
   // Silent refresh - updates data without showing loading indicator
   // Used when app comes to foreground to fetch new messages
   silentRefreshCurrentTab: async () => {
-    const { currentTab, isLoading } = get();
+    const { currentTab, isLoading, isRefreshingChats } = get();
 
-    // Skip if already loading
-    if (isLoading) {
+    // Skip if already loading or refreshing
+    if (isLoading || isRefreshingChats) {
       return;
     }
+
+    // Show refreshing indicator in header
+    set({ isRefreshingChats: true });
 
     try {
       // Determine filters based on tab
@@ -425,12 +438,14 @@ export const useChatStore = create<ChatState>()(
         chats: [...pinnedChats, ...regularChats],
         hasMoreChats: regularResponse.hasMore,
         totalChats: regularResponse.total,
+        isRefreshingChats: false,
       }));
 
       console.log('[ChatStore] Silent refresh completed for tab:', currentTab);
     } catch (error: any) {
       // Silent fail - don't update error state, just log
       console.error('[ChatStore] Silent refresh failed:', error);
+      set({ isRefreshingChats: false });
     }
   },
 

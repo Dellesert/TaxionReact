@@ -18,6 +18,7 @@ export const useChatData = () => {
     loadTabData,
     switchTab: storeSwitchTab,
     refreshCurrentTab,
+    silentRefreshCurrentTab,
     loadMoreChats,
     loadUnreadCount,
   } = useChatStore();
@@ -102,6 +103,7 @@ export const useChatData = () => {
     loadAllTabs,
     switchTab,
     refreshData,
+    silentRefreshCurrentTab,
     handleLoadMore,
     loadUnreadCount,
   };

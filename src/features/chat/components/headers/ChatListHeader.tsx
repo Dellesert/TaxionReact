@@ -9,6 +9,7 @@ import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 interface ChatListHeaderProps {
   isEditMode: boolean;
   isConnected: boolean;
+  isRefreshing?: boolean;
   onToggleEditMode: () => void;
   onToggleSearch: () => void;
   onNewChat: () => void;
@@ -18,6 +19,7 @@ interface ChatListHeaderProps {
 export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
   isEditMode,
   isConnected,
+  isRefreshing = false,
   onToggleEditMode,
   onToggleSearch,
   onNewChat,
@@ -62,9 +64,9 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
         {!isWideScreen && <NotificationBell />}
       </View>
 
-      {/* Center - Title or Connection Status */}
-      {isConnected === false ? (
-        <ConnectionStatus compact />
+      {/* Center - Title or Connection Status or Refreshing */}
+      {isConnected === false || isRefreshing ? (
+        <ConnectionStatus compact isRefreshing={isRefreshing} />
       ) : (
         <Text style={[styles.headerTitle, { color: theme.text }]}>Чаты</Text>
       )}

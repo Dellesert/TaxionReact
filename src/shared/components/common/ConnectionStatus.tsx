@@ -10,9 +10,10 @@ import { useTheme } from '@shared/hooks/useTheme';
 
 interface ConnectionStatusProps {
   compact?: boolean; // Компактный режим для отображения в header
+  isRefreshing?: boolean; // Флаг обновления списка чатов
 }
 
-export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = false }) => {
+export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = false, isRefreshing = false }) => {
   // Проверяем начальный статус сразу
   const initialConnected = websocketService.isConnected();
   const [status, setStatus] = useState<'connected' | 'connecting' | 'disconnected'>(
@@ -46,24 +47,29 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
   }, [status]);
 
   useEffect(() => {
-    if (status !== 'connected') {
-      // Плавное появление для статусов connecting/disconnected
+    if (status !== 'connected' || isRefreshing) {
+      // Плавное появление для статусов connecting/disconnected/refreshing
       Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       return;
     }
 
-    // Когда подключено - сразу скрываем без задержки
+    // Когда подключено и не обновляется - сразу скрываем без задержки
     setShouldShow(false);
-  }, [status, fadeAnim]);
+  }, [status, fadeAnim, isRefreshing]);
 
-  // В компактном режиме - показываем только если НЕ подключено И shouldShow = true
+  // В компактном режиме - показываем если НЕ подключено ИЛИ идет обновление
   if (compact) {
-    if (status === 'connected' || !shouldShow) {
+    const shouldShowRefreshing = isRefreshing && status === 'connected';
+    if ((status === 'connected' && !isRefreshing) || (!shouldShow && !shouldShowRefreshing)) {
       return null;
     }
   }
 
   const getStatusConfig = () => {
+    // Приоритет: если идет обновление и подключено - показываем "Обновление"
+    if (isRefreshing && status === 'connected') {
+      return { text: 'Обновление', color: '#434343ff' };
+    }
     switch (status) {
       case 'connected':
         return { text: 'Подключено', color: '#2ecc71' }; // зелёный
@@ -87,7 +93,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
  });
 
   const Icon = () => {
-    if (status === 'connecting') {
+    if (status === 'connecting' || (isRefreshing && status === 'connected')) {
       // Спиннер: размер поменьше в компактном режиме
       return (
         <ActivityIndicator
@@ -98,7 +104,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ compact = fa
         />
       );
     }
-   
+    return null;
   };
 
   if (compact) {
