@@ -219,15 +219,16 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   // Пространство над сообщениями = viewportHeight - contentHeight (когда мало сообщений)
   // Если это пространство >= keyboardHeight, клавиатура не закрывает сообщения
 
-  const shouldLiftList = React.useMemo(() => {
-    // Если layout не готов - по умолчанию поднимаем (безопасный вариант)
+  // Вычисляем параметры для поднятия списка
+  const liftParams = React.useMemo(() => {
+    // Если layout не готов - по умолчанию поднимаем полностью (безопасный вариант)
     if (!isLayoutReady) {
-      return hasReachedBottom;
+      return { shouldLift: hasReachedBottom, liftRatio: 1 };
     }
 
-    // Если контента больше чем viewport - используем hasReachedBottom (как раньше)
+    // Если контента больше чем viewport - поднимаем полностью (как раньше)
     if (contentHeight >= viewportHeight) {
-      return hasReachedBottom;
+      return { shouldLift: hasReachedBottom, liftRatio: 1 };
     }
 
     // Мало контента: проверяем перекрывает ли клавиатура сообщения
@@ -235,27 +236,34 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
     const freeSpaceAboveMessages = viewportHeight - contentHeight;
 
     // Клавиатура перекрывает сообщения если она выше чем свободное пространство
-    const keyboardCoversMessages = keyboardHeight > freeSpaceAboveMessages;
+    if (keyboardHeight <= freeSpaceAboveMessages) {
+      return { shouldLift: false, liftRatio: 0 };
+    }
 
-    // ВАЖНО: когда мало контента и нет скролла, пользователь всегда "внизу"
-    // Поэтому не проверяем hasReachedBottom, а только keyboardCoversMessages
-    return keyboardCoversMessages;
+    // Вычисляем на сколько нужно поднять: только на величину перекрытия
+    // Перекрытие = keyboardHeight - freeSpaceAboveMessages
+    const overlap = keyboardHeight - freeSpaceAboveMessages;
+    // liftRatio = какую долю от высоты клавиатуры нужно поднять (от 0 до 1)
+    const liftRatio = overlap / keyboardHeight;
+
+    return { shouldLift: true, liftRatio };
   }, [isLayoutReady, contentHeight, viewportHeight, keyboardHeight, hasReachedBottom]);
 
 
   // Анимируем translateY для поднятия списка вместе с клавиатурой
   // Теперь БЕЗ LayoutAnimation - вся анимация через Animated.Value
   // Логика:
-  // - Если shouldLiftList=true: поднимаем список вверх на высоту клавиатуры
-  // - Если shouldLiftList=false: не двигаем, сохраняем позицию
+  // - Если shouldLift=true: поднимаем список на величину перекрытия
+  // - Если shouldLift=false: не двигаем
   //
-  // ВАЖНО: useMemo гарантирует что interpolate пересоздаётся при изменении shouldLiftList
+  // ВАЖНО: useMemo гарантирует что interpolate пересоздаётся при изменении параметров
   const animatedTranslateY = React.useMemo(() => {
     return keyboardHeightAnim.interpolate({
       inputRange: [0, 1000],
-      outputRange: shouldLiftList ? [0, -1000] : [0, 0],
+      // Поднимаем только на liftRatio от высоты клавиатуры
+      outputRange: liftParams.shouldLift ? [0, -1000 * liftParams.liftRatio] : [0, 0],
     });
-  }, [keyboardHeightAnim, shouldLiftList]);
+  }, [keyboardHeightAnim, liftParams]);
 
   if (showSkeletons) {
     return (
