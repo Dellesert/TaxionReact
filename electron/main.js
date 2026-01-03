@@ -147,7 +147,8 @@ function createWindow() {
     minHeight: 600,
     icon: getIconPath(), // App icon
     frame: false, // Remove default frame for custom titlebar
-    titleBarStyle: 'hidden', // Hide titlebar on macOS
+    titleBarStyle: 'hiddenInset', // Hide titlebar on macOS
+    trafficLightPosition: { x: -100, y: -100 }, // Hide traffic lights (close/minimize/maximize buttons)
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
