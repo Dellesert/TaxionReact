@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import {
   View,
+  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -73,26 +74,28 @@ export const MessageSearchOverlay: React.FC<MessageSearchOverlayProps> = ({
     >
       {/* Search Input */}
       <View style={[styles.searchBar, { backgroundColor: theme.backgroundSecondary }]}>
-        <Ionicons name="search" size={20} color={theme.textTertiary} />
-        <TextInput
-          ref={inputRef}
-          style={[styles.searchInput, { color: theme.text }]}
-          placeholder="Поиск сообщений..."
-          placeholderTextColor={theme.inputPlaceholder}
-          value={searchQuery}
-          onChangeText={onSearchChange}
-          onSubmitEditing={onSubmitSearch}
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => onSearchChange('')} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color={theme.text} />
+        <View style={[styles.inputContainer, { backgroundColor: theme.backgroundTertiary }]}>
+          <Ionicons name="search" size={18} color={theme.textTertiary} />
+          <TextInput
+            ref={inputRef}
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Поиск сообщений..."
+            placeholderTextColor={theme.inputPlaceholder}
+            value={searchQuery}
+            onChangeText={onSearchChange}
+            onSubmitEditing={onSubmitSearch}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => onSearchChange('')} style={styles.clearButton}>
+              <Ionicons name="close-circle" size={18} color={theme.textTertiary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity onPress={handleClose} style={styles.cancelButton}>
+          <Text style={[styles.cancelText, { color: theme.primary }]}>Отмена</Text>
         </TouchableOpacity>
       </View>
     </RNAnimated.View>
@@ -115,9 +118,18 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  inputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
@@ -126,10 +138,14 @@ const styles = StyleSheet.create({
     outlineStyle: 'none',
   } as any,
   clearButton: {
-    padding: 4,
+    padding: 2,
   },
-  closeButton: {
-    padding: 4,
-    marginLeft: 4,
+  cancelButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: '400',
   },
 });
