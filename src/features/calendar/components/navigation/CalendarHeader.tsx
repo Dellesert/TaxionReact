@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   left: {
-    width: 40,
+    width: 80,
   },
   title: {
     fontSize: 20,
@@ -164,7 +164,9 @@ const styles = StyleSheet.create({
   rightButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'flex-end',
+    width: 80,
+    gap: 0,
   },
   viewToggleButton: {
     width: 40,
