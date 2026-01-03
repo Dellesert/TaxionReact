@@ -27,6 +27,7 @@ const ZoomableImage: React.FC<{
   onZoomChange?: (isZoomed: boolean) => void;
   onSingleTap?: () => void;
 }> = ({ uri, sessionId, isActive, onZoomChange, onSingleTap }) => {
+  const [isLoading, setIsLoading] = useState(true);
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -187,6 +188,11 @@ const ZoomableImage: React.FC<{
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View style={[styles.imageContainer, animatedStyle]}>
+        {isLoading && (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </View>
+        )}
         <Image
           source={{
             uri,
@@ -195,6 +201,8 @@ const ZoomableImage: React.FC<{
           style={styles.fullscreenImage}
           contentFit="contain"
           cachePolicy="memory-disk"
+          onLoadStart={() => setIsLoading(true)}
+          onLoadEnd={() => setIsLoading(false)}
         />
       </Animated.View>
     </GestureDetector>
@@ -676,6 +684,12 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loaderContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
   },
   fullscreenImage: {
     width: '100%',
