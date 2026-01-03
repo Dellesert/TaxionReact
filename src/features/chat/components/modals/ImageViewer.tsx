@@ -644,6 +644,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   headerContent: {
     flex: 1,
@@ -740,11 +741,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 16,
-    gap: 40,
+    paddingHorizontal: 32,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   bottomButton: {
     alignItems: 'center',
