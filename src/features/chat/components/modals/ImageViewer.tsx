@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Modal, View, StyleSheet, TouchableOpacity, Text, Platform, Dimensions, FlatList } from 'react-native';
+import { Modal, View, StyleSheet, TouchableOpacity, Text, Platform, Dimensions, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { GestureDetector, GestureHandlerRootView, Gesture } from 'react-native-gesture-handler';
+import * as Sharing from 'expo-sharing';
+import { Paths, File as ExpoFile } from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -203,6 +206,7 @@ interface ImageViewerProps {
   imageUrls: string[];
   initialIndex?: number;
   onClose: () => void;
+  onForward?: (imageUrl: string) => void;
 }
 
 /**
@@ -212,12 +216,14 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   visible,
   imageUrls = [],
   initialIndex = 0,
-  onClose
+  onClose,
+  onForward,
 }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isZoomed, setIsZoomed] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [isSharing, setIsSharing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   // Значения для свайпа вниз (закрытие)
@@ -274,6 +280,116 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     const newVisible = !controlsVisible;
     setControlsVisible(newVisible);
     controlsOpacity.value = withTiming(newVisible ? 1 : 0, { duration: 200 });
+  };
+
+  // Скачать изображение локально для шаринга
+  const downloadImageLocally = async (imageUrl: string): Promise<string | null> => {
+    try {
+      const filename = `image_${Date.now()}.jpg`;
+      const file = new ExpoFile(Paths.cache, filename);
+
+      // Fetch image with session headers
+      const response = await fetch(imageUrl, {
+        headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+
+      // React Native compatible way to convert blob to base64
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          // Remove data:image/...;base64, prefix
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      file.write(base64, { encoding: 'base64' });
+
+      return file.uri;
+    } catch (error) {
+      console.error('Failed to download image:', error);
+      return null;
+    }
+  };
+
+  // Поделиться изображением
+  const handleShare = async () => {
+    if (isSharing) return;
+
+    const currentImageUrl = imageUrls[currentIndex];
+    if (!currentImageUrl) return;
+
+    setIsSharing(true);
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Ошибка', 'Функция "Поделиться" недоступна на этом устройстве');
+        return;
+      }
+
+      const localUri = await downloadImageLocally(currentImageUrl);
+      if (!localUri) {
+        Alert.alert('Ошибка', 'Не удалось загрузить изображение');
+        return;
+      }
+
+      await Sharing.shareAsync(localUri, {
+        mimeType: 'image/jpeg',
+        dialogTitle: 'Поделиться изображением',
+      });
+    } catch (error) {
+      console.error('Share error:', error);
+      Alert.alert('Ошибка', 'Не удалось поделиться изображением');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // Сохранить в галерею
+  const handleSaveToGallery = async () => {
+    if (isSharing) return;
+
+    const currentImageUrl = imageUrls[currentIndex];
+    if (!currentImageUrl) return;
+
+    setIsSharing(true);
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Ошибка', 'Необходимо разрешение для сохранения в галерею');
+        return;
+      }
+
+      const localUri = await downloadImageLocally(currentImageUrl);
+      if (!localUri) {
+        Alert.alert('Ошибка', 'Не удалось загрузить изображение');
+        return;
+      }
+
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      Alert.alert('Успешно', 'Изображение сохранено в галерею');
+    } catch (error) {
+      console.error('Save to gallery error:', error);
+      Alert.alert('Ошибка', 'Не удалось сохранить изображение');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // Переслать изображение
+  const handleForward = () => {
+    const currentImageUrl = imageUrls[currentIndex];
+    if (currentImageUrl && onForward) {
+      onForward(currentImageUrl);
+    }
   };
 
   const handleNext = () => {
@@ -387,7 +503,19 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             <Animated.View style={[styles.imageViewerOverlay, animatedContainerStyle]}>
               {/* Заголовок с счетчиком */}
               <Animated.View style={[styles.header, animatedHeaderStyle]}>
-                <View style={{ width: 44 }} />
+                {/* Кнопка Поделиться */}
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={handleShare}
+                  activeOpacity={0.7}
+                  disabled={isSharing}
+                >
+                  {isSharing ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="share-outline" size={26} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
                 <View style={styles.headerContent}>
                   {hasMultipleImages && (
                     <Text style={styles.counterText}>
@@ -397,7 +525,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                 </View>
                 {/* Кнопка закрытия */}
                 <TouchableOpacity
-                  style={styles.closeButton}
+                  style={styles.headerButton}
                   onPress={onClose}
                   activeOpacity={0.7}
                 >
@@ -463,6 +591,32 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                   )}
                 </>
               )}
+
+              {/* Нижняя панель с кнопками */}
+              <Animated.View style={[styles.bottomBar, animatedControlsStyle]}>
+                {/* Кнопка Сохранить */}
+                <TouchableOpacity
+                  style={styles.bottomButton}
+                  onPress={handleSaveToGallery}
+                  activeOpacity={0.7}
+                  disabled={isSharing}
+                >
+                  <Ionicons name="download-outline" size={24} color="#FFFFFF" />
+                  <Text style={styles.bottomButtonText}>Сохранить</Text>
+                </TouchableOpacity>
+
+                {/* Кнопка Переслать */}
+                {onForward && (
+                  <TouchableOpacity
+                    style={styles.bottomButton}
+                    onPress={handleForward}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="arrow-redo-outline" size={24} color="#FFFFFF" />
+                    <Text style={styles.bottomButtonText}>Переслать</Text>
+                  </TouchableOpacity>
+                )}
+              </Animated.View>
             </Animated.View>
           </GestureDetector>
         </View>
@@ -525,13 +679,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   navButton: {
     position: 'absolute',
     top: '50%',
@@ -579,5 +726,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 2,
     elevation: 3,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    paddingTop: 16,
+    gap: 40,
+  },
+  bottomButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  bottomButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });
