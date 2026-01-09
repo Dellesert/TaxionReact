@@ -52,9 +52,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const scrollAnimationPhase = useRef<'waiting' | 'animating' | 'done'>('done'); // Фаза анимации
   const scrollCooldownUntil = useRef<number>(0); // Время до которого игнорируем изменения messagesKey
   const scrollTargetIndex = useRef<number | null>(null); // Целевой индекс для скролла (null = scrollToEnd)
+  const isExitingJumpContext = useRef<boolean>(false); // Флаг выхода из jump context - не скрывать плашку
   const SCROLL_STABILIZATION_DELAY = 200; // ms ждём стабилизации messagesKey
   const SCROLL_ANIMATION_MAX_DURATION = 2000; // максимум 2 секунды на всё
   const SCROLL_COOLDOWN_DURATION = 1500; // ms период охлаждения после завершения анимации (увеличено для надёжности)
+  const JUMP_CONTEXT_EXIT_PROTECTION_DURATION = 2000; // ms защита плашки после выхода из jump context
 
   // ✅ Вычисляем initialScrollIndex В USEMEMO, до первого рендера!
   const initialScrollIndex = useMemo(() => {
@@ -448,13 +450,15 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // 1. Прошло достаточно времени после инициализации (canTrackUserScroll)
       // 2. Пользователь уже уходил от низа (hasScrolledAwayFromBottom) - это гарантирует намеренность
       // 3. НЕ идет программный скролл к непрочитанным (isScrollingToUnread) - чтобы не скрывать баннер сразу
-      if (initialScrolled && canTrackUserScroll.current && hasScrolledAwayFromBottom.current && !isScrollingToUnread.current) {
+      // 4. НЕ выходим из jump context (isExitingJumpContext) - даём время плашке отрисоваться
+      if (initialScrolled && canTrackUserScroll.current && hasScrolledAwayFromBottom.current && !isScrollingToUnread.current && !isExitingJumpContext.current) {
         setUserScrolledToBottom(true);
       }
 
-      // НЕ сбрасываем состояния если идёт программный скролл к непрочитанным
-      // Это нужно чтобы плашка "Новые сообщения" осталась видимой после скролла к ней
-      if (!isScrollingToUnread.current) {
+      // НЕ сбрасываем состояния если:
+      // 1. Идёт программный скролл к непрочитанным (isScrollingToUnread)
+      // 2. Только что вышли из jump context (isExitingJumpContext) - даём время плашке отрисоваться
+      if (!isScrollingToUnread.current && !isExitingJumpContext.current) {
         setShowScrollToBottom(false);
         setShowDateHeader(false);
 
@@ -750,6 +754,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // - Это избегает проблемы с мерцанием плашки в неправильном месте
       console.log('[ScrollToBottom] Will scroll to bottom (jump context exit)');
       scrollTargetIndex.current = null; // null означает scrollToEnd
+
+      // Устанавливаем защиту плашки - handleScroll не будет скрывать её некоторое время
+      isExitingJumpContext.current = true;
+      setTimeout(() => {
+        isExitingJumpContext.current = false;
+      }, JUMP_CONTEXT_EXIT_PROTECTION_DURATION);
 
       // Фаза 1: Тихий прыжок близко к целевой позиции
       const totalMessages = freshMessages.length;
@@ -1092,6 +1102,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     scrollAnimationPhase.current = 'done'; // ✅ Сбрасываем фазу анимации
     scrollCooldownUntil.current = 0; // ✅ Сбрасываем период охлаждения
     scrollTargetIndex.current = null; // ✅ Сбрасываем целевой индекс скролла
+    isExitingJumpContext.current = false; // ✅ Сбрасываем флаг выхода из jump context
   }, []);
 
   return {
