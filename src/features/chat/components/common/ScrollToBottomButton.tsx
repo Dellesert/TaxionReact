@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   button: {
     position: 'absolute',
     right: 16,
-    bottom: Platform.OS === 'web' ? 140 : 120, // Поднимаем кнопку выше инпута
+    bottom: Platform.OS === 'web' ? 160 : 140, // Поднимаем кнопку выше инпута
     width: 48,
     height: 48,
     borderRadius: 24,
