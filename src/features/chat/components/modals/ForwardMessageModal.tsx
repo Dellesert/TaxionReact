@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
@@ -32,6 +33,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
   onForward,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const chats = useChatStore((state) => state.chats);
   const currentUser = useAuthStore((state) => state.user);
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,7 +108,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
     >
       <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
           {/* Заголовок */}
-          <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <View style={[styles.header, { borderBottomColor: theme.border, paddingTop: 16 + insets.top }]}>
             <Text style={[styles.title, { color: theme.text }]}>Переслать сообщение</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={theme.text} />
@@ -147,7 +149,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
             renderItem={renderChatItem}
             keyExtractor={(item) => String(item.id)}
             style={styles.chatList}
-            contentContainerStyle={styles.chatListContent}
+            contentContainerStyle={[styles.chatListContent, { paddingBottom: 16 + insets.bottom }]}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="chatbubbles-outline" size={48} color={theme.textSecondary} />

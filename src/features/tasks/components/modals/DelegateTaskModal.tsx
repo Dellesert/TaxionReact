@@ -27,6 +27,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { delegateTask } from '../../api/task.api';
 import { getUsers } from '@/api/user.api';
 import { User } from '@/types/user.types';
@@ -51,6 +52,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const { showError } = useNotification();
+  const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
   const [users, setUsers] = useState<User[]>([]);
   const [sections, setSections] = useState<
@@ -245,7 +247,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
     >
       <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
         {/* Modal Header */}
-        <View style={[styles.modalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <View style={[styles.modalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border, paddingTop: 16 + insets.top }]}>
           <TouchableOpacity
             onPress={onClose}
             style={styles.closeButton}
@@ -330,7 +332,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
         )}
 
         {/* Footer with Delegate Button */}
-        <View style={[styles.modalFooter, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+        <View style={[styles.modalFooter, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity
             style={[
               styles.delegateButton,
