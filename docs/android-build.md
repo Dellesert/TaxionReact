@@ -8,6 +8,16 @@
 - Android SDK с NDK 27.1.12297006
 - Установленные зависимости проекта (`npm install`)
 
+## Текущая конфигурация
+
+| Параметр | Значение |
+|----------|----------|
+| Package name | `com.dellesert.tachyonmessenger` |
+| Version | 1.0.1 |
+| Version code | 2 |
+| Min SDK | 24 |
+| Target SDK | 36 |
+
 ## Окружения сборки
 
 Проект поддерживает два окружения:
@@ -15,7 +25,7 @@
 | Окружение | Название приложения | Bundle ID | Иконка |
 |-----------|---------------------|-----------|--------|
 | Development (по умолчанию) | Тахион Dev | com.dellesert.tachyon-messenger.dev | icon-dev.png |
-| Production | Тахион | com.dellesert.tachyon-messenger | icon.png |
+| Production | Тахион | com.dellesert.tachyonmessenger | icon.png |
 
 Окружение определяется переменной `APP_ENV`. Если не задана — используется Development.
 
@@ -27,9 +37,15 @@
 # 1. Подготовка нативного кода (если изменились настройки или после npm install)
 APP_ENV=production npx expo prebuild --platform android --clean
 
-# 2. Исправление конфликта манифеста Firebase (см. ниже)
+# 2. Создать local.properties (если отсутствует)
+echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties
 
-# 3. Сборка APK
+# 3. Скопировать google-services.json
+cp google-services.json android/app/google-services.json
+
+# 4. Исправить конфликт манифеста Firebase (см. ниже)
+
+# 5. Сборка APK
 cd android && APP_ENV=production ./gradlew assembleRelease
 ```
 
@@ -53,7 +69,47 @@ android/app/build/outputs/apk/release/app-release.apk
 echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties
 ```
 
-2. **Исправить AndroidManifest.xml** — добавить `tools:replace="android:resource"` в meta-data для Firebase notification color (см. раздел "Manifest merger failed" ниже).
+2. **Скопировать google-services.json**:
+```bash
+cp google-services.json android/app/google-services.json
+```
+
+3. **Исправить AndroidManifest.xml** — добавить `tools:replace="android:resource"` в meta-data для Firebase notification color:
+
+В файле `android/app/src/main/AndroidManifest.xml` найти строку:
+```xml
+<meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_icon_color"/>
+```
+
+И заменить на:
+```xml
+<meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_icon_color" tools:replace="android:resource"/>
+```
+
+## Push-уведомления (FCM)
+
+Для работы push-уведомлений на Android необходимо:
+
+1. **Добавить SHA-1 fingerprint в Firebase Console**
+
+   Получить SHA-1 текущего keystore:
+   ```bash
+   keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android
+   ```
+
+   Текущий SHA-1: `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`
+
+2. **Добавить fingerprint в Firebase Console**:
+   - Открыть [Firebase Console](https://console.firebase.google.com)
+   - Project Settings → General → Your Android app (`com.dellesert.tachyonmessenger`)
+   - Add fingerprint → вставить SHA-1
+
+3. **Скачать обновлённый google-services.json** и поместить в корень проекта
+
+4. **Скопировать в android/app/**:
+   ```bash
+   cp google-services.json android/app/google-services.json
+   ```
 
 ## Возможные проблемы и решения
 
@@ -103,6 +159,37 @@ Attribute meta-data#com.google.firebase.messaging.default_notification_color@res
     tools:replace="android:resource"/>
 ```
 
+### 4. SDK location not found
+
+**Ошибка:**
+```
+SDK location not found. Define a valid SDK location with an ANDROID_HOME environment variable
+```
+
+**Решение:**
+```bash
+echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties
+```
+
+### 5. Package name mismatch (push не работают)
+
+**Симптом:** Push-уведомления работают на iOS, но не на Android.
+
+**Причина:** Package name в `build.gradle` не совпадает с зарегистрированным в Firebase.
+
+**Решение:**
+1. Убедиться, что в `android/app/build.gradle`:
+   ```groovy
+   namespace 'com.dellesert.tachyonmessenger'
+   defaultConfig {
+       applicationId 'com.dellesert.tachyonmessenger'
+   }
+   ```
+
+2. В `google-services.json` должен быть client с `package_name`: `com.dellesert.tachyonmessenger`
+
+3. SHA-1 fingerprint должен быть добавлен в Firebase Console
+
 ## Подпись APK
 
 Текущая конфигурация использует debug keystore для release сборки. Для публикации в Google Play необходимо:
@@ -128,8 +215,16 @@ MYAPP_RELEASE_KEY_PASSWORD=*****
 # Полная пересборка с нуля
 APP_ENV=production npx expo prebuild --platform android --clean && \
 echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties && \
+cp google-services.json android/app/google-services.json && \
 sed -i '' 's/android:resource="@color\/notification_icon_color"\/>/android:resource="@color\/notification_icon_color" tools:replace="android:resource"\/>/' android/app/src/main/AndroidManifest.xml && \
 cd android && APP_ENV=production ./gradlew assembleRelease
 ```
 
 После успешной сборки APK: `android/app/build/outputs/apk/release/app-release.apk`
+
+## История версий
+
+| Версия | Code | Дата | Изменения |
+|--------|------|------|-----------|
+| 1.0.1 | 2 | 2025-01-10 | Исправлен package name для FCM, добавлен SHA-1 |
+| 1.0.1 | 739 | - | Предыдущая сборка |
