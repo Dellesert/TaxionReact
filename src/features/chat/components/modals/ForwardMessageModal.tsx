@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +40,24 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [isForwarding, setIsForwarding] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // На iOS высота клавиатуры уже включает home indicator
+  const effectiveInsetsBottom = (Platform.OS === 'ios' && isKeyboardVisible) ? 0 : insets.bottom;
+
+  // Отслеживание клавиатуры
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -108,7 +127,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
     >
       <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
           {/* Заголовок */}
-          <View style={[styles.header, { borderBottomColor: theme.border, paddingTop: 16 + insets.top }]}>
+          <View style={[styles.header, { borderBottomColor: theme.border, paddingTop: Platform.OS === 'android' ? 16 + insets.top : 16 }]}>
             <Text style={[styles.title, { color: theme.text }]}>Переслать сообщение</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={theme.text} />
@@ -149,7 +168,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
             renderItem={renderChatItem}
             keyExtractor={(item) => String(item.id)}
             style={styles.chatList}
-            contentContainerStyle={[styles.chatListContent, { paddingBottom: 16 + insets.bottom }]}
+            contentContainerStyle={[styles.chatListContent, { paddingBottom: 16 + effectiveInsetsBottom }]}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="chatbubbles-outline" size={48} color={theme.textSecondary} />

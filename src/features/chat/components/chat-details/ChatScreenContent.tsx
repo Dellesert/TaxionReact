@@ -179,6 +179,11 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
 }) => {
   const { isDark } = useTheme();
 
+  // На iOS высота клавиатуры уже включает home indicator,
+  // поэтому когда клавиатура открыта, не нужно добавлять insetsBottom
+  const isKeyboardVisible = keyboardHeight > 0;
+  const effectiveInsetsBottom = (Platform.OS === 'ios' && isKeyboardVisible) ? 0 : insetsBottom;
+
   // Создаем анимированный стиль для поднятия инпута через transform
   // Используем translateY вместо bottom для совместимости с native driver
   const inputWrapperAnimatedStyle = useMemo(() => {
@@ -270,7 +275,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
         style={[
           styles.inputWrapper,
           {
-            minHeight: 72 + insetsBottom, // Фиксированная минимальная высота + safe area для Android navigation bar
+            minHeight: 72 + effectiveInsetsBottom, // Фиксированная минимальная высота + safe area
             overflow: 'hidden',
           },
           inputWrapperAnimatedStyle,
@@ -283,7 +288,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
               styles.blurContent,
               {
                 backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-                paddingBottom: insetsBottom,
+                paddingBottom: effectiveInsetsBottom,
                 // @ts-ignore - backdrop-filter поддерживается на web
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
@@ -326,7 +331,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           <BlurView
             intensity={80}
             tint={isDark ? 'dark' : 'light'}
-            style={[styles.blurContent, { paddingBottom: insetsBottom }]}
+            style={[styles.blurContent, { paddingBottom: effectiveInsetsBottom }]}
           >
             {/* Дополнительное затемнение поверх блюра */}
             <View style={[styles.blurOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)' }]} />

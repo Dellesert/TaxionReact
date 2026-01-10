@@ -247,7 +247,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
     >
       <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
         {/* Modal Header */}
-        <View style={[styles.modalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border, paddingTop: 16 + insets.top }]}>
+        <View style={[styles.modalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border, paddingTop: Platform.OS === 'android' ? 16 + insets.top : 16 }]}>
           <TouchableOpacity
             onPress={onClose}
             style={styles.closeButton}
