@@ -8,17 +8,52 @@
 - Android SDK с NDK 27.1.12297006
 - Установленные зависимости проекта (`npm install`)
 
+## Окружения сборки
+
+Проект поддерживает два окружения:
+
+| Окружение | Название приложения | Bundle ID | Иконка |
+|-----------|---------------------|-----------|--------|
+| Development (по умолчанию) | Тахион Dev | com.dellesert.tachyon-messenger.dev | icon-dev.png |
+| Production | Тахион | com.dellesert.tachyon-messenger | icon.png |
+
+Окружение определяется переменной `APP_ENV`. Если не задана — используется Development.
+
 ## Сборка Release APK
 
+### Production сборка (для публикации)
+
 ```bash
-cd android
-./gradlew assembleRelease
+# 1. Подготовка нативного кода (если изменились настройки или после npm install)
+APP_ENV=production npx expo prebuild --platform android --clean
+
+# 2. Исправление конфликта манифеста Firebase (см. ниже)
+
+# 3. Сборка APK
+cd android && APP_ENV=production ./gradlew assembleRelease
+```
+
+### Development сборка (для тестирования)
+
+```bash
+cd android && ./gradlew assembleRelease
 ```
 
 APK будет находиться в:
 ```
 android/app/build/outputs/apk/release/app-release.apk
 ```
+
+## Важно: после expo prebuild
+
+После каждого запуска `expo prebuild --clean` необходимо:
+
+1. **Создать local.properties** (если отсутствует):
+```bash
+echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties
+```
+
+2. **Исправить AndroidManifest.xml** — добавить `tools:replace="android:resource"` в meta-data для Firebase notification color (см. раздел "Manifest merger failed" ниже).
 
 ## Возможные проблемы и решения
 
@@ -86,3 +121,15 @@ MYAPP_RELEASE_KEY_PASSWORD=*****
 ```
 
 3. Обновить `android/app/build.gradle` секцию `signingConfigs`
+
+## Быстрая команда для полной production сборки
+
+```bash
+# Полная пересборка с нуля
+APP_ENV=production npx expo prebuild --platform android --clean && \
+echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties && \
+sed -i '' 's/android:resource="@color\/notification_icon_color"\/>/android:resource="@color\/notification_icon_color" tools:replace="android:resource"\/>/' android/app/src/main/AndroidManifest.xml && \
+cd android && APP_ENV=production ./gradlew assembleRelease
+```
+
+После успешной сборки APK: `android/app/build/outputs/apk/release/app-release.apk`
