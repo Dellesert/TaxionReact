@@ -1,4 +1,4 @@
-package com.anonymous.tachyonmessenger
+package com.dellesert.tachyonmessenger
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

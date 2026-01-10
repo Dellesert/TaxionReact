@@ -23,44 +23,6 @@
           "other_platform_oauth_client": []
         }
       }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:378420589940:android:anonymous0e821",
-        "android_client_info": {
-          "package_name": "com.anonymous.tachyonmessenger"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyD56zvFFRBLOLFt-dZ1cMkqGFNE2g9YA84"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:378420589940:android:dev0e821",
-        "android_client_info": {
-          "package_name": "com.dellesert.tachyon-messenger.dev"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyD56zvFFRBLOLFt-dZ1cMkqGFNE2g9YA84"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
     }
   ],
   "configuration_version": "1"

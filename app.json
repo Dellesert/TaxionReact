@@ -48,8 +48,8 @@
         "backgroundColor": "#E94444"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.tachyonmessenger",
-      "versionCode": 739,
+      "package": "com.dellesert.tachyonmessenger",
+      "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",

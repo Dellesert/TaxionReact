@@ -1,4 +1,4 @@
-package com.anonymous.tachyonmessenger
+package com.dellesert.tachyonmessenger
 
 import android.app.Application
 import android.content.res.Configuration
