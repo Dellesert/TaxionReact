@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Modal, View, StyleSheet, TouchableOpacity, Text, Platform, Dimensions, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { Modal, View, StyleSheet, Text, Platform, Dimensions, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import { GestureDetector, GestureHandlerRootView, Gesture } from 'react-native-gesture-handler';
+import { GestureDetector, GestureHandlerRootView, Gesture, FlatList } from 'react-native-gesture-handler';
 import * as Sharing from 'expo-sharing';
 import { Paths, File as ExpoFile } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
@@ -19,14 +20,15 @@ import Animated, {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Отдельный компонент для изображения с зумом
+// Отдельный компонент для изображения с зумом и свайпом вниз
 const ZoomableImage: React.FC<{
   uri: string;
   sessionId: string | null;
   isActive: boolean;
   onZoomChange?: (isZoomed: boolean) => void;
   onSingleTap?: () => void;
-}> = ({ uri, sessionId, isActive, onZoomChange, onSingleTap }) => {
+  onClose?: () => void;
+}> = ({ uri, sessionId, isActive, onZoomChange, onSingleTap, onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -34,6 +36,10 @@ const ZoomableImage: React.FC<{
   const translateY = useSharedValue(0);
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
+
+  // Для свайпа вниз
+  const swipeTranslateY = useSharedValue(0);
+  const imageOpacity = useSharedValue(1);
 
   // Сброс зума когда изображение становится неактивным
   useEffect(() => {
@@ -44,6 +50,8 @@ const ZoomableImage: React.FC<{
       translateY.value = withTiming(0, { duration: 200 });
       savedTranslateX.value = 0;
       savedTranslateY.value = 0;
+      swipeTranslateY.value = 0;
+      imageOpacity.value = 1;
       if (onZoomChange) onZoomChange(false);
     }
   }, [isActive]);
@@ -110,11 +118,11 @@ const ZoomableImage: React.FC<{
   const panGestureSingleFinger = Gesture.Pan()
     .minPointers(1)
     .maxPointers(1)
-    .minDistance(5)
+    .minDistance(10)
     .manualActivation(true)
     .onTouchesMove((_event, stateManager) => {
       // Активируем жест только если зумлено
-      if (scale.value > 1) {
+      if (scale.value > 1.05) {
         stateManager.activate();
       } else {
         stateManager.fail();
@@ -127,6 +135,37 @@ const ZoomableImage: React.FC<{
     .onEnd(() => {
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
+    });
+
+  // Свайп вниз для закрытия (только когда не зумлено)
+  const swipeDownGesture = Gesture.Pan()
+    .minPointers(1)
+    .maxPointers(1)
+    .activeOffsetY([20, 300])
+    .failOffsetY(-15)
+    .failOffsetX([-20, 20])
+    .manualActivation(true)
+    .onTouchesMove((_event, stateManager) => {
+      // Активируем только если не зумлено и свайп вниз
+      if (scale.value <= 1.05) {
+        stateManager.activate();
+      } else {
+        stateManager.fail();
+      }
+    })
+    .onUpdate((event) => {
+      if (event.translationY > 0) {
+        swipeTranslateY.value = event.translationY;
+        imageOpacity.value = 1 - (event.translationY / 400);
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > 100 && onClose) {
+        runOnJS(onClose)();
+      } else {
+        swipeTranslateY.value = withSpring(0);
+        imageOpacity.value = withSpring(1);
+      }
     });
 
   // Одинарный тап для скрытия/показа контролов
@@ -170,19 +209,21 @@ const ZoomableImage: React.FC<{
   // Комбинируем тапы - double tap имеет приоритет над single tap
   const tapGesture = Gesture.Exclusive(doubleTap, singleTap);
 
-  // Комбинируем жесты - зум, перемещение и тапы
+  // Комбинируем жесты
   const gesture = Gesture.Race(
     tapGesture,
     Gesture.Simultaneous(pinchGesture, panGestureZoomed),
-    panGestureSingleFinger
+    panGestureSingleFinger,
+    swipeDownGesture
   );
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: translateX.value },
-      { translateY: translateY.value },
+      { translateY: translateY.value + swipeTranslateY.value },
       { scale: scale.value },
     ],
+    opacity: imageOpacity.value,
   }));
 
   return (
@@ -227,16 +268,14 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   onClose,
   onForward,
 }) => {
+  const insets = useSafeAreaInsets();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isZoomed, setIsZoomed] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isSharing, setIsSharing] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<string>>(null);
 
-  // Значения для свайпа вниз (закрытие)
-  const swipeY = useSharedValue(0);
-  const backgroundOpacity = useSharedValue(1);
   const controlsOpacity = useSharedValue(1);
 
   useEffect(() => {
@@ -253,10 +292,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       setCurrentIndex(initialIndex);
       setIsZoomed(false);
       setControlsVisible(true);
-      swipeY.value = 0;
-      backgroundOpacity.value = 1;
       controlsOpacity.value = 1;
-      headerOpacity.value = 1;
       setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
       }, 50);
@@ -417,8 +453,8 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     }
   };
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
       setCurrentIndex(viewableItems[0].index);
     }
   }).current;
@@ -426,35 +462,6 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50
   }).current;
-
-  // Значение для скрытия заголовка при свайпе
-  const headerOpacity = useSharedValue(1);
-
-  // Свайп вниз для закрытия - на уровне всего контейнера
-  const swipeDownGesture = Gesture.Pan()
-    .activeOffsetY([15, 300])
-    .failOffsetX([-10, 10])
-    .failOffsetY(-10)
-    .enabled(!isZoomed)
-    .onStart(() => {
-      // Сразу скрываем заголовок при начале свайпа
-      headerOpacity.value = withTiming(0, { duration: 150 });
-    })
-    .onUpdate((event) => {
-      if (event.translationY > 0) {
-        swipeY.value = event.translationY;
-        backgroundOpacity.value = 1 - (event.translationY / 400);
-      }
-    })
-    .onEnd((event) => {
-      if (event.translationY > 120) {
-        runOnJS(onClose)();
-      } else {
-        swipeY.value = withSpring(0);
-        backgroundOpacity.value = withSpring(1);
-        headerOpacity.value = withTiming(1, { duration: 200 });
-      }
-    });
 
   const renderImageItem = ({ item, index }: { item: string; index: number }) => (
     <View style={styles.imageSlide}>
@@ -464,27 +471,16 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         isActive={index === currentIndex}
         onZoomChange={setIsZoomed}
         onSingleTap={toggleControls}
+        onClose={onClose}
       />
     </View>
   );
 
-  const getItemLayout = (_: any, index: number) => ({
+  const getItemLayout = (_: unknown, index: number) => ({
     length: SCREEN_WIDTH,
     offset: SCREEN_WIDTH * index,
     index,
   });
-
-  const animatedContainerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: swipeY.value }],
-  }));
-
-  const animatedBackgroundStyle = useAnimatedStyle(() => ({
-    opacity: backgroundOpacity.value,
-  }));
-
-  const animatedHeaderStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value * controlsOpacity.value,
-  }));
 
   const animatedControlsStyle = useAnimatedStyle(() => ({
     opacity: controlsOpacity.value,
@@ -501,134 +497,151 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.container}>
-          <Animated.View style={[StyleSheet.absoluteFill, animatedBackgroundStyle]}>
-            <BlurView intensity={95} style={styles.blurOverlay} tint="dark" />
-          </Animated.View>
+      <GestureHandlerRootView style={styles.container}>
+        <BlurView intensity={95} style={styles.blurOverlay} tint="dark" />
 
-          <GestureDetector gesture={swipeDownGesture}>
-            <Animated.View style={[styles.imageViewerOverlay, animatedContainerStyle]}>
-              {/* Заголовок с счетчиком */}
-              <Animated.View style={[styles.header, animatedHeaderStyle]}>
-                {/* Кнопка Поделиться */}
+        {/* Галерея изображений с горизонтальным скроллом */}
+        <FlatList
+          ref={flatListRef}
+          data={imageUrls}
+          renderItem={renderImageItem}
+          keyExtractor={(item, index) => `${index}-${item}`}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={initialIndex}
+          getItemLayout={getItemLayout}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          style={styles.flatList}
+          bounces={false}
+          decelerationRate="fast"
+          scrollEnabled={!isZoomed}
+        />
+
+        {/* Заголовок с счетчиком - вне FlatList для корректной работы кнопок */}
+        <Animated.View
+          style={[styles.header, { paddingTop: 15 + insets.top }, animatedControlsStyle]}
+          pointerEvents={controlsVisible ? 'auto' : 'none'}
+        >
+          {/* Кнопка Поделиться */}
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleShare}
+            activeOpacity={0.7}
+            disabled={isSharing}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {isSharing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="share-outline" size={26} color="#FFFFFF" />
+            )}
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            {hasMultipleImages && (
+              <Text style={styles.counterText}>
+                {currentIndex + 1} из {imageUrls.length}
+              </Text>
+            )}
+          </View>
+          {/* Кнопка закрытия */}
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={onClose}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Навигационные стрелки */}
+        {hasMultipleImages && (
+          <>
+            {currentIndex > 0 && (
+              <Animated.View
+                style={[styles.navButton, styles.navButtonLeft, animatedControlsStyle]}
+                pointerEvents={controlsVisible ? 'auto' : 'none'}
+              >
                 <TouchableOpacity
-                  style={styles.headerButton}
-                  onPress={handleShare}
-                  activeOpacity={0.7}
-                  disabled={isSharing}
-                >
-                  {isSharing ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="share-outline" size={26} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-                <View style={styles.headerContent}>
-                  {hasMultipleImages && (
-                    <Text style={styles.counterText}>
-                      {currentIndex + 1} из {imageUrls.length}
-                    </Text>
-                  )}
-                </View>
-                {/* Кнопка закрытия */}
-                <TouchableOpacity
-                  style={styles.headerButton}
-                  onPress={onClose}
+                  onPress={handlePrevious}
+                  style={styles.navButtonTouchable}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={28} color="#FFFFFF" />
+                  <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
                 </TouchableOpacity>
               </Animated.View>
+            )}
 
-              {/* Галерея изображений с горизонтальным скроллом */}
-              <FlatList
-                ref={flatListRef}
-                data={imageUrls}
-                renderItem={renderImageItem}
-                keyExtractor={(item, index) => `${index}-${item}`}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                initialScrollIndex={initialIndex}
-                getItemLayout={getItemLayout}
-                onViewableItemsChanged={onViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
-                style={styles.flatList}
-                bounces={false}
-                decelerationRate="fast"
-                scrollEnabled={!isZoomed}
-              />
-
-              {/* Навигационные стрелки */}
-              {hasMultipleImages && (
-                <>
-                  {currentIndex > 0 && (
-                    <Animated.View style={[styles.navButton, styles.navButtonLeft, animatedControlsStyle]}>
-                      <TouchableOpacity onPress={handlePrevious} style={styles.navButtonTouchable}>
-                        <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </Animated.View>
-                  )}
-
-                  {currentIndex < imageUrls.length - 1 && (
-                    <Animated.View style={[styles.navButton, styles.navButtonRight, animatedControlsStyle]}>
-                      <TouchableOpacity onPress={handleNext} style={styles.navButtonTouchable}>
-                        <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </Animated.View>
-                  )}
-
-                  {/* Индикаторы точек */}
-                  {imageUrls.length <= 10 && (
-                    <Animated.View style={[styles.dotsContainer, animatedControlsStyle]}>
-                      {imageUrls.map((_, index) => (
-                        <View
-                          key={index}
-                          style={[
-                            styles.dot,
-                            {
-                              backgroundColor: index === currentIndex ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)',
-                              width: index === currentIndex ? 8 : 6,
-                              height: index === currentIndex ? 8 : 6,
-                            },
-                          ]}
-                        />
-                      ))}
-                    </Animated.View>
-                  )}
-                </>
-              )}
-
-              {/* Нижняя панель с кнопками */}
-              <Animated.View style={[styles.bottomBar, animatedControlsStyle]}>
-                {/* Кнопка Сохранить */}
+            {currentIndex < imageUrls.length - 1 && (
+              <Animated.View
+                style={[styles.navButton, styles.navButtonRight, animatedControlsStyle]}
+                pointerEvents={controlsVisible ? 'auto' : 'none'}
+              >
                 <TouchableOpacity
-                  style={styles.bottomButton}
-                  onPress={handleSaveToGallery}
+                  onPress={handleNext}
+                  style={styles.navButtonTouchable}
                   activeOpacity={0.7}
-                  disabled={isSharing}
                 >
-                  <Ionicons name="download-outline" size={24} color="#FFFFFF" />
-                  <Text style={styles.bottomButtonText}>Сохранить</Text>
+                  <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
                 </TouchableOpacity>
-
-                {/* Кнопка Переслать */}
-                {onForward && (
-                  <TouchableOpacity
-                    style={styles.bottomButton}
-                    onPress={handleForward}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="arrow-redo-outline" size={24} color="#FFFFFF" />
-                    <Text style={styles.bottomButtonText}>Переслать</Text>
-                  </TouchableOpacity>
-                )}
               </Animated.View>
-            </Animated.View>
-          </GestureDetector>
-        </View>
+            )}
+
+            {/* Индикаторы точек */}
+            {imageUrls.length <= 10 && (
+              <Animated.View style={[styles.dotsContainer, { bottom: 70 + insets.bottom }, animatedControlsStyle]}>
+                {imageUrls.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.dot,
+                      {
+                        backgroundColor: index === currentIndex ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)',
+                        width: index === currentIndex ? 8 : 6,
+                        height: index === currentIndex ? 8 : 6,
+                      },
+                    ]}
+                  />
+                ))}
+              </Animated.View>
+            )}
+          </>
+        )}
+
+        {/* Нижняя панель с кнопками */}
+        <Animated.View
+          style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }, animatedControlsStyle]}
+          pointerEvents={controlsVisible ? 'auto' : 'none'}
+        >
+          {/* Кнопка Сохранить */}
+          <TouchableOpacity
+            style={styles.bottomButton}
+            onPress={handleSaveToGallery}
+            activeOpacity={0.7}
+            disabled={isSharing}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="download-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.bottomButtonText}>Сохранить</Text>
+          </TouchableOpacity>
+
+          {/* Кнопка Переслать */}
+          {onForward && (
+            <TouchableOpacity
+              style={styles.bottomButton}
+              onPress={handleForward}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-redo-outline" size={24} color="#FFFFFF" />
+              <Text style={styles.bottomButtonText}>Переслать</Text>
+            </TouchableOpacity>
+          )}
+        </Animated.View>
       </GestureHandlerRootView>
     </Modal>
   );
@@ -639,14 +652,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   blurOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
   },
   header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: Platform.OS === 'ios' ? 55 : 35,
     paddingBottom: 15,
     paddingHorizontal: 16,
     zIndex: 20,
@@ -666,9 +678,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  imageViewerOverlay: {
-    flex: 1,
   },
   flatList: {
     flex: 1,
@@ -726,7 +735,6 @@ const styles = StyleSheet.create({
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 50 : 30,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -758,7 +766,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 16,
     paddingHorizontal: 32,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
