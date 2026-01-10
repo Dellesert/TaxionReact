@@ -29,6 +29,59 @@
 
 Окружение определяется переменной `APP_ENV`. Если не задана — используется Development.
 
+## Сборка Dev Client APK (для разработки)
+
+Dev Client — это специальная сборка приложения с встроенным Expo dev tools, которая позволяет:
+- Подключаться к локальному Expo dev server
+- Использовать hot reload и fast refresh
+- Отлаживать приложение на физическом устройстве
+
+### Локальная сборка Dev Client
+
+```bash
+# 1. Подготовка нативного кода
+npx expo prebuild --platform android --clean
+
+# 2. Создать local.properties
+echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties
+
+# 3. Скопировать google-services.json
+cp google-services.json android/app/google-services.json
+
+# 4. Сборка debug APK
+cd android && ./gradlew assembleDebug
+```
+
+APK будет находиться в:
+```
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Использование Dev Client
+
+1. Установить APK на устройство:
+   ```bash
+   adb install android/app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+2. Запустить Expo dev server:
+   ```bash
+   npm start
+   ```
+
+3. Открыть приложение "Тахион Dev" на устройстве — оно автоматически подключится к dev server в локальной сети
+
+### Быстрая команда для полной dev сборки
+
+```bash
+npx expo prebuild --platform android --clean && \
+echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties && \
+cp google-services.json android/app/google-services.json && \
+cd android && ./gradlew assembleDebug
+```
+
+---
+
 ## Сборка Release APK
 
 ### Production сборка (для публикации)
@@ -49,7 +102,7 @@ cp google-services.json android/app/google-services.json
 cd android && APP_ENV=production ./gradlew assembleRelease
 ```
 
-### Development сборка (для тестирования)
+### Development Release сборка (для тестирования без dev server)
 
 ```bash
 cd android && ./gradlew assembleRelease
