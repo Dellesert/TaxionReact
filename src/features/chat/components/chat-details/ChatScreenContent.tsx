@@ -270,7 +270,8 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           styles.inputWrapper,
           {
             backgroundColor: theme.backgroundSecondary,
-            minHeight: 72, // Фиксированная минимальная высота для предотвращения layout shift
+            minHeight: 72 + insetsBottom, // Фиксированная минимальная высота + safe area для Android navigation bar
+            paddingBottom: insetsBottom, // Добавляем отступ для Android navigation bar
           },
           inputWrapperAnimatedStyle,
         ]}

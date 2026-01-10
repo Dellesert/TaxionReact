@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/hooks/useTheme';
 
 export interface ActionMenuItem {
@@ -33,6 +34,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
   buttonPosition,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -194,6 +196,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
             styles.bottomSheet,
             {
               transform: [{ translateY: slideAnim }],
+              paddingBottom: 16 + insets.bottom, // Учитываем safe area для Android navigation bar
             }
           ]}
         >
@@ -229,7 +232,7 @@ const styles = StyleSheet.create({
   bottomSheet: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 24,
+    // paddingBottom задаётся динамически с учётом safe area
   },
   menu: {
     borderRadius: 12,

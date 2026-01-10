@@ -37,8 +37,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
-  // Fixed input height
-  const inputHeight = 72;
+  // Fixed input height (без safe area, т.к. safe area добавляется отдельно)
+  const inputHeight = 62;
 
   // State to track if messages are ready
   const [messagesReady, setMessagesReady] = useState(false);

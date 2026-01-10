@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end', // Выравнивание по нижнему краю для кнопок
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 12, // Уменьшен, т.к. safe area padding добавляется в родительском компоненте
     paddingTop: 8,
     borderTopWidth: 1,
   },
