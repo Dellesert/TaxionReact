@@ -22,6 +22,7 @@ import Animated, {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 const SWIPE_VELOCITY_THRESHOLD = 500;
+const IMAGE_CONTAINER_HEIGHT = SCREEN_HEIGHT * 0.8;
 
 interface ImageViewerProps {
   visible: boolean;
@@ -51,6 +52,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   // Shared values для галереи
   const translateX = useSharedValue(0);
   const baseTranslateX = useSharedValue(0);
+  const currentIndexShared = useSharedValue(initialIndex);
 
   // Shared values для зума текущего изображения
   const scale = useSharedValue(1);
@@ -79,6 +81,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     if (visible) {
       const newIndex = Math.min(Math.max(initialIndex, 0), imageUrls.length - 1);
       setCurrentIndex(newIndex);
+      currentIndexShared.value = newIndex;
       setControlsVisible(true);
       controlsOpacity.value = 1;
 
@@ -125,6 +128,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   // Функции навигации
   const updateIndex = (newIndex: number) => {
     setCurrentIndex(newIndex);
+    currentIndexShared.value = newIndex;
     // Сброс зума при смене изображения
     scale.value = 1;
     savedScale.value = 1;
@@ -180,17 +184,30 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   // Pinch для зума
   const pinchGesture = Gesture.Pinch()
     .onStart((event) => {
-      focalX.value = event.focalX - SCREEN_WIDTH / 2;
+      // event.focalX — координата относительно GestureDetector (всей галереи)
+      // Нужно вычислить координату относительно текущего слайда
+      const slideStartX = currentIndexShared.value * SCREEN_WIDTH;
+      const focalXOnSlide = event.focalX - slideStartX;
+
+      // Координаты относительно центра слайда
+      focalX.value = focalXOnSlide - SCREEN_WIDTH / 2;
       focalY.value = event.focalY - SCREEN_HEIGHT / 2;
     })
     .onUpdate((event) => {
-      const newScale = savedScale.value * event.scale;
-      scale.value = clamp(newScale, 0.5, 5);
+      const newScale = clamp(savedScale.value * event.scale, 0.5, 5);
+      scale.value = newScale;
 
       if (newScale > 1) {
         const scaleDiff = newScale / savedScale.value;
-        imageTranslateX.value = savedImageTranslateX.value + focalX.value * (1 - scaleDiff);
-        imageTranslateY.value = savedImageTranslateY.value + focalY.value * (1 - scaleDiff);
+        const newX = savedImageTranslateX.value + focalX.value * (1 - scaleDiff);
+        const newY = savedImageTranslateY.value + focalY.value * (1 - scaleDiff);
+
+        // Ограничиваем перемещение
+        const maxTranslateX = Math.max(0, (SCREEN_WIDTH * newScale - SCREEN_WIDTH) / 2);
+        const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * newScale - IMAGE_CONTAINER_HEIGHT) / 2);
+
+        imageTranslateX.value = clamp(newX, -maxTranslateX, maxTranslateX);
+        imageTranslateY.value = clamp(newY, -maxTranslateY, maxTranslateY);
       }
     })
     .onEnd(() => {
@@ -204,14 +221,28 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       } else if (scale.value > 4) {
         scale.value = withSpring(4);
         savedScale.value = 4;
-        savedImageTranslateX.value = imageTranslateX.value;
-        savedImageTranslateY.value = imageTranslateY.value;
+        // Пересчитываем ограничения для финального масштаба
+        const maxTranslateX = Math.max(0, (SCREEN_WIDTH * 4 - SCREEN_WIDTH) / 2);
+        const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * 4 - IMAGE_CONTAINER_HEIGHT) / 2);
+        savedImageTranslateX.value = clamp(imageTranslateX.value, -maxTranslateX, maxTranslateX);
+        savedImageTranslateY.value = clamp(imageTranslateY.value, -maxTranslateY, maxTranslateY);
       } else {
         savedScale.value = scale.value;
-        savedImageTranslateX.value = imageTranslateX.value;
-        savedImageTranslateY.value = imageTranslateY.value;
+        // Пересчитываем ограничения для текущего масштаба
+        const maxTranslateX = Math.max(0, (SCREEN_WIDTH * scale.value - SCREEN_WIDTH) / 2);
+        const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * scale.value - IMAGE_CONTAINER_HEIGHT) / 2);
+        savedImageTranslateX.value = clamp(imageTranslateX.value, -maxTranslateX, maxTranslateX);
+        savedImageTranslateY.value = clamp(imageTranslateY.value, -maxTranslateY, maxTranslateY);
       }
     });
+
+  // Функция для ограничения перемещения при зуме
+  const clampTranslation = (translateVal: number, dimension: number, currentScale: number) => {
+    'worklet';
+    // Максимальное смещение = (размер * масштаб - размер) / 2
+    const maxTranslate = Math.max(0, (dimension * currentScale - dimension) / 2);
+    return clamp(translateVal, -maxTranslate, maxTranslate);
+  };
 
   // Pan для перемещения при зуме ИЛИ свайпа между фото
   const panGesture = Gesture.Pan()
@@ -219,9 +250,12 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     .maxPointers(1)
     .onUpdate((event) => {
       if (scale.value > 1) {
-        // Зумлено - перемещаем изображение
-        imageTranslateX.value = savedImageTranslateX.value + event.translationX;
-        imageTranslateY.value = savedImageTranslateY.value + event.translationY;
+        // Зумлено - перемещаем изображение с ограничением
+        const newX = savedImageTranslateX.value + event.translationX;
+        const newY = savedImageTranslateY.value + event.translationY;
+
+        imageTranslateX.value = clampTranslation(newX, SCREEN_WIDTH, scale.value);
+        imageTranslateY.value = clampTranslation(newY, IMAGE_CONTAINER_HEIGHT, scale.value);
       } else {
         // Не зумлено - свайп между фото или вниз для закрытия
         const isHorizontal = Math.abs(event.translationX) > Math.abs(event.translationY);
@@ -238,9 +272,9 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     })
     .onEnd((event) => {
       if (scale.value > 1) {
-        // Зумлено - сохраняем позицию
-        savedImageTranslateX.value = imageTranslateX.value;
-        savedImageTranslateY.value = imageTranslateY.value;
+        // Зумлено - сохраняем позицию с ограничением
+        savedImageTranslateX.value = clampTranslation(imageTranslateX.value, SCREEN_WIDTH, scale.value);
+        savedImageTranslateY.value = clampTranslation(imageTranslateY.value, IMAGE_CONTAINER_HEIGHT, scale.value);
       } else {
         const isHorizontal = Math.abs(event.translationX) > Math.abs(event.translationY);
 
@@ -296,16 +330,35 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       } else {
         // Зумить на точку тапа
         const targetScale = 2.5;
-        const tapX = event.x - SCREEN_WIDTH / 2;
-        const tapY = event.y - SCREEN_HEIGHT * 0.4;
+
+        // event.x — координата относительно GestureDetector (всей галереи)
+        // Нужно вычислить координату относительно текущего слайда
+        // Текущий слайд начинается на currentIndexShared.value * SCREEN_WIDTH
+        const slideStartX = currentIndexShared.value * SCREEN_WIDTH;
+        const tapXOnSlide = event.x - slideStartX;
+
+        // Координаты тапа относительно центра слайда
+        const tapX = tapXOnSlide - SCREEN_WIDTH / 2;
+        const tapY = event.y - SCREEN_HEIGHT / 2;
+
+        // Вычисляем желаемое смещение
+        let newTranslateX = -tapX * (targetScale - 1);
+        let newTranslateY = -tapY * (targetScale - 1);
+
+        // Ограничиваем смещение, чтобы изображение не уходило за границы
+        const maxTranslateX = Math.max(0, (SCREEN_WIDTH * targetScale - SCREEN_WIDTH) / 2);
+        const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * targetScale - IMAGE_CONTAINER_HEIGHT) / 2);
+
+        newTranslateX = clamp(newTranslateX, -maxTranslateX, maxTranslateX);
+        newTranslateY = clamp(newTranslateY, -maxTranslateY, maxTranslateY);
 
         scale.value = withSpring(targetScale);
         savedScale.value = targetScale;
 
-        imageTranslateX.value = withSpring(-tapX * (targetScale - 1));
-        imageTranslateY.value = withSpring(-tapY * (targetScale - 1));
-        savedImageTranslateX.value = -tapX * (targetScale - 1);
-        savedImageTranslateY.value = -tapY * (targetScale - 1);
+        imageTranslateX.value = withSpring(newTranslateX);
+        imageTranslateY.value = withSpring(newTranslateY);
+        savedImageTranslateX.value = newTranslateX;
+        savedImageTranslateY.value = newTranslateY;
       }
     });
 
