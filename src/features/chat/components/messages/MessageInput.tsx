@@ -148,8 +148,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.backgroundSecondary,
-      borderTopColor: theme.border,
+      backgroundColor: 'transparent',
+      borderTopColor: 'transparent',
     },
     attachButton: {
       backgroundColor: theme.backgroundTertiary,
@@ -294,6 +294,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 12,
     flexShrink: 0, // Не сжимать кнопку
+    // Тени
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   input: {
     flex: 1,
@@ -306,6 +312,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginHorizontal: 8,
     maxHeight: 120, // Максимальная высота (примерно 5 строк)
+    // Тени
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     ...Platform.select({
       web: {
         outlineStyle: 'none', // Убираем outline на web
@@ -319,6 +331,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0, // Не сжимать кнопку
+    // Тени
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   editIndicator: {
     flexDirection: 'row',

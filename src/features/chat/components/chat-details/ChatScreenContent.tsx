@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { PinnedMessageBanner } from '../messages/PinnedMessageBanner';
 import { FloatingDateHeader } from '../common/FloatingDateHeader';
 import { ScrollToBottomButton } from '../common/ScrollToBottomButton';
@@ -176,7 +177,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   onNavigateNext,
   activeSearchQuery,
 }) => {
-  const { theme } = useTheme();
+  const { isDark } = useTheme();
 
   // Создаем анимированный стиль для поднятия инпута через transform
   // Используем translateY вместо bottom для совместимости с native driver
@@ -269,42 +270,97 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
         style={[
           styles.inputWrapper,
           {
-            backgroundColor: theme.backgroundSecondary,
             minHeight: 72 + insetsBottom, // Фиксированная минимальная высота + safe area для Android navigation bar
-            paddingBottom: insetsBottom, // Добавляем отступ для Android navigation bar
+            overflow: 'hidden',
           },
           inputWrapperAnimatedStyle,
         ]}
       >
-        {isSearchVisible ? (
-          <SearchNavigationBar
-            total={searchTotal ?? 0}
-            currentIndex={searchCurrentIndex ?? 0}
-            isLoading={isSearchLoading ?? false}
-            onNavigatePrev={onNavigatePrev ?? (() => {})}
-            onNavigateNext={onNavigateNext ?? (() => {})}
-            searchQuery={searchQuery ?? ''}
-            hideNavigation={keyboardHeight > 0}
-          />
-        ) : selectionMode ? (
-          <SelectionModeToolbar
-            selectedCount={selectedMessages.size}
-            onCancel={onExitSelectionMode}
-            onDelete={onBulkDelete}
-            canDeleteForEveryone={canDeleteForEveryone}
-          />
+        {Platform.OS === 'web' ? (
+          // Web fallback - используем полупрозрачный фон с backdrop-filter
+          <View
+            style={[
+              styles.blurContent,
+              {
+                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                paddingBottom: insetsBottom,
+                // @ts-ignore - backdrop-filter поддерживается на web
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+              },
+            ]}
+          >
+            {isSearchVisible ? (
+              <SearchNavigationBar
+                total={searchTotal ?? 0}
+                currentIndex={searchCurrentIndex ?? 0}
+                isLoading={isSearchLoading ?? false}
+                onNavigatePrev={onNavigatePrev ?? (() => {})}
+                onNavigateNext={onNavigateNext ?? (() => {})}
+                searchQuery={searchQuery ?? ''}
+                hideNavigation={keyboardHeight > 0}
+              />
+            ) : selectionMode ? (
+              <SelectionModeToolbar
+                selectedCount={selectedMessages.size}
+                onCancel={onExitSelectionMode}
+                onDelete={onBulkDelete}
+                canDeleteForEveryone={canDeleteForEveryone}
+              />
+            ) : (
+              <MessageInput
+                onSend={onSendMessage}
+                onTyping={onTyping}
+                editingMessage={editingMessage}
+                onCancelEdit={onCancelEdit}
+                replyingToMessage={replyingToMessage}
+                onCancelReply={onCancelReply}
+                onFilesSelected={onFilesSelected}
+                selectedFileIds={selectedFileIds}
+                onRemoveFile={onRemoveFile}
+              />
+            )}
+          </View>
         ) : (
-          <MessageInput
-            onSend={onSendMessage}
-            onTyping={onTyping}
-            editingMessage={editingMessage}
-            onCancelEdit={onCancelEdit}
-            replyingToMessage={replyingToMessage}
-            onCancelReply={onCancelReply}
-            onFilesSelected={onFilesSelected}
-            selectedFileIds={selectedFileIds}
-            onRemoveFile={onRemoveFile}
-          />
+          // Native - используем BlurView
+          <BlurView
+            intensity={80}
+            tint={isDark ? 'dark' : 'light'}
+            style={[styles.blurContent, { paddingBottom: insetsBottom }]}
+          >
+            {/* Дополнительное затемнение поверх блюра */}
+            <View style={[styles.blurOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)' }]} />
+            {isSearchVisible ? (
+              <SearchNavigationBar
+                total={searchTotal ?? 0}
+                currentIndex={searchCurrentIndex ?? 0}
+                isLoading={isSearchLoading ?? false}
+                onNavigatePrev={onNavigatePrev ?? (() => {})}
+                onNavigateNext={onNavigateNext ?? (() => {})}
+                searchQuery={searchQuery ?? ''}
+                hideNavigation={keyboardHeight > 0}
+              />
+            ) : selectionMode ? (
+              <SelectionModeToolbar
+                selectedCount={selectedMessages.size}
+                onCancel={onExitSelectionMode}
+                onDelete={onBulkDelete}
+                canDeleteForEveryone={canDeleteForEveryone}
+              />
+            ) : (
+              <MessageInput
+                onSend={onSendMessage}
+                onTyping={onTyping}
+                editingMessage={editingMessage}
+                onCancelEdit={onCancelEdit}
+                replyingToMessage={replyingToMessage}
+                onCancelReply={onCancelReply}
+                onFilesSelected={onFilesSelected}
+                selectedFileIds={selectedFileIds}
+                onRemoveFile={onRemoveFile}
+              />
+            )}
+          </BlurView>
         )}
       </Animated.View>
     </>
@@ -323,6 +379,16 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  blurContent: {
+    flex: 1,
+  },
+  blurOverlay: {
+    position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
