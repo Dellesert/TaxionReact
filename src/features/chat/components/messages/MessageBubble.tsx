@@ -1,5 +1,5 @@
-import React, { useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Message } from '../../types/chat.types';
@@ -80,6 +80,16 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     }
   }
 
+  // Вычисляем цвет фона с учетом подсветки (для Android нужен непрозрачный цвет)
+  const getHighlightedBgColor = () => {
+    // На Android полупрозрачные цвета накладываются некорректно,
+    // поэтому используем более насыщенный цвет
+    if (Platform.OS === 'android') {
+      return theme.primary + '60';
+    }
+    return theme.primary + '40';
+  };
+
   // Мемоизируем динамические стили для снижения ре-рендеров на 10-15%
   const dynamicStyles = useMemo(() => StyleSheet.create({
     messageBubble: {
@@ -87,6 +97,9 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     },
     ownMessageBubble: {
       backgroundColor: theme.messageOwn,
+    },
+    highlightedBubble: {
+      backgroundColor: getHighlightedBgColor(),
     },
     senderName: {
       color: theme.primary,
@@ -148,7 +161,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         isSavedChat && !isForwarded && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
         isSavedChat && isForwarded && styles.savedForwardedBubble,
         !isSavedChat && isOwnMessage && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
-        isHighlighted && [styles.highlightedBubble, { backgroundColor: theme.primary + '40' }],
+        isHighlighted && [styles.highlightedBubble, dynamicStyles.highlightedBubble],
         isCardMessage && { backgroundColor: 'transparent', padding: 0 },
       ]}
     >
@@ -362,11 +375,18 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   highlightedBubble: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
+    // Тень только для iOS, на Android elevation создает белый фон
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        // Без elevation - используем только цвет фона для подсветки
+      },
+    }),
   },
   forwardHeader: {
     flexDirection: 'row',
