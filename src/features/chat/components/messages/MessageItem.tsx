@@ -107,15 +107,33 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       const screenHeight = Dimensions.get('window').height;
       const menuWidth = 250;
       const menuHeight = 450;
+      const minTopMargin = 160; // Отступ сверху (для header и safe area)
+      const minBottomMargin = 20; // Отступ снизу
 
       const left = isOwnMessage
         ? screenWidth - menuWidth - 20
         : 20;
 
-      let top = y;
-      if (top + menuHeight > screenHeight - 20) {
-        top = Math.max(20, screenHeight - menuHeight - 20);
+      // Определяем видимую область сообщения на экране
+      const messageVisibleTop = Math.max(y, minTopMargin);
+      const messageVisibleBottom = Math.min(y + height, screenHeight - minBottomMargin);
+
+      // Пытаемся разместить меню рядом с видимой частью сообщения
+      let top = messageVisibleTop;
+
+      // Если меню не помещается снизу от видимой части
+      if (top + menuHeight > screenHeight - minBottomMargin) {
+        // Пробуем разместить над сообщением, если есть место
+        if (messageVisibleTop - menuHeight >= minTopMargin) {
+          top = messageVisibleTop - menuHeight;
+        } else {
+          // Если не помещается ни сверху, ни снизу - центрируем в видимой области
+          top = Math.max(minTopMargin, screenHeight - menuHeight - minBottomMargin);
+        }
       }
+
+      // Финальная проверка границ
+      top = Math.max(minTopMargin, Math.min(top, screenHeight - menuHeight - minBottomMargin));
 
       setMenuPosition({ top, left });
       setShowContextMenu(true);
