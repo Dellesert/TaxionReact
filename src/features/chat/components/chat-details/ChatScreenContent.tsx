@@ -287,7 +287,6 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             style={[
               styles.blurContent,
               {
-                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 paddingBottom: effectiveInsetsBottom,
                 // @ts-ignore - backdrop-filter поддерживается на web
                 backdropFilter: 'blur(20px)',
@@ -334,7 +333,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             style={[styles.blurContent, { paddingBottom: effectiveInsetsBottom }]}
           >
             {/* Дополнительное затемнение поверх блюра */}
-            <View style={[styles.blurOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)' }]} />
+            <View style={[styles.blurOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)' }]} />
             {isSearchVisible ? (
               <SearchNavigationBar
                 total={searchTotal ?? 0}
