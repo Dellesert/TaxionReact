@@ -39,12 +39,14 @@ interface MobileCalendarContentProps {
   onAddPress: () => void;
   onEventPress: (event: Event) => void;
   searchQuery: string;
+  refreshTrigger?: number;
 }
 
 const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
   onAddPress,
   onEventPress,
   searchQuery,
+  refreshTrigger,
 }) => {
   const { showError } = useNotification();
 
@@ -110,6 +112,18 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, monthStartDate.getTime(), monthEndDate.getTime()]);
+
+  // Reload events when refreshTrigger changes (after event creation)
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      loadEvents().catch(() => console.error('Failed to reload events after creation'));
+      loadWeekEvents().catch(() => console.error('Failed to reload week events'));
+      if (viewMode === 'month') {
+        loadMonthEvents().catch(() => console.error('Failed to reload month events'));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   // Filter events by search query
   const filteredEvents = searchQuery
@@ -190,6 +204,7 @@ const CalendarScreen: React.FC = () => {
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileRefreshTrigger, setMobileRefreshTrigger] = useState(0);
 
   // Handle navigation from notification (with eventId parameter)
   useEffect(() => {
@@ -242,6 +257,8 @@ const CalendarScreen: React.FC = () => {
   const handleEventCreated = () => {
     setShowCreateModal(false);
     loadEvents();
+    // Trigger refresh for mobile view
+    setMobileRefreshTrigger(prev => prev + 1);
   };
 
   const handleEventUpdated = () => {
@@ -300,6 +317,7 @@ const CalendarScreen: React.FC = () => {
             onAddPress={handleAddEvent}
             onEventPress={handleEventPress}
             searchQuery={searchQuery}
+            refreshTrigger={mobileRefreshTrigger}
           />
         )}
       </View>
