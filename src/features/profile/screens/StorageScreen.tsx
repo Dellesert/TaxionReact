@@ -27,7 +27,6 @@ import {
   StorageInfo,
   getCacheLimit,
   setCacheLimit,
-  getCacheUsagePercent,
 } from '@shared/storage';
 
 interface CacheInfo {
@@ -178,17 +177,21 @@ export default function StorageScreen() {
         }
       }
 
-      const [cacheLimit, usagePercent] = await Promise.all([
-        getCacheLimit(),
-        getCacheUsagePercent(),
-      ]);
+      const cacheLimit = await getCacheLimit();
+
+      // Общий размер = данные (MMKV) + изображения
+      // documentCache не включаем - это системный кэш Expo/Metro
+      const totalCache = mmkvInfo.totalSize + imageCacheSize;
+
+      // Считаем процент от данных + изображений
+      const usagePercent = cacheLimit > 0 ? Math.min(100, (totalCache / cacheLimit) * 100) : 0;
 
       setCacheInfo({
         mmkv: mmkvInfo,
         imageCache: imageCacheSize,
         imageCacheFileCount,
         documentCache: documentCacheSize,
-        totalCache: mmkvInfo.totalSize + documentCacheSize + imageCacheSize,
+        totalCache,
         cacheLimit,
         usagePercent,
       });
@@ -539,72 +542,22 @@ export default function StorageScreen() {
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
 
-        {/* Data Cache Section */}
+        {/* Storage Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Кэш данных</Text>
+          <Text style={styles.sectionTitle}>Хранилище</Text>
           <View style={styles.card}>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#3B82F620' }]}>
-                  <Ionicons name="chatbubbles" size={20} color="#3B82F6" />
+                  <Ionicons name="server-outline" size={20} color="#3B82F6" />
                 </View>
                 <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Чаты и сообщения</Text>
+                  <Text style={styles.rowTitle}>Данные</Text>
+                  <Text style={styles.rowSubtitle}>Чаты, задачи, календарь, опросы, профили</Text>
                 </View>
               </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.chatSize || 0)}</Text>
+              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.totalSize || 0)}</Text>
             </View>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: '#10B98120' }]}>
-                  <Ionicons name="checkbox" size={20} color="#10B981" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Задачи</Text>
-                </View>
-              </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.taskSize || 0)}</Text>
-            </View>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: '#8B5CF620' }]}>
-                  <Ionicons name="calendar" size={20} color="#8B5CF6" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Календарь</Text>
-                </View>
-              </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.calendarSize || 0)}</Text>
-            </View>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: '#EC489920' }]}>
-                  <Ionicons name="bar-chart" size={20} color="#EC4899" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Опросы</Text>
-                </View>
-              </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.pollSize || 0)}</Text>
-            </View>
-            <View style={[styles.row, styles.rowLast]}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: '#6366F120' }]}>
-                  <Ionicons name="people" size={20} color="#6366F1" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Профили</Text>
-                </View>
-              </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.userSize || 0)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Media Cache Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Медиа</Text>
-          <View style={styles.card}>
             <View style={[styles.row, styles.rowLast]}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#F59E0B20' }]}>
@@ -633,7 +586,7 @@ export default function StorageScreen() {
           <View style={styles.totalHeader}>
             <Text style={styles.totalLabel}>Использовано</Text>
             <Text style={styles.totalValue}>
-              {formatBytes(cacheInfo?.mmkv.totalSize || 0)} / {getCurrentLimitLabel()}
+              {formatBytes(cacheInfo?.totalCache || 0)} / {getCurrentLimitLabel()}
             </Text>
           </View>
           <View style={styles.progressBarContainer}>
