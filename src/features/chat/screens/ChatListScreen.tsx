@@ -210,6 +210,14 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
     currentTabIndex.value = currentIndex;
   }, []);
 
+  // Scroll to top when search query is cleared
+  useEffect(() => {
+    if (prevSearchQueryRef.current.length > 0 && searchQuery.length === 0) {
+      chatListRef.current?.scrollToTop();
+    }
+    prevSearchQueryRef.current = searchQuery;
+  }, [searchQuery]);
+
   // Update handler with updateTranslateX after hook initialization
   useEffect(() => {
     // Sync translations when filter changes
