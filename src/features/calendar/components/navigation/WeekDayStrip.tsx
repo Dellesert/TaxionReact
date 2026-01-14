@@ -46,10 +46,10 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
     [selectedDate]
   );
 
-  // Check if a date has events
-  const hasEventsOnDate = useCallback(
-    (date: Date): boolean => {
-      return events.some((event) => {
+  // Get events for a specific date
+  const getEventsForDate = useCallback(
+    (date: Date): Event[] => {
+      return events.filter((event) => {
         const eventDate = parseISO(event.start_time);
         return isSameDay(eventDate, date);
       });
@@ -109,9 +109,12 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
             {weekDays.map((date) => {
               const isSelected = isDateSelected(date);
               const isTodayDate = isToday(date);
-              const hasEvents = hasEventsOnDate(date);
+              const dayEvents = getEventsForDate(date);
               const dayOfWeek = format(date, 'EEEEEE', { locale: ru });
               const dayNumber = format(date, 'd');
+
+              // Get unique colors from events (max 3 dots)
+              const eventColors = [...new Set(dayEvents.map(e => e.color))].slice(0, 3);
 
               return (
                 <TouchableOpacity
@@ -145,16 +148,17 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
                       {dayNumber}
                     </Text>
                   </View>
-                  {/* Event indicator dot */}
+                  {/* Event indicator dots with event colors */}
                   <View style={styles.dotContainer}>
-                    {hasEvents && (
+                    {eventColors.map((color, index) => (
                       <View
+                        key={index}
                         style={[
                           styles.eventDot,
-                          { backgroundColor: isSelected ? theme.primary : theme.textSecondary },
+                          { backgroundColor: color },
                         ]}
                       />
-                    )}
+                    ))}
                   </View>
                 </TouchableOpacity>
               );
@@ -224,8 +228,10 @@ const styles = StyleSheet.create({
   dotContainer: {
     height: 6,
     marginTop: 4,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 2,
   },
   eventDot: {
     width: 5,
