@@ -346,15 +346,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   testID={`favorite-star-${chat.id}`}
                 />
               )}
-              {chat.is_pinned && (
-                <Ionicons
-                  name="pin"
-                  size={16}
-                  color={theme.primary}
-                  style={styles.pinIcon}
-                  testID={`pin-icon-${chat.id}`}
-                />
-              )}
               {chat.last_message && (
                 <Text style={[styles.time, dynamicStyles.time]}>
                   {formatDistanceToNow(new Date(chat.last_message.created_at), {
@@ -408,6 +399,15 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
             <View style={styles.badges}>
               {chat.is_muted && (
                 <Ionicons name="notifications-off" size={16} color={theme.textTertiary} style={styles.muteIcon} />
+              )}
+              {chat.is_pinned && (
+                <Ionicons
+                  name="pin"
+                  size={14}
+                  color={theme.textTertiary}
+                  style={styles.pinIcon}
+                  testID={`pin-icon-${chat.id}`}
+                />
               )}
               {!!chat.unread_count && chat.unread_count > 0 && (
                 <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]} testID={`unread-badge-${chat.id}`}>
@@ -640,7 +640,8 @@ const styles = StyleSheet.create({
     marginTop: -1,
   },
   pinIcon: {
-    marginTop: -1,
+    marginRight: 4,
+    transform: [{ rotate: '45deg' }],
   },
   time: {
     fontSize: 12,

@@ -58,6 +58,9 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
   // Track last opened chat for smart scrolling
   const lastOpenedChatRef = useRef<{ id: number; lastMessageId: number | null } | null>(null);
 
+  // Track previous search query for scroll-to-top on clear
+  const prevSearchQueryRef = useRef<string>('');
+
   // Local state
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
