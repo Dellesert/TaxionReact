@@ -18,6 +18,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatScreenContent } from '../components/chat-details/ChatScreenContent';
 import { ChatModals } from '../components/modals/ChatModals';
+import { ForwardMessagesModal } from '../components/modals/ForwardMessagesModal';
 import { MessageSearchOverlay } from '../components/search/MessageSearchOverlay';
 import {
   canDeleteForEveryone as checkCanDeleteForEveryone,
@@ -82,10 +83,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const {
     selectionMode,
     selectedMessages,
+    forwardModalVisible,
     handleEnterSelectionMode,
     handleExitSelectionMode,
     handleToggleMessageSelection,
     handleBulkDelete,
+    handleOpenForwardModal,
+    handleCloseForwardModal,
+    handleBulkForward,
   } = useSelectionMode();
 
   // Store - оптимизированные селекторы
@@ -570,6 +575,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onScrollToBottom={handleScrollToBottom}
         onPinnedMessagePress={handlePinnedMessagePress}
         onBulkDelete={onBulkDelete}
+        onBulkForward={handleOpenForwardModal}
         onExitSelectionMode={handleExitSelectionMode}
         canDeleteForEveryone={canDeleteForEveryone}
         isSearchVisible={isSearchVisible}
@@ -597,6 +603,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
           setPollModalVisible(false);
           setSelectedPollId(null);
         }}
+      />
+
+      {/* Bulk Forward Messages Modal */}
+      <ForwardMessagesModal
+        visible={forwardModalVisible}
+        selectedCount={selectedMessages.size}
+        onClose={handleCloseForwardModal}
+        onForward={handleBulkForward}
       />
 
       {/* Message Search Overlay */}

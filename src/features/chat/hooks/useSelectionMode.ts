@@ -6,6 +6,7 @@ import { useState, useCallback } from 'react';
 export const useSelectionMode = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<number>>(new Set());
+  const [forwardModalVisible, setForwardModalVisible] = useState(false);
 
   const handleEnterSelectionMode = useCallback((messageId: number) => {
     setSelectionMode(true);
@@ -58,12 +59,49 @@ export const useSelectionMode = () => {
     [selectedMessages, handleExitSelectionMode]
   );
 
+  const handleOpenForwardModal = useCallback(() => {
+    if (selectedMessages.size === 0) return;
+    setForwardModalVisible(true);
+  }, [selectedMessages.size]);
+
+  const handleCloseForwardModal = useCallback(() => {
+    setForwardModalVisible(false);
+  }, []);
+
+  const handleBulkForward = useCallback(
+    async (targetChatId: number) => {
+      if (selectedMessages.size === 0) return;
+
+      try {
+        const messageIds = Array.from(selectedMessages);
+        const { bulkForwardMessages } = await import('../api/chat.api');
+
+        const result = await bulkForwardMessages(messageIds, targetChatId);
+
+        console.log(`✅ Forwarded ${result.total_forwarded} messages, ${result.total_failed} failed`);
+
+        handleCloseForwardModal();
+        handleExitSelectionMode();
+
+        return result;
+      } catch (error) {
+        console.error('Failed to forward messages:', error);
+        throw error;
+      }
+    },
+    [selectedMessages, handleExitSelectionMode, handleCloseForwardModal]
+  );
+
   return {
     selectionMode,
     selectedMessages,
+    forwardModalVisible,
     handleEnterSelectionMode,
     handleExitSelectionMode,
     handleToggleMessageSelection,
     handleBulkDelete,
+    handleOpenForwardModal,
+    handleCloseForwardModal,
+    handleBulkForward,
   };
 };

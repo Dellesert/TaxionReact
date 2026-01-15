@@ -88,6 +88,7 @@ interface ChatScreenContentProps {
   onScrollToBottom: () => void;
   onPinnedMessagePress: (messageId: number) => void;
   onBulkDelete: (deleteFor: 'everyone' | 'me') => Promise<void>;
+  onBulkForward: () => void;
   onExitSelectionMode: () => void;
   canDeleteForEveryone: boolean;
 
@@ -166,6 +167,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   onScrollToBottom,
   onPinnedMessagePress,
   onBulkDelete,
+  onBulkForward,
   onExitSelectionMode,
   canDeleteForEveryone,
   isSearchVisible,
@@ -309,6 +311,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                 selectedCount={selectedMessages.size}
                 onCancel={onExitSelectionMode}
                 onDelete={onBulkDelete}
+                onForward={onBulkForward}
                 canDeleteForEveryone={canDeleteForEveryone}
               />
             ) : (
@@ -349,6 +352,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                 selectedCount={selectedMessages.size}
                 onCancel={onExitSelectionMode}
                 onDelete={onBulkDelete}
+                onForward={onBulkForward}
                 canDeleteForEveryone={canDeleteForEveryone}
               />
             ) : (

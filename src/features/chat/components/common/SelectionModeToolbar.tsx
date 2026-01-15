@@ -8,6 +8,7 @@ interface SelectionModeToolbarProps {
   selectedCount: number;
   onCancel: () => void;
   onDelete: (deleteFor: 'everyone' | 'me') => void;
+  onForward: () => void;
   canDeleteForEveryone: boolean; // Может ли пользователь удалить выбранные сообщения для всех
 }
 
@@ -18,6 +19,7 @@ export const SelectionModeToolbar: React.FC<SelectionModeToolbarProps> = ({
   selectedCount,
   onCancel,
   onDelete,
+  onForward,
   canDeleteForEveryone,
 }) => {
   const { theme } = useTheme();
@@ -26,6 +28,11 @@ export const SelectionModeToolbar: React.FC<SelectionModeToolbarProps> = ({
   const handleDeletePress = () => {
     if (selectedCount === 0) return;
     setShowDeleteModal(true);
+  };
+
+  const handleForwardPress = () => {
+    if (selectedCount === 0) return;
+    onForward();
   };
 
   const getMessageText = () => {
@@ -40,7 +47,16 @@ export const SelectionModeToolbar: React.FC<SelectionModeToolbarProps> = ({
         {/* Кнопка отмены */}
         <TouchableOpacity onPress={onCancel} style={styles.button} activeOpacity={0.7}>
           <Ionicons name="close" size={24} color={theme.text} />
-          <Text style={[styles.buttonText, { color: theme.text }]}>Отмена</Text>
+        </TouchableOpacity>
+
+        {/* Кнопка пересылки */}
+        <TouchableOpacity
+          onPress={handleForwardPress}
+          style={styles.button}
+          activeOpacity={0.7}
+          disabled={selectedCount === 0}
+        >
+          <Ionicons name="arrow-redo-outline" size={24} color={selectedCount === 0 ? theme.textSecondary : theme.primary} />
         </TouchableOpacity>
 
         {/* Информация о выбранных сообщениях */}
@@ -58,9 +74,6 @@ export const SelectionModeToolbar: React.FC<SelectionModeToolbarProps> = ({
           disabled={selectedCount === 0}
         >
           <Ionicons name="trash-outline" size={24} color={selectedCount === 0 ? theme.textSecondary : '#E94444'} />
-          <Text style={[styles.buttonText, { color: selectedCount === 0 ? theme.textSecondary : '#E94444' }]}>
-            Удалить
-          </Text>
         </TouchableOpacity>
       </View>
 

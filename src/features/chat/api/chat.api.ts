@@ -945,3 +945,34 @@ export const bulkDeleteMessages = async (
 
   return response.data;
 };
+
+/**
+ * Bulk forward messages to another chat
+ * @param messageIds - Array of message IDs to forward (1-100)
+ * @param targetChatId - ID of the chat to forward messages to
+ */
+export const bulkForwardMessages = async (
+  messageIds: number[],
+  targetChatId: number
+): Promise<{
+  forwarded_messages: any[];
+  failed_message_ids: number[];
+  total_forwarded: number;
+  total_failed: number;
+}> => {
+
+  if (messageIds.length === 0) {
+    throw new Error('No messages to forward');
+  }
+
+  if (messageIds.length > 100) {
+    throw new Error('Cannot forward more than 100 messages at once');
+  }
+
+  const response = await api.post('/messages/bulk-forward', {
+    message_ids: messageIds,
+    target_chat_id: targetChatId,
+  });
+
+  return response.data;
+};

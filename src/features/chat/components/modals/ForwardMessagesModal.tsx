@@ -1,0 +1,289 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  TextInput,
+  Platform,
+  Keyboard,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useChatStore } from '@shared/store/chatStore';
+import { useAuthStore } from '@shared/store/authStore';
+import { Chat } from '../../types/chat.types';
+import { Avatar } from '@shared/components/common/Avatar';
+import { getChatDisplayName, getChatDisplayAvatar } from '../../utils/chatUtils';
+
+interface ForwardMessagesModalProps {
+  visible: boolean;
+  selectedCount: number;
+  onClose: () => void;
+  onForward: (chatId: number) => Promise<void>;
+}
+
+/**
+ * Modal for forwarding multiple selected messages to another chat
+ */
+export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
+  visible,
+  selectedCount,
+  onClose,
+  onForward,
+}) => {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const chats = useChatStore((state) => state.chats);
+  const currentUser = useAuthStore((state) => state.user);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
+  const [isForwarding, setIsForwarding] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  const effectiveInsetsBottom = (Platform.OS === 'ios' && isKeyboardVisible) ? 0 : insets.bottom;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (visible) {
+      const filtered = chats.filter((chat) => {
+        const displayName = getChatDisplayName(chat, currentUser?.id).toLowerCase();
+        return displayName.includes(searchQuery.toLowerCase());
+      });
+      setFilteredChats(filtered);
+    } else {
+      setSearchQuery('');
+      setIsForwarding(false);
+    }
+  }, [visible, chats, searchQuery, currentUser]);
+
+  const handleForward = async (chatId: number) => {
+    setIsForwarding(true);
+    try {
+      await onForward(chatId);
+      onClose();
+    } catch (error) {
+      console.error('Failed to forward messages:', error);
+    } finally {
+      setIsForwarding(false);
+    }
+  };
+
+  const getMessageCountText = () => {
+    if (selectedCount === 1) return '1 сообщение';
+    if (selectedCount < 5) return `${selectedCount} сообщения`;
+    return `${selectedCount} сообщений`;
+  };
+
+  const renderChatItem = ({ item }: { item: Chat }) => {
+    const displayName = getChatDisplayName(item, currentUser?.id);
+    const avatarUrl = getChatDisplayAvatar(item, currentUser?.id);
+    const isSavedChat = item.type === 'saved';
+
+    return (
+      <TouchableOpacity
+        style={[styles.chatItem, { backgroundColor: theme.backgroundSecondary }]}
+        onPress={() => handleForward(item.id)}
+        disabled={isForwarding}
+      >
+        {isSavedChat ? (
+          <View style={styles.savedChatAvatar}>
+            <Ionicons name="bookmark" size={24} color="#FFFFFF" />
+          </View>
+        ) : (
+          <Avatar imageUrl={avatarUrl} name={displayName} size={48} />
+        )}
+        <View style={styles.chatInfo}>
+          <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>
+            {displayName}
+          </Text>
+          {item.last_message && (
+            <Text style={[styles.lastMessage, { color: theme.textSecondary }]} numberOfLines={1}>
+              {item.last_message.content}
+            </Text>
+          )}
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+      onRequestClose={onClose}
+    >
+      <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: theme.border, paddingTop: Platform.OS === 'android' ? 16 + insets.top : 16 }]}>
+          <Text style={[styles.title, { color: theme.text }]}>Переслать сообщения</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Preview of selected messages count */}
+        <View style={[styles.messagePreview, { backgroundColor: theme.backgroundSecondary, borderLeftColor: theme.primary }]}>
+          <Ionicons name="arrow-redo-outline" size={16} color={theme.primary} />
+          <Text style={[styles.previewText, { color: theme.text }]}>
+            {getMessageCountText()}
+          </Text>
+        </View>
+
+        {/* Search */}
+        <View style={[styles.searchContainer, { backgroundColor: theme.backgroundSecondary }]}>
+          <Ionicons name="search" size={20} color={theme.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Поиск чатов..."
+            placeholderTextColor={theme.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        {/* Chat list */}
+        <FlatList
+          data={filteredChats}
+          renderItem={renderChatItem}
+          keyExtractor={(item) => String(item.id)}
+          style={styles.chatList}
+          contentContainerStyle={[styles.chatListContent, { paddingBottom: 16 + effectiveInsetsBottom }]}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="chatbubbles-outline" size={48} color={theme.textSecondary} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                {searchQuery ? 'Чаты не найдены' : 'Нет доступных чатов'}
+              </Text>
+            </View>
+          }
+        />
+
+        {isForwarding && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={theme.primary} />
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  messagePreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: 16,
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+  },
+  previewText: {
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  chatList: {
+    flex: 1,
+  },
+  chatListContent: {
+    paddingHorizontal: 16,
+  },
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  savedChatAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatInfo: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  chatName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  lastMessage: {
+    fontSize: 14,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 12,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

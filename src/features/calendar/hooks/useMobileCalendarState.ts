@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { addWeeks, subWeeks, addMonths, subMonths, endOfWeek, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
+import { addWeeks, subWeeks, endOfWeek, startOfDay, endOfDay } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getWeekMonday, getWeekDays, areSameDay } from '../utils/calendarHelpers';
 
@@ -14,21 +14,17 @@ interface UseMobileCalendarStateReturn {
   viewMode: MobileViewMode;
   weekDays: Date[];
   isViewModeLoaded: boolean;
-  currentMonth: Date;
 
   // Actions
   handleDayPress: (date: Date) => void;
   handlePrevWeek: () => void;
   handleNextWeek: () => void;
-  handlePrevMonth: () => void;
-  handleNextMonth: () => void;
   handleMonthDateSelect: (date: Date) => void;
   toggleViewMode: () => void;
   navigateToToday: () => void;
 
   // For useCalendarData
   getEventsDateRange: () => { startDate: Date; endDate: Date };
-  getMonthDateRange: () => { startDate: Date; endDate: Date };
 }
 
 /**
@@ -43,8 +39,6 @@ export const useMobileCalendarState = (): UseMobileCalendarStateReturn => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<MobileViewMode>('week');
   const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
-  // Current month for month view navigation
-  const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
   // Load saved view mode on mount
   useEffect(() => {
@@ -101,17 +95,7 @@ export const useMobileCalendarState = (): UseMobileCalendarStateReturn => {
     setSelectedDate(null);
   }, []);
 
-  // Navigate to previous month
-  const handlePrevMonth = useCallback(() => {
-    setCurrentMonth((prev) => subMonths(prev, 1));
-  }, []);
-
-  // Navigate to next month
-  const handleNextMonth = useCallback(() => {
-    setCurrentMonth((prev) => addMonths(prev, 1));
-  }, []);
-
-  // Handle date selection from month view
+  // Handle date selection from month view (infinite calendar)
   const handleMonthDateSelect = useCallback((date: Date) => {
     // Switch to week view with selected date
     setWeekStartDate(getWeekMonday(date));
@@ -138,7 +122,7 @@ export const useMobileCalendarState = (): UseMobileCalendarStateReturn => {
     saveViewMode('week');
   }, [saveViewMode]);
 
-  // Get date range for fetching events
+  // Get date range for fetching events (week view)
   const getEventsDateRange = useCallback(() => {
     if (selectedDate) {
       // Single day selected - fetch only that day
@@ -154,30 +138,18 @@ export const useMobileCalendarState = (): UseMobileCalendarStateReturn => {
     };
   }, [weekStartDate, selectedDate]);
 
-  // Get date range for month view
-  const getMonthDateRange = useCallback(() => {
-    return {
-      startDate: startOfMonth(currentMonth),
-      endDate: endOfMonth(currentMonth),
-    };
-  }, [currentMonth]);
-
   return {
     weekStartDate,
     selectedDate,
     viewMode,
     weekDays,
     isViewModeLoaded,
-    currentMonth,
     handleDayPress,
     handlePrevWeek,
     handleNextWeek,
-    handlePrevMonth,
-    handleNextMonth,
     handleMonthDateSelect,
     toggleViewMode,
     navigateToToday,
     getEventsDateRange,
-    getMonthDateRange,
   };
 };
