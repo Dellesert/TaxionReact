@@ -161,7 +161,7 @@ const MainNavigatorContent: React.FC = () => {
         name="Calendar"
         component={CalendarNavigator}
         options={({ route }) => ({
-          tabBarLabel: 'События',
+          tabBarLabel: 'Календарь',
           tabBarStyle: ((route) => {
             const routeName = getFocusedRouteNameFromRoute(route) ?? 'CalendarMain';
             if (routeName === 'EventDetail') {
