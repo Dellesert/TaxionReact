@@ -247,6 +247,13 @@ const TaskListScreen: React.FC = () => {
 
   const canCreateTask = user?.role !== 'employee';
 
+  // Handler for back navigation
+  const handleGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
   // Count total tasks with subtasks across all columns (for expand all button)
   const totalTasksWithSubtasks = STATUS_TABS_ORDER.reduce((count, status) => {
     return count + getTasksWithSubtasks(tasks[status]).length;
@@ -274,6 +281,7 @@ const TaskListScreen: React.FC = () => {
         expandAllSubtasks={expandAllSubtasks}
         onExpandAllToggle={handleExpandAllToggle}
         subtaskCount={totalTasksWithSubtasks}
+        onGoBack={navigation.canGoBack() ? handleGoBack : undefined}
       />
 
       {/* Content - TaskViewSwitcher for Desktop, Swipe Navigation for Mobile */}

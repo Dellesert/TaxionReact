@@ -80,7 +80,9 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
 
         // Получаем имя иконки в зависимости от роута
         let iconName = 'help-outline';
-        if (route.name === 'Chats') {
+        if (route.name === 'Dashboard') {
+          iconName = isFocused ? 'grid' : 'grid-outline';
+        } else if (route.name === 'Chats') {
           iconName = isFocused ? 'chatbubbles' : 'chatbubbles-outline';
         } else if (route.name === 'Tasks') {
           iconName = isFocused ? 'checkbox' : 'checkbox-outline';

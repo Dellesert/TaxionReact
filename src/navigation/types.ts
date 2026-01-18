@@ -55,6 +55,28 @@ export type PollStackParamList = {
   };
 };
 
+// Dashboard Stack (для мобильной версии)
+export type DashboardStackParamList = {
+  DashboardMain: undefined;
+  TaskList: {
+    filterCategory?: string;
+    taskIds?: number[];
+  } | undefined;
+  TaskDetail: {
+    taskId: number;
+  };
+  PollList: undefined;
+  PollDetail: {
+    pollId: number;
+    fromChat?: boolean;
+    pollTitle?: string;
+  };
+  PollVoters: {
+    pollId: number;
+  };
+  Analytics: undefined;
+};
+
 // Calendar Stack
 export type CalendarStackParamList = {
   CalendarMain: {
@@ -101,6 +123,7 @@ export type NotificationStackParamList = {
 
 // Main Tab Navigator
 export type MainTabParamList = {
+  Dashboard: NavigatorScreenParams<DashboardStackParamList>;
   Chats: NavigatorScreenParams<ChatStackParamList>;
   Tasks: NavigatorScreenParams<TaskStackParamList>;
   Calendar: NavigatorScreenParams<CalendarStackParamList>;

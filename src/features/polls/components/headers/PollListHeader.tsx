@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, Animated as RNAnim
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
-import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { PollFilter } from '../../utils/pollListHelpers';
 import { PollViewControlGroup, ViewMode } from '../common/PollViewControlGroup';
 
@@ -22,6 +21,7 @@ interface PollListHeaderProps {
   isDesktop?: boolean;
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
+  onGoBack?: () => void;
 }
 
 export const PollListHeader: React.FC<PollListHeaderProps> = ({
@@ -39,6 +39,7 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
   isDesktop = false,
   viewMode = 'grid',
   onViewModeChange,
+  onGoBack,
 }) => {
   const { theme } = useTheme();
   const filterButtonRef = React.useRef<View>(null);
@@ -129,7 +130,11 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
         <>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              <NotificationBell />
+              {onGoBack && (
+                <TouchableOpacity onPress={onGoBack} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={theme.primary} />
+                </TouchableOpacity>
+              )}
             </View>
 
             <Text style={[styles.headerTitle, { color: theme.text }]}>Опросы</Text>
@@ -214,6 +219,9 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     width: 100,
+  },
+  backButton: {
+    padding: 8,
   },
   headerTitle: {
     fontSize: 20,

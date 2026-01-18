@@ -17,6 +17,7 @@ import { MainTabParamList } from './types';
 import ChatNavigator from './ChatNavigator';
 import TaskNavigator from './TaskNavigator';
 import PollNavigator from './PollNavigator';
+import DashboardNavigator from './DashboardNavigator';
 import AdminNavigator from './AdminNavigator';
 import ProfileNavigator from './ProfileNavigator';
 import NotificationNavigator from './NotificationNavigator';
@@ -91,6 +92,9 @@ const MainNavigatorContent: React.FC = () => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           switch (route.name) {
+            case 'Dashboard':
+              iconName = focused ? 'grid' : 'grid-outline';
+              break;
             case 'Chats':
               iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
               break;
@@ -132,22 +136,16 @@ const MainNavigatorContent: React.FC = () => {
     >
 
       <Tab.Screen
-        name="Tasks"
-        component={TaskNavigator}
-        options={{ tabBarLabel: 'Задачи' }}
-      />
-      <Tab.Screen
-        name="Polls"
-        component={PollNavigator}
+        name="Dashboard"
+        component={DashboardNavigator}
         options={({ route }) => ({
-          tabBarLabel: 'Опросы',
+          tabBarLabel: 'Главная',
           tabBarStyle: ((route) => {
-            const routeName = getFocusedRouteNameFromRoute(route) ?? 'PollList';
-            if (routeName === 'PollDetail') {
-              // Скрываем табы на экране детального просмотра опроса
+            const routeName = getFocusedRouteNameFromRoute(route) ?? 'DashboardMain';
+            // Скрываем табы на детальных экранах
+            if (['TaskDetail', 'PollDetail', 'PollVoters', 'Analytics'].includes(routeName)) {
               return { display: 'none' };
             }
-            // Показываем табы на остальных экранах
             return {
               backgroundColor: theme.backgroundSecondary,
               borderTopWidth: 1,

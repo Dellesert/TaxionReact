@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
-import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { TaskFilter, StatusTab } from '../../utils/taskListHelpers';
 import type { TotalsByStatus } from '../../hooks/useTaskListData';
@@ -29,6 +28,7 @@ interface TaskListHeaderProps {
   expandAllSubtasks?: boolean;
   onExpandAllToggle?: () => void;
   subtaskCount?: number;
+  onGoBack?: () => void;
 }
 
 export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
@@ -50,6 +50,7 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
   expandAllSubtasks = false,
   onExpandAllToggle,
   subtaskCount = 0,
+  onGoBack,
 }) => {
   const { theme } = useTheme();
   const filterButtonRef = React.useRef<View>(null);
@@ -143,7 +144,11 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = React.memo(({
         <>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              <NotificationBell />
+              {onGoBack && (
+                <TouchableOpacity onPress={onGoBack} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={theme.primary} />
+                </TouchableOpacity>
+              )}
             </View>
 
             <Text style={[styles.title, { color: theme.text }]}>Задачи</Text>
@@ -208,6 +213,9 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     width: 100,
+  },
+  backButton: {
+    padding: 8,
   },
   title: {
     flex: 1,

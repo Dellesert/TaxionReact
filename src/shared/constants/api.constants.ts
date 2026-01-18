@@ -198,6 +198,11 @@ export const API_ENDPOINTS = {
     STATS: '/polls/stats',
   },
 
+  // Dashboard
+  DASHBOARD: {
+    SUMMARY: '/dashboard',
+  },
+
   // Notification
   NOTIFICATION: {
     LIST: '/notifications',

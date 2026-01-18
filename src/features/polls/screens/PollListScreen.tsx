@@ -150,6 +150,13 @@ const PollListScreen: React.FC = () => {
     setSearchQuery('');
   };
 
+  // Handler for back navigation
+  const handleGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.card }]}
@@ -171,6 +178,7 @@ const PollListScreen: React.FC = () => {
         isDesktop={isDesktop}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        onGoBack={navigation.canGoBack() ? handleGoBack : undefined}
       />
 
       {/* Content */}
