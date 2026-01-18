@@ -37,6 +37,22 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
   const { theme } = useTheme();
   const translateX = useSharedValue(0);
 
+  // Get month label from week days (handle month transition)
+  const monthLabel = useMemo(() => {
+    if (weekDays.length === 0) return '';
+    const firstDay = weekDays[0];
+    const lastDay = weekDays[weekDays.length - 1];
+    const firstMonth = format(firstDay, 'LLLL', { locale: ru });
+    const lastMonth = format(lastDay, 'LLLL', { locale: ru });
+    const year = format(firstDay, 'yyyy');
+
+    if (firstMonth === lastMonth) {
+      return `${firstMonth} ${year}`;
+    }
+    // Week spans two months
+    return `${format(firstDay, 'LLL', { locale: ru })} – ${format(lastDay, 'LLL', { locale: ru })} ${year}`;
+  }, [weekDays]);
+
   // Check if a date is selected
   const isDateSelected = useCallback(
     (date: Date): boolean => {
@@ -93,6 +109,11 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+      {/* Month label */}
+      <Text style={[styles.monthLabel, { color: theme.textSecondary }]}>
+        {monthLabel}
+      </Text>
+
       <View style={styles.rowContainer}>
         {/* Left Arrow */}
         <TouchableOpacity
@@ -183,6 +204,13 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: 12,
     borderBottomWidth: 1,
+  },
+  monthLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    textTransform: 'capitalize',
+    marginBottom: 8,
   },
   rowContainer: {
     flexDirection: 'row',
