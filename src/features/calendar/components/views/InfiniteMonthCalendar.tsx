@@ -1,5 +1,5 @@
-import React, { useRef, useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, RefreshControl, Platform } from 'react-native';
+import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, RefreshControl, Platform, Animated } from 'react-native';
 import { FlashList as FlashListOriginal } from '@shopify/flash-list';
 
 // Cast to any to avoid FlashList typing issues
@@ -18,6 +18,7 @@ import { ru } from 'date-fns/locale';
 import { Event } from '../../types/calendar.types';
 import { MonthData, useInfiniteCalendarData } from '../../hooks/useInfiniteCalendarData';
 import { useTheme } from '@shared/hooks/useTheme';
+import { CalendarSkeleton } from '../states/CalendarSkeleton';
 
 interface InfiniteMonthCalendarProps {
   onDatePress: (date: Date) => void;
@@ -246,6 +247,30 @@ export const InfiniteMonthCalendar: React.FC<InfiniteMonthCalendarProps> = ({
 
   const [refreshing, setRefreshing] = useState(false);
   const [visibleMonthKeys, setVisibleMonthKeys] = useState<string[]>([]);
+  const [showSkeleton, setShowSkeleton] = useState(true);
+  const skeletonOpacity = useRef(new Animated.Value(1)).current;
+
+  // Fade out skeleton smoothly after FlashList has time to render
+  useEffect(() => {
+    if (showSkeleton && months.length > 0) {
+      const currentMonth = months[initialScrollIndex];
+      if (currentMonth) {
+        // Start loading the current month
+        loadEventsForMonth(currentMonth.key);
+        // Wait for FlashList to render, then fade out skeleton
+        const timer = setTimeout(() => {
+          Animated.timing(skeletonOpacity, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            setShowSkeleton(false);
+          });
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [months.length > 0]);
 
   // Track if we've done initial scroll
   const hasInitialScrolled = useRef(false);
@@ -343,6 +368,12 @@ export const InfiniteMonthCalendar: React.FC<InfiniteMonthCalendarProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Skeleton overlay with fade out animation */}
+      {showSkeleton && (
+        <Animated.View style={[styles.skeletonOverlay, { opacity: skeletonOpacity }]}>
+          <CalendarSkeleton />
+        </Animated.View>
+      )}
       <FlashList
         ref={listRef}
         data={months}
@@ -379,6 +410,10 @@ export const InfiniteMonthCalendar: React.FC<InfiniteMonthCalendarProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  skeletonOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
   },
   listContent: {
     paddingVertical: 8,

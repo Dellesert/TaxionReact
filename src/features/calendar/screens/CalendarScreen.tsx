@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { endOfWeek } from 'date-fns';
 import { Event, CalendarView } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/states/EventListSkeleton';
+import { CalendarSkeleton } from '../components/states/CalendarSkeleton';
 import CreateEventModal from '../components/modals/CreateEventModal';
 import { InfiniteMonthCalendar } from '../components/views/InfiniteMonthCalendar';
 import { CalendarHeader } from '../components/navigation/CalendarHeader';
@@ -55,6 +56,7 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
     selectedDate,
     viewMode,
     weekDays,
+    isViewModeLoaded,
     handleDayPress,
     handlePrevWeek,
     handleNextWeek,
@@ -115,6 +117,20 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
 
   // Group events for list display
   const sections = groupEventsByDate(filteredEvents);
+
+  // Show skeleton while viewMode is loading from AsyncStorage
+  if (!isViewModeLoaded) {
+    return (
+      <>
+        <CalendarHeader
+          onAddPress={onAddPress}
+          viewMode={viewMode}
+          onViewModeToggle={toggleViewMode}
+        />
+        <CalendarSkeleton />
+      </>
+    );
+  }
 
   return (
     <>
