@@ -14,6 +14,23 @@ export interface DashboardCounts {
   active_tasks_count: number;
   overdue_tasks_count: number;
   pending_polls_count: number;
+  today_events_count: number;
+}
+
+/**
+ * Событие календаря на сегодня
+ */
+export interface TodayEvent {
+  id: number;
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  all_day: boolean;
+  location?: string;
+  type: string;
+  color?: string;
+  is_private: boolean;
 }
 
 /**
@@ -28,6 +45,8 @@ export interface DashboardData {
   overdue_tasks: Task[];
   /** Опросы в которых пользователь не голосовал */
   pending_polls: Poll[];
+  /** События календаря на сегодня */
+  today_events: TodayEvent[];
   /** Счетчики по категориям */
   counts: DashboardCounts;
 }
@@ -47,7 +66,8 @@ export type DashboardSectionType =
   | 'new_tasks'
   | 'active_tasks'
   | 'overdue_tasks'
-  | 'pending_polls';
+  | 'pending_polls'
+  | 'today_events';
 
 /**
  * Конфигурация секции Dashboard

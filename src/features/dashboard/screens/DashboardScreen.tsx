@@ -8,14 +8,19 @@ import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
-import { DashboardStackParamList } from '@/navigation/types';
+import { DashboardStackParamList, MainTabParamList } from '@/navigation/types';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { useDashboardData } from '../hooks/useDashboardData';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { SummaryCard } from '../components/SummaryCard';
 import { NavigationCard } from '../components/NavigationCard';
 
-type NavigationProp = NativeStackNavigationProp<DashboardStackParamList>;
+type NavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<DashboardStackParamList>,
+  BottomTabNavigationProp<MainTabParamList>
+>;
 
 export const DashboardScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -35,6 +40,11 @@ export const DashboardScreen: React.FC = () => {
   // Навигация к расписанию
   const navigateToSchedule = useCallback(() => {
     navigation.navigate('Schedule');
+  }, [navigation]);
+
+  // Навигация к календарю (события)
+  const navigateToCalendar = useCallback(() => {
+    navigation.navigate('Calendar', { screen: 'CalendarMain' });
   }, [navigation]);
 
   return (
@@ -61,6 +71,7 @@ export const DashboardScreen: React.FC = () => {
           onPressNewTasks={() => navigation.navigate('TaskList', { filterCategory: 'new' })}
           onPressOverdue={() => navigation.navigate('TaskList', { filterCategory: 'overdue' })}
           onPressPolls={navigateToPollList}
+          onPressEvents={navigateToCalendar}
         />
 
         {/* Навигационные карточки */}

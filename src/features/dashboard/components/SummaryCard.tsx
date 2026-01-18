@@ -90,6 +90,7 @@ interface SummaryCardProps {
   onPressNewTasks?: () => void;
   onPressOverdue?: () => void;
   onPressPolls?: () => void;
+  onPressEvents?: () => void;
 }
 
 interface CardData {
@@ -164,6 +165,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onPressNewTasks,
   onPressOverdue,
   onPressPolls,
+  onPressEvents,
 }) => {
   const { theme, isDark } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -197,7 +199,8 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   const hasNewTasks = counts.new_tasks_count > 0;
   const hasOverdue = counts.overdue_tasks_count > 0;
   const hasPolls = counts.pending_polls_count > 0;
-  const hasAnyData = hasNewTasks || hasOverdue || hasPolls;
+  const hasEvents = counts.today_events_count > 0;
+  const hasAnyData = hasNewTasks || hasOverdue || hasPolls || hasEvents;
 
   // Все выполнено
   if (!hasAnyData) {
@@ -269,6 +272,24 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
       bgColor: '#f5f3ff',
       bgColorDark: '#2e1065',
       onPress: onPressPolls,
+    });
+  }
+
+  // События на сегодня
+  if (hasEvents) {
+    cardsData.push({
+      key: 'events',
+      count: counts.today_events_count,
+      title: 'События на сегодня',
+      description: counts.today_events_count === 1
+        ? 'Запланировано событие на сегодня'
+        : `${counts.today_events_count} событий запланировано на сегодня`,
+      actionText: 'Открыть календарь',
+      icon: 'calendar',
+      color: '#10B981',
+      bgColor: '#ecfdf5',
+      bgColorDark: '#064e3b',
+      onPress: onPressEvents,
     });
   }
 
