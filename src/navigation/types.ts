@@ -74,7 +74,7 @@ export type DashboardStackParamList = {
   PollVoters: {
     pollId: number;
   };
-  Analytics: undefined;
+  Schedule: undefined;
 };
 
 // Calendar Stack

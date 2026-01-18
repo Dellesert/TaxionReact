@@ -3,11 +3,82 @@
  * Карусель с большими карточками сводки
  */
 
-import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { DashboardCounts } from '../types/dashboard.types';
+
+// Скелетон компонент
+const SkeletonBox: React.FC<{
+  width: number | string;
+  height: number;
+  borderRadius?: number;
+  style?: object;
+}> = ({ width, height, borderRadius = 8, style }) => {
+  const { isDark } = useTheme();
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      })
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [shimmerAnim]);
+
+  const opacity = shimmerAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.3, 0.6, 0.3],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: isDark ? '#374151' : '#E5E7EB',
+          opacity,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+// Скелетон карточки
+const CardSkeleton: React.FC = () => {
+  const { isDark } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: isDark ? '#1f2937' : '#f3f4f6' },
+      ]}
+    >
+      <View style={styles.cardTop}>
+        <SkeletonBox width={56} height={56} borderRadius={16} />
+        <SkeletonBox width={60} height={50} borderRadius={12} />
+      </View>
+
+      <View style={styles.cardMiddle}>
+        <SkeletonBox width="70%" height={24} style={{ marginBottom: 10 }} />
+        <SkeletonBox width="100%" height={16} style={{ marginBottom: 6 }} />
+        <SkeletonBox width="80%" height={16} />
+      </View>
+
+      <SkeletonBox width={140} height={40} borderRadius={12} />
+    </View>
+  );
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HORIZONTAL_PADDING = 20;
@@ -113,8 +184,8 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color={theme.primary} />
+      <View style={styles.singleCardContainer}>
+        <CardSkeleton />
       </View>
     );
   }
@@ -203,11 +274,11 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
   // Если только одна карточка - показываем без индикаторов
   if (cardsData.length === 1) {
-    const card = cardsData[0];
+    const { key: _, ...cardProps } = cardsData[0];
     return (
       <View style={styles.singleCardContainer}>
         <CardItem
-          {...card}
+          {...cardProps}
           isDark={isDark}
         />
       </View>
@@ -224,10 +295,10 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {cardsData.map((card) => (
-          <View key={card.key} style={styles.cardWrapper}>
+        {cardsData.map(({ key, ...cardProps }) => (
+          <View key={key} style={styles.cardWrapper}>
             <CardItem
-              {...card}
+              {...cardProps}
               isDark={isDark}
             />
           </View>
@@ -258,11 +329,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   // Carousel
   carouselContainer: {
     marginHorizontal: -HORIZONTAL_PADDING,

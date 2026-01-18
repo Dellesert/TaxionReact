@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -20,7 +20,7 @@ type NavigationProp = NativeStackNavigationProp<DashboardStackParamList>;
 export const DashboardScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { data, isLoading, refresh } = useDashboardData();
+  const { data, isLoading, refresh, isRefreshing } = useDashboardData();
 
   // Навигация к списку задач
   const navigateToTaskList = useCallback(() => {
@@ -32,16 +32,28 @@ export const DashboardScreen: React.FC = () => {
     navigation.navigate('PollList');
   }, [navigation]);
 
-  // Навигация к аналитике
-  const navigateToAnalytics = useCallback(() => {
-    navigation.navigate('Analytics');
+  // Навигация к расписанию
+  const navigateToSchedule = useCallback(() => {
+    navigation.navigate('Schedule');
   }, [navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <DashboardHeader onRefresh={refresh} />
+      <DashboardHeader />
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
+        }
+      >
         {/* Сводка */}
         <SummaryCard
           counts={data?.counts || null}
@@ -68,14 +80,14 @@ export const DashboardScreen: React.FC = () => {
             onPress={navigateToPollList}
           />
           <NavigationCard
-            title="Аналитика"
-            description="Статистика и графики"
-            icon="analytics"
+            title="Расписание"
+            description="График работы"
+            icon="time"
             color="#10B981"
-            onPress={navigateToAnalytics}
+            onPress={navigateToSchedule}
           />
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -84,10 +96,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     paddingHorizontal: 20,
     paddingTop: 8,
+    paddingBottom: 20,
     gap: 20,
   },
   navigationCards: {

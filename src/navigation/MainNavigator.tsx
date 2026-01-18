@@ -158,13 +158,6 @@ const MainNavigatorContent: React.FC = () => {
         })}
       />
       <Tab.Screen
-        name="Chats"
-        component={ChatNavigator}
-        options={{
-          tabBarLabel: 'Чаты',
-        }}
-      />
-       <Tab.Screen
         name="Calendar"
         component={CalendarNavigator}
         options={({ route }) => ({
@@ -186,6 +179,13 @@ const MainNavigatorContent: React.FC = () => {
             };
           })(route),
         })}
+      />
+      <Tab.Screen
+        name="Chats"
+        component={ChatNavigator}
+        options={{
+          tabBarLabel: 'Чаты',
+        }}
       />
       <Tab.Screen
         name="Profile"
