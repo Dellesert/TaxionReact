@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { Avatar } from '@shared/components/common/Avatar';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
+import { ActionMenu, ActionMenuItem } from '@shared/components/common/ActionMenu';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useScheduleDetails } from '../hooks/useScheduleDetails';
+import { useScheduleStore } from '../store/scheduleStore';
 import { ScheduleWeekView } from '../components/ScheduleWeekView';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
 import { getScheduleTypeColor } from '../utils/shiftColors';
@@ -34,12 +39,19 @@ export const ScheduleDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProps>();
   const { scheduleId } = route.params;
+  const isWideScreen = useIsWideScreen();
+  const { showConfirm } = useActionModal();
+  const { showSuccess, showError } = useNotification();
+  const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
 
   const { schedule, entries, isLoading, isLoadingEntries, error, refresh } =
     useScheduleDetails(scheduleId);
 
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [selectedUserId, setSelectedUserId] = React.useState<number | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
+  const menuButtonRef = useRef<any>(null);
 
   const handleCreatorPress = useCallback(() => {
     if (schedule?.creator?.id) {
@@ -78,6 +90,58 @@ export const ScheduleDetailScreen: React.FC = () => {
   const handleGoBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
+
+  const handleOpenMenu = useCallback(() => {
+    if (isWideScreen && menuButtonRef.current) {
+      menuButtonRef.current.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
+        setMenuButtonPosition({ x: pageX, y: pageY, width, height });
+        setShowActionMenu(true);
+      });
+    } else {
+      setShowActionMenu(true);
+    }
+  }, [isWideScreen]);
+
+  const handleEditSchedule = useCallback(() => {
+    // TODO: Navigate to edit screen or show edit modal
+    setShowActionMenu(false);
+  }, []);
+
+  const handleDeleteSchedule = useCallback(() => {
+    if (!schedule) return;
+    showConfirm(
+      'Удалить график?',
+      `Вы уверены, что хотите удалить "${schedule.title}"? Это действие нельзя отменить.`,
+      async () => {
+        try {
+          await deleteSchedule(schedule.id);
+          showSuccess('График удалён');
+          navigation.goBack();
+        } catch (err) {
+          showError('Не удалось удалить график');
+        }
+      },
+      undefined,
+      { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
+    );
+  }, [schedule, deleteSchedule, showConfirm, showSuccess, showError, navigation]);
+
+  const menuItems: ActionMenuItem[] = [
+    {
+      key: 'edit',
+      icon: 'create-outline',
+      label: 'Редактировать',
+      color: theme.text,
+      onPress: handleEditSchedule,
+    },
+    {
+      key: 'delete',
+      icon: 'trash-outline',
+      label: 'Удалить',
+      color: '#EF4444',
+      onPress: handleDeleteSchedule,
+    },
+  ];
 
   if (isLoading && !schedule) {
     return (
@@ -127,7 +191,11 @@ export const ScheduleDetailScreen: React.FC = () => {
         >
           {schedule.title}
         </Text>
-        <TouchableOpacity style={styles.menuButton}>
+        <TouchableOpacity
+          ref={menuButtonRef}
+          style={styles.menuButton}
+          onPress={handleOpenMenu}
+        >
           <Ionicons name="ellipsis-vertical" size={20} color={theme.text} />
         </TouchableOpacity>
       </View>
@@ -264,6 +332,14 @@ export const ScheduleDetailScreen: React.FC = () => {
           setSelectedUserId(null);
         }}
         onOpenChat={handleOpenChat}
+      />
+
+      <ActionMenu
+        visible={showActionMenu}
+        items={menuItems}
+        onClose={() => setShowActionMenu(false)}
+        isDesktop={isWideScreen}
+        buttonPosition={menuButtonPosition}
       />
     </SafeAreaView>
   );

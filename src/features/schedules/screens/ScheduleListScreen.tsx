@@ -14,7 +14,10 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '@shared/hooks/useTheme';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useNotification } from '@shared/contexts/NotificationContext';
 import { useSchedules } from '../hooks/useSchedules';
+import { useScheduleStore } from '../store/scheduleStore';
 import { ScheduleCard } from '../components/ScheduleCard';
 import { ImportScheduleModal } from '../components/ImportScheduleModal';
 import type { Schedule } from '../types/schedule.types';
@@ -25,8 +28,11 @@ type NavigationProp = NativeStackNavigationProp<ScheduleStackParamList>;
 export const ScheduleListScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const { showConfirm } = useActionModal();
+  const { showSuccess, showError } = useNotification();
   const { schedules, isLoading, error, hasMore, refresh, loadMore } =
     useSchedules();
+  const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
 
   const [showImportModal, setShowImportModal] = useState(false);
 
@@ -35,6 +41,33 @@ export const ScheduleListScreen: React.FC = () => {
       navigation.navigate('ScheduleDetail', { scheduleId: schedule.id });
     },
     [navigation]
+  );
+
+  const handleEditSchedule = useCallback(
+    (schedule: Schedule) => {
+      navigation.navigate('ScheduleDetail', { scheduleId: schedule.id });
+    },
+    [navigation]
+  );
+
+  const handleDeleteSchedule = useCallback(
+    (schedule: Schedule) => {
+      showConfirm(
+        'Удалить график?',
+        `Вы уверены, что хотите удалить "${schedule.title}"? Это действие нельзя отменить.`,
+        async () => {
+          try {
+            await deleteSchedule(schedule.id);
+            showSuccess('График удалён');
+          } catch (err) {
+            showError('Не удалось удалить график');
+          }
+        },
+        undefined,
+        { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
+      );
+    },
+    [deleteSchedule, showConfirm, showSuccess, showError]
   );
 
   const handleImportSuccess = useCallback(
@@ -47,9 +80,14 @@ export const ScheduleListScreen: React.FC = () => {
 
   const renderItem = useCallback(
     ({ item }: { item: Schedule }) => (
-      <ScheduleCard schedule={item} onPress={() => handleSchedulePress(item)} />
+      <ScheduleCard
+        schedule={item}
+        onPress={() => handleSchedulePress(item)}
+        onEdit={() => handleEditSchedule(item)}
+        onDelete={() => handleDeleteSchedule(item)}
+      />
     ),
-    [handleSchedulePress]
+    [handleSchedulePress, handleEditSchedule, handleDeleteSchedule]
   );
 
   const renderFooter = useCallback(() => {
