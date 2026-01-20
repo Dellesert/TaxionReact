@@ -11,6 +11,8 @@ import { DashboardStackParamList } from './types';
 // Screens
 import DashboardScreen from '@/features/dashboard/screens/DashboardScreen';
 import ScheduleScreen from '@/features/dashboard/screens/ScheduleScreen';
+import { ScheduleListScreen } from '@/features/schedules/screens/ScheduleListScreen';
+import { ScheduleDetailScreen } from '@/features/schedules/screens/ScheduleDetailScreen';
 import TaskListScreen from '@/features/tasks/screens/TaskListScreen';
 import TaskDetailScreen from '@/features/tasks/screens/TaskDetailScreen';
 import PollListScreen from '@/features/polls/screens/PollListScreen';
@@ -87,6 +89,20 @@ const DashboardNavigator: React.FC = () => {
       <Stack.Screen
         name="Schedule"
         component={ScheduleScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="ScheduleList"
+        component={ScheduleListScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="ScheduleDetail"
+        component={ScheduleDetailScreen}
         options={{
           headerShown: false,
         }}

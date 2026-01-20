@@ -143,7 +143,7 @@ const MainNavigatorContent: React.FC = () => {
           tabBarStyle: ((route) => {
             const routeName = getFocusedRouteNameFromRoute(route) ?? 'DashboardMain';
             // Скрываем табы на детальных экранах
-            if (['TaskDetail', 'PollDetail', 'PollVoters', 'Analytics'].includes(routeName)) {
+            if (['TaskDetail', 'PollDetail', 'PollVoters', 'Analytics', 'ScheduleList', 'ScheduleDetail'].includes(routeName)) {
               return { display: 'none' };
             }
             return {

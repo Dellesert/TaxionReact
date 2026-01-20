@@ -75,6 +75,8 @@ export type DashboardStackParamList = {
     pollId: number;
   };
   Schedule: undefined;
+  ScheduleList: undefined;
+  ScheduleDetail: { scheduleId: number };
 };
 
 // Calendar Stack
@@ -105,6 +107,15 @@ export type AdminStackParamList = {
   SecurityAnalytics: undefined;
 };
 
+// Schedule Stack
+export type ScheduleStackParamList = {
+  ScheduleList: undefined;
+  ScheduleDetail: { scheduleId: number };
+  ScheduleCalendar: { scheduleId: number };
+  MySchedule: undefined;
+  ScheduleTemplates: undefined;
+};
+
 // Profile Stack
 export type ProfileStackParamList = {
   ProfileMain: undefined;
@@ -128,6 +139,7 @@ export type MainTabParamList = {
   Tasks: NavigatorScreenParams<TaskStackParamList>;
   Calendar: NavigatorScreenParams<CalendarStackParamList>;
   Polls: NavigatorScreenParams<PollStackParamList>;
+  Schedules: NavigatorScreenParams<ScheduleStackParamList>;
   Notifications: NavigatorScreenParams<NotificationStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
   Admin: NavigatorScreenParams<AdminStackParamList>;

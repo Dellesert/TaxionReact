@@ -37,9 +37,9 @@ export const DashboardScreen: React.FC = () => {
     navigation.navigate('PollList');
   }, [navigation]);
 
-  // Навигация к расписанию
+  // Навигация к расписанию (список графиков)
   const navigateToSchedule = useCallback(() => {
-    navigation.navigate('Schedule');
+    navigation.navigate('ScheduleList');
   }, [navigation]);
 
   // Навигация к календарю (события)
