@@ -70,6 +70,11 @@ export const ScheduleDetailScreen: React.FC = () => {
     console.log('Entry pressed:', entry);
   }, []);
 
+  const handleUserPress = useCallback((userId: number) => {
+    setSelectedUserId(userId);
+    setShowProfileModal(true);
+  }, []);
+
   const handleGoBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
@@ -233,7 +238,7 @@ export const ScheduleDetailScreen: React.FC = () => {
               <ActivityIndicator size="small" color={theme.primary} />
             </View>
           ) : entries.length > 0 ? (
-            <ScheduleWeekView entries={entries} onEntryPress={handleEntryPress} />
+            <ScheduleWeekView entries={entries} onEntryPress={handleEntryPress} onUserPress={handleUserPress} />
           ) : (
             <View style={styles.emptyEntries}>
               <Ionicons

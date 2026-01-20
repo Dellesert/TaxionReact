@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -47,10 +47,12 @@ export const ScheduleEntryRow: React.FC<ScheduleEntryRowProps> = ({
         {/* Left side: avatar + user info */}
         <View style={styles.leftSection}>
           {showUser && entry.user && (
-            <TouchableOpacity
+            <Pressable
               style={styles.userSection}
-              onPress={handleUserPress}
-              activeOpacity={onUserPress ? 0.7 : 1}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleUserPress();
+              }}
               disabled={!onUserPress}
             >
               <Avatar
@@ -61,7 +63,7 @@ export const ScheduleEntryRow: React.FC<ScheduleEntryRowProps> = ({
               <Text style={[styles.userName, { color: theme.text }]}>
                 {entry.user.name}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
 
           {showDate && (
