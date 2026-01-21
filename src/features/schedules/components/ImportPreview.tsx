@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ShiftTypeBadge } from './ShiftTypeBadge';
@@ -11,7 +11,13 @@ import type {
   ImportPreviewResponse,
   ImportedUser,
   ScheduleUser,
+  ScheduleEntry,
 } from '../types/schedule.types';
+
+// Включаем LayoutAnimation для Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // Форматирует полное имя пользователя (ФИО)
 const formatFullName = (user: ScheduleUser | undefined): string | undefined => {
@@ -27,6 +33,13 @@ const formatFullName = (user: ScheduleUser | undefined): string | undefined => {
   // Иначе возвращаем общее поле name
   return user.name;
 };
+
+// Группировка записей по дате
+interface GroupedEntries {
+  date: string;
+  formattedDate: string;
+  entries: ScheduleEntry[];
+}
 
 interface ImportPreviewProps {
   preview: ImportPreviewResponse;
@@ -49,6 +62,8 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<ImportedUser | null>(null);
   const [isUserSelectorVisible, setIsUserSelectorVisible] = useState(false);
   const [systemUsersMap, setSystemUsersMap] = useState<Map<number, string>>(new Map());
+  const [isUsersExpanded, setIsUsersExpanded] = useState(true);
+  const [isScheduleExpanded, setIsScheduleExpanded] = useState(true);
 
   // Загружаем пользователей системы один раз при включённом режиме редактирования
   useEffect(() => {
@@ -95,20 +110,32 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
     [userMappingOverrides]
   );
 
-  // Подсчёт с учётом переопределений
-  const { matchedCount, unmatchedCount } = React.useMemo(() => {
-    let matched = 0;
-    let unmatched = 0;
-    preview.users.forEach((user) => {
-      const status = getUserStatus(user);
-      if (status.isMatched) {
-        matched++;
-      } else {
-        unmatched++;
+  // Группируем записи по датам
+  const groupedEntries = useMemo(() => {
+    const groups = new Map<string, ScheduleEntry[]>();
+
+    preview.entries.forEach((entry) => {
+      const dateKey = entry.date;
+      if (!groups.has(dateKey)) {
+        groups.set(dateKey, []);
       }
+      groups.get(dateKey)!.push(entry);
     });
-    return { matchedCount: matched, unmatchedCount: unmatched };
-  }, [preview.users, getUserStatus]);
+
+    const result: GroupedEntries[] = [];
+    groups.forEach((entries, date) => {
+      result.push({
+        date,
+        formattedDate: formatScheduleDate(date, 'dd.MM.yyyy (EEEE)'),
+        entries,
+      });
+    });
+
+    // Сортируем по дате
+    result.sort((a, b) => a.date.localeCompare(b.date));
+
+    return result;
+  }, [preview.entries]);
 
   const handleEditUser = useCallback((user: ImportedUser) => {
     setSelectedUserForEdit(user);
@@ -143,52 +170,44 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
     [onUserMappingChange]
   );
 
+  const toggleUsersSection = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsUsersExpanded((prev) => !prev);
+  }, []);
+
+  const toggleScheduleSection = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsScheduleExpanded((prev) => !prev);
+  }, []);
+
+  // Получаем отображаемое имя для записи
+  const getEntryDisplayName = useCallback(
+    (entry: ScheduleEntry) => {
+      const importedUser = preview.users.find((u) => u.user_id === entry.user_id);
+      const originalUserName = importedUser?.name || entry.user?.name;
+      const override = originalUserName
+        ? userMappingOverrides?.get(originalUserName)
+        : null;
+
+      const fullUserName =
+        (entry.user_id && systemUsersMap.get(entry.user_id)) ||
+        formatFullName(entry.user) ||
+        entry.user?.name;
+
+      return {
+        displayName: override?.userName || fullUserName || originalUserName,
+        originalName: originalUserName,
+        hasOverride: !!override,
+      };
+    },
+    [preview.users, userMappingOverrides, systemUsersMap]
+  );
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Summary */}
-      <View
-        style={[
-          styles.summaryCard,
-          { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-        ]}
-      >
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Результат анализа
-        </Text>
-
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: theme.primary }]}>
-              {preview.entries_count}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-              записей
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: theme.success }]}>
-              {matchedCount}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-              сотрудников найдено
-            </Text>
-          </View>
-          {unmatchedCount > 0 && (
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryValue, { color: theme.warning }]}>
-                {unmatchedCount}
-              </Text>
-              <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-                не найдено
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-
       {/* Warnings */}
       {preview.warnings && preview.warnings.length > 0 && (
         <View
@@ -214,116 +233,134 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
         </View>
       )}
 
-      {/* Edit hint */}
-      {editable && (
-        <View
-          style={[
-            styles.hintCard,
-            { backgroundColor: theme.primary + '10', borderColor: theme.primary },
-          ]}
-        >
-          <Ionicons name="information-circle" size={20} color={theme.primary} />
-          <Text style={[styles.hintText, { color: theme.text }]}>
-            Нажмите на сотрудника, чтобы изменить сопоставление
-          </Text>
-        </View>
-      )}
-
-      {/* Users */}
+      {/* Users - Collapsible */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Сотрудники ({preview.users.length})
-        </Text>
+        <TouchableOpacity
+          style={[
+            styles.sectionHeader,
+            { backgroundColor: theme.backgroundSecondary },
+          ]}
+          onPress={toggleUsersSection}
+          activeOpacity={0.7}
+        >
+          <View style={styles.sectionHeaderLeft}>
+            <Ionicons name="people" size={20} color={theme.primary} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Сопоставление сотрудников ({preview.users.length})
+            </Text>
+          </View>
+          <Ionicons
+            name={isUsersExpanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={theme.textSecondary}
+          />
+        </TouchableOpacity>
 
-        {preview.users.map((user, index) => {
-          const status = getUserStatus(user);
-          return (
-            <UserRow
-              key={index}
-              user={user}
-              theme={theme}
-              matched={status.isMatched}
-              override={status.override}
-              editable={editable}
-              onEdit={() => handleEditUser(user)}
-              onClearOverride={() => handleClearMapping(user)}
-            />
-          );
-        })}
+        {isUsersExpanded && (
+          <View style={styles.sectionContent}>
+            {preview.users.map((user, index) => {
+              const status = getUserStatus(user);
+              return (
+                <UserRow
+                  key={index}
+                  user={user}
+                  theme={theme}
+                  matched={status.isMatched}
+                  override={status.override}
+                  editable={editable}
+                  onEdit={() => handleEditUser(user)}
+                  onClearOverride={() => handleClearMapping(user)}
+                />
+              );
+            })}
+          </View>
+        )}
       </View>
 
-      {/* Preview Entries (first 5) */}
+      {/* Schedule Preview - Collapsible */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Примеры записей
-        </Text>
-        {preview.entries.slice(0, 5).map((entry, index) => {
-          // Находим оригинальное имя из документа для этой записи
-          // Ищем в preview.users пользователя с таким же user_id
-          const importedUser = preview.users.find(
-            (u) => u.user_id === entry.user_id
-          );
-          const originalUserName = importedUser?.name || entry.user?.name;
-          const override = originalUserName
-            ? userMappingOverrides?.get(originalUserName)
-            : null;
-          // Для отображения используем полное ФИО из systemUsersMap (содержит отчество)
-          // или fallback на данные из entry.user
-          const fullUserName =
-            (entry.user_id && systemUsersMap.get(entry.user_id)) ||
-            formatFullName(entry.user) ||
-            entry.user?.name;
-          const displayUserName = override?.userName || fullUserName || originalUserName;
-          const hasOverride = !!override;
+        <TouchableOpacity
+          style={[
+            styles.sectionHeader,
+            { backgroundColor: theme.backgroundSecondary },
+          ]}
+          onPress={toggleScheduleSection}
+          activeOpacity={0.7}
+        >
+          <View style={styles.sectionHeaderLeft}>
+            <Ionicons name="calendar" size={20} color={theme.primary} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Предпросмотр графика ({preview.entries_count})
+            </Text>
+          </View>
+          <Ionicons
+            name={isScheduleExpanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={theme.textSecondary}
+          />
+        </TouchableOpacity>
 
-          return (
-            <View
-              key={index}
-              style={[
-                styles.entryPreview,
-                { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-                hasOverride && { borderColor: theme.primary, borderWidth: 2 },
-              ]}
-            >
-              <View style={styles.entryHeader}>
-                <Text style={[styles.entryDate, { color: theme.text }]}>
-                  {formatScheduleDate(entry.date, 'dd.MM.yyyy')}
+        {isScheduleExpanded && (
+          <View style={styles.sectionContent}>
+            {groupedEntries.slice(0, 5).map((group) => (
+              <View key={group.date} style={styles.dateGroup}>
+                <Text style={[styles.dateGroupTitle, { color: theme.text }]}>
+                  {group.formattedDate}
                 </Text>
-                <ShiftTypeBadge shiftType={entry.shift_type} size="small" />
-              </View>
-              {displayUserName && (
-                <View style={styles.entryUserRow}>
-                  {hasOverride && (
-                    <>
-                      <Text
+                <View
+                  style={[
+                    styles.dateGroupContent,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                  ]}
+                >
+                  {group.entries.map((entry, entryIndex) => {
+                    const { displayName, originalName, hasOverride } = getEntryDisplayName(entry);
+                    return (
+                      <View
+                        key={entryIndex}
                         style={[
-                          styles.entryUserOriginal,
-                          { color: theme.textTertiary, textDecorationLine: 'line-through' },
+                          styles.entryRow,
+                          entryIndex < group.entries.length - 1 && {
+                            borderBottomWidth: 1,
+                            borderBottomColor: theme.border,
+                          },
                         ]}
                       >
-                        {originalUserName}
-                      </Text>
-                      <Ionicons name="arrow-forward" size={12} color={theme.primary} />
-                    </>
-                  )}
-                  <Text
-                    style={[
-                      styles.entryUser,
-                      { color: hasOverride ? theme.primary : theme.textSecondary },
-                      hasOverride && { fontWeight: '500' },
-                    ]}
-                  >
-                    {displayUserName}
-                  </Text>
+                        <View style={styles.entryInfo}>
+                          {hasOverride ? (
+                            <View style={styles.entryUserRow}>
+                              <Text
+                                style={[
+                                  styles.entryUserOriginal,
+                                  { color: theme.textTertiary, textDecorationLine: 'line-through' },
+                                ]}
+                              >
+                                {originalName}
+                              </Text>
+                              <Ionicons name="arrow-forward" size={12} color={theme.primary} />
+                              <Text style={[styles.entryUser, { color: theme.primary, fontWeight: '500' }]}>
+                                {displayName}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={[styles.entryUser, { color: theme.text }]}>
+                              {displayName}
+                            </Text>
+                          )}
+                        </View>
+                        <ShiftTypeBadge shiftType={entry.shift_type} size="small" />
+                      </View>
+                    );
+                  })}
                 </View>
-              )}
-            </View>
-          );
-        })}
-        {preview.entries.length > 5 && (
-          <Text style={[styles.moreText, { color: theme.textSecondary }]}>
-            ... и ещё {preview.entries.length - 5} записей
-          </Text>
+              </View>
+            ))}
+            {groupedEntries.length > 5 && (
+              <Text style={[styles.moreText, { color: theme.textSecondary }]}>
+                ... и ещё {groupedEntries.length - 5} дней
+              </Text>
+            )}
+          </View>
         )}
       </View>
 
@@ -424,9 +461,9 @@ const UserRow: React.FC<UserRowProps> = ({
             </Text>
           </View>
         )}
-        {!hasOverride && user.match_score !== undefined && user.match_score < 100 && (
+        {!hasOverride && user.match_score !== undefined && (
           <Text style={[styles.matchScore, { color: theme.textSecondary }]}>
-            Совпадение: {user.match_score}%
+            Совпадение: {Math.round(user.match_score * 100)}%
           </Text>
         )}
       </View>
@@ -462,32 +499,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  summaryCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  summaryItem: {
-    alignItems: 'center',
-  },
-  summaryValue: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  summaryLabel: {
-    fontSize: 12,
-    marginTop: 4,
-  },
   warningsCard: {
     padding: 12,
     borderRadius: 12,
@@ -509,29 +520,27 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginLeft: 4,
   },
-  hintCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
-    gap: 8,
-  },
-  hintText: {
-    fontSize: 13,
-    flex: 1,
-  },
   section: {
     marginBottom: 16,
   },
-  userGroup: {
-    marginBottom: 12,
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 12,
   },
-  userGroupTitle: {
-    fontSize: 13,
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+  },
+  sectionContent: {
+    marginTop: 8,
   },
   userRow: {
     flexDirection: 'row',
@@ -575,26 +584,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  entryPreview: {
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
+  dateGroup: {
+    marginBottom: 12,
+  },
+  dateGroupTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 6,
   },
-  entryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  dateGroupContent: {
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  entryDate: {
-    fontSize: 14,
-    fontWeight: '500',
+  entryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+  },
+  entryInfo: {
+    flex: 1,
+    marginRight: 8,
   },
   entryUserRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
     flexWrap: 'wrap',
   },
   entryUserOriginal: {
