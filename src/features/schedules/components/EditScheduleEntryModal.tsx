@@ -1,0 +1,699 @@
+/**
+ * Edit Schedule Entry Modal
+ * Модальное окно для создания/редактирования записи в графике
+ */
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Platform,
+  Modal,
+  StatusBar,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Keyboard,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useNotification } from '@shared/contexts/NotificationContext';
+import DatePickerModal from '@shared/components/common/DatePickerModal';
+import UserSelector from '@shared/components/common/UserSelector';
+import { format, parseISO } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import {
+  Schedule,
+  ScheduleEntry,
+  CreateScheduleEntryRequest,
+  UpdateScheduleEntryRequest,
+  ShiftType,
+} from '../types/schedule.types';
+
+interface EditScheduleEntryModalProps {
+  visible: boolean;
+  schedule: Schedule | null;
+  entry: ScheduleEntry | null; // null for creating new entry
+  onClose: () => void;
+  onSave: (data: CreateScheduleEntryRequest | UpdateScheduleEntryRequest, entryId?: number) => Promise<void>;
+  onDelete?: (entryId: number) => Promise<void>;
+}
+
+const SHIFT_TYPES: { value: ShiftType; label: string; icon: string }[] = [
+  { value: 'morning', label: 'Утро', icon: 'sunny-outline' },
+  { value: 'evening', label: 'Вечер', icon: 'moon-outline' },
+  { value: 'full_day', label: 'Полный день', icon: 'time-outline' },
+  { value: 'custom', label: 'Особый', icon: 'options-outline' },
+];
+
+export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
+  visible,
+  schedule,
+  entry,
+  onClose,
+  onSave,
+  onDelete,
+}) => {
+  const { theme, isDark } = useTheme();
+  const isDesktop = useIsWideScreen();
+  const { showSuccess, showError } = useNotification();
+  const insets = useSafeAreaInsets();
+
+  const isEditMode = !!entry;
+
+  // Form state
+  const [userId, setUserId] = useState<number[]>([]);
+  const [date, setDate] = useState(new Date());
+  const [shiftType, setShiftType] = useState<ShiftType>('morning');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [location, setLocation] = useState('');
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Load entry data when modal opens
+  useEffect(() => {
+    if (visible) {
+      if (entry) {
+        // Edit mode
+        setUserId([entry.user_id]);
+        setDate(parseISO(entry.date));
+        setShiftType(entry.shift_type);
+        // Extract time from ISO string
+        const startMatch = entry.start_time.match(/T?(\d{2}:\d{2})/);
+        const endMatch = entry.end_time.match(/T?(\d{2}:\d{2})/);
+        setStartTime(startMatch ? startMatch[1] : '');
+        setEndTime(endMatch ? endMatch[1] : '');
+        setTitle(entry.title || '');
+        setDescription(entry.description || '');
+        setLocation(entry.location || '');
+      } else {
+        // Create mode - reset form
+        setUserId([]);
+        setDate(new Date());
+        setShiftType('morning');
+        setStartTime(schedule?.morning_start || '10:00');
+        setEndTime(schedule?.morning_end || '14:00');
+        setTitle('');
+        setDescription('');
+        setLocation('');
+      }
+    }
+  }, [visible, entry, schedule]);
+
+  // Update time when shift type changes (only in create mode)
+  useEffect(() => {
+    if (!isEditMode && schedule && visible) {
+      switch (shiftType) {
+        case 'morning':
+          setStartTime(schedule.morning_start || '10:00');
+          setEndTime(schedule.morning_end || '14:00');
+          break;
+        case 'evening':
+          setStartTime(schedule.evening_start || '14:00');
+          setEndTime(schedule.evening_end || '18:00');
+          break;
+        case 'full_day':
+          setStartTime(schedule.morning_start || '10:00');
+          setEndTime(schedule.evening_end || '18:00');
+          break;
+        case 'custom':
+          // Keep current values for custom
+          break;
+      }
+    }
+  }, [shiftType, isEditMode, schedule, visible]);
+
+  // Track keyboard visibility
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const handleSave = async () => {
+    if (userId.length === 0) {
+      showError('Выберите сотрудника');
+      return;
+    }
+
+    if (!startTime || !endTime) {
+      showError('Укажите время начала и окончания');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      if (isEditMode && entry) {
+        // Update existing entry
+        const updateData: UpdateScheduleEntryRequest = {
+          // Include user_id if it changed
+          ...(userId[0] !== entry.user_id ? { user_id: userId[0] } : {}),
+          shift_type: shiftType,
+          start_time: startTime || undefined,
+          end_time: endTime || undefined,
+          title: title.trim() || undefined,
+          description: description.trim() || undefined,
+          location: location.trim() || undefined,
+        };
+        await onSave(updateData, entry.id);
+        showSuccess('Запись обновлена');
+      } else {
+        // Create new entry - format date as ISO string with time at midnight
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const createData: CreateScheduleEntryRequest = {
+          user_id: userId[0],
+          date: `${dateStr}T00:00:00Z`,
+          shift_type: shiftType,
+          // Always send start_time and end_time for custom shifts
+          ...(shiftType === 'custom' && startTime ? { start_time: startTime } : {}),
+          ...(shiftType === 'custom' && endTime ? { end_time: endTime } : {}),
+          ...(title.trim() ? { title: title.trim() } : {}),
+          ...(description.trim() ? { description: description.trim() } : {}),
+          ...(location.trim() ? { location: location.trim() } : {}),
+        };
+        await onSave(createData);
+        showSuccess('Запись добавлена');
+      }
+
+      onClose();
+    } catch (error: any) {
+      console.error('Failed to save entry:', error);
+      showError(error.message || 'Не удалось сохранить запись');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!entry || !onDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await onDelete(entry.id);
+      showSuccess('Запись удалена');
+      onClose();
+    } catch (error: any) {
+      console.error('Failed to delete entry:', error);
+      showError(error.message || 'Не удалось удалить запись');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDateChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
+
+  const formatTimeInput = (value: string): string => {
+    // Remove non-numeric characters except ':'
+    const cleaned = value.replace(/[^\d:]/g, '');
+
+    // Auto-format as HH:MM
+    if (cleaned.length === 2 && !cleaned.includes(':')) {
+      return cleaned + ':';
+    }
+
+    // Limit to HH:MM format
+    const match = cleaned.match(/^(\d{0,2}):?(\d{0,2})/);
+    if (match) {
+      const [, hours, minutes] = match;
+      if (hours && minutes) {
+        return `${hours}:${minutes}`;
+      } else if (hours) {
+        return cleaned.includes(':') ? `${hours}:` : hours;
+      }
+    }
+
+    return cleaned.slice(0, 5);
+  };
+
+  if (!schedule) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType={isDesktop ? 'fade' : 'slide'}
+      transparent={isDesktop}
+      onRequestClose={onClose}
+      presentationStyle={isDesktop ? 'overFullScreen' : 'fullScreen'}
+    >
+      <View
+        style={[
+          styles.modalOverlay,
+          isDesktop && styles.modalOverlayDesktop,
+          { backgroundColor: isDesktop ? 'rgba(0, 0, 0, 0.5)' : theme.card },
+        ]}
+      >
+        <View
+          style={[
+            styles.container,
+            { backgroundColor: theme.card },
+            !isDesktop && { paddingTop: insets.top },
+            isDesktop && styles.containerDesktop,
+          ]}
+        >
+          <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.card} />
+
+          {/* Header */}
+          <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+              <Ionicons name="close" size={28} color={theme.textSecondary} />
+            </TouchableOpacity>
+
+            <View style={styles.headerCenter}>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>
+                {isEditMode ? 'Редактирование записи' : 'Новая запись'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isLoading}
+              style={styles.headerButton}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Text style={[styles.saveButton, { color: theme.primary }]}>Сохранить</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <KeyboardAvoidingView
+            style={styles.keyboardAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={0}
+          >
+            <ScrollView
+              style={[styles.content, { backgroundColor: theme.background }]}
+              contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 10 : 100 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.formContainer}>
+                {/* User Selector */}
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>Сотрудник *</Text>
+                  <UserSelector
+                    selectedUserIds={userId}
+                    onSelectionChange={setUserId}
+                    multiSelect={false}
+                    placeholder="Выберите сотрудника"
+                    modalTitle="Выбрать сотрудника"
+                    mode="radio"
+                  />
+                </View>
+
+                {/* Date */}
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>Дата *</Text>
+                  <TouchableOpacity
+                    style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                    <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                      {format(date, 'EEEE, dd MMMM yyyy', { locale: ru })}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Shift Type */}
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>Тип смены *</Text>
+                  <View style={styles.shiftTypeRow}>
+                    {SHIFT_TYPES.map((item) => (
+                      <TouchableOpacity
+                        key={item.value}
+                        style={[
+                          styles.shiftTypeCard,
+                          { backgroundColor: theme.card, borderColor: theme.border },
+                          shiftType === item.value && {
+                            backgroundColor: theme.primary + '15',
+                            borderColor: theme.primary,
+                            borderWidth: 2,
+                          },
+                        ]}
+                        onPress={() => setShiftType(item.value)}
+                      >
+                        <Ionicons
+                          name={item.icon as any}
+                          size={24}
+                          color={shiftType === item.value ? theme.primary : theme.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.shiftTypeLabel,
+                            { color: theme.text },
+                            shiftType === item.value && { color: theme.primary, fontWeight: '600' },
+                          ]}
+                        >
+                          {item.label}
+                        </Text>
+                        {shiftType === item.value && (
+                          <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
+                            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Time (for custom shift type) */}
+                {shiftType === 'custom' && (
+                  <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Время *</Text>
+                    <View style={styles.timeRow}>
+                      <View style={styles.timeInputWrapper}>
+                        <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>Начало</Text>
+                        <TextInput
+                          style={[styles.timeInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                          placeholder="10:00"
+                          placeholderTextColor={theme.inputPlaceholder}
+                          value={startTime}
+                          onChangeText={(text) => setStartTime(formatTimeInput(text))}
+                          keyboardType="numeric"
+                          maxLength={5}
+                        />
+                      </View>
+                      <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
+                      <View style={styles.timeInputWrapper}>
+                        <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>Конец</Text>
+                        <TextInput
+                          style={[styles.timeInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                          placeholder="18:00"
+                          placeholderTextColor={theme.inputPlaceholder}
+                          value={endTime}
+                          onChangeText={(text) => setEndTime(formatTimeInput(text))}
+                          keyboardType="numeric"
+                          maxLength={5}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Time info (for non-custom shift) */}
+                {shiftType !== 'custom' && (
+                  <View style={[styles.infoSection, { backgroundColor: theme.backgroundSecondary }]}>
+                    <Ionicons name="time-outline" size={20} color={theme.primary} />
+                    <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                      Время: {startTime} — {endTime}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Title */}
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>Название (необязательно)</Text>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Например: Дежурство"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={title}
+                    onChangeText={setTitle}
+                    maxLength={255}
+                  />
+                </View>
+
+                {/* Location */}
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>Место (необязательно)</Text>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Например: Кабинет 105"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={location}
+                    onChangeText={setLocation}
+                    maxLength={500}
+                  />
+                </View>
+
+                {/* Description */}
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>Примечание (необязательно)</Text>
+                  <TextInput
+                    style={[styles.textArea, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Дополнительная информация..."
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    maxLength={1000}
+                  />
+                </View>
+
+                {/* Delete Button (edit mode only) */}
+                {isEditMode && onDelete && (
+                  <TouchableOpacity
+                    style={[styles.deleteButton, { borderColor: '#EF4444' }]}
+                    onPress={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <ActivityIndicator size="small" color="#EF4444" />
+                    ) : (
+                      <>
+                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                        <Text style={styles.deleteButtonText}>Удалить запись</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+
+          {/* Date Picker */}
+          {showDatePicker && (
+            <DatePickerModal
+              visible={showDatePicker}
+              value={date}
+              onChange={handleDateChange}
+              onClose={() => setShowDatePicker(false)}
+              minimumDate={schedule ? parseISO(schedule.start_date) : undefined}
+              maximumDate={schedule ? parseISO(schedule.end_date) : undefined}
+              mode="date"
+            />
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+  },
+  modalOverlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    flex: 1,
+  },
+  containerDesktop: {
+    width: 550,
+    maxHeight: '90%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.3,
+        shadowRadius: 60,
+        elevation: 24,
+      },
+    }),
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  headerButton: {
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  saveButton: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+  },
+  formContainer: {
+    padding: 20,
+    gap: 20,
+  },
+  section: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  input: {
+    fontSize: 15,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+  },
+  textArea: {
+    fontSize: 15,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 80,
+    borderWidth: 1,
+    textAlignVertical: 'top',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderRadius: 12,
+    gap: 12,
+  },
+  dateButtonText: {
+    flex: 1,
+    fontSize: 15,
+  },
+  shiftTypeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  shiftTypeCard: {
+    flex: 1,
+    minWidth: '45%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+    position: 'relative',
+  },
+  shiftTypeLabel: {
+    flex: 1,
+    fontSize: 14,
+  },
+  checkmarkBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    top: -6,
+    right: -6,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  timeInputWrapper: {
+    flex: 1,
+    gap: 4,
+  },
+  timeLabel: {
+    fontSize: 13,
+  },
+  timeInput: {
+    fontSize: 15,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    textAlign: 'center',
+  },
+  timeSeparator: {
+    fontSize: 16,
+    paddingBottom: 14,
+  },
+  infoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    gap: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    marginTop: 16,
+  },
+  deleteButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+});
+
+export default EditScheduleEntryModal;

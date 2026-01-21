@@ -169,6 +169,7 @@ export interface CreateBatchEntriesRequest {
 }
 
 export interface UpdateScheduleEntryRequest {
+  user_id?: number;
   shift_type?: ShiftType;
   start_time?: string;
   end_time?: string;

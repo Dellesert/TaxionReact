@@ -22,13 +22,18 @@ import { ActionMenu, ActionMenuItem } from '@shared/components/common/ActionMenu
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useScheduleDetails } from '../hooks/useScheduleDetails';
 import { useScheduleStore } from '../store/scheduleStore';
-import { ScheduleWeekView } from '../components/ScheduleWeekView';
+import { ScheduleEntriesList } from '../components/ScheduleEntriesList';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
 import { getScheduleTypeColor } from '../utils/shiftColors';
+import { EditScheduleModal } from '../components/EditScheduleModal';
+import { EditScheduleEntryModal } from '../components/EditScheduleEntryModal';
 import {
   SCHEDULE_TYPE_LABELS,
   VISIBILITY_LABELS,
   type ScheduleEntry,
+  type UpdateScheduleRequest,
+  type CreateScheduleEntryRequest,
+  type UpdateScheduleEntryRequest,
 } from '../types/schedule.types';
 import type { ScheduleStackParamList } from '../navigation/types';
 
@@ -43,6 +48,10 @@ export const ScheduleDetailScreen: React.FC = () => {
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
   const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
+  const updateSchedule = useScheduleStore((state) => state.updateSchedule);
+  const createEntry = useScheduleStore((state) => state.createEntry);
+  const updateEntry = useScheduleStore((state) => state.updateEntry);
+  const deleteEntry = useScheduleStore((state) => state.deleteEntry);
 
   const { schedule, entries, isLoading, isLoadingEntries, error, refresh } =
     useScheduleDetails(scheduleId);
@@ -52,6 +61,11 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   const menuButtonRef = useRef<any>(null);
+
+  // Edit modals state
+  const [showEditScheduleModal, setShowEditScheduleModal] = useState(false);
+  const [showEditEntryModal, setShowEditEntryModal] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<ScheduleEntry | null>(null);
 
   const handleCreatorPress = useCallback(() => {
     if (schedule?.creator?.id) {
@@ -78,13 +92,8 @@ export const ScheduleDetailScreen: React.FC = () => {
   }, [navigation]);
 
   const handleEntryPress = useCallback((entry: ScheduleEntry) => {
-    // TODO: Navigate to entry details or show modal
-    console.log('Entry pressed:', entry);
-  }, []);
-
-  const handleUserPress = useCallback((userId: number) => {
-    setSelectedUserId(userId);
-    setShowProfileModal(true);
+    setSelectedEntry(entry);
+    setShowEditEntryModal(true);
   }, []);
 
   const handleGoBack = useCallback(() => {
@@ -103,9 +112,42 @@ export const ScheduleDetailScreen: React.FC = () => {
   }, [isWideScreen]);
 
   const handleEditSchedule = useCallback(() => {
-    // TODO: Navigate to edit screen or show edit modal
     setShowActionMenu(false);
+    setShowEditScheduleModal(true);
   }, []);
+
+  const handleAddEntry = useCallback(() => {
+    setSelectedEntry(null); // null means create new
+    setShowEditEntryModal(true);
+  }, []);
+
+  const handleSaveSchedule = useCallback(async (data: UpdateScheduleRequest) => {
+    if (!schedule) return;
+    await updateSchedule(schedule.id, data);
+    refresh();
+  }, [schedule, updateSchedule, refresh]);
+
+  const handleSaveEntry = useCallback(async (
+    data: CreateScheduleEntryRequest | UpdateScheduleEntryRequest,
+    entryId?: number
+  ) => {
+    if (!schedule) return;
+
+    if (entryId) {
+      // Update existing entry
+      await updateEntry(schedule.id, entryId, data as UpdateScheduleEntryRequest);
+    } else {
+      // Create new entry
+      await createEntry(schedule.id, data as CreateScheduleEntryRequest);
+    }
+    refresh();
+  }, [schedule, createEntry, updateEntry, refresh]);
+
+  const handleDeleteEntry = useCallback(async (entryId: number) => {
+    if (!schedule) return;
+    await deleteEntry(schedule.id, entryId);
+    refresh();
+  }, [schedule, deleteEntry, refresh]);
 
   const handleDeleteSchedule = useCallback(() => {
     if (!schedule) return;
@@ -293,6 +335,7 @@ export const ScheduleDetailScreen: React.FC = () => {
             </Text>
             <TouchableOpacity
               style={[styles.addEntryButton, { borderColor: theme.primary }]}
+              onPress={handleAddEntry}
             >
               <Ionicons name="add" size={18} color={theme.primary} />
               <Text style={[styles.addEntryText, { color: theme.primary }]}>
@@ -306,7 +349,7 @@ export const ScheduleDetailScreen: React.FC = () => {
               <ActivityIndicator size="small" color={theme.primary} />
             </View>
           ) : entries.length > 0 ? (
-            <ScheduleWeekView entries={entries} onEntryPress={handleEntryPress} onUserPress={handleUserPress} />
+            <ScheduleEntriesList entries={entries} onEntryPress={handleEntryPress} />
           ) : (
             <View style={styles.emptyEntries}>
               <Ionicons
@@ -340,6 +383,25 @@ export const ScheduleDetailScreen: React.FC = () => {
         onClose={() => setShowActionMenu(false)}
         isDesktop={isWideScreen}
         buttonPosition={menuButtonPosition}
+      />
+
+      <EditScheduleModal
+        visible={showEditScheduleModal}
+        schedule={schedule}
+        onClose={() => setShowEditScheduleModal(false)}
+        onSave={handleSaveSchedule}
+      />
+
+      <EditScheduleEntryModal
+        visible={showEditEntryModal}
+        schedule={schedule}
+        entry={selectedEntry}
+        onClose={() => {
+          setShowEditEntryModal(false);
+          setSelectedEntry(null);
+        }}
+        onSave={handleSaveEntry}
+        onDelete={handleDeleteEntry}
       />
     </SafeAreaView>
   );

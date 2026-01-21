@@ -21,9 +21,11 @@ export { ScheduleWeekView } from './components/ScheduleWeekView';
 export { ScheduleCard } from './components/ScheduleCard';
 export { ImportPreview } from './components/ImportPreview';
 export { ImportScheduleModal } from './components/ImportScheduleModal';
+export { EditScheduleModal } from './components/EditScheduleModal';
+export { EditScheduleEntryModal } from './components/EditScheduleEntryModal';
+export { ScheduleEntriesList } from './components/ScheduleEntriesList';
 
 // Screens
-export { MyScheduleScreen } from './screens/MyScheduleScreen';
 export { ScheduleListScreen } from './screens/ScheduleListScreen';
 export { ScheduleDetailScreen } from './screens/ScheduleDetailScreen';
 

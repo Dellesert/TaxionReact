@@ -272,7 +272,9 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set({ isSubmitting: true, error: null });
 
     try {
-      const entry = await scheduleApi.createScheduleEntry(scheduleId, data);
+      // Use batch API to work around backend bug with body consumption
+      const entries = await scheduleApi.createBatchEntries(scheduleId, { entries: [data] });
+      const entry = entries[0];
       set((state) => ({
         entries: [...state.entries, entry].sort(
           (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
