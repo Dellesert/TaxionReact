@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,12 +16,32 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useSchedules } from '../hooks/useSchedules';
 import { useScheduleStore } from '../store/scheduleStore';
 import { ScheduleCard } from '../components/ScheduleCard';
 import { ImportScheduleModal } from '../components/ImportScheduleModal';
+import { MonthPicker } from '../components/MonthPicker';
 import type { Schedule } from '../types/schedule.types';
 import type { ScheduleStackParamList } from '../navigation/types';
+
+// Helper to format date as YYYY-MM-DD
+const formatDateForApi = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Get first and last day of a month
+const getMonthRange = (date: Date): { start: string; end: string } => {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  return {
+    start: formatDateForApi(firstDay),
+    end: formatDateForApi(lastDay),
+  };
+};
 
 type NavigationProp = NativeStackNavigationProp<ScheduleStackParamList>;
 
@@ -30,11 +50,22 @@ export const ScheduleListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
-  const { schedules, isLoading, error, hasMore, refresh, loadMore } =
-    useSchedules();
+  // Get initial month range for filters
+  const initialMonthRange = getMonthRange(new Date());
+
+  const { schedules, isLoading, error, hasMore, refresh, loadMore, updateFilters } =
+    useSchedules({ start_date: initialMonthRange.start, end_date: initialMonthRange.end });
   const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
 
   const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date());
+
+  // Handle month change - update filters and reload
+  const handleMonthChange = useCallback((date: Date) => {
+    setSelectedMonth(date);
+    const { start, end } = getMonthRange(date);
+    updateFilters({ start_date: start, end_date: end });
+  }, [updateFilters]);
 
   const handleSchedulePress = useCallback(
     (schedule: Schedule) => {
@@ -109,10 +140,10 @@ export const ScheduleListScreen: React.FC = () => {
           color={theme.textSecondary}
         />
         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-          Нет графиков
+          Нет графиков за этот месяц
         </Text>
         <Text style={[styles.emptySubtext, { color: theme.textTertiary }]}>
-          Создайте первый график или импортируйте из Word
+          Выберите другой месяц или создайте новый график
         </Text>
 
         <TouchableOpacity
@@ -129,34 +160,50 @@ export const ScheduleListScreen: React.FC = () => {
   }, [isLoading, theme]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
+      <ScreenHeader
+        title="Графики работы"
+        customContent={
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              {navigation.canGoBack() && (
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={theme.primary} />
+                </TouchableOpacity>
+              )}
+            </View>
 
-        <View style={styles.headerActions}>
-          {/* Import from Word button */}
-          <TouchableOpacity
-            style={[styles.importButton, { borderColor: theme.primary }]}
-            onPress={() => setShowImportModal(true)}
-          >
-            <Ionicons name="document-text" size={18} color={theme.primary} />
-            <Text style={[styles.importButtonText, { color: theme.primary }]}>
-              Импорт
-            </Text>
-          </TouchableOpacity>
+            <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
 
-          {/* Add button */}
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: theme.primary }]}
-            onPress={() => {
-              // TODO: Navigate to create schedule
-            }}
-          >
-            <Ionicons name="add" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
+            <View style={styles.headerRight}>
+              {/* Import from Word button */}
+              <TouchableOpacity
+                onPress={() => setShowImportModal(true)}
+                style={styles.iconButton}
+              >
+                <Ionicons name="document-text-outline" size={24} color={theme.primary} />
+              </TouchableOpacity>
+
+              {/* Add button */}
+              <TouchableOpacity
+                onPress={() => {
+                  // TODO: Navigate to create schedule
+                }}
+                style={styles.iconButton}
+              >
+                <Ionicons name="add" size={30} color={theme.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        }
+      />
+
+      {/* Month Picker */}
+      <MonthPicker
+        selectedDate={selectedMonth}
+        onMonthChange={handleMonthChange}
+      />
 
       {/* Error message */}
       {error && (
@@ -199,40 +246,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+  },
+  headerLeft: {
+    width: 100,
+  },
+  backButton: {
+    padding: 8,
   },
   title: {
+    flex: 1,
     fontSize: 20,
-    fontWeight: '700',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  importButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 6,
-  },
-  importButtonText: {
-    fontSize: 13,
     fontWeight: '600',
+    textAlign: 'center',
   },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  headerRight: {
+    width: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+  },
+  iconButton: {
+    paddingHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -275,6 +275,8 @@ export interface ScheduleFilters {
   is_active?: boolean;
   department_id?: number;
   search?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface ScheduleEntryFilters {

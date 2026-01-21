@@ -3,16 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 
 import { useTheme } from '@shared/hooks/useTheme';
+import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
@@ -221,26 +222,37 @@ export const ScheduleDetailScreen: React.FC = () => {
   const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text
-          style={[styles.headerTitle, { color: theme.text }]}
-          numberOfLines={1}
-        >
-          {schedule.title}
-        </Text>
-        <TouchableOpacity
-          ref={menuButtonRef}
-          style={styles.menuButton}
-          onPress={handleOpenMenu}
-        >
-          <Ionicons name="ellipsis-vertical" size={20} color={theme.text} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title={schedule.title}
+        customContent={
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text
+              style={[styles.headerTitle, { color: theme.text }]}
+              numberOfLines={1}
+            >
+              {schedule.title}
+            </Text>
+
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                ref={menuButtonRef}
+                style={styles.iconButton}
+                onPress={handleOpenMenu}
+              >
+                <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        }
+      />
 
       <ScrollView
         style={styles.content}
@@ -437,24 +449,33 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
   },
-  header: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+  },
+  headerLeft: {
+    width: 100,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    marginHorizontal: 8,
+    textAlign: 'center',
   },
-  menuButton: {
-    padding: 8,
+  headerRight: {
+    width: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+  },
+  iconButton: {
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
