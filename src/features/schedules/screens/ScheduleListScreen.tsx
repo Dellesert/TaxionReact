@@ -1,9 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  SectionList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
@@ -14,15 +14,12 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '@shared/hooks/useTheme';
-import { useActionModal } from '@shared/contexts/ActionModalContext';
-import { useNotification } from '@shared/contexts/NotificationContext';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useSchedules } from '../hooks/useSchedules';
-import { useScheduleStore } from '../store/scheduleStore';
 import { ScheduleCard } from '../components/ScheduleCard';
 import CreateScheduleModal from '../components/CreateScheduleModal';
 import { MonthPicker } from '../components/MonthPicker';
-import type { Schedule } from '../types/schedule.types';
+import { SCHEDULE_TYPE_LABELS, type Schedule, type ScheduleType } from '../types/schedule.types';
 import type { ScheduleStackParamList } from '../navigation/types';
 
 // Helper to format date as YYYY-MM-DD
@@ -43,22 +40,53 @@ const getMonthRange = (date: Date): { start: string; end: string } => {
   };
 };
 
+// Order of schedule types for display
+const SCHEDULE_TYPE_ORDER: ScheduleType[] = ['work', 'paid_services', 'on_duty', 'shift', 'custom'];
+
 type NavigationProp = NativeStackNavigationProp<ScheduleStackParamList>;
+
+interface ScheduleSection {
+  title: string;
+  data: Schedule[];
+}
 
 export const ScheduleListScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { showConfirm } = useActionModal();
-  const { showSuccess, showError } = useNotification();
   // Get initial month range for filters
   const initialMonthRange = getMonthRange(new Date());
 
   const { schedules, isLoading, error, hasMore, refresh, loadMore, updateFilters } =
     useSchedules({ start_date: initialMonthRange.start, end_date: initialMonthRange.end });
-  const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
+
+  // Group schedules by type
+  const sections = useMemo((): ScheduleSection[] => {
+    const grouped = new Map<ScheduleType, Schedule[]>();
+
+    // Initialize groups
+    for (const type of SCHEDULE_TYPE_ORDER) {
+      grouped.set(type, []);
+    }
+
+    // Group schedules
+    for (const schedule of schedules) {
+      const typeSchedules = grouped.get(schedule.type);
+      if (typeSchedules) {
+        typeSchedules.push(schedule);
+      }
+    }
+
+    // Convert to sections, filtering out empty groups
+    return SCHEDULE_TYPE_ORDER
+      .filter(type => (grouped.get(type)?.length ?? 0) > 0)
+      .map(type => ({
+        title: SCHEDULE_TYPE_LABELS[type],
+        data: grouped.get(type) ?? [],
+      }));
+  }, [schedules]);
 
   // Handle month change - update filters and reload
   const handleMonthChange = useCallback((date: Date) => {
@@ -74,33 +102,6 @@ export const ScheduleListScreen: React.FC = () => {
     [navigation]
   );
 
-  const handleEditSchedule = useCallback(
-    (schedule: Schedule) => {
-      navigation.navigate('ScheduleDetail', { scheduleId: schedule.id });
-    },
-    [navigation]
-  );
-
-  const handleDeleteSchedule = useCallback(
-    (schedule: Schedule) => {
-      showConfirm(
-        'Удалить график?',
-        `Вы уверены, что хотите удалить "${schedule.title}"? Это действие нельзя отменить.`,
-        async () => {
-          try {
-            await deleteSchedule(schedule.id);
-            showSuccess('График удалён');
-          } catch (err) {
-            showError('Не удалось удалить график');
-          }
-        },
-        undefined,
-        { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
-      );
-    },
-    [deleteSchedule, showConfirm, showSuccess, showError]
-  );
-
   const handleCreateSuccess = useCallback(
     (scheduleId: number) => {
       refresh();
@@ -114,11 +115,23 @@ export const ScheduleListScreen: React.FC = () => {
       <ScheduleCard
         schedule={item}
         onPress={() => handleSchedulePress(item)}
-        onEdit={() => handleEditSchedule(item)}
-        onDelete={() => handleDeleteSchedule(item)}
       />
     ),
-    [handleSchedulePress, handleEditSchedule, handleDeleteSchedule]
+    [handleSchedulePress]
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: ScheduleSection }) => (
+      <View style={[styles.sectionHeader, { backgroundColor: theme.card }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          {section.title}
+        </Text>
+        <Text style={[styles.sectionCount, { color: theme.textSecondary }]}>
+          {section.data.length}
+        </Text>
+      </View>
+    ),
+    [theme]
   );
 
   const renderFooter = useCallback(() => {
@@ -204,11 +217,13 @@ export const ScheduleListScreen: React.FC = () => {
       )}
 
       {/* List */}
-      <FlatList
-        data={schedules}
+      <SectionList
+        sections={sections}
         renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
+        stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -280,6 +295,21 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     flexGrow: 1,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  sectionCount: {
+    fontSize: 14,
+    marginLeft: 8,
   },
   footerLoader: {
     paddingVertical: 16,

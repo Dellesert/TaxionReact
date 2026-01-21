@@ -1,147 +1,76 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
-import { ActionMenu, ActionMenuItem } from '@shared/components/common/ActionMenu';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
 import { getScheduleTypeColor } from '../utils/shiftColors';
-import { SCHEDULE_TYPE_LABELS, type Schedule } from '../types/schedule.types';
+import type { Schedule } from '../types/schedule.types';
 
 interface ScheduleCardProps {
   schedule: Schedule;
   onPress?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
 }
 
 export const ScheduleCard: React.FC<ScheduleCardProps> = ({
   schedule,
   onPress,
-  onEdit,
-  onDelete,
 }) => {
   const { theme } = useTheme();
-  const isWideScreen = useIsWideScreen();
   const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
 
-  const [showActionMenu, setShowActionMenu] = useState(false);
-  const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
-  const menuButtonRef = useRef<any>(null);
-
-  const hasActions = onEdit || onDelete;
-
-  const handleOpenMenu = () => {
-    if (isWideScreen && menuButtonRef.current) {
-      menuButtonRef.current.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
-        setMenuButtonPosition({ x: pageX, y: pageY, width, height });
-        setShowActionMenu(true);
-      });
-    } else {
-      setShowActionMenu(true);
-    }
-  };
-
-  const menuItems: ActionMenuItem[] = [];
-
-  if (onEdit) {
-    menuItems.push({
-      key: 'edit',
-      icon: 'create-outline',
-      label: 'Редактировать',
-      color: theme.text,
-      onPress: onEdit,
-    });
-  }
-
-  if (onDelete) {
-    menuItems.push({
-      key: 'delete',
-      icon: 'trash-outline',
-      label: 'Удалить',
-      color: '#EF4444',
-      onPress: onDelete,
-    });
-  }
-
   return (
-    <>
-      <TouchableOpacity
-        style={[
-          styles.container,
-          {
-            backgroundColor: theme.backgroundSecondary,
-            borderColor: theme.border,
-          },
-        ]}
-        onPress={onPress}
-        activeOpacity={onPress ? 0.7 : 1}
-        disabled={!onPress}
-      >
-        <View style={[styles.colorIndicator, { backgroundColor: typeColor }]} />
+    <TouchableOpacity
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.backgroundSecondary,
+          borderColor: theme.border,
+        },
+      ]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
+      <View style={[styles.colorIndicator, { backgroundColor: typeColor }]} />
 
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-              {schedule.title}
-            </Text>
-            {!schedule.is_active && (
-              <View
-                style={[styles.inactiveBadge, { backgroundColor: theme.warning }]}
-              >
-                <Text style={styles.inactiveBadgeText}>Неактивен</Text>
-              </View>
-            )}
-          </View>
-
-          <Text style={[styles.type, { color: theme.textSecondary }]}>
-            {SCHEDULE_TYPE_LABELS[schedule.type]}
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+            {schedule.title}
           </Text>
-
-          <View style={styles.dateRow}>
-            <Ionicons
-              name="calendar-outline"
-              size={14}
-              color={theme.textSecondary}
-            />
-            <Text style={[styles.dateText, { color: theme.textSecondary }]}>
-              {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} —{' '}
-              {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
-            </Text>
-          </View>
-
-          {schedule.entries_count !== undefined && (
-            <View style={styles.entriesRow}>
-              <Ionicons name="people-outline" size={14} color={theme.textTertiary} />
-              <Text style={[styles.entriesText, { color: theme.textTertiary }]}>
-                {schedule.entries_count} записей
-              </Text>
+          {!schedule.is_active && (
+            <View
+              style={[styles.inactiveBadge, { backgroundColor: theme.warning }]}
+            >
+              <Text style={styles.inactiveBadgeText}>Неактивен</Text>
             </View>
           )}
         </View>
 
-        {hasActions ? (
-          <TouchableOpacity
-            ref={menuButtonRef}
-            style={styles.menuButton}
-            onPress={handleOpenMenu}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="ellipsis-vertical" size={20} color={theme.textSecondary} />
-          </TouchableOpacity>
-        ) : (
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-        )}
-      </TouchableOpacity>
+        <View style={styles.dateRow}>
+          <Ionicons
+            name="calendar-outline"
+            size={14}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.dateText, { color: theme.textSecondary }]}>
+            {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} —{' '}
+            {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
+          </Text>
+        </View>
 
-      <ActionMenu
-        visible={showActionMenu}
-        items={menuItems}
-        onClose={() => setShowActionMenu(false)}
-        isDesktop={isWideScreen}
-        buttonPosition={menuButtonPosition}
-      />
-    </>
+        {schedule.entries_count !== undefined && (
+          <View style={styles.entriesRow}>
+            <Ionicons name="people-outline" size={14} color={theme.textTertiary} />
+            <Text style={[styles.entriesText, { color: theme.textTertiary }]}>
+              {schedule.entries_count} записей
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+    </TouchableOpacity>
   );
 };
 
@@ -185,9 +114,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  type: {
-    fontSize: 13,
-  },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -204,8 +130,5 @@ const styles = StyleSheet.create({
   },
   entriesText: {
     fontSize: 12,
-  },
-  menuButton: {
-    padding: 4,
   },
 });
