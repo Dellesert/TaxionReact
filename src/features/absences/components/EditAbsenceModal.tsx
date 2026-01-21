@@ -184,7 +184,6 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
           style={[
             styles.container,
             { backgroundColor: theme.card },
-            !isDesktop && { paddingTop: insets.top },
             isDesktop && styles.containerDesktop,
           ]}
         >
