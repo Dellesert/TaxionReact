@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 120,
     gap: 20,
   },
   navigationCards: {
