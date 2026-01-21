@@ -11,6 +11,44 @@ import type {
   UpdateScheduleRequest,
   UpdateScheduleEntryRequest,
 } from '../types/schedule.types';
+import type { ApiError } from '@/types/common.types';
+
+/**
+ * Extract error message from API error
+ * Prefers details field which contains specific error reason from backend
+ */
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (!error) return fallback;
+
+  // Check if it's an ApiError with details
+  const apiError = error as ApiError;
+  if (apiError.details) {
+    // Details can be a string or an object with error/details fields
+    if (typeof apiError.details === 'string') {
+      return apiError.details;
+    }
+    if (typeof apiError.details === 'object') {
+      const details = apiError.details as Record<string, unknown>;
+      if (typeof details.details === 'string') {
+        return details.details;
+      }
+      if (typeof details.error === 'string') {
+        return details.error;
+      }
+    }
+  }
+
+  // Fallback to message
+  if (apiError.message) {
+    return apiError.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+};
 
 interface ScheduleState {
   // Data
@@ -272,9 +310,9 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set({ isSubmitting: true, error: null });
 
     try {
-      // Use batch API to work around backend bug with body consumption
-      const entries = await scheduleApi.createBatchEntries(scheduleId, { entries: [data] });
-      const entry = entries[0];
+      // Use single entry API - returns proper error message from backend if user is absent
+      const entry = await scheduleApi.createScheduleEntry(scheduleId, data);
+
       set((state) => ({
         entries: [...state.entries, entry].sort(
           (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -282,8 +320,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       }));
       return entry;
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Не удалось создать запись';
+      const message = getErrorMessage(error, 'Не удалось создать запись');
       set({ error: message });
       throw error;
     } finally {
@@ -305,8 +342,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         myEntries: state.myEntries.map((e) => (e.id === entryId ? updated : e)),
       }));
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Не удалось обновить запись';
+      const message = getErrorMessage(error, 'Не удалось обновить запись');
       set({ error: message });
       throw error;
     } finally {

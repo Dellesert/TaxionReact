@@ -47,6 +47,11 @@ export const DashboardScreen: React.FC = () => {
     navigation.navigate('Calendar', { screen: 'CalendarMain' });
   }, [navigation]);
 
+  // Навигация к отсутствиям
+  const navigateToAbsences = useCallback(() => {
+    navigation.navigate('AbsenceList');
+  }, [navigation]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <DashboardHeader />
@@ -96,6 +101,13 @@ export const DashboardScreen: React.FC = () => {
             icon="time"
             color="#10B981"
             onPress={navigateToSchedule}
+          />
+          <NavigationCard
+            title="Отсутствия"
+            description="Отпуска и больничные"
+            icon="calendar-clear"
+            color="#F59E0B"
+            onPress={navigateToAbsences}
           />
         </View>
       </ScrollView>

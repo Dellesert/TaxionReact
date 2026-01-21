@@ -8,6 +8,8 @@ export type ScheduleVisibility = 'creator_only' | 'management' | 'participants';
 
 export type ShiftType = 'morning' | 'evening' | 'full_day' | 'custom';
 
+export type ScheduleMode = 'recurring' | 'monthly';
+
 export const SCHEDULE_TYPE_LABELS: Record<ScheduleType, string> = {
   work: 'Рабочий график',
   paid_services: 'Платные услуги',
@@ -27,6 +29,11 @@ export const VISIBILITY_LABELS: Record<ScheduleVisibility, string> = {
   creator_only: 'Только создатель',
   management: 'Руководство',
   participants: 'Участники',
+};
+
+export const SCHEDULE_MODE_LABELS: Record<ScheduleMode, string> = {
+  recurring: 'Повторяющийся',
+  monthly: 'Ежемесячный',
 };
 
 // ============================================
@@ -51,6 +58,8 @@ export interface Schedule {
   description?: string;
   type: ScheduleType;
   visibility: ScheduleVisibility;
+  mode: ScheduleMode;
+  template_id?: number;
   created_by: number;
   creator?: ScheduleUser;
   department_id?: number;
@@ -131,6 +140,8 @@ export interface CreateScheduleRequest {
   description?: string;
   type: ScheduleType;
   visibility?: ScheduleVisibility;
+  mode?: ScheduleMode;
+  template_id?: number;
   start_date: string;
   end_date: string;
   morning_start?: string;
@@ -146,6 +157,7 @@ export interface UpdateScheduleRequest {
   description?: string;
   type?: ScheduleType;
   visibility?: ScheduleVisibility;
+  mode?: ScheduleMode;
   start_date?: string;
   end_date?: string;
   morning_start?: string;

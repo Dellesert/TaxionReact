@@ -34,9 +34,11 @@ import { ru } from 'date-fns/locale';
 import {
   ScheduleType,
   ScheduleVisibility,
+  ScheduleMode,
   CreateScheduleRequest,
   ImportScheduleRequest,
   UserMappingOverride,
+  SCHEDULE_MODE_LABELS,
 } from '../types/schedule.types';
 import { scheduleApi } from '../api/schedule.api';
 import { useScheduleImport } from '../hooks/useScheduleImport';
@@ -109,9 +111,10 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   const [eveningStart, setEveningStart] = useState('14:00');
   const [eveningEnd, setEveningEnd] = useState('20:00');
 
-  // Step 4: Visibility and Color
+  // Step 4: Visibility, Color, and Mode
   const [visibility, setVisibility] = useState<ScheduleVisibility>('management');
   const [color, setColor] = useState('#3B82F6');
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('recurring');
 
   const [isCreating, setIsCreating] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -257,6 +260,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
         description: description.trim() || undefined,
         type: scheduleType,
         visibility,
+        mode: scheduleMode,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
         morning_start: morningStart,
@@ -432,6 +436,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     setEveningEnd('20:00');
     setVisibility('management');
     setColor('#3B82F6');
+    setScheduleMode('recurring');
     slideAnim.setValue(0);
     // Reset import state
     setImportStep('select');
@@ -1096,6 +1101,59 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                           </View>
 
                           <View style={styles.inputSection}>
+                            <Text style={[styles.inputLabel, { color: theme.text }]}>Режим графика</Text>
+                            <View style={styles.modeRow}>
+                              <TouchableOpacity
+                                onPress={() => setScheduleMode('recurring')}
+                                style={[
+                                  styles.modeCard,
+                                  { backgroundColor: theme.card, borderColor: theme.border },
+                                  scheduleMode === 'recurring' && { borderColor: theme.primary, borderWidth: 2 },
+                                ]}
+                              >
+                                <Ionicons
+                                  name="sync-outline"
+                                  size={24}
+                                  color={scheduleMode === 'recurring' ? theme.primary : theme.textSecondary}
+                                />
+                                <Text style={[
+                                  styles.modeLabel,
+                                  { color: scheduleMode === 'recurring' ? theme.primary : theme.text }
+                                ]}>
+                                  {SCHEDULE_MODE_LABELS.recurring}
+                                </Text>
+                                {scheduleMode === 'recurring' && (
+                                  <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
+                                )}
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                onPress={() => setScheduleMode('monthly')}
+                                style={[
+                                  styles.modeCard,
+                                  { backgroundColor: theme.card, borderColor: theme.border },
+                                  scheduleMode === 'monthly' && { borderColor: theme.primary, borderWidth: 2 },
+                                ]}
+                              >
+                                <Ionicons
+                                  name="calendar-outline"
+                                  size={24}
+                                  color={scheduleMode === 'monthly' ? theme.primary : theme.textSecondary}
+                                />
+                                <Text style={[
+                                  styles.modeLabel,
+                                  { color: scheduleMode === 'monthly' ? theme.primary : theme.text }
+                                ]}>
+                                  {SCHEDULE_MODE_LABELS.monthly}
+                                </Text>
+                                {scheduleMode === 'monthly' && (
+                                  <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
+                                )}
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+
+                          <View style={styles.inputSection}>
                             <Text style={[styles.inputLabel, { color: theme.text }]}>Цвет графика</Text>
                             <View style={styles.colorRow}>
                               {SCHEDULE_COLORS.map((c) => (
@@ -1592,6 +1650,25 @@ const styles = StyleSheet.create({
   },
   visibilityDescription: {
     fontSize: 13,
+  },
+  // Mode selection
+  modeRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modeCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  modeLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
   },
   // Color options
   colorRow: {

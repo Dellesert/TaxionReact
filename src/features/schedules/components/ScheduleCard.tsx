@@ -5,6 +5,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
 import { getScheduleTypeColor } from '../utils/shiftColors';
 import type { Schedule } from '../types/schedule.types';
+import { SCHEDULE_MODE_LABELS } from '../types/schedule.types';
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -38,6 +39,36 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({
           <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
             {schedule.title}
           </Text>
+          {schedule.mode && (
+            <View
+              style={[
+                styles.modeBadge,
+                {
+                  backgroundColor:
+                    schedule.mode === 'recurring'
+                      ? theme.primary + '20'
+                      : theme.warning + '20',
+                },
+              ]}
+            >
+              <Ionicons
+                name={schedule.mode === 'recurring' ? 'sync' : 'calendar'}
+                size={10}
+                color={schedule.mode === 'recurring' ? theme.primary : theme.warning}
+              />
+              <Text
+                style={[
+                  styles.modeBadgeText,
+                  {
+                    color:
+                      schedule.mode === 'recurring' ? theme.primary : theme.warning,
+                  },
+                ]}
+              >
+                {SCHEDULE_MODE_LABELS[schedule.mode]}
+              </Text>
+            </View>
+          )}
           {!schedule.is_active && (
             <View
               style={[styles.inactiveBadge, { backgroundColor: theme.warning }]}
@@ -103,6 +134,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
+  },
+  modeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  modeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   inactiveBadge: {
     paddingHorizontal: 6,

@@ -18,6 +18,7 @@ import TaskDetailScreen from '@/features/tasks/screens/TaskDetailScreen';
 import PollListScreen from '@/features/polls/screens/PollListScreen';
 import PollDetailScreen from '@/features/polls/screens/PollDetailScreen';
 import PollVotersScreen from '@/features/polls/screens/PollVotersScreen';
+import { AbsenceListScreen } from '@/features/absences/screens/AbsenceListScreen';
 
 const Stack = createNativeStackNavigator<DashboardStackParamList>();
 
@@ -103,6 +104,13 @@ const DashboardNavigator: React.FC = () => {
       <Stack.Screen
         name="ScheduleDetail"
         component={ScheduleDetailScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="AbsenceList"
+        component={AbsenceListScreen}
         options={{
           headerShown: false,
         }}

@@ -77,6 +77,7 @@ export type DashboardStackParamList = {
   Schedule: undefined;
   ScheduleList: undefined;
   ScheduleDetail: { scheduleId: number };
+  AbsenceList: undefined;
 };
 
 // Calendar Stack

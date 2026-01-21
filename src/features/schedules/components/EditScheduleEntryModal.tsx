@@ -80,10 +80,12 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Load entry data when modal opens
   useEffect(() => {
     if (visible) {
+      setErrorMessage(null); // Clear error when modal opens
       if (entry) {
         // Edit mode
         setUserId([entry.user_id]);
@@ -164,6 +166,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
 
     try {
       setIsLoading(true);
+      setErrorMessage(null); // Clear previous error
 
       if (isEditMode && entry) {
         // Update existing entry
@@ -200,7 +203,15 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
       onClose();
     } catch (error: any) {
       console.error('Failed to save entry:', error);
-      showError(error.message || 'Не удалось сохранить запись');
+      // Extract detailed error message from API error
+      const extractedMessage =
+        error?.details?.details || // Backend specific error reason
+        error?.details?.error ||
+        error?.details ||
+        error?.message ||
+        'Не удалось сохранить запись';
+      // Show error inside modal instead of toast (toast is hidden behind modal)
+      setErrorMessage(typeof extractedMessage === 'string' ? extractedMessage : 'Не удалось сохранить запись');
     } finally {
       setIsLoading(false);
     }
@@ -318,6 +329,17 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.formContainer}>
+                {/* Error Message */}
+                {errorMessage && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                    <Text style={styles.errorText}>{errorMessage}</Text>
+                    <TouchableOpacity onPress={() => setErrorMessage(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Ionicons name="close" size={18} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
                 {/* User Selector */}
                 <View style={styles.section}>
                   <Text style={[styles.label, { color: theme.textSecondary }]}>Сотрудник *</Text>
@@ -576,6 +598,22 @@ const styles = StyleSheet.create({
   formContainer: {
     padding: 20,
     gap: 20,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#DC2626',
+    fontWeight: '500',
   },
   section: {
     gap: 8,
