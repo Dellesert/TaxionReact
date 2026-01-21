@@ -307,7 +307,7 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
 
         {isScheduleExpanded && (
           <View style={styles.sectionContent}>
-            {groupedEntries.slice(0, 5).map((group) => (
+            {groupedEntries.map((group) => (
               <View key={group.date} style={styles.dateGroup}>
                 <Text style={[styles.dateGroupTitle, { color: theme.text }]}>
                   {group.formattedDate}
@@ -360,11 +360,6 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                 </View>
               </View>
             ))}
-            {groupedEntries.length > 5 && (
-              <Text style={[styles.moreText, { color: theme.textSecondary }]}>
-                ... и ещё {groupedEntries.length - 5} дней
-              </Text>
-            )}
           </View>
         )}
       </View>
