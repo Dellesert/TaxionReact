@@ -20,7 +20,7 @@ import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useSchedules } from '../hooks/useSchedules';
 import { useScheduleStore } from '../store/scheduleStore';
 import { ScheduleCard } from '../components/ScheduleCard';
-import { ImportScheduleModal } from '../components/ImportScheduleModal';
+import CreateScheduleModal from '../components/CreateScheduleModal';
 import { MonthPicker } from '../components/MonthPicker';
 import type { Schedule } from '../types/schedule.types';
 import type { ScheduleStackParamList } from '../navigation/types';
@@ -57,7 +57,7 @@ export const ScheduleListScreen: React.FC = () => {
     useSchedules({ start_date: initialMonthRange.start, end_date: initialMonthRange.end });
   const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
 
-  const [showImportModal, setShowImportModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
 
   // Handle month change - update filters and reload
@@ -101,7 +101,7 @@ export const ScheduleListScreen: React.FC = () => {
     [deleteSchedule, showConfirm, showSuccess, showError]
   );
 
-  const handleImportSuccess = useCallback(
+  const handleCreateSuccess = useCallback(
     (scheduleId: number) => {
       refresh();
       navigation.navigate('ScheduleDetail', { scheduleId });
@@ -148,11 +148,11 @@ export const ScheduleListScreen: React.FC = () => {
 
         <TouchableOpacity
           style={[styles.importEmptyButton, { borderColor: theme.primary }]}
-          onPress={() => setShowImportModal(true)}
+          onPress={() => setShowCreateModal(true)}
         >
-          <Ionicons name="document-text" size={20} color={theme.primary} />
+          <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
           <Text style={[styles.importEmptyButtonText, { color: theme.primary }]}>
-            Импорт из Word
+            Создать график
           </Text>
         </TouchableOpacity>
       </View>
@@ -177,19 +177,9 @@ export const ScheduleListScreen: React.FC = () => {
             <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
 
             <View style={styles.headerRight}>
-              {/* Import from Word button */}
-              <TouchableOpacity
-                onPress={() => setShowImportModal(true)}
-                style={styles.iconButton}
-              >
-                <Ionicons name="document-text-outline" size={24} color={theme.primary} />
-              </TouchableOpacity>
-
               {/* Add button */}
               <TouchableOpacity
-                onPress={() => {
-                  // TODO: Navigate to create schedule
-                }}
+                onPress={() => setShowCreateModal(true)}
                 style={styles.iconButton}
               >
                 <Ionicons name="add" size={30} color={theme.primary} />
@@ -232,11 +222,11 @@ export const ScheduleListScreen: React.FC = () => {
         ListEmptyComponent={renderEmpty}
       />
 
-      {/* Import Modal */}
-      <ImportScheduleModal
-        visible={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onSuccess={handleImportSuccess}
+      {/* Create Modal */}
+      <CreateScheduleModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onScheduleCreated={handleCreateSuccess}
       />
     </SafeAreaView>
   );
