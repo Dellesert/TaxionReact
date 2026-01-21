@@ -60,6 +60,7 @@ export interface Schedule {
   visibility: ScheduleVisibility;
   mode: ScheduleMode;
   template_id?: number;
+  template?: ScheduleTemplate;
   created_by: number;
   creator?: ScheduleUser;
   department_id?: number;

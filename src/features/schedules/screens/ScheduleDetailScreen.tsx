@@ -24,6 +24,7 @@ import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useScheduleDetails } from '../hooks/useScheduleDetails';
 import { useScheduleStore } from '../store/scheduleStore';
 import { ScheduleEntriesList } from '../components/ScheduleEntriesList';
+import { TemplateEntriesList } from '../components/TemplateEntriesList';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
 import { getScheduleTypeColor } from '../utils/shiftColors';
 import { EditScheduleModal } from '../components/EditScheduleModal';
@@ -32,10 +33,13 @@ import {
   SCHEDULE_TYPE_LABELS,
   VISIBILITY_LABELS,
   type ScheduleEntry,
+  type ScheduleTemplateEntry,
   type UpdateScheduleRequest,
   type CreateScheduleEntryRequest,
   type UpdateScheduleEntryRequest,
+  type CreateTemplateEntryRequest,
 } from '../types/schedule.types';
+import { templateApi } from '../api/schedule.api';
 import type { ScheduleStackParamList } from '../navigation/types';
 
 type RouteProps = RouteProp<ScheduleStackParamList, 'ScheduleDetail'>;
@@ -67,6 +71,7 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [showEditScheduleModal, setShowEditScheduleModal] = useState(false);
   const [showEditEntryModal, setShowEditEntryModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ScheduleEntry | null>(null);
+  const [selectedTemplateEntry, setSelectedTemplateEntry] = useState<ScheduleTemplateEntry | null>(null);
 
   const handleCreatorPress = useCallback(() => {
     if (schedule?.creator?.id) {
@@ -119,6 +124,7 @@ export const ScheduleDetailScreen: React.FC = () => {
 
   const handleAddEntry = useCallback(() => {
     setSelectedEntry(null); // null means create new
+    setSelectedTemplateEntry(null);
     setShowEditEntryModal(true);
   }, []);
 
@@ -149,6 +155,27 @@ export const ScheduleDetailScreen: React.FC = () => {
     await deleteEntry(schedule.id, entryId);
     refresh();
   }, [schedule, deleteEntry, refresh]);
+
+  // Template entry handlers for recurring mode
+  const handleSaveTemplateEntry = useCallback(async (
+    data: CreateTemplateEntryRequest,
+    entryId?: number
+  ) => {
+    if (!schedule?.template_id) return;
+
+    if (entryId) {
+      // Update not supported yet - delete and recreate
+      await templateApi.deleteTemplateEntry(schedule.template_id, entryId);
+    }
+    await templateApi.addTemplateEntry(schedule.template_id, data);
+    refresh();
+  }, [schedule, refresh]);
+
+  const handleDeleteTemplateEntry = useCallback(async (entryId: number) => {
+    if (!schedule?.template_id) return;
+    await templateApi.deleteTemplateEntry(schedule.template_id, entryId);
+    refresh();
+  }, [schedule, refresh]);
 
   const handleDeleteSchedule = useCallback(() => {
     if (!schedule) return;
@@ -343,7 +370,11 @@ export const ScheduleDetailScreen: React.FC = () => {
         <View style={styles.entriesSection}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Записи ({entries.length})
+              {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
+              {schedule.mode === 'recurring'
+                ? schedule.template?.entries?.length || 0
+                : entries.length}
+              )
             </Text>
             <TouchableOpacity
               style={[styles.addEntryButton, { borderColor: theme.primary }]}
@@ -356,7 +387,16 @@ export const ScheduleDetailScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {isLoadingEntries ? (
+          {schedule.mode === 'recurring' ? (
+            // Recurring mode - show template entries by day of week
+            <TemplateEntriesList
+              entries={schedule.template?.entries || []}
+              onEntryPress={(templateEntry) => {
+                setSelectedTemplateEntry(templateEntry);
+                setShowEditEntryModal(true);
+              }}
+            />
+          ) : isLoadingEntries ? (
             <View style={styles.entriesLoader}>
               <ActivityIndicator size="small" color={theme.primary} />
             </View>
@@ -408,12 +448,16 @@ export const ScheduleDetailScreen: React.FC = () => {
         visible={showEditEntryModal}
         schedule={schedule}
         entry={selectedEntry}
+        templateEntry={selectedTemplateEntry}
         onClose={() => {
           setShowEditEntryModal(false);
           setSelectedEntry(null);
+          setSelectedTemplateEntry(null);
         }}
         onSave={handleSaveEntry}
+        onSaveTemplateEntry={handleSaveTemplateEntry}
         onDelete={handleDeleteEntry}
+        onDeleteTemplateEntry={handleDeleteTemplateEntry}
       />
     </SafeAreaView>
   );

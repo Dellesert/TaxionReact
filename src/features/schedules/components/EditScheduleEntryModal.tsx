@@ -30,8 +30,10 @@ import { ru } from 'date-fns/locale';
 import {
   Schedule,
   ScheduleEntry,
+  ScheduleTemplateEntry,
   CreateScheduleEntryRequest,
   UpdateScheduleEntryRequest,
+  CreateTemplateEntryRequest,
   ShiftType,
 } from '../types/schedule.types';
 
@@ -39,9 +41,12 @@ interface EditScheduleEntryModalProps {
   visible: boolean;
   schedule: Schedule | null;
   entry: ScheduleEntry | null; // null for creating new entry
+  templateEntry?: ScheduleTemplateEntry | null; // for recurring mode
   onClose: () => void;
   onSave: (data: CreateScheduleEntryRequest | UpdateScheduleEntryRequest, entryId?: number) => Promise<void>;
+  onSaveTemplateEntry?: (data: CreateTemplateEntryRequest, entryId?: number) => Promise<void>;
   onDelete?: (entryId: number) => Promise<void>;
+  onDeleteTemplateEntry?: (entryId: number) => Promise<void>;
 }
 
 const SHIFT_TYPES: { value: ShiftType; label: string; icon: string }[] = [
@@ -51,24 +56,39 @@ const SHIFT_TYPES: { value: ShiftType; label: string; icon: string }[] = [
   { value: 'custom', label: 'Особый', icon: 'options-outline' },
 ];
 
+const DAYS_OF_WEEK: { value: number; label: string; shortLabel: string }[] = [
+  { value: 1, label: 'Понедельник', shortLabel: 'Пн' },
+  { value: 2, label: 'Вторник', shortLabel: 'Вт' },
+  { value: 3, label: 'Среда', shortLabel: 'Ср' },
+  { value: 4, label: 'Четверг', shortLabel: 'Чт' },
+  { value: 5, label: 'Пятница', shortLabel: 'Пт' },
+  { value: 6, label: 'Суббота', shortLabel: 'Сб' },
+  { value: 0, label: 'Воскресенье', shortLabel: 'Вс' },
+];
+
 export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
   visible,
   schedule,
   entry,
+  templateEntry,
   onClose,
   onSave,
+  onSaveTemplateEntry,
   onDelete,
+  onDeleteTemplateEntry,
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
   const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
 
-  const isEditMode = !!entry;
+  const isRecurringMode = schedule?.mode === 'recurring';
+  const isEditMode = isRecurringMode ? !!templateEntry : !!entry;
 
   // Form state
   const [userId, setUserId] = useState<number[]>([]);
   const [date, setDate] = useState(new Date());
+  const [dayOfWeek, setDayOfWeek] = useState<number>(1); // Monday by default
   const [shiftType, setShiftType] = useState<ShiftType>('morning');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -86,32 +106,60 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
   useEffect(() => {
     if (visible) {
       setErrorMessage(null); // Clear error when modal opens
-      if (entry) {
-        // Edit mode
-        setUserId([entry.user_id]);
-        setDate(parseISO(entry.date));
-        setShiftType(entry.shift_type);
-        // Extract time from ISO string
-        const startMatch = entry.start_time.match(/T?(\d{2}:\d{2})/);
-        const endMatch = entry.end_time.match(/T?(\d{2}:\d{2})/);
-        setStartTime(startMatch ? startMatch[1] : '');
-        setEndTime(endMatch ? endMatch[1] : '');
-        setTitle(entry.title || '');
-        setDescription(entry.description || '');
-        setLocation(entry.location || '');
-      } else {
-        // Create mode - reset form
-        setUserId([]);
-        setDate(new Date());
-        setShiftType('morning');
-        setStartTime(schedule?.morning_start || '10:00');
-        setEndTime(schedule?.morning_end || '14:00');
-        setTitle('');
+
+      if (isRecurringMode) {
+        // Recurring mode - work with template entries
+        if (templateEntry) {
+          // Edit template entry
+          setUserId(templateEntry.user_id ? [templateEntry.user_id] : []);
+          setDayOfWeek(templateEntry.day_of_week);
+          setShiftType(templateEntry.shift_type || 'custom');
+          // Extract time from string
+          const startMatch = templateEntry.start_time.match(/(\d{2}:\d{2})/);
+          const endMatch = templateEntry.end_time.match(/(\d{2}:\d{2})/);
+          setStartTime(startMatch ? startMatch[1] : '');
+          setEndTime(endMatch ? endMatch[1] : '');
+          setTitle(templateEntry.title || '');
+        } else {
+          // Create template entry - reset form
+          setUserId([]);
+          setDayOfWeek(1); // Monday
+          setShiftType('custom');
+          setStartTime(schedule?.morning_start || '10:00');
+          setEndTime(schedule?.evening_end || '18:00');
+          setTitle('');
+        }
         setDescription('');
         setLocation('');
+      } else {
+        // Monthly mode - work with schedule entries
+        if (entry) {
+          // Edit mode
+          setUserId([entry.user_id]);
+          setDate(parseISO(entry.date));
+          setShiftType(entry.shift_type);
+          // Extract time from ISO string
+          const startMatch = entry.start_time.match(/T?(\d{2}:\d{2})/);
+          const endMatch = entry.end_time.match(/T?(\d{2}:\d{2})/);
+          setStartTime(startMatch ? startMatch[1] : '');
+          setEndTime(endMatch ? endMatch[1] : '');
+          setTitle(entry.title || '');
+          setDescription(entry.description || '');
+          setLocation(entry.location || '');
+        } else {
+          // Create mode - reset form
+          setUserId([]);
+          setDate(new Date());
+          setShiftType('morning');
+          setStartTime(schedule?.morning_start || '10:00');
+          setEndTime(schedule?.morning_end || '14:00');
+          setTitle('');
+          setDescription('');
+          setLocation('');
+        }
       }
     }
-  }, [visible, entry, schedule]);
+  }, [visible, entry, templateEntry, schedule, isRecurringMode]);
 
   // Update time when shift type changes (only in create mode)
   useEffect(() => {
@@ -154,7 +202,8 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
   }, []);
 
   const handleSave = async () => {
-    if (userId.length === 0) {
+    // For recurring mode, user is optional (applies to all if not set)
+    if (!isRecurringMode && userId.length === 0) {
       showError('Выберите сотрудника');
       return;
     }
@@ -168,7 +217,23 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
       setIsLoading(true);
       setErrorMessage(null); // Clear previous error
 
-      if (isEditMode && entry) {
+      if (isRecurringMode) {
+        // Recurring mode - save template entry
+        if (!onSaveTemplateEntry) {
+          showError('Не настроен обработчик сохранения');
+          return;
+        }
+
+        const templateData: CreateTemplateEntryRequest = {
+          day_of_week: dayOfWeek,
+          start_time: startTime,
+          end_time: endTime,
+          ...(userId.length > 0 ? { user_id: userId[0] } : {}),
+          ...(title.trim() ? { title: title.trim() } : {}),
+        };
+        await onSaveTemplateEntry(templateData, templateEntry?.id);
+        showSuccess(isEditMode ? 'Запись обновлена' : 'Запись добавлена');
+      } else if (isEditMode && entry) {
         // Update existing entry
         const updateData: UpdateScheduleEntryRequest = {
           // Include user_id if it changed
@@ -218,18 +283,32 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!entry || !onDelete) return;
-
-    try {
-      setIsDeleting(true);
-      await onDelete(entry.id);
-      showSuccess('Запись удалена');
-      onClose();
-    } catch (error: any) {
-      console.error('Failed to delete entry:', error);
-      showError(error.message || 'Не удалось удалить запись');
-    } finally {
-      setIsDeleting(false);
+    if (isRecurringMode) {
+      if (!templateEntry || !onDeleteTemplateEntry) return;
+      try {
+        setIsDeleting(true);
+        await onDeleteTemplateEntry(templateEntry.id);
+        showSuccess('Запись удалена');
+        onClose();
+      } catch (error: any) {
+        console.error('Failed to delete template entry:', error);
+        showError(error.message || 'Не удалось удалить запись');
+      } finally {
+        setIsDeleting(false);
+      }
+    } else {
+      if (!entry || !onDelete) return;
+      try {
+        setIsDeleting(true);
+        await onDelete(entry.id);
+        showSuccess('Запись удалена');
+        onClose();
+      } catch (error: any) {
+        console.error('Failed to delete entry:', error);
+        showError(error.message || 'Не удалось удалить запись');
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -340,77 +419,121 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                   </View>
                 )}
 
-                {/* User Selector */}
+                {/* User Selector - optional for recurring mode */}
                 <View style={styles.section}>
-                  <Text style={[styles.label, { color: theme.textSecondary }]}>Сотрудник *</Text>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>
+                    Сотрудник {isRecurringMode ? '(необязательно)' : '*'}
+                  </Text>
                   <UserSelector
                     selectedUserIds={userId}
                     onSelectionChange={setUserId}
                     multiSelect={false}
-                    placeholder="Выберите сотрудника"
+                    placeholder={isRecurringMode ? 'Для всех сотрудников' : 'Выберите сотрудника'}
                     modalTitle="Выбрать сотрудника"
                     mode="radio"
                   />
-                </View>
-
-                {/* Date */}
-                <View style={styles.section}>
-                  <Text style={[styles.label, { color: theme.textSecondary }]}>Дата *</Text>
-                  <TouchableOpacity
-                    style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                    onPress={() => setShowDatePicker(true)}
-                  >
-                    <Ionicons name="calendar-outline" size={20} color={theme.primary} />
-                    <Text style={[styles.dateButtonText, { color: theme.text }]}>
-                      {format(date, 'EEEE, dd MMMM yyyy', { locale: ru })}
+                  {isRecurringMode && userId.length === 0 && (
+                    <Text style={[styles.hintText, { color: theme.textSecondary }]}>
+                      Если не выбран, запись применяется ко всем сотрудникам графика
                     </Text>
-                  </TouchableOpacity>
+                  )}
                 </View>
 
-                {/* Shift Type */}
-                <View style={styles.section}>
-                  <Text style={[styles.label, { color: theme.textSecondary }]}>Тип смены *</Text>
-                  <View style={styles.shiftTypeRow}>
-                    {SHIFT_TYPES.map((item) => (
-                      <TouchableOpacity
-                        key={item.value}
-                        style={[
-                          styles.shiftTypeCard,
-                          { backgroundColor: theme.card, borderColor: theme.border },
-                          shiftType === item.value && {
-                            backgroundColor: theme.primary + '15',
-                            borderColor: theme.primary,
-                            borderWidth: 2,
-                          },
-                        ]}
-                        onPress={() => setShiftType(item.value)}
-                      >
-                        <Ionicons
-                          name={item.icon as any}
-                          size={24}
-                          color={shiftType === item.value ? theme.primary : theme.textSecondary}
-                        />
-                        <Text
+                {/* Day of Week (for recurring mode) or Date (for monthly mode) */}
+                {isRecurringMode ? (
+                  <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>День недели *</Text>
+                    <View style={styles.dayOfWeekRow}>
+                      {DAYS_OF_WEEK.map((day) => (
+                        <TouchableOpacity
+                          key={day.value}
                           style={[
-                            styles.shiftTypeLabel,
-                            { color: theme.text },
-                            shiftType === item.value && { color: theme.primary, fontWeight: '600' },
+                            styles.dayOfWeekButton,
+                            { backgroundColor: theme.card, borderColor: theme.border },
+                            dayOfWeek === day.value && {
+                              backgroundColor: theme.primary,
+                              borderColor: theme.primary,
+                            },
                           ]}
+                          onPress={() => setDayOfWeek(day.value)}
                         >
-                          {item.label}
-                        </Text>
-                        {shiftType === item.value && (
-                          <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
-                            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    ))}
+                          <Text
+                            style={[
+                              styles.dayOfWeekLabel,
+                              { color: theme.text },
+                              dayOfWeek === day.value && { color: '#FFFFFF', fontWeight: '600' },
+                            ]}
+                          >
+                            {day.shortLabel}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <Text style={[styles.selectedDayText, { color: theme.textSecondary }]}>
+                      {DAYS_OF_WEEK.find((d) => d.value === dayOfWeek)?.label}
+                    </Text>
                   </View>
-                </View>
+                ) : (
+                  <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Дата *</Text>
+                    <TouchableOpacity
+                      style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                      <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                        {format(date, 'EEEE, dd MMMM yyyy', { locale: ru })}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
-                {/* Time (for custom shift type) */}
-                {shiftType === 'custom' && (
+                {/* Shift Type - only for monthly mode */}
+                {!isRecurringMode && (
+                  <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Тип смены *</Text>
+                    <View style={styles.shiftTypeRow}>
+                      {SHIFT_TYPES.map((item) => (
+                        <TouchableOpacity
+                          key={item.value}
+                          style={[
+                            styles.shiftTypeCard,
+                            { backgroundColor: theme.card, borderColor: theme.border },
+                            shiftType === item.value && {
+                              backgroundColor: theme.primary + '15',
+                              borderColor: theme.primary,
+                              borderWidth: 2,
+                            },
+                          ]}
+                          onPress={() => setShiftType(item.value)}
+                        >
+                          <Ionicons
+                            name={item.icon as any}
+                            size={24}
+                            color={shiftType === item.value ? theme.primary : theme.textSecondary}
+                          />
+                          <Text
+                            style={[
+                              styles.shiftTypeLabel,
+                              { color: theme.text },
+                              shiftType === item.value && { color: theme.primary, fontWeight: '600' },
+                            ]}
+                          >
+                            {item.label}
+                          </Text>
+                          {shiftType === item.value && (
+                            <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
+                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Time - always shown for recurring, or for custom shift type in monthly */}
+                {(isRecurringMode || shiftType === 'custom') && (
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: theme.textSecondary }]}>Время *</Text>
                     <View style={styles.timeRow}>
@@ -466,37 +589,41 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                   />
                 </View>
 
-                {/* Location */}
-                <View style={styles.section}>
-                  <Text style={[styles.label, { color: theme.textSecondary }]}>Место (необязательно)</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Например: Кабинет 105"
-                    placeholderTextColor={theme.inputPlaceholder}
-                    value={location}
-                    onChangeText={setLocation}
-                    maxLength={500}
-                  />
-                </View>
+                {/* Location - only for monthly mode */}
+                {!isRecurringMode && (
+                  <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Место (необязательно)</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Например: Кабинет 105"
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={location}
+                      onChangeText={setLocation}
+                      maxLength={500}
+                    />
+                  </View>
+                )}
 
-                {/* Description */}
-                <View style={styles.section}>
-                  <Text style={[styles.label, { color: theme.textSecondary }]}>Примечание (необязательно)</Text>
-                  <TextInput
-                    style={[styles.textArea, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Дополнительная информация..."
-                    placeholderTextColor={theme.inputPlaceholder}
-                    value={description}
-                    onChangeText={setDescription}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                    maxLength={1000}
-                  />
-                </View>
+                {/* Description - only for monthly mode */}
+                {!isRecurringMode && (
+                  <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Примечание (необязательно)</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Дополнительная информация..."
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={description}
+                      onChangeText={setDescription}
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                      maxLength={1000}
+                    />
+                  </View>
+                )}
 
                 {/* Delete Button (edit mode only) */}
-                {isEditMode && onDelete && (
+                {isEditMode && (isRecurringMode ? onDeleteTemplateEntry : onDelete) && (
                   <TouchableOpacity
                     style={[styles.deleteButton, { borderColor: '#EF4444' }]}
                     onPress={handleDelete}
@@ -716,6 +843,31 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
+  },
+  hintText: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  dayOfWeekRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dayOfWeekButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayOfWeekLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  selectedDayText: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 4,
   },
   deleteButton: {
     flexDirection: 'row',
