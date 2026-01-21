@@ -260,6 +260,10 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
           <View style={styles.sectionContent}>
             {preview.users.map((user, index) => {
               const status = getUserStatus(user);
+              // Получаем ФИО сопоставленного пользователя из системы
+              const matchedUserName = user.user_id
+                ? systemUsersMap.get(user.user_id)
+                : undefined;
               return (
                 <UserRow
                   key={index}
@@ -267,6 +271,7 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                   theme={theme}
                   matched={status.isMatched}
                   override={status.override}
+                  matchedUserName={matchedUserName}
                   editable={editable}
                   onEdit={() => handleEditUser(user)}
                   onClearOverride={() => handleClearMapping(user)}
@@ -420,6 +425,7 @@ interface UserRowProps {
   theme: any;
   matched: boolean;
   override?: { userId: number; userName: string } | null;
+  matchedUserName?: string;
   editable?: boolean;
   onEdit?: () => void;
   onClearOverride?: () => void;
@@ -430,11 +436,17 @@ const UserRow: React.FC<UserRowProps> = ({
   theme,
   matched,
   override,
+  matchedUserName,
   editable = false,
   onEdit,
   onClearOverride,
 }) => {
   const hasOverride = !!override;
+  // Показываем сопоставление если есть override или автоматическое совпадение с user_id
+  const showMatchedUser = hasOverride || (matched && matchedUserName);
+  const displayMatchedName = hasOverride
+    ? (override.userName || `ID: ${override.userId}`)
+    : matchedUserName;
 
   const content = (
     <View
@@ -453,11 +465,11 @@ const UserRow: React.FC<UserRowProps> = ({
         <Text style={[styles.userName, { color: theme.text }]}>
           {user.name}
         </Text>
-        {hasOverride && (
+        {showMatchedUser && displayMatchedName && (
           <View style={styles.overrideInfo}>
-            <Ionicons name="arrow-forward" size={14} color={theme.primary} />
-            <Text style={[styles.overrideName, { color: theme.primary }]}>
-              {override.userName || `ID: ${override.userId}`}
+            <Ionicons name="arrow-forward" size={14} color={hasOverride ? theme.primary : theme.success} />
+            <Text style={[styles.overrideName, { color: hasOverride ? theme.primary : theme.success }]}>
+              {displayMatchedName}
             </Text>
           </View>
         )}
