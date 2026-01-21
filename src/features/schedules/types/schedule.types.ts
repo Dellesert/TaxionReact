@@ -36,6 +36,9 @@ export const VISIBILITY_LABELS: Record<ScheduleVisibility, string> = {
 export interface ScheduleUser {
   id: number;
   name: string;
+  first_name?: string;
+  last_name?: string;
+  middle_name?: string;
   email: string;
   avatar?: string;
   department?: string;
@@ -213,6 +216,7 @@ export interface ImportScheduleRequest {
   start_date: string;
   end_date: string;
   preview?: boolean;
+  user_mapping_overrides?: UserMappingOverride[]; // Переопределения сопоставлений пользователей
 }
 
 // ============================================
@@ -245,6 +249,12 @@ export interface ImportedUser {
   user_id?: number;
   match_score?: number;
   is_unmatched: boolean;
+}
+
+// Для переопределения сопоставления пользователей при импорте
+export interface UserMappingOverride {
+  original_name: string; // Имя из документа
+  user_id: number; // ID выбранного пользователя в системе
 }
 
 export interface ImportPreviewResponse {

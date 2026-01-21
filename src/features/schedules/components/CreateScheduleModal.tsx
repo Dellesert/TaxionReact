@@ -36,6 +36,7 @@ import {
   ScheduleVisibility,
   CreateScheduleRequest,
   ImportScheduleRequest,
+  UserMappingOverride,
 } from '../types/schedule.types';
 import { scheduleApi } from '../api/schedule.api';
 import { useScheduleImport } from '../hooks/useScheduleImport';
@@ -137,6 +138,11 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // User mapping overrides for import
+  const [userMappingOverrides, setUserMappingOverrides] = useState<
+    Map<string, { userId: number; userName: string }>
+  >(new Map());
 
   // Track keyboard visibility
   useEffect(() => {
@@ -352,6 +358,14 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     const startDateISO = `${format(startDate, 'yyyy-MM-dd')}T00:00:00Z`;
     const endDateISO = `${format(endDate, 'yyyy-MM-dd')}T23:59:59Z`;
 
+    // Convert Map to array of UserMappingOverride
+    const overrides: UserMappingOverride[] = Array.from(
+      userMappingOverrides.entries()
+    ).map(([originalName, { userId }]) => ({
+      original_name: originalName,
+      user_id: userId,
+    }));
+
     const request: ImportScheduleRequest = {
       file_id: uploadedFileId,
       title,
@@ -360,6 +374,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       start_date: startDateISO,
       end_date: endDateISO,
       preview: false,
+      user_mapping_overrides: overrides.length > 0 ? overrides : undefined,
     };
 
     const result = await executeImport(request);
@@ -372,7 +387,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     } else {
       setImportStep('preview');
     }
-  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, executeImport, onScheduleCreated]);
+  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, userMappingOverrides, executeImport, onScheduleCreated]);
 
   const handleImportBack = useCallback(() => {
     if (importStep === 'select') {
@@ -386,6 +401,22 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       setImportStep('configure');
     }
   }, [importStep]);
+
+  // Handler for user mapping changes from ImportPreview
+  const handleUserMappingChange = useCallback(
+    (originalName: string, userId: number | null, userName: string | null) => {
+      setUserMappingOverrides((prev) => {
+        const newMap = new Map(prev);
+        if (userId === null) {
+          newMap.delete(originalName);
+        } else {
+          newMap.set(originalName, { userId, userName: userName || '' });
+        }
+        return newMap;
+      });
+    },
+    []
+  );
 
   const handleClose = () => {
     setCurrentStep(0);
@@ -406,6 +437,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     setImportStep('select');
     setSelectedFile(null);
     setUploadedFileId(null);
+    setUserMappingOverrides(new Map());
     clearPreview();
     clearError();
     onClose();
@@ -649,7 +681,14 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       case 'preview':
         return (
           <View style={styles.stepContent}>
-            {preview && <ImportPreview preview={preview} />}
+            {preview && (
+              <ImportPreview
+                preview={preview}
+                editable={true}
+                userMappingOverrides={userMappingOverrides}
+                onUserMappingChange={handleUserMappingChange}
+              />
+            )}
 
             {importError && (
               <View
