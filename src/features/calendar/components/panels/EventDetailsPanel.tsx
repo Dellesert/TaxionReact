@@ -177,6 +177,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   const myParticipation = user && event.participants ? event.participants.find(p => p.user_id === user.id) : null;
   const isCreator = user && event.created_by === user.id;
   const canManage = isCreator || (user && (user.role === 'admin' || user.role === 'super_admin'));
+  const isScheduleEvent = event.type === 'schedule';
 
   // Debug logs
   console.log('🔍 EventDetailsPanel render:', {
@@ -217,6 +218,8 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         return 'flag';
       case 'personal':
         return 'person';
+      case 'schedule':
+        return 'calendar';
       default:
         return 'calendar';
     }
@@ -230,6 +233,8 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         return 'Дедлайны/крайние сроки';
       case 'personal':
         return 'Личные события';
+      case 'schedule':
+        return 'График работы';
       default:
         return 'Событие';
     }
@@ -309,7 +314,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </View>
 
         <View style={styles.headerRight}>
-          {canManage && (
+          {canManage && !isScheduleEvent && (
             <TouchableOpacity
               onPress={() => setShowActionMenu(true)}
               style={styles.actionMenuButton}
@@ -518,8 +523,8 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           </View>
         )}
 
-        {/* Creator (not for personal events) */}
-        {event.creator && event.type !== 'personal' && (
+        {/* Creator (not for personal or schedule events) */}
+        {event.creator && event.type !== 'personal' && !isScheduleEvent && (
           <View style={[styles.section, { borderBottomColor: theme.border }]}>
             <TouchableOpacity
               style={styles.creatorContainer}

@@ -7,7 +7,7 @@ import { ISODateString } from '@/types/common.types';
 import { User } from '@/types/user.types';
 
 // Event Types
-export type EventType = 'personal' | 'meeting' | 'deadline';
+export type EventType = 'personal' | 'meeting' | 'deadline' | 'schedule';
 
 // Event Participant Status
 export type EventParticipantStatus = 'pending' | 'accepted' | 'declined' | 'maybe';

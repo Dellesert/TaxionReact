@@ -206,6 +206,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const isCreator = user && displayEvent.created_by === user.id;
   const canManage = isCreator || (user && (user.role === 'admin' || user.role === 'super_admin'));
 
+  const isScheduleEvent = displayEvent.type === 'schedule';
+
   const getEventIcon = () => {
     switch (displayEvent.type) {
       case 'meeting':
@@ -214,6 +216,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         return 'flag';
       case 'personal':
         return 'person';
+      case 'schedule':
+        return 'calendar';
       default:
         return 'calendar';
     }
@@ -227,6 +231,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         return 'Дедлайны/крайние сроки';
       case 'personal':
         return 'Личные события';
+      case 'schedule':
+        return 'График работы';
       default:
         return 'Событие';
     }
@@ -321,7 +327,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           </View>
 
           <View style={styles.headerRight}>
-            {canManage && (
+            {canManage && !isScheduleEvent && (
               <TouchableOpacity
                 onPress={() => setShowActionMenu(true)}
                 style={styles.actionMenuButton}
@@ -530,8 +536,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             </View>
           )}
 
-          {/* Creator (not for personal events) */}
-          {displayEvent.creator && displayEvent.type !== 'personal' && (
+          {/* Creator (not for personal or schedule events) */}
+          {displayEvent.creator && displayEvent.type !== 'personal' && !isScheduleEvent && (
             <View style={[styles.section, { borderBottomColor: theme.border }]}>
               <TouchableOpacity
                 style={styles.creatorContainer}

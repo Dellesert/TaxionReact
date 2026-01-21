@@ -302,6 +302,7 @@ const EventDetailScreen: React.FC = () => {
   const myParticipation = user && event.participants ? event.participants.find(p => p.user_id === user.id) : null;
   const isCreator = user && event.created_by === user.id;
   const canManage = isCreator || (user && (user.role === 'admin' || user.role === 'super_admin'));
+  const isScheduleEvent = event.type === 'schedule';
 
   const getEventIcon = () => {
     switch (event.type) {
@@ -311,6 +312,8 @@ const EventDetailScreen: React.FC = () => {
         return 'flag';
       case 'personal':
         return 'person';
+      case 'schedule':
+        return 'calendar';
       default:
         return 'calendar';
     }
@@ -324,6 +327,8 @@ const EventDetailScreen: React.FC = () => {
         return 'Дедлайны/крайние сроки';
       case 'personal':
         return 'Личные события';
+      case 'schedule':
+        return 'График работы';
       default:
         return 'Событие';
     }
@@ -426,7 +431,7 @@ const EventDetailScreen: React.FC = () => {
             </View>
 
             <View style={styles.headerRight}>
-              {canManage && (
+              {canManage && !isScheduleEvent && (
                 <TouchableOpacity
                   onPress={() => setShowActionMenu(true)}
                   style={styles.actionMenuButton}
@@ -647,8 +652,8 @@ const EventDetailScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Creator (not for personal events) */}
-            {event.creator && event.type !== 'personal' && (
+            {/* Creator (not for personal or schedule events) */}
+            {event.creator && event.type !== 'personal' && !isScheduleEvent && (
               <View style={[styles.section, { borderBottomColor: theme.border }]}>
                 <TouchableOpacity
                   style={styles.creatorContainer}

@@ -142,8 +142,8 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
             )}
           </View>
 
-          {/* Creator Avatar - on the right */}
-          {event.creator && (
+          {/* Creator Avatar - on the right (hidden for schedule events) */}
+          {event.creator && event.type !== 'schedule' && (
             <Avatar
               name={event.creator.name || event.creator.email}
               imageUrl={event.creator.avatar}
