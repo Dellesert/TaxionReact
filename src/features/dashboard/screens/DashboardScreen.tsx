@@ -5,7 +5,7 @@
 
 import React, { useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
 import { DashboardStackParamList, MainTabParamList } from '@/navigation/types';
@@ -26,6 +26,13 @@ export const DashboardScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { data, isLoading, refresh, isRefreshing } = useDashboardData();
+
+  // Обновляем данные при возврате на экран
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   // Навигация к списку задач
   const navigateToTaskList = useCallback(() => {
