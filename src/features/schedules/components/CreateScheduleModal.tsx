@@ -39,6 +39,7 @@ import {
   ImportScheduleRequest,
   UserMappingOverride,
   SCHEDULE_MODE_LABELS,
+  DEFAULT_SCHEDULE_COLORS,
 } from '../types/schedule.types';
 import { scheduleApi } from '../api/schedule.api';
 import { useScheduleImport } from '../hooks/useScheduleImport';
@@ -147,6 +148,9 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     Map<string, { userId: number; userName: string }>
   >(new Map());
 
+  // Color for import (auto-set based on schedule type)
+  const [importColor, setImportColor] = useState(DEFAULT_SCHEDULE_COLORS.work);
+
   // Track keyboard visibility
   useEffect(() => {
     const showSubscription = Keyboard.addListener(
@@ -181,6 +185,9 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       setCurrentStep(1);
     } else if (method === 'import') {
       setImportStep('select');
+      // Set default type and color for import
+      setScheduleType('work');
+      setImportColor(DEFAULT_SCHEDULE_COLORS.work);
     }
   };
 
@@ -345,6 +352,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       type: scheduleType || 'work',
       start_date: startDateISO,
       end_date: endDateISO,
+      color: importColor,
       preview: true,
     };
 
@@ -352,7 +360,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     if (previewResult) {
       setImportStep('preview');
     }
-  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, loadPreview]);
+  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, importColor, loadPreview]);
 
   const handleImport = useCallback(async () => {
     if (!uploadedFileId) return;
@@ -377,6 +385,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       type: scheduleType || 'work',
       start_date: startDateISO,
       end_date: endDateISO,
+      color: importColor,
       preview: false,
       user_mapping_overrides: overrides.length > 0 ? overrides : undefined,
     };
@@ -391,7 +400,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     } else {
       setImportStep('preview');
     }
-  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, userMappingOverrides, executeImport, onScheduleCreated]);
+  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, importColor, userMappingOverrides, executeImport, onScheduleCreated]);
 
   const handleImportBack = useCallback(() => {
     if (importStep === 'select') {
@@ -422,6 +431,18 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     []
   );
 
+  // Handler for schedule type change during import (auto-sets color)
+  const handleImportTypeChange = useCallback((type: ScheduleType) => {
+    setScheduleType(type);
+    setImportColor(DEFAULT_SCHEDULE_COLORS[type]);
+  }, []);
+
+  // Handler for schedule type change during manual creation (auto-sets color)
+  const handleManualTypeChange = useCallback((type: ScheduleType) => {
+    setScheduleType(type);
+    setColor(DEFAULT_SCHEDULE_COLORS[type]);
+  }, []);
+
   const handleClose = () => {
     setCurrentStep(0);
     setCreateMethod(null);
@@ -443,6 +464,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     setSelectedFile(null);
     setUploadedFileId(null);
     setUserMappingOverrides(new Map());
+    setImportColor(DEFAULT_SCHEDULE_COLORS.work);
     clearPreview();
     clearError();
     onClose();
@@ -627,7 +649,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                           scheduleType === type.value ? theme.primary : theme.border,
                       },
                     ]}
-                    onPress={() => setScheduleType(type.value)}
+                    onPress={() => handleImportTypeChange(type.value)}
                   >
                     <Text
                       style={[
@@ -637,6 +659,28 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                     >
                       {type.label}
                     </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Color */}
+            <View style={styles.inputSection}>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>Цвет графика</Text>
+              <View style={styles.colorRow}>
+                {SCHEDULE_COLORS.map((c) => (
+                  <TouchableOpacity
+                    key={c.value}
+                    style={[
+                      styles.colorOption,
+                      { backgroundColor: c.value },
+                      importColor === c.value && styles.colorOptionSelected,
+                    ]}
+                    onPress={() => setImportColor(c.value)}
+                  >
+                    {importColor === c.value && (
+                      <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                    )}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -941,7 +985,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                           {SCHEDULE_TYPES.map((item) => (
                             <TouchableOpacity
                               key={item.value}
-                              onPress={() => setScheduleType(item.value)}
+                              onPress={() => handleManualTypeChange(item.value)}
                               style={[
                                 styles.typeCard,
                                 { backgroundColor: theme.card, borderColor: theme.border },

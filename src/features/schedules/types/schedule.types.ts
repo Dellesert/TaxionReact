@@ -228,9 +228,19 @@ export interface ImportScheduleRequest {
   type: ScheduleType;
   start_date: string;
   end_date: string;
+  color?: string;
   preview?: boolean;
   user_mapping_overrides?: UserMappingOverride[]; // Переопределения сопоставлений пользователей
 }
+
+// Цвета по умолчанию для типов графиков
+export const DEFAULT_SCHEDULE_COLORS: Record<ScheduleType, string> = {
+  on_duty: '#EF4444',      // Дежурства - красный
+  paid_services: '#10B981', // Платные услуги - зеленый
+  vk: '#3B82F6',           // ВК - синий
+  trips: '#8B5CF6',        // Выезды - фиолетовый
+  work: '#F59E0B',         // Рабочий график - желтый
+};
 
 // ============================================
 // RESPONSE DTOs
