@@ -10,13 +10,13 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useActionModal } from '@shared/contexts/ActionModalContext';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -50,6 +50,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
   const isDesktop = useIsWideScreen();
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
+  const { showConfirm } = useActionModal();
 
   const { updateAbsence, deleteAbsence, isSubmitting } = useAbsenceStore();
 
@@ -92,7 +93,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
     if (!absence) return;
 
     if (!selectedType) {
-      showError('Выберите тип отсутствия');
+      showError('Выберите тип');
       return;
     }
     if (endDate < startDate) {
@@ -123,37 +124,32 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
       };
 
       await updateAbsence(absence.id, data);
-      showSuccess('Отсутствие обновлено');
+      showSuccess('Обновлено');
       onAbsenceUpdated?.();
       onClose();
     } catch (error: any) {
-      showError(error.message || 'Не удалось обновить отсутствие');
+      showError(error.message || 'Не удалось обновить ');
     }
   };
 
   const handleDelete = () => {
     if (!absence) return;
 
-    Alert.alert(
-      'Удаление отсутствия',
-      'Вы уверены, что хотите удалить это отсутствие?',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAbsence(absence.id);
-              showSuccess('Отсутствие удалено');
-              onAbsenceDeleted?.();
-              onClose();
-            } catch (error: any) {
-              showError(error.message || 'Не удалось удалить отсутствие');
-            }
-          },
-        },
-      ]
+    showConfirm(
+      'Удаление',
+      'Вы уверены, что хотите удалить?',
+      async () => {
+        try {
+          await deleteAbsence(absence.id);
+          showSuccess('Удалено');
+          onAbsenceDeleted?.();
+          onClose();
+        } catch (error: any) {
+          showError(error.message || 'Не удалось удалить');
+        }
+      },
+      undefined,
+      { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
     );
   };
 
@@ -209,9 +205,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
               </Text>
             </View>
 
-            <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
-              <Ionicons name="trash-outline" size={24} color={theme.error} />
-            </TouchableOpacity>
+            <View style={styles.headerButton} />
           </View>
 
           {/* Content */}
@@ -242,7 +236,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
             {/* Type Selection */}
             <View style={styles.inputSection}>
               <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Тип отсутствия *
+                Тип
               </Text>
               <View style={styles.typeGrid}>
                 {ABSENCE_TYPES.map((type) => (
@@ -331,7 +325,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                     color: theme.text,
                   },
                 ]}
-                placeholder="Укажите причину отсутствия..."
+                placeholder="Укажите причину..."
                 placeholderTextColor={theme.inputPlaceholder}
                 value={reason}
                 onChangeText={setReason}
@@ -344,6 +338,17 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                 {reason.length}/500
               </Text>
             </View>
+
+            {/* Delete Button */}
+            <TouchableOpacity
+              style={[styles.deleteButton, { borderColor: theme.error }]}
+              onPress={handleDelete}
+            >
+              <Ionicons name="trash-outline" size={20} color={theme.error} />
+              <Text style={[styles.deleteButtonText, { color: theme.error }]}>
+                Удалить
+              </Text>
+            </TouchableOpacity>
           </ScrollView>
 
           {/* Bottom Actions */}
@@ -585,5 +590,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    marginTop: 12,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -94,7 +94,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
       return;
     }
     if (!selectedType) {
-      showError('Выберите тип отсутствия');
+      showError('Выберите тип');
       return;
     }
     if (endDate < startDate) {
@@ -126,11 +126,11 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
       };
 
       const absence = await createAbsence(data);
-      showSuccess('Отсутствие успешно создано');
+      showSuccess('Успешно создано');
       onAbsenceCreated?.(absence.id);
       onClose();
     } catch (error: any) {
-      showError(error.message || 'Не удалось создать отсутствие');
+      showError(error.message || 'Не удалось создать');
     }
   };
 
@@ -176,7 +176,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
 
             <View style={styles.headerCenter}>
               <Text style={[styles.headerTitle, { color: theme.text }]}>
-                Новое отсутствие
+                Новое
               </Text>
             </View>
 
@@ -193,7 +193,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
             {/* User Selection */}
             <View style={styles.inputSection}>
               <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Сотрудник *
+                Сотрудник
               </Text>
               <TouchableOpacity
                 style={[
@@ -218,7 +218,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
             {/* Type Selection */}
             <View style={styles.inputSection}>
               <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Тип отсутствия *
+                Тип
               </Text>
               <View style={styles.typeGrid}>
                 {ABSENCE_TYPES.map((type) => (
@@ -307,7 +307,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
                     color: theme.text,
                   },
                 ]}
-                placeholder="Укажите причину отсутствия..."
+                placeholder="Укажите причину..."
                 placeholderTextColor={theme.inputPlaceholder}
                 value={reason}
                 onChangeText={setReason}
