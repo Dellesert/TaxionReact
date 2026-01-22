@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { ActionModal } from '@shared/components/common/ActionModal';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -50,9 +50,12 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
   const isDesktop = useIsWideScreen();
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
-  const { showConfirm } = useActionModal();
 
   const { updateAbsence, deleteAbsence, isSubmitting } = useAbsenceStore();
+
+  // Local confirm dialog state (для корректной работы на iOS)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form state
   const [selectedType, setSelectedType] = useState<AbsenceType | null>(null);
@@ -134,23 +137,23 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
 
   const handleDelete = () => {
     if (!absence) return;
+    setShowDeleteConfirm(true);
+  };
 
-    showConfirm(
-      'Удаление',
-      'Вы уверены, что хотите удалить?',
-      async () => {
-        try {
-          await deleteAbsence(absence.id);
-          showSuccess('Удалено');
-          onAbsenceDeleted?.();
-          onClose();
-        } catch (error: any) {
-          showError(error.message || 'Не удалось удалить');
-        }
-      },
-      undefined,
-      { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
-    );
+  const confirmDelete = async () => {
+    if (!absence) return;
+    setIsDeleting(true);
+    try {
+      await deleteAbsence(absence.id);
+      showSuccess('Удалено');
+      setShowDeleteConfirm(false);
+      onAbsenceDeleted?.();
+      onClose();
+    } catch (error: any) {
+      showError(error.message || 'Не удалось удалить');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const isValid = selectedType && endDate >= startDate;
@@ -412,6 +415,27 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
               mode="date"
             />
           )}
+
+          {/* Delete Confirmation Modal - рендерится внутри для корректной работы на iOS */}
+          <ActionModal
+            visible={showDeleteConfirm}
+            title="Удаление"
+            message="Вы уверены, что хотите удалить?"
+            onDismiss={() => setShowDeleteConfirm(false)}
+            dismissable={!isDeleting}
+            actions={[
+              {
+                text: 'Отмена',
+                onPress: () => setShowDeleteConfirm(false),
+                style: 'cancel',
+              },
+              {
+                text: 'Удалить',
+                onPress: confirmDelete,
+                style: 'destructive',
+              },
+            ]}
+          />
         </View>
       </View>
     </Modal>

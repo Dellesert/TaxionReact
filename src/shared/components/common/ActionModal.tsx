@@ -89,7 +89,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       statusBarTranslucent
     >
       <Pressable style={[styles.overlay, dynamicStyles.overlay]} onPress={handleDismiss}>
-        <Pressable style={styles.centeredView} onPress={(e) => e.stopPropagation()}>
+        <View style={styles.centeredView} onStartShouldSetResponder={() => true}>
           <View style={[styles.modal, dynamicStyles.modal]}>
             {/* Заголовок */}
             <Text style={[styles.title, dynamicStyles.title]}>{title}</Text>
@@ -185,7 +185,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
               })}
             </ScrollView>
           </View>
-        </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );

@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Create Absence Modal
+ * Модальное окно для создания отсутствия с пошаговым интерфейсом
+ */
+
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +15,9 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
+  Animated,
+  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +45,8 @@ interface CreateAbsenceModalProps {
   defaultUserId?: number;
 }
 
+type Step = 1 | 2 | 3;
+
 export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
   visible,
   onClose,
@@ -50,28 +60,84 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
 
   const { createAbsence, isSubmitting } = useAbsenceStore();
 
-  // Form state
+  // Multi-step state
+  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Step 1: User selection
   const [selectedUserId, setSelectedUserId] = useState<number | null>(defaultUserId || null);
+  const [showUserPicker, setShowUserPicker] = useState(false);
+
+  // Step 2: Type selection
   const [selectedType, setSelectedType] = useState<AbsenceType | null>(null);
+
+  // Step 3: Date range and reason
   const [startDate, setStartDate] = useState(() => new Date());
   const [endDate, setEndDate] = useState(() => new Date());
   const [reason, setReason] = useState('');
-
-  // Date pickers
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [showUserPicker, setShowUserPicker] = useState(false);
+
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Track keyboard visibility
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   // Reset form when modal closes
   useEffect(() => {
     if (!visible) {
+      setCurrentStep(1);
       setSelectedUserId(defaultUserId || null);
       setSelectedType(null);
       setStartDate(new Date());
       setEndDate(new Date());
       setReason('');
+      slideAnim.setValue(0);
     }
   }, [visible, defaultUserId]);
+
+  // Animation when step changes
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 7,
+    }).start();
+  }, [currentStep]);
+
+  // Navigation handlers
+  const goToNextStep = () => {
+    if (currentStep === 1 && !selectedUserId) {
+      return;
+    }
+    if (currentStep === 2 && !selectedType) {
+      return;
+    }
+    if (currentStep < 3) {
+      setCurrentStep((currentStep + 1) as Step);
+    }
+  };
+
+  const goToPreviousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep((currentStep - 1) as Step);
+    }
+  };
 
   const handleStartDateChange = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
@@ -103,7 +169,6 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
     }
 
     try {
-      // Backend expects ISO timestamp format for dates
       const startDateISO = new Date(
         startDate.getFullYear(),
         startDate.getMonth(),
@@ -128,9 +193,30 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
       const absence = await createAbsence(data);
       showSuccess('Успешно создано');
       onAbsenceCreated?.(absence.id);
-      onClose();
+      handleClose();
     } catch (error: any) {
       showError(error.message || 'Не удалось создать');
+    }
+  };
+
+  const handleClose = () => {
+    setCurrentStep(1);
+    setSelectedUserId(defaultUserId || null);
+    setSelectedType(null);
+    setStartDate(new Date());
+    setEndDate(new Date());
+    setReason('');
+    slideAnim.setValue(0);
+    onClose();
+  };
+
+  // Get step info
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case 1: return 'Сотрудник';
+      case 2: return 'Тип отсутствия';
+      case 3: return 'Период и причина';
+      default: return '';
     }
   };
 
@@ -141,8 +227,8 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
       visible={visible}
       animationType={isDesktop ? 'fade' : 'slide'}
       transparent={isDesktop}
-      onRequestClose={onClose}
-      presentationStyle={isDesktop ? 'overFullScreen' : 'pageSheet'}
+      onRequestClose={handleClose}
+      presentationStyle={isDesktop ? 'overFullScreen' : 'fullScreen'}
     >
       <View
         style={[
@@ -155,6 +241,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
           style={[
             styles.container,
             { backgroundColor: theme.card },
+            !isDesktop && { paddingTop: insets.top },
             isDesktop && styles.containerDesktop,
           ]}
         >
@@ -163,204 +250,295 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
             backgroundColor={theme.card}
           />
 
-          {/* Header */}
-          <View
-            style={[
-              styles.header,
-              { backgroundColor: theme.card, borderBottomColor: theme.border },
-            ]}
-          >
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <Ionicons name="close" size={28} color={theme.textSecondary} />
-            </TouchableOpacity>
-
-            <View style={styles.headerCenter}>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>
-                Новое
-              </Text>
-            </View>
-
-            <View style={styles.headerButton} />
-          </View>
-
-          {/* Content */}
-          <ScrollView
-            style={[styles.content, { backgroundColor: theme.background }]}
-            contentContainerStyle={styles.contentContainer}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* User Selection */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Сотрудник
-              </Text>
-              <TouchableOpacity
-                style={[
-                  styles.pickerButton,
-                  { backgroundColor: theme.card, borderColor: theme.border },
-                ]}
-                onPress={() => setShowUserPicker(true)}
-              >
-                <Ionicons name="person-outline" size={20} color={theme.primary} />
-                <Text
-                  style={[
-                    styles.pickerButtonText,
-                    { color: selectedUserId ? theme.text : theme.inputPlaceholder },
-                  ]}
-                >
-                  {selectedUserId ? `Пользователь #${selectedUserId}` : 'Выберите сотрудника'}
-                </Text>
-                <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          {/* Header - hide when keyboard is visible */}
+          {!isKeyboardVisible && (
+            <View
+              style={[
+                styles.header,
+                { backgroundColor: theme.card, borderBottomColor: theme.border },
+              ]}
+            >
+              <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+                <Ionicons name="close" size={28} color={theme.textSecondary} />
               </TouchableOpacity>
-            </View>
 
-            {/* Type Selection */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Тип
-              </Text>
-              <View style={styles.typeGrid}>
-                {ABSENCE_TYPES.map((type) => (
-                  <TouchableOpacity
-                    key={type}
+              <View style={styles.headerCenter}>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>
+                  Новое отсутствие
+                </Text>
+                <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+                  Шаг {currentStep} из 3
+                </Text>
+              </View>
+
+              <View style={styles.headerButton} />
+            </View>
+          )}
+
+          {/* Compact header when keyboard is visible */}
+          {isKeyboardVisible && (
+            <View style={[styles.compactHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+              <TouchableOpacity onPress={handleClose} style={styles.compactHeaderButton}>
+                <Ionicons name="close" size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+              <Text style={[styles.compactHeaderTitle, { color: theme.text }]}>{getStepTitle()}</Text>
+              <View style={styles.compactHeaderButton} />
+            </View>
+          )}
+
+          {/* Progress Indicator - hide when keyboard is visible */}
+          {!isKeyboardVisible && (
+            <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
+              <View style={styles.progressBar}>
+                {[1, 2, 3].map((step) => (
+                  <View
+                    key={step}
                     style={[
-                      styles.typeCard,
-                      { backgroundColor: theme.card, borderColor: theme.border },
-                      selectedType === type && {
-                        borderColor: ABSENCE_TYPE_COLORS[type],
-                        borderWidth: 2,
-                      },
+                      styles.progressStep,
+                      { backgroundColor: theme.border },
+                      currentStep >= step && { backgroundColor: theme.primary },
                     ]}
-                    onPress={() => setSelectedType(type)}
-                  >
-                    <AbsenceTypeIcon type={type} size="medium" />
-                    <Text
-                      style={[
-                        styles.typeLabel,
-                        { color: theme.text },
-                        selectedType === type && { fontWeight: '600' },
-                      ]}
-                    >
-                      {ABSENCE_TYPE_LABELS[type]}
-                    </Text>
-                    {selectedType === type && (
-                      <View
-                        style={[
-                          styles.typeCheck,
-                          { backgroundColor: ABSENCE_TYPE_COLORS[type] },
-                        ]}
-                      >
-                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
+                  />
                 ))}
               </View>
             </View>
+          )}
 
-            {/* Date Range */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Период *</Text>
-              <View style={styles.dateRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.dateButton,
-                    { backgroundColor: theme.card, borderColor: theme.border, flex: 1 },
-                  ]}
-                  onPress={() => setShowStartDatePicker(true)}
-                >
-                  <Ionicons name="calendar-outline" size={20} color={theme.primary} />
-                  <Text style={[styles.dateButtonText, { color: theme.text }]}>
-                    {format(startDate, 'dd MMM yyyy', { locale: ru })}
-                  </Text>
-                </TouchableOpacity>
-                <Text style={[styles.dateSeparator, { color: theme.textSecondary }]}>
-                  —
-                </Text>
-                <TouchableOpacity
-                  style={[
-                    styles.dateButton,
-                    { backgroundColor: theme.card, borderColor: theme.border, flex: 1 },
-                  ]}
-                  onPress={() => setShowEndDatePicker(true)}
-                >
-                  <Ionicons name="calendar-outline" size={20} color={theme.primary} />
-                  <Text style={[styles.dateButtonText, { color: theme.text }]}>
-                    {format(endDate, 'dd MMM yyyy', { locale: ru })}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Reason */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Причина (необязательно)
-              </Text>
-              <TextInput
-                style={[
-                  styles.textArea,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                placeholder="Укажите причину..."
-                placeholderTextColor={theme.inputPlaceholder}
-                value={reason}
-                onChangeText={setReason}
-                maxLength={500}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-              <Text style={[styles.charCount, { color: theme.textTertiary }]}>
-                {reason.length}/500
-              </Text>
-            </View>
-          </ScrollView>
-
-          {/* Bottom Actions */}
-          <View
-            style={[
-              styles.bottomActions,
-              {
-                backgroundColor: theme.card,
-                borderTopColor: theme.border,
-                paddingBottom: isDesktop ? 20 : Math.max(insets.bottom, 16),
-              },
-            ]}
+          <KeyboardAvoidingView
+            style={styles.keyboardAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={0}
           >
-            <TouchableOpacity
-              style={[styles.cancelButton, { borderColor: theme.border }]}
-              onPress={onClose}
-            >
-              <Text style={[styles.cancelButtonText, { color: theme.text }]}>
-                Отмена
-              </Text>
-            </TouchableOpacity>
+            {/* Content */}
+            <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
+              <ScrollView
+                style={[styles.content, { backgroundColor: theme.background }]}
+                contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 10 : 20 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={[styles.stepContainer, isKeyboardVisible && styles.stepContainerCompact]}>
+                  {!isKeyboardVisible && (
+                    <Text style={[styles.stepTitle, { color: theme.text }]}>{getStepTitle()}</Text>
+                  )}
 
-            <TouchableOpacity
+                  {/* Step 1: User Selection */}
+                  {currentStep === 1 && (
+                    <View style={styles.stepContent}>
+                      {!isKeyboardVisible && (
+                        <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                          Выберите сотрудника, для которого нужно создать отсутствие
+                        </Text>
+                      )}
+                      <TouchableOpacity
+                        style={[
+                          styles.selectorCard,
+                          { backgroundColor: theme.card, borderColor: theme.border },
+                          !!selectedUserId && { borderColor: theme.primary, borderWidth: 2 },
+                        ]}
+                        onPress={() => setShowUserPicker(true)}
+                      >
+                        <View style={[styles.selectorIcon, { backgroundColor: selectedUserId ? theme.primary : theme.backgroundSecondary }]}>
+                          <Ionicons name="person" size={28} color={selectedUserId ? '#FFFFFF' : theme.primary} />
+                        </View>
+                        <View style={styles.selectorInfo}>
+                          <Text style={[styles.selectorTitle, { color: theme.text }]}>
+                            {selectedUserId ? `Пользователь #${selectedUserId}` : 'Выберите сотрудника'}
+                          </Text>
+                          <Text style={[styles.selectorDescription, { color: theme.textSecondary }]}>
+                            {selectedUserId ? 'Нажмите, чтобы изменить' : 'Нажмите для выбора'}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={24} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Step 2: Type Selection */}
+                  {currentStep === 2 && (
+                    <View style={styles.stepContent}>
+                      <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                        Выберите тип отсутствия сотрудника
+                      </Text>
+                      {ABSENCE_TYPES.map((type) => (
+                        <TouchableOpacity
+                          key={type}
+                          onPress={() => setSelectedType(type)}
+                          style={[
+                            styles.typeCard,
+                            { backgroundColor: theme.card, borderColor: theme.border },
+                            selectedType === type && { borderColor: ABSENCE_TYPE_COLORS[type], borderWidth: 2 },
+                          ]}
+                        >
+                          <View style={[
+                            styles.typeIconContainer,
+                            { backgroundColor: selectedType === type ? ABSENCE_TYPE_COLORS[type] : theme.backgroundSecondary }
+                          ]}>
+                            <AbsenceTypeIcon type={type} size="medium" />
+                          </View>
+                          <View style={styles.typeInfo}>
+                            <Text style={[styles.typeTitle, { color: theme.text }]}>
+                              {ABSENCE_TYPE_LABELS[type]}
+                            </Text>
+                          </View>
+                          {selectedType === type && (
+                            <View style={[styles.typeCheck, { backgroundColor: ABSENCE_TYPE_COLORS[type] }]}>
+                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Step 3: Date Range and Reason */}
+                  {currentStep === 3 && (
+                    <View style={styles.stepContent}>
+                      <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                        Укажите период отсутствия и причину (необязательно)
+                      </Text>
+
+                      {/* Date Range */}
+                      <View style={styles.detailSection}>
+                        <Text style={[styles.detailLabel, { color: theme.text }]}>Период</Text>
+                        <View style={styles.dateRow}>
+                          <TouchableOpacity
+                            style={[
+                              styles.dateButton,
+                              { backgroundColor: theme.card, borderColor: theme.border, flex: 1 },
+                            ]}
+                            onPress={() => setShowStartDatePicker(true)}
+                          >
+                            <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                            <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                              {format(startDate, 'dd MMM yyyy', { locale: ru })}
+                            </Text>
+                          </TouchableOpacity>
+                          <Text style={[styles.dateSeparator, { color: theme.textSecondary }]}>
+                            —
+                          </Text>
+                          <TouchableOpacity
+                            style={[
+                              styles.dateButton,
+                              { backgroundColor: theme.card, borderColor: theme.border, flex: 1 },
+                            ]}
+                            onPress={() => setShowEndDatePicker(true)}
+                          >
+                            <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                            <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                              {format(endDate, 'dd MMM yyyy', { locale: ru })}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {/* Reason */}
+                      <View style={styles.detailSection}>
+                        <Text style={[styles.detailLabel, { color: theme.text }]}>
+                          Причина (необязательно)
+                        </Text>
+                        <TextInput
+                          style={[
+                            styles.textArea,
+                            {
+                              backgroundColor: theme.card,
+                              borderColor: theme.border,
+                              color: theme.text,
+                            },
+                          ]}
+                          placeholder="Укажите причину..."
+                          placeholderTextColor={theme.inputPlaceholder}
+                          value={reason}
+                          onChangeText={setReason}
+                          maxLength={500}
+                          multiline
+                          numberOfLines={3}
+                          textAlignVertical="top"
+                        />
+                        <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+                          {reason.length}/500
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </ScrollView>
+            </Animated.View>
+
+            {/* Bottom Navigation */}
+            <View
               style={[
-                styles.submitButton,
-                { backgroundColor: theme.primary },
-                !isValid && { opacity: 0.5 },
+                styles.bottomNav,
+                isKeyboardVisible && styles.bottomNavCompact,
+                {
+                  backgroundColor: theme.card,
+                  borderTopColor: theme.border,
+                  paddingBottom: isKeyboardVisible ? 8 : (isDesktop ? 20 : Math.max(insets.bottom, 16)),
+                },
               ]}
-              onPress={handleSubmit}
-              disabled={!isValid || isSubmitting}
             >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+              {currentStep > 1 ? (
+                <TouchableOpacity
+                  onPress={goToPreviousStep}
+                  style={[
+                    styles.navButton,
+                    styles.backButton,
+                    isKeyboardVisible && styles.navButtonCompact,
+                    { borderColor: theme.border },
+                  ]}
+                >
+                  <Ionicons name="arrow-back" size={isKeyboardVisible ? 18 : 20} color={theme.text} />
+                  <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: theme.text }]}>
+                    Назад
+                  </Text>
+                </TouchableOpacity>
               ) : (
-                <>
-                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  <Text style={styles.submitButtonText}>Создать</Text>
-                </>
+                <View style={[styles.navButton, isKeyboardVisible && styles.navButtonCompact]} />
               )}
-            </TouchableOpacity>
-          </View>
+
+              {currentStep < 3 ? (
+                <TouchableOpacity
+                  onPress={goToNextStep}
+                  style={[
+                    styles.navButton,
+                    styles.nextButton,
+                    isKeyboardVisible && styles.navButtonCompact,
+                    { backgroundColor: theme.primary },
+                    ((currentStep === 1 && !selectedUserId) || (currentStep === 2 && !selectedType)) && { opacity: 0.5 },
+                  ]}
+                  disabled={(currentStep === 1 && !selectedUserId) || (currentStep === 2 && !selectedType)}
+                >
+                  <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: '#FFFFFF' }]}>
+                    Далее
+                  </Text>
+                  <Ionicons name="arrow-forward" size={isKeyboardVisible ? 18 : 20} color="#FFFFFF" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={handleSubmit}
+                  disabled={isSubmitting || !isValid}
+                  style={[
+                    styles.navButton,
+                    styles.createButton,
+                    isKeyboardVisible && styles.navButtonCompact,
+                    { backgroundColor: theme.primary },
+                    !isValid && { opacity: 0.5 },
+                  ]}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark" size={isKeyboardVisible ? 18 : 20} color="#FFFFFF" />
+                      <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: '#FFFFFF' }]}>
+                        Создать
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </KeyboardAvoidingView>
 
           {/* Date Pickers */}
           {showStartDatePicker && (
@@ -435,6 +613,9 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -442,6 +623,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
+  },
+  compactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  compactHeaderButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactHeaderTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   headerButton: {
     width: 44,
@@ -457,59 +658,109 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  headerSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  progressContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  progressBar: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  progressStep: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
   content: {
     flex: 1,
   },
-  contentContainer: {
+  stepContainer: {
     padding: 20,
-    gap: 20,
   },
-  inputSection: {
-    gap: 8,
+  stepContainerCompact: {
+    padding: 12,
+    paddingTop: 8,
   },
-  inputLabel: {
+  stepTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  stepDescription: {
     fontSize: 15,
-    fontWeight: '600',
+    lineHeight: 22,
+    marginBottom: 24,
   },
-  pickerButton: {
+  stepContent: {
+    gap: 12,
+  },
+  selectorCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderWidth: 1,
+    padding: 16,
     borderRadius: 12,
-    gap: 10,
+    borderWidth: 1,
+    gap: 16,
   },
-  pickerButtonText: {
+  selectorIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectorInfo: {
     flex: 1,
-    fontSize: 15,
   },
-  typeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  selectorTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  selectorDescription: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   typeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    gap: 8,
-    minWidth: '45%',
-    flex: 1,
+    gap: 16,
   },
-  typeLabel: {
-    fontSize: 13,
-    flex: 1,
-  },
-  typeCheck: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  typeIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  typeInfo: {
+    flex: 1,
+  },
+  typeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  typeCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailSection: {
+    marginBottom: 16,
+  },
+  detailLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
   },
   dateRow: {
     flexDirection: 'row',
@@ -543,39 +794,48 @@ const styles = StyleSheet.create({
   charCount: {
     fontSize: 12,
     textAlign: 'right',
+    marginTop: 4,
   },
-  bottomActions: {
+  bottomNav: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 16,
     borderTopWidth: 1,
     gap: 12,
   },
-  cancelButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  submitButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
+  bottomNavCompact: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
     gap: 8,
   },
-  submitButtonText: {
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    flex: 1,
+  },
+  navButtonCompact: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
+  },
+  backButton: {
+    borderWidth: 1,
+  },
+  nextButton: {},
+  createButton: {},
+  navButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+  },
+  navButtonTextCompact: {
+    fontSize: 14,
   },
 });
