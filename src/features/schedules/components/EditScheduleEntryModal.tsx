@@ -540,7 +540,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                       </Text>
                     )}
                   </View>
-                ) : (
+                ) : !isEditMode ? (
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: theme.textSecondary }]}>Дата</Text>
                     <TouchableOpacity
@@ -553,7 +553,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                       </Text>
                     </TouchableOpacity>
                   </View>
-                )}
+                ) : null}
 
                 {/* Shift Type - for both modes */}
                 {(
