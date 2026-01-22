@@ -72,10 +72,6 @@ export const ScheduleEntriesList: React.FC<ScheduleEntriesListProps> = ({
           <Text style={styles.todayBadgeText}>Сегодня</Text>
         </View>
       )}
-      <Text style={[styles.entryCount, { color: theme.textSecondary }]}>
-        {section.data.length} {section.data.length === 1 ? 'запись' :
-          section.data.length < 5 ? 'записи' : 'записей'}
-      </Text>
     </View>
   );
 
@@ -140,10 +136,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
-  },
-  entryCount: {
-    fontSize: 13,
-    marginLeft: 'auto',
   },
   itemContainer: {
     paddingHorizontal: 16,
