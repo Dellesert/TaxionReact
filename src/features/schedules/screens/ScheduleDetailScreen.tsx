@@ -300,6 +300,7 @@ export const ScheduleDetailScreen: React.FC = () => {
 
       <ScrollView
         style={styles.content}
+        contentContainerStyle={styles.contentContainer}
         refreshControl={
           <RefreshControl
             refreshing={isLoading || isLoadingEntries}
@@ -544,6 +545,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 120,
   },
   infoCard: {
     margin: 16,
