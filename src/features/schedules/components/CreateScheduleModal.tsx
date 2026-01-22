@@ -29,7 +29,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
-import { format, addMonths } from 'date-fns';
+import { format, addMonths, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import {
   ScheduleType,
@@ -103,8 +103,8 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   const [scheduleType, setScheduleType] = useState<ScheduleType | null>(null);
 
   // Step 3: Dates and Times
-  const [startDate, setStartDate] = useState(() => new Date());
-  const [endDate, setEndDate] = useState(() => addMonths(new Date(), 1));
+  const [startDate, setStartDate] = useState(() => startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState(() => endOfMonth(new Date()));
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [morningStart, setMorningStart] = useState('08:00');
@@ -235,6 +235,21 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     if (selectedDate) {
       setEndDate(selectedDate);
     }
+  };
+
+  // Navigate to previous/next month
+  const goToPreviousMonth = () => {
+    const newStart = startOfMonth(subMonths(startDate, 1));
+    const newEnd = endOfMonth(subMonths(startDate, 1));
+    setStartDate(newStart);
+    setEndDate(newEnd);
+  };
+
+  const goToNextMonth = () => {
+    const newStart = startOfMonth(addMonths(startDate, 1));
+    const newEnd = endOfMonth(addMonths(startDate, 1));
+    setStartDate(newStart);
+    setEndDate(newEnd);
   };
 
   const formatTimeInput = (value: string): string => {
@@ -449,8 +464,8 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     setTitle('');
     setDescription('');
     setScheduleType(null);
-    setStartDate(new Date());
-    setEndDate(addMonths(new Date(), 1));
+    setStartDate(startOfMonth(new Date()));
+    setEndDate(endOfMonth(new Date()));
     setMorningStart('08:00');
     setMorningEnd('14:00');
     setEveningStart('14:00');
@@ -689,6 +704,28 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             {/* Date range */}
             <View style={styles.inputSection}>
               <Text style={[styles.inputLabel, { color: theme.text }]}>Период</Text>
+
+              {/* Month navigation */}
+              <View style={styles.monthNavigation}>
+                <TouchableOpacity
+                  style={[styles.monthArrowButton, { backgroundColor: theme.backgroundSecondary }]}
+                  onPress={goToPreviousMonth}
+                >
+                  <Ionicons name="chevron-back" size={22} color={theme.primary} />
+                </TouchableOpacity>
+
+                <Text style={[styles.monthLabel, { color: theme.text }]}>
+                  {format(startDate, 'LLLL yyyy', { locale: ru })}
+                </Text>
+
+                <TouchableOpacity
+                  style={[styles.monthArrowButton, { backgroundColor: theme.backgroundSecondary }]}
+                  onPress={goToNextMonth}
+                >
+                  <Ionicons name="chevron-forward" size={22} color={theme.primary} />
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.dateRow}>
                 <TouchableOpacity
                   style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border, flex: 1 }]}
@@ -1021,6 +1058,28 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         <View style={styles.stepContent}>
                           <View style={styles.inputSection}>
                             <Text style={[styles.inputLabel, { color: theme.text }]}>Период действия</Text>
+
+                            {/* Month navigation */}
+                            <View style={styles.monthNavigation}>
+                              <TouchableOpacity
+                                style={[styles.monthArrowButton, { backgroundColor: theme.backgroundSecondary }]}
+                                onPress={goToPreviousMonth}
+                              >
+                                <Ionicons name="chevron-back" size={22} color={theme.primary} />
+                              </TouchableOpacity>
+
+                              <Text style={[styles.monthLabel, { color: theme.text }]}>
+                                {format(startDate, 'LLLL yyyy', { locale: ru })}
+                              </Text>
+
+                              <TouchableOpacity
+                                style={[styles.monthArrowButton, { backgroundColor: theme.backgroundSecondary }]}
+                                onPress={goToNextMonth}
+                              >
+                                <Ionicons name="chevron-forward" size={22} color={theme.primary} />
+                              </TouchableOpacity>
+                            </View>
+
                             <View style={styles.dateRow}>
                               <TouchableOpacity
                                 style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border, flex: 1 }]}
@@ -1612,6 +1671,28 @@ const styles = StyleSheet.create({
   typeButtonSmallText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  // Month navigation
+  monthNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 12,
+  },
+  monthArrowButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+    minWidth: 140,
+    textAlign: 'center',
   },
   // Date row
   dateRow: {
