@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
@@ -60,70 +60,88 @@ export const MonthPicker: React.FC<MonthPickerProps> = React.memo(({
   }, [selectedDate]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableOpacity
-        onPress={handlePrevMonth}
-        style={styles.arrowButton}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    <View style={styles.wrapper}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.card,
+            shadowColor: theme.shadow,
+          }
+        ]}
       >
-        <Ionicons name="chevron-back" size={24} color={theme.primary} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handlePrevMonth}
+          style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={20} color={theme.text} />
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={handleToday}
-        style={styles.monthButton}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.monthText, { color: theme.text }]}>
-          {monthLabel}
-        </Text>
-        {!isCurrentMonth && (
-          <View style={[styles.todayBadge, { backgroundColor: theme.primary + '20' }]}>
-            <Text style={[styles.todayText, { color: theme.primary }]}>
-              Сегодня
-            </Text>
-          </View>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleToday}
+          style={styles.monthButton}
+          activeOpacity={isCurrentMonth ? 1 : 0.6}
+          disabled={isCurrentMonth}
+        >
+          <Text style={[styles.monthText, { color: theme.text }]}>
+            {monthLabel}
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={handleNextMonth}
-        style={styles.arrowButton}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Ionicons name="chevron-forward" size={24} color={theme.primary} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleNextMonth}
+          style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-forward" size={20} color={theme.text} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 });
 
 const styles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   arrowButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   monthButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    minWidth: 140,
   },
   monthText: {
     fontSize: 17,
     fontWeight: '600',
-  },
-  todayBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  todayText: {
-    fontSize: 12,
-    fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });
