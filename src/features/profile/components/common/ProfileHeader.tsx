@@ -18,10 +18,12 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const departmentOpacity = useRef(new Animated.Value(0)).current;
+  // Initialize opacity to 1 if department already exists (from cache), otherwise 0
+  const departmentOpacity = useRef(new Animated.Value(user.department ? 1 : 0)).current;
 
   useEffect(() => {
     if (user.department) {
+      // Only animate if currently invisible
       Animated.timing(departmentOpacity, {
         toValue: 1,
         duration: 200,

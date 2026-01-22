@@ -47,7 +47,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isSharing, setIsSharing] = useState(false);
-  const [loadingStates, setLoadingStates] = useState<boolean[]>([]);
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
 
   // Shared values для галереи
   const translateX = useSharedValue(0);
@@ -108,8 +108,8 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       swipeDownY.value = 0;
       swipeDownOpacity.value = 1;
 
-      // Инициализация состояний загрузки
-      setLoadingStates(new Array(imageUrls.length).fill(true));
+      // Сброс состояний загрузки
+      setLoadedImages(new Set());
     }
   }, [visible, initialIndex, imageUrls.length]);
 
@@ -525,11 +525,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   };
 
   const setImageLoaded = (index: number) => {
-    setLoadingStates(prev => {
-      const newStates = [...prev];
-      newStates[index] = false;
-      return newStates;
-    });
+    setLoadedImages(prev => new Set(prev).add(index));
   };
 
   // Не отображаем модалку если нет изображений
@@ -565,7 +561,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                   >
                     {shouldRender ? (
                       <>
-                        {loadingStates[index] && (
+                        {!loadedImages.has(index) && (
                           <View style={styles.loaderContainer}>
                             <ActivityIndicator size="large" color="#FFFFFF" />
                           </View>
