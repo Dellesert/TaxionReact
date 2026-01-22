@@ -175,7 +175,7 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
     const monthHeader = format(month.date, 'LLLL yyyy', { locale: ru });
 
     return (
-      <View style={[styles.monthContainer, { backgroundColor: theme.card }]}>
+      <View style={[styles.monthContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
         {/* Month header */}
         <View style={[styles.monthHeader, { borderBottomColor: theme.border }]}>
           <Text style={[styles.monthHeaderText, { color: theme.text }]}>{monthHeader}</Text>
@@ -407,12 +407,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 8,
     borderRadius: 16,
-    overflow: 'hidden',
+    borderWidth: 1,
+    // Shadow for iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    // Shadow for Android
+    elevation: 2,
   },
   monthHeader: {
     paddingVertical: 16,
