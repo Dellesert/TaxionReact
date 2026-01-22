@@ -5,6 +5,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AbsenceTypeIcon } from './AbsenceTypeIcon';
+import { Avatar } from '@shared/components/common/Avatar';
 import {
   ABSENCE_TYPE_LABELS,
   ABSENCE_TYPE_COLORS,
@@ -14,24 +15,18 @@ import {
 interface AbsenceCardProps {
   absence: Absence;
   onPress?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  showActions?: boolean;
 }
 
 export const AbsenceCard: React.FC<AbsenceCardProps> = ({
   absence,
   onPress,
-  onEdit,
-  onDelete,
-  showActions = true,
 }) => {
   const { theme } = useTheme();
   const typeColor = ABSENCE_TYPE_COLORS[absence.type];
 
   const formatDate = (dateString: string) => {
     try {
-      return format(parseISO(dateString), 'dd MMM yyyy', { locale: ru });
+      return format(parseISO(dateString), 'dd MMM', { locale: ru });
     } catch {
       return dateString;
     }
@@ -45,71 +40,66 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
     return `Пользователь #${absence.user_id}`;
   };
 
+  const getAvatarUrl = () => {
+    return absence.user?.avatar || undefined;
+  };
+
   return (
     <TouchableOpacity
       style={[
         styles.container,
         {
-          backgroundColor: theme.backgroundSecondary,
-          borderColor: theme.border,
+          backgroundColor: theme.card,
         },
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
       disabled={!onPress}
     >
-      <View style={[styles.colorIndicator, { backgroundColor: typeColor }]} />
+      {/* Left color accent */}
+      <View style={[styles.colorAccent, { backgroundColor: typeColor }]} />
 
+      {/* Main content */}
       <View style={styles.content}>
-        <View style={styles.header}>
-          <AbsenceTypeIcon type={absence.type} size="medium" />
-          <View style={styles.headerText}>
-            <Text style={[styles.typeName, { color: theme.text }]}>
-              {ABSENCE_TYPE_LABELS[absence.type]}
-            </Text>
-            <Text style={[styles.userName, { color: theme.textSecondary }]} numberOfLines={1}>
-              {getUserName()}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.dateRow}>
-          <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
-          <Text style={[styles.dateText, { color: theme.textSecondary }]}>
-            {formatDate(absence.start_date)} — {formatDate(absence.end_date)}
+        {/* Type badge */}
+        <View style={styles.typeInfo}>
+          <AbsenceTypeIcon type={absence.type} size="small" />
+          <Text style={[styles.typeName, { color: typeColor }]}>
+            {ABSENCE_TYPE_LABELS[absence.type]}
           </Text>
         </View>
 
+        {/* User name */}
+        <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
+          {getUserName()}
+        </Text>
+
+        {/* Bottom row: Dates ... Avatar */}
+        <View style={styles.bottomRow}>
+          <View style={styles.dateRow}>
+            <Ionicons name="calendar-outline" size={13} color={theme.textTertiary} />
+            <Text style={[styles.dateText, { color: theme.textSecondary }]}>
+              {formatDate(absence.start_date)} — {formatDate(absence.end_date)}
+            </Text>
+          </View>
+          <Avatar
+            name={getUserName()}
+            imageUrl={getAvatarUrl()}
+            size={32}
+            userId={absence.user_id}
+          />
+        </View>
+
+        {/* Reason (if exists) */}
         {absence.reason && (
           <Text
             style={[styles.reason, { color: theme.textTertiary }]}
-            numberOfLines={2}
+            numberOfLines={1}
           >
             {absence.reason}
           </Text>
         )}
       </View>
-
-      {showActions && (onEdit || onDelete) && (
-        <View style={styles.actions}>
-          {onEdit && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: theme.background }]}
-              onPress={onEdit}
-            >
-              <Ionicons name="pencil-outline" size={16} color={theme.primary} />
-            </TouchableOpacity>
-          )}
-          {onDelete && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: theme.background }]}
-              onPress={onDelete}
-            >
-              <Ionicons name="trash-outline" size={16} color={theme.error} />
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
     </TouchableOpacity>
   );
 };
@@ -117,61 +107,59 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 8,
+    alignItems: 'stretch',
+    borderRadius: 14,
+    marginBottom: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  colorIndicator: {
+  colorAccent: {
     width: 4,
-    height: '100%',
-    borderRadius: 2,
-    marginRight: 12,
-    minHeight: 70,
   },
   content: {
     flex: 1,
-    gap: 8,
+    padding: 14,
+    gap: 6,
   },
-  header: {
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
-  headerText: {
-    flex: 1,
+  typeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   typeName: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   userName: {
-    fontSize: 13,
+    fontSize: 15,
+    fontWeight: '500',
     marginTop: 2,
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+    marginTop: 2,
   },
   dateText: {
-    fontSize: 12,
+    fontSize: 13,
   },
   reason: {
     fontSize: 12,
     lineHeight: 16,
-  },
-  actions: {
-    flexDirection: 'column',
-    gap: 4,
-    marginLeft: 8,
-  },
-  actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });

@@ -19,9 +19,6 @@ interface AbsenceListProps {
   onRefresh?: () => void;
   onLoadMore?: () => void;
   onItemPress?: (absence: Absence) => void;
-  onItemEdit?: (absence: Absence) => void;
-  onItemDelete?: (absence: Absence) => void;
-  showActions?: boolean;
   emptyMessage?: string;
   ListHeaderComponent?: React.ReactElement;
 }
@@ -33,9 +30,6 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
   onRefresh,
   onLoadMore,
   onItemPress,
-  onItemEdit,
-  onItemDelete,
-  showActions = true,
   emptyMessage = 'Нет отсутствий',
   ListHeaderComponent,
 }) => {
@@ -45,9 +39,6 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
     <AbsenceCard
       absence={item}
       onPress={onItemPress ? () => onItemPress(item) : undefined}
-      onEdit={onItemEdit ? () => onItemEdit(item) : undefined}
-      onDelete={onItemDelete ? () => onItemDelete(item) : undefined}
-      showActions={showActions}
     />
   );
 

@@ -75,10 +75,6 @@ export const AbsenceListScreen: React.FC = () => {
     setShowEditModal(true);
   }, []);
 
-  const handleEditAbsence = useCallback((absence: Absence) => {
-    setSelectedAbsence(absence);
-    setShowEditModal(true);
-  }, []);
 
   const handleApplyFilter = useCallback((type: AbsenceType | null) => {
     setSelectedTypeFilter(type);
@@ -168,7 +164,6 @@ export const AbsenceListScreen: React.FC = () => {
           onRefresh={handleRefresh}
           onLoadMore={handleLoadMore}
           onItemPress={handleAbsencePress}
-          onItemEdit={handleEditAbsence}
           emptyMessage={
             selectedTypeFilter
               ? `Нет отсутствий типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}"`
