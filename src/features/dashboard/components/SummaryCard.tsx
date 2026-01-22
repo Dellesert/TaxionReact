@@ -212,10 +212,10 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
             <Ionicons name="checkmark-circle" size={40} color="#10B981" />
           </View>
           <Text style={[styles.successTitle, { color: isDark ? '#6ee7b7' : '#065f46' }]}>
-            Все задачи выполнены!
+            Нет новых событий!
           </Text>
           <Text style={[styles.successSubtitle, { color: isDark ? '#6ee7b7AA' : '#065f46AA' }]}>
-            Нет просроченных задач, новых заданий и активных опросов
+            Здесь будут появляться сведения о новых задачах, опросах, графиков
           </Text>
         </View>
       </View>
