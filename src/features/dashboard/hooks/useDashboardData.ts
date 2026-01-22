@@ -16,7 +16,7 @@ export interface UseDashboardDataReturn {
   isRefreshing: boolean;
   error: string | null;
   loadDashboard: () => Promise<void>;
-  refresh: () => Promise<void>;
+  refresh: (silent?: boolean) => Promise<void>;
 }
 
 const ITEMS_LIMIT = 5;
@@ -106,9 +106,11 @@ export const useDashboardData = (): UseDashboardDataReturn => {
     }
   }, [data]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     try {
-      setIsRefreshing(true);
+      if (!silent) {
+        setIsRefreshing(true);
+      }
       setError(null);
       const dashboardData = await dashboardApi.getDashboardSummary(ITEMS_LIMIT);
       setData(dashboardData);
@@ -117,7 +119,9 @@ export const useDashboardData = (): UseDashboardDataReturn => {
       console.error('Failed to refresh dashboard:', err);
       setError(err.message || 'Не удалось обновить данные');
     } finally {
-      setIsRefreshing(false);
+      if (!silent) {
+        setIsRefreshing(false);
+      }
     }
   }, []);
 

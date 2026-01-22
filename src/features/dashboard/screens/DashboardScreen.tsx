@@ -27,10 +27,10 @@ export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { data, isLoading, refresh, isRefreshing } = useDashboardData();
 
-  // Обновляем данные при возврате на экран
+  // Тихое обновление данных при возврате на экран (без дёргания ScrollView)
   useFocusEffect(
     useCallback(() => {
-      refresh();
+      refresh(true);
     }, [refresh])
   );
 
