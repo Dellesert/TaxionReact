@@ -21,6 +21,7 @@ interface UseInfiniteCalendarDataReturn {
   addMonthsToStart: (count: number) => void;
   refreshMonth: (monthKey: string) => Promise<void>;
   refreshAllVisible: (visibleKeys: string[]) => Promise<void>;
+  invalidateAllMonths: () => void;
 }
 
 /**
@@ -248,6 +249,20 @@ export const useInfiniteCalendarData = (): UseInfiniteCalendarDataReturn => {
     [loadEventsForMonth]
   );
 
+  /**
+   * Invalidate all months - clears cache and resets loaded state
+   * Used when switching back to calendar view to ensure fresh data
+   */
+  const invalidateAllMonths = useCallback(() => {
+    // Clear the store cache
+    useCalendarStore.getState().clearCache();
+
+    // Reset all months to not loaded
+    setMonths((prev) =>
+      prev.map((m) => ({ ...m, isLoaded: false, events: [] }))
+    );
+  }, []);
+
   return {
     months,
     initialScrollIndex,
@@ -256,5 +271,6 @@ export const useInfiniteCalendarData = (): UseInfiniteCalendarDataReturn => {
     addMonthsToStart,
     refreshMonth,
     refreshAllVisible,
+    invalidateAllMonths,
   };
 };

@@ -23,6 +23,8 @@ export const getNavigationScreenByType = (
         return 'Tasks';
       case 'open_event':
         return 'Calendar';
+      case 'open_schedule':
+        return 'Dashboard';
       case 'open_poll':
         return 'Polls';
       case 'open_app':
@@ -50,6 +52,8 @@ export const getNavigationScreenByType = (
     case 'event':
     case 'calendar':
       return 'Calendar';
+    case 'schedule':
+      return 'Dashboard';
     case 'system':
       return null; // System notifications don't navigate anywhere
     default:
@@ -147,6 +151,17 @@ export const getNavigationParams = (
         return null;
       }
 
+      case 'open_schedule': {
+        const scheduleId = toNumber(data.schedule_id);
+        if (scheduleId) {
+          return {
+            screen: 'ScheduleDetail',
+            params: { scheduleId },
+          };
+        }
+        return { screen: 'ScheduleList' };
+      }
+
       case 'open_app':
       default:
         return null;
@@ -214,6 +229,16 @@ export const getNavigationParams = (
       }
       // Even without event_id, allow navigation to calendar
       return { navigateToCalendar: true };
+    case 'schedule':
+      // For schedules, navigate to schedule detail
+      const scheduleId = toNumber(data.schedule_id);
+      if (scheduleId) {
+        return {
+          screen: 'ScheduleDetail',
+          params: { scheduleId },
+        };
+      }
+      return { screen: 'ScheduleList' };
     case 'system':
       return null;
     default:

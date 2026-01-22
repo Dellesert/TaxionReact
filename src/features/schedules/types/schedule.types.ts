@@ -2,7 +2,7 @@
 // ENUMS & CONSTANTS
 // ============================================
 
-export type ScheduleType = 'work' | 'paid_services' | 'on_duty' | 'shift' | 'custom';
+export type ScheduleType = 'work' | 'paid_services' | 'on_duty' | 'vk' | 'trips';
 
 export type ScheduleVisibility = 'creator_only' | 'management' | 'participants';
 
@@ -14,8 +14,8 @@ export const SCHEDULE_TYPE_LABELS: Record<ScheduleType, string> = {
   work: 'Рабочий график',
   paid_services: 'Платные услуги',
   on_duty: 'Дежурства',
-  shift: 'Сменный график',
-  custom: 'Другое',
+  vk: 'ВК',
+  trips: 'Выезды',
 };
 
 export const SHIFT_TYPE_LABELS: Record<ShiftType, string> = {

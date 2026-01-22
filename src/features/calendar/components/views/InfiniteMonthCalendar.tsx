@@ -15,6 +15,7 @@ import {
   isToday,
 } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useFocusEffect } from '@react-navigation/native';
 import { Event } from '../../types/calendar.types';
 import { MonthData, useInfiniteCalendarData } from '../../hooks/useInfiniteCalendarData';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -243,7 +244,16 @@ export const InfiniteMonthCalendar: React.FC<InfiniteMonthCalendarProps> = ({
     addMonthsToEnd,
     addMonthsToStart,
     refreshAllVisible,
+    invalidateAllMonths,
   } = useInfiniteCalendarData();
+
+  // Invalidate cache and reload data when screen gains focus
+  // This ensures fresh data when returning from event detail or switching views
+  useFocusEffect(
+    useCallback(() => {
+      invalidateAllMonths();
+    }, [invalidateAllMonths])
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const [visibleMonthKeys, setVisibleMonthKeys] = useState<string[]>([]);
@@ -270,6 +280,7 @@ export const InfiniteMonthCalendar: React.FC<InfiniteMonthCalendarProps> = ({
         return () => clearTimeout(timer);
       }
     }
+    return undefined;
   }, [months.length > 0]);
 
   // Track if we've done initial scroll

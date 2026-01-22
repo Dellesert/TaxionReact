@@ -67,8 +67,8 @@ const SCHEDULE_TYPES: { value: ScheduleType; label: string; icon: string; descri
   { value: 'work', label: 'Рабочий график', icon: 'briefcase-outline', description: 'Стандартный рабочий график сотрудников' },
   { value: 'paid_services', label: 'Платные услуги', icon: 'cash-outline', description: 'График платных услуг и приёмов' },
   { value: 'on_duty', label: 'Дежурства', icon: 'medical-outline', description: 'График дежурств персонала' },
-  { value: 'shift', label: 'Сменный график', icon: 'swap-horizontal-outline', description: 'Посменный график работы' },
-  { value: 'custom', label: 'Другое', icon: 'ellipsis-horizontal-outline', description: 'Произвольный тип графика' },
+  { value: 'vk', label: 'ВК', icon: 'document-text-outline', description: 'График ВК' },
+  { value: 'trips', label: 'Выезды', icon: 'car-outline', description: 'График выездов' },
 ];
 
 const VISIBILITY_OPTIONS: { value: ScheduleVisibility; label: string; icon: string; description: string }[] = [

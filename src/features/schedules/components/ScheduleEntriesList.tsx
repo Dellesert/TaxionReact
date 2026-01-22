@@ -105,9 +105,10 @@ export const ScheduleEntriesList: React.FC<ScheduleEntriesListProps> = ({
       keyExtractor={(item) => item.id.toString()}
       renderSectionHeader={renderSectionHeader}
       renderItem={renderItem}
-      stickySectionHeadersEnabled
+      stickySectionHeadersEnabled={false}
       contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
+      scrollEnabled={false}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
       SectionSeparatorComponent={() => <View style={styles.sectionSeparator} />}
     />

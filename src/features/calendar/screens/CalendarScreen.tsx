@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { endOfWeek } from 'date-fns';
 import { Event, CalendarView } from '../types/calendar.types';
@@ -105,6 +105,15 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger]);
+
+  // Reload events when screen gains focus (e.g., returning from event detail)
+  useFocusEffect(
+    useCallback(() => {
+      // Load fresh data in background when screen is focused
+      loadEvents().catch(() => console.error('Failed to reload events on focus'));
+      loadWeekEvents().catch(() => console.error('Failed to reload week events on focus'));
+    }, [loadEvents, loadWeekEvents])
+  );
 
   // Filter events by search query
   const filteredEvents = searchQuery
