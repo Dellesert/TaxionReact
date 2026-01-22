@@ -103,7 +103,7 @@ export const DashboardScreen: React.FC = () => {
             onPress={navigateToSchedule}
           />
           <NavigationCard
-            title="Отсутствия"
+            title="Отпуска"
             description="Отпуска и больничные"
             icon="calendar-clear"
             color="#F59E0B"

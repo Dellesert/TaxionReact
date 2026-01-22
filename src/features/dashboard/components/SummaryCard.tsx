@@ -83,6 +83,9 @@ const CardSkeleton: React.FC = () => {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HORIZONTAL_PADDING = 20;
 const CARD_WIDTH = SCREEN_WIDTH - HORIZONTAL_PADDING * 2;
+const CARD_HEIGHT = 220;
+const PAGINATION_HEIGHT = 32; // 16px marginTop + 8px dot + 8px buffer
+const CONTAINER_HEIGHT = CARD_HEIGHT + PAGINATION_HEIGHT;
 
 interface SummaryCardProps {
   counts: DashboardCounts | null;
@@ -184,16 +187,14 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     });
   };
 
-  if (isLoading) {
+  // Показываем скелетон при загрузке или отсутствии данных
+  // Используем фиксированную высоту контейнера чтобы избежать "прыжков" контента
+  if (isLoading || !counts) {
     return (
-      <View style={styles.singleCardContainer}>
+      <View style={styles.fixedHeightContainer}>
         <CardSkeleton />
       </View>
     );
-  }
-
-  if (!counts) {
-    return null;
   }
 
   const hasNewTasks = counts.new_tasks_count > 0;
@@ -205,16 +206,18 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   // Все выполнено
   if (!hasAnyData) {
     return (
-      <View style={[styles.successCard, { backgroundColor: isDark ? '#064e3b' : '#ecfdf5' }]}>
-        <View style={[styles.successIcon, { backgroundColor: isDark ? '#10b98120' : '#d1fae5' }]}>
-          <Ionicons name="checkmark-circle" size={40} color="#10B981" />
+      <View style={styles.fixedHeightContainer}>
+        <View style={[styles.successCard, { backgroundColor: isDark ? '#064e3b' : '#ecfdf5' }]}>
+          <View style={[styles.successIcon, { backgroundColor: isDark ? '#10b98120' : '#d1fae5' }]}>
+            <Ionicons name="checkmark-circle" size={40} color="#10B981" />
+          </View>
+          <Text style={[styles.successTitle, { color: isDark ? '#6ee7b7' : '#065f46' }]}>
+            Все задачи выполнены!
+          </Text>
+          <Text style={[styles.successSubtitle, { color: isDark ? '#6ee7b7AA' : '#065f46AA' }]}>
+            Нет просроченных задач, новых заданий и активных опросов
+          </Text>
         </View>
-        <Text style={[styles.successTitle, { color: isDark ? '#6ee7b7' : '#065f46' }]}>
-          Все задачи выполнены!
-        </Text>
-        <Text style={[styles.successSubtitle, { color: isDark ? '#6ee7b7AA' : '#065f46AA' }]}>
-          Нет просроченных задач, новых заданий и активных опросов
-        </Text>
       </View>
     );
   }
@@ -297,7 +300,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   if (cardsData.length === 1) {
     const { key: _, ...cardProps } = cardsData[0];
     return (
-      <View style={styles.singleCardContainer}>
+      <View style={styles.fixedHeightContainer}>
         <CardItem
           {...cardProps}
           isDark={isDark}
@@ -307,7 +310,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   }
 
   return (
-    <View style={styles.carouselContainer}>
+    <View style={[styles.carouselContainer, { height: CONTAINER_HEIGHT }]}>
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -350,6 +353,11 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Фиксированный контейнер для всех состояний - предотвращает "прыжки"
+  fixedHeightContainer: {
+    height: CONTAINER_HEIGHT,
+    justifyContent: 'flex-start',
+  },
   // Carousel
   carouselContainer: {
     marginHorizontal: -HORIZONTAL_PADDING,
@@ -358,13 +366,12 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     paddingHorizontal: HORIZONTAL_PADDING,
   },
-  singleCardContainer: {},
   // Card
   card: {
     width: CARD_WIDTH,
     borderRadius: 24,
     padding: 20,
-    minHeight: 200,
+    height: CARD_HEIGHT,
     justifyContent: 'space-between',
   },
   cardTop: {
