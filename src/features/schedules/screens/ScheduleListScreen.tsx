@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useSchedules } from '../hooks/useSchedules';
+import { useSchedulePermissions } from '../hooks/useSchedulePermissions';
 import { ScheduleCard } from '../components/ScheduleCard';
 import CreateScheduleModal from '../components/CreateScheduleModal';
 import { MonthPicker } from '../components/MonthPicker';
@@ -53,6 +54,7 @@ interface ScheduleSection {
 export const ScheduleListScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const { canCreate } = useSchedulePermissions();
   // Get initial month range for filters
   const initialMonthRange = getMonthRange(new Date());
 
@@ -156,21 +158,23 @@ export const ScheduleListScreen: React.FC = () => {
           Нет графиков за этот месяц
         </Text>
         <Text style={[styles.emptySubtext, { color: theme.textTertiary }]}>
-          Выберите другой месяц или создайте новый график
+          {canCreate ? 'Выберите другой месяц или создайте новый график' : 'Выберите другой месяц'}
         </Text>
 
-        <TouchableOpacity
-          style={[styles.importEmptyButton, { borderColor: theme.primary }]}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
-          <Text style={[styles.importEmptyButtonText, { color: theme.primary }]}>
-            Создать график
-          </Text>
-        </TouchableOpacity>
+        {canCreate && (
+          <TouchableOpacity
+            style={[styles.importEmptyButton, { borderColor: theme.primary }]}
+            onPress={() => setShowCreateModal(true)}
+          >
+            <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+            <Text style={[styles.importEmptyButtonText, { color: theme.primary }]}>
+              Создать график
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
-  }, [isLoading, theme]);
+  }, [isLoading, theme, canCreate]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
@@ -190,13 +194,15 @@ export const ScheduleListScreen: React.FC = () => {
             <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
 
             <View style={styles.headerRight}>
-              {/* Add button */}
-              <TouchableOpacity
-                onPress={() => setShowCreateModal(true)}
-                style={styles.iconButton}
-              >
-                <Ionicons name="add" size={30} color={theme.primary} />
-              </TouchableOpacity>
+              {/* Add button - only for admins and department heads */}
+              {canCreate && (
+                <TouchableOpacity
+                  onPress={() => setShowCreateModal(true)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="add" size={30} color={theme.primary} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         }

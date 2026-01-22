@@ -22,6 +22,7 @@ import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { ActionMenu, ActionMenuItem } from '@shared/components/common/ActionMenu';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useScheduleDetails } from '../hooks/useScheduleDetails';
+import { useSchedulePermissions } from '../hooks/useSchedulePermissions';
 import { useScheduleStore } from '../store/scheduleStore';
 import { ScheduleEntriesList } from '../components/ScheduleEntriesList';
 import { TemplateEntriesList } from '../components/TemplateEntriesList';
@@ -61,6 +62,8 @@ export const ScheduleDetailScreen: React.FC = () => {
   const { schedule, entries, isLoading, isLoadingEntries, error, refresh } =
     useScheduleDetails(scheduleId);
 
+  const { canEdit, canManageEntries } = useSchedulePermissions(schedule);
+
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [selectedUserId, setSelectedUserId] = React.useState<number | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -98,9 +101,11 @@ export const ScheduleDetailScreen: React.FC = () => {
   }, [navigation]);
 
   const handleEntryPress = useCallback((entry: ScheduleEntry) => {
+    // Only allow editing if user has permission
+    if (!canManageEntries) return;
     setSelectedEntry(entry);
     setShowEditEntryModal(true);
-  }, []);
+  }, [canManageEntries]);
 
   const handleGoBack = useCallback(() => {
     navigation.goBack();
@@ -269,13 +274,16 @@ export const ScheduleDetailScreen: React.FC = () => {
             </Text>
 
             <View style={styles.headerRight}>
-              <TouchableOpacity
-                ref={menuButtonRef}
-                style={styles.iconButton}
-                onPress={handleOpenMenu}
-              >
-                <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
-              </TouchableOpacity>
+              {/* Menu button - only for users who can edit */}
+              {canEdit && (
+                <TouchableOpacity
+                  ref={menuButtonRef}
+                  style={styles.iconButton}
+                  onPress={handleOpenMenu}
+                >
+                  <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         }
@@ -376,32 +384,35 @@ export const ScheduleDetailScreen: React.FC = () => {
                 : entries.length}
               )
             </Text>
-            <TouchableOpacity
-              style={[styles.addEntryButton, { borderColor: theme.primary }]}
-              onPress={handleAddEntry}
-            >
-              <Ionicons name="add" size={18} color={theme.primary} />
-              <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                Добавить
-              </Text>
-            </TouchableOpacity>
+            {/* Add entry button - only for users who can manage entries */}
+            {canManageEntries && (
+              <TouchableOpacity
+                style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                onPress={handleAddEntry}
+              >
+                <Ionicons name="add" size={18} color={theme.primary} />
+                <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                  Добавить
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {schedule.mode === 'recurring' ? (
             // Recurring mode - show template entries by day of week
             <TemplateEntriesList
               entries={schedule.template?.entries || []}
-              onEntryPress={(templateEntry) => {
+              onEntryPress={canManageEntries ? (templateEntry) => {
                 setSelectedTemplateEntry(templateEntry);
                 setShowEditEntryModal(true);
-              }}
+              } : undefined}
             />
           ) : isLoadingEntries ? (
             <View style={styles.entriesLoader}>
               <ActivityIndicator size="small" color={theme.primary} />
             </View>
           ) : entries.length > 0 ? (
-            <ScheduleEntriesList entries={entries} onEntryPress={handleEntryPress} />
+            <ScheduleEntriesList entries={entries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
           ) : (
             <View style={styles.emptyEntries}>
               <Ionicons
