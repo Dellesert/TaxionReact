@@ -493,6 +493,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                     placeholder={isRecurringMode ? 'Для всех сотрудников' : 'Выберите сотрудника'}
                     modalTitle="Выбрать сотрудника"
                     mode="radio"
+                    includeCurrentUser={true}
                   />
                 </View>
 

@@ -36,6 +36,7 @@ interface UserSelectorModalProps {
   mode?: 'checkbox' | 'radio'; // Стиль отображения выбора
   onDone?: () => void; // Callback when Done button is pressed
   filterForTaskAssignment?: boolean; // Фильтр для назначения задач (только свой отдел + руководители других)
+  includeCurrentUser?: boolean; // Включить текущего пользователя в список (для графиков)
 }
 
 const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
@@ -49,6 +50,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   mode = 'checkbox',
   onDone,
   filterForTaskAssignment = false,
+  includeCurrentUser = false,
 }) => {
   const { theme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
@@ -71,7 +73,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       // Use server-side filtering, sorting, and search
       let filters: any = {
         is_active: true,
-        exclude_me: true, // Exclude current user on backend
+        exclude_me: !includeCurrentUser, // Exclude current user on backend (unless includeCurrentUser is true)
         exclude_roles: 'admin,super_admin', // Exclude admins for all users
 
         // Backend search (debounced)

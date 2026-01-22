@@ -21,6 +21,7 @@ interface UserSelectorProps {
   mode?: 'checkbox' | 'radio';
   modalTitle?: string;
   filterForTaskAssignment?: boolean; // Фильтр для назначения задач (только свой отдел + руководители других)
+  includeCurrentUser?: boolean; // Включить текущего пользователя в список (для графиков)
 }
 
 const UserSelector: React.FC<UserSelectorProps> = ({
@@ -32,6 +33,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
   mode = 'checkbox',
   modalTitle,
   filterForTaskAssignment = false,
+  includeCurrentUser = false,
 }) => {
   const { theme } = useTheme();
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -47,7 +49,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
       // Use server-side filtering and sorting
       let filters: any = {
         is_active: true,
-        exclude_me: true, // Exclude current user on backend
+        exclude_me: !includeCurrentUser, // Exclude current user on backend (unless includeCurrentUser is true)
         exclude_roles: 'admin,super_admin', // Exclude admins for all users
 
         // Sorting
@@ -192,6 +194,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
         excludeUserIds={excludeUserIds}
         mode={mode}
         filterForTaskAssignment={filterForTaskAssignment}
+        includeCurrentUser={includeCurrentUser}
       />
     </View>
   );
