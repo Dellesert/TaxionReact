@@ -244,19 +244,28 @@ export const InfiniteMonthCalendar: React.FC<InfiniteMonthCalendarProps> = ({
     addMonthsToEnd,
     addMonthsToStart,
     refreshAllVisible,
-    invalidateAllMonths,
   } = useInfiniteCalendarData();
-
-  // Invalidate cache and reload data when screen gains focus
-  // This ensures fresh data when returning from event detail or switching views
-  useFocusEffect(
-    useCallback(() => {
-      invalidateAllMonths();
-    }, [invalidateAllMonths])
-  );
 
   const [refreshing, setRefreshing] = useState(false);
   const [visibleMonthKeys, setVisibleMonthKeys] = useState<string[]>([]);
+  // Ref to track visible month keys for use in useFocusEffect
+  const visibleMonthKeysRef = useRef<string[]>([]);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    visibleMonthKeysRef.current = visibleMonthKeys;
+  }, [visibleMonthKeys]);
+
+  // Reload visible months when screen gains focus
+  // This ensures fresh data when returning from event detail or switching tabs
+  useFocusEffect(
+    useCallback(() => {
+      // Only refresh if we have visible months tracked
+      if (visibleMonthKeysRef.current.length > 0) {
+        refreshAllVisible(visibleMonthKeysRef.current);
+      }
+    }, [refreshAllVisible])
+  );
   const [showSkeleton, setShowSkeleton] = useState(true);
   const skeletonOpacity = useRef(new Animated.Value(1)).current;
 

@@ -16,7 +16,7 @@ export interface MonthData {
 interface UseInfiniteCalendarDataReturn {
   months: MonthData[];
   initialScrollIndex: number;
-  loadEventsForMonth: (monthKey: string) => Promise<void>;
+  loadEventsForMonth: (monthKey: string, forceReload?: boolean) => Promise<void>;
   addMonthsToEnd: (count: number) => void;
   addMonthsToStart: (count: number) => void;
   refreshMonth: (monthKey: string) => Promise<void>;
@@ -97,35 +97,41 @@ export const useInfiniteCalendarData = (): UseInfiniteCalendarDataReturn => {
 
   // Track loading states to prevent duplicate requests
   const loadingRef = useRef<Set<string>>(new Set());
+  // Ref to access months without causing re-renders
+  const monthsRef = useRef<MonthData[]>(months);
+  monthsRef.current = months;
 
   /**
    * Load events for a specific month
    */
   const loadEventsForMonth = useCallback(
-    async (monthKey: string) => {
+    async (monthKey: string, forceReload = false) => {
       // Prevent duplicate loading
       if (loadingRef.current.has(monthKey)) {
         return;
       }
 
-      // Find month in array
-      const monthIndex = months.findIndex((m) => m.key === monthKey);
+      // Find month in array using ref to avoid dependency on months
+      const currentMonths = monthsRef.current;
+      const monthIndex = currentMonths.findIndex((m) => m.key === monthKey);
       if (monthIndex === -1) return;
 
-      const month = months[monthIndex];
+      const month = currentMonths[monthIndex];
 
-      // Skip if already loaded
-      if (month.isLoaded) return;
+      // Skip if already loaded (unless force reload)
+      if (month.isLoaded && !forceReload) return;
 
-      // Check cache first
-      const cached = getEventsForRange(monthKey);
-      if (cached) {
-        setMonths((prev) =>
-          prev.map((m) =>
-            m.key === monthKey ? { ...m, events: cached, isLoaded: true, isLoading: false } : m
-          )
-        );
-        return;
+      // Check cache first (unless force reload)
+      if (!forceReload) {
+        const cached = getEventsForRange(monthKey);
+        if (cached) {
+          setMonths((prev) =>
+            prev.map((m) =>
+              m.key === monthKey ? { ...m, events: cached, isLoaded: true, isLoading: false } : m
+            )
+          );
+          return;
+        }
       }
 
       // Mark as loading
@@ -170,7 +176,7 @@ export const useInfiniteCalendarData = (): UseInfiniteCalendarDataReturn => {
         loadingRef.current.delete(monthKey);
       }
     },
-    [months, getEventsForRange, setEventsForRange]
+    [getEventsForRange, setEventsForRange]
   );
 
   /**
@@ -238,13 +244,8 @@ export const useInfiniteCalendarData = (): UseInfiniteCalendarDataReturn => {
    */
   const refreshAllVisible = useCallback(
     async (visibleKeys: string[]) => {
-      // Reset loaded states
-      setMonths((prev) =>
-        prev.map((m) => (visibleKeys.includes(m.key) ? { ...m, isLoaded: false } : m))
-      );
-
-      // Load all in parallel
-      await Promise.all(visibleKeys.map((key) => loadEventsForMonth(key)));
+      // Load all in parallel with force reload (bypasses cache)
+      await Promise.all(visibleKeys.map((key) => loadEventsForMonth(key, true)));
     },
     [loadEventsForMonth]
   );
