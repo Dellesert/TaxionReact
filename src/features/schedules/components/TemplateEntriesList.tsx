@@ -81,23 +81,10 @@ export const TemplateEntriesList: React.FC<TemplateEntriesListProps> = ({
       {daysWithEntries.map((day) => (
         <View key={day.value} style={styles.daySection}>
           {/* Day Header */}
-          <View
-            style={[
-              styles.dayHeader,
-              { backgroundColor: theme.backgroundSecondary },
-            ]}
-          >
+          <View style={styles.dayHeader}>
             <Ionicons name="calendar-outline" size={18} color={theme.primary} />
             <Text style={[styles.dayTitle, { color: theme.text }]}>
               {day.label}
-            </Text>
-            <Text style={[styles.entryCount, { color: theme.textSecondary }]}>
-              {groupedEntries[day.value].length}{' '}
-              {groupedEntries[day.value].length === 1
-                ? 'запись'
-                : groupedEntries[day.value].length < 5
-                ? 'записи'
-                : 'записей'}
             </Text>
           </View>
 
@@ -188,9 +175,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     flex: 1,
-  },
-  entryCount: {
-    fontSize: 13,
   },
   entriesContainer: {
     paddingHorizontal: 16,
