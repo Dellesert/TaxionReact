@@ -213,6 +213,12 @@ export interface CreateTemplateEntryRequest {
   start_time: string;
   end_time: string;
   title?: string;
+  shift_type?: ShiftType;
+}
+
+// Batch create template entries (for multiple days at once)
+export interface CreateBatchTemplateEntriesRequest {
+  entries: CreateTemplateEntryRequest[];
 }
 
 export interface ApplyTemplateRequest {

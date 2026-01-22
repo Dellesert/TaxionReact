@@ -34,6 +34,7 @@ import {
   CreateScheduleEntryRequest,
   UpdateScheduleEntryRequest,
   CreateTemplateEntryRequest,
+  CreateBatchTemplateEntriesRequest,
   ShiftType,
 } from '../types/schedule.types';
 
@@ -45,6 +46,7 @@ interface EditScheduleEntryModalProps {
   onClose: () => void;
   onSave: (data: CreateScheduleEntryRequest | UpdateScheduleEntryRequest, entryId?: number) => Promise<void>;
   onSaveTemplateEntry?: (data: CreateTemplateEntryRequest, entryId?: number) => Promise<void>;
+  onSaveBatchTemplateEntries?: (data: CreateBatchTemplateEntriesRequest) => Promise<void>;
   onDelete?: (entryId: number) => Promise<void>;
   onDeleteTemplateEntry?: (entryId: number) => Promise<void>;
 }
@@ -74,6 +76,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
   onClose,
   onSave,
   onSaveTemplateEntry,
+  onSaveBatchTemplateEntries,
   onDelete,
   onDeleteTemplateEntry,
 }) => {
@@ -88,7 +91,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
   // Form state
   const [userId, setUserId] = useState<number[]>([]);
   const [date, setDate] = useState(new Date());
-  const [dayOfWeek, setDayOfWeek] = useState<number>(1); // Monday by default
+  const [selectedDays, setSelectedDays] = useState<number[]>([1]); // Multiple days support
   const [shiftType, setShiftType] = useState<ShiftType>('morning');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -110,10 +113,10 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
       if (isRecurringMode) {
         // Recurring mode - work with template entries
         if (templateEntry) {
-          // Edit template entry
+          // Edit template entry - single day
           setUserId(templateEntry.user_id ? [templateEntry.user_id] : []);
-          setDayOfWeek(templateEntry.day_of_week);
-          setShiftType(templateEntry.shift_type || 'custom');
+          setSelectedDays([templateEntry.day_of_week]);
+          setShiftType(templateEntry.shift_type || 'morning');
           // Extract time from string
           const startMatch = templateEntry.start_time.match(/(\d{2}:\d{2})/);
           const endMatch = templateEntry.end_time.match(/(\d{2}:\d{2})/);
@@ -121,12 +124,12 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
           setEndTime(endMatch ? endMatch[1] : '');
           setTitle(templateEntry.title || '');
         } else {
-          // Create template entry - reset form
+          // Create template entry - reset form, allow multiple days
           setUserId([]);
-          setDayOfWeek(1); // Monday
-          setShiftType('custom');
-          setStartTime(schedule?.morning_start || '10:00');
-          setEndTime(schedule?.evening_end || '18:00');
+          setSelectedDays([]); // No days selected by default
+          setShiftType('morning');
+          setStartTime(schedule?.morning_start || '08:00');
+          setEndTime(schedule?.morning_end || '14:00');
           setTitle('');
         }
         setDescription('');
@@ -161,28 +164,28 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
     }
   }, [visible, entry, templateEntry, schedule, isRecurringMode]);
 
-  // Update time when shift type changes (only in create mode)
+  // Update time when shift type changes (only in create mode or recurring mode)
   useEffect(() => {
-    if (!isEditMode && schedule && visible) {
+    if ((!isEditMode || isRecurringMode) && schedule && visible) {
       switch (shiftType) {
         case 'morning':
-          setStartTime(schedule.morning_start || '10:00');
+          setStartTime(schedule.morning_start || '08:00');
           setEndTime(schedule.morning_end || '14:00');
           break;
         case 'evening':
           setStartTime(schedule.evening_start || '14:00');
-          setEndTime(schedule.evening_end || '18:00');
+          setEndTime(schedule.evening_end || '20:00');
           break;
         case 'full_day':
-          setStartTime(schedule.morning_start || '10:00');
-          setEndTime(schedule.evening_end || '18:00');
+          setStartTime(schedule.morning_start || '08:00');
+          setEndTime(schedule.evening_end || '20:00');
           break;
         case 'custom':
           // Keep current values for custom
           break;
       }
     }
-  }, [shiftType, isEditMode, schedule, visible]);
+  }, [shiftType, isEditMode, isRecurringMode, schedule, visible]);
 
   // Track keyboard visibility
   useEffect(() => {
@@ -201,10 +204,29 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
     };
   }, []);
 
+  // Toggle day selection for recurring mode
+  const toggleDaySelection = (day: number) => {
+    if (isEditMode) {
+      // In edit mode, only allow single day selection
+      setSelectedDays([day]);
+    } else {
+      // In create mode, allow multiple days
+      setSelectedDays((prev) =>
+        prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+      );
+    }
+  };
+
   const handleSave = async () => {
     // For recurring mode, user is optional (applies to all if not set)
     if (!isRecurringMode && userId.length === 0) {
       showError('Выберите сотрудника');
+      return;
+    }
+
+    // For recurring mode, at least one day must be selected
+    if (isRecurringMode && selectedDays.length === 0) {
+      showError('Выберите хотя бы один день недели');
       return;
     }
 
@@ -218,21 +240,61 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
       setErrorMessage(null); // Clear previous error
 
       if (isRecurringMode) {
-        // Recurring mode - save template entry
-        if (!onSaveTemplateEntry) {
-          showError('Не настроен обработчик сохранения');
-          return;
-        }
+        // Recurring mode - save template entry/entries
+        if (isEditMode) {
+          // Edit mode - single entry
+          if (!onSaveTemplateEntry) {
+            showError('Не настроен обработчик сохранения');
+            return;
+          }
 
-        const templateData: CreateTemplateEntryRequest = {
-          day_of_week: dayOfWeek,
-          start_time: startTime,
-          end_time: endTime,
-          ...(userId.length > 0 ? { user_id: userId[0] } : {}),
-          ...(title.trim() ? { title: title.trim() } : {}),
-        };
-        await onSaveTemplateEntry(templateData, templateEntry?.id);
-        showSuccess(isEditMode ? 'Запись обновлена' : 'Запись добавлена');
+          const templateData: CreateTemplateEntryRequest = {
+            day_of_week: selectedDays[0],
+            start_time: startTime,
+            end_time: endTime,
+            shift_type: shiftType,
+            ...(userId.length > 0 ? { user_id: userId[0] } : {}),
+            ...(title.trim() ? { title: title.trim() } : {}),
+          };
+          await onSaveTemplateEntry(templateData, templateEntry?.id);
+          showSuccess('Запись обновлена');
+        } else {
+          // Create mode - can be single or multiple entries
+          if (selectedDays.length === 1) {
+            // Single entry
+            if (!onSaveTemplateEntry) {
+              showError('Не настроен обработчик сохранения');
+              return;
+            }
+
+            const templateData: CreateTemplateEntryRequest = {
+              day_of_week: selectedDays[0],
+              start_time: startTime,
+              end_time: endTime,
+              shift_type: shiftType,
+              ...(userId.length > 0 ? { user_id: userId[0] } : {}),
+              ...(title.trim() ? { title: title.trim() } : {}),
+            };
+            await onSaveTemplateEntry(templateData);
+            showSuccess('Запись добавлена');
+          } else {
+            // Multiple entries - use batch API
+            if (!onSaveBatchTemplateEntries) {
+              showError('Не настроен обработчик сохранения');
+              return;
+            }
+            const entries: CreateTemplateEntryRequest[] = selectedDays.map((day) => ({
+              day_of_week: day,
+              start_time: startTime,
+              end_time: endTime,
+              shift_type: shiftType,
+              ...(userId.length > 0 ? { user_id: userId[0] } : {}),
+              ...(title.trim() ? { title: title.trim() } : {}),
+            }));
+            await onSaveBatchTemplateEntries({ entries });
+            showSuccess(`Добавлено ${selectedDays.length} записей`);
+          }
+        }
       } else if (isEditMode && entry) {
         // Update existing entry
         const updateData: UpdateScheduleEntryRequest = {
@@ -442,36 +504,45 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                 {/* Day of Week (for recurring mode) or Date (for monthly mode) */}
                 {isRecurringMode ? (
                   <View style={styles.section}>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>День недели *</Text>
-                    <View style={styles.dayOfWeekRow}>
-                      {DAYS_OF_WEEK.map((day) => (
-                        <TouchableOpacity
-                          key={day.value}
-                          style={[
-                            styles.dayOfWeekButton,
-                            { backgroundColor: theme.card, borderColor: theme.border },
-                            dayOfWeek === day.value && {
-                              backgroundColor: theme.primary,
-                              borderColor: theme.primary,
-                            },
-                          ]}
-                          onPress={() => setDayOfWeek(day.value)}
-                        >
-                          <Text
-                            style={[
-                              styles.dayOfWeekLabel,
-                              { color: theme.text },
-                              dayOfWeek === day.value && { color: '#FFFFFF', fontWeight: '600' },
-                            ]}
-                          >
-                            {day.shortLabel}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    <Text style={[styles.selectedDayText, { color: theme.textSecondary }]}>
-                      {DAYS_OF_WEEK.find((d) => d.value === dayOfWeek)?.label}
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>
+                      {isEditMode ? 'День недели *' : 'Дни недели * (можно выбрать несколько)'}
                     </Text>
+                    <View style={styles.dayOfWeekRow}>
+                      {DAYS_OF_WEEK.map((day) => {
+                        const isSelected = selectedDays.includes(day.value);
+                        return (
+                          <TouchableOpacity
+                            key={day.value}
+                            style={[
+                              styles.dayOfWeekButton,
+                              { backgroundColor: theme.card, borderColor: theme.border },
+                              isSelected && {
+                                backgroundColor: theme.primary,
+                                borderColor: theme.primary,
+                              },
+                            ]}
+                            onPress={() => toggleDaySelection(day.value)}
+                          >
+                            <Text
+                              style={[
+                                styles.dayOfWeekLabel,
+                                { color: theme.text },
+                                isSelected && { color: '#FFFFFF', fontWeight: '600' },
+                              ]}
+                            >
+                              {day.shortLabel}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    {selectedDays.length > 0 && (
+                      <Text style={[styles.selectedDayText, { color: theme.textSecondary }]}>
+                        {selectedDays.length === 1
+                          ? DAYS_OF_WEEK.find((d) => d.value === selectedDays[0])?.label
+                          : `Выбрано дней: ${selectedDays.length}`}
+                      </Text>
+                    )}
                   </View>
                 ) : (
                   <View style={styles.section}>
@@ -488,8 +559,8 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                   </View>
                 )}
 
-                {/* Shift Type - only for monthly mode */}
-                {!isRecurringMode && (
+                {/* Shift Type - for both modes */}
+                {(
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: theme.textSecondary }]}>Тип смены *</Text>
                     <View style={styles.shiftTypeRow}>
@@ -532,8 +603,8 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                   </View>
                 )}
 
-                {/* Time - always shown for recurring, or for custom shift type in monthly */}
-                {(isRecurringMode || shiftType === 'custom') && (
+                {/* Time - shown for custom shift type */}
+                {shiftType === 'custom' && (
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: theme.textSecondary }]}>Время *</Text>
                     <View style={styles.timeRow}>
@@ -566,8 +637,8 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                   </View>
                 )}
 
-                {/* Time info (for non-custom shift) */}
-                {shiftType !== 'custom' && (
+                {/* Time info (for non-custom shift, always show for reference) */}
+                {shiftType !== 'custom' && startTime && endTime && (
                   <View style={[styles.infoSection, { backgroundColor: theme.backgroundSecondary }]}>
                     <Ionicons name="time-outline" size={20} color={theme.primary} />
                     <Text style={[styles.infoText, { color: theme.textSecondary }]}>

@@ -39,6 +39,7 @@ import {
   type CreateScheduleEntryRequest,
   type UpdateScheduleEntryRequest,
   type CreateTemplateEntryRequest,
+  type CreateBatchTemplateEntriesRequest,
 } from '../types/schedule.types';
 import { templateApi } from '../api/schedule.api';
 import type { ScheduleStackParamList } from '../navigation/types';
@@ -173,6 +174,14 @@ export const ScheduleDetailScreen: React.FC = () => {
       await templateApi.deleteTemplateEntry(schedule.template_id, entryId);
     }
     await templateApi.addTemplateEntry(schedule.template_id, data);
+    refresh();
+  }, [schedule, refresh]);
+
+  const handleSaveBatchTemplateEntries = useCallback(async (
+    data: CreateBatchTemplateEntriesRequest
+  ) => {
+    if (!schedule?.template_id) return;
+    await templateApi.addBatchTemplateEntries(schedule.template_id, data);
     refresh();
   }, [schedule, refresh]);
 
@@ -467,6 +476,7 @@ export const ScheduleDetailScreen: React.FC = () => {
         }}
         onSave={handleSaveEntry}
         onSaveTemplateEntry={handleSaveTemplateEntry}
+        onSaveBatchTemplateEntries={handleSaveBatchTemplateEntries}
         onDelete={handleDeleteEntry}
         onDeleteTemplateEntry={handleDeleteTemplateEntry}
       />

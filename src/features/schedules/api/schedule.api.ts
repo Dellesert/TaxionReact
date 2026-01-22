@@ -13,6 +13,7 @@ import type {
   UpdateScheduleEntryRequest,
   CreateTemplateRequest,
   CreateTemplateEntryRequest,
+  CreateBatchTemplateEntriesRequest,
   ApplyTemplateRequest,
   ApplyTemplateResponse,
   ImportScheduleRequest,
@@ -271,6 +272,17 @@ export const templateApi = {
   addTemplateEntry: async (
     templateId: number,
     data: CreateTemplateEntryRequest
+  ): Promise<ScheduleTemplate> => {
+    const response = await api.post<{ template: ScheduleTemplate }>(
+      TEMPLATE_ENDPOINTS.ENTRIES(templateId),
+      data
+    );
+    return response.data.template;
+  },
+
+  addBatchTemplateEntries: async (
+    templateId: number,
+    data: CreateBatchTemplateEntriesRequest
   ): Promise<ScheduleTemplate> => {
     const response = await api.post<{ template: ScheduleTemplate }>(
       TEMPLATE_ENDPOINTS.ENTRIES(templateId),
