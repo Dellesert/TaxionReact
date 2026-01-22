@@ -373,8 +373,8 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
 
           {/* Header */}
           <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <Ionicons name="close" size={28} color={theme.textSecondary} />
+            <TouchableOpacity onPress={onClose} style={styles.headerButtonLeft}>
+              <Ionicons name="close" size={24} color={theme.primary} />
             </TouchableOpacity>
 
             <View style={styles.headerCenter}>
@@ -386,7 +386,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
             <TouchableOpacity
               onPress={handleSave}
               disabled={isLoading}
-              style={styles.headerButton}
+              style={styles.headerButtonRight}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color={theme.primary} />
@@ -577,7 +577,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                 )}
 
                 {/* Title */}
-                <View style={styles.section}>
+                {/* <View style={styles.section}>
                   <Text style={[styles.label, { color: theme.textSecondary }]}>Название (необязательно)</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
@@ -587,10 +587,10 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                     onChangeText={setTitle}
                     maxLength={255}
                   />
-                </View>
+                </View> */}
 
                 {/* Location - only for monthly mode */}
-                {!isRecurringMode && (
+                {/* {!isRecurringMode && (
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: theme.textSecondary }]}>Место (необязательно)</Text>
                     <TextInput
@@ -602,10 +602,10 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                       maxLength={500}
                     />
                   </View>
-                )}
+                )} */}
 
                 {/* Description - only for monthly mode */}
-                {!isRecurringMode && (
+                {/* {!isRecurringMode && (
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: theme.textSecondary }]}>Примечание (необязательно)</Text>
                     <TextInput
@@ -620,7 +620,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                       maxLength={1000}
                     />
                   </View>
-                )}
+                )} */}
 
                 {/* Delete Button (edit mode only) */}
                 {isEditMode && (isRecurringMode ? onDeleteTemplateEntry : onDelete) && (
@@ -699,9 +699,14 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  headerButton: {
+  headerButtonLeft: {
     minWidth: 80,
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerButtonRight: {
+    minWidth: 80,
+    alignItems: 'flex-end',
     justifyContent: 'center',
   },
   headerCenter: {

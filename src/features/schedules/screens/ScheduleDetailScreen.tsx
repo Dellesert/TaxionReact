@@ -254,7 +254,7 @@ export const ScheduleDetailScreen: React.FC = () => {
   const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
       {/* Header */}
       <ScreenHeader
         title={schedule.title}
