@@ -168,18 +168,6 @@ export const ScheduleListScreen: React.FC = () => {
         <Text style={[styles.emptySubtext, { color: theme.textTertiary }]}>
           {canCreate ? 'Выберите другой месяц или создайте новый график' : 'Выберите другой месяц'}
         </Text>
-
-        {canCreate && (
-          <TouchableOpacity
-            style={[styles.importEmptyButton, { borderColor: theme.primary }]}
-            onPress={() => setShowCreateModal(true)}
-          >
-            <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
-            <Text style={[styles.importEmptyButtonText, { color: theme.primary }]}>
-              Создать график
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
     );
   }, [isLoading, theme, canCreate]);

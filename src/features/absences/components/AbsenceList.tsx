@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { AbsenceCard } from './AbsenceCard';
 import type { Absence } from '../types/absence.types';
@@ -61,8 +62,14 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
 
     return (
       <View style={styles.emptyContainer}>
-        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+        <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundTertiary }]}>
+          <Ionicons name="calendar-outline" size={40} color={theme.textTertiary} />
+        </View>
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>
           {emptyMessage}
+        </Text>
+        <Text style={[styles.emptySubtitle, { color: theme.textTertiary }]}>
+          Нажмите + чтобы добавить отсутствие
         </Text>
       </View>
     );
@@ -110,7 +117,8 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
 const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 120,
   },
   emptyListContent: {
     flex: 1,
@@ -119,11 +127,25 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingHorizontal: 32,
   },
-  emptyText: {
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
     fontSize: 14,
     textAlign: 'center',
+    lineHeight: 20,
   },
   footer: {
     paddingVertical: 16,
