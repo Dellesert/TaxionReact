@@ -129,7 +129,11 @@ const CardItem: React.FC<CardItemProps> = ({
     <TouchableOpacity
       style={[
         styles.card,
-        { backgroundColor: isDark ? bgColorDark : bgColor },
+        {
+          backgroundColor: isDark ? bgColorDark : bgColor,
+          borderColor: color + '30',
+          shadowColor: color,
+        },
       ]}
       onPress={onPress}
       activeOpacity={0.85}
@@ -373,6 +377,13 @@ const styles = StyleSheet.create({
     padding: 20,
     height: CARD_HEIGHT,
     justifyContent: 'space-between',
+    borderWidth: 1.5,
+    // Shadow for iOS
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    // Shadow for Android
+    elevation: 8,
   },
   cardTop: {
     flexDirection: 'row',
@@ -434,6 +445,15 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#10B98130',
+    // Shadow for iOS
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    // Shadow for Android
+    elevation: 8,
   },
   successIcon: {
     width: 72,
