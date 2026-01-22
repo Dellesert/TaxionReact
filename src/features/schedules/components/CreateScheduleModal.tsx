@@ -1214,20 +1214,22 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                                   scheduleMode === 'recurring' && { borderColor: theme.primary, borderWidth: 2 },
                                 ]}
                               >
-                                <Ionicons
-                                  name="sync-outline"
-                                  size={24}
-                                  color={scheduleMode === 'recurring' ? theme.primary : theme.textSecondary}
-                                />
+                                <View style={[
+                                  styles.modeIconContainer,
+                                  { backgroundColor: scheduleMode === 'recurring' ? theme.primary : theme.backgroundSecondary }
+                                ]}>
+                                  <Ionicons
+                                    name="sync-outline"
+                                    size={24}
+                                    color={scheduleMode === 'recurring' ? '#FFFFFF' : theme.textSecondary}
+                                  />
+                                </View>
                                 <Text style={[
                                   styles.modeLabel,
                                   { color: scheduleMode === 'recurring' ? theme.primary : theme.text }
                                 ]}>
                                   {SCHEDULE_MODE_LABELS.recurring}
                                 </Text>
-                                {scheduleMode === 'recurring' && (
-                                  <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
-                                )}
                               </TouchableOpacity>
 
                               <TouchableOpacity
@@ -1238,20 +1240,22 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                                   scheduleMode === 'monthly' && { borderColor: theme.primary, borderWidth: 2 },
                                 ]}
                               >
-                                <Ionicons
-                                  name="calendar-outline"
-                                  size={24}
-                                  color={scheduleMode === 'monthly' ? theme.primary : theme.textSecondary}
-                                />
+                                <View style={[
+                                  styles.modeIconContainer,
+                                  { backgroundColor: scheduleMode === 'monthly' ? theme.primary : theme.backgroundSecondary }
+                                ]}>
+                                  <Ionicons
+                                    name="calendar-outline"
+                                    size={24}
+                                    color={scheduleMode === 'monthly' ? '#FFFFFF' : theme.textSecondary}
+                                  />
+                                </View>
                                 <Text style={[
                                   styles.modeLabel,
                                   { color: scheduleMode === 'monthly' ? theme.primary : theme.text }
                                 ]}>
                                   {SCHEDULE_MODE_LABELS.monthly}
                                 </Text>
-                                {scheduleMode === 'monthly' && (
-                                  <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
-                                )}
                               </TouchableOpacity>
                             </View>
                           </View>
@@ -1783,17 +1787,24 @@ const styles = StyleSheet.create({
   },
   modeCard: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 10,
+    gap: 8,
+  },
+  modeIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modeLabel: {
-    flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
+    textAlign: 'center',
   },
   // Color options
   colorRow: {
