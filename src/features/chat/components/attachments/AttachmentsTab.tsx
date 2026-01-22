@@ -439,7 +439,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
                     style={styles.image}
                     contentFit="cover"
                     transition={200}
-                    cachePolicy="memory-disk"
+                    cachePolicy="disk"
                   />
                 </TouchableOpacity>
               );

@@ -299,7 +299,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         estimatedItemSize={200}
         estimatedListSize={{ height: 800, width: 400 }}
         initialScrollIndex={initialScrollIndex}
-        removeClippedSubviews={false}
+        removeClippedSubviews={Platform.OS === 'android'}
         overrideItemLayout={(layout, item) => {
           // Оптимизация: предоставляем более точные размеры для разных типов элементов
           if (item.type === 'date') {
@@ -410,7 +410,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         // @ts-ignore - FlashList 2.x uses different approach
         inverted={true}
         keyboardShouldPersistTaps="handled"
-        removeClippedSubviews={false}
         // iOS-specific: предотвращает прыжки при загрузке старых сообщений
         maintainVisibleContentPosition={
           Platform.OS === 'ios'

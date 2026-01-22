@@ -442,6 +442,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     if (!currentImageUrl) return;
 
     setIsSharing(true);
+    let localUri: string | null = null;
     try {
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
@@ -449,7 +450,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         return;
       }
 
-      const localUri = await downloadImageLocally(currentImageUrl);
+      localUri = await downloadImageLocally(currentImageUrl);
       if (!localUri) {
         Alert.alert('Ошибка', 'Не удалось загрузить изображение');
         return;
@@ -464,6 +465,15 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       Alert.alert('Ошибка', 'Не удалось поделиться изображением');
     } finally {
       setIsSharing(false);
+      // Очищаем временный файл после share
+      if (localUri) {
+        try {
+          const file = new ExpoFile(localUri);
+          if (file.exists) {
+            file.delete();
+          }
+        } catch {}
+      }
     }
   };
 
@@ -474,6 +484,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     if (!currentImageUrl) return;
 
     setIsSharing(true);
+    let localUri: string | null = null;
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
@@ -481,7 +492,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         return;
       }
 
-      const localUri = await downloadImageLocally(currentImageUrl);
+      localUri = await downloadImageLocally(currentImageUrl);
       if (!localUri) {
         Alert.alert('Ошибка', 'Не удалось загрузить изображение');
         return;
@@ -494,6 +505,15 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       Alert.alert('Ошибка', 'Не удалось сохранить изображение');
     } finally {
       setIsSharing(false);
+      // Очищаем временный файл после сохранения
+      if (localUri) {
+        try {
+          const file = new ExpoFile(localUri);
+          if (file.exists) {
+            file.delete();
+          }
+        } catch {}
+      }
     }
   };
 
@@ -531,29 +551,42 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         {/* Галерея изображений */}
         <GestureDetector gesture={composedGesture}>
           <Animated.View style={[styles.galleryContainer, galleryStyle]}>
-            {imageUrls.map((uri, index) => (
-              <View key={`${index}-${uri}`} style={styles.imageSlide}>
-                <Animated.View
-                  style={[
-                    styles.imageContainer,
-                    index === currentIndex ? imageZoomStyle : undefined
-                  ]}
-                >
-                  {loadingStates[index] && (
-                    <View style={styles.loaderContainer}>
-                      <ActivityIndicator size="large" color="#FFFFFF" />
-                    </View>
-                  )}
-                  <Image
-                    source={imageSources[index]}
-                    style={styles.fullscreenImage}
-                    contentFit="contain"
-                    cachePolicy="memory-disk"
-                    onLoadEnd={() => setImageLoaded(index)}
-                  />
-                </Animated.View>
-              </View>
-            ))}
+            {imageUrls.map((uri, index) => {
+              // Ленивая загрузка: рендерим только текущее изображение ±1 для предзагрузки
+              const shouldRender = Math.abs(index - currentIndex) <= 1;
+
+              return (
+                <View key={`${index}-${uri}`} style={styles.imageSlide}>
+                  <Animated.View
+                    style={[
+                      styles.imageContainer,
+                      index === currentIndex ? imageZoomStyle : undefined
+                    ]}
+                  >
+                    {shouldRender ? (
+                      <>
+                        {loadingStates[index] && (
+                          <View style={styles.loaderContainer}>
+                            <ActivityIndicator size="large" color="#FFFFFF" />
+                          </View>
+                        )}
+                        <Image
+                          source={imageSources[index]}
+                          style={styles.fullscreenImage}
+                          contentFit="contain"
+                          cachePolicy="disk"
+                          onLoadEnd={() => setImageLoaded(index)}
+                        />
+                      </>
+                    ) : (
+                      <View style={styles.loaderContainer}>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      </View>
+                    )}
+                  </Animated.View>
+                </View>
+              );
+            })}
           </Animated.View>
         </GestureDetector>
 
