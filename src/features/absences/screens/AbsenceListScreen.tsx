@@ -113,7 +113,7 @@ export const AbsenceListScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
       {/* Header */}
       <ScreenHeader
-        title="Отсутствия"
+        title="Отпуски"
         customContent={
           <>
             <View style={styles.headerRow}>
@@ -123,7 +123,7 @@ export const AbsenceListScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              <Text style={[styles.title, { color: theme.text }]}>Отсутствия</Text>
+              <Text style={[styles.title, { color: theme.text }]}>Отпуски</Text>
 
               <View style={[styles.headerRight, styles.headerActions]}>
                 {/* Filter Button */}
@@ -166,8 +166,8 @@ export const AbsenceListScreen: React.FC = () => {
           onItemPress={handleAbsencePress}
           emptyMessage={
             selectedTypeFilter
-              ? `Нет отсутствий типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}"`
-              : 'Нет отсутствий'
+              ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}"`
+              : 'Нет отпусков'
           }
         />
       </View>
