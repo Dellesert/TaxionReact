@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Modal, View, StyleSheet, Text, Platform, Dimensions, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
@@ -75,6 +75,15 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     };
     loadSessionId();
   }, []);
+
+  // Мемоизируем sources чтобы избежать повторных запросов при ререндере
+  const imageSources = useMemo(() => {
+    const headers = sessionId ? { 'X-Session-ID': sessionId } : undefined;
+    return imageUrls.map(uri => ({
+      uri,
+      headers,
+    }));
+  }, [imageUrls, sessionId]);
 
   // Сброс при открытии
   useEffect(() => {
@@ -536,10 +545,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                     </View>
                   )}
                   <Image
-                    source={{
-                      uri,
-                      headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-                    }}
+                    source={imageSources[index]}
                     style={styles.fullscreenImage}
                     contentFit="contain"
                     cachePolicy="memory-disk"
