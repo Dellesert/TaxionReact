@@ -124,7 +124,7 @@ export const ScheduleListScreen: React.FC = () => {
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: ScheduleSection }) => (
-      <View style={[styles.sectionHeader, { backgroundColor: theme.card }]}>
+      <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
           {section.title}
         </Text>
@@ -177,7 +177,7 @@ export const ScheduleListScreen: React.FC = () => {
   }, [isLoading, theme, canCreate]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
       {/* Header */}
       <ScreenHeader
         title="Графики работы"
