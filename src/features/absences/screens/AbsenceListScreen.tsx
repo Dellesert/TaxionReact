@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 12,
   },
   headerLeft: {
     width: 100,
