@@ -86,6 +86,7 @@ const CARD_WIDTH = SCREEN_WIDTH - HORIZONTAL_PADDING * 2;
 const CARD_HEIGHT = 220;
 const PAGINATION_HEIGHT = 32; // 16px marginTop + 8px dot + 8px buffer
 const CONTAINER_HEIGHT = CARD_HEIGHT + PAGINATION_HEIGHT;
+const SINGLE_CARD_HEIGHT = CARD_HEIGHT; // Без пагинации
 
 interface SummaryCardProps {
   counts: DashboardCounts | null;
@@ -210,7 +211,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   // Все выполнено
   if (!hasAnyData) {
     return (
-      <View style={styles.fixedHeightContainer}>
+      <View style={styles.singleCardContainer}>
         <View style={[styles.successCard, { backgroundColor: isDark ? '#064e3b' : '#ecfdf5' }]}>
           <View style={[styles.successIcon, { backgroundColor: isDark ? '#10b98120' : '#d1fae5' }]}>
             <Ionicons name="checkmark-circle" size={40} color="#10B981" />
@@ -304,7 +305,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   if (cardsData.length === 1) {
     const { key: _, ...cardProps } = cardsData[0];
     return (
-      <View style={styles.fixedHeightContainer}>
+      <View style={styles.singleCardContainer}>
         <CardItem
           {...cardProps}
           isDark={isDark}
@@ -357,9 +358,14 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  // Фиксированный контейнер для всех состояний - предотвращает "прыжки"
+  // Фиксированный контейнер для загрузки - с местом под пагинацию
   fixedHeightContainer: {
     height: CONTAINER_HEIGHT,
+    justifyContent: 'flex-start',
+  },
+  // Контейнер для одиночной карточки - без пагинации
+  singleCardContainer: {
+    height: SINGLE_CARD_HEIGHT,
     justifyContent: 'flex-start',
   },
   // Carousel
