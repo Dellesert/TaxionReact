@@ -63,6 +63,7 @@ export const ScheduleListScreen: React.FC = () => {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Group schedules by type
   const sections = useMemo((): ScheduleSection[] => {
@@ -96,6 +97,13 @@ export const ScheduleListScreen: React.FC = () => {
     const { start, end } = getMonthRange(date);
     updateFilters({ start_date: start, end_date: end });
   }, [updateFilters]);
+
+  // Handle manual pull-to-refresh
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refresh();
+    setIsRefreshing(false);
+  }, [refresh]);
 
   const handleSchedulePress = useCallback(
     (schedule: Schedule) => {
@@ -232,8 +240,8 @@ export const ScheduleListScreen: React.FC = () => {
         stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading}
-            onRefresh={refresh}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
             tintColor={theme.primary}
           />
         }

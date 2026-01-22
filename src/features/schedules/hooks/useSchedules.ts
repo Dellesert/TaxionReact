@@ -26,9 +26,9 @@ export const useSchedules = (initialFilters?: ScheduleFilters) => {
   }, []);
 
   // Refresh - reset hasMore to true before refreshing
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     useScheduleStore.setState({ hasMore: true });
-    loadSchedules(filters, true);
+    await loadSchedules(filters, true);
   }, [filters, loadSchedules]);
 
   // Load more (pagination) - don't load if there's an error
