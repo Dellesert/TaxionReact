@@ -484,7 +484,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                 {/* User Selector - optional for recurring mode */}
                 <View style={styles.section}>
                   <Text style={[styles.label, { color: theme.textSecondary }]}>
-                    Сотрудник {isRecurringMode ? '(необязательно)' : '*'}
+                    Сотрудник
                   </Text>
                   <UserSelector
                     selectedUserIds={userId}
@@ -494,18 +494,13 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                     modalTitle="Выбрать сотрудника"
                     mode="radio"
                   />
-                  {isRecurringMode && userId.length === 0 && (
-                    <Text style={[styles.hintText, { color: theme.textSecondary }]}>
-                      Если не выбран, запись применяется ко всем сотрудникам графика
-                    </Text>
-                  )}
                 </View>
 
                 {/* Day of Week (for recurring mode) or Date (for monthly mode) */}
                 {isRecurringMode ? (
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: theme.textSecondary }]}>
-                      {isEditMode ? 'День недели *' : 'Дни недели * (можно выбрать несколько)'}
+                      День недели
                     </Text>
                     <View style={styles.dayOfWeekRow}>
                       {DAYS_OF_WEEK.map((day) => {
@@ -546,7 +541,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                   </View>
                 ) : (
                   <View style={styles.section}>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>Дата *</Text>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Дата</Text>
                     <TouchableOpacity
                       style={[styles.dateButton, { backgroundColor: theme.card, borderColor: theme.border }]}
                       onPress={() => setShowDatePicker(true)}
@@ -562,7 +557,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                 {/* Shift Type - for both modes */}
                 {(
                   <View style={styles.section}>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>Тип смены *</Text>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Тип смены</Text>
                     <View style={styles.shiftTypeRow}>
                       {SHIFT_TYPES.map((item) => (
                         <TouchableOpacity
