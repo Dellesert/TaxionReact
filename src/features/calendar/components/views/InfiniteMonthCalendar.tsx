@@ -138,17 +138,9 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       return eventsByDate[dateKey] || [];
     };
 
-    // Get event dot colors
+    // Get event dot colors (up to 3 dots for first 3 events)
     const getEventDotColors = (events: Event[]): string[] => {
-      const colorMap: { [key: string]: string } = {};
-
-      events.forEach((event) => {
-        if (!colorMap[event.type]) {
-          colorMap[event.type] = event.color;
-        }
-      });
-
-      return Object.values(colorMap).slice(0, 3);
+      return events.slice(0, 3).map((event) => event.color);
     };
 
     // Render single day cell
