@@ -105,15 +105,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [chat?.type]);
 
   // Handlers
-  const handleSearchMessages = () => {
-    // Возвращаемся на экран чата и открываем поиск
-    navigation.navigate('Chat', {
-      chatId,
-      chatName: chatName || undefined,
-      openSearch: true,
-    });
-  };
-
   const handleAddMembers = async () => {
     if (selectedUserIds.length === 0) return;
 
@@ -198,11 +189,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const privateQuickActions: QuickAction[] = useMemo(
     () => [
       {
-        icon: 'search-outline',
-        label: 'Поиск',
-        onPress: handleSearchMessages,
-      },
-      {
         icon: 'trash-bin-outline',
         label: 'Очистить',
         onPress: () => setShowClearHistoryDialog(true),
@@ -234,12 +220,6 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         onPress: () => setShowRenameDialog(true),
       });
     }
-
-    actions.push({
-      icon: 'search-outline',
-      label: 'Поиск',
-      onPress: handleSearchMessages,
-    });
 
     if (!isCreator) {
       actions.push({
