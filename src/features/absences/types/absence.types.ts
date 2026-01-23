@@ -117,4 +117,5 @@ export interface AbsenceFilters {
   type?: AbsenceType;
   start_date?: string;
   end_date?: string;
+  sort_order?: 'asc' | 'desc';
 }

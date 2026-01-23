@@ -57,7 +57,7 @@ export const AbsenceListScreen: React.FC = () => {
 
   // Initial load
   useEffect(() => {
-    loadAbsences({}, true);
+    loadAbsences({ sort_order: 'asc' }, true);
   }, []);
 
   const handleRefresh = useCallback(() => {

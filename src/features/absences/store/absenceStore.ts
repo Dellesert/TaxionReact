@@ -53,7 +53,7 @@ const initialState = {
   isSubmitting: false,
   total: 0,
   hasMore: true,
-  filters: {} as AbsenceFilters,
+  filters: { sort_order: 'asc' } as AbsenceFilters,
   error: null as string | null,
 };
 
