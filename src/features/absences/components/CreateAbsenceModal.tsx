@@ -169,18 +169,14 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
     }
 
     try {
-      const startDateISO = new Date(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
-        0, 0, 0
-      ).toISOString();
-      const endDateISO = new Date(
-        endDate.getFullYear(),
-        endDate.getMonth(),
-        endDate.getDate(),
-        23, 59, 59
-      ).toISOString();
+      // Use YYYY-MM-DD format to avoid timezone issues
+      // The backend should interpret these as date-only values
+      const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+      // Create UTC dates to avoid local timezone offset issues
+      const startDateISO = `${startDateStr}T00:00:00.000Z`;
+      const endDateISO = `${endDateStr}T23:59:59.000Z`;
 
       const data: CreateAbsenceRequest = {
         user_id: selectedUserId,

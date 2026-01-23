@@ -71,8 +71,13 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
   useEffect(() => {
     if (absence && visible) {
       setSelectedType(absence.type);
-      setStartDate(parseISO(absence.start_date));
-      setEndDate(parseISO(absence.end_date));
+      // Parse ISO dates and extract date components to avoid timezone issues
+      // We want to display the date as stored, not converted to local timezone
+      const parsedStart = parseISO(absence.start_date);
+      const parsedEnd = parseISO(absence.end_date);
+      // Use UTC components to create local dates for display
+      setStartDate(new Date(parsedStart.getUTCFullYear(), parsedStart.getUTCMonth(), parsedStart.getUTCDate()));
+      setEndDate(new Date(parsedEnd.getUTCFullYear(), parsedEnd.getUTCMonth(), parsedEnd.getUTCDate()));
       setReason(absence.reason || '');
     }
   }, [absence, visible]);
@@ -105,19 +110,14 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
     }
 
     try {
-      // Backend expects ISO timestamp format for dates
-      const startDateISO = new Date(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
-        0, 0, 0
-      ).toISOString();
-      const endDateISO = new Date(
-        endDate.getFullYear(),
-        endDate.getMonth(),
-        endDate.getDate(),
-        23, 59, 59
-      ).toISOString();
+      // Use YYYY-MM-DD format to avoid timezone issues
+      // The backend should interpret these as date-only values
+      const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+      // Create UTC dates to avoid local timezone offset issues
+      const startDateISO = `${startDateStr}T00:00:00.000Z`;
+      const endDateISO = `${endDateStr}T23:59:59.000Z`;
 
       const data: UpdateAbsenceRequest = {
         type: selectedType,

@@ -303,6 +303,7 @@ const EventDetailScreen: React.FC = () => {
   const isCreator = user && event.created_by === user.id;
   const canManage = isCreator || (user && (user.role === 'admin' || user.role === 'super_admin'));
   const isScheduleEvent = event.type === 'schedule';
+  const isAbsenceEvent = event.type === 'absence';
 
   const getEventIcon = () => {
     switch (event.type) {
@@ -314,6 +315,8 @@ const EventDetailScreen: React.FC = () => {
         return 'person';
       case 'schedule':
         return 'calendar';
+      case 'absence':
+        return 'airplane'; // or 'bed' for sick leave, but we use a generic icon
       default:
         return 'calendar';
     }
@@ -329,6 +332,9 @@ const EventDetailScreen: React.FC = () => {
         return 'Личные события';
       case 'schedule':
         return 'График работы';
+      case 'absence':
+        // For absence events, use the title which contains the absence type name
+        return event.title;
       default:
         return 'Событие';
     }
@@ -431,7 +437,7 @@ const EventDetailScreen: React.FC = () => {
             </View>
 
             <View style={styles.headerRight}>
-              {canManage && !isScheduleEvent && (
+              {canManage && !isScheduleEvent && !isAbsenceEvent && (
                 <TouchableOpacity
                   onPress={() => setShowActionMenu(true)}
                   style={styles.actionMenuButton}
@@ -454,8 +460,8 @@ const EventDetailScreen: React.FC = () => {
             <View style={[styles.section, { borderBottomWidth: 0 }]}>
               <Text style={[styles.eventTitle, { color: theme.text }]}>{event.title}</Text>
 
-              {/* Response buttons for participants (not for personal events) */}
-              {myParticipation && event.type !== 'personal' && (
+              {/* Response buttons for participants (not for personal or absence events) */}
+              {myParticipation && event.type !== 'personal' && !isAbsenceEvent && (
                 <View style={styles.responseSection}>
                   <Text style={[styles.responseSectionLabel, { color: theme.textSecondary }]}>
                     {isCreator ? 'Организатор' : 'Ваш ответ'}
@@ -547,8 +553,8 @@ const EventDetailScreen: React.FC = () => {
                 </View>
               )}
 
-              {/* Participation stats (not for personal events) */}
-              {participants.length > 0 && event.type !== 'personal' && (
+              {/* Participation stats (not for personal or absence events) */}
+              {participants.length > 0 && event.type !== 'personal' && !isAbsenceEvent && (
                 <View style={styles.statsContainer}>
                   {acceptedParticipants.length > 0 && (
                     <View style={[styles.statBadge, { backgroundColor: '#10B98120' }]}>
@@ -592,7 +598,9 @@ const EventDetailScreen: React.FC = () => {
                 <Ionicons name={getEventIcon() as any} size={22} color={event.color} />
               </View>
               <View style={styles.infoCardContent}>
-                <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>Тип события</Text>
+                <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>
+                  {isAbsenceEvent ? 'Тип отсутствия' : 'Тип события'}
+                </Text>
                 <Text style={[styles.infoCardValue, { color: theme.text }]}>{getEventTypeLabel()}</Text>
               </View>
             </View>
@@ -603,12 +611,34 @@ const EventDetailScreen: React.FC = () => {
                 <Ionicons name="calendar-outline" size={22} color={event.color} />
               </View>
               <View style={styles.infoCardContent}>
-                <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>Дата и время</Text>
-                {event.all_day ? (
-                  <Text style={[styles.infoCardValue, { color: theme.text }]}>
-                    {format(new Date(event.start_time), 'd MMMM yyyy', { locale: ru })}
-                  </Text>
-                ) : (() => {
+                <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>
+                  {event.all_day ? 'Дата' : 'Дата и время'}
+                </Text>
+                {event.all_day ? (() => {
+                  const start = new Date(event.start_time);
+                  const end = new Date(event.end_time);
+                  // Check if same day for all-day events
+                  const isSameDay =
+                    start.getFullYear() === end.getFullYear() &&
+                    start.getMonth() === end.getMonth() &&
+                    start.getDate() === end.getDate();
+
+                  if (isSameDay) {
+                    return (
+                      <Text style={[styles.infoCardValue, { color: theme.text }]}>
+                        {format(start, 'd MMMM yyyy', { locale: ru })}
+                      </Text>
+                    );
+                  }
+                  // Multi-day all-day event (like absence)
+                  return (
+                    <>
+                      <Text style={[styles.infoCardValue, { color: theme.text }]}>
+                        {format(start, 'd MMMM', { locale: ru })} — {format(end, 'd MMMM yyyy', { locale: ru })}
+                      </Text>
+                    </>
+                  );
+                })() : (() => {
                   const dateRange = formatDateRange(event.start_time, event.end_time);
                   if ('singleLine' in dateRange) {
                     return (
@@ -652,8 +682,8 @@ const EventDetailScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Creator (not for personal or schedule events) */}
-            {event.creator && event.type !== 'personal' && !isScheduleEvent && (
+            {/* Creator (not for personal, schedule or absence events) */}
+            {event.creator && event.type !== 'personal' && !isScheduleEvent && !isAbsenceEvent && (
               <View style={[styles.section, { borderBottomColor: theme.border }]}>
                 <TouchableOpacity
                   style={styles.creatorContainer}
@@ -678,8 +708,8 @@ const EventDetailScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Participants (not for personal events) */}
-            {participants.length > 0 && event.type !== 'personal' && (
+            {/* Participants (not for personal or absence events) */}
+            {participants.length > 0 && event.type !== 'personal' && !isAbsenceEvent && (
               <View style={[styles.section, { borderBottomColor: theme.border }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Участники</Text>
 

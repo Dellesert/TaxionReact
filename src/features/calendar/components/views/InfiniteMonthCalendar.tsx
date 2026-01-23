@@ -13,6 +13,9 @@ import {
   format,
   isSameMonth,
   isToday,
+  isSameDay,
+  isWithinInterval,
+  parseISO,
 } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useFocusEffect } from '@react-navigation/native';
@@ -49,11 +52,27 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
     }, [month.date]);
 
-    // Group events by date
+    // Separate absence events from regular events
+    const { absenceEvents, regularEvents } = useMemo(() => {
+      const absences: Event[] = [];
+      const regular: Event[] = [];
+
+      month.events.forEach((event) => {
+        if (event.type === 'absence') {
+          absences.push(event);
+        } else {
+          regular.push(event);
+        }
+      });
+
+      return { absenceEvents: absences, regularEvents: regular };
+    }, [month.events]);
+
+    // Group regular events by date
     const eventsByDate = useMemo(() => {
       const grouped: { [key: string]: Event[] } = {};
 
-      month.events.forEach((event) => {
+      regularEvents.forEach((event) => {
         const date = new Date(event.start_time);
         const year = date.getFullYear();
         const monthNum = String(date.getMonth() + 1).padStart(2, '0');
@@ -67,7 +86,47 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       });
 
       return grouped;
-    }, [month.events]);
+    }, [regularEvents]);
+
+    // Check if a date falls within any absence period
+    const getAbsenceForDate = useCallback((date: Date): Event | null => {
+      const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+      for (const absence of absenceEvents) {
+        const startDate = parseISO(absence.start_time);
+        const endDate = parseISO(absence.end_time);
+
+        // Use UTC components to avoid timezone issues
+        // The dates are stored as UTC (e.g., 2025-01-02T00:00:00.000Z)
+        const absenceStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+        const absenceEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+        if (isWithinInterval(checkDate, { start: absenceStart, end: absenceEnd })) {
+          return absence;
+        }
+      }
+
+      return null;
+    }, [absenceEvents]);
+
+    // Get position of date in absence range (for styling)
+    const getAbsencePosition = useCallback((date: Date, absence: Event): 'start' | 'middle' | 'end' | 'single' => {
+      const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const startDate = parseISO(absence.start_time);
+      const endDate = parseISO(absence.end_time);
+
+      // Use UTC components to avoid timezone issues
+      const absenceStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+      const absenceEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+      const isStart = isSameDay(checkDate, absenceStart);
+      const isEnd = isSameDay(checkDate, absenceEnd);
+
+      if (isStart && isEnd) return 'single';
+      if (isStart) return 'start';
+      if (isEnd) return 'end';
+      return 'middle';
+    }, []);
 
     // Get events for a specific date
     const getEventsForDate = (date: Date): Event[] => {
@@ -93,7 +152,7 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
     };
 
     // Render single day cell
-    const renderDay = (date: Date) => {
+    const renderDay = (date: Date, dayIndex: number) => {
       const isCurrentMonth = isSameMonth(date, month.date);
       const isTodayDate = isToday(date);
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
@@ -112,10 +171,62 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       const hasEvents = dayEvents.length > 0;
       const dotColors = getEventDotColors(dayEvents);
 
+      // Check for absence on this date
+      const absence = getAbsenceForDate(normalizedDate);
+      const hasAbsence = absence !== null && isCurrentMonth;
+      const absencePosition = hasAbsence ? getAbsencePosition(normalizedDate, absence!) : null;
+
+      // Check if it's first/last day of week for proper corner rounding
+      const isFirstDayOfWeek = dayIndex === 0;
+      const isLastDayOfWeek = dayIndex === 6;
+
       const handleDayPress = () => {
         if (isCurrentMonth) {
           onDatePress(normalizedDate);
         }
+      };
+
+      // Get absence background style
+      const getAbsenceStyle = () => {
+        if (!hasAbsence) return null;
+
+        const bgColor = absence!.color + '25'; // Light background
+        const borderColor = absence!.color + '60';
+
+        // Determine corner rounding based on position and week boundaries
+        let borderTopLeftRadius = 0;
+        let borderBottomLeftRadius = 0;
+        let borderTopRightRadius = 0;
+        let borderBottomRightRadius = 0;
+
+        // Round left corners if start of absence OR first day of week (for wrapped absences)
+        if (absencePosition === 'single' || absencePosition === 'start' || isFirstDayOfWeek) {
+          borderTopLeftRadius = 8;
+          borderBottomLeftRadius = 8;
+        }
+
+        // Round right corners if end of absence OR last day of week (for wrapped absences)
+        if (absencePosition === 'single' || absencePosition === 'end' || isLastDayOfWeek) {
+          borderTopRightRadius = 8;
+          borderBottomRightRadius = 8;
+        }
+
+        return {
+          position: 'absolute' as const,
+          top: 2,
+          bottom: 2,
+          left: (absencePosition === 'start' || absencePosition === 'single' || isFirstDayOfWeek) ? 2 : 0,
+          right: (absencePosition === 'end' || absencePosition === 'single' || isLastDayOfWeek) ? 2 : 0,
+          backgroundColor: bgColor,
+          borderTopLeftRadius,
+          borderBottomLeftRadius,
+          borderTopRightRadius,
+          borderBottomRightRadius,
+          borderWidth: 1.5,
+          borderLeftWidth: (absencePosition === 'start' || absencePosition === 'single' || isFirstDayOfWeek) ? 1.5 : 0,
+          borderRightWidth: (absencePosition === 'end' || absencePosition === 'single' || isLastDayOfWeek) ? 1.5 : 0,
+          borderColor,
+        };
       };
 
       return (
@@ -126,6 +237,9 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
           activeOpacity={isCurrentMonth ? 0.6 : 1}
           disabled={!isCurrentMonth}
         >
+          {/* Absence background layer */}
+          {hasAbsence && <View style={getAbsenceStyle()} />}
+
           <View
             style={[
               styles.dayContent,
@@ -204,7 +318,7 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
         <View style={styles.weeksContainer}>
           {weeks.map((week, weekIndex) => (
             <View key={weekIndex} style={styles.weekRow}>
-              {week.map((day) => renderDay(day))}
+              {week.map((day, dayIndex) => renderDay(day, dayIndex))}
             </View>
           ))}
         </View>
