@@ -163,6 +163,7 @@ const styles = StyleSheet.create({
   },
   emptyListContent: {
     flex: 1,
+    paddingBottom: 0,
   },
   sectionHeader: {
     paddingTop: 16,
