@@ -16,12 +16,19 @@ import { useAbsenceStore } from '../store/absenceStore';
 import { AbsenceList } from '../components/AbsenceList';
 import { CreateAbsenceModal } from '../components/CreateAbsenceModal';
 import { EditAbsenceModal } from '../components/EditAbsenceModal';
+import { YearPicker } from '../components/YearPicker';
 import {
   Absence,
   AbsenceType,
   ABSENCE_TYPES,
   ABSENCE_TYPE_LABELS,
 } from '../types/absence.types';
+
+// Helper to get year date range
+const getYearRange = (year: number): { start_date: string; end_date: string } => ({
+  start_date: `${year}-01-01`,
+  end_date: `${year}-12-31`,
+});
 
 // Filter options for the dropdown menu
 const FILTER_OPTIONS: { key: AbsenceType | 'all'; label: string }[] = [
@@ -54,11 +61,22 @@ export const AbsenceListScreen: React.FC = () => {
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<AbsenceType | null>(
     filters.type || null
   );
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
 
-  // Initial load
+  // Initial load with current year filter
   useEffect(() => {
-    loadAbsences({ sort_order: 'asc' }, true);
+    const yearRange = getYearRange(selectedYear);
+    loadAbsences({ sort_order: 'asc', ...yearRange }, true);
   }, []);
+
+  // Handle year change
+  const handleYearChange = useCallback((year: number) => {
+    setSelectedYear(year);
+    const yearRange = getYearRange(year);
+    const newFilters = { ...filters, ...yearRange };
+    setFilters(newFilters);
+    loadAbsences(newFilters, true);
+  }, [filters, setFilters, loadAbsences]);
 
   const handleRefresh = useCallback(() => {
     loadAbsences(filters, true);
@@ -78,10 +96,12 @@ export const AbsenceListScreen: React.FC = () => {
 
   const handleApplyFilter = useCallback((type: AbsenceType | null) => {
     setSelectedTypeFilter(type);
-    setFilters({ ...filters, type: type || undefined });
-    loadAbsences({ ...filters, type: type || undefined }, true);
+    const yearRange = getYearRange(selectedYear);
+    const newFilters = { ...filters, ...yearRange, type: type || undefined };
+    setFilters(newFilters);
+    loadAbsences(newFilters, true);
     setShowFilterMenu(false);
-  }, [filters, setFilters, loadAbsences]);
+  }, [filters, setFilters, loadAbsences, selectedYear]);
 
   const handleFilterToggle = useCallback(() => {
     if (filterButtonRef.current) {
@@ -158,6 +178,12 @@ export const AbsenceListScreen: React.FC = () => {
 
       {/* Content */}
       <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
+        {/* Year Picker */}
+        <YearPicker
+          selectedYear={selectedYear}
+          onYearChange={handleYearChange}
+        />
+
         <AbsenceList
           absences={absences}
           isLoading={isLoading}
@@ -166,8 +192,8 @@ export const AbsenceListScreen: React.FC = () => {
           onItemPress={handleAbsencePress}
           emptyMessage={
             selectedTypeFilter
-              ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}"`
-              : 'Нет отпусков'
+              ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за ${selectedYear}`
+              : `Нет отпусков за ${selectedYear}`
           }
         />
       </View>

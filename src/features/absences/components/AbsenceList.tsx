@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-  FlatList,
+  SectionList,
   View,
   Text,
   StyleSheet,
@@ -11,6 +11,44 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { AbsenceCard } from './AbsenceCard';
 import type { Absence } from '../types/absence.types';
+
+interface AbsenceSection {
+  title: string;
+  data: Absence[];
+}
+
+const MONTH_NAMES = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+];
+
+const groupAbsencesByMonth = (absences: Absence[]): AbsenceSection[] => {
+  const grouped = new Map<string, Absence[]>();
+
+  absences.forEach((absence) => {
+    const date = new Date(absence.start_date);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const key = `${year}-${month}`;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    grouped.get(key)!.push(absence);
+  });
+
+  const sections: AbsenceSection[] = [];
+  grouped.forEach((data, key) => {
+    const [year, month] = key.split('-').map(Number);
+    const currentYear = new Date().getFullYear();
+    const title = currentYear === year
+      ? MONTH_NAMES[month]
+      : `${MONTH_NAMES[month]} ${year}`;
+    sections.push({ title, data });
+  });
+
+  return sections;
+};
 
 interface AbsenceListProps {
   absences: Absence[];
@@ -35,11 +73,21 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  const sections = useMemo(() => groupAbsencesByMonth(absences), [absences]);
+
   const renderItem = ({ item }: { item: Absence }) => (
     <AbsenceCard
       absence={item}
       onPress={onItemPress ? () => onItemPress(item) : undefined}
     />
+  );
+
+  const renderSectionHeader = ({ section }: { section: AbsenceSection }) => (
+    <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
+      <Text style={[styles.sectionHeaderText, { color: theme.textSecondary }]}>
+        {section.title}
+      </Text>
+    </View>
   );
 
   const renderEmpty = () => {
@@ -77,9 +125,10 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
   };
 
   return (
-    <FlatList
-      data={absences}
+    <SectionList
+      sections={sections}
       renderItem={renderItem}
+      renderSectionHeader={renderSectionHeader}
       keyExtractor={(item) => item.id.toString()}
       contentContainerStyle={[
         styles.listContent,
@@ -89,6 +138,7 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
       ListHeaderComponent={ListHeaderComponent}
       ListEmptyComponent={renderEmpty}
       ListFooterComponent={renderFooter}
+      stickySectionHeadersEnabled={false}
       refreshControl={
         onRefresh ? (
           <RefreshControl
@@ -113,6 +163,16 @@ const styles = StyleSheet.create({
   },
   emptyListContent: {
     flex: 1,
+  },
+  sectionHeader: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  sectionHeaderText: {
+    fontSize: 15,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   emptyContainer: {
     flex: 1,
