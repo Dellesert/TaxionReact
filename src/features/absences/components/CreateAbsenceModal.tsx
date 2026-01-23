@@ -576,6 +576,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
             multiSelect={false}
             title="Выберите сотрудника"
             mode="radio"
+            includeCurrentUser={true}
           />
         </View>
       </View>
