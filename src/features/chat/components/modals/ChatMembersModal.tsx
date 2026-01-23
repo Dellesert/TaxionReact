@@ -30,6 +30,7 @@ import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { ConfirmDialog } from '@shared/components/common/ConfirmDialog';
 import Avatar from '@shared/components/common/Avatar';
+import { ActionModal } from '@shared/components/common/ActionModal';
 
 interface ChatMembersModalProps {
   visible: boolean;
@@ -798,71 +799,37 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
       />
 
       {/* Action menu modal */}
-      <Modal
+      <ActionModal
         visible={showActionMenu}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCloseActionMenu}
-      >
-        <TouchableOpacity
-          style={styles.actionMenuOverlay}
-          activeOpacity={1}
-          onPress={handleCloseActionMenu}
-        >
-          <View style={[styles.actionMenuContainer, { backgroundColor: theme.backgroundSecondary }]}>
-            <View style={[styles.actionMenuHeader, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.actionMenuTitle, { color: theme.text }]}>
-                {selectedMember?.userName}
-              </Text>
-            </View>
-
-            {/* Change role option */}
-            {canManageMembers && selectedMember?.role !== 'owner' && !(isAdmin && selectedMember?.role === 'admin') && (
-              <TouchableOpacity
-                style={[styles.actionMenuItem, { borderBottomColor: theme.borderLight }]}
-                onPress={() => handleMenuAction('changeRole')}
-              >
-                <Ionicons
-                  name="swap-horizontal"
-                  size={20}
-                  color={theme.primary}
-                  style={styles.actionMenuIcon}
-                />
-                <Text style={[styles.actionMenuItemText, { color: theme.text }]}>
-                  {selectedMember?.role === 'admin' ? 'Снять права администратора' : 'Назначить администратором'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Remove option */}
-            {canManageMembers && selectedMember?.userId !== creatorId && selectedMember?.userId !== currentUser?.id && !(isAdmin && selectedMember?.role === 'admin') && (
-              <TouchableOpacity
-                style={styles.actionMenuItem}
-                onPress={() => handleMenuAction('remove')}
-              >
-                <Ionicons
-                  name="person-remove"
-                  size={20}
-                  color={theme.error || '#FF3B30'}
-                  style={styles.actionMenuIcon}
-                />
-                <Text style={[styles.actionMenuItemText, { color: theme.error || '#FF3B30' }]}>
-                  Удалить из чата
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={[styles.actionMenuCancelButton, { borderTopColor: theme.border }]}
-              onPress={handleCloseActionMenu}
-            >
-              <Text style={[styles.actionMenuCancelText, { color: theme.textSecondary }]}>
-                Отмена
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        title={selectedMember?.userName || ''}
+        onDismiss={handleCloseActionMenu}
+        actions={[
+          // Change role option
+          ...(canManageMembers && selectedMember?.role !== 'owner' && !(isAdmin && selectedMember?.role === 'admin')
+            ? [{
+                text: selectedMember?.role === 'admin' ? 'Снять права администратора' : 'Назначить администратором',
+                icon: 'swap-horizontal' as const,
+                style: 'default' as const,
+                onPress: () => handleMenuAction('changeRole'),
+              }]
+            : []),
+          // Remove option
+          ...(canManageMembers && selectedMember?.userId !== creatorId && selectedMember?.userId !== currentUser?.id && !(isAdmin && selectedMember?.role === 'admin')
+            ? [{
+                text: 'Удалить из чата',
+                icon: 'person-remove' as const,
+                style: 'destructive' as const,
+                onPress: () => handleMenuAction('remove'),
+              }]
+            : []),
+          // Cancel button
+          {
+            text: 'Отмена',
+            style: 'cancel' as const,
+            onPress: handleCloseActionMenu,
+          },
+        ]}
+      />
     </Modal>
   );
 };
@@ -986,53 +953,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  actionMenuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  actionMenuContainer: {
-    width: '100%',
-    maxWidth: 400,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  actionMenuHeader: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-  },
-  actionMenuTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  actionMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-  },
-  actionMenuIcon: {
-    marginRight: 12,
-  },
-  actionMenuItemText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  actionMenuCancelButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderTopWidth: 1,
-    alignItems: 'center',
-  },
-  actionMenuCancelText: {
-    fontSize: 15,
-    fontWeight: '600',
   },
   checkbox: {
     width: 24,

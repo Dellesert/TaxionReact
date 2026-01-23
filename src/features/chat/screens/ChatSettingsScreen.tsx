@@ -12,7 +12,6 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ConfirmDialog } from '@shared/components/common/ConfirmDialog';
 import { InputDialog } from '@shared/components/common/InputDialog';
-import { ActionSheet, ActionSheetOption } from '@shared/components/common/ActionSheet';
 import { ActionModal } from '@shared/components/common/ActionModal';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { ChatDetailTabs, TabType } from '../components/common/ChatDetailTabs';
@@ -363,32 +362,31 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       )}
 
       {/* Action Menu */}
-      <ActionSheet
+      <ActionModal
         visible={showActionMenu}
         title={selectedMember?.userName || ''}
-        options={[
+        onDismiss={handleCloseActionMenu}
+        actions={[
           {
-            label:
-              selectedMember?.role === 'admin'
-                ? 'Снять права администратора'
-                : 'Назначить администратором',
-            onPress: () => {
-              if (selectedMember) {
-                handleMenuAction('changeRole');
-              }
-            },
+            text: selectedMember?.role === 'admin'
+              ? 'Снять права администратора'
+              : 'Назначить администратором',
+            icon: 'swap-horizontal',
+            style: 'default',
+            onPress: () => handleMenuAction('changeRole'),
           },
           {
-            label: 'Удалить из чата',
-            onPress: () => {
-              if (selectedMember) {
-                handleMenuAction('remove');
-              }
-            },
-            destructive: true,
+            text: 'Удалить из чата',
+            icon: 'person-remove',
+            style: 'destructive',
+            onPress: () => handleMenuAction('remove'),
+          },
+          {
+            text: 'Отмена',
+            style: 'cancel',
+            onPress: handleCloseActionMenu,
           },
         ]}
-        onCancel={handleCloseActionMenu}
       />
 
       {/* Delete Dialog */}
