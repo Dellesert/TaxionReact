@@ -29,7 +29,7 @@ interface UserSelectorModalProps {
   visible: boolean;
   onClose: () => void;
   selectedUserIds: number[];
-  onSelectionChange: (userIds: number[]) => void;
+  onSelectionChange: (userIds: number[], selectedUsers?: User[]) => void;
   multiSelect?: boolean;
   title?: string;
   excludeUserIds?: number[]; // Исключить определенных пользователей из списка
@@ -214,12 +214,17 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   const toggleUserSelection = (userId: number) => {
     if (multiSelect) {
       if (selectedUserIds.includes(userId)) {
-        onSelectionChange(selectedUserIds.filter((id) => id !== userId));
+        const newIds = selectedUserIds.filter((id) => id !== userId);
+        const selectedUsers = users.filter((u) => newIds.includes(u.id));
+        onSelectionChange(newIds, selectedUsers);
       } else {
-        onSelectionChange([...selectedUserIds, userId]);
+        const newIds = [...selectedUserIds, userId];
+        const selectedUsers = users.filter((u) => newIds.includes(u.id));
+        onSelectionChange(newIds, selectedUsers);
       }
     } else {
-      onSelectionChange([userId]);
+      const selectedUser = users.find((u) => u.id === userId);
+      onSelectionChange([userId], selectedUser ? [selectedUser] : []);
       onClose();
     }
   };
@@ -232,21 +237,24 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
 
     if (allSelected) {
       // Deselect all users in this department
-      onSelectionChange(selectedUserIds.filter(id => !departmentUserIds.includes(id)));
+      const newIds = selectedUserIds.filter(id => !departmentUserIds.includes(id));
+      const selectedUsers = users.filter((u) => newIds.includes(u.id));
+      onSelectionChange(newIds, selectedUsers);
     } else {
       // Select all users in this department
-      const newSelectedUsers = [...selectedUserIds];
+      const newSelectedIds = [...selectedUserIds];
       departmentUserIds.forEach(id => {
-        if (!newSelectedUsers.includes(id)) {
-          newSelectedUsers.push(id);
+        if (!newSelectedIds.includes(id)) {
+          newSelectedIds.push(id);
         }
       });
-      onSelectionChange(newSelectedUsers);
+      const selectedUsers = users.filter((u) => newSelectedIds.includes(u.id));
+      onSelectionChange(newSelectedIds, selectedUsers);
     }
   };
 
   const handleClearAll = () => {
-    onSelectionChange([]);
+    onSelectionChange([], []);
   };
 
   const handleDone = () => {

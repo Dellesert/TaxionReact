@@ -66,6 +66,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
 
   // Step 1: User selection
   const [selectedUserId, setSelectedUserId] = useState<number | null>(defaultUserId || null);
+  const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [showUserPicker, setShowUserPicker] = useState(false);
 
   // Step 2: Type selection
@@ -102,6 +103,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
     if (!visible) {
       setCurrentStep(1);
       setSelectedUserId(defaultUserId || null);
+      setSelectedUserName(null);
       setSelectedType(null);
       setStartDate(new Date());
       setEndDate(new Date());
@@ -198,6 +200,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
   const handleClose = () => {
     setCurrentStep(1);
     setSelectedUserId(defaultUserId || null);
+    setSelectedUserName(null);
     setSelectedType(null);
     setStartDate(new Date());
     setEndDate(new Date());
@@ -339,7 +342,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
                         </View>
                         <View style={styles.selectorInfo}>
                           <Text style={[styles.selectorTitle, { color: theme.text }]}>
-                            {selectedUserId ? `Пользователь #${selectedUserId}` : 'Выберите сотрудника'}
+                            {selectedUserName || (selectedUserId ? `Пользователь #${selectedUserId}` : 'Выберите сотрудника')}
                           </Text>
                           <Text style={[styles.selectorDescription, { color: theme.textSecondary }]}>
                             {selectedUserId ? 'Нажмите, чтобы изменить' : 'Нажмите для выбора'}
@@ -563,9 +566,10 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
             visible={showUserPicker}
             onClose={() => setShowUserPicker(false)}
             selectedUserIds={selectedUserId ? [selectedUserId] : []}
-            onSelectionChange={(userIds) => {
+            onSelectionChange={(userIds, selectedUsers) => {
               if (userIds.length > 0) {
                 setSelectedUserId(userIds[0]);
+                setSelectedUserName(selectedUsers?.[0]?.name || null);
               }
               setShowUserPicker(false);
             }}
