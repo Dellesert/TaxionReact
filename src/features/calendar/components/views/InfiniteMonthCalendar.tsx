@@ -243,25 +243,31 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
           <View
             style={[
               styles.dayContent,
-              isTodayDate && [styles.todayContainer, { borderColor: theme.primary }],
               !isCurrentMonth && styles.dayOutOfMonth,
             ]}
           >
-            <Text
+            <View
               style={[
-                styles.dayText,
-                { color: isCurrentMonth ? theme.text : theme.textTertiary },
-                isTodayDate && [styles.todayText, { color: theme.primary }],
-                isWeekend && isCurrentMonth && !isTodayDate && { color: theme.primary },
+                styles.dayCircle,
+                isTodayDate && [styles.todayCircle, { backgroundColor: theme.primary }],
               ]}
             >
-              {format(date, 'd')}
-            </Text>
+              <Text
+                style={[
+                  styles.dayText,
+                  { color: isCurrentMonth ? theme.text : theme.textTertiary },
+                  isTodayDate && styles.todayText,
+                  isWeekend && isCurrentMonth && !isTodayDate && { color: theme.primary },
+                ]}
+              >
+                {format(date, 'd')}
+              </Text>
+            </View>
           </View>
 
-          {/* Event dots indicator */}
+          {/* Event dots indicator - positioned below the day circle */}
           {hasEvents && isCurrentMonth && (
-            <View style={styles.dotsContainer}>
+            <View style={[styles.dotsContainer, isTodayDate && styles.dotsContainerToday]}>
               {dotColors.map((color, index) => (
                 <View
                   key={`${date.toISOString()}-${index}`}
@@ -580,10 +586,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
   },
-  todayContainer: {
-    borderWidth: 2,
+  dayCircle: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+  },
+  todayCircle: {
+    // backgroundColor is set dynamically with theme.primary
   },
   dayOutOfMonth: {
     opacity: 0.25,
@@ -594,16 +606,20 @@ const styles = StyleSheet.create({
   },
   todayText: {
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 6,
+    bottom: 4,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 3,
+  },
+  dotsContainerToday: {
+    bottom: 1,
   },
   eventDot: {
     width: 4,
