@@ -763,6 +763,8 @@ export const ChatItem = React.memo(ChatItemComponent, (prevProps, nextProps) => 
 
   return (
     prevProps.chat.id === nextProps.chat.id &&
+    prevProps.chat.name === nextProps.chat.name &&
+    prevProps.chat.avatar === nextProps.chat.avatar &&
     prevProps.chat.last_message?.id === nextProps.chat.last_message?.id &&
     prevProps.chat.last_message?.content === nextProps.chat.last_message?.content &&
     prevProps.chat.unread_count === nextProps.chat.unread_count &&

@@ -635,14 +635,38 @@ export const useChatStore = create<ChatState>()(
   updateChat: async (chatId: number, data: { name?: string; avatar?: string; avatar_thumbnail?: string; description?: string }) => {
     try {
       const updatedChat = await chatApi.updateChat(chatId, data);
-      set((state) => ({
-        chats: state.chats.map((chat) =>
-          chat.id === chatId ? { ...chat, ...updatedChat } : chat
-        ),
-        activeChat: state.activeChat?.id === chatId
-          ? { ...state.activeChat, ...updatedChat }
-          : state.activeChat,
-      }));
+      set((state) => {
+        // Helper to update chat in a list
+        const updateChatInList = (chats: Chat[]) =>
+          chats.map((chat) =>
+            chat.id === chatId ? { ...chat, ...updatedChat } : chat
+          );
+
+        // Update all tabs
+        const updatedTabs = { ...state.tabs };
+        (Object.keys(updatedTabs) as TabName[]).forEach((tabKey) => {
+          const tab = updatedTabs[tabKey];
+          if (!tab.loaded) return;
+
+          updatedTabs[tabKey] = {
+            ...tab,
+            pinnedChats: updateChatInList(tab.pinnedChats),
+            regularChats: updateChatInList(tab.regularChats),
+          };
+        });
+
+        // Reconstruct chats for current tab
+        const currentTabData = updatedTabs[state.currentTab];
+        const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+        return {
+          tabs: updatedTabs,
+          chats: updatedChats,
+          activeChat: state.activeChat?.id === chatId
+            ? { ...state.activeChat, ...updatedChat }
+            : state.activeChat,
+        };
+      });
     } catch (error: any) {
       set({ error: error.message || 'Failed to update chat' });
       throw error;

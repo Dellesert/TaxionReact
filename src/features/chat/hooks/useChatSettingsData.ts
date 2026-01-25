@@ -25,17 +25,34 @@ export const useChatSettingsData = (
 ): UseChatSettingsDataReturn => {
   const getChatById = useChatStore((state) => state.getChatById);
 
-  const [chat, setChat] = useState<Chat | null>(() => getChatById(chatId) || null);
+  // Subscribe to chat changes in store (activeChat or from chats array)
+  const chatFromStore = useChatStore((state) => {
+    // First check activeChat for most up-to-date data
+    if (state.activeChat?.id === chatId) {
+      return state.activeChat;
+    }
+    // Then check chats array
+    return state.getChatById(chatId);
+  });
+
+  const [chat, setChat] = useState<Chat | null>(chatFromStore || null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [otherUser, setOtherUser] = useState<User | null>(null);
   const [departmentName, setDepartmentName] = useState<string>('');
 
-  // Загрузка чата
-  const loadChat = useCallback(async () => {
-    const chatFromStore = getChatById(chatId);
-
+  // Sync local state with store changes
+  useEffect(() => {
     if (chatFromStore) {
       setChat(chatFromStore);
+    }
+  }, [chatFromStore]);
+
+  // Загрузка чата
+  const loadChat = useCallback(async () => {
+    const chatFromStoreNow = getChatById(chatId);
+
+    if (chatFromStoreNow) {
+      setChat(chatFromStoreNow);
       return;
     }
 
