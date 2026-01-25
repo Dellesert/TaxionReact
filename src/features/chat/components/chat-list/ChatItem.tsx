@@ -400,6 +400,17 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
               {chat.is_muted && (
                 <Ionicons name="notifications-off" size={16} color={theme.textTertiary} style={styles.muteIcon} />
               )}
+              {!!chat.unread_count && chat.unread_count > 0 && (
+                <View style={[
+                  styles.unreadBadge,
+                  { backgroundColor: theme.primary },
+                  chat.unread_count > 99 && styles.unreadBadgeLarge,
+                ]} testID={`unread-badge-${chat.id}`}>
+                  <Text style={styles.unreadText}>
+                    {chat.unread_count > 99 ? '99+' : String(chat.unread_count)}
+                  </Text>
+                </View>
+              )}
               {chat.is_pinned && (
                 <Ionicons
                   name="pin"
@@ -408,13 +419,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   style={styles.pinIcon}
                   testID={`pin-icon-${chat.id}`}
                 />
-              )}
-              {!!chat.unread_count && chat.unread_count > 0 && (
-                <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]} testID={`unread-badge-${chat.id}`}>
-                  <Text style={styles.unreadText}>
-                    {chat.unread_count > 99 ? '99+' : String(chat.unread_count)}
-                  </Text>
-                </View>
               )}
             </View>
           </View>
@@ -640,7 +644,7 @@ const styles = StyleSheet.create({
     marginTop: -1,
   },
   pinIcon: {
-    marginRight: 4,
+    marginLeft: 4,
     transform: [{ rotate: '45deg' }],
   },
   time: {
@@ -679,6 +683,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
+  },
+  unreadBadgeLarge: {
+    minWidth: 32,
   },
   unreadText: {
     fontSize: 12,
