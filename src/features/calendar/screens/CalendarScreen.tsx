@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -190,7 +191,7 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
 };
 
 const CalendarScreen: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { showError } = useNotification();
   const isWideScreen = useIsWideScreen();
   const navigation = useNavigation<CalendarNavigationProp>();
@@ -288,6 +289,7 @@ const CalendarScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
+      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
       {/* Content container with background */}
       <View style={[styles.content, { backgroundColor: theme.background }]}>
         {isWideScreen ? (

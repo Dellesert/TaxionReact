@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,7 +27,7 @@ type NavigationProp = NativeStackNavigationProp<TaskStackParamList, 'TaskList'>;
 
 const TaskListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const isWideScreen = useIsWideScreen();
 
@@ -261,6 +262,7 @@ const TaskListScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
+      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
       {/* Header */}
       <TaskListHeader
         filter={displayFilter}

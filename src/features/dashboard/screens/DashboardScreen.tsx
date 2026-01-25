@@ -4,7 +4,8 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -63,6 +64,7 @@ export const DashboardScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? theme.backgroundSecondary : '#FFFFFF' }]}>
+      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}

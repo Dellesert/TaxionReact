@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,7 +27,7 @@ type PollListScreenNavigationProp = NativeStackNavigationProp<
 
 const PollListScreen: React.FC = () => {
   const navigation = useNavigation<PollListScreenNavigationProp>();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const isDesktop = useIsWideScreen();
 
@@ -162,6 +163,7 @@ const PollListScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.card }]}
       edges={['left', 'right']}
     >
+      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
       {/* Header */}
       <PollListHeader
         filter={filter}

@@ -7,7 +7,9 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -52,7 +54,7 @@ interface ScheduleSection {
 }
 
 export const ScheduleListScreen: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { canCreate } = useSchedulePermissions();
   // Get initial month range for filters
@@ -174,6 +176,7 @@ export const ScheduleListScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
+      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
       {/* Header */}
       <ScreenHeader
         title="Графики работы"

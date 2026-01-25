@@ -4,7 +4,8 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -48,7 +49,7 @@ interface ChatListScreenProps {
 
 const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktopMode = false }) => {
   const navigation = useNavigation<ChatListNavigationProp>();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { showConfirm } = useActionModal();
   const { selectChat } = useChatSelection();
 
@@ -349,6 +350,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
         style={[styles.container, { backgroundColor: theme.background }]}
         edges={['top', 'left', 'right']}
       >
+        {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
         <ScreenHeader title="Чаты" />
         <ChatErrorState error={error} onRetry={handleRetry} />
       </SafeAreaView>
@@ -360,6 +362,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
       style={[styles.container, { backgroundColor: theme.card }]}
       edges={['left', 'right']}
     >
+      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
       <ScreenHeader
         title="Чаты"
         customContent={

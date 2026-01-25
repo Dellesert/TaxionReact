@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -38,7 +39,7 @@ const FILTER_OPTIONS: { key: AbsenceType | 'all'; label: string }[] = [
 ];
 
 export const AbsenceListScreen: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation();
   const filterButtonRef = useRef<View>(null);
 
@@ -155,6 +156,7 @@ export const AbsenceListScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
+      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
       {/* Header */}
       <ScreenHeader
         title="Нерабочие дни"
