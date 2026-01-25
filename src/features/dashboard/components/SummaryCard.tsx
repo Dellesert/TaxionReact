@@ -3,7 +3,7 @@
  * Карусель с большими карточками сводки
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Animated, Easing, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -95,6 +95,7 @@ interface SummaryCardProps {
   onPressOverdue?: () => void;
   onPressPolls?: () => void;
   onPressEvents?: () => void;
+  onBackgroundColorChange?: (color: string) => void;
 }
 
 interface CardData {
@@ -172,6 +173,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onPressOverdue,
   onPressPolls,
   onPressEvents,
+  onBackgroundColorChange,
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -191,42 +193,13 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     });
   };
 
-  // Показываем скелетон при загрузке или отсутствии данных
-  // Используем фиксированную высоту контейнера чтобы избежать "прыжков" контента
-  if (isLoading || !counts) {
-    return (
-      <View style={[styles.fixedHeightContainer, { paddingTop: insets.top }]}>
-        <CardSkeleton />
-      </View>
-    );
-  }
-
-  const hasNewTasks = counts.new_tasks_count > 0;
-  const hasOverdue = counts.overdue_tasks_count > 0;
-  const hasPolls = counts.pending_polls_count > 0;
-  const hasEvents = counts.today_events_count > 0;
+  const hasNewTasks = counts ? counts.new_tasks_count > 0 : false;
+  const hasOverdue = counts ? counts.overdue_tasks_count > 0 : false;
+  const hasPolls = counts ? counts.pending_polls_count > 0 : false;
+  const hasEvents = counts ? counts.today_events_count > 0 : false;
   const hasAnyData = hasNewTasks || hasOverdue || hasPolls || hasEvents;
 
-  // Все выполнено
-  if (!hasAnyData) {
-    const successBg = isDark ? '#064e3b' : '#ecfdf5';
-    return (
-      <View style={[styles.singleCardContainer, { backgroundColor: successBg, paddingTop: insets.top }]}>
-        <View style={[styles.successCard, { backgroundColor: successBg }]}>
-          <View style={[styles.successIcon, { backgroundColor: isDark ? '#10b98120' : '#d1fae5' }]}>
-            <Ionicons name="checkmark-circle" size={40} color="#10B981" />
-          </View>
-          <Text style={[styles.successTitle, { color: isDark ? '#6ee7b7' : '#065f46' }]}>
-            Нет новых событий!
-          </Text>
-          <Text style={[styles.successSubtitle, { color: isDark ? '#6ee7b7AA' : '#065f46AA' }]}>
-            Здесь будут появляться сведения о новых задачах, опросах, графиков
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
+  // Собираем данные карточек для вычисления цвета
   const cardsData: CardData[] = [];
 
   // Просроченные (первыми, если есть)
@@ -299,6 +272,56 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
       bgColorDark: '#064e3b',
       onPress: onPressEvents,
     });
+  }
+
+  // Вычисляем текущий цвет фона
+  const currentBackgroundColor = useMemo(() => {
+    if (isLoading || !counts) {
+      return isDark ? '#1f2937' : '#f3f4f6'; // скелетон
+    }
+    if (!hasAnyData) {
+      return isDark ? '#064e3b' : '#ecfdf5'; // success
+    }
+    if (cardsData.length === 0) {
+      return isDark ? '#064e3b' : '#ecfdf5';
+    }
+    const safeIndex = Math.min(activeIndex, cardsData.length - 1);
+    const card = cardsData[safeIndex];
+    return isDark ? card.bgColorDark : card.bgColor;
+  }, [isLoading, counts, hasAnyData, cardsData, activeIndex, isDark]);
+
+  // Сообщаем родителю об изменении цвета
+  useEffect(() => {
+    onBackgroundColorChange?.(currentBackgroundColor);
+  }, [currentBackgroundColor, onBackgroundColorChange]);
+
+  // Показываем скелетон при загрузке или отсутствии данных
+  if (isLoading || !counts) {
+    return (
+      <View style={[styles.fixedHeightContainer, { paddingTop: insets.top }]}>
+        <CardSkeleton />
+      </View>
+    );
+  }
+
+  // Все выполнено
+  if (!hasAnyData) {
+    const successBg = isDark ? '#064e3b' : '#ecfdf5';
+    return (
+      <View style={[styles.singleCardContainer, { backgroundColor: successBg, paddingTop: insets.top }]}>
+        <View style={[styles.successCard, { backgroundColor: successBg }]}>
+          <View style={[styles.successIcon, { backgroundColor: isDark ? '#10b98120' : '#d1fae5' }]}>
+            <Ionicons name="checkmark-circle" size={40} color="#10B981" />
+          </View>
+          <Text style={[styles.successTitle, { color: isDark ? '#6ee7b7' : '#065f46' }]}>
+            Нет новых событий!
+          </Text>
+          <Text style={[styles.successSubtitle, { color: isDark ? '#6ee7b7AA' : '#065f46AA' }]}>
+            Здесь будут появляться сведения о новых задачах, опросах, графиков
+          </Text>
+        </View>
+      </View>
+    );
   }
 
   // Если только одна карточка - показываем без индикаторов

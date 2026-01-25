@@ -3,7 +3,7 @@
  * Экран сводки (главная страница)
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,6 +32,9 @@ export const DashboardScreen: React.FC = () => {
       refresh(true);
     }, [refresh])
   );
+
+  // Цвет фона для верхней части (overscroll на iOS) - приходит из SummaryCard
+  const [topBackgroundColor, setTopBackgroundColor] = useState(isDark ? '#1f2937' : '#f3f4f6');
 
   // Навигация к списку задач
   const navigateToTaskList = useCallback(() => {
@@ -73,6 +76,9 @@ export const DashboardScreen: React.FC = () => {
           />
         }
       >
+        {/* Фон для overscroll сверху (iOS Dynamic Island) */}
+        <View style={[styles.topOverscrollFill, { backgroundColor: topBackgroundColor }]} />
+
         {/* Сводка */}
         <View style={styles.summarySection}>
           <SummaryCard
@@ -82,6 +88,7 @@ export const DashboardScreen: React.FC = () => {
             onPressOverdue={() => navigation.navigate('TaskList', { filterCategory: 'overdue' })}
             onPressPolls={navigateToPollList}
             onPressEvents={navigateToCalendar}
+            onBackgroundColorChange={setTopBackgroundColor}
           />
         </View>
 
@@ -143,6 +150,13 @@ const styles = StyleSheet.create({
   },
   content: {
     // без отступов - карточки впритык
+  },
+  topOverscrollFill: {
+    position: 'absolute',
+    top: -1000,
+    left: 0,
+    right: 0,
+    height: 1000,
   },
   summarySection: {
     // без отступов - карточка на всю ширину
