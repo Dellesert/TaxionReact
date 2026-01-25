@@ -17,6 +17,7 @@ import { AbsenceList } from '../components/AbsenceList';
 import { CreateAbsenceModal } from '../components/CreateAbsenceModal';
 import { EditAbsenceModal } from '../components/EditAbsenceModal';
 import { YearPicker } from '../components/YearPicker';
+import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import {
   Absence,
   AbsenceType,
@@ -63,6 +64,11 @@ export const AbsenceListScreen: React.FC = () => {
   );
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
 
+  // User filter state
+  const [showUserPicker, setShowUserPicker] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
+
   // Initial load with current year filter
   useEffect(() => {
     const yearRange = getYearRange(selectedYear);
@@ -97,10 +103,28 @@ export const AbsenceListScreen: React.FC = () => {
   const handleApplyFilter = useCallback((type: AbsenceType | null) => {
     setSelectedTypeFilter(type);
     const yearRange = getYearRange(selectedYear);
-    const newFilters = { ...filters, ...yearRange, type: type || undefined };
+    const newFilters = {
+      ...filters,
+      ...yearRange,
+      type: type || undefined,
+      user_id: selectedUserId || undefined,
+    };
     setFilters(newFilters);
     loadAbsences(newFilters, true);
     setShowFilterMenu(false);
+  }, [filters, setFilters, loadAbsences, selectedYear, selectedUserId]);
+
+  const handleUserFilterChange = useCallback((userId: number | null, userName: string | null) => {
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    const yearRange = getYearRange(selectedYear);
+    const newFilters = {
+      ...filters,
+      ...yearRange,
+      user_id: userId || undefined,
+    };
+    setFilters(newFilters);
+    loadAbsences(newFilters, true);
   }, [filters, setFilters, loadAbsences, selectedYear]);
 
   const handleFilterToggle = useCallback(() => {
@@ -184,6 +208,43 @@ export const AbsenceListScreen: React.FC = () => {
           onYearChange={handleYearChange}
         />
 
+        {/* User Filter Chip */}
+        <View style={styles.userFilterContainer}>
+          <TouchableOpacity
+            style={[
+              styles.userFilterChip,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              selectedUserId ? { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary } : null,
+            ]}
+            onPress={() => setShowUserPicker(true)}
+          >
+            <Ionicons
+              name="person"
+              size={16}
+              color={selectedUserId ? theme.primary : theme.textSecondary}
+            />
+            <Text
+              style={[
+                styles.userFilterText,
+                { color: selectedUserId ? theme.primary : theme.textSecondary },
+              ]}
+              numberOfLines={1}
+            >
+              {selectedUserName || 'Все сотрудники'}
+            </Text>
+            {selectedUserId ? (
+              <TouchableOpacity
+                onPress={() => handleUserFilterChange(null, null)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close-circle" size={18} color={theme.primary} />
+              </TouchableOpacity>
+            ) : (
+              <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
+            )}
+          </TouchableOpacity>
+        </View>
+
         <AbsenceList
           absences={absences}
           isLoading={isLoading}
@@ -257,6 +318,23 @@ export const AbsenceListScreen: React.FC = () => {
         absence={selectedAbsence}
         onAbsenceUpdated={handleAbsenceUpdated}
         onAbsenceDeleted={handleAbsenceDeleted}
+      />
+
+      {/* User Filter Modal */}
+      <UserSelectorModal
+        visible={showUserPicker}
+        onClose={() => setShowUserPicker(false)}
+        selectedUserIds={selectedUserId ? [selectedUserId] : []}
+        onSelectionChange={(userIds, selectedUsers) => {
+          if (userIds.length > 0) {
+            handleUserFilterChange(userIds[0], selectedUsers?.[0]?.name || null);
+          }
+          setShowUserPicker(false);
+        }}
+        multiSelect={false}
+        title="Фильтр по сотруднику"
+        mode="radio"
+        includeCurrentUser={true}
       />
     </SafeAreaView>
   );
@@ -339,6 +417,26 @@ const styles = StyleSheet.create({
   filterMenuItemText: {
     fontSize: 15,
     fontWeight: '500',
+  },
+  // User filter styles
+  userFilterContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  userFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  userFilterText: {
+    fontSize: 14,
+    fontWeight: '500',
+    maxWidth: 200,
   },
 });
 
