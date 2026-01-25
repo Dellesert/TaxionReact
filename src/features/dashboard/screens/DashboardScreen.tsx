@@ -90,7 +90,7 @@ export const DashboardScreen: React.FC = () => {
           style={[
             styles.navigationWrapper,
             {
-              backgroundColor: isDark ? theme.backgroundSecondary : '#F3F4F6',
+              backgroundColor: isDark ? theme.backgroundSecondary : '#FFFFFF',
             },
           ]}
         >
