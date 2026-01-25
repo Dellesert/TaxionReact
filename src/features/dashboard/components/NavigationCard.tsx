@@ -1,6 +1,6 @@
 /**
  * Navigation Card
- * Карточка навигации к разделу (Задачи, Опросы, Аналитика)
+ * Карточка навигации к разделу (Задачи, Опросы, Расписание и т.д.)
  */
 
 import React from 'react';
@@ -30,26 +30,21 @@ export const NavigationCard: React.FC<NavigationCardProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: theme.backgroundSecondary,
-          borderColor: theme.border,
+          backgroundColor: theme.background,
         },
       ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={styles.content}>
-        <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-          <Ionicons name={icon} size={32} color={color} />
-        </View>
-        <View style={styles.textContainer}>
-          <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
-          <Text style={[styles.description, { color: theme.textSecondary }]} numberOfLines={1}>
-            {description}
-          </Text>
-        </View>
+      <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+        <Ionicons name={icon} size={26} color={color} />
       </View>
-      <View style={[styles.arrowContainer, { backgroundColor: color + '10' }]}>
-        <Ionicons name="chevron-forward" size={24} color={color} />
+      <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{title}</Text>
+      <Text style={[styles.description, { color: theme.textSecondary }]} numberOfLines={2}>
+        {description}
+      </Text>
+      <View style={[styles.arrowContainer, { backgroundColor: color + '12' }]}>
+        <Ionicons name="arrow-forward" size={16} color={color} />
       </View>
     </TouchableOpacity>
   );
@@ -57,44 +52,37 @@ export const NavigationCard: React.FC<NavigationCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
-    gap: 16,
+    padding: 16,
+    borderRadius: 20,
+    minHeight: 140,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  textContainer: {
-    flex: 1,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   description: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
+    flex: 1,
   },
   arrowContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-end',
+    marginTop: 8,
   },
 });
 

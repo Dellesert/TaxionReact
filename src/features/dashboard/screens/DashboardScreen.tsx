@@ -23,7 +23,7 @@ type NavigationProp = CompositeNavigationProp<
 >;
 
 export const DashboardScreen: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { data, isLoading, refresh, isRefreshing } = useDashboardData();
 
@@ -77,45 +77,60 @@ export const DashboardScreen: React.FC = () => {
         }
       >
         {/* Сводка */}
-        <SummaryCard
-          counts={data?.counts || null}
-          isLoading={isLoading}
-          onPressNewTasks={() => navigation.navigate('TaskList', { filterCategory: 'new' })}
-          onPressOverdue={() => navigation.navigate('TaskList', { filterCategory: 'overdue' })}
-          onPressPolls={navigateToPollList}
-          onPressEvents={navigateToCalendar}
-        />
+        <View style={styles.summarySection}>
+          <SummaryCard
+            counts={data?.counts || null}
+            isLoading={isLoading}
+            onPressNewTasks={() => navigation.navigate('TaskList', { filterCategory: 'new' })}
+            onPressOverdue={() => navigation.navigate('TaskList', { filterCategory: 'overdue' })}
+            onPressPolls={navigateToPollList}
+            onPressEvents={navigateToCalendar}
+          />
+        </View>
 
-        {/* Навигационные карточки */}
-        <View style={styles.navigationCards}>
-          <NavigationCard
-            title="Задачи"
-            description="Управление задачами и проектами"
-            icon="checkbox"
-            color="#3B82F6"
-            onPress={navigateToTaskList}
-          />
-          <NavigationCard
-            title="Опросы"
-            description="Голосования и опросы"
-            icon="bar-chart"
-            color="#8B5CF6"
-            onPress={navigateToPollList}
-          />
-          <NavigationCard
-            title="Расписание"
-            description="График работы"
-            icon="time"
-            color="#10B981"
-            onPress={navigateToSchedule}
-          />
-          <NavigationCard
-            title="Отпуска"
-            description="Отпуска и больничные"
-            icon="calendar-clear"
-            color="#F59E0B"
-            onPress={navigateToAbsences}
-          />
+        {/* Навигационные карточки в общей карточке */}
+        <View
+          style={[
+            styles.navigationWrapper,
+            {
+              backgroundColor: isDark ? theme.backgroundSecondary : '#F3F4F6',
+            },
+          ]}
+        >
+          <View style={styles.navigationCards}>
+            <View style={styles.cardRow}>
+              <NavigationCard
+                title="Расписание"
+                description="График работы"
+                icon="time"
+                color="#10B981"
+                onPress={navigateToSchedule}
+              />
+              <NavigationCard
+                title="Нерабочие дни"
+                description="Отпуска и больничные"
+                icon="calendar-clear"
+                color="#F59E0B"
+                onPress={navigateToAbsences}
+              />
+            </View>
+            <View style={styles.cardRow}>
+              <NavigationCard
+                title="Задачи"
+                description="Управление задачами"
+                icon="checkbox"
+                color="#3B82F6"
+                onPress={navigateToTaskList}
+              />
+              <NavigationCard
+                title="Опросы"
+                description="Голосования и опросы"
+                icon="bar-chart"
+                color="#8B5CF6"
+                onPress={navigateToPollList}
+              />
+            </View>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -130,12 +145,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 120,
-    gap: 20,
+    gap: 16,
+  },
+  summarySection: {
+    paddingHorizontal: 20,
+  },
+  navigationWrapper: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 140,
+    marginTop: 4,
   },
   navigationCards: {
+    gap: 12,
+  },
+  cardRow: {
+    flexDirection: 'row',
     gap: 12,
   },
 });
