@@ -9,12 +9,13 @@ import { getRoleIcon, getRoleIconColor } from '../../utils/profileHelpers';
 
 interface ProfileHeaderProps {
   user: User;
+  cardBackgroundColor?: string;
 }
 
 /**
  * Profile header component with avatar and user info
  */
-export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
+export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, cardBackgroundColor }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -44,11 +45,11 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
       backgroundColor: theme.primary,
       paddingTop: topPadding + 16,
       paddingHorizontal: 16,
-      paddingBottom: 24,
+      paddingBottom: 44,
       marginBottom: 0,
       alignItems: 'center',
       // Reserve minimum height to prevent layout shift
-      minHeight: 220 + topPadding,
+      minHeight: 240 + topPadding,
     },
     userAvatar: {
       borderWidth: 1,
@@ -133,6 +134,21 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
         </Animated.View>
       )}
       {user.position && <Text style={dynamicStyles.userPosition}>{user.position}</Text>}
+      {/* Закруглённый элемент для перехода к карточке */}
+      {cardBackgroundColor && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 24,
+            backgroundColor: cardBackgroundColor,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+          }}
+        />
+      )}
     </View>
   );
 };

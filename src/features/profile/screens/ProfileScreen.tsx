@@ -40,21 +40,20 @@ const ProfileScreen: React.FC = () => {
   const dynamicStyles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.primary,
+      backgroundColor: isDark ? theme.background : '#F3F4F6',
+    },
+    topBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '40%',
     },
     scrollContent: {},
     card: {
       backgroundColor: isDark ? theme.background : '#F3F4F6',
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingTop: 20,
       paddingHorizontal: 12,
       paddingBottom: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: isDark ? 0.3 : 0.1,
-      shadowRadius: 12,
-      elevation: 8,
       flex: 1,
     },
     logoutContainer: {
@@ -98,6 +97,19 @@ const ProfileScreen: React.FC = () => {
   return (
     <View style={dynamicStyles.container}>
       {Platform.OS === 'ios' && <StatusBar style="light" />}
+      {/* Верхняя часть фона - primary */}
+      <View style={[dynamicStyles.topBackground, { backgroundColor: theme.primary }]} />
+      {/* Нижняя часть фона для bounce-скролла - цвет карточки */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '60%',
+          backgroundColor: isDark ? theme.background : '#F3F4F6',
+        }}
+      />
       {/* Fixed status bar background for iOS Dynamic Island */}
       {Platform.OS === 'ios' && (
         <View
@@ -113,14 +125,14 @@ const ProfileScreen: React.FC = () => {
         />
       )}
       <ScrollView
-        style={{ flex: 1, backgroundColor: theme.primary }}
+        style={{ flex: 1 }}
         contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={true}
         contentInsetAdjustmentBehavior="never"
       >
         {/* User Info */}
-        <ProfileHeader user={user} />
+        <ProfileHeader user={user} cardBackgroundColor={isDark ? theme.background : '#F3F4F6'} />
 
         <View style={dynamicStyles.card}>
           {/* Profile Actions */}

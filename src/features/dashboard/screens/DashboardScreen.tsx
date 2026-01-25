@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingHorizontal: 16,
     paddingBottom: 140,
-    marginTop: -24, // перекрытие для плавного перехода
+    marginTop: -24,
   },
   navigationCards: {
     gap: 12,
