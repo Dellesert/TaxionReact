@@ -59,7 +59,7 @@ export const DashboardScreen: React.FC = () => {
   }, [navigation]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.backgroundSecondary : '#FFFFFF' }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
