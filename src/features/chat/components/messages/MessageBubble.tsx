@@ -120,7 +120,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
       color: theme.textTertiary,
     },
     ownEdited: {
-      color: 'rgba(255, 255, 255, 0.7)',
+      color: theme.textTertiary,
     },
   }), [theme]);
 
@@ -266,15 +266,6 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
       </View>
 
       <View style={[styles.messageFooter, isCardMessage && styles.cardMessageFooter]}>
-        <Text
-          style={[
-            styles.time,
-            dynamicStyles.time,
-            isOwnMessage && dynamicStyles.ownTime,
-          ]}
-        >
-          {formatTime(message.created_at)}
-        </Text>
         {!!(message.is_edited && !message.is_deleted) && (
           <Text
             style={[
@@ -286,6 +277,15 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
             изменено
           </Text>
         )}
+        <Text
+          style={[
+            styles.time,
+            dynamicStyles.time,
+            isOwnMessage && dynamicStyles.ownTime,
+          ]}
+        >
+          {formatTime(message.created_at)}
+        </Text>
         {!isCardMessage && (
           <MessageStatus
             message={message}
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   },
   edited: {
     fontSize: 11,
-    marginLeft: 4,
+    marginRight: 4,
     fontStyle: 'italic',
     color: '#aaa',
     transform: [{ translateY: 3 }],
