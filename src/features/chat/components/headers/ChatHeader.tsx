@@ -26,7 +26,7 @@ export const ChatHeader = {
     return (
       <TouchableOpacity
         onPress={onBackPress}
-        style={{ marginLeft: 4 }}
+        style={{ marginLeft: -2 }}
         activeOpacity={0.7}
       >
         <Ionicons name="chevron-back" size={28} color={theme.primary} />
