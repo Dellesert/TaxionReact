@@ -133,7 +133,7 @@ export const AbsenceListScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
       {/* Header */}
       <ScreenHeader
-        title="Отпуска"
+        title="Нерабочие дни"
         customContent={
           <>
             <View style={styles.headerRow}>
@@ -143,7 +143,7 @@ export const AbsenceListScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              <Text style={[styles.title, { color: theme.text }]}>Отпуска</Text>
+              <Text style={[styles.title, { color: theme.text }]}>Нерабочие дни</Text>
 
               <View style={[styles.headerRight, styles.headerActions]}>
                 {/* Filter Button */}
