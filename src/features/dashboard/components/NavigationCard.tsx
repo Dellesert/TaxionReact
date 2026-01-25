@@ -23,7 +23,7 @@ export const NavigationCard: React.FC<NavigationCardProps> = ({
   color,
   onPress,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   return (
     <TouchableOpacity
@@ -32,6 +32,7 @@ export const NavigationCard: React.FC<NavigationCardProps> = ({
         {
           backgroundColor: theme.background,
         },
+        !isDark && styles.lightShadow,
       ]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -56,6 +57,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     minHeight: 140,
+  },
+  lightShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   iconContainer: {
     width: 48,

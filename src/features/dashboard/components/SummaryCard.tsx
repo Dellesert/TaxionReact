@@ -4,8 +4,9 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Animated, Easing, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/hooks/useTheme';
 import { DashboardCounts } from '../types/dashboard.types';
 
@@ -81,8 +82,7 @@ const CardSkeleton: React.FC = () => {
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const HORIZONTAL_PADDING = 20;
-const CARD_WIDTH = SCREEN_WIDTH - HORIZONTAL_PADDING * 2;
+const CARD_WIDTH = SCREEN_WIDTH;
 const CARD_HEIGHT = 220;
 const PAGINATION_HEIGHT = 32; // 16px marginTop + 8px dot + 8px buffer
 const CONTAINER_HEIGHT = CARD_HEIGHT + PAGINATION_HEIGHT;
@@ -132,8 +132,6 @@ const CardItem: React.FC<CardItemProps> = ({
         styles.card,
         {
           backgroundColor: isDark ? bgColorDark : bgColor,
-          borderColor: color + '30',
-          shadowColor: color,
         },
       ]}
       onPress={onPress}
@@ -176,6 +174,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onPressEvents,
 }) => {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -196,7 +195,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   // Используем фиксированную высоту контейнера чтобы избежать "прыжков" контента
   if (isLoading || !counts) {
     return (
-      <View style={styles.fixedHeightContainer}>
+      <View style={[styles.fixedHeightContainer, { paddingTop: insets.top }]}>
         <CardSkeleton />
       </View>
     );
@@ -210,9 +209,10 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
   // Все выполнено
   if (!hasAnyData) {
+    const successBg = isDark ? '#064e3b' : '#ecfdf5';
     return (
-      <View style={styles.singleCardContainer}>
-        <View style={[styles.successCard, { backgroundColor: isDark ? '#064e3b' : '#ecfdf5' }]}>
+      <View style={[styles.singleCardContainer, { backgroundColor: successBg, paddingTop: insets.top }]}>
+        <View style={[styles.successCard, { backgroundColor: successBg }]}>
           <View style={[styles.successIcon, { backgroundColor: isDark ? '#10b98120' : '#d1fae5' }]}>
             <Ionicons name="checkmark-circle" size={40} color="#10B981" />
           </View>
@@ -304,8 +304,9 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   // Если только одна карточка - показываем без индикаторов
   if (cardsData.length === 1) {
     const { key: _, ...cardProps } = cardsData[0];
+    const singleBg = isDark ? cardProps.bgColorDark : cardProps.bgColor;
     return (
-      <View style={styles.singleCardContainer}>
+      <View style={[styles.singleCardContainer, { backgroundColor: singleBg, paddingTop: insets.top }]}>
         <CardItem
           {...cardProps}
           isDark={isDark}
@@ -314,8 +315,16 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     );
   }
 
+  const activeCard = cardsData[activeIndex];
+  const containerBg = isDark ? activeCard.bgColorDark : activeCard.bgColor;
+
   return (
-    <View style={[styles.carouselContainer, { height: CONTAINER_HEIGHT }]}>
+    <View
+      style={[
+        styles.carouselContainer,
+        { height: CONTAINER_HEIGHT + insets.top, backgroundColor: containerBg, paddingTop: insets.top },
+      ]}
+    >
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -323,6 +332,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        style={styles.scrollView}
       >
         {cardsData.map(({ key, ...cardProps }) => (
           <View key={key} style={styles.cardWrapper}>
@@ -344,8 +354,8 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               styles.dot,
               {
                 backgroundColor: index === activeIndex
-                  ? card.color
-                  : isDark ? theme.border : '#D1D5DB',
+                  ? activeCard.color
+                  : (activeCard.color + '40'),
                 width: index === activeIndex ? 24 : 8,
               },
             ]}
@@ -370,26 +380,20 @@ const styles = StyleSheet.create({
   },
   // Carousel
   carouselContainer: {
-    marginHorizontal: -HORIZONTAL_PADDING,
+    // на всю ширину экрана
+  },
+  scrollView: {
+    flex: 1,
   },
   cardWrapper: {
     width: SCREEN_WIDTH,
-    paddingHorizontal: HORIZONTAL_PADDING,
   },
   // Card
   card: {
     width: CARD_WIDTH,
-    borderRadius: 24,
     padding: 20,
     height: CARD_HEIGHT,
     justifyContent: 'space-between',
-    borderWidth: 1.5,
-    // Shadow for iOS
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    // Shadow for Android
-    elevation: 8,
   },
   cardTop: {
     flexDirection: 'row',
@@ -439,7 +443,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    paddingBottom: 16,
     gap: 8,
   },
   dot: {
@@ -448,18 +452,8 @@ const styles = StyleSheet.create({
   },
   // Success state
   successCard: {
-    borderRadius: 24,
     padding: 28,
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#10B98130',
-    // Shadow for iOS
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    // Shadow for Android
-    elevation: 8,
   },
   successIcon: {
     width: 72,

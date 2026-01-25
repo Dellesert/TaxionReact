@@ -13,7 +13,6 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { useDashboardData } from '../hooks/useDashboardData';
-import { DashboardHeader } from '../components/DashboardHeader';
 import { SummaryCard } from '../components/SummaryCard';
 import { NavigationCard } from '../components/NavigationCard';
 
@@ -61,8 +60,6 @@ export const DashboardScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <DashboardHeader />
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -145,11 +142,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 8,
-    gap: 16,
+    // без отступов - карточки впритык
   },
   summarySection: {
-    paddingHorizontal: 20,
+    // без отступов - карточка на всю ширину
   },
   navigationWrapper: {
     borderTopLeftRadius: 24,
@@ -157,7 +153,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingHorizontal: 16,
     paddingBottom: 140,
-    marginTop: 4,
+    marginTop: -24, // перекрытие для плавного перехода
   },
   navigationCards: {
     gap: 12,
