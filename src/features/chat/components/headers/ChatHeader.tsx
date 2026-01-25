@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -26,7 +26,7 @@ export const ChatHeader = {
     return (
       <TouchableOpacity
         onPress={onBackPress}
-        style={{ marginLeft: -2 }}
+        style={{ marginLeft: Platform.OS === 'ios' ? -2 : 10 }}
         activeOpacity={0.7}
       >
         <Ionicons name="chevron-back" size={28} color={theme.primary} />
