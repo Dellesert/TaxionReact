@@ -4,9 +4,10 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useChatStore } from '@shared/store/chatStore';
@@ -26,7 +27,8 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
   useEffect(() => {
     // Проверяем текущий route
     const currentRoute = state.routes[state.index];
-    const routeName = currentRoute.state?.routes?.[currentRoute.state.index]?.name;
+    const routeIndex = currentRoute.state?.index;
+    const routeName = routeIndex !== undefined ? currentRoute.state?.routes?.[routeIndex]?.name : undefined;
 
     // Скрываем tab bar на экранах Chat и ChatSettings
     if (routeName === 'Chat' || routeName === 'ChatSettings') {
@@ -44,18 +46,30 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
     }
   }, [state, translateY]);
 
+  const isDark = theme.background === '#000000' || theme.background === '#121212' || theme.background.toLowerCase().startsWith('#0') || theme.background.toLowerCase().startsWith('#1');
+
   return (
     <Animated.View
       style={[
-        styles.container,
+        styles.outerContainer,
         {
-          backgroundColor: theme.backgroundSecondary,
-          borderTopColor: theme.border,
-          paddingBottom: insets.bottom,
+          paddingBottom: (insets.bottom > 0 ? insets.bottom : 16) + (Platform.OS === 'ios' ? 0 : 0),
           transform: [{ translateY }],
         },
       ]}
     >
+      <BlurView
+        intensity={80}
+        tint={isDark ? 'dark' : 'light'}
+        style={[
+          styles.blurContainer,
+          {
+            backgroundColor: Platform.OS === 'android'
+              ? (isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+              : (isDark ? 'rgba(30, 30, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)'),
+          },
+        ]}
+      >
       {state.routes.map((route, index) => {
         // Skip Admin route (hidden from tab bar)
         if (route.name === 'Admin') {
@@ -103,7 +117,6 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
             accessibilityRole="button"
             accessibilityState={isFocused ? { selected: true } : {}}
             accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarTestID}
             onPress={onPress}
             style={styles.tab}
           >
@@ -138,20 +151,25 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
           </TouchableOpacity>
         );
       })}
+      </BlurView>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
+    left: 12,
+    right: 12,
+  },
+  blurContainer: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    paddingTop: 6,
-    paddingHorizontal: 12,
+    borderRadius: 24,
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 8,
+    overflow: 'hidden',
   },
   tab: {
     flex: 1,
