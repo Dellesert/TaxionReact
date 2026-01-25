@@ -114,7 +114,11 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
                 color={isFocused ? theme.primary : theme.textTertiary}
               />
               {showBadge && (
-                <View style={[styles.badge, { backgroundColor: theme.error || '#FF3B30' }, {borderColor: theme.backgroundSecondary}]}>
+                <View style={[
+                  styles.badge,
+                  { backgroundColor: theme.error || '#FF3B30', borderColor: theme.backgroundSecondary },
+                  totalUnreadCount > 99 && styles.badgeLarge,
+                ]}>
                   <Text style={styles.badgeText}>
                     {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
                   </Text>
@@ -178,6 +182,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+  },
+  badgeLarge: {
+    right: -18,
+    minWidth: 30,
   },
   badgeText: {
     color: '#FFFFFF',

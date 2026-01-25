@@ -33,7 +33,11 @@ export const NotificationBell: React.FC = () => {
             color={theme.primary}
           />
           {unreadCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: theme.primary, borderColor: theme.card }]}>
+            <View style={[
+              styles.badge,
+              { backgroundColor: theme.primary, borderColor: theme.card },
+              unreadCount > 99 && styles.badgeLarge,
+            ]}>
               <Text style={styles.badgeText}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </Text>
@@ -70,6 +74,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
+  },
+  badgeLarge: {
+    right: -16,
+    minWidth: 30,
   },
   badgeText: {
     color: '#FFFFFF',
