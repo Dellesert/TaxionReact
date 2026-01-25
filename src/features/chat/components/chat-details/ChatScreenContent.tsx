@@ -393,6 +393,7 @@ const styles = StyleSheet.create({
   },
   blurContent: {
     flex: 1,
+    justifyContent: 'flex-end',
   },
   blurOverlay: {
     position: 'absolute',
