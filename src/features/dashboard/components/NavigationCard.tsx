@@ -31,8 +31,9 @@ export const NavigationCard: React.FC<NavigationCardProps> = ({
         styles.container,
         {
           backgroundColor: theme.background,
+          borderWidth: 1,
+          borderColor: isDark ? theme.border : '#E5E7EB',
         },
-        !isDark && styles.lightShadow,
       ]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -57,10 +58,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     minHeight: 140,
-  },
-  lightShadow: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   iconContainer: {
     width: 48,
