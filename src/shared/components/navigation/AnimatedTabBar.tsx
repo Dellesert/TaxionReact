@@ -53,7 +53,7 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
       style={[
         styles.outerContainer,
         {
-          paddingBottom: (insets.bottom > 0 ? insets.bottom : 16) + (Platform.OS === 'ios' ? 0 : 0),
+          paddingBottom: Platform.OS === 'ios' ? 12 : (insets.bottom > 0 ? insets.bottom : 16),
           transform: [{ translateY }],
         },
       ]}
