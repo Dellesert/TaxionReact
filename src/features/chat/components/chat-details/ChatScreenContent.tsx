@@ -331,12 +331,12 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
         ) : (
           // Native - используем BlurView
           <BlurView
-            intensity={80}
+            intensity={5}
             tint={isDark ? 'dark' : 'light'}
             style={[styles.blurContent, { paddingBottom: effectiveInsetsBottom }]}
           >
             {/* Дополнительное затемнение поверх блюра */}
-            <View style={[styles.blurOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)' }]} />
+            <View style={[styles.blurOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)' }]} />
             {isSearchVisible ? (
               <SearchNavigationBar
                 total={searchTotal ?? 0}
