@@ -401,7 +401,11 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         initialValue={chatName || ''}
         confirmText="Сохранить"
         cancelText="Отмена"
-        onConfirm={renameChat}
+        onConfirm={(newName) => {
+          renameChat(newName).then(() => {
+            setShowRenameDialog(false);
+          });
+        }}
         onCancel={() => setShowRenameDialog(false)}
       />
 
