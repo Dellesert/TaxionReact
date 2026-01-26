@@ -86,7 +86,6 @@ const CARD_WIDTH = SCREEN_WIDTH;
 const CARD_HEIGHT = 220;
 const PAGINATION_HEIGHT = 32; // 16px marginTop + 8px dot + 8px buffer
 const CONTAINER_HEIGHT = CARD_HEIGHT + PAGINATION_HEIGHT;
-const SINGLE_CARD_HEIGHT = CARD_HEIGHT; // Без пагинации
 
 interface SummaryCardProps {
   counts: DashboardCounts | null;
@@ -396,9 +395,9 @@ const styles = StyleSheet.create({
     height: CONTAINER_HEIGHT,
     justifyContent: 'flex-start',
   },
-  // Контейнер для одиночной карточки - без пагинации
+  // Контейнер для одиночной карточки - без пагинации, но с отступом вместо пагинации
   singleCardContainer: {
-    height: SINGLE_CARD_HEIGHT,
+    height: CONTAINER_HEIGHT,
     justifyContent: 'flex-start',
   },
   // Carousel
