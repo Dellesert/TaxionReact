@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
+
+const MONTH_NAMES = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+];
 
 interface ScheduleListHeaderProps {
   canCreate: boolean;
@@ -12,6 +17,9 @@ interface ScheduleListHeaderProps {
   onCreatePress: () => void;
   isDesktop?: boolean;
   onGoBack?: () => void;
+  // Month picker props for desktop
+  selectedMonth?: Date;
+  onMonthChange?: (date: Date) => void;
 }
 
 export const ScheduleListHeader: React.FC<ScheduleListHeaderProps> = ({
@@ -22,8 +30,31 @@ export const ScheduleListHeader: React.FC<ScheduleListHeaderProps> = ({
   onCreatePress,
   isDesktop = false,
   onGoBack,
+  selectedMonth,
+  onMonthChange,
 }) => {
   const { theme } = useTheme();
+
+  const monthLabel = useMemo(() => {
+    if (!selectedMonth) return '';
+    const month = MONTH_NAMES[selectedMonth.getMonth()];
+    const year = selectedMonth.getFullYear();
+    return `${month} ${year}`;
+  }, [selectedMonth]);
+
+  const handlePrevMonth = () => {
+    if (!selectedMonth || !onMonthChange) return;
+    const newDate = new Date(selectedMonth);
+    newDate.setMonth(newDate.getMonth() - 1);
+    onMonthChange(newDate);
+  };
+
+  const handleNextMonth = () => {
+    if (!selectedMonth || !onMonthChange) return;
+    const newDate = new Date(selectedMonth);
+    newDate.setMonth(newDate.getMonth() + 1);
+    onMonthChange(newDate);
+  };
 
   // Desktop header content
   if (isDesktop) {
@@ -33,8 +64,26 @@ export const ScheduleListHeader: React.FC<ScheduleListHeaderProps> = ({
     return (
       <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.desktopHeaderContent}>
-          {/* Left side - empty for balance */}
-          <View style={styles.desktopLeft} />
+          {/* Left side - Month Picker */}
+          <View style={styles.desktopLeft}>
+            {selectedMonth && onMonthChange && (
+              <View style={styles.monthPickerRow}>
+                <TouchableOpacity
+                  onPress={handlePrevMonth}
+                  style={[styles.monthArrow, { backgroundColor: theme.backgroundSecondary }]}
+                >
+                  <Ionicons name="chevron-back" size={18} color={theme.text} />
+                </TouchableOpacity>
+                <Text style={[styles.monthLabel, { color: theme.text }]}>{monthLabel}</Text>
+                <TouchableOpacity
+                  onPress={handleNextMonth}
+                  style={[styles.monthArrow, { backgroundColor: theme.backgroundSecondary }]}
+                >
+                  <Ionicons name="chevron-forward" size={18} color={theme.text} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
 
           {/* Center - Search (only for browser, not Electron) */}
           {!isElectron && (
@@ -168,7 +217,25 @@ const styles = StyleSheet.create({
   },
   desktopLeft: {
     flexShrink: 0,
-    width: 100,
+    minWidth: 200,
+  },
+  monthPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  monthArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    minWidth: 120,
+    textAlign: 'center',
   },
   desktopCenter: {
     position: 'absolute',

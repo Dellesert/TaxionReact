@@ -148,12 +148,14 @@ export const ScheduleListScreen: React.FC = () => {
 
   const renderItem = useCallback(
     ({ item }: { item: Schedule }) => (
-      <ScheduleCard
-        schedule={item}
-        onPress={() => handleSchedulePress(item)}
-      />
+      <View style={isDesktop ? styles.cardWrapper : undefined}>
+        <ScheduleCard
+          schedule={item}
+          onPress={() => handleSchedulePress(item)}
+        />
+      </View>
     ),
-    [handleSchedulePress]
+    [handleSchedulePress, isDesktop]
   );
 
   const renderSectionHeader = useCallback(
@@ -211,6 +213,8 @@ export const ScheduleListScreen: React.FC = () => {
           onSearchClear={() => setSearchQuery('')}
           onCreatePress={() => setShowCreateModal(true)}
           isDesktop={isDesktop}
+          selectedMonth={selectedMonth}
+          onMonthChange={handleMonthChange}
         />
       ) : (
         <ScreenHeader
@@ -242,11 +246,13 @@ export const ScheduleListScreen: React.FC = () => {
         />
       )}
 
-      {/* Month Picker */}
-      <MonthPicker
-        selectedDate={selectedMonth}
-        onMonthChange={handleMonthChange}
-      />
+      {/* Month Picker - only show on mobile (desktop has it in header) */}
+      {!isDesktop && (
+        <MonthPicker
+          selectedDate={selectedMonth}
+          onMonthChange={handleMonthChange}
+        />
+      )}
 
       {/* Error message */}
       {error && (
@@ -263,7 +269,10 @@ export const ScheduleListScreen: React.FC = () => {
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            isDesktop && styles.listContentDesktop,
+          ]}
           stickySectionHeadersEnabled={false}
           refreshControl={
             <RefreshControl
@@ -343,6 +352,14 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 120,
     flexGrow: 1,
+  },
+  listContentDesktop: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  cardWrapper: {
+    maxWidth: 500,
   },
   sectionHeader: {
     flexDirection: 'row',
