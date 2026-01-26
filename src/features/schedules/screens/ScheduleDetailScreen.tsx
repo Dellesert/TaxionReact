@@ -26,6 +26,8 @@ import { useSchedulePermissions } from '../hooks/useSchedulePermissions';
 import { useScheduleStore } from '../store/scheduleStore';
 import { ScheduleEntriesList } from '../components/ScheduleEntriesList';
 import { TemplateEntriesList } from '../components/TemplateEntriesList';
+import { ScheduleGridView } from '../components/ScheduleGridView';
+import { ScheduleShiftsView } from '../components/ScheduleShiftsView';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
 import { getScheduleTypeColor } from '../utils/shiftColors';
 import { EditScheduleModal } from '../components/EditScheduleModal';
@@ -76,6 +78,9 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [showEditEntryModal, setShowEditEntryModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ScheduleEntry | null>(null);
   const [selectedTemplateEntry, setSelectedTemplateEntry] = useState<ScheduleTemplateEntry | null>(null);
+
+  // View mode for desktop: 'list', 'grid' (employees x dates), or 'shifts' (dates x shifts)
+  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'shifts'>('list');
 
   const handleCreatorPress = useCallback(() => {
     if (schedule?.creator?.id) {
@@ -283,6 +288,50 @@ export const ScheduleDetailScreen: React.FC = () => {
             </Text>
 
             <View style={styles.headerRight}>
+              {/* View mode switcher - only on desktop for monthly mode */}
+              {isWideScreen && schedule.mode === 'monthly' && (
+                <View style={[styles.viewSwitcher, { backgroundColor: theme.backgroundSecondary }]}>
+                  <TouchableOpacity
+                    style={[
+                      styles.viewButton,
+                      viewMode === 'list' && { backgroundColor: theme.primary },
+                    ]}
+                    onPress={() => setViewMode('list')}
+                  >
+                    <Ionicons
+                      name="list-outline"
+                      size={18}
+                      color={viewMode === 'list' ? '#FFFFFF' : theme.textSecondary}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.viewButton,
+                      viewMode === 'grid' && { backgroundColor: theme.primary },
+                    ]}
+                    onPress={() => setViewMode('grid')}
+                  >
+                    <Ionicons
+                      name="grid-outline"
+                      size={18}
+                      color={viewMode === 'grid' ? '#FFFFFF' : theme.textSecondary}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.viewButton,
+                      viewMode === 'shifts' && { backgroundColor: theme.primary },
+                    ]}
+                    onPress={() => setViewMode('shifts')}
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color={viewMode === 'shifts' ? '#FFFFFF' : theme.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
               {/* Menu button - only for users who can edit */}
               {canEdit && (
                 <TouchableOpacity
@@ -384,60 +433,116 @@ export const ScheduleDetailScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Entries Section */}
-        <View style={styles.entriesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
-              {schedule.mode === 'recurring'
-                ? schedule.template?.entries?.length || 0
-                : entries.length}
-              )
-            </Text>
-            {/* Add entry button - only for users who can manage entries */}
-            {canManageEntries && (
-              <TouchableOpacity
-                style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                onPress={handleAddEntry}
-              >
-                <Ionicons name="add" size={18} color={theme.primary} />
-                <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                  Добавить
-                </Text>
-              </TouchableOpacity>
+        {/* Entries Section - Grid/Shifts View for desktop or List View */}
+        {isWideScreen && viewMode === 'grid' && schedule.mode === 'monthly' ? (
+          // Desktop Grid View - employees as rows, dates as columns
+          <View style={styles.gridViewSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Сотрудники × Даты ({entries.length})
+              </Text>
+              {canManageEntries && (
+                <TouchableOpacity
+                  style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                  onPress={handleAddEntry}
+                >
+                  <Ionicons name="add" size={18} color={theme.primary} />
+                  <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                    Добавить
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {isLoadingEntries ? (
+              <View style={styles.entriesLoader}>
+                <ActivityIndicator size="small" color={theme.primary} />
+              </View>
+            ) : (
+              <ScheduleGridView schedule={schedule} entries={entries} />
             )}
           </View>
-
-          {schedule.mode === 'recurring' ? (
-            // Recurring mode - show template entries by day of week
-            <TemplateEntriesList
-              entries={schedule.template?.entries || []}
-              onEntryPress={canManageEntries ? (templateEntry) => {
-                setSelectedTemplateEntry(templateEntry);
-                setShowEditEntryModal(true);
-              } : undefined}
-            />
-          ) : isLoadingEntries ? (
-            <View style={styles.entriesLoader}>
-              <ActivityIndicator size="small" color={theme.primary} />
-            </View>
-          ) : entries.length > 0 ? (
-            <ScheduleEntriesList entries={entries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
-          ) : (
-            <View style={styles.emptyEntries}>
-              <Ionicons
-                name="document-outline"
-                size={36}
-                color={theme.textSecondary}
-              />
-              <Text
-                style={[styles.emptyEntriesText, { color: theme.textSecondary }]}
-              >
-                Нет записей в этом графике
+        ) : isWideScreen && viewMode === 'shifts' && schedule.mode === 'monthly' ? (
+          // Desktop Shifts View - dates as rows, morning/evening columns
+          <View style={styles.gridViewSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Даты × Смены ({entries.length})
               </Text>
+              {canManageEntries && (
+                <TouchableOpacity
+                  style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                  onPress={handleAddEntry}
+                >
+                  <Ionicons name="add" size={18} color={theme.primary} />
+                  <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                    Добавить
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
-          )}
-        </View>
+            {isLoadingEntries ? (
+              <View style={styles.entriesLoader}>
+                <ActivityIndicator size="small" color={theme.primary} />
+              </View>
+            ) : (
+              <ScheduleShiftsView schedule={schedule} entries={entries} />
+            )}
+          </View>
+        ) : (
+          // Standard List View
+          <View style={styles.entriesSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
+                {schedule.mode === 'recurring'
+                  ? schedule.template?.entries?.length || 0
+                  : entries.length}
+                )
+              </Text>
+              {canManageEntries && (
+                <TouchableOpacity
+                  style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                  onPress={handleAddEntry}
+                >
+                  <Ionicons name="add" size={18} color={theme.primary} />
+                  <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                    Добавить
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {schedule.mode === 'recurring' ? (
+              // Recurring mode - show template entries by day of week
+              <TemplateEntriesList
+                entries={schedule.template?.entries || []}
+                onEntryPress={canManageEntries ? (templateEntry) => {
+                  setSelectedTemplateEntry(templateEntry);
+                  setShowEditEntryModal(true);
+                } : undefined}
+              />
+            ) : isLoadingEntries ? (
+              <View style={styles.entriesLoader}>
+                <ActivityIndicator size="small" color={theme.primary} />
+              </View>
+            ) : entries.length > 0 ? (
+              <ScheduleEntriesList entries={entries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
+            ) : (
+              <View style={styles.emptyEntries}>
+                <Ionicons
+                  name="document-outline"
+                  size={36}
+                  color={theme.textSecondary}
+                />
+                <Text
+                  style={[styles.emptyEntriesText, { color: theme.textSecondary }]}
+                >
+                  Нет записей в этом графике
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <UserProfileModal
@@ -537,7 +642,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
+    gap: 8,
+  },
+  viewSwitcher: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    padding: 4,
     gap: 4,
+  },
+  viewButton: {
+    padding: 6,
+    borderRadius: 6,
   },
   iconButton: {
     paddingHorizontal: 4,
@@ -603,6 +718,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   entriesSection: {
+    paddingHorizontal: 16,
+  },
+  gridViewSection: {
+    flex: 1,
     paddingHorizontal: 16,
   },
   sectionHeader: {

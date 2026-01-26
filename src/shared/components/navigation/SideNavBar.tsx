@@ -51,6 +51,12 @@ const NAV_ITEMS: NavItem[] = [
     iconFocused: 'calendar',
   },
   {
+    name: 'Schedules',
+    label: 'Графики',
+    icon: 'time-outline',
+    iconFocused: 'time',
+  },
+  {
     name: 'Notifications',
     label: 'Уведомления',
     icon: 'notifications-outline',

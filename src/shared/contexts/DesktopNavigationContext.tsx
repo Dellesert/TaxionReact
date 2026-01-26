@@ -16,6 +16,9 @@ export interface DesktopNavigationParams {
   // Poll navigation
   pollId?: number;
 
+  // Schedule navigation
+  scheduleId?: number;
+
   // Other params
   [key: string]: any;
 }

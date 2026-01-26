@@ -16,10 +16,13 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useSchedules } from '../hooks/useSchedules';
 import { useSchedulePermissions } from '../hooks/useSchedulePermissions';
 import { ScheduleCard } from '../components/ScheduleCard';
+import { ScheduleListHeader } from '../components/ScheduleListHeader';
 import CreateScheduleModal from '../components/CreateScheduleModal';
 import { MonthPicker } from '../components/MonthPicker';
 import { SCHEDULE_TYPE_LABELS, type Schedule, type ScheduleType } from '../types/schedule.types';
@@ -57,6 +60,8 @@ export const ScheduleListScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { canCreate } = useSchedulePermissions();
+  const isDesktop = useIsWideScreen();
+
   // Get initial month range for filters
   const initialMonthRange = getMonthRange(new Date());
 
@@ -66,6 +71,25 @@ export const ScheduleListScreen: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Integrate with TitleBar search in Electron
+  useTitleBarSearchIntegration({
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    placeholder: 'Поиск графиков...',
+    enabled: true,
+  });
+
+  // Filter schedules by search query
+  const filteredSchedules = useMemo(() => {
+    if (!searchQuery.trim()) return schedules;
+    const query = searchQuery.toLowerCase();
+    return schedules.filter(schedule =>
+      schedule.title.toLowerCase().includes(query) ||
+      SCHEDULE_TYPE_LABELS[schedule.type].toLowerCase().includes(query)
+    );
+  }, [schedules, searchQuery]);
 
   // Group schedules by type
   const sections = useMemo((): ScheduleSection[] => {
@@ -76,8 +100,8 @@ export const ScheduleListScreen: React.FC = () => {
       grouped.set(type, []);
     }
 
-    // Group schedules
-    for (const schedule of schedules) {
+    // Group filtered schedules
+    for (const schedule of filteredSchedules) {
       const typeSchedules = grouped.get(schedule.type);
       if (typeSchedules) {
         typeSchedules.push(schedule);
@@ -91,7 +115,7 @@ export const ScheduleListScreen: React.FC = () => {
         title: SCHEDULE_TYPE_LABELS[type],
         data: grouped.get(type) ?? [],
       }));
-  }, [schedules]);
+  }, [filteredSchedules]);
 
   // Handle month change - update filters and reload
   const handleMonthChange = useCallback((date: Date) => {
@@ -175,37 +199,48 @@ export const ScheduleListScreen: React.FC = () => {
   }, [isLoading, theme, canCreate]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDesktop ? theme.card : theme.background }]} edges={['left', 'right']}>
       {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
-      {/* Header */}
-      <ScreenHeader
-        title="Графики работы"
-        customContent={
-          <View style={styles.headerRow}>
-            <View style={styles.headerLeft}>
-              {navigation.canGoBack() && (
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                  <Ionicons name="arrow-back" size={24} color={theme.primary} />
-                </TouchableOpacity>
-              )}
-            </View>
 
-            <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
+      {/* Header - Desktop or Mobile */}
+      {isDesktop ? (
+        <ScheduleListHeader
+          canCreate={canCreate}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onSearchClear={() => setSearchQuery('')}
+          onCreatePress={() => setShowCreateModal(true)}
+          isDesktop={isDesktop}
+        />
+      ) : (
+        <ScreenHeader
+          title="Графики работы"
+          customContent={
+            <View style={styles.headerRow}>
+              <View style={styles.headerLeft}>
+                {navigation.canGoBack() && (
+                  <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-            <View style={styles.headerRight}>
-              {/* Add button - only for admins and department heads */}
-              {canCreate && (
-                <TouchableOpacity
-                  onPress={() => setShowCreateModal(true)}
-                  style={styles.iconButton}
-                >
-                  <Ionicons name="add" size={30} color={theme.primary} />
-                </TouchableOpacity>
-              )}
+              <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
+
+              <View style={styles.headerRight}>
+                {canCreate && (
+                  <TouchableOpacity
+                    onPress={() => setShowCreateModal(true)}
+                    style={styles.iconButton}
+                  >
+                    <Ionicons name="add" size={30} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </View>
-        }
-      />
+          }
+        />
+      )}
 
       {/* Month Picker */}
       <MonthPicker
@@ -221,26 +256,28 @@ export const ScheduleListScreen: React.FC = () => {
         </View>
       )}
 
-      {/* List */}
-      <SectionList
-        sections={sections}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        stickySectionHeadersEnabled={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.primary}
-          />
-        }
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={renderFooter}
-        ListEmptyComponent={renderEmpty}
-      />
+      {/* Content */}
+      <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
+        <SectionList
+          sections={sections}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.primary}
+            />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmpty}
+        />
+      </View>
 
       {/* Create Modal */}
       <CreateScheduleModal
@@ -255,6 +292,10 @@ export const ScheduleListScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    overflow: 'hidden',
   },
   headerRow: {
     flexDirection: 'row',
