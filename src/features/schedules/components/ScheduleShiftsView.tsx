@@ -142,9 +142,6 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
     });
   }, [schedule.start_date, schedule.end_date, entries]);
 
-  const DATE_COLUMN_WIDTH = 80;
-  const SHIFT_COLUMN_WIDTH = 200;
-
   const renderEntry = (entry: ScheduleEntry) => (
     <View key={entry.id} style={styles.entryItem}>
       <Avatar
@@ -167,10 +164,10 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
         <View style={[styles.tableWrapper, { borderColor: theme.border }]}>
           {/* Header row */}
           <View style={[styles.headerRow, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-            <View style={[styles.dateHeaderCell, { width: DATE_COLUMN_WIDTH, borderRightColor: theme.border }]}>
+            <View style={[styles.dateHeaderCell, { borderRightColor: theme.border }]}>
               <Text style={[styles.headerText, { color: theme.text }]}>Дата</Text>
             </View>
-            <View style={[styles.shiftHeaderCell, { width: SHIFT_COLUMN_WIDTH, borderRightColor: theme.border }]}>
+            <View style={[styles.shiftHeaderCell, { borderRightColor: theme.border }]}>
               <Text style={[styles.headerText, { color: theme.text }]}>Утро</Text>
               {schedule.morning_start && schedule.morning_end && (
                 <Text style={[styles.headerSubtext, { color: theme.textSecondary }]}>
@@ -178,7 +175,7 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
                 </Text>
               )}
             </View>
-            <View style={[styles.shiftHeaderCell, styles.lastColumn, { width: SHIFT_COLUMN_WIDTH }]}>
+            <View style={[styles.shiftHeaderCell, styles.lastColumn]}>
               <Text style={[styles.headerText, { color: theme.text }]}>Вечер</Text>
               {schedule.evening_start && schedule.evening_end && (
                 <Text style={[styles.headerSubtext, { color: theme.textSecondary }]}>
@@ -206,7 +203,7 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
                 ]}
               >
                 {/* Date cell */}
-                <View style={[styles.dateCell, { width: DATE_COLUMN_WIDTH, borderRightColor: theme.border }]}>
+                <View style={[styles.dateCell, { borderRightColor: theme.border }]}>
                   <Text style={[
                     styles.dateText,
                     { color: theme.text },
@@ -218,7 +215,7 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
                 </View>
 
                 {/* Morning cell */}
-                <View style={[styles.shiftCell, { width: SHIFT_COLUMN_WIDTH, borderRightColor: theme.border }]}>
+                <View style={[styles.shiftCell, { borderRightColor: theme.border }]}>
                   {row.morningEntries.length > 0 && (
                     <View style={styles.namesContainer}>
                       {row.morningEntries.map(renderEntry)}
@@ -227,7 +224,7 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
                 </View>
 
                 {/* Evening cell */}
-                <View style={[styles.shiftCell, styles.lastColumn, { width: SHIFT_COLUMN_WIDTH }]}>
+                <View style={[styles.shiftCell, styles.lastColumn]}>
                   {row.eveningEntries.length > 0 && (
                     <View style={styles.namesContainer}>
                       {row.eveningEntries.map(renderEntry)}
@@ -248,13 +245,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    alignItems: 'center',
+    flexGrow: 1,
     paddingBottom: 16,
   },
   tableWrapper: {
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden',
+    flex: 1,
   },
   headerRow: {
     flexDirection: 'row',
@@ -266,6 +264,7 @@ const styles = StyleSheet.create({
     }),
   },
   dateHeaderCell: {
+    width: 90,
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRightWidth: 1,
@@ -273,6 +272,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shiftHeaderCell: {
+    flex: 1,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRightWidth: 1,
@@ -296,6 +296,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   dateCell: {
+    width: 90,
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderRightWidth: 1,
@@ -307,6 +308,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   shiftCell: {
+    flex: 1,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRightWidth: 1,

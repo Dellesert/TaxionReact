@@ -7,6 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -349,7 +350,10 @@ export const ScheduleDetailScreen: React.FC = () => {
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          isWideScreen && styles.desktopContentContainer,
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={isLoading || isLoadingEntries}
@@ -358,190 +362,322 @@ export const ScheduleDetailScreen: React.FC = () => {
           />
         }
       >
-        {/* Schedule Info Card */}
-        <View
-          style={[
-            styles.infoCard,
-            {
-              backgroundColor: theme.backgroundSecondary,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <View style={[styles.colorBar, { backgroundColor: typeColor }]} />
+        {isWideScreen ? (
+          // Desktop: Two-column layout
+          <View style={styles.desktopLayout}>
+            {/* Left Column - Main Content (Entries) */}
+            <View style={styles.desktopLeftColumn}>
+              {/* Entries Section - Grid/Shifts View for desktop or List View */}
+              {viewMode === 'grid' && schedule.mode === 'monthly' ? (
+                // Desktop Grid View - employees as rows, dates as columns
+                <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                      Сотрудники × Даты ({entries.length})
+                    </Text>
+                    {canManageEntries && (
+                      <TouchableOpacity
+                        style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                        onPress={handleAddEntry}
+                      >
+                        <Ionicons name="add" size={18} color={theme.primary} />
+                        <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                          Добавить
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {isLoadingEntries ? (
+                    <View style={styles.entriesLoader}>
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    </View>
+                  ) : (
+                    <ScheduleGridView schedule={schedule} entries={entries} />
+                  )}
+                </View>
+              ) : viewMode === 'shifts' && schedule.mode === 'monthly' ? (
+                // Desktop Shifts View - dates as rows, morning/evening columns
+                <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                      Даты × Смены ({entries.length})
+                    </Text>
+                    {canManageEntries && (
+                      <TouchableOpacity
+                        style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                        onPress={handleAddEntry}
+                      >
+                        <Ionicons name="add" size={18} color={theme.primary} />
+                        <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                          Добавить
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {isLoadingEntries ? (
+                    <View style={styles.entriesLoader}>
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    </View>
+                  ) : (
+                    <ScheduleShiftsView schedule={schedule} entries={entries} />
+                  )}
+                </View>
+              ) : (
+                // Standard List View
+                <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                      {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
+                      {schedule.mode === 'recurring'
+                        ? schedule.template?.entries?.length || 0
+                        : entries.length}
+                      )
+                    </Text>
+                    {canManageEntries && (
+                      <TouchableOpacity
+                        style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                        onPress={handleAddEntry}
+                      >
+                        <Ionicons name="add" size={18} color={theme.primary} />
+                        <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                          Добавить
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
 
-          <View style={styles.infoContent}>
-            <View style={styles.infoRow}>
-              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
-                Тип
-              </Text>
-              <Text style={[styles.infoValue, { color: theme.text }]}>
-                {SCHEDULE_TYPE_LABELS[schedule.type]}
-              </Text>
+                  {schedule.mode === 'recurring' ? (
+                    // Recurring mode - show template entries by day of week
+                    <TemplateEntriesList
+                      entries={schedule.template?.entries || []}
+                      onEntryPress={canManageEntries ? (templateEntry) => {
+                        setSelectedTemplateEntry(templateEntry);
+                        setShowEditEntryModal(true);
+                      } : undefined}
+                    />
+                  ) : isLoadingEntries ? (
+                    <View style={styles.entriesLoader}>
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    </View>
+                  ) : entries.length > 0 ? (
+                    <ScheduleEntriesList entries={entries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
+                  ) : (
+                    <View style={styles.emptyEntries}>
+                      <Ionicons
+                        name="document-outline"
+                        size={36}
+                        color={theme.textSecondary}
+                      />
+                      <Text
+                        style={[styles.emptyEntriesText, { color: theme.textSecondary }]}
+                      >
+                        Нет записей в этом графике
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
 
-            <View style={styles.infoRow}>
-              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
-                Период
-              </Text>
-              <Text style={[styles.infoValue, { color: theme.text }]}>
-                {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} —{' '}
-                {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
-              </Text>
-            </View>
+            {/* Right Column - Sidebar (Info Card) */}
+            <View style={styles.desktopRightColumn}>
+              {/* Schedule Info Card */}
+              <View style={[styles.sidebarCard, { backgroundColor: theme.card }]}>
+                <View style={[styles.sidebarColorBar, { backgroundColor: typeColor }]} />
 
-            <View style={styles.infoRow}>
-              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
-                Видимость
-              </Text>
-              <Text style={[styles.infoValue, { color: theme.text }]}>
-                {VISIBILITY_LABELS[schedule.visibility]}
-              </Text>
-            </View>
+                <View style={styles.sidebarHeader}>
+                  <Ionicons name="information-circle" size={20} color={theme.primary} />
+                  <Text style={[styles.sidebarTitle, { color: theme.text }]}>О графике</Text>
+                </View>
 
-            {/* Creator Block */}
-            {schedule.creator && (
-              <TouchableOpacity
-                style={[styles.creatorBlock, { borderTopColor: theme.border }]}
-                onPress={handleCreatorPress}
-                activeOpacity={0.7}
-              >
-                <Avatar
-                  name={schedule.creator.name}
-                  imageUrl={schedule.creator.avatar}
-                  size={40}
-                />
-                <View style={styles.creatorInfo}>
-                  <Text style={[styles.creatorName, { color: theme.text }]}>
-                    {schedule.creator.name}
+                <View style={styles.sidebarSection}>
+                  <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
+                  <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                    {SCHEDULE_TYPE_LABELS[schedule.type]}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-              </TouchableOpacity>
-            )}
 
-            {schedule.description && (
-              <View style={styles.descriptionRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
-                  Описание
-                </Text>
-                <Text style={[styles.description, { color: theme.text }]}>
-                  {schedule.description}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
+                <View style={styles.sidebarSection}>
+                  <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Период</Text>
+                  <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                    {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} — {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
+                  </Text>
+                </View>
 
-        {/* Entries Section - Grid/Shifts View for desktop or List View */}
-        {isWideScreen && viewMode === 'grid' && schedule.mode === 'monthly' ? (
-          // Desktop Grid View - employees as rows, dates as columns
-          <View style={styles.gridViewSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Сотрудники × Даты ({entries.length})
-              </Text>
-              {canManageEntries && (
-                <TouchableOpacity
-                  style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                  onPress={handleAddEntry}
-                >
-                  <Ionicons name="add" size={18} color={theme.primary} />
-                  <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                    Добавить
+                <View style={styles.sidebarSection}>
+                  <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Видимость</Text>
+                  <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                    {VISIBILITY_LABELS[schedule.visibility]}
                   </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {isLoadingEntries ? (
-              <View style={styles.entriesLoader}>
-                <ActivityIndicator size="small" color={theme.primary} />
+                </View>
+
+                {schedule.description && (
+                  <View style={styles.sidebarSection}>
+                    <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Описание</Text>
+                    <Text style={[styles.sidebarDescription, { color: theme.text }]}>
+                      {schedule.description}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Creator Block */}
+                {schedule.creator && (
+                  <TouchableOpacity
+                    style={[styles.sidebarCreator, { borderTopColor: theme.border }]}
+                    onPress={handleCreatorPress}
+                    activeOpacity={0.7}
+                  >
+                    <Avatar
+                      name={schedule.creator.name}
+                      imageUrl={schedule.creator.avatar}
+                      size={36}
+                    />
+                    <View style={styles.sidebarCreatorInfo}>
+                      <Text style={[styles.sidebarCreatorLabel, { color: theme.textSecondary }]}>
+                        Создатель
+                      </Text>
+                      <Text style={[styles.sidebarCreatorName, { color: theme.text }]}>
+                        {schedule.creator.name}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                )}
               </View>
-            ) : (
-              <ScheduleGridView schedule={schedule} entries={entries} />
-            )}
-          </View>
-        ) : isWideScreen && viewMode === 'shifts' && schedule.mode === 'monthly' ? (
-          // Desktop Shifts View - dates as rows, morning/evening columns
-          <View style={styles.gridViewSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Даты × Смены ({entries.length})
-              </Text>
-              {canManageEntries && (
-                <TouchableOpacity
-                  style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                  onPress={handleAddEntry}
-                >
-                  <Ionicons name="add" size={18} color={theme.primary} />
-                  <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                    Добавить
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
-            {isLoadingEntries ? (
-              <View style={styles.entriesLoader}>
-                <ActivityIndicator size="small" color={theme.primary} />
-              </View>
-            ) : (
-              <ScheduleShiftsView schedule={schedule} entries={entries} />
-            )}
           </View>
         ) : (
-          // Standard List View
-          <View style={styles.entriesSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
-                {schedule.mode === 'recurring'
-                  ? schedule.template?.entries?.length || 0
-                  : entries.length}
-                )
-              </Text>
-              {canManageEntries && (
-                <TouchableOpacity
-                  style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                  onPress={handleAddEntry}
-                >
-                  <Ionicons name="add" size={18} color={theme.primary} />
-                  <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                    Добавить
+          // Mobile: Original single-column layout
+          <>
+            {/* Schedule Info Card */}
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <View style={[styles.colorBar, { backgroundColor: typeColor }]} />
+
+              <View style={styles.infoContent}>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+                    Тип
                   </Text>
-                </TouchableOpacity>
-              )}
+                  <Text style={[styles.infoValue, { color: theme.text }]}>
+                    {SCHEDULE_TYPE_LABELS[schedule.type]}
+                  </Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+                    Период
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.text }]}>
+                    {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} —{' '}
+                    {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
+                  </Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+                    Видимость
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.text }]}>
+                    {VISIBILITY_LABELS[schedule.visibility]}
+                  </Text>
+                </View>
+
+                {/* Creator Block */}
+                {schedule.creator && (
+                  <TouchableOpacity
+                    style={[styles.creatorBlock, { borderTopColor: theme.border }]}
+                    onPress={handleCreatorPress}
+                    activeOpacity={0.7}
+                  >
+                    <Avatar
+                      name={schedule.creator.name}
+                      imageUrl={schedule.creator.avatar}
+                      size={40}
+                    />
+                    <View style={styles.creatorInfo}>
+                      <Text style={[styles.creatorName, { color: theme.text }]}>
+                        {schedule.creator.name}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                )}
+
+                {schedule.description && (
+                  <View style={styles.descriptionRow}>
+                    <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+                      Описание
+                    </Text>
+                    <Text style={[styles.description, { color: theme.text }]}>
+                      {schedule.description}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
 
-            {schedule.mode === 'recurring' ? (
-              // Recurring mode - show template entries by day of week
-              <TemplateEntriesList
-                entries={schedule.template?.entries || []}
-                onEntryPress={canManageEntries ? (templateEntry) => {
-                  setSelectedTemplateEntry(templateEntry);
-                  setShowEditEntryModal(true);
-                } : undefined}
-              />
-            ) : isLoadingEntries ? (
-              <View style={styles.entriesLoader}>
-                <ActivityIndicator size="small" color={theme.primary} />
-              </View>
-            ) : entries.length > 0 ? (
-              <ScheduleEntriesList entries={entries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
-            ) : (
-              <View style={styles.emptyEntries}>
-                <Ionicons
-                  name="document-outline"
-                  size={36}
-                  color={theme.textSecondary}
-                />
-                <Text
-                  style={[styles.emptyEntriesText, { color: theme.textSecondary }]}
-                >
-                  Нет записей в этом графике
+            {/* Entries Section */}
+            <View style={styles.entriesSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
+                  {schedule.mode === 'recurring'
+                    ? schedule.template?.entries?.length || 0
+                    : entries.length}
+                  )
                 </Text>
+                {canManageEntries && (
+                  <TouchableOpacity
+                    style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                    onPress={handleAddEntry}
+                  >
+                    <Ionicons name="add" size={18} color={theme.primary} />
+                    <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                      Добавить
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            )}
-          </View>
+
+              {schedule.mode === 'recurring' ? (
+                // Recurring mode - show template entries by day of week
+                <TemplateEntriesList
+                  entries={schedule.template?.entries || []}
+                  onEntryPress={canManageEntries ? (templateEntry) => {
+                    setSelectedTemplateEntry(templateEntry);
+                    setShowEditEntryModal(true);
+                  } : undefined}
+                />
+              ) : isLoadingEntries ? (
+                <View style={styles.entriesLoader}>
+                  <ActivityIndicator size="small" color={theme.primary} />
+                </View>
+              ) : entries.length > 0 ? (
+                <ScheduleEntriesList entries={entries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
+              ) : (
+                <View style={styles.emptyEntries}>
+                  <Ionicons
+                    name="document-outline"
+                    size={36}
+                    color={theme.textSecondary}
+                  />
+                  <Text
+                    style={[styles.emptyEntriesText, { color: theme.textSecondary }]}
+                  >
+                    Нет записей в этом графике
+                  </Text>
+                </View>
+              )}
+            </View>
+          </>
         )}
       </ScrollView>
 
@@ -758,5 +894,123 @@ const styles = StyleSheet.create({
   },
   emptyEntriesText: {
     fontSize: 14,
+  },
+
+  // Desktop styles
+  desktopContentContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  desktopLayout: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 20,
+  },
+  desktopLeftColumn: {
+    flex: 1,
+  },
+  desktopRightColumn: {
+    width: 320,
+    flexShrink: 0,
+  },
+  desktopCard: {
+    padding: 20,
+    borderRadius: 16,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+      },
+    }),
+  },
+
+  // Sidebar styles
+  sidebarCard: {
+    padding: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+      },
+    }),
+  },
+  sidebarColorBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+  },
+  sidebarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  sidebarTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    flex: 1,
+  },
+  sidebarSection: {
+    marginBottom: 16,
+  },
+  sidebarLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  sidebarValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 22,
+  },
+  sidebarDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  sidebarCreator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+  },
+  sidebarCreatorInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  sidebarCreatorLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  sidebarCreatorName: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
