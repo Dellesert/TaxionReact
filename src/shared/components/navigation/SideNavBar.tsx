@@ -1,15 +1,19 @@
 /**
  * Side Navigation Bar
  * Боковой навбар для широких экранов (desktop/tablet landscape)
+ * Поддерживает сложенный (только иконки) и расширенный (иконка + название) режимы
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Modal, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { Avatar } from '@shared/components/common/Avatar';
+
+const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed';
 
 interface NavItem {
   name: string;
@@ -87,6 +91,33 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   const unreadNotificationCount = useNotificationStore((state) => state.unreadCount);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  // Load collapsed state from storage
+  useEffect(() => {
+    const loadCollapsedState = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+        if (stored !== null) {
+          setIsCollapsed(stored === 'true');
+        }
+      } catch (error) {
+        console.error('Error loading sidebar state:', error);
+      }
+    };
+    loadCollapsedState();
+  }, []);
+
+  // Toggle collapsed state and save to storage
+  const toggleCollapsed = useCallback(async () => {
+    const newValue = !isCollapsed;
+    setIsCollapsed(newValue);
+    try {
+      await AsyncStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(newValue));
+    } catch (error) {
+      console.error('Error saving sidebar state:', error);
+    }
+  }, [isCollapsed]);
 
   // Check if user is admin or super_admin
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
@@ -120,7 +151,31 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundSecondary, borderRightColor: theme.border }]}>
+    <View style={[
+      styles.container,
+      isCollapsed ? styles.containerCollapsed : styles.containerExpanded,
+      { backgroundColor: theme.backgroundSecondary, borderRightColor: theme.border }
+    ]}>
+      {/* Toggle Button - as first nav item */}
+      <TouchableOpacity
+        style={[
+          styles.navItem,
+          styles.navItemCollapsed,
+          styles.toggleButton,
+          !isCollapsed && styles.toggleButtonExpanded,
+        ]}
+        onPress={toggleCollapsed}
+        activeOpacity={0.7}
+      >
+        <View style={styles.iconContainer}>
+          <Ionicons
+            name="menu-outline"
+            size={24}
+            color={isCollapsed ? theme.textSecondary : theme.primary}
+          />
+        </View>
+      </TouchableOpacity>
+
       {/* Navigation Items */}
       {visibleItems.map((item) => {
         const isActive = activeRoute === item.name;
@@ -133,12 +188,13 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
             key={item.name}
             style={[
               styles.navItem,
+              isCollapsed ? styles.navItemCollapsed : styles.navItemExpanded,
               isActive && { backgroundColor: theme.primaryLight || theme.primary + '20' },
             ]}
             onPress={() => onNavigate(item.name)}
             activeOpacity={0.7}
           >
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, !isCollapsed && styles.iconContainerExpanded]}>
               <Ionicons
                 name={isActive ? item.iconFocused : item.icon}
                 size={24}
@@ -152,15 +208,17 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
                 </View>
               )}
             </View>
-            <Text
-              style={[
-                styles.label,
-                { color: isActive ? theme.primary : theme.textSecondary },
-              ]}
-              numberOfLines={1}
-            >
-              {item.label}
-            </Text>
+            {!isCollapsed && (
+              <Text
+                style={[
+                  styles.labelExpanded,
+                  { color: isActive ? theme.primary : theme.textSecondary },
+                ]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -168,7 +226,10 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
       {/* User Avatar at bottom */}
       {user && (
         <TouchableOpacity
-          style={styles.avatarContainer}
+          style={[
+            styles.avatarContainer,
+            isCollapsed ? styles.avatarContainerCollapsed : styles.avatarContainerExpanded,
+          ]}
           onPress={() => setShowLogoutModal(true)}
           activeOpacity={0.7}
         >
@@ -177,10 +238,18 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
               imageUrl={user.avatar}
               thumbnailUrl={user.avatar_thumbnail}
               name={user.name || user.email}
-              size={38}
+              size={isCollapsed ? 38 : 32}
               userId={user.id}
             />
           </View>
+          {!isCollapsed && (
+            <Text
+              style={[styles.avatarName, { color: theme.text }]}
+              numberOfLines={1}
+            >
+              {user.name || user.email}
+            </Text>
+          )}
         </TouchableOpacity>
       )}
 
@@ -250,30 +319,67 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: 80,
     paddingVertical: 12,
     borderRightWidth: 1,
+    position: 'relative',
+  },
+  containerCollapsed: {
+    width: 72,
+  },
+  containerExpanded: {
+    width: 200,
+  },
+  toggleButton: {
+    marginBottom: 8,
+  },
+  toggleButtonExpanded: {
+    alignSelf: 'flex-start',
+    width: 56,
   },
   avatarContainer: {
+    marginTop: 'auto',
+    marginHorizontal: 8,
+    borderRadius: 12,
+  },
+  avatarContainerCollapsed: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    marginTop: 'auto',
+  },
+  avatarContainerExpanded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   avatarBorder: {
     borderWidth: 2,
-    borderRadius: 22,
+    borderRadius: 20,
     padding: 2,
   },
+  avatarName: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 12,
+    flex: 1,
+  },
   navItem: {
+    marginHorizontal: 8,
+    marginVertical: 4,
+    borderRadius: 12,
+  },
+  navItemCollapsed: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    marginHorizontal: 8,
-    marginVertical: 4,
-    borderRadius: 12,
+  },
+  navItemExpanded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   iconContainer: {
     position: 'relative',
@@ -281,12 +387,14 @@ const styles = StyleSheet.create({
     height: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
-  label: {
-    fontSize: 11,
+  iconContainerExpanded: {
+    marginRight: 12,
+  },
+  labelExpanded: {
+    fontSize: 14,
     fontWeight: '500',
-    textAlign: 'center',
+    flex: 1,
   },
   badge: {
     position: 'absolute',
