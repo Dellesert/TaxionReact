@@ -3,7 +3,7 @@
  * Контекст для управления заголовком страницы и контролами в кастомном заголовке Electron
  */
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 
 interface TitleBarControlsContextValue {
   /** Заголовок страницы */
@@ -34,7 +34,7 @@ export const TitleBarControlsProvider: React.FC<{ children: ReactNode }> = ({ ch
     setRightControls(null);
   }, []);
 
-  const value: TitleBarControlsContextValue = {
+  const value = useMemo<TitleBarControlsContextValue>(() => ({
     pageTitle,
     leftControls,
     rightControls,
@@ -42,7 +42,7 @@ export const TitleBarControlsProvider: React.FC<{ children: ReactNode }> = ({ ch
     setLeftControls,
     setRightControls,
     clearControls,
-  };
+  }), [pageTitle, leftControls, rightControls, clearControls]);
 
   return (
     <TitleBarControlsContext.Provider value={value}>

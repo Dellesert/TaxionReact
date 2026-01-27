@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { endOfWeek } from 'date-fns';
+import { endOfWeek, addMonths, subMonths } from 'date-fns';
 import { Event, CalendarView } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/states/EventListSkeleton';
 import { CalendarSkeleton } from '../components/states/CalendarSkeleton';
@@ -15,14 +15,17 @@ import { WeekDayStrip } from '../components/navigation/WeekDayStrip';
 import { CalendarEventsList } from '../components/events/CalendarEventsList';
 import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
 import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
+import { TitleBarCalendarControls } from '../components/common/TitleBarCalendarControls';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { useCalendarNavigation } from '../hooks/useCalendarNavigation';
 import { useMobileCalendarState } from '../hooks/useMobileCalendarState';
 import { useMobileCalendarData } from '../hooks/useMobileCalendarData';
+import { useWeekDisplayMode } from '../hooks/useWeekDisplayMode';
 import { groupEventsByDate } from '../utils/calendarHelpers';
 
 type CalendarStackParamList = {
@@ -197,10 +200,17 @@ const CalendarScreen: React.FC = () => {
   const navigation = useNavigation<CalendarNavigationProp>();
   const route = useRoute<CalendarRouteProp>();
 
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+  const isDesktop = isWideScreen;
+
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileRefreshTrigger, setMobileRefreshTrigger] = useState(0);
+
+  // Week display mode (lifted from CalendarDesktopView for TitleBar integration)
+  const { weekDisplayMode, setWeekDisplayMode } = useWeekDisplayMode();
 
   // Handle navigation from notification (with eventId parameter)
   useEffect(() => {
@@ -246,9 +256,9 @@ const CalendarScreen: React.FC = () => {
     navigation.navigate('EventDetail', { eventId: event.id });
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = useCallback(() => {
     setShowCreateModal(true);
-  };
+  }, []);
 
   const handleEventCreated = () => {
     setShowCreateModal(false);
@@ -272,9 +282,46 @@ const CalendarScreen: React.FC = () => {
 
 
   // Handle desktop view change
-  const handleDesktopViewChange = (view: CalendarView) => {
+  const handleDesktopViewChange = useCallback((view: CalendarView) => {
     setSelectedView(view);
-  };
+  }, [setSelectedView]);
+
+  // Navigation handlers for TitleBar
+  const handleMonthNavigate = useCallback((direction: 'prev' | 'next' | 'today') => {
+    if (direction === 'today') {
+      handleDatePress(new Date());
+    } else if (direction === 'prev') {
+      handleDatePress(subMonths(selectedDate, 1));
+    } else if (direction === 'next') {
+      handleDatePress(addMonths(selectedDate, 1));
+    }
+  }, [selectedDate, handleDatePress]);
+
+  // TitleBar controls for Electron desktop (unified compact component)
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarCalendarControls
+        selectedDate={selectedDate}
+        selectedView={selectedView}
+        onViewChange={handleDesktopViewChange}
+        onPrevious={() => handleMonthNavigate('prev')}
+        onNext={() => handleMonthNavigate('next')}
+        onToday={() => handleMonthNavigate('today')}
+        onAddPress={handleAddEvent}
+        weekDisplayMode={weekDisplayMode}
+        onWeekDisplayModeChange={setWeekDisplayMode}
+      />
+    );
+  }, [isElectron, isDesktop, selectedDate, selectedView, handleDesktopViewChange, handleMonthNavigate, handleAddEvent, weekDisplayMode, setWeekDisplayMode]);
+
+  // Integrate controls with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Календарь',
+    leftControls: titleBarLeftControls,
+    rightControls: null,
+    enabled: isElectron && isDesktop,
+  });
 
   // Filter events by search query (for desktop)
   const filteredEvents = searchQuery
@@ -307,6 +354,9 @@ const CalendarScreen: React.FC = () => {
             onEventUpdated={handleEventUpdated}
             onViewChange={handleDesktopViewChange}
             onAddPress={handleAddEvent}
+            weekDisplayMode={weekDisplayMode}
+            onWeekDisplayModeChange={setWeekDisplayMode}
+            hideToolbar={isElectron && isDesktop}
           />
         ) : (
           /* Mobile View - New Week Strip Layout */

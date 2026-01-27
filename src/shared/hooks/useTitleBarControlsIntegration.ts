@@ -52,12 +52,14 @@ export const useTitleBarControlsIntegration = ({
       }
 
       // Set title and controls when screen gains focus
+      // Note: titleBarControls functions are stable (from useState), so we don't need them as dependencies
       titleBarControls.setPageTitle(pageTitle);
       titleBarControls.setLeftControls(leftControls);
       titleBarControls.setRightControls(rightControls);
 
       // No cleanup needed - next focused screen will set its own controls
-    }, [isElectron, enabled, pageTitle, leftControls, rightControls, titleBarControls])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isElectron, enabled, pageTitle, leftControls, rightControls])
   );
 
   return {

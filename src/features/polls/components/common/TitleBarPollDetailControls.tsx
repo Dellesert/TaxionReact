@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { Poll } from '../../types/poll.types';
@@ -42,27 +42,17 @@ export const TitleBarPollDetailControls: React.FC<TitleBarPollDetailControlsProp
       {/* Publish Button (только для черновиков) */}
       {poll.status === 'draft' && (
         <View
-          style={[styles.button, { borderColor: theme.border }]}
-          // @ts-ignore - Web-only event handlers
+          style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
+          // @ts-ignore - Web-only
           onClick={isPublishing ? undefined : onPublish}
-          onMouseEnter={(e: any) => {
-            if (!isPublishing && e.currentTarget?.style) {
-              e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
-            }
-          }}
-          onMouseLeave={(e: any) => {
-            if (e.currentTarget?.style) {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }
-          }}
+          title="Опубликовать"
+          onMouseEnter={(e: any) => !isPublishing && e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
+          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
         >
           {isPublishing ? (
             <ActivityIndicator size="small" color={theme.primary} />
           ) : (
-            <>
-              <Ionicons name="checkmark-circle-outline" size={12} color={theme.primary} />
-              <Text style={[styles.buttonText, { color: theme.primary }]}>Опубликовать</Text>
-            </>
+            <Ionicons name="checkmark-circle-outline" size={14} color={theme.primary} />
           )}
         </View>
       )}
@@ -70,71 +60,45 @@ export const TitleBarPollDetailControls: React.FC<TitleBarPollDetailControlsProp
       {/* Close Button (завершить опрос) */}
       {canDeleteOrClose && poll.status === 'active' && (
         <View
-          style={[styles.button, { borderColor: theme.border }]}
-          // @ts-ignore - Web-only event handlers
+          style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
+          // @ts-ignore - Web-only
           onClick={onClose}
-          onMouseEnter={(e: any) => {
-            if (e.currentTarget?.style) {
-              e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
-            }
-          }}
-          onMouseLeave={(e: any) => {
-            if (e.currentTarget?.style) {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }
-          }}
+          title="Завершить опрос"
+          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
+          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
         >
-          <Ionicons name="lock-closed-outline" size={12} color="#F59E0B" />
-          <Text style={[styles.buttonText, { color: '#F59E0B' }]}>Завершить</Text>
+          <Ionicons name="lock-closed-outline" size={14} color="#F59E0B" />
         </View>
       )}
 
       {/* Edit Button */}
       {canEdit && (
         <View
-          style={[styles.button, { borderColor: theme.border }]}
-          // @ts-ignore - Web-only event handlers
+          style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
+          // @ts-ignore - Web-only
           onClick={onEdit}
-          onMouseEnter={(e: any) => {
-            if (e.currentTarget?.style) {
-              e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
-            }
-          }}
-          onMouseLeave={(e: any) => {
-            if (e.currentTarget?.style) {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }
-          }}
+          title="Редактировать"
+          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
+          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
         >
-          <Ionicons name="create-outline" size={12} color={theme.text} />
-          <Text style={[styles.buttonText, { color: theme.text }]}>Редактировать</Text>
+          <Ionicons name="create-outline" size={14} color={theme.text} />
         </View>
       )}
 
       {/* Delete Button */}
       {canDeleteOrClose && (
         <View
-          style={[styles.deleteButton, { borderColor: '#FEE2E2' }]}
-          // @ts-ignore - Web-only event handlers
+          style={[styles.deleteButton, { backgroundColor: theme.backgroundTertiary }]}
+          // @ts-ignore - Web-only
           onClick={isDeleting ? undefined : onDelete}
-          onMouseEnter={(e: any) => {
-            if (!isDeleting && e.currentTarget?.style) {
-              e.currentTarget.style.backgroundColor = '#FEE2E2';
-            }
-          }}
-          onMouseLeave={(e: any) => {
-            if (e.currentTarget?.style) {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }
-          }}
+          title="Удалить"
+          onMouseEnter={(e: any) => !isDeleting && e.currentTarget?.style && (e.currentTarget.style.backgroundColor = '#FEE2E2')}
+          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
         >
           {isDeleting ? (
             <ActivityIndicator size="small" color="#EF4444" />
           ) : (
-            <>
-              <Ionicons name="trash-outline" size={12} color="#EF4444" />
-              <Text style={[styles.buttonText, { color: '#EF4444' }]}>Удалить</Text>
-            </>
+            <Ionicons name="trash-outline" size={14} color="#EF4444" />
           )}
         </View>
       )}
@@ -148,30 +112,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   } as any,
-  button: {
-    flexDirection: 'row',
+  actionButton: {
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 4,
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     cursor: 'pointer',
     transition: 'background-color 0.15s ease',
   } as any,
   deleteButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 4,
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     cursor: 'pointer',
     transition: 'background-color 0.15s ease',
   } as any,
-  buttonText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
 });

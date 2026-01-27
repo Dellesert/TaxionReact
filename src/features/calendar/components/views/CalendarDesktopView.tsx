@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Platform, RefreshControl } from 'react-native';
-import { Event, CalendarView } from '../../types/calendar.types';
+import { Event, CalendarView, WeekDisplayMode } from '../../types/calendar.types';
 import { EventSection } from '../../utils/calendarHelpers';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useMonthEvents } from '../../hooks/useMonthEvents';
-import { useWeekDisplayMode } from '../../hooks/useWeekDisplayMode';
 import { addMonths, subMonths } from 'date-fns';
 import { MonthCalendarView } from './MonthCalendarView';
 import { CalendarEventsList } from '../events/CalendarEventsList';
@@ -29,6 +28,12 @@ interface CalendarDesktopViewProps {
   onEventUpdated: () => void;
   onViewChange?: (view: CalendarView) => void;
   onAddPress: () => void;
+  /** Week display mode passed from parent (for TitleBar integration) */
+  weekDisplayMode?: WeekDisplayMode;
+  /** Callback when week display mode changes */
+  onWeekDisplayModeChange?: (mode: WeekDisplayMode) => void;
+  /** Hide toolbar when controls are in TitleBar (Electron) */
+  hideToolbar?: boolean;
 }
 
 export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
@@ -44,11 +49,17 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   onEventUpdated,
   onViewChange,
   onAddPress,
+  weekDisplayMode: externalWeekDisplayMode,
+  onWeekDisplayModeChange,
+  hideToolbar = false,
 }) => {
   const { theme } = useTheme();
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [viewMode, setViewMode] = useState<CalendarView>(initialView);
-  const { weekDisplayMode, setWeekDisplayMode } = useWeekDisplayMode();
+  // Use external weekDisplayMode if provided (from TitleBar), otherwise use internal state
+  const [internalWeekDisplayMode, setInternalWeekDisplayMode] = useState<WeekDisplayMode>('timeline');
+  const weekDisplayMode = externalWeekDisplayMode ?? internalWeekDisplayMode;
+  const setWeekDisplayMode = onWeekDisplayModeChange ?? setInternalWeekDisplayMode;
   const [searchQuery, setSearchQuery] = useState('');
 
   // Load events for the entire month for the mini calendar
@@ -104,17 +115,20 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   return (
     <View style={styles.container}>
       {/* Compact Toolbar - Combines header, navigation, and week mode selector */}
-      <CompactCalendarToolbar
-        selectedDate={selectedDate}
-        selectedView={viewMode}
-        weekDisplayMode={weekDisplayMode}
-        onViewChange={handleViewModeChange}
-        onWeekModeChange={setWeekDisplayMode}
-        onToday={() => handleMonthNavigate('today')}
-        onPrevious={() => handleMonthNavigate('prev')}
-        onNext={() => handleMonthNavigate('next')}
-        onAddPress={onAddPress}
-      />
+      {/* Hidden when controls are moved to TitleBar (Electron) */}
+      {!hideToolbar && (
+        <CompactCalendarToolbar
+          selectedDate={selectedDate}
+          selectedView={viewMode}
+          weekDisplayMode={weekDisplayMode}
+          onViewChange={handleViewModeChange}
+          onWeekModeChange={setWeekDisplayMode}
+          onToday={() => handleMonthNavigate('today')}
+          onPrevious={() => handleMonthNavigate('prev')}
+          onNext={() => handleMonthNavigate('next')}
+          onAddPress={onAddPress}
+        />
+      )}
 
       {/* Main Content Area - 3 Column Layout */}
       <View style={styles.contentContainer}>

@@ -3,7 +3,7 @@
  * Контекст для управления поиском в кастомном заголовке Electron
  */
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 interface TitleBarSearchContextValue {
   searchQuery: string;
@@ -26,7 +26,7 @@ export const TitleBarSearchProvider: React.FC<{ children: React.ReactNode }> = (
     setSearchQuery('');
   }, []);
 
-  const value: TitleBarSearchContextValue = {
+  const value = useMemo<TitleBarSearchContextValue>(() => ({
     searchQuery,
     placeholder,
     isVisible,
@@ -34,7 +34,7 @@ export const TitleBarSearchProvider: React.FC<{ children: React.ReactNode }> = (
     setPlaceholder,
     setIsVisible,
     clearSearch,
-  };
+  }), [searchQuery, placeholder, isVisible, clearSearch]);
 
   return (
     <TitleBarSearchContext.Provider value={value}>

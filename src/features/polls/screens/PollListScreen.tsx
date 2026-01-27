@@ -19,8 +19,7 @@ import { PollListHeader } from '../components/headers/PollListHeader';
 import { PollListContent } from '../components/lists/PollListContent';
 import { PollViewSwitcher } from '../components/common/PollViewSwitcher';
 import { PollFilterMenu } from '../components/common/PollFilterMenu';
-import { TitleBarPollViewControls } from '../components/common/TitleBarPollViewControls';
-import { TitleBarPollActionControls } from '../components/common/TitleBarPollActionControls';
+import { TitleBarPollControls } from '../components/common/TitleBarPollControls';
 import { canUserCreatePoll, filterPollsByStatus } from '../utils/pollListHelpers';
 
 type PollListScreenNavigationProp = NativeStackNavigationProp<
@@ -88,21 +87,13 @@ const PollListScreen: React.FC = () => {
     enabled: true,
   });
 
-  // TitleBar controls for Electron desktop
+  // TitleBar controls for Electron desktop (unified compact component)
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
-      <TitleBarPollViewControls
+      <TitleBarPollControls
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-      />
-    );
-  }, [isElectron, isDesktop, viewMode]);
-
-  const titleBarRightControls = useMemo(() => {
-    if (!isElectron || !isDesktop) return null;
-    return (
-      <TitleBarPollActionControls
         hasActiveFilters={hasActiveFilters}
         onFilterToggle={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
         onFilterButtonLayout={setFilterButtonPosition}
@@ -110,13 +101,13 @@ const PollListScreen: React.FC = () => {
         onNewPoll={handleCreatePoll}
       />
     );
-  }, [isElectron, isDesktop, hasActiveFilters, isFilterMenuVisible, canCreatePoll, handleCreatePoll]);
+  }, [isElectron, isDesktop, viewMode, hasActiveFilters, isFilterMenuVisible, canCreatePoll, handleCreatePoll]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Опросы',
     leftControls: titleBarLeftControls,
-    rightControls: titleBarRightControls,
+    rightControls: null,
     enabled: isElectron && isDesktop,
   });
 

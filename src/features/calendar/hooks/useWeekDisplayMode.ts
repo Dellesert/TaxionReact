@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WeekDisplayMode } from '../types/calendar.types';
 
@@ -30,14 +30,14 @@ export const useWeekDisplayMode = () => {
     }
   };
 
-  const setWeekDisplayMode = async (mode: WeekDisplayMode) => {
+  const setWeekDisplayMode = useCallback(async (mode: WeekDisplayMode) => {
     try {
       setWeekDisplayModeState(mode);
       await AsyncStorage.setItem(STORAGE_KEY, mode);
     } catch (error) {
       console.error('Failed to save week display mode:', error);
     }
-  };
+  }, []);
 
   return {
     weekDisplayMode,
