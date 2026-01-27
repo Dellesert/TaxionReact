@@ -147,8 +147,8 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
       >
         <View style={styles.iconContainer}>
           <Ionicons
-            name="menu-outline"
-            size={24}
+            name={isCollapsed ? 'chevron-forward' : 'chevron-back'}
+            size={20}
             color={isCollapsed ? theme.textSecondary : theme.primary}
           />
         </View>

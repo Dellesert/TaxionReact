@@ -101,16 +101,16 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
   return (
     <View style={[styles.titleBar, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
       {/* Draggable area - Left side with title */}
-      <View style={styles.dragArea}>
+      <View style={[styles.dragArea, { minWidth: sidebarWidth }]}>
         <View style={styles.titleContainer}>
-          
+
           <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{displayTitle}</Text>
         </View>
       </View>
 
       {/* Left Controls from context */}
       {leftControls && (
-        <View style={[styles.leftControlsContainer, { paddingLeft: Math.max(0, sidebarWidth - 120) }]}>
+        <View style={styles.leftControlsContainer}>
           {leftControls}
         </View>
       )}
@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 0,
+    marginLeft: 16,
     // @ts-ignore - Web-only styles
     WebkitAppRegion: 'no-drag',
   },
