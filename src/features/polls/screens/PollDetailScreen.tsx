@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Animated,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { usePollData } from '../hooks/usePollData';
 import { usePollVoting } from '../hooks/usePollVoting';
 import { usePollActions } from '../hooks/usePollActions';
@@ -33,6 +35,8 @@ import { PollResults } from '../components/results/PollResults';
 import { PollActionButtons } from '../components/voting/PollActionButtons';
 import { PollErrorState } from '../components/states/PollErrorState';
 import { PollDesktopLayout } from '../components/poll-details/PollDesktopLayout';
+import { TitleBarBackButton } from '@/features/tasks/components/common/TitleBarBackButton';
+import { TitleBarPollDetailControls } from '../components/common/TitleBarPollDetailControls';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { isSystemAdmin, shouldShowResults, shouldShowVotingUI } from '../utils/pollHelpers';
 import { spacing } from '@shared/constants/design-system.constants';
@@ -141,6 +145,84 @@ const PollDetailScreen: React.FC = () => {
     isRevoting
   );
 
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
+  // Handler for back navigation
+  const handleGoBack = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+
+  // Action handlers (defined early for TitleBar integration)
+  const handlePublishAction = useCallback(async () => {
+    if (!poll) return;
+    await handlePublish(
+      poll,
+      async () => {
+        showSuccess('Опрос опубликован');
+        await loadPollDetail();
+      },
+      (message) => showError(message)
+    );
+  }, [poll, handlePublish, showSuccess, showError, loadPollDetail]);
+
+  const handleCloseAction = useCallback(() => {
+    if (!poll) return;
+    handleClose(
+      poll,
+      async () => {
+        showSuccess('Опрос завершён');
+        await loadPollDetail();
+      },
+      (message) => showError(message),
+      showConfirm
+    );
+  }, [poll, handleClose, showSuccess, showError, showConfirm, loadPollDetail]);
+
+  const handleDeleteAction = useCallback(() => {
+    if (!poll) return;
+    handleDelete(
+      poll,
+      () => {
+        showSuccess('Опрос удалён');
+        navigation.goBack();
+      },
+      (message) => showError(message),
+      showConfirm
+    );
+  }, [poll, handleDelete, showSuccess, showError, showConfirm, navigation]);
+
+  // TitleBar controls for Electron desktop
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return <TitleBarBackButton onGoBack={handleGoBack} />;
+  }, [isElectron, isDesktop, handleGoBack]);
+
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop || !poll) return null;
+    return (
+      <TitleBarPollDetailControls
+        poll={poll}
+        canEdit={permissions.can_edit}
+        canDeleteOrClose={permissions.can_delete_or_close}
+        isPublishing={isPublishing}
+        isDeleting={isDeleting}
+        onPublish={handlePublishAction}
+        onClose={handleCloseAction}
+        onEdit={() => setShowEditModal(true)}
+        onDelete={handleDeleteAction}
+      />
+    );
+  }, [isElectron, isDesktop, poll, permissions.can_edit, permissions.can_delete_or_close, isPublishing, isDeleting, handlePublishAction, handleCloseAction, handleDeleteAction]);
+
+  // Integrate controls with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Опрос',
+    leftControls: titleBarLeftControls,
+    rightControls: titleBarRightControls,
+    enabled: isElectron && isDesktop,
+  });
+
   // Load poll data on mount
   useEffect(() => {
     loadPollDetail();
@@ -202,44 +284,6 @@ const PollDetailScreen: React.FC = () => {
     );
   };
 
-  const handlePublishAction = async () => {
-    if (!poll) return;
-    await handlePublish(
-      poll,
-      async () => {
-        showSuccess('Опрос опубликован');
-        await loadPollDetail();
-      },
-      (message) => showError(message)
-    );
-  };
-
-  const handleCloseAction = () => {
-    if (!poll) return;
-    handleClose(
-      poll,
-      async () => {
-        showSuccess('Опрос завершён');
-        await loadPollDetail();
-      },
-      (message) => showError(message),
-      showConfirm
-    );
-  };
-
-  const handleDeleteAction = () => {
-    if (!poll) return;
-    handleDelete(
-      poll,
-      () => {
-        showSuccess('Опрос удалён');
-        navigation.goBack();
-      },
-      (message) => showError(message),
-      showConfirm
-    );
-  };
-
   const handleOpenChat = async (userId: number) => {
     try {
       const chat = await getOrCreateDirectChat(userId);
@@ -282,8 +326,8 @@ const PollDetailScreen: React.FC = () => {
       edges={['top']}
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header - always show to prevent jumping */}
-        {!isFromChat && (
+        {/* Header - скрываем для Electron desktop, так как контролы уже в TitleBar */}
+        {!isFromChat && !(isElectron && isDesktop) && (
           isDesktop && poll ? (
             <PollDesktopHeader
               poll={poll}

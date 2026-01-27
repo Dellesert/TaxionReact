@@ -297,7 +297,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 12,
+    //paddingVertical: 12,
     borderRightWidth: 1,
     position: 'relative',
   },

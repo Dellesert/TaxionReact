@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { usePollListData } from '../hooks/usePollListData';
 import { usePollListFilters } from '../hooks/usePollListFilters';
 import { PollStackParamList } from '@navigation/types';
@@ -18,6 +19,8 @@ import { PollListHeader } from '../components/headers/PollListHeader';
 import { PollListContent } from '../components/lists/PollListContent';
 import { PollViewSwitcher } from '../components/common/PollViewSwitcher';
 import { PollFilterMenu } from '../components/common/PollFilterMenu';
+import { TitleBarPollViewControls } from '../components/common/TitleBarPollViewControls';
+import { TitleBarPollActionControls } from '../components/common/TitleBarPollActionControls';
 import { canUserCreatePoll, filterPollsByStatus } from '../utils/pollListHelpers';
 
 type PollListScreenNavigationProp = NativeStackNavigationProp<
@@ -66,12 +69,55 @@ const PollListScreen: React.FC = () => {
   // Permissions
   const canCreatePoll = canUserCreatePoll(currentUser?.role);
 
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
+  // Check if filter is active (not default 'all')
+  const hasActiveFilters = filter !== 'all';
+
+  // Handler for creating poll (defined early for TitleBar integration)
+  const handleCreatePoll = useCallback(() => {
+    setShowCreateModal(true);
+  }, []);
+
   // Integrate with TitleBar search in Electron
   useTitleBarSearchIntegration({
     searchQuery,
     onSearchChange: setSearchQuery,
     placeholder: 'Поиск опросов...',
     enabled: true,
+  });
+
+  // TitleBar controls for Electron desktop
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarPollViewControls
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
+    );
+  }, [isElectron, isDesktop, viewMode]);
+
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarPollActionControls
+        hasActiveFilters={hasActiveFilters}
+        onFilterToggle={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
+        onFilterButtonLayout={setFilterButtonPosition}
+        canCreatePoll={canCreatePoll}
+        onNewPoll={handleCreatePoll}
+      />
+    );
+  }, [isElectron, isDesktop, hasActiveFilters, isFilterMenuVisible, canCreatePoll, handleCreatePoll]);
+
+  // Integrate controls with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Опросы',
+    leftControls: titleBarLeftControls,
+    rightControls: titleBarRightControls,
+    enabled: isElectron && isDesktop,
   });
 
   // Server returns polls with vote priority (un-voted first, voted last)
@@ -121,10 +167,6 @@ const PollListScreen: React.FC = () => {
     navigation.navigate('PollDetail', { pollId: poll.id });
   };
 
-  const handleCreatePoll = () => {
-    setShowCreateModal(true);
-  };
-
   const handlePollCreated = () => {
     loadPolls(getFilters(), searchQuery);
   };
@@ -164,24 +206,26 @@ const PollListScreen: React.FC = () => {
       edges={['left', 'right']}
     >
       {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
-      {/* Header */}
-      <PollListHeader
-        filter={filter}
-        searchQuery={searchQuery}
-        isSearchVisible={isSearchVisible}
-        canCreatePoll={canCreatePoll}
-        searchAnimation={searchAnimation}
-        onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}
-        onSearchChange={handleSearchChange}
-        onSearchClear={handleSearchClear}
-        onFilterPress={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
-        onCreatePress={handleCreatePoll}
-        onFilterButtonLayout={setFilterButtonPosition}
-        isDesktop={isDesktop}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onGoBack={navigation.canGoBack() ? handleGoBack : undefined}
-      />
+      {/* Header - скрываем для Electron desktop, так как контролы уже в TitleBar */}
+      {!(isElectron && isDesktop) && (
+        <PollListHeader
+          filter={filter}
+          searchQuery={searchQuery}
+          isSearchVisible={isSearchVisible}
+          canCreatePoll={canCreatePoll}
+          searchAnimation={searchAnimation}
+          onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}
+          onSearchChange={handleSearchChange}
+          onSearchClear={handleSearchClear}
+          onFilterPress={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
+          onCreatePress={handleCreatePoll}
+          onFilterButtonLayout={setFilterButtonPosition}
+          isDesktop={isDesktop}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          onGoBack={navigation.canGoBack() ? handleGoBack : undefined}
+        />
+      )}
 
       {/* Content */}
       <View style={{ flex: 1, backgroundColor: theme.background }}>
