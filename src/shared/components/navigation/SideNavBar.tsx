@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   toggleButtonExpanded: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-end',
     width: 56,
   },
   avatarContainer: {
