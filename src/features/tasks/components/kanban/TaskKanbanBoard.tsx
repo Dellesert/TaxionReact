@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, useWindowDimensions, View, ScrollView, Platform } from 'react-native';
+import { StyleSheet, useWindowDimensions, View, ScrollView } from 'react-native';
 import type { Task } from '../../types/task.types';
 import type { StatusTab, TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus } from '../../hooks/useTaskListData';
 import { TaskKanbanColumn } from './TaskKanbanColumn';
