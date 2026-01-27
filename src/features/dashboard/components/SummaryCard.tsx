@@ -84,7 +84,7 @@ const CardSkeleton: React.FC = () => {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH;
 const CARD_HEIGHT = 220;
-const PAGINATION_HEIGHT = 32; // 16px marginTop + 8px dot + 8px buffer
+const PAGINATION_HEIGHT = 56; // 8px dot + padding, увеличено чтобы быть выше navigationWrapper overlay
 const CONTAINER_HEIGHT = CARD_HEIGHT + PAGINATION_HEIGHT;
 
 interface SummaryCardProps {
@@ -402,10 +402,10 @@ const styles = StyleSheet.create({
   },
   // Carousel
   carouselContainer: {
-    // на всю ширину экрана
+    overflow: 'visible',
   },
   scrollView: {
-    flex: 1,
+    height: CARD_HEIGHT,
   },
   cardWrapper: {
     width: SCREEN_WIDTH,
@@ -464,8 +464,9 @@ const styles = StyleSheet.create({
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 16,
+    alignItems: 'flex-start',
+    paddingTop: 10,
+    height: PAGINATION_HEIGHT,
     gap: 8,
   },
   dot: {
