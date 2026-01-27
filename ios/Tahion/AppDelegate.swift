@@ -1,9 +1,9 @@
 import Expo
 import FirebaseCore
 import FirebaseMessaging
-import UserNotifications
 import React
 import ReactAppDependencyProvider
+import UserNotifications
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -34,6 +34,7 @@ FirebaseApp.configure()
     UNUserNotificationCenter.current().delegate = self
     Messaging.messaging().delegate = self
     application.registerForRemoteNotifications()
+
     factory.startReactNative(
       withModuleName: "main",
       in: window,
