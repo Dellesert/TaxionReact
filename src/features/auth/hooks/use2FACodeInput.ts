@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { TextInput } from 'react-native';
-import { extractNumericInput, splitCode, createEmptyCode } from '../utils/twoFactorHelpers';
+import { extractNumericInput, createEmptyCode } from '../utils/twoFactorHelpers';
 
 interface Use2FACodeInputReturn {
   code: string[];
@@ -36,15 +36,32 @@ export const use2FACodeInput = (): Use2FACodeInputReturn => {
         return;
       }
 
-      // If user pasted full 6-digit code
-      if (numericText.length === 6) {
-        const newCode = splitCode(numericText);
+      // If user pasted multiple digits (iOS autofill or manual paste)
+      if (numericText.length > 1) {
+        const newCode = [...code];
+        const digits = numericText.slice(0, 6).split('');
+
+        // Fill in digits starting from current index
+        digits.forEach((digit, i) => {
+          const targetIndex = index + i;
+          if (targetIndex < 6) {
+            newCode[targetIndex] = digit;
+          }
+        });
+
         setCode(newCode);
-        inputRefs.current[5]?.focus();
+
+        // Focus the next empty field or last field
+        const lastFilledIndex = Math.min(index + digits.length - 1, 5);
+        if (lastFilledIndex < 5) {
+          inputRefs.current[lastFilledIndex + 1]?.focus();
+        } else {
+          inputRefs.current[5]?.blur();
+        }
         return;
       }
 
-      // Update code with first digit
+      // Update code with single digit
       const newCode = [...code];
       newCode[index] = numericText[0];
       setCode(newCode);

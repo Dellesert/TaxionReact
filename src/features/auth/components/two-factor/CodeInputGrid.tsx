@@ -41,7 +41,9 @@ export const CodeInputGrid: React.FC<CodeInputGridProps> = ({
           onChangeText={(text) => onCodeChange(text, index)}
           onKeyPress={(e) => onKeyPress(e, index)}
           keyboardType="number-pad"
-          maxLength={1}
+          maxLength={6}
+          textContentType="oneTimeCode"
+          autoComplete="one-time-code"
           selectTextOnFocus
           editable={!isLoading}
         />
