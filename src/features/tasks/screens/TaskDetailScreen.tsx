@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, ScrollView, Dimensions, StyleSheet, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { View, ScrollView, Dimensions, StyleSheet, useWindowDimensions, TouchableOpacity, Text, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
@@ -18,9 +18,12 @@ import { TaskHistoryTab } from '../components/detail-tabs/TaskHistoryTab';
 import { TaskActionButtons } from '../components/common/TaskActionButtons';
 import { TaskActionMenu } from '../components/common/TaskActionMenu';
 import { TaskDesktopLayout } from '../components/task-details/TaskDesktopLayout';
+import { TitleBarTaskDetailControls } from '../components/common/TitleBarTaskDetailControls';
+import { TitleBarBackButton } from '../components/common/TitleBarBackButton';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTaskPermissions } from '../hooks/useTaskPermissions';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
@@ -52,6 +55,9 @@ const TaskDetailScreen: React.FC = () => {
 
   // Desktop mode detection - use same logic as MainNavigator
   const isDesktop = isWideScreen;
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
   // Screen state
   const [isNarrowScreen, setIsNarrowScreen] = useState(Dimensions.get('window').width < 460);
@@ -343,6 +349,51 @@ const TaskDetailScreen: React.FC = () => {
     );
   };
 
+  // TitleBar controls for Electron desktop
+  const handleGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      // @ts-ignore
+      navigation.navigate('Main', { screen: 'Tasks' });
+    }
+  }, [navigation]);
+
+  const handleOpenMenuFromTitleBar = useCallback((position: { x: number; y: number; width: number; height: number }) => {
+    setMenuButtonPosition(position);
+    setShowActionMenu(true);
+  }, []);
+
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return <TitleBarBackButton onGoBack={handleGoBack} label="К задачам" />;
+  }, [isElectron, isDesktop, handleGoBack]);
+
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarTaskDetailControls
+        task={task}
+        permissions={permissions}
+        isDelegatedByMe={isDelegatedByMe}
+        isCreator={isCreator}
+        allSubtasksCompleted={allSubtasksCompleted}
+        allChecklistItemsCompleted={allChecklistItemsCompleted}
+        onTaskAction={handleTaskAction}
+        onStatusChange={handleStatusChange}
+        onOpenMenu={handleOpenMenuFromTitleBar}
+      />
+    );
+  }, [isElectron, isDesktop, task, permissions, isDelegatedByMe, isCreator, allSubtasksCompleted, allChecklistItemsCompleted, handleTaskAction, handleStatusChange, handleOpenMenuFromTitleBar]);
+
+  // Integrate with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Детали задачи',
+    leftControls: titleBarLeftControls,
+    rightControls: titleBarRightControls,
+    enabled: isElectron && isDesktop,
+  });
+
   // Access denied state
   if (accessDenied) {
     return <TaskAccessDenied onGoBack={() => {
@@ -361,122 +412,124 @@ const TaskDetailScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header */}
-        <View style={{ borderBottomWidth: 1, borderBottomColor: theme.border }}>
-          <ScreenHeader
-            title="Задача"
-            customContent={
-              <View style={styles.customHeader}>
-                {/* Left button */}
-                <TouchableOpacity
-                  onPress={() => {
-                    if (navigation.canGoBack()) {
-                      navigation.goBack();
-                    } else {
-                      // @ts-ignore
-                      navigation.navigate('Main', { screen: 'Tasks' });
-                    }
-                  }}
-                  style={styles.headerSideButton}
-                >
-                  <Ionicons name="close" size={24} color={theme.error} />
-                </TouchableOpacity>
+        {/* Header - hide on Electron desktop since controls are in TitleBar */}
+        {!(isElectron && isDesktop) && (
+          <View style={{ borderBottomWidth: 1, borderBottomColor: theme.border }}>
+            <ScreenHeader
+              title="Задача"
+              customContent={
+                <View style={styles.customHeader}>
+                  {/* Left button */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (navigation.canGoBack()) {
+                        navigation.goBack();
+                      } else {
+                        // @ts-ignore
+                        navigation.navigate('Main', { screen: 'Tasks' });
+                      }
+                    }}
+                    style={styles.headerSideButton}
+                  >
+                    <Ionicons name="close" size={24} color={theme.error} />
+                  </TouchableOpacity>
 
-                {/* Title */}
-                <View style={styles.headerTitleContainer}>
-                  <Text style={[styles.headerTitle, { color: theme.text }]}>Задача</Text>
-                </View>
+                  {/* Title */}
+                  <View style={styles.headerTitleContainer}>
+                    <Text style={[styles.headerTitle, { color: theme.text }]}>Задача</Text>
+                  </View>
 
-                {/* Desktop Status Action Buttons */}
-                {isDesktop && task && permissions.can_change_status && !isDelegatedByMe && task.status !== 'done' && (
-                  <View style={styles.headerActions}>
-                    {task.status === 'new' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: theme.primary }]}
-                        onPress={handleTaskAction}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="play-circle-outline" size={18} color="#FFFFFF" />
-                        <Text style={styles.statusButtonText}>Начать работу</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {task.status === 'in_progress' && (
-                      <TouchableOpacity
-                        style={[
-                          styles.statusButton,
-                          { backgroundColor: theme.success },
-                          (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.statusButtonDisabled,
-                        ]}
-                        onPress={handleTaskAction}
-                        disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
-                        <Text style={styles.statusButtonText}>
-                          {isCreator ? 'Завершить' : 'Сдать на проверку'}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {task.status === 'review' && isCreator && (
-                      <>
+                  {/* Desktop Status Action Buttons */}
+                  {isDesktop && task && permissions.can_change_status && !isDelegatedByMe && task.status !== 'done' && (
+                    <View style={styles.headerActions}>
+                      {task.status === 'new' && (
                         <TouchableOpacity
-                          style={[styles.statusButton, styles.statusButtonSecondary, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-                          onPress={() => handleStatusChange('in_progress')}
+                          style={[styles.statusButton, { backgroundColor: theme.primary }]}
+                          onPress={handleTaskAction}
                           activeOpacity={0.8}
                         >
-                          <Ionicons name="arrow-back-circle-outline" size={18} color={theme.text} />
-                          <Text style={[styles.statusButtonText, { color: theme.text }]}>Вернуть</Text>
+                          <Ionicons name="play-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.statusButtonText}>Начать работу</Text>
                         </TouchableOpacity>
+                      )}
+
+                      {task.status === 'in_progress' && (
                         <TouchableOpacity
                           style={[
                             styles.statusButton,
                             { backgroundColor: theme.success },
                             (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.statusButtonDisabled,
                           ]}
-                          onPress={() => handleStatusChange('done')}
+                          onPress={handleTaskAction}
                           disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
                           activeOpacity={0.8}
                         >
                           <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
-                          <Text style={styles.statusButtonText}>Завершить</Text>
+                          <Text style={styles.statusButtonText}>
+                            {isCreator ? 'Завершить' : 'Сдать на проверку'}
+                          </Text>
                         </TouchableOpacity>
-                      </>
-                    )}
-                  </View>
-                )}
+                      )}
 
-                {/* Right button (3 dots menu) */}
-                {task && (
-                  permissions.can_edit ||
-                  permissions.can_delegate ||
-                  permissions.can_create_subtasks ||
-                  permissions.can_emergency_complete ||
-                  permissions.can_delete
-                ) && (
-                  <TouchableOpacity
-                    ref={menuButtonRef}
-                    onPress={handleOpenActionMenu}
-                    style={styles.headerSideButton}
-                  >
-                    <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
-                  </TouchableOpacity>
-                )}
-                {!(task && (
-                  permissions.can_edit ||
-                  permissions.can_delegate ||
-                  permissions.can_create_subtasks ||
-                  permissions.can_emergency_complete ||
-                  permissions.can_delete
-                )) && <View style={styles.headerSideButton} />}
-              </View>
-            }
-            showDivider={false}
-            withShadow={false}
-            containerStyle={{ paddingTop: 14, paddingBottom: 14 }}
-          />
-        </View>
+                      {task.status === 'review' && isCreator && (
+                        <>
+                          <TouchableOpacity
+                            style={[styles.statusButton, styles.statusButtonSecondary, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                            onPress={() => handleStatusChange('in_progress')}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="arrow-back-circle-outline" size={18} color={theme.text} />
+                            <Text style={[styles.statusButtonText, { color: theme.text }]}>Вернуть</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.statusButton,
+                              { backgroundColor: theme.success },
+                              (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.statusButtonDisabled,
+                            ]}
+                            onPress={() => handleStatusChange('done')}
+                            disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
+                            <Text style={styles.statusButtonText}>Завершить</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Right button (3 dots menu) */}
+                  {task && (
+                    permissions.can_edit ||
+                    permissions.can_delegate ||
+                    permissions.can_create_subtasks ||
+                    permissions.can_emergency_complete ||
+                    permissions.can_delete
+                  ) && (
+                    <TouchableOpacity
+                      ref={menuButtonRef}
+                      onPress={handleOpenActionMenu}
+                      style={styles.headerSideButton}
+                    >
+                      <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+                    </TouchableOpacity>
+                  )}
+                  {!(task && (
+                    permissions.can_edit ||
+                    permissions.can_delegate ||
+                    permissions.can_create_subtasks ||
+                    permissions.can_emergency_complete ||
+                    permissions.can_delete
+                  )) && <View style={styles.headerSideButton} />}
+                </View>
+              }
+              showDivider={false}
+              withShadow={false}
+              containerStyle={{ paddingTop: 14, paddingBottom: 14 }}
+            />
+          </View>
+        )}
 
         {/* Content - Desktop Layout or Mobile Tabs */}
         {isDesktop ? (

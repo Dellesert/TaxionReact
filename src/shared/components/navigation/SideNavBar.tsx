@@ -4,16 +4,14 @@
  * Поддерживает сложенный (только иконки) и расширенный (иконка + название) режимы
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Modal, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { Avatar } from '@shared/components/common/Avatar';
-
-const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed';
+import { useSidebar } from '@shared/contexts/SidebarContext';
 
 interface NavItem {
   name: string;
@@ -91,33 +89,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   const unreadNotificationCount = useNotificationStore((state) => state.unreadCount);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(true);
-
-  // Load collapsed state from storage
-  useEffect(() => {
-    const loadCollapsedState = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-        if (stored !== null) {
-          setIsCollapsed(stored === 'true');
-        }
-      } catch (error) {
-        console.error('Error loading sidebar state:', error);
-      }
-    };
-    loadCollapsedState();
-  }, []);
-
-  // Toggle collapsed state and save to storage
-  const toggleCollapsed = useCallback(async () => {
-    const newValue = !isCollapsed;
-    setIsCollapsed(newValue);
-    try {
-      await AsyncStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(newValue));
-    } catch (error) {
-      console.error('Error saving sidebar state:', error);
-    }
-  }, [isCollapsed]);
+  const { isCollapsed, toggleCollapsed } = useSidebar();
 
   // Check if user is admin or super_admin
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
@@ -154,7 +126,13 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
     <View style={[
       styles.container,
       isCollapsed ? styles.containerCollapsed : styles.containerExpanded,
-      { backgroundColor: theme.backgroundSecondary, borderRightColor: theme.border }
+      {
+        backgroundColor: theme.backgroundSecondary,
+        borderRightColor: theme.border,
+        borderTopRightRadius: isElectron ? 16 : 0,
+        borderTopWidth: isElectron ? 1 : 0,
+        borderTopColor: theme.border,
+      }
     ]}>
       {/* Toggle Button - as first nav item */}
       <TouchableOpacity

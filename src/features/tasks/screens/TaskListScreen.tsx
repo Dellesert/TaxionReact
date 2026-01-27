@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { TaskStackParamList } from '@navigation/types';
 import CreateTaskModal from '../components/modals/CreateTaskModal';
 import { useTaskListData } from '../hooks/useTaskListData';
@@ -20,6 +21,8 @@ import { AdvancedTaskFilterMenu } from '../components/filters/AdvancedTaskFilter
 import { BoardFilterMenu } from '../components/filters/BoardFilterMenu';
 import { MobileFilterMenu } from '../components/filters/MobileFilterMenu';
 import { TaskViewSwitcher, ViewMode } from '../components/common/TaskViewSwitcher';
+import { TitleBarViewControls } from '../components/common/TitleBarViewControls';
+import { TitleBarActionControls } from '../components/common/TitleBarActionControls';
 import type { StatusTab, AdvancedTaskFilters, TaskFilter } from '../utils/taskListHelpers';
 import { TASKS_PER_PAGE, buildAdvancedTaskFilters, getTasksWithSubtasks, STATUS_TABS_ORDER } from '../utils/taskListHelpers';
 
@@ -98,6 +101,9 @@ const TaskListScreen: React.FC = () => {
     activeTab,
     handleTabChange
   );
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
   // Integrate with TitleBar search in Electron
   useTitleBarSearchIntegration({
@@ -260,31 +266,68 @@ const TaskListScreen: React.FC = () => {
     return count + getTasksWithSubtasks(tasks[status]).length;
   }, 0);
 
+  // TitleBar controls for Electron desktop
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarViewControls
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        expandedAll={expandAllSubtasks}
+        onExpandToggle={handleExpandAllToggle}
+        subtaskCount={totalTasksWithSubtasks}
+      />
+    );
+  }, [isElectron, isDesktop, viewMode, expandAllSubtasks, totalTasksWithSubtasks, handleExpandAllToggle]);
+
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarActionControls
+        hasActiveFilters={hasActiveFilters ?? false}
+        onFilterToggle={toggleFilterMenu}
+        onFilterButtonLayout={setFilterButtonPosition}
+        canCreateTask={canCreateTask}
+        onNewTask={handleNewTask}
+      />
+    );
+  }, [isElectron, isDesktop, hasActiveFilters, toggleFilterMenu, canCreateTask, handleNewTask]);
+
+  // Integrate controls with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Задачи',
+    leftControls: titleBarLeftControls,
+    rightControls: titleBarRightControls,
+    enabled: isElectron && isDesktop,
+  });
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
       {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
-      {/* Header */}
-      <TaskListHeader
-        filter={displayFilter}
-        isSearchVisible={isSearchVisible}
-        searchQuery={searchQuery}
-        onSearchToggle={toggleSearch}
-        onFilterToggle={toggleFilterMenu}
-        onSearchChange={setSearchQuery}
-        onNewTask={handleNewTask}
-        canCreateTask={canCreateTask}
-        activeTab={activeTab}
-        totals={totals}
-        onTabChange={setActiveTab}
-        onFilterButtonLayout={setFilterButtonPosition}
-        isDesktop={isDesktop}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        expandAllSubtasks={expandAllSubtasks}
-        onExpandAllToggle={handleExpandAllToggle}
-        subtaskCount={totalTasksWithSubtasks}
-        onGoBack={navigation.canGoBack() ? handleGoBack : undefined}
-      />
+      {/* Header - hide on Electron desktop since controls are in TitleBar */}
+      {!(isElectron && isDesktop) && (
+        <TaskListHeader
+          filter={displayFilter}
+          isSearchVisible={isSearchVisible}
+          searchQuery={searchQuery}
+          onSearchToggle={toggleSearch}
+          onFilterToggle={toggleFilterMenu}
+          onSearchChange={setSearchQuery}
+          onNewTask={handleNewTask}
+          canCreateTask={canCreateTask}
+          activeTab={activeTab}
+          totals={totals}
+          onTabChange={setActiveTab}
+          onFilterButtonLayout={setFilterButtonPosition}
+          isDesktop={isDesktop}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          expandAllSubtasks={expandAllSubtasks}
+          onExpandAllToggle={handleExpandAllToggle}
+          subtaskCount={totalTasksWithSubtasks}
+          onGoBack={navigation.canGoBack() ? handleGoBack : undefined}
+        />
+      )}
 
       {/* Content - TaskViewSwitcher for Desktop, Swipe Navigation for Mobile */}
       <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>

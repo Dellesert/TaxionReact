@@ -26,7 +26,9 @@ import {
 } from '@/features/notifications/utils/notificationFormatters';
 import { CustomTitleBar } from '@shared/components/common/CustomTitleBar';
 import { TitleBarSearchProvider } from '@shared/contexts/TitleBarSearchContext';
+import { TitleBarControlsProvider } from '@shared/contexts/TitleBarControlsContext';
 import { DesktopNavigationProvider } from '@shared/contexts/DesktopNavigationContext';
+import { SidebarProvider } from '@shared/contexts/SidebarContext';
 import { isElectron } from '@shared/utils/platform';
 import { electronPushNotificationService } from '@/services/pushNotificationElectron.service';
 
@@ -679,19 +681,23 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <DesktopNavigationProvider>
-        <TitleBarSearchProvider>
-          <CustomTitleBar navigationRef={navigationRef} />
-          <NotificationProvider>
-            <ActionModalProvider>
-              <NetworkSyncProvider enabled={isAuthenticated}>
-                <AppNavigator ref={navigationRef} />
-                <OfflineBanner />
-              </NetworkSyncProvider>
-            </ActionModalProvider>
-          </NotificationProvider>
-        </TitleBarSearchProvider>
-      </DesktopNavigationProvider>
+      <SidebarProvider>
+        <DesktopNavigationProvider>
+          <TitleBarSearchProvider>
+            <TitleBarControlsProvider>
+              <CustomTitleBar navigationRef={navigationRef} />
+              <NotificationProvider>
+                <ActionModalProvider>
+                  <NetworkSyncProvider enabled={isAuthenticated}>
+                    <AppNavigator ref={navigationRef} />
+                    <OfflineBanner />
+                  </NetworkSyncProvider>
+                </ActionModalProvider>
+              </NotificationProvider>
+            </TitleBarControlsProvider>
+          </TitleBarSearchProvider>
+        </DesktopNavigationProvider>
+      </SidebarProvider>
     </GestureHandlerRootView>
   );
 }
