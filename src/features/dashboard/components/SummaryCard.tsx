@@ -316,7 +316,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
             Нет новых событий!
           </Text>
           <Text style={[styles.successSubtitle, { color: isDark ? '#6ee7b7AA' : '#065f46AA' }]}>
-            Здесь будут появляться сведения о новых задачах, опросах, графиков
+            Здесь будут появляться сведения о новых задачах, опросах, графиках
           </Text>
         </View>
       </View>
