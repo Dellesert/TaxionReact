@@ -297,7 +297,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   // Показываем скелетон при загрузке или отсутствии данных
   if (isLoading || !counts) {
     return (
-      <View style={[styles.fixedHeightContainer, { paddingTop: insets.top }]}>
+      <View style={[styles.fixedHeightContainer, { paddingTop: insets.top, height: CONTAINER_HEIGHT + insets.top }]}>
         <CardSkeleton />
       </View>
     );
@@ -307,7 +307,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   if (!hasAnyData) {
     const successBg = isDark ? '#064e3b' : '#ecfdf5';
     return (
-      <View style={[styles.singleCardContainer, { backgroundColor: successBg, paddingTop: insets.top }]}>
+      <View style={[styles.singleCardContainer, { backgroundColor: successBg, paddingTop: insets.top, height: CONTAINER_HEIGHT + insets.top }]}>
         <View style={[styles.successCard, { backgroundColor: successBg }]}>
           <View style={[styles.successIcon, { backgroundColor: isDark ? '#10b98120' : '#d1fae5' }]}>
             <Ionicons name="checkmark-circle" size={40} color="#10B981" />
@@ -328,7 +328,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     const { key: _, ...cardProps } = cardsData[0];
     const singleBg = isDark ? cardProps.bgColorDark : cardProps.bgColor;
     return (
-      <View style={[styles.singleCardContainer, { backgroundColor: singleBg, paddingTop: insets.top }]}>
+      <View style={[styles.singleCardContainer, { backgroundColor: singleBg, paddingTop: insets.top, height: CONTAINER_HEIGHT + insets.top }]}>
         <CardItem
           {...cardProps}
           isDark={isDark}

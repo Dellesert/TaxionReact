@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useProfileAvatar } from '../hooks/useProfileAvatar';
@@ -20,6 +20,15 @@ const ProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { isUploadingAvatar, handleChangeAvatar } = useProfileAvatar();
   const { isLoggingOut, handleLogout, handleThemePress } = useProfileActions();
+
+  // Set status bar style when screen gains focus (iOS only)
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle('light');
+      }
+    }, [])
+  );
 
   // Refresh user data on mount to ensure we have latest profile
   useEffect(() => {

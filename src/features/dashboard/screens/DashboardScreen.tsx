@@ -5,7 +5,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -27,11 +27,15 @@ export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { data, isLoading, refresh, isRefreshing } = useDashboardData();
 
-  // Тихое обновление данных при возврате на экран (без дёргания ScrollView)
+  // Set status bar style when screen gains focus (iOS only)
   useFocusEffect(
     useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+      // Тихое обновление данных при возврате на экран (без дёргания ScrollView)
       refresh(true);
-    }, [refresh])
+    }, [refresh, isDark])
   );
 
   // Цвет фона для верхней части (overscroll на iOS) - приходит из SummaryCard

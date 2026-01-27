@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -211,6 +211,15 @@ const CalendarScreen: React.FC = () => {
 
   // Week display mode (lifted from CalendarDesktopView for TitleBar integration)
   const { weekDisplayMode, setWeekDisplayMode } = useWeekDisplayMode();
+
+  // Set status bar style when screen gains focus (iOS only)
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
 
   // Handle navigation from notification (with eventId parameter)
   useEffect(() => {

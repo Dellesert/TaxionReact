@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, Dimensions, Platform } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -138,6 +138,11 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
   // Smart scroll: scroll to top only if user sent a new message
   useFocusEffect(
     useCallback(() => {
+      // Set status bar style when screen gains focus (iOS only)
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+
       const checkAndScroll = async () => {
         // Refresh chat list and unread count
         await Promise.all([silentRefreshCurrentTab(), loadUnreadCount()]);
@@ -185,7 +190,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
       };
 
       checkAndScroll();
-    }, [silentRefreshCurrentTab, loadUnreadCount, currentUser])
+    }, [silentRefreshCurrentTab, loadUnreadCount, currentUser, isDark])
   );
 
   // Monitor WebSocket connection status
