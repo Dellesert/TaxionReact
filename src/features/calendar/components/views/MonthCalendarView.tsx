@@ -23,6 +23,149 @@ interface MonthCalendarViewProps {
   viewMode?: 'day' | 'week'; // Current view mode
 }
 
+interface CalendarDayProps {
+  date: Date;
+  selectedDate: Date;
+  isCompact: boolean;
+  viewMode: 'day' | 'week';
+  isInSelectedWeek: boolean;
+  dayEvents: Event[];
+  onDatePress: (date: Date) => void;
+  onDayWithEventsPress: (date: Date, dateKey: string) => void;
+  theme: ReturnType<typeof useTheme>['theme'];
+}
+
+// Get event type colors for dots
+const getEventDotColors = (events: Event[]): string[] => {
+  const colorMap: { [key: string]: string } = {};
+
+  events.forEach((event) => {
+    if (!colorMap[event.type]) {
+      colorMap[event.type] = event.color;
+    }
+  });
+
+  return Object.values(colorMap).slice(0, 3); // Max 3 dots
+};
+
+// Separate component for each day to properly use hooks
+const CalendarDay: React.FC<CalendarDayProps> = ({
+  date,
+  selectedDate,
+  isCompact,
+  viewMode,
+  isInSelectedWeek,
+  dayEvents,
+  onDatePress,
+  onDayWithEventsPress,
+  theme,
+}) => {
+  const [isDayHovered, setIsDayHovered] = useState(false);
+
+  const isCurrentMonth = isSameMonth(date, selectedDate);
+  const isTodayDate = isToday(date);
+
+  // Check if this day is the selected day (for desktop compact mode)
+  const isSelectedDay = isCompact && viewMode === 'day' &&
+    date.getDate() === selectedDate.getDate() &&
+    date.getMonth() === selectedDate.getMonth() &&
+    date.getFullYear() === selectedDate.getFullYear();
+
+  // Check if this day is in the selected week (for week view mode)
+  const isInWeek = isCompact && viewMode === 'week' && isInSelectedWeek;
+
+  // Create a normalized date at midnight local time to avoid timezone issues
+  const normalizedDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0, 0, 0, 0
+  );
+
+  const hasEvents = dayEvents.length > 0;
+  const dotColors = getEventDotColors(dayEvents);
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+  const handleDayPress = () => {
+    if (isCompact && isCurrentMonth) {
+      // In compact mode, call onDatePress to navigate to that day
+      onDatePress(normalizedDate);
+    } else if (hasEvents && isCurrentMonth) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
+
+      onDayWithEventsPress(normalizedDate, dateKey);
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      key={date.toISOString()}
+      style={styles.dayContainer}
+      onPress={handleDayPress}
+      activeOpacity={isCompact && isCurrentMonth ? 0.6 : (hasEvents && isCurrentMonth ? 0.6 : 1)}
+      disabled={isCompact ? !isCurrentMonth : (!hasEvents || !isCurrentMonth)}
+      // @ts-ignore - web only props
+      onMouseEnter={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(true) : undefined}
+      onMouseLeave={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(false) : undefined}
+    >
+      <View
+        style={[
+          styles.dayContent,
+          isTodayDate && [styles.todayContainer, { borderColor: theme.primary }],
+          isSelectedDay && !isTodayDate && [styles.selectedDayContainer, { backgroundColor: theme.backgroundSecondary }],
+          isSelectedDay && isTodayDate && [styles.selectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary }],
+          isInWeek && !isTodayDate && [styles.weekSelectedContainer, { backgroundColor: theme.primary + '20' }],
+          isInWeek && isTodayDate && [styles.weekSelectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.primary + '20' }],
+          !isCurrentMonth && styles.dayOutOfMonth,
+          isDayHovered && isCurrentMonth && Platform.OS === 'web' && [
+            styles.dayContentHovered,
+            !isTodayDate && !isSelectedDay && !isInWeek && { backgroundColor: theme.backgroundSecondary }
+          ],
+        ]}
+      >
+        <Text
+          style={[
+            styles.dayText,
+            { color: isCurrentMonth ? theme.text : theme.textTertiary },
+            isTodayDate && [styles.todayText, { color: theme.primary }],
+            isSelectedDay && !isTodayDate && styles.selectedDayText,
+            isInWeek && !isTodayDate && styles.weekSelectedText,
+            isWeekend && isCurrentMonth && !isTodayDate && !isSelectedDay && !isInWeek && { color: theme.primary },
+          ]}
+        >
+          {format(date, 'd')}
+        </Text>
+      </View>
+
+      {/* Event dots indicator - always show when has events */}
+      {hasEvents && isCurrentMonth && (
+        <View style={styles.dotsContainer}>
+          {dotColors.map((color, index) => (
+            <View
+              key={`${date.toISOString()}-${index}`}
+              style={[
+                styles.eventDot,
+                { backgroundColor: color },
+              ]}
+            />
+          ))}
+          {dayEvents.length > 3 && (
+            <Text style={[
+              styles.moreIndicator,
+              { color: theme.textTertiary }
+            ]}>
+              +{dayEvents.length - 3}
+            </Text>
+          )}
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
 const WEEKDAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
@@ -100,125 +243,10 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     return eventsByDate[dateKey] || [];
   };
 
-  // Get event type colors for dots
-  const getEventDotColors = (events: Event[]): string[] => {
-    const colorMap: { [key: string]: string } = {};
-
-    events.forEach((event) => {
-      if (!colorMap[event.type]) {
-        colorMap[event.type] = event.color;
-      }
-    });
-
-    return Object.values(colorMap).slice(0, 3); // Max 3 dots
-  };
-
-  const renderDay = (date: Date) => {
-    const [isDayHovered, setIsDayHovered] = useState(false);
-    const isCurrentMonth = isSameMonth(date, selectedDate);
-    const isTodayDate = isToday(date);
-
-    // Check if this day is the selected day (for desktop compact mode)
-    const isSelectedDay = isCompact && viewMode === 'day' &&
-      date.getDate() === selectedDate.getDate() &&
-      date.getMonth() === selectedDate.getMonth() &&
-      date.getFullYear() === selectedDate.getFullYear();
-
-    // Check if this day is in the selected week (for week view mode)
-    const isInWeek = isCompact && viewMode === 'week' && isInSelectedWeek(date);
-
-    // Create a normalized date at midnight local time to avoid timezone issues
-    const normalizedDate = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      0, 0, 0, 0
-    );
-
-    const dayEvents = getEventsForDate(normalizedDate);
-    const hasEvents = dayEvents.length > 0;
-    const dotColors = getEventDotColors(dayEvents);
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-    const handleDayPress = () => {
-      if (isCompact && isCurrentMonth) {
-        // In compact mode, call onDatePress to navigate to that day
-        onDatePress(normalizedDate);
-      } else if (hasEvents && isCurrentMonth) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const dateKey = `${year}-${month}-${day}`;
-
-        setSelectedDayForSheet(normalizedDate);
-        setSelectedDayKey(dateKey);
-      }
-    };
-
-    return (
-      <TouchableOpacity
-        key={date.toISOString()}
-        style={styles.dayContainer}
-        onPress={handleDayPress}
-        activeOpacity={isCompact && isCurrentMonth ? 0.6 : (hasEvents && isCurrentMonth ? 0.6 : 1)}
-        disabled={isCompact ? !isCurrentMonth : (!hasEvents || !isCurrentMonth)}
-        // @ts-ignore - web only props
-        onMouseEnter={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(true) : undefined}
-        onMouseLeave={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(false) : undefined}
-      >
-        <View
-          style={[
-            styles.dayContent,
-            isTodayDate && [styles.todayContainer, { borderColor: theme.primary }],
-            isSelectedDay && !isTodayDate && [styles.selectedDayContainer, { backgroundColor: theme.backgroundSecondary }],
-            isSelectedDay && isTodayDate && [styles.selectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary }],
-            isInWeek && !isTodayDate && [styles.weekSelectedContainer, { backgroundColor: theme.primary + '20' }],
-            isInWeek && isTodayDate && [styles.weekSelectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.primary + '20' }],
-            !isCurrentMonth && styles.dayOutOfMonth,
-            isDayHovered && isCurrentMonth && Platform.OS === 'web' && [
-              styles.dayContentHovered,
-              !isTodayDate && !isSelectedDay && !isInWeek && { backgroundColor: theme.backgroundSecondary }
-            ],
-          ]}
-        >
-          <Text
-            style={[
-              styles.dayText,
-              { color: isCurrentMonth ? theme.text : theme.textTertiary },
-              isTodayDate && [styles.todayText, { color: theme.primary }],
-              isSelectedDay && !isTodayDate && styles.selectedDayText,
-              isInWeek && !isTodayDate && styles.weekSelectedText,
-              isWeekend && isCurrentMonth && !isTodayDate && !isSelectedDay && !isInWeek && { color: theme.primary },
-            ]}
-          >
-            {format(date, 'd')}
-          </Text>
-        </View>
-
-        {/* Event dots indicator - always show when has events */}
-        {hasEvents && isCurrentMonth && (
-          <View style={styles.dotsContainer}>
-            {dotColors.map((color, index) => (
-              <View
-                key={`${date.toISOString()}-${index}`}
-                style={[
-                  styles.eventDot,
-                  { backgroundColor: color },
-                ]}
-              />
-            ))}
-            {dayEvents.length > 3 && (
-              <Text style={[
-                styles.moreIndicator,
-                { color: theme.textTertiary }
-              ]}>
-                +{dayEvents.length - 3}
-              </Text>
-            )}
-          </View>
-        )}
-      </TouchableOpacity>
-    );
+  // Handler for when a day with events is pressed (for sheet)
+  const handleDayWithEventsPress = (date: Date, dateKey: string) => {
+    setSelectedDayForSheet(date);
+    setSelectedDayKey(dateKey);
   };
 
   // Split days into weeks
@@ -264,7 +292,20 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
       >
         {weeks.map((week, weekIndex) => (
           <View key={weekIndex} style={styles.weekRow}>
-            {week.map((day) => renderDay(day))}
+            {week.map((day) => (
+              <CalendarDay
+                key={day.toISOString()}
+                date={day}
+                selectedDate={selectedDate}
+                isCompact={isCompact}
+                viewMode={viewMode}
+                isInSelectedWeek={isInSelectedWeek(day)}
+                dayEvents={getEventsForDate(day)}
+                onDatePress={onDatePress}
+                onDayWithEventsPress={handleDayWithEventsPress}
+                theme={theme}
+              />
+            ))}
           </View>
         ))}
       </ScrollView>
