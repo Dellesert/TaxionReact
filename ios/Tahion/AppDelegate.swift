@@ -1,9 +1,9 @@
 import Expo
 import FirebaseCore
 import FirebaseMessaging
+import UserNotifications
 import React
 import ReactAppDependencyProvider
-import UserNotifications
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
