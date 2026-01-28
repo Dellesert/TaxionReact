@@ -4,9 +4,11 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { ProfileSidebarNavigation, ProfileSection } from '../components/common/ProfileSidebarNavigation';
 import { ProfileContentArea } from '../components/common/ProfileContentArea';
 import { useProfileActions } from '../hooks/useProfileActions';
@@ -25,8 +27,20 @@ export const ProfileSplitView: React.FC = () => {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const { isLoggingOut, handleLogout } = useProfileActions();
+  const isDesktop = useIsWideScreen();
 
   const [activeSection, setActiveSection] = useState<ProfileSection>('profile');
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
+  // Integrate with TitleBar in Electron desktop
+  useTitleBarControlsIntegration({
+    pageTitle: 'Настройки',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron && isDesktop,
+  });
 
   const handleSectionChange = useCallback((section: ProfileSection) => {
     setActiveSection(section);
