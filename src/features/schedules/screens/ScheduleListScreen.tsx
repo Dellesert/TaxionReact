@@ -84,6 +84,13 @@ export const ScheduleListScreen: React.FC = () => {
     setShowCreateModal(true);
   }, []);
 
+  // Handle month change - update filters and reload (defined early for TitleBar integration)
+  const handleMonthChange = useCallback((date: Date) => {
+    setSelectedMonth(date);
+    const { start, end } = getMonthRange(date);
+    updateFilters({ start_date: start, end_date: end });
+  }, [updateFilters]);
+
   // Integrate with TitleBar search in Electron
   useTitleBarSearchIntegration({
     searchQuery,
@@ -92,16 +99,18 @@ export const ScheduleListScreen: React.FC = () => {
     enabled: true,
   });
 
-  // TitleBar controls for Electron desktop (only create button)
+  // TitleBar controls for Electron desktop (month picker + create button)
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarScheduleControls
         canCreate={canCreate}
         onNewSchedule={handleCreateSchedule}
+        selectedMonth={selectedMonth}
+        onMonthChange={handleMonthChange}
       />
     );
-  }, [isElectron, isDesktop, canCreate, handleCreateSchedule]);
+  }, [isElectron, isDesktop, canCreate, handleCreateSchedule, selectedMonth, handleMonthChange]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -146,13 +155,6 @@ export const ScheduleListScreen: React.FC = () => {
         data: grouped.get(type) ?? [],
       }));
   }, [filteredSchedules]);
-
-  // Handle month change - update filters and reload
-  const handleMonthChange = useCallback((date: Date) => {
-    setSelectedMonth(date);
-    const { start, end } = getMonthRange(date);
-    updateFilters({ start_date: start, end_date: end });
-  }, [updateFilters]);
 
   // Handle manual pull-to-refresh
   const handleRefresh = useCallback(async () => {
@@ -278,15 +280,12 @@ export const ScheduleListScreen: React.FC = () => {
         )
       )}
 
-      {/* Month Picker - show on mobile and Electron desktop (not in regular desktop header) */}
-      {(!isDesktop || (isElectron && isDesktop)) && (
-        <View style={isElectron && isDesktop ? styles.monthPickerDesktop : undefined}>
-          <MonthPicker
-            selectedDate={selectedMonth}
-            onMonthChange={handleMonthChange}
-            compact={isElectron && isDesktop}
-          />
-        </View>
+      {/* Month Picker - show only on mobile (Electron desktop has it in TitleBar) */}
+      {!isDesktop && (
+        <MonthPicker
+          selectedDate={selectedMonth}
+          onMonthChange={handleMonthChange}
+        />
       )}
 
       {/* Error message */}
@@ -381,10 +380,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     overflow: 'hidden',
-  },
-  monthPickerDesktop: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
   },
   headerRow: {
     flexDirection: 'row',
