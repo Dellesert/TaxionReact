@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useMemo } from 'react';
+import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -83,11 +83,32 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [selectedEntry, setSelectedEntry] = useState<ScheduleEntry | null>(null);
   const [selectedTemplateEntry, setSelectedTemplateEntry] = useState<ScheduleTemplateEntry | null>(null);
 
-  // View mode for desktop: 'list', 'grid' (employees x dates), or 'shifts' (dates x shifts)
-  const [viewMode, setViewMode] = useState<ScheduleViewMode>('list');
-
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
+  // View mode for desktop: 'list', 'grid' (employees x dates), or 'shifts' (dates x shifts)
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>('list');
+  const viewModeInitialized = useRef(false);
+
+  // Load saved view mode from localStorage when schedule type is known (Electron only)
+  useEffect(() => {
+    if (isElectron && schedule?.type && typeof localStorage !== 'undefined') {
+      const key = `schedule_view_mode_${schedule.type}`;
+      const saved = localStorage.getItem(key);
+      if (saved === 'list' || saved === 'grid' || saved === 'shifts') {
+        setViewMode(saved);
+      }
+      viewModeInitialized.current = true;
+    }
+  }, [isElectron, schedule?.type]);
+
+  // Save view mode to localStorage when it changes (Electron only)
+  useEffect(() => {
+    if (isElectron && schedule?.type && viewModeInitialized.current && typeof localStorage !== 'undefined') {
+      const key = `schedule_view_mode_${schedule.type}`;
+      localStorage.setItem(key, viewMode);
+    }
+  }, [isElectron, schedule?.type, viewMode]);
 
   const handleCreatorPress = useCallback(() => {
     if (schedule?.creator?.id) {
