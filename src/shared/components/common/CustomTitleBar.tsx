@@ -131,8 +131,8 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
         </View>
       )}
 
-      {/* Spacer for flex layout */}
-      <View style={{ flex: 1 }} />
+      {/* Spacer for flex layout - draggable area */}
+      <View style={styles.dragSpacer} />
 
       {/* Right Controls from context */}
       {rightControls && (
@@ -186,7 +186,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
           onMouseEnter={() => setHoveredButton('minimize')}
           onMouseLeave={() => setHoveredButton(null)}
         >
-          <Ionicons name="remove" size={14} color={hoveredButton === 'close' && hoveredButton === 'close' ? '#FFFFFF' : theme.text} />
+          <Ionicons name="remove" size={14} color={theme.text} />
         </View>
 
         <View
@@ -196,7 +196,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
           onMouseEnter={() => setHoveredButton('maximize')}
           onMouseLeave={() => setHoveredButton(null)}
         >
-          <Ionicons name="square-outline" size={12} color={hoveredButton === 'close' && hoveredButton === 'close' ? '#FFFFFF' : theme.text} />
+          <Ionicons name="square-outline" size={12} color={theme.text} />
         </View>
 
         <View
@@ -270,6 +270,12 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     // @ts-ignore - Web-only styles
     WebkitAppRegion: 'no-drag',
+  },
+  dragSpacer: {
+    flex: 1,
+    height: '100%',
+    // @ts-ignore - Web-only styles
+    WebkitAppRegion: 'drag',
   },
   rightControlsContainer: {
     height: '100%',
