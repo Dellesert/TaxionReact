@@ -3,7 +3,7 @@
  * Хук для интеграции контролов экрана с TitleBar в Electron
  */
 
-import { useCallback, ReactNode } from 'react';
+import { useEffect, useCallback, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTitleBarControls } from '@shared/contexts/TitleBarControlsContext';
@@ -21,7 +21,7 @@ interface UseTitleBarControlsIntegrationOptions {
 
 /**
  * Хук для синхронизации заголовка и контролов экрана с TitleBar в Electron
- * Использует useFocusEffect для корректной работы при навигации
+ * Использует useEffect для обновления при изменении props и useFocusEffect для навигации
  *
  * @example
  * // В TaskListScreen.tsx:
@@ -43,21 +43,33 @@ export const useTitleBarControlsIntegration = ({
   // Check if we're in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
-  // Use useFocusEffect to set controls when screen gains focus
-  // This ensures controls are restored when navigating back
+  // Use useEffect to set controls when component mounts or props change
+  // This is needed for desktop mode where navigation works via conditional rendering
+  // (not React Navigation), so useFocusEffect doesn't trigger on tab switch
+  useEffect(() => {
+    if (!isElectron || !enabled) {
+      return;
+    }
+
+    // Set title and controls when component mounts or props change
+    titleBarControls.setPageTitle(pageTitle);
+    titleBarControls.setLeftControls(leftControls);
+    titleBarControls.setRightControls(rightControls);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isElectron, enabled, pageTitle, leftControls, rightControls]);
+
+  // Also use useFocusEffect to restore controls when navigating back within a stack
+  // This handles the case when navigating from Detail screen back to List screen
   useFocusEffect(
     useCallback(() => {
       if (!isElectron || !enabled) {
         return;
       }
 
-      // Set title and controls when screen gains focus
-      // Note: titleBarControls functions are stable (from useState), so we don't need them as dependencies
+      // Restore title and controls when screen gains focus (e.g., navigating back)
       titleBarControls.setPageTitle(pageTitle);
       titleBarControls.setLeftControls(leftControls);
       titleBarControls.setRightControls(rightControls);
-
-      // No cleanup needed - next focused screen will set its own controls
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isElectron, enabled, pageTitle, leftControls, rightControls])
   );
