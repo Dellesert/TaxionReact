@@ -12,6 +12,7 @@ import { EventDetailsPanel } from '../panels/EventDetailsPanel';
 import { EventListSkeleton } from '../states/EventListSkeleton';
 import { CalendarStatsPanel } from '../panels/CalendarStatsPanel';
 import { CompactCalendarToolbar } from '../navigation/CompactCalendarToolbar';
+import { MonthNavigator } from '../navigation/MonthNavigator';
 import { WeekTimelineView } from './WeekTimelineView';
 import { UpcomingEventsCard } from '../panels/UpcomingEventsCard';
 
@@ -138,6 +139,16 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.leftSidebarContent}
           >
+            {/* Month Navigator - only when toolbar is hidden (Electron) */}
+            {hideToolbar && (
+              <MonthNavigator
+                selectedDate={selectedDate}
+                onPrevious={() => handleMonthNavigate('prev')}
+                onNext={() => handleMonthNavigate('next')}
+                onToday={() => handleMonthNavigate('today')}
+              />
+            )}
+
             {/* Upcoming Events Card */}
             <UpcomingEventsCard
               events={monthEvents}

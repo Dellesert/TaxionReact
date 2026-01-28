@@ -5,20 +5,14 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { CalendarView, WeekDisplayMode } from '../../types/calendar.types';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 
 interface TitleBarCalendarControlsProps {
-  selectedDate: Date;
   selectedView: CalendarView;
   onViewChange: (view: CalendarView) => void;
-  onPrevious: () => void;
-  onNext: () => void;
-  onToday: () => void;
   onAddPress: () => void;
   weekDisplayMode?: WeekDisplayMode;
   onWeekDisplayModeChange?: (mode: WeekDisplayMode) => void;
@@ -32,19 +26,13 @@ const VIEW_OPTIONS: { value: CalendarView; icon: keyof typeof Ionicons.glyphMap;
 ];
 
 export const TitleBarCalendarControls: React.FC<TitleBarCalendarControlsProps> = ({
-  selectedDate,
   selectedView,
   onViewChange,
-  onPrevious,
-  onNext,
-  onToday,
   onAddPress,
   weekDisplayMode,
   onWeekDisplayModeChange,
 }) => {
   const { theme } = useTheme();
-
-  const dateText = format(selectedDate, 'LLLL yyyy', { locale: ru });
 
   const toggleWeekMode = () => {
     if (onWeekDisplayModeChange && weekDisplayMode) {
@@ -54,40 +42,6 @@ export const TitleBarCalendarControls: React.FC<TitleBarCalendarControlsProps> =
 
   return (
     <View style={styles.container}>
-      {/* Date Navigation */}
-      <View style={[styles.navGroup, { backgroundColor: theme.backgroundTertiary }]}>
-        <View
-          style={styles.navButton}
-          // @ts-ignore - Web-only
-          onClick={onPrevious}
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = 'transparent')}
-        >
-          <Ionicons name="chevron-back" size={14} color={theme.text} />
-        </View>
-
-        <View
-          style={styles.dateButton}
-          // @ts-ignore - Web-only
-          onClick={onToday}
-          title="Перейти к сегодня"
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = 'transparent')}
-        >
-          <Text style={[styles.dateText, { color: theme.text }]}>{dateText}</Text>
-        </View>
-
-        <View
-          style={styles.navButton}
-          // @ts-ignore - Web-only
-          onClick={onNext}
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = 'transparent')}
-        >
-          <Ionicons name="chevron-forward" size={14} color={theme.text} />
-        </View>
-      </View>
-
       {/* View Switcher */}
       <View style={[styles.viewGroup, { backgroundColor: theme.backgroundTertiary }]}>
         {VIEW_OPTIONS.map((option) => (
@@ -157,35 +111,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  } as any,
-  navGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 6,
-    padding: 2,
-  } as any,
-  navButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 26,
-    height: 26,
-    borderRadius: 4,
-    cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
-  } as any,
-  dateButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-    height: 26,
-    borderRadius: 4,
-    cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
-  } as any,
-  dateText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
   } as any,
   viewGroup: {
     flexDirection: 'row',
