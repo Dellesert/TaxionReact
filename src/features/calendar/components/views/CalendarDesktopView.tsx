@@ -80,8 +80,8 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   };
 
   const handleEventPress = (event: Event) => {
+    // На десктопе открываем только панель справа, без навигации на полноэкранный детальный экран
     setSelectedEvent(event);
-    onEventPress(event);
   };
 
   const handleCloseDetails = () => {
@@ -223,7 +223,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
           <View
             style={[
               styles.rightSidebar,
-              { backgroundColor: theme.card, borderLeftColor: theme.border },
+              { backgroundColor: theme.card, borderLeftColor: theme.border, borderTopColor: theme.border },
             ]}
           >
             <EventDetailsPanel
@@ -274,8 +274,13 @@ const styles = StyleSheet.create({
     minWidth: 0, // Important for flex shrinking
   },
   rightSidebar: {
-    width: 480,
+    width: 350,
     borderLeftWidth: 1,
+    borderTopWidth: 1,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
     height: '100%',
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only

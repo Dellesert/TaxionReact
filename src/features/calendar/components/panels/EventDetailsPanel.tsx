@@ -298,7 +298,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   const LOAD_MORE_COUNT = 10; // Load 10 more participants on each click
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.card }]}>
       {/* Header with centered title and action menu */}
       <View style={[styles.headerBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.headerLeft}>
@@ -468,7 +468,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </View>
 
         {/* Event Type Card */}
-        <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
           <View style={[styles.infoCardIcon, { backgroundColor: event.color + '20' }]}>
             <Ionicons name={getEventIcon() as any} size={22} color={event.color} />
           </View>
@@ -479,7 +479,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </View>
 
         {/* Date & Time Card */}
-        <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
           <View style={[styles.infoCardIcon, { backgroundColor: event.color + '20' }]}>
             <Ionicons name="calendar-outline" size={22} color={event.color} />
           </View>
@@ -504,7 +504,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
 
         {/* Location Card */}
         {event.location && (
-          <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
             <View style={[styles.infoCardIcon, { backgroundColor: '#3B82F6' + '20' }]}>
               <Ionicons name="location-outline" size={22} color="#3B82F6" />
             </View>
