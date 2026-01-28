@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     minWidth: 0, // Important for flex shrinking
   },
   rightSidebar: {
-    width: 350,
+    width: 380,
     borderLeftWidth: 1,
     borderTopWidth: 1,
     borderTopLeftRadius: 12,
