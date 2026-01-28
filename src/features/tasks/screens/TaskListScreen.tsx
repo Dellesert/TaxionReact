@@ -266,7 +266,7 @@ const TaskListScreen: React.FC = () => {
   }, 0);
 
   // TitleBar controls for Electron desktop (unified compact component)
-  const titleBarLeftControls = useMemo(() => {
+  const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarTaskControls
@@ -287,8 +287,8 @@ const TaskListScreen: React.FC = () => {
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Задачи',
-    leftControls: titleBarLeftControls,
-    rightControls: null,
+    leftControls: null,
+    rightControls: titleBarRightControls,
     enabled: isElectron && isDesktop,
   });
 

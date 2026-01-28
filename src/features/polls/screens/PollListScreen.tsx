@@ -88,7 +88,7 @@ const PollListScreen: React.FC = () => {
   });
 
   // TitleBar controls for Electron desktop (unified compact component)
-  const titleBarLeftControls = useMemo(() => {
+  const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarPollControls
@@ -106,8 +106,8 @@ const PollListScreen: React.FC = () => {
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Опросы',
-    leftControls: titleBarLeftControls,
-    rightControls: null,
+    leftControls: null,
+    rightControls: titleBarRightControls,
     enabled: isElectron && isDesktop,
   });
 
