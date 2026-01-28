@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useContext } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { NavigationContainerRef } from '@react-navigation/native';
 import { useThemeStore } from '@shared/store/themeStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +27,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
 
   const theme = useThemeStore((state) => state.theme);
   const [hoveredButton, setHoveredButton] = useState<'minimize' | 'maximize' | 'close' | null>(null);
-  const { pageTitle, leftControls, rightControls } = useTitleBarControls();
+  const { pageTitle, leftControls, rightControls, isPageLoading } = useTitleBarControls();
   const { sidebarWidth, isCollapsed, toggleCollapsed } = useSidebar();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
   const [notificationDropdownVisible, setNotificationDropdownVisible] = useState(false);
@@ -95,11 +95,20 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
       {/* Draggable area - Left side with page title (aligned with sidebar) */}
       <View style={[styles.dragArea, { width: sidebarWidth, borderRightWidth: 1, borderRightColor: theme.border }]}>
         {!isCollapsed && pageTitle ? (
-          <Text style={[styles.pageTitle, { color: theme.text }]} numberOfLines={1}>
-            {pageTitle}
-          </Text>
+          <View style={styles.pageTitleContainer}>
+            <Text style={[styles.pageTitle, { color: theme.text }]} numberOfLines={1}>
+              {pageTitle}
+            </Text>
+            {isPageLoading && (
+              <ActivityIndicator size="small" color={theme.textSecondary} style={styles.pageLoader} />
+            )}
+          </View>
         ) : (
-          <View style={{ flex: 1 }} />
+          <View style={styles.collapsedTitleArea}>
+            {isPageLoading && (
+              <ActivityIndicator size="small" color={theme.textSecondary} />
+            )}
+          </View>
         )}
         <View
           style={styles.toggleButton}
@@ -246,10 +255,23 @@ const styles = StyleSheet.create({
     // @ts-ignore - Web-only styles
     WebkitAppRegion: 'drag',
   },
+  pageTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   pageTitle: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  pageLoader: {
+    marginLeft: 4,
+  },
+  collapsedTitleArea: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   toggleButton: {
     width: 28,

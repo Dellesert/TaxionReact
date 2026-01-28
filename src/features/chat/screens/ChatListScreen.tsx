@@ -3,7 +3,7 @@
  * Экран списка чатов (Refactored)
  */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, Dimensions, Platform } from 'react-native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,8 +14,11 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useChatSelection } from '@shared/contexts/ChatSelectionContext';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { Chat, ChatType } from '../types/chat.types';
+import { TitleBarChatControls } from '../components/common/TitleBarChatControls';
 import { websocketService } from '@services/websocket.service';
 
 // Custom hooks
@@ -52,6 +55,11 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
   const { theme, isDark } = useTheme();
   const { showConfirm } = useActionModal();
   const { selectChat } = useChatSelection();
+  const isWideScreen = useIsWideScreen();
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+  const isDesktop = isWideScreen;
 
   // Ref for ChatListContent
   const chatListRef = useRef<ChatListContentRef>(null);
@@ -294,6 +302,41 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
     setIsCreateMenuVisible(true);
   }, []);
 
+  // Handler for create chat type from TitleBar menu
+  const handleTitleBarCreateChatType = useCallback(
+    (chatType: ChatType) => {
+      setIsCreateMenuVisible(false);
+      // In desktop split view mode, show modal
+      setCreateChatType(chatType);
+      setShowCreateChatModal(true);
+    },
+    []
+  );
+
+  // TitleBar controls for Electron desktop
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarChatControls
+        isEditMode={isEditMode}
+        onToggleEditMode={toggleEditMode}
+        onNewChat={handleNewChat}
+        isCreateMenuVisible={isCreateMenuVisible}
+        onCreateMenuClose={() => setIsCreateMenuVisible(false)}
+        onCreateChatType={handleTitleBarCreateChatType}
+      />
+    );
+  }, [isElectron, isDesktop, isEditMode, toggleEditMode, handleNewChat, isCreateMenuVisible, handleTitleBarCreateChatType]);
+
+  // Integrate controls with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Чаты',
+    leftControls: null,
+    rightControls: titleBarRightControls,
+    isPageLoading: !isConnected || isRefreshingChats,
+    enabled: isElectron && isDesktop,
+  });
+
   const handleCreateChatType = useCallback(
     (chatType: ChatType) => {
       setIsCreateMenuVisible(false);
@@ -303,7 +346,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
         setShowCreateChatModal(true);
       } else {
         // Mobile mode: navigate
-        navigation.navigate('CreateChat', { initialChatType: chatType });
+        navigation.navigate('CreateChat', { initialChatType: chatType as 'group' | 'private' | 'channel' });
       }
     },
     [navigation, isDesktopMode]
@@ -432,13 +475,15 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
         />
       </View>
 
-      {/* Modals */}
-      <ChatCreateMenu
-        visible={isCreateMenuVisible}
-        onClose={() => setIsCreateMenuVisible(false)}
-        onCreateChatType={handleCreateChatType}
-        isDesktopMode={isDesktopMode}
-      />
+      {/* Modals - ChatCreateMenu hidden on Electron desktop (shown in TitleBar) */}
+      {!(isElectron && isDesktop) && (
+        <ChatCreateMenu
+          visible={isCreateMenuVisible}
+          onClose={() => setIsCreateMenuVisible(false)}
+          onCreateChatType={handleCreateChatType}
+          isDesktopMode={isDesktopMode}
+        />
+      )}
 
       {/* Create Chat Modal (Desktop mode only) */}
       {isDesktopMode && (

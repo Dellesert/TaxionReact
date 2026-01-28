@@ -30,6 +30,7 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+  const isElectronDesktop = isElectron && isWideScreen;
 
   // Простая анимация fade для кнопок в header
   const buttonOpacity = useRef(new Animated.Value(1)).current;
@@ -52,6 +53,11 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
     ]).start();
   }, [isEditMode, buttonOpacity]);
 
+  // On Electron desktop, header controls and loading indicator are in TitleBar
+  if (isElectronDesktop) {
+    return null;
+  }
+
   return (
     <View
       style={[
@@ -64,47 +70,53 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
         {!isWideScreen && <NotificationBell />}
       </View>
 
-      {/* Center - Title or Connection Status or Refreshing */}
-      {isConnected === false || isRefreshing ? (
-        <ConnectionStatus compact isRefreshing={isRefreshing} />
-      ) : (
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Чаты</Text>
-      )}
-
-      {/* Right - Actions */}
-      <View style={[styles.headerRight, styles.headerActions]}>
-        {!isEditMode ? (
-          <Animated.View style={[
-            styles.buttonGroup,
-          ]}>
-            <TouchableOpacity onPress={onToggleEditMode} style={styles.iconButton}>
-              <Ionicons name="ellipsis-vertical" size={24} color={theme.error} />
-            </TouchableOpacity>
-            {!isElectron && (
-              <TouchableOpacity onPress={onToggleSearch} style={[styles.iconButton, styles.searchButton]}>
-                <Ionicons
-                  name={isSearchVisible ? 'close' : 'search'}
-                  size={22}
-                  color={theme.error}
-                />
-              </TouchableOpacity>
-            )}
-          </Animated.View>
+      {/* Center - Title or Connection Status with fixed height to prevent layout shift */}
+      <View style={styles.headerCenter}>
+        {isConnected === false || isRefreshing ? (
+          <ConnectionStatus compact isRefreshing={isRefreshing} />
         ) : (
-          <Animated.View >
-            <TouchableOpacity onPress={onToggleEditMode} style={styles.editButton}>
-              <Text style={[styles.editButtonText, { color: theme.error }]}>Готово</Text>
-            </TouchableOpacity>
-          </Animated.View>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Чаты</Text>
         )}
-        {!isEditMode ? (
-          <Animated.View >
-            <TouchableOpacity onPress={onNewChat} style={styles.addButton}>
-              <Ionicons name="add" size={30} color={theme.primary} />
-            </TouchableOpacity>
-          </Animated.View>
-        ) : (
-          <View style={styles.addButton} />
+      </View>
+
+      {/* Right - Actions (hidden on Electron desktop - moved to TitleBar) */}
+      <View style={[styles.headerRight, styles.headerActions]}>
+        {!(isElectron && isWideScreen) && (
+          <>
+            {!isEditMode ? (
+              <Animated.View style={[
+                styles.buttonGroup,
+              ]}>
+                <TouchableOpacity onPress={onToggleEditMode} style={styles.iconButton}>
+                  <Ionicons name="ellipsis-vertical" size={24} color={theme.error} />
+                </TouchableOpacity>
+                {!isElectron && (
+                  <TouchableOpacity onPress={onToggleSearch} style={[styles.iconButton, styles.searchButton]}>
+                    <Ionicons
+                      name={isSearchVisible ? 'close' : 'search'}
+                      size={22}
+                      color={theme.error}
+                    />
+                  </TouchableOpacity>
+                )}
+              </Animated.View>
+            ) : (
+              <Animated.View >
+                <TouchableOpacity onPress={onToggleEditMode} style={styles.editButton}>
+                  <Text style={[styles.editButtonText, { color: theme.error }]}>Готово</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+            {!isEditMode ? (
+              <Animated.View >
+                <TouchableOpacity onPress={onNewChat} style={styles.addButton}>
+                  <Ionicons name="add" size={30} color={theme.primary} />
+                </TouchableOpacity>
+              </Animated.View>
+            ) : (
+              <View style={styles.addButton} />
+            )}
+          </>
         )}
       </View>
     </View>
@@ -118,10 +130,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 28, // Fixed height to prevent layout shift
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    flex: 1,
     textAlign: 'center',
   },
   headerLeft: {
