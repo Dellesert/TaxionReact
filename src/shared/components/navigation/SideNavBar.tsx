@@ -49,7 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     name: 'Calendar',
-    label: 'События',
+    label: 'Календарь',
     icon: 'calendar-outline',
     iconFocused: 'calendar',
   },
