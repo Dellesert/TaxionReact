@@ -6,6 +6,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 interface MonthPickerProps {
   selectedDate: Date;
   onMonthChange: (date: Date) => void;
+  compact?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -26,6 +27,7 @@ const MONTH_NAMES = [
 export const MonthPicker: React.FC<MonthPickerProps> = React.memo(({
   selectedDate,
   onMonthChange,
+  compact = false,
 }) => {
   const { theme } = useTheme();
 
@@ -60,11 +62,12 @@ export const MonthPicker: React.FC<MonthPickerProps> = React.memo(({
   }, [selectedDate]);
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, compact && styles.wrapperCompact]}>
       <View
         style={[
           styles.container,
-          {
+          compact && styles.containerCompact,
+          !compact && {
             backgroundColor: theme.card,
             shadowColor: theme.shadow,
           }
@@ -108,6 +111,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
+  wrapperCompact: {
+    paddingHorizontal: 0,
+    alignSelf: 'flex-start',
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -125,6 +132,10 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
     }),
+  },
+  containerCompact: {
+    justifyContent: 'flex-start',
+    gap: 8,
   },
   arrowButton: {
     width: 36,

@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   SectionList,
+  ScrollView,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
@@ -18,6 +19,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useSchedules } from '../hooks/useSchedules';
 import { useSchedulePermissions } from '../hooks/useSchedulePermissions';
@@ -25,6 +27,7 @@ import { ScheduleCard } from '../components/ScheduleCard';
 import { ScheduleListHeader } from '../components/ScheduleListHeader';
 import CreateScheduleModal from '../components/CreateScheduleModal';
 import { MonthPicker } from '../components/MonthPicker';
+import { TitleBarScheduleControls } from '../components/TitleBarScheduleControls';
 import { SCHEDULE_TYPE_LABELS, type Schedule, type ScheduleType } from '../types/schedule.types';
 import type { ScheduleStackParamList } from '../navigation/types';
 
@@ -73,12 +76,39 @@ export const ScheduleListScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
+  // Handler for creating schedule (defined early for TitleBar integration)
+  const handleCreateSchedule = useCallback(() => {
+    setShowCreateModal(true);
+  }, []);
+
   // Integrate with TitleBar search in Electron
   useTitleBarSearchIntegration({
     searchQuery,
     onSearchChange: setSearchQuery,
     placeholder: 'Поиск графиков...',
     enabled: true,
+  });
+
+  // TitleBar controls for Electron desktop (only create button)
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarScheduleControls
+        canCreate={canCreate}
+        onNewSchedule={handleCreateSchedule}
+      />
+    );
+  }, [isElectron, isDesktop, canCreate, handleCreateSchedule]);
+
+  // Integrate controls with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Графики',
+    leftControls: null,
+    rightControls: titleBarRightControls,
+    enabled: isElectron && isDesktop,
   });
 
   // Filter schedules by search query
@@ -201,57 +231,62 @@ export const ScheduleListScreen: React.FC = () => {
   }, [isLoading, theme, canCreate]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDesktop ? theme.card : theme.background }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: (isElectron && isDesktop) ? theme.background : (isDesktop ? theme.card : theme.background) }]} edges={['left', 'right']}>
       {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
 
-      {/* Header - Desktop or Mobile */}
-      {isDesktop ? (
-        <ScheduleListHeader
-          canCreate={canCreate}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSearchClear={() => setSearchQuery('')}
-          onCreatePress={() => setShowCreateModal(true)}
-          isDesktop={isDesktop}
-          selectedMonth={selectedMonth}
-          onMonthChange={handleMonthChange}
-        />
-      ) : (
-        <ScreenHeader
-          title="Графики работы"
-          customContent={
-            <View style={styles.headerRow}>
-              <View style={styles.headerLeft}>
-                {navigation.canGoBack() && (
-                  <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={theme.primary} />
-                  </TouchableOpacity>
-                )}
-              </View>
+      {/* Header - hide on Electron desktop since controls are in TitleBar */}
+      {!(isElectron && isDesktop) && (
+        isDesktop ? (
+          <ScheduleListHeader
+            canCreate={canCreate}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSearchClear={() => setSearchQuery('')}
+            onCreatePress={handleCreateSchedule}
+            isDesktop={isDesktop}
+            selectedMonth={selectedMonth}
+            onMonthChange={handleMonthChange}
+          />
+        ) : (
+          <ScreenHeader
+            title="Графики работы"
+            customContent={
+              <View style={styles.headerRow}>
+                <View style={styles.headerLeft}>
+                  {navigation.canGoBack() && (
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                      <Ionicons name="arrow-back" size={24} color={theme.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-              <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
+                <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
 
-              <View style={styles.headerRight}>
-                {canCreate && (
-                  <TouchableOpacity
-                    onPress={() => setShowCreateModal(true)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons name="add" size={30} color={theme.primary} />
-                  </TouchableOpacity>
-                )}
+                <View style={styles.headerRight}>
+                  {canCreate && (
+                    <TouchableOpacity
+                      onPress={handleCreateSchedule}
+                      style={styles.iconButton}
+                    >
+                      <Ionicons name="add" size={30} color={theme.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-            </View>
-          }
-        />
+            }
+          />
+        )
       )}
 
-      {/* Month Picker - only show on mobile (desktop has it in header) */}
-      {!isDesktop && (
-        <MonthPicker
-          selectedDate={selectedMonth}
-          onMonthChange={handleMonthChange}
-        />
+      {/* Month Picker - show on mobile and Electron desktop (not in regular desktop header) */}
+      {(!isDesktop || (isElectron && isDesktop)) && (
+        <View style={isElectron && isDesktop ? styles.monthPickerDesktop : undefined}>
+          <MonthPicker
+            selectedDate={selectedMonth}
+            onMonthChange={handleMonthChange}
+            compact={isElectron && isDesktop}
+          />
+        </View>
       )}
 
       {/* Error message */}
@@ -264,28 +299,69 @@ export const ScheduleListScreen: React.FC = () => {
 
       {/* Content */}
       <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
-        <SectionList
-          sections={sections}
-          renderItem={renderItem}
-          renderSectionHeader={renderSectionHeader}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={[
-            styles.listContent,
-            isDesktop && styles.listContentDesktop,
-          ]}
-          stickySectionHeadersEnabled={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={theme.primary}
-            />
-          }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={renderEmpty}
-        />
+        {isElectron && isDesktop ? (
+          // Desktop columns layout - each type in its own column
+          <ScrollView
+            horizontal
+            contentContainerStyle={styles.columnsContainer}
+            showsHorizontalScrollIndicator={false}
+          >
+            {sections.length === 0 ? (
+              <View style={styles.emptyContainerDesktop}>
+                {renderEmpty()}
+              </View>
+            ) : (
+              sections.map((section) => (
+                <View key={section.title} style={[styles.typeColumn, { borderColor: theme.border }]}>
+                  <View style={[styles.columnHeader, { borderColor: theme.border }]}>
+                    <Text style={[styles.columnTitle, { color: theme.text }]}>
+                      {section.title}
+                    </Text>
+                    <View style={[styles.columnCount, { backgroundColor: theme.backgroundTertiary }]}>
+                      <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
+                        {section.data.length}
+                      </Text>
+                    </View>
+                  </View>
+                  <ScrollView
+                    style={styles.columnContent}
+                    contentContainerStyle={styles.columnContentInner}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {section.data.map((schedule) => (
+                      <ScheduleCard
+                        key={schedule.id}
+                        schedule={schedule}
+                        onPress={() => handleSchedulePress(schedule)}
+                      />
+                    ))}
+                  </ScrollView>
+                </View>
+              ))
+            )}
+          </ScrollView>
+        ) : (
+          // Mobile list layout with SectionList
+          <SectionList
+            sections={sections}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.listContent}
+            stickySectionHeadersEnabled={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={theme.primary}
+              />
+            }
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={renderFooter}
+            ListEmptyComponent={renderEmpty}
+          />
+        )}
       </View>
 
       {/* Create Modal */}
@@ -305,6 +381,10 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     overflow: 'hidden',
+  },
+  monthPickerDesktop: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   headerRow: {
     flexDirection: 'row',
@@ -360,6 +440,53 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     maxWidth: 500,
+  },
+  // Desktop columns layout
+  columnsContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 16,
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  emptyContainerDesktop: {
+    flex: 1,
+    minWidth: '100%',
+  },
+  typeColumn: {
+    width: 320,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  columnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  columnTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  columnCount: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  columnCountText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  columnContent: {
+    flex: 1,
+    maxHeight: 'calc(100vh - 200px)' as unknown as number,
+  },
+  columnContentInner: {
+    padding: 8,
+    gap: 8,
   },
   sectionHeader: {
     flexDirection: 'row',

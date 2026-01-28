@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import { useTheme } from '@shared/hooks/useTheme';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -29,6 +30,8 @@ import { ScheduleEntriesList } from '../components/ScheduleEntriesList';
 import { TemplateEntriesList } from '../components/TemplateEntriesList';
 import { ScheduleGridView } from '../components/ScheduleGridView';
 import { ScheduleShiftsView } from '../components/ScheduleShiftsView';
+import { TitleBarScheduleDetailControls, type ScheduleViewMode } from '../components/TitleBarScheduleDetailControls';
+import { TitleBarBackButton } from '@/features/tasks/components/common/TitleBarBackButton';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
 import { getScheduleTypeColor } from '../utils/shiftColors';
 import { EditScheduleModal } from '../components/EditScheduleModal';
@@ -81,7 +84,10 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [selectedTemplateEntry, setSelectedTemplateEntry] = useState<ScheduleTemplateEntry | null>(null);
 
   // View mode for desktop: 'list', 'grid' (employees x dates), or 'shifts' (dates x shifts)
-  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'shifts'>('list');
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>('list');
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
   const handleCreatorPress = useCallback(() => {
     if (schedule?.creator?.id) {
@@ -128,6 +134,33 @@ export const ScheduleDetailScreen: React.FC = () => {
       setShowActionMenu(true);
     }
   }, [isWideScreen]);
+
+  // TitleBar controls for Electron desktop
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isWideScreen) return null;
+    return <TitleBarBackButton onGoBack={handleGoBack} />;
+  }, [isElectron, isWideScreen, handleGoBack]);
+
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isWideScreen || !schedule) return null;
+    return (
+      <TitleBarScheduleDetailControls
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        showViewSwitcher={schedule.mode === 'monthly'}
+        canEdit={canEdit}
+        onOpenMenu={handleOpenMenu}
+      />
+    );
+  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu]);
+
+  // Integrate controls with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: schedule?.title || 'График',
+    leftControls: titleBarLeftControls,
+    rightControls: titleBarRightControls,
+    enabled: isElectron && isWideScreen,
+  });
 
   const handleEditSchedule = useCallback(() => {
     setShowActionMenu(false);
@@ -270,83 +303,85 @@ export const ScheduleDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
-      {/* Header */}
-      <ScreenHeader
-        title={schedule.title}
-        customContent={
-          <View style={styles.headerRow}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={theme.primary} />
-              </TouchableOpacity>
-            </View>
+      {/* Header - hide on Electron desktop since controls are in TitleBar */}
+      {!(isElectron && isWideScreen) && (
+        <ScreenHeader
+          title={schedule.title}
+          customContent={
+            <View style={styles.headerRow}>
+              <View style={styles.headerLeft}>
+                <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={theme.primary} />
+                </TouchableOpacity>
+              </View>
 
-            <Text
-              style={[styles.headerTitle, { color: theme.text }]}
-              numberOfLines={1}
-            >
-              {schedule.title}
-            </Text>
+              <Text
+                style={[styles.headerTitle, { color: theme.text }]}
+                numberOfLines={1}
+              >
+                {schedule.title}
+              </Text>
 
-            <View style={styles.headerRight}>
-              {/* View mode switcher - only on desktop for monthly mode */}
-              {isWideScreen && schedule.mode === 'monthly' && (
-                <View style={[styles.viewSwitcher, { backgroundColor: theme.backgroundSecondary }]}>
+              <View style={styles.headerRight}>
+                {/* View mode switcher - only on desktop for monthly mode */}
+                {isWideScreen && schedule.mode === 'monthly' && (
+                  <View style={[styles.viewSwitcher, { backgroundColor: theme.backgroundSecondary }]}>
+                    <TouchableOpacity
+                      style={[
+                        styles.viewButton,
+                        viewMode === 'list' && { backgroundColor: theme.primary },
+                      ]}
+                      onPress={() => setViewMode('list')}
+                    >
+                      <Ionicons
+                        name="list-outline"
+                        size={18}
+                        color={viewMode === 'list' ? '#FFFFFF' : theme.textSecondary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.viewButton,
+                        viewMode === 'grid' && { backgroundColor: theme.primary },
+                      ]}
+                      onPress={() => setViewMode('grid')}
+                    >
+                      <Ionicons
+                        name="grid-outline"
+                        size={18}
+                        color={viewMode === 'grid' ? '#FFFFFF' : theme.textSecondary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.viewButton,
+                        viewMode === 'shifts' && { backgroundColor: theme.primary },
+                      ]}
+                      onPress={() => setViewMode('shifts')}
+                    >
+                      <Ionicons
+                        name="calendar-outline"
+                        size={18}
+                        color={viewMode === 'shifts' ? '#FFFFFF' : theme.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {/* Menu button - only for users who can edit */}
+                {canEdit && (
                   <TouchableOpacity
-                    style={[
-                      styles.viewButton,
-                      viewMode === 'list' && { backgroundColor: theme.primary },
-                    ]}
-                    onPress={() => setViewMode('list')}
-                  >
-                    <Ionicons
-                      name="list-outline"
-                      size={18}
-                      color={viewMode === 'list' ? '#FFFFFF' : theme.textSecondary}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.viewButton,
-                      viewMode === 'grid' && { backgroundColor: theme.primary },
-                    ]}
-                    onPress={() => setViewMode('grid')}
-                  >
-                    <Ionicons
-                      name="grid-outline"
-                      size={18}
-                      color={viewMode === 'grid' ? '#FFFFFF' : theme.textSecondary}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.viewButton,
-                      viewMode === 'shifts' && { backgroundColor: theme.primary },
-                    ]}
-                    onPress={() => setViewMode('shifts')}
-                  >
-                    <Ionicons
-                      name="calendar-outline"
-                      size={18}
-                      color={viewMode === 'shifts' ? '#FFFFFF' : theme.textSecondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              )}
-              {/* Menu button - only for users who can edit */}
-              {canEdit && (
-                <TouchableOpacity
-                  ref={menuButtonRef}
-                  style={styles.iconButton}
-                  onPress={handleOpenMenu}
+                    ref={menuButtonRef}
+                    style={styles.iconButton}
+                    onPress={handleOpenMenu}
                 >
                   <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
                 </TouchableOpacity>
               )}
+              </View>
             </View>
-          </View>
-        }
-      />
+          }
+        />
+      )}
 
       <ScrollView
         style={styles.content}
