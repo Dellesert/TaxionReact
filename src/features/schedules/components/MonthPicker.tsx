@@ -67,7 +67,7 @@ export const MonthPicker: React.FC<MonthPickerProps> = React.memo(({
         style={[
           styles.container,
           compact && styles.containerCompact,
-          !compact && {
+          {
             backgroundColor: theme.card,
             shadowColor: theme.shadow,
           }
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   },
   wrapperCompact: {
     paddingHorizontal: 0,
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
   },
   container: {
     flexDirection: 'row',

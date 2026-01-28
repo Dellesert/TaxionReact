@@ -312,12 +312,12 @@ export const ScheduleListScreen: React.FC = () => {
               </View>
             ) : (
               sections.map((section) => (
-                <View key={section.title} style={[styles.typeColumn, { borderColor: theme.border }]}>
-                  <View style={[styles.columnHeader, { borderColor: theme.border }]}>
+                <View key={section.title} style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
                     <Text style={[styles.columnTitle, { color: theme.text }]}>
                       {section.title}
                     </Text>
-                    <View style={[styles.columnCount, { backgroundColor: theme.backgroundTertiary }]}>
+                    <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
                       <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
                         {section.data.length}
                       </Text>
