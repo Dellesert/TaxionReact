@@ -5,13 +5,14 @@
  */
 
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Modal, Pressable, Platform } from 'react-native';
+import { View, TouchableOpacity, Text, TextInput, StyleSheet, Modal, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useSidebar } from '@shared/contexts/SidebarContext';
+import { useTitleBarSearch } from '@shared/contexts/TitleBarSearchContext';
 
 interface NavItem {
   name: string;
@@ -89,7 +90,8 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   const unreadNotificationCount = useNotificationStore((state) => state.unreadCount);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const { isCollapsed, toggleCollapsed } = useSidebar();
+  const { isCollapsed } = useSidebar();
+  const { searchQuery, placeholder, isVisible: isSearchVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
 
   // Check if user is admin or super_admin
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
@@ -129,30 +131,30 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
       {
         backgroundColor: theme.backgroundSecondary,
         borderRightColor: theme.border,
-        borderTopRightRadius: isElectron ? 16 : 0,
-        borderTopWidth: isElectron ? 1 : 0,
-        borderTopColor: theme.border,
       }
     ]}>
-      {/* Toggle Button - as first nav item */}
-      <TouchableOpacity
-        style={[
-          styles.navItem,
-          styles.navItemCollapsed,
-          styles.toggleButton,
-          !isCollapsed && styles.toggleButtonExpanded,
-        ]}
-        onPress={toggleCollapsed}
-        activeOpacity={0.7}
-      >
-        <View style={styles.iconContainer}>
-          <Ionicons
-            name={isCollapsed ? 'chevron-forward' : 'chevron-back'}
-            size={20}
-            color={isCollapsed ? theme.textSecondary : theme.primary}
-          />
+      {/* Search */}
+      {isSearchVisible && (
+        <View style={[styles.searchContainer, isCollapsed && styles.searchContainerCollapsed]}>
+          <View style={[styles.searchInputContainer, { backgroundColor: theme.input, borderColor: theme.inputBorder }]}>
+            <Ionicons name="search" size={16} color={theme.textSecondary} style={styles.searchIcon} />
+            {!isCollapsed && (
+              <TextInput
+                style={[styles.searchInput, { color: theme.text }]}
+                placeholder={placeholder}
+                placeholderTextColor={theme.inputPlaceholder}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            )}
+            {!isCollapsed && searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                <Ionicons name="close-circle" size={14} color={theme.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </TouchableOpacity>
+      )}
 
       {/* Navigation Items */}
       {visibleItems.map((item) => {
@@ -297,22 +299,46 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    //paddingVertical: 12,
     borderRightWidth: 1,
     position: 'relative',
   },
   containerCollapsed: {
     width: 72,
+    paddingTop: 8,
   },
   containerExpanded: {
-    width: 200,
+    width: 240,
+    paddingTop: 8,
   },
-  toggleButton: {
-    marginBottom: 8,
+  searchContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 8,
   },
-  toggleButtonExpanded: {
-    alignSelf: 'flex-end',
-    width: 56,
+  searchContainerCollapsed: {
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 36,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    gap: 8,
+  },
+  searchIcon: {
+    flexShrink: 0,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    height: 32,
+    padding: 0,
+  },
+  clearButton: {
+    padding: 4,
+    flexShrink: 0,
   },
   avatarContainer: {
     marginTop: 'auto',

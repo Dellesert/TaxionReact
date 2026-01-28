@@ -10,7 +10,7 @@ const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed';
 
 // Ширины sidebar
 export const SIDEBAR_WIDTH_COLLAPSED = 72;
-export const SIDEBAR_WIDTH_EXPANDED = 200;
+export const SIDEBAR_WIDTH_EXPANDED = 240;
 
 interface SidebarContextValue {
   isCollapsed: boolean;

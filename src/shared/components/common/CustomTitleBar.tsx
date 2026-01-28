@@ -4,12 +4,10 @@
  */
 
 import React, { useState, useRef, useContext } from 'react';
-import { View, Text, TextInput, StyleSheet, Platform } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { NavigationContainerRef } from '@react-navigation/native';
 import { useThemeStore } from '@shared/store/themeStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useTitleBarSearch } from '@shared/contexts/TitleBarSearchContext';
 import { useTitleBarControls } from '@shared/contexts/TitleBarControlsContext';
 import { useSidebar } from '@shared/contexts/SidebarContext';
 import { useNotificationStore } from '@shared/store/notificationStore';
@@ -18,12 +16,10 @@ import { DesktopNavigationContext } from '@shared/contexts/DesktopNavigationCont
 import { TitleBarNotificationDropdown } from './TitleBarNotificationDropdown';
 
 interface CustomTitleBarProps {
-  title?: string;
   navigationRef?: React.RefObject<NavigationContainerRef<any>>;
 }
 
 export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
-  title = 'Тахион',
   navigationRef
 }) => {
   const isWideScreen = useIsWideScreen();
@@ -31,9 +27,8 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
 
   const theme = useThemeStore((state) => state.theme);
   const [hoveredButton, setHoveredButton] = useState<'minimize' | 'maximize' | 'close' | null>(null);
-  const { searchQuery, placeholder, isVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
   const { pageTitle, leftControls, rightControls } = useTitleBarControls();
-  const { sidebarWidth } = useSidebar();
+  const { sidebarWidth, isCollapsed, toggleCollapsed } = useSidebar();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
   const [notificationDropdownVisible, setNotificationDropdownVisible] = useState(false);
   const [notificationIconPosition, setNotificationIconPosition] = useState({ x: 0, y: 0 });
@@ -95,16 +90,37 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
     }
   };
 
-  // Используем заголовок страницы, если он установлен
-  const displayTitle = pageTitle || title;
-
   return (
     <View style={[styles.titleBar, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
-      {/* Draggable area - Left side with title */}
-      <View style={[styles.dragArea, { minWidth: sidebarWidth }]}>
-        <View style={styles.titleContainer}>
-
-          <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{displayTitle}</Text>
+      {/* Draggable area - Left side with page title (aligned with sidebar) */}
+      <View style={[styles.dragArea, { width: sidebarWidth, borderRightWidth: 1, borderRightColor: theme.border }]}>
+        {!isCollapsed && pageTitle ? (
+          <Text style={[styles.pageTitle, { color: theme.text }]} numberOfLines={1}>
+            {pageTitle}
+          </Text>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
+        <View
+          style={styles.toggleButton}
+          // @ts-ignore - Web-only event handlers
+          onClick={toggleCollapsed}
+          onMouseEnter={(e: any) => {
+            if (e.currentTarget?.style) {
+              e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+            }
+          }}
+          onMouseLeave={(e: any) => {
+            if (e.currentTarget?.style) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          <Ionicons
+            name={isCollapsed ? 'chevron-forward' : 'chevron-back'}
+            size={16}
+            color={theme.textSecondary}
+          />
         </View>
       </View>
 
@@ -117,44 +133,6 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
 
       {/* Spacer for flex layout */}
       <View style={{ flex: 1 }} />
-
-      {/* Center - Search (если visible) - absolute positioned */}
-      {isVisible && (
-        <View style={styles.searchContainer}>
-          <View style={[styles.searchInputContainer, { backgroundColor: theme.input, borderColor: theme.inputBorder }]}>
-            <Ionicons name="search" size={14} color={theme.textSecondary} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder={placeholder}
-              placeholderTextColor={theme.inputPlaceholder}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              // @ts-ignore - Web-only styles
-              onFocus={(e) => {
-                // @ts-ignore
-                e.target.style.outline = 'none';
-              }}
-            />
-            {searchQuery.length > 0 && (
-              <View
-                style={styles.clearButton}
-                // @ts-ignore - Web-only event handlers
-                onClick={clearSearch}
-                onMouseEnter={(e) => {
-                  // @ts-ignore
-                  e.currentTarget.style.opacity = '0.7';
-                }}
-                onMouseLeave={(e) => {
-                  // @ts-ignore
-                  e.currentTarget.style.opacity = '1';
-                }}
-              >
-                <Ionicons name="close-circle" size={12} color={theme.textSecondary} />
-              </View>
-            )}
-          </View>
-        </View>
-      )}
 
       {/* Right Controls from context */}
       {rightControls && (
@@ -251,6 +229,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    //borderBottomWidth: 1,
     // @ts-ignore - Web-only styles
     WebkitAppRegion: 'no-drag',
     userSelect: 'none',
@@ -261,25 +240,27 @@ const styles = StyleSheet.create({
     height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 20,
+    paddingLeft: 16,
+    paddingRight: 8,
     flexShrink: 0,
     // @ts-ignore - Web-only styles
     WebkitAppRegion: 'drag',
   },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  appIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-  },
-  title: {
+  pageTitle: {
     fontSize: 16,
     fontWeight: '700',
-    maxWidth: 150,
+    flex: 1,
+  },
+  toggleButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    // @ts-ignore - Web-only styles
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+    WebkitAppRegion: 'no-drag',
   },
   leftControlsContainer: {
     height: '100%',
@@ -289,43 +270,6 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     // @ts-ignore - Web-only styles
     WebkitAppRegion: 'no-drag',
-  },
-  searchContainer: {
-    position: 'absolute',
-    left: '50%',
-    // @ts-ignore - Web-only styles
-    transform: 'translateX(-50%)',
-    width: 240,
-    maxWidth: 240,
-    minWidth: 200,
-    WebkitAppRegion: 'no-drag',
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 32,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    gap: 4,
-  },
-  searchIcon: {
-    flexShrink: 0,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 12,
-    height: 24,
-    padding: 0,
-    // @ts-ignore - Web-only styles
-    outlineStyle: 'none',
-  },
-  clearButton: {
-    padding: 2,
-    flexShrink: 0,
-    // @ts-ignore - Web-only styles
-    cursor: 'pointer',
-    transition: 'opacity 0.15s ease',
   },
   rightControlsContainer: {
     height: '100%',
