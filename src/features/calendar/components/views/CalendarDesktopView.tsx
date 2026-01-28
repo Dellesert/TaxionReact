@@ -134,7 +134,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
       {/* Main Content Area - 3 Column Layout */}
       <View style={styles.contentContainer}>
         {/* Left Sidebar - Mini Calendar & Stats */}
-        <View style={[styles.leftSidebar, { backgroundColor: theme.card, borderRightColor: theme.border }]}>
+        <View style={[styles.leftSidebar, { backgroundColor: theme.card, borderRightColor: theme.border, borderTopColor: theme.border }]}>
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.leftSidebarContent}
@@ -250,6 +250,11 @@ const styles = StyleSheet.create({
   leftSidebar: {
     width: 350,
     borderRightWidth: 1,
+    borderTopWidth: 1,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
       boxShadow: '2px 0 12px rgba(0,0,0,0.04)',
