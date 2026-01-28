@@ -61,6 +61,7 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
       { type: 'meeting', label: 'Встречи', color: '#3B82F6', count: eventsByType.meeting || 0 },
       { type: 'deadline', label: 'Дедлайны', color: '#EF4444', count: eventsByType.deadline || 0 },
       { type: 'personal', label: 'Личные', color: '#10B981', count: eventsByType.personal || 0 },
+      { type: 'schedule', label: 'Графики', color: '#F59E0B', count: eventsByType.schedule || 0 },
     ].map(stat => ({
       ...stat,
       percentage: totalEvents > 0 ? (stat.count / totalEvents) * 100 : 0,
