@@ -19,7 +19,8 @@ import { PollListHeader } from '../components/headers/PollListHeader';
 import { PollListContent } from '../components/lists/PollListContent';
 import { PollViewSwitcher } from '../components/common/PollViewSwitcher';
 import { PollFilterMenu } from '../components/common/PollFilterMenu';
-import { TitleBarPollControls } from '../components/common/TitleBarPollControls';
+import { TitleBarPollControls, PollViewMode } from '../components/common/TitleBarPollControls';
+import { TitleBarViewSwitcher, ViewOption } from '@shared/components/common/TitleBarViewSwitcher';
 import { canUserCreatePoll, filterPollsByStatus } from '../utils/pollListHelpers';
 
 type PollListScreenNavigationProp = NativeStackNavigationProp<
@@ -87,13 +88,29 @@ const PollListScreen: React.FC = () => {
     enabled: true,
   });
 
-  // TitleBar controls for Electron desktop (unified compact component)
+  // View options for TitleBar switcher
+  const pollViewOptions: ViewOption<PollViewMode>[] = useMemo(() => [
+    { value: 'grid', icon: 'grid-outline', label: 'Сетка' },
+    { value: 'table', icon: 'list-outline', label: 'Таблица' },
+  ], []);
+
+  // TitleBar left controls - view switcher
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarViewSwitcher
+        options={pollViewOptions}
+        value={viewMode}
+        onChange={setViewMode}
+      />
+    );
+  }, [isElectron, isDesktop, pollViewOptions, viewMode]);
+
+  // TitleBar right controls - filters, create
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarPollControls
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         hasActiveFilters={hasActiveFilters}
         onFilterToggle={() => setIsFilterMenuVisible(!isFilterMenuVisible)}
         onFilterButtonLayout={setFilterButtonPosition}
@@ -101,12 +118,12 @@ const PollListScreen: React.FC = () => {
         onNewPoll={handleCreatePoll}
       />
     );
-  }, [isElectron, isDesktop, viewMode, hasActiveFilters, isFilterMenuVisible, canCreatePoll, handleCreatePoll]);
+  }, [isElectron, isDesktop, hasActiveFilters, isFilterMenuVisible, canCreatePoll, handleCreatePoll]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Опросы',
-    leftControls: null,
+    leftControls: titleBarLeftControls,
     rightControls: titleBarRightControls,
     enabled: isElectron && isDesktop,
   });

@@ -22,6 +22,7 @@ import { BoardFilterMenu } from '../components/filters/BoardFilterMenu';
 import { MobileFilterMenu } from '../components/filters/MobileFilterMenu';
 import { TaskViewSwitcher, ViewMode } from '../components/common/TaskViewSwitcher';
 import { TitleBarTaskControls } from '../components/common/TitleBarTaskControls';
+import { TitleBarViewSwitcher, ViewOption } from '@shared/components/common/TitleBarViewSwitcher';
 import type { StatusTab, AdvancedTaskFilters, TaskFilter } from '../utils/taskListHelpers';
 import { TASKS_PER_PAGE, buildAdvancedTaskFilters, getTasksWithSubtasks, STATUS_TABS_ORDER } from '../utils/taskListHelpers';
 
@@ -265,13 +266,29 @@ const TaskListScreen: React.FC = () => {
     return count + getTasksWithSubtasks(tasks[status]).length;
   }, 0);
 
-  // TitleBar controls for Electron desktop (unified compact component)
+  // View options for TitleBar switcher
+  const taskViewOptions: ViewOption<ViewMode>[] = useMemo(() => [
+    { value: 'board', icon: 'grid-outline', label: 'Доска' },
+    { value: 'table', icon: 'list-outline', label: 'Таблица' },
+  ], []);
+
+  // TitleBar left controls - view switcher
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarViewSwitcher
+        options={taskViewOptions}
+        value={viewMode}
+        onChange={setViewMode}
+      />
+    );
+  }, [isElectron, isDesktop, taskViewOptions, viewMode]);
+
+  // TitleBar right controls - filters, create, etc.
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarTaskControls
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         expandedAll={expandAllSubtasks}
         onExpandToggle={handleExpandAllToggle}
         subtaskCount={totalTasksWithSubtasks}
@@ -282,12 +299,12 @@ const TaskListScreen: React.FC = () => {
         onNewTask={handleNewTask}
       />
     );
-  }, [isElectron, isDesktop, viewMode, expandAllSubtasks, totalTasksWithSubtasks, handleExpandAllToggle, hasActiveFilters, toggleFilterMenu, canCreateTask, handleNewTask]);
+  }, [isElectron, isDesktop, expandAllSubtasks, totalTasksWithSubtasks, handleExpandAllToggle, hasActiveFilters, toggleFilterMenu, canCreateTask, handleNewTask]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Задачи',
-    leftControls: null,
+    leftControls: titleBarLeftControls,
     rightControls: titleBarRightControls,
     enabled: isElectron && isDesktop,
   });

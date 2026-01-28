@@ -5,7 +5,7 @@
  */
 
 import React, { useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
@@ -15,16 +15,20 @@ interface TitleBarScheduleDetailControlsProps {
   viewMode: ScheduleViewMode;
   onViewModeChange: (mode: ScheduleViewMode) => void;
   showViewSwitcher: boolean;
-  canEdit: boolean;
-  onOpenMenu: () => void;
+  canEdit?: boolean;
+  onOpenMenu?: () => void;
   onMenuButtonLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
+  /** Show only view switcher (for left controls) */
+  showViewSwitcherOnly?: boolean;
+  /** Show only menu button (for right controls) */
+  showMenuOnly?: boolean;
 }
 
 // Иконки для видов
-const VIEW_OPTIONS: { value: ScheduleViewMode; icon: keyof typeof Ionicons.glyphMap; tooltip: string }[] = [
-  { value: 'list', icon: 'list-outline', tooltip: 'Список' },
-  { value: 'grid', icon: 'grid-outline', tooltip: 'Сетка (сотрудники)' },
-  { value: 'shifts', icon: 'calendar-outline', tooltip: 'Смены (даты)' },
+const VIEW_OPTIONS: { value: ScheduleViewMode; icon: keyof typeof Ionicons.glyphMap; tooltip: string; label: string }[] = [
+  { value: 'list', icon: 'list-outline', tooltip: 'Список', label: 'Список' },
+  { value: 'grid', icon: 'grid-outline', tooltip: 'Сетка (сотрудники)', label: 'Сетка' },
+  { value: 'shifts', icon: 'calendar-outline', tooltip: 'Смены (даты)', label: 'Смены' },
 ];
 
 export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailControlsProps> = ({
@@ -34,6 +38,8 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
   canEdit,
   onOpenMenu,
   onMenuButtonLayout,
+  showViewSwitcherOnly = false,
+  showMenuOnly = false,
 }) => {
   const { theme } = useTheme();
   const menuButtonRef = useRef<View>(null);
@@ -51,60 +57,91 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
         });
       }
     }
-    onOpenMenu();
+    onOpenMenu?.();
   };
 
+  const currentViewLabel = VIEW_OPTIONS.find(o => o.value === viewMode)?.label || '';
+
+  // Render view switcher component
+  const renderViewSwitcher = () => (
+    <View style={[styles.viewGroup, { backgroundColor: theme.backgroundTertiary }]}>
+      {VIEW_OPTIONS.map((option) => (
+        <View
+          key={option.value}
+          style={[
+            styles.viewButton,
+            viewMode === option.value && [styles.activeViewButton, { backgroundColor: theme.backgroundSecondary }],
+          ]}
+          // @ts-ignore - Web-only
+          onClick={() => onViewModeChange(option.value)}
+          title={option.tooltip}
+          onMouseEnter={(e: any) => {
+            if (viewMode !== option.value && e.currentTarget?.style) {
+              e.currentTarget.style.backgroundColor = theme.border;
+            }
+          }}
+          onMouseLeave={(e: any) => {
+            if (viewMode !== option.value && e.currentTarget?.style) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          <Ionicons
+            name={option.icon}
+            size={14}
+            color={viewMode === option.value ? theme.primary : theme.textSecondary}
+          />
+        </View>
+      ))}
+      <Text style={[styles.viewLabel, { color: theme.text }]}>
+        {currentViewLabel}
+      </Text>
+    </View>
+  );
+
+  // Render menu button component
+  const renderMenuButton = () => (
+    <View
+      // @ts-ignore - ref type
+      ref={menuButtonRef}
+      style={[styles.menuButton, { backgroundColor: theme.backgroundTertiary }]}
+      // @ts-ignore - Web-only
+      onClick={handleOpenMenu}
+      title="Меню"
+      onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
+      onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
+    >
+      <Ionicons name="ellipsis-horizontal" size={14} color={theme.text} />
+      <Text style={[styles.buttonLabel, { color: theme.text }]}>Меню</Text>
+    </View>
+  );
+
+  // Show only view switcher (for left controls)
+  if (showViewSwitcherOnly) {
+    return (
+      <View style={styles.container}>
+        {showViewSwitcher && renderViewSwitcher()}
+      </View>
+    );
+  }
+
+  // Show only menu button (for right controls)
+  if (showMenuOnly) {
+    return (
+      <View style={styles.container}>
+        {canEdit && onOpenMenu && renderMenuButton()}
+      </View>
+    );
+  }
+
+  // Default: show all controls (backwards compatibility)
   return (
     <View style={styles.container}>
       {/* View Switcher - only for monthly mode */}
-      {showViewSwitcher && (
-        <View style={[styles.viewGroup, { backgroundColor: theme.backgroundTertiary }]}>
-          {VIEW_OPTIONS.map((option) => (
-            <View
-              key={option.value}
-              style={[
-                styles.viewButton,
-                viewMode === option.value && [styles.activeViewButton, { backgroundColor: theme.backgroundSecondary }],
-              ]}
-              // @ts-ignore - Web-only
-              onClick={() => onViewModeChange(option.value)}
-              title={option.tooltip}
-              onMouseEnter={(e: any) => {
-                if (viewMode !== option.value && e.currentTarget?.style) {
-                  e.currentTarget.style.backgroundColor = theme.border;
-                }
-              }}
-              onMouseLeave={(e: any) => {
-                if (viewMode !== option.value && e.currentTarget?.style) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <Ionicons
-                name={option.icon}
-                size={14}
-                color={viewMode === option.value ? theme.primary : theme.textSecondary}
-              />
-            </View>
-          ))}
-        </View>
-      )}
+      {showViewSwitcher && renderViewSwitcher()}
 
       {/* Menu Button - only for users who can edit */}
-      {canEdit && (
-        <View
-          // @ts-ignore - ref type
-          ref={menuButtonRef}
-          style={[styles.menuButton, { backgroundColor: theme.backgroundTertiary }]}
-          // @ts-ignore - Web-only
-          onClick={handleOpenMenu}
-          title="Меню"
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
-        >
-          <Ionicons name="ellipsis-horizontal" size={14} color={theme.text} />
-        </View>
-      )}
+      {canEdit && onOpenMenu && renderMenuButton()}
     </View>
   );
 };
@@ -135,12 +172,23 @@ const styles = StyleSheet.create({
     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
   } as any,
   menuButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 28,
     height: 28,
+    paddingHorizontal: 10,
     borderRadius: 6,
     cursor: 'pointer',
     transition: 'background-color 0.15s ease',
+    gap: 6,
+  } as any,
+  viewLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginHorizontal: 6,
+  } as any,
+  buttonLabel: {
+    fontSize: 13,
+    fontWeight: '500',
   } as any,
 });

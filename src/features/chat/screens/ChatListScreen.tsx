@@ -313,7 +313,19 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
     []
   );
 
-  // TitleBar controls for Electron desktop
+  // TitleBar left controls - edit/menu button
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarChatControls
+        isEditMode={isEditMode}
+        onToggleEditMode={toggleEditMode}
+        showEditOnly
+      />
+    );
+  }, [isElectron, isDesktop, isEditMode, toggleEditMode]);
+
+  // TitleBar right controls - create button only
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
@@ -324,6 +336,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
         isCreateMenuVisible={isCreateMenuVisible}
         onCreateMenuClose={() => setIsCreateMenuVisible(false)}
         onCreateChatType={handleTitleBarCreateChatType}
+        showCreateOnly
       />
     );
   }, [isElectron, isDesktop, isEditMode, toggleEditMode, handleNewChat, isCreateMenuVisible, handleTitleBarCreateChatType]);
@@ -331,7 +344,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Чаты',
-    leftControls: null,
+    leftControls: titleBarLeftControls,
     rightControls: titleBarRightControls,
     isPageLoading: !isConnected || isRefreshingChats,
     enabled: isElectron && isDesktop,

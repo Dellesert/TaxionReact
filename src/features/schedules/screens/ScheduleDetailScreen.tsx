@@ -156,21 +156,35 @@ export const ScheduleDetailScreen: React.FC = () => {
     }
   }, [isWideScreen]);
 
-  // TitleBar controls for Electron desktop
+  // TitleBar left controls - back button + view switcher
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron || !isWideScreen) return null;
-    return <TitleBarBackButton onGoBack={handleGoBack} />;
-  }, [isElectron, isWideScreen, handleGoBack]);
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <TitleBarBackButton onGoBack={handleGoBack} />
+        {schedule && (
+          <TitleBarScheduleDetailControls
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            showViewSwitcher={schedule.mode === 'monthly'}
+            showViewSwitcherOnly
+          />
+        )}
+      </View>
+    );
+  }, [isElectron, isWideScreen, handleGoBack, schedule, viewMode]);
 
+  // TitleBar right controls - menu button only
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isWideScreen || !schedule) return null;
     return (
       <TitleBarScheduleDetailControls
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        showViewSwitcher={schedule.mode === 'monthly'}
+        showViewSwitcher={false}
         canEdit={canEdit}
         onOpenMenu={handleOpenMenu}
+        showMenuOnly
       />
     );
   }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu]);

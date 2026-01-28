@@ -99,23 +99,34 @@ export const ScheduleListScreen: React.FC = () => {
     enabled: true,
   });
 
-  // TitleBar controls for Electron desktop (month picker + create button)
+  // TitleBar left controls - month picker
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarScheduleControls
+        selectedMonth={selectedMonth}
+        onMonthChange={handleMonthChange}
+        showMonthPickerOnly
+      />
+    );
+  }, [isElectron, isDesktop, selectedMonth, handleMonthChange]);
+
+  // TitleBar right controls - create button only
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarScheduleControls
         canCreate={canCreate}
         onNewSchedule={handleCreateSchedule}
-        selectedMonth={selectedMonth}
-        onMonthChange={handleMonthChange}
+        showCreateOnly
       />
     );
-  }, [isElectron, isDesktop, canCreate, handleCreateSchedule, selectedMonth, handleMonthChange]);
+  }, [isElectron, isDesktop, canCreate, handleCreateSchedule]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Графики',
-    leftControls: null,
+    leftControls: titleBarLeftControls,
     rightControls: titleBarRightControls,
     enabled: isElectron && isDesktop,
   });

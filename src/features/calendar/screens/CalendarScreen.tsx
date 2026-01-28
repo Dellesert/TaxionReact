@@ -16,6 +16,7 @@ import { CalendarEventsList } from '../components/events/CalendarEventsList';
 import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
 import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
 import { TitleBarCalendarControls } from '../components/common/TitleBarCalendarControls';
+import { TitleBarViewSwitcher, ViewOption } from '@shared/components/common/TitleBarViewSwitcher';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
@@ -295,24 +296,48 @@ const CalendarScreen: React.FC = () => {
     setSelectedView(view);
   }, [setSelectedView]);
 
-  // TitleBar controls for Electron desktop (unified compact component)
+  // View options for TitleBar switcher
+  const calendarViewOptions: ViewOption<CalendarView>[] = useMemo(() => [
+    { value: 'day', icon: 'today-outline', label: 'День' },
+    { value: 'week', icon: 'calendar-outline', label: 'Неделя' },
+    { value: 'month', icon: 'grid-outline', label: 'Месяц' },
+  ], []);
+
+  // TitleBar left controls - view switcher + week mode toggle
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <TitleBarViewSwitcher
+          options={calendarViewOptions}
+          value={selectedView}
+          onChange={handleDesktopViewChange}
+        />
+        <TitleBarCalendarControls
+          selectedView={selectedView}
+          weekDisplayMode={weekDisplayMode}
+          onWeekDisplayModeChange={setWeekDisplayMode}
+        />
+      </View>
+    );
+  }, [isElectron, isDesktop, calendarViewOptions, selectedView, handleDesktopViewChange, weekDisplayMode, setWeekDisplayMode]);
+
+  // TitleBar right controls - create only
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarCalendarControls
         selectedView={selectedView}
-        onViewChange={handleDesktopViewChange}
         onAddPress={handleAddEvent}
-        weekDisplayMode={weekDisplayMode}
-        onWeekDisplayModeChange={setWeekDisplayMode}
+        showCreateOnly
       />
     );
-  }, [isElectron, isDesktop, selectedView, handleDesktopViewChange, handleAddEvent, weekDisplayMode, setWeekDisplayMode]);
+  }, [isElectron, isDesktop, selectedView, handleAddEvent]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Календарь',
-    leftControls: null,
+    leftControls: titleBarLeftControls,
     rightControls: titleBarRightControls,
     enabled: isElectron && isDesktop,
   });
