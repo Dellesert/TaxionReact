@@ -60,6 +60,12 @@ const NAV_ITEMS: NavItem[] = [
     iconFocused: 'time',
   },
   {
+    name: 'Absences',
+    label: 'Нерабочие дни',
+    icon: 'calendar-clear-outline',
+    iconFocused: 'calendar-clear',
+  },
+  {
     name: 'Notifications',
     label: 'Уведомления',
     icon: 'notifications-outline',

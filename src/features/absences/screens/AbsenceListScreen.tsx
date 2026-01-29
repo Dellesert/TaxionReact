@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,18 @@ import {
   StyleSheet,
   Modal,
   Platform,
+  TextInput,
+  Dimensions,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useAbsenceStore } from '../store/absenceStore';
@@ -18,13 +25,25 @@ import { AbsenceList } from '../components/AbsenceList';
 import { CreateAbsenceModal } from '../components/CreateAbsenceModal';
 import { EditAbsenceModal } from '../components/EditAbsenceModal';
 import { YearPicker } from '../components/YearPicker';
+import { TitleBarAbsenceControls, AbsenceViewMode } from '../components/TitleBarAbsenceControls';
+import { AbsenceYearCalendar } from '../components/AbsenceYearCalendar';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import {
   Absence,
   AbsenceType,
   ABSENCE_TYPES,
   ABSENCE_TYPE_LABELS,
+  ABSENCE_TYPE_COLORS,
 } from '../types/absence.types';
+import { AbsenceCard } from '../components/AbsenceCard';
+
+// Type for sections grouped by absence type
+interface AbsenceSection {
+  type: AbsenceType;
+  title: string;
+  color: string;
+  data: Absence[];
+}
 
 // Helper to get year date range
 const getYearRange = (year: number): { start_date: string; end_date: string } => ({
@@ -42,6 +61,10 @@ export const AbsenceListScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const navigation = useNavigation();
   const filterButtonRef = useRef<View>(null);
+  const isDesktop = useIsWideScreen();
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
   const {
     absences,
@@ -51,6 +74,9 @@ export const AbsenceListScreen: React.FC = () => {
     loadAbsences,
     setFilters,
   } = useAbsenceStore();
+
+  // Search state for desktop
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -69,6 +95,9 @@ export const AbsenceListScreen: React.FC = () => {
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
+
+  // View mode state (list vs calendar) - only for desktop
+  const [viewMode, setViewMode] = useState<AbsenceViewMode>('list');
 
   // Initial load with current year filter
   useEffect(() => {
@@ -149,116 +178,352 @@ export const AbsenceListScreen: React.FC = () => {
     loadAbsences(filters, true);
   }, [loadAbsences, filters]);
 
-  // Calculate menu position
+  // Handler for creating absence (defined early for TitleBar integration)
+  const handleCreateAbsence = useCallback(() => {
+    setShowCreateModal(true);
+  }, []);
+
+  // Integrate with TitleBar search in Electron
+  useTitleBarSearchIntegration({
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    placeholder: 'Поиск нерабочих дней...',
+    enabled: true,
+  });
+
+  // TitleBar left controls - year picker and view toggle
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarAbsenceControls
+        selectedYear={selectedYear}
+        onYearChange={handleYearChange}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        showYearPickerOnly
+      />
+    );
+  }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode]);
+
+  // TitleBar right controls - filter and create buttons
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarAbsenceControls
+        selectedYear={selectedYear}
+        onYearChange={handleYearChange}
+        onFilterPress={handleFilterToggle}
+        selectedTypeFilter={selectedTypeFilter}
+        onCreatePress={handleCreateAbsence}
+        showActionsOnly
+      />
+    );
+  }, [isElectron, isDesktop, selectedYear, handleYearChange, handleFilterToggle, selectedTypeFilter, handleCreateAbsence]);
+
+  // Integrate controls with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Нерабочие дни',
+    leftControls: titleBarLeftControls,
+    rightControls: titleBarRightControls,
+    enabled: isElectron && isDesktop,
+  });
+
+  // Filter absences by search query
+  const filteredAbsences = useMemo(() => {
+    if (!searchQuery.trim()) return absences;
+    const query = searchQuery.toLowerCase();
+    return absences.filter(absence =>
+      absence.user?.name?.toLowerCase().includes(query) ||
+      ABSENCE_TYPE_LABELS[absence.type]?.toLowerCase().includes(query)
+    );
+  }, [absences, searchQuery]);
+
+  // Group absences by type for desktop columns view
+  const absenceSections = useMemo((): AbsenceSection[] => {
+    const grouped = new Map<AbsenceType, Absence[]>();
+
+    // Initialize groups for all types
+    for (const type of ABSENCE_TYPES) {
+      grouped.set(type, []);
+    }
+
+    // Group filtered absences by type
+    for (const absence of filteredAbsences) {
+      const typeAbsences = grouped.get(absence.type);
+      if (typeAbsences) {
+        typeAbsences.push(absence);
+      }
+    }
+
+    // Convert to sections, filtering out empty groups
+    return ABSENCE_TYPES
+      .filter(type => (grouped.get(type)?.length ?? 0) > 0)
+      .map(type => ({
+        type,
+        title: ABSENCE_TYPE_LABELS[type],
+        color: ABSENCE_TYPE_COLORS[type],
+        data: grouped.get(type) ?? [],
+      }));
+  }, [filteredAbsences]);
+
+  // Render empty state for desktop
+  const renderDesktopEmpty = useCallback(() => {
+    if (isLoading) {
+      return (
+        <View style={styles.emptyContainerDesktop}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyContainerDesktop}>
+        <Ionicons name="calendar-outline" size={48} color={theme.textSecondary} />
+        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+          {searchQuery
+            ? `Ничего не найдено по запросу "${searchQuery}"`
+            : selectedTypeFilter
+              ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за ${selectedYear}`
+              : `Нет отпусков за ${selectedYear}`}
+        </Text>
+      </View>
+    );
+  }, [isLoading, theme, searchQuery, selectedTypeFilter, selectedYear]);
+
+  // Calculate menu position (under the filter button)
   const menuTop = filterButtonPosition
     ? filterButtonPosition.y + filterButtonPosition.height + (Platform.OS === 'ios' ? 4 : 8)
     : 60;
 
+  // Calculate menu right position to align with button's right edge
+  const screenWidth = Dimensions.get('window').width;
+  const menuRight = filterButtonPosition
+    ? screenWidth - (filterButtonPosition.x + filterButtonPosition.width)
+    : 16;
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: (isElectron && isDesktop) ? theme.background : (isDesktop ? theme.card : theme.card) }
+      ]}
+      edges={['left', 'right']}
+    >
       {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
-      {/* Header */}
-      <ScreenHeader
-        title="Нерабочие дни"
-        customContent={
-          <>
-            <View style={styles.headerRow}>
-              <View style={styles.headerLeft}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                  <Ionicons name="arrow-back" size={24} color={theme.primary} />
-                </TouchableOpacity>
-              </View>
 
-              <Text style={[styles.title, { color: theme.text }]}>Нерабочие дни</Text>
-
-              <View style={[styles.headerRight, styles.headerActions]}>
-                {/* Filter Button */}
-                <View ref={filterButtonRef} collapsable={false}>
-                  <TouchableOpacity
-                    onPress={handleFilterToggle}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons
-                      name="filter"
-                      size={24}
-                      color={theme.error}
-                    />
-                    {selectedTypeFilter && (
-                      <View style={[styles.filterIndicator, { backgroundColor: theme.primary }]} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-
-                {/* Add Button */}
-                <TouchableOpacity
-                  onPress={() => setShowCreateModal(true)}
-                  style={styles.iconButton}
-                >
-                  <Ionicons name="add" size={30} color={theme.primary} />
-                </TouchableOpacity>
-              </View>
+      {/* Header - hide on Electron desktop since controls are in TitleBar */}
+      {!(isElectron && isDesktop) && (
+        isDesktop ? (
+          // Desktop Header
+          <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.desktopHeaderLeft}>
+              <Text style={[styles.desktopTitle, { color: theme.text }]}>Нерабочие дни</Text>
+              <YearPicker
+                selectedYear={selectedYear}
+                onYearChange={handleYearChange}
+              />
             </View>
-          </>
-        }
-      />
+            <View style={styles.desktopHeaderRight}>
+              {/* Search Input */}
+              <View style={[styles.desktopSearchContainer, { backgroundColor: theme.input, borderColor: theme.inputBorder }]}>
+                <Ionicons name="search" size={16} color={theme.textSecondary} />
+                <TextInput
+                  style={[styles.desktopSearchInput, { color: theme.text }]}
+                  placeholder="Поиск..."
+                  placeholderTextColor={theme.inputPlaceholder}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={16} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {/* Filter Button */}
+              <View ref={filterButtonRef} collapsable={false}>
+                <TouchableOpacity
+                  onPress={handleFilterToggle}
+                  style={[styles.desktopIconButton, { backgroundColor: theme.backgroundSecondary }]}
+                >
+                  <Ionicons name="filter" size={20} color={selectedTypeFilter ? theme.primary : theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              {/* Add Button */}
+              <TouchableOpacity
+                onPress={handleCreateAbsence}
+                style={[styles.desktopAddButton, { backgroundColor: theme.primary }]}
+              >
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Text style={styles.desktopAddButtonText}>Добавить</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          // Mobile Header
+          <ScreenHeader
+            title="Нерабочие дни"
+            customContent={
+              <>
+                <View style={styles.headerRow}>
+                  <View style={styles.headerLeft}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                      <Ionicons name="arrow-back" size={24} color={theme.primary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={[styles.title, { color: theme.text }]}>Нерабочие дни</Text>
+
+                  <View style={[styles.headerRight, styles.headerActions]}>
+                    {/* Filter Button */}
+                    <View ref={filterButtonRef} collapsable={false}>
+                      <TouchableOpacity
+                        onPress={handleFilterToggle}
+                        style={styles.iconButton}
+                      >
+                        <Ionicons
+                          name="filter"
+                          size={24}
+                          color={theme.error}
+                        />
+                        {selectedTypeFilter && (
+                          <View style={[styles.filterIndicator, { backgroundColor: theme.primary }]} />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Add Button */}
+                    <TouchableOpacity
+                      onPress={handleCreateAbsence}
+                      style={styles.iconButton}
+                    >
+                      <Ionicons name="add" size={30} color={theme.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            }
+          />
+        )
+      )}
 
       {/* Content */}
       <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
-        {/* Year Picker */}
-        <YearPicker
-          selectedYear={selectedYear}
-          onYearChange={handleYearChange}
-        />
+        {/* Year Picker - show only on mobile (desktop has it in header/titlebar) */}
+        {!isDesktop && (
+          <YearPicker
+            selectedYear={selectedYear}
+            onYearChange={handleYearChange}
+          />
+        )}
 
-        {/* User Filter Chip */}
-        <View style={styles.userFilterContainer}>
-          <TouchableOpacity
-            style={[
-              styles.userFilterChip,
-              { backgroundColor: theme.card, borderColor: theme.border },
-              selectedUserId ? { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary } : null,
-            ]}
-            onPress={() => setShowUserPicker(true)}
-          >
-            <Ionicons
-              name="person"
-              size={16}
-              color={selectedUserId ? theme.primary : theme.textSecondary}
-            />
-            <Text
+        {/* User Filter Chip - hide when in calendar mode (sidebar has user selection) */}
+        {!(isElectron && isDesktop && viewMode === 'calendar') && (
+          <View style={styles.userFilterContainer}>
+            <TouchableOpacity
               style={[
-                styles.userFilterText,
-                { color: selectedUserId ? theme.primary : theme.textSecondary },
+                styles.userFilterChip,
+                { backgroundColor: theme.card, borderColor: theme.border },
+                selectedUserId ? { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary } : null,
               ]}
-              numberOfLines={1}
+              onPress={() => setShowUserPicker(true)}
             >
-              {selectedUserName || 'Все сотрудники'}
-            </Text>
-            {selectedUserId ? (
-              <TouchableOpacity
-                onPress={() => handleUserFilterChange(null, null)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              <Ionicons
+                name="person"
+                size={16}
+                color={selectedUserId ? theme.primary : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.userFilterText,
+                  { color: selectedUserId ? theme.primary : theme.textSecondary },
+                ]}
+                numberOfLines={1}
               >
-                <Ionicons name="close-circle" size={18} color={theme.primary} />
-              </TouchableOpacity>
-            ) : (
-              <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
-            )}
-          </TouchableOpacity>
-        </View>
+                {selectedUserName || 'Все сотрудники'}
+              </Text>
+              {selectedUserId ? (
+                <TouchableOpacity
+                  onPress={() => handleUserFilterChange(null, null)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={18} color={theme.primary} />
+                </TouchableOpacity>
+              ) : (
+                <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
-        <AbsenceList
-          absences={absences}
-          isLoading={isLoading}
-          onRefresh={handleRefresh}
-          onLoadMore={handleLoadMore}
-          onItemPress={handleAbsencePress}
-          emptyMessage={
-            selectedTypeFilter
-              ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за ${selectedYear}`
-              : `Нет отпусков за ${selectedYear}`
-          }
-        />
+        {/* Desktop layout for Electron - calendar or columns view */}
+        {isElectron && isDesktop ? (
+          viewMode === 'calendar' ? (
+            <AbsenceYearCalendar
+              year={selectedYear}
+              absences={filteredAbsences}
+              selectedTypeFilter={selectedTypeFilter}
+              onAbsencePress={handleAbsencePress}
+            />
+          ) : (
+            <ScrollView
+              contentContainerStyle={styles.columnsScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {absenceSections.length === 0 ? (
+                renderDesktopEmpty()
+              ) : (
+                <View style={styles.columnsContainer}>
+                  {absenceSections.map((section) => (
+                    <View
+                      key={section.type}
+                      style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}
+                    >
+                      <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                        <View style={styles.columnHeaderLeft}>
+                          <View style={[styles.columnColorDot, { backgroundColor: section.color }]} />
+                          <Text style={[styles.columnTitle, { color: theme.text }]}>
+                            {section.title}
+                          </Text>
+                        </View>
+                        <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
+                          <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
+                            {section.data.length}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.columnContentInner}>
+                        {section.data.map((absence) => (
+                          <AbsenceCard
+                            key={absence.id}
+                            absence={absence}
+                            onPress={() => handleAbsencePress(absence)}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          )
+        ) : (
+          // Mobile/tablet list layout
+          <AbsenceList
+            absences={filteredAbsences}
+            isLoading={isLoading}
+            onRefresh={handleRefresh}
+            onLoadMore={handleLoadMore}
+            onItemPress={handleAbsencePress}
+            emptyMessage={
+              searchQuery
+                ? `Ничего не найдено по запросу "${searchQuery}"`
+                : selectedTypeFilter
+                  ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за ${selectedYear}`
+                  : `Нет отпусков за ${selectedYear}`
+            }
+          />
+        )}
       </View>
 
       {/* Filter Menu Modal */}
@@ -273,7 +538,7 @@ export const AbsenceListScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowFilterMenu(false)}
         >
-          <View style={[styles.filterMenu, { top: menuTop, backgroundColor: theme.card }]}>
+          <View style={[styles.filterMenu, { top: menuTop, right: menuRight, backgroundColor: theme.card }]}>
             {FILTER_OPTIONS.map((option) => {
               const isSelected = option.key === 'all' ? !selectedTypeFilter : selectedTypeFilter === option.key;
               return (
@@ -397,7 +662,6 @@ const styles = StyleSheet.create({
   },
   filterMenu: {
     position: 'absolute',
-    right: 16,
     minWidth: 180,
     borderRadius: 12,
     padding: 8,
@@ -439,6 +703,131 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     maxWidth: 200,
+  },
+  // Desktop styles
+  desktopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  desktopHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  desktopTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  desktopHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  desktopSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 200,
+    gap: 8,
+  },
+  desktopSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    padding: 0,
+    height: 20,
+  },
+  desktopIconButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  desktopAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  desktopAddButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Desktop columns layout
+  columnsScrollContent: {
+    flexGrow: 1,
+  },
+  columnsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+    gap: 16,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  emptyContainerDesktop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
+    gap: 12,
+    minWidth: '100%',
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+    maxWidth: 300,
+  },
+  typeColumn: {
+    width: 320,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  columnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  columnHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  columnColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  columnTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  columnCount: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  columnCountText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  columnContentInner: {
+    padding: 8,
+    gap: 8,
+    paddingBottom: 12,
   },
 });
 
