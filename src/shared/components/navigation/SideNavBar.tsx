@@ -139,21 +139,20 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
         borderRightColor: theme.border,
       }
     ]}>
-      {/* Search - only show when expanded */}
-      {isSearchVisible && !isCollapsed && (
-        <View style={[styles.searchContainer, isCollapsed && styles.searchContainerCollapsed]}>
+      {/* Search - always render container when expanded to prevent layout shift */}
+      {!isCollapsed && (
+        <View style={[styles.searchContainer, !isSearchVisible && styles.searchContainerHidden]}>
           <View style={[styles.searchInputContainer, { backgroundColor: theme.input, borderColor: theme.inputBorder }]}>
             <Ionicons name="search" size={16} color={theme.textSecondary} style={styles.searchIcon} />
-            {!isCollapsed && (
-              <TextInput
-                style={[styles.searchInput, { color: theme.text }]}
-                placeholder={placeholder}
-                placeholderTextColor={theme.inputPlaceholder}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            )}
-            {!isCollapsed && searchQuery.length > 0 && (
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder={placeholder}
+              placeholderTextColor={theme.inputPlaceholder}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              editable={isSearchVisible}
+            />
+            {searchQuery.length > 0 && (
               <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
                 <Ionicons name="close-circle" size={14} color={theme.textSecondary} />
               </TouchableOpacity>
@@ -319,6 +318,10 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 12,
     paddingBottom: 8,
+  },
+  searchContainerHidden: {
+    opacity: 0,
+    pointerEvents: 'none',
   },
   searchContainerCollapsed: {
     paddingHorizontal: 8,

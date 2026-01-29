@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
@@ -50,6 +51,9 @@ const getYearRange = (year: number): { start_date: string; end_date: string } =>
   start_date: `${year}-01-01`,
   end_date: `${year}-12-31`,
 });
+
+// Storage key for view mode
+const ABSENCE_VIEW_MODE_STORAGE_KEY = '@absence_view_mode';
 
 // Filter options for the dropdown menu
 const FILTER_OPTIONS: { key: AbsenceType | 'all'; label: string }[] = [
@@ -98,6 +102,29 @@ export const AbsenceListScreen: React.FC = () => {
 
   // View mode state (list vs calendar) - only for desktop
   const [viewMode, setViewMode] = useState<AbsenceViewMode>('list');
+
+  // Load saved view mode on mount
+  useEffect(() => {
+    const loadViewMode = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(ABSENCE_VIEW_MODE_STORAGE_KEY);
+        if (saved && (saved === 'list' || saved === 'calendar')) {
+          setViewMode(saved as AbsenceViewMode);
+        }
+      } catch (error) {
+        console.error('Failed to load absence view mode:', error);
+      }
+    };
+    loadViewMode();
+  }, []);
+
+  // Save view mode when it changes
+  const handleViewModeChange = useCallback((mode: AbsenceViewMode) => {
+    setViewMode(mode);
+    AsyncStorage.setItem(ABSENCE_VIEW_MODE_STORAGE_KEY, mode).catch((error) => {
+      console.error('Failed to save absence view mode:', error);
+    });
+  }, []);
 
   // Initial load with current year filter
   useEffect(() => {
@@ -199,11 +226,11 @@ export const AbsenceListScreen: React.FC = () => {
         selectedYear={selectedYear}
         onYearChange={handleYearChange}
         viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        onViewModeChange={handleViewModeChange}
         showYearPickerOnly
       />
     );
-  }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode]);
+  }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode, handleViewModeChange]);
 
   // TitleBar right controls - filter and create buttons
   const titleBarRightControls = useMemo(() => {

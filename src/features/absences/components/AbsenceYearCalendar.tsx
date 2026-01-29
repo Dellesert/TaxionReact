@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   monthsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     gap: 16,
   },
   monthContainer: {

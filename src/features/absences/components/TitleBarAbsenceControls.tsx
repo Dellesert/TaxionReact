@@ -99,13 +99,6 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
     );
   }
 
-  // Toggle view mode
-  const toggleViewMode = () => {
-    if (onViewModeChange) {
-      onViewModeChange(viewMode === 'list' ? 'calendar' : 'list');
-    }
-  };
-
   // Show only year picker and view toggle (for left controls)
   if (showYearPickerOnly) {
     return (
@@ -146,20 +139,58 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
 
         {/* View Mode Toggle */}
         {onViewModeChange && (
-          <View
-            style={[styles.viewModeButton, { backgroundColor: theme.backgroundTertiary }]}
-            // @ts-ignore - Web-only
-            onClick={toggleViewMode}
-            title={viewMode === 'list' ? 'Список' : 'Календарь'}
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
-          >
-            <Ionicons
-              name={viewMode === 'list' ? 'list-outline' : 'calendar-outline'}
-              size={14}
-              color={theme.text}
-            />
-            <Text style={[styles.buttonLabel, { color: theme.text }]}>
+          <View style={[styles.viewGroup, { backgroundColor: theme.backgroundTertiary }]}>
+            <View
+              style={[
+                styles.viewButton,
+                viewMode === 'list' && [styles.activeViewButton, { backgroundColor: theme.backgroundSecondary }],
+              ]}
+              // @ts-ignore - Web-only
+              onClick={() => onViewModeChange('list')}
+              title="Список"
+              onMouseEnter={(e: any) => {
+                if (viewMode !== 'list' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = theme.border;
+                }
+              }}
+              onMouseLeave={(e: any) => {
+                if (viewMode !== 'list' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              <Ionicons
+                name="list-outline"
+                size={14}
+                color={viewMode === 'list' ? theme.primary : theme.textSecondary}
+              />
+            </View>
+            <View
+              style={[
+                styles.viewButton,
+                viewMode === 'calendar' && [styles.activeViewButton, { backgroundColor: theme.backgroundSecondary }],
+              ]}
+              // @ts-ignore - Web-only
+              onClick={() => onViewModeChange('calendar')}
+              title="Календарь"
+              onMouseEnter={(e: any) => {
+                if (viewMode !== 'calendar' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = theme.border;
+                }
+              }}
+              onMouseLeave={(e: any) => {
+                if (viewMode !== 'calendar' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={viewMode === 'calendar' ? theme.primary : theme.textSecondary}
+              />
+            </View>
+            <Text style={[styles.viewLabel, { color: theme.text }]}>
               {viewMode === 'list' ? 'Список' : 'Календарь'}
             </Text>
           </View>
@@ -315,16 +346,29 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#FFFFFF',
   } as any,
-  viewModeButton: {
+  viewGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-    paddingHorizontal: 10,
     borderRadius: 6,
+    padding: 2,
+    gap: 2,
+  } as any,
+  viewButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 26,
+    borderRadius: 4,
     cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
-    gap: 6,
+    transition: 'all 0.15s ease',
+  } as any,
+  activeViewButton: {
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+  } as any,
+  viewLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginHorizontal: 6,
   } as any,
 });
 
