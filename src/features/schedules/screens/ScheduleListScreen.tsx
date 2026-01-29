@@ -312,42 +312,39 @@ export const ScheduleListScreen: React.FC = () => {
         {isElectron && isDesktop ? (
           // Desktop columns layout - each type in its own column
           <ScrollView
-            horizontal
-            contentContainerStyle={styles.columnsContainer}
-            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.columnsScrollContent}
+            showsVerticalScrollIndicator={false}
           >
             {sections.length === 0 ? (
               <View style={styles.emptyContainerDesktop}>
                 {renderEmpty()}
               </View>
             ) : (
-              sections.map((section) => (
-                <View key={section.title} style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                    <Text style={[styles.columnTitle, { color: theme.text }]}>
-                      {section.title}
-                    </Text>
-                    <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
-                      <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
-                        {section.data.length}
+              <View style={styles.columnsContainer}>
+                {sections.map((section) => (
+                  <View key={section.title} style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                      <Text style={[styles.columnTitle, { color: theme.text }]}>
+                        {section.title}
                       </Text>
+                      <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
+                        <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
+                          {section.data.length}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.columnContentInner}>
+                      {section.data.map((schedule) => (
+                        <ScheduleCard
+                          key={schedule.id}
+                          schedule={schedule}
+                          onPress={() => handleSchedulePress(schedule)}
+                        />
+                      ))}
                     </View>
                   </View>
-                  <ScrollView
-                    style={styles.columnContent}
-                    contentContainerStyle={styles.columnContentInner}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {section.data.map((schedule) => (
-                      <ScheduleCard
-                        key={schedule.id}
-                        schedule={schedule}
-                        onPress={() => handleSchedulePress(schedule)}
-                      />
-                    ))}
-                  </ScrollView>
-                </View>
-              ))
+                ))}
+              </View>
             )}
           </ScrollView>
         ) : (
@@ -448,12 +445,16 @@ const styles = StyleSheet.create({
     maxWidth: 500,
   },
   // Desktop columns layout
+  columnsScrollContent: {
+    flexGrow: 1,
+  },
   columnsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     padding: 16,
     gap: 16,
-    flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   emptyContainerDesktop: {
     flex: 1,
@@ -464,6 +465,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
+    flexShrink: 0,
   },
   columnHeader: {
     flexDirection: 'row',
@@ -486,13 +488,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  columnContent: {
-    flex: 1,
-    maxHeight: 'calc(100vh - 200px)' as unknown as number,
-  },
   columnContentInner: {
     padding: 8,
     gap: 8,
+    paddingBottom: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
