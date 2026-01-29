@@ -104,12 +104,12 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
     <View
       // @ts-ignore - ref type
       ref={menuButtonRef}
-      style={[styles.menuButton, { backgroundColor: theme.backgroundTertiary }]}
+      style={[styles.menuButton, { borderColor: theme.border }]}
       // @ts-ignore - Web-only
       onClick={handleOpenMenu}
       title="Меню"
-      onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
-      onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
+      onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
+      onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = 'transparent')}
     >
       <Ionicons name="ellipsis-horizontal" size={14} color={theme.text} />
     </View>
@@ -171,15 +171,14 @@ const styles = StyleSheet.create({
     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
   } as any,
   menuButton: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 28,
-    paddingHorizontal: 10,
-    borderRadius: 6,
     cursor: 'pointer',
     transition: 'background-color 0.15s ease',
-    gap: 6,
   } as any,
   viewLabel: {
     fontSize: 13,
