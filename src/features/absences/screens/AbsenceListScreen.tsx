@@ -102,6 +102,7 @@ export const AbsenceListScreen: React.FC = () => {
 
   // View mode state (list vs calendar) - only for desktop
   const [viewMode, setViewMode] = useState<AbsenceViewMode>('list');
+  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
 
   // Load saved view mode on mount
   useEffect(() => {
@@ -113,6 +114,8 @@ export const AbsenceListScreen: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to load absence view mode:', error);
+      } finally {
+        setIsViewModeLoaded(true);
       }
     };
     loadViewMode();
@@ -226,11 +229,11 @@ export const AbsenceListScreen: React.FC = () => {
         selectedYear={selectedYear}
         onYearChange={handleYearChange}
         viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
+        onViewModeChange={isViewModeLoaded ? handleViewModeChange : undefined}
         showYearPickerOnly
       />
     );
-  }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode, handleViewModeChange]);
+  }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode, handleViewModeChange, isViewModeLoaded]);
 
   // TitleBar right controls - filter and create buttons
   const titleBarRightControls = useMemo(() => {
