@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { usePasskeyData } from '../../hooks/usePasskeyData';
 import { usePasskeyActions } from '../../hooks/usePasskeyActions';
@@ -16,7 +16,8 @@ import { PasskeyNameModal } from '../passkeys/PasskeyNameModal';
 import { AddPasskeyButton } from '../passkeys/AddPasskeyButton';
 
 const PasskeyManagementContent: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  const isDesktop = Platform.OS === 'web';
   const { passkeys, isLoading, passkeySupported, loadPasskeys } = usePasskeyData();
   const {
     isRegistering,
@@ -82,7 +83,21 @@ const PasskeyManagementContent: React.FC = () => {
         ) : passkeys.length === 0 ? (
           <PasskeyEmptyState isLoading={false} isSupported={passkeySupported} />
         ) : (
-          <View style={styles.passkeysList}>
+          <View
+            style={[
+              styles.passkeysList,
+              isDesktop && {
+                maxWidth: 600,
+                borderRadius: 12,
+                backgroundColor: theme.backgroundSecondary,
+                overflow: 'hidden',
+                borderWidth: isDark ? 0 : 1,
+                borderColor: isDark ? 'transparent' : '#E5E7EB',
+                alignSelf: 'center',
+                width: '100%',
+              },
+            ]}
+          >
             {passkeys.map((passkey, index) => (
               <PasskeyCard
                 key={passkey.id}
@@ -119,7 +134,7 @@ const styles = StyleSheet.create({
   },
   passkeysList: {
     marginTop: 8,
-    gap: 12,
+    gap: Platform.OS === 'web' ? 0 : 12,
   },
 });
 

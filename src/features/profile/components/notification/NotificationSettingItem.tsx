@@ -45,7 +45,6 @@ export const NotificationSettingItem: React.FC<NotificationSettingItemProps> = (
       paddingVertical: 14,
       borderBottomWidth: isLast ? 0 : 1,
       borderBottomColor: theme.borderLight,
-      backgroundColor: theme.backgroundSecondary,
       opacity: disabled ? 0.5 : 1,
     },
     settingItemLeft: {

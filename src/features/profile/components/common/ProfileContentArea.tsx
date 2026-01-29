@@ -36,6 +36,7 @@ export const ProfileContentArea: React.FC<ProfileContentAreaProps> = ({
       paddingBottom: 20,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
+      backgroundColor: theme.backgroundSecondary,
     },
     title: {
       fontSize: 28,

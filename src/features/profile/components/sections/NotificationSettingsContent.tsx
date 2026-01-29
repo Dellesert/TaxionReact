@@ -14,7 +14,7 @@ import { TimePickerModal } from '../notification/TimePickerModal';
 import { formatHour, getPriorityLabel } from '@/features/notifications/utils/notificationHelpers';
 
 const NotificationSettingsContent: React.FC = () => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const {
     loading,
     saving,
@@ -42,7 +42,7 @@ const NotificationSettingsContent: React.FC = () => {
   const channelsDisabled = !settings.push && !settings.email;
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F3F4F6' }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}

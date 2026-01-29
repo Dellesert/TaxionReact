@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
@@ -15,6 +15,7 @@ interface LogoutAllButtonProps {
 
 export const LogoutAllButton: React.FC<LogoutAllButtonProps> = ({ onPress, visible }) => {
   const { theme } = useTheme();
+  const isDesktop = Platform.OS === 'web';
 
   if (!visible) {
     return null;
@@ -24,13 +25,19 @@ export const LogoutAllButton: React.FC<LogoutAllButtonProps> = ({ onPress, visib
     <View
       style={[
         styles.actionBar,
-        { backgroundColor: theme.card, borderBottomColor: theme.border },
+        {
+          backgroundColor: isDesktop ? 'transparent' : theme.card,
+          borderBottomColor: isDesktop ? 'transparent' : theme.border,
+        },
       ]}
     >
       <TouchableOpacity
         style={[
           styles.logoutAllButton,
-          { backgroundColor: theme.card, borderColor: theme.error },
+          {
+            backgroundColor: isDesktop ? 'transparent' : theme.card,
+            borderColor: theme.error,
+          },
         ]}
         onPress={onPress}
       >
