@@ -185,7 +185,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
                 size={24}
                 color={isActive ? theme.primary : theme.textTertiary}
               />
-              {(showChatBadge || showNotificationBadge) && (
+              {isCollapsed && (showChatBadge || showNotificationBadge) && (
                 <View style={[styles.badge, { backgroundColor: theme.error || '#FF3B30', borderColor: theme.backgroundSecondary }]}>
                   <Text style={styles.badgeText}>
                     {badgeCount > 99 ? '99+' : badgeCount}
@@ -194,15 +194,24 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
               )}
             </View>
             {!isCollapsed && (
-              <Text
-                style={[
-                  styles.labelExpanded,
-                  { color: isActive ? theme.primary : theme.textSecondary },
-                ]}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
+              <>
+                <Text
+                  style={[
+                    styles.labelExpanded,
+                    { color: isActive ? theme.primary : theme.textSecondary },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+                {(showChatBadge || showNotificationBadge) && (
+                  <View style={[styles.badgeExpanded, { backgroundColor: theme.error || '#FF3B30' }]}>
+                    <Text style={styles.badgeText}>
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </Text>
+                  </View>
+                )}
+              </>
             )}
           </TouchableOpacity>
         );
@@ -420,6 +429,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+  },
+  badgeExpanded: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 8,
   },
   badgeText: {
     color: '#FFFFFF',
