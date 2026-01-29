@@ -134,7 +134,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
       {/* Main Content Area - 3 Column Layout */}
       <View style={styles.contentContainer}>
         {/* Left Sidebar - Mini Calendar & Stats */}
-        <View style={[styles.leftSidebar, { backgroundColor: theme.card, borderRightColor: theme.border, borderTopColor: theme.border }]}>
+        <View style={[styles.leftSidebar, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.leftSidebarContent}
@@ -223,7 +223,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
           <View
             style={[
               styles.rightSidebar,
-              { backgroundColor: theme.card, borderLeftColor: theme.border, borderTopColor: theme.border },
+              { backgroundColor: theme.card, borderColor: theme.border },
             ]}
           >
             <EventDetailsPanel
@@ -249,20 +249,19 @@ const styles = StyleSheet.create({
   },
   leftSidebar: {
     width: 350,
-    borderRightWidth: 1,
-    borderTopWidth: 1,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginRight: 0,
+    overflow: 'hidden',
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
-      boxShadow: '2px 0 12px rgba(0,0,0,0.04)',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
     } : {
       shadowColor: '#000',
-      shadowOffset: { width: 2, height: 0 },
-      shadowOpacity: 0.04,
-      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
       elevation: 3,
     }),
   },
@@ -275,21 +274,19 @@ const styles = StyleSheet.create({
   },
   rightSidebar: {
     width: 380,
-    borderLeftWidth: 1,
-    borderTopWidth: 1,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    height: '100%',
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginLeft: 0,
+    overflow: 'hidden',
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
-      boxShadow: '-2px 0 12px rgba(0,0,0,0.04)',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
     } : {
       shadowColor: '#000',
-      shadowOffset: { width: -2, height: 0 },
-      shadowOpacity: 0.04,
-      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
       elevation: 3,
     }),
   },
