@@ -133,8 +133,8 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
         borderRightColor: theme.border,
       }
     ]}>
-      {/* Search */}
-      {isSearchVisible && (
+      {/* Search - only show when expanded */}
+      {isSearchVisible && !isCollapsed && (
         <View style={[styles.searchContainer, isCollapsed && styles.searchContainerCollapsed]}>
           <View style={[styles.searchInputContainer, { backgroundColor: theme.input, borderColor: theme.inputBorder }]}>
             <Ionicons name="search" size={16} color={theme.textSecondary} style={styles.searchIcon} />

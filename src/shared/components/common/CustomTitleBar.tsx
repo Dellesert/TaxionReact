@@ -111,7 +111,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
           </View>
         )}
         <View
-          style={styles.toggleButton}
+          style={[styles.toggleButton, isCollapsed && styles.toggleButtonCollapsed]}
           // @ts-ignore - Web-only event handlers
           onClick={toggleCollapsed}
           onMouseEnter={(e: any) => {
@@ -126,8 +126,8 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
           }}
         >
           <Ionicons
-            name={isCollapsed ? 'chevron-forward' : 'chevron-back'}
-            size={16}
+            name="grid-outline"
+            size={18}
             color={theme.textSecondary}
           />
         </View>
@@ -283,6 +283,12 @@ const styles = StyleSheet.create({
     cursor: 'pointer',
     transition: 'background-color 0.15s ease',
     WebkitAppRegion: 'no-drag',
+  },
+  toggleButtonCollapsed: {
+    position: 'absolute',
+    left: '50%',
+    // @ts-ignore - Web-only styles
+    transform: 'translateX(-50%)',
   },
   leftControlsContainer: {
     height: '100%',
