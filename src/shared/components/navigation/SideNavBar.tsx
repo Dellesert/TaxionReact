@@ -97,7 +97,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { isCollapsed } = useSidebar();
-  const { searchQuery, placeholder, isVisible: isSearchVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
+  const { searchQuery, isVisible: isSearchVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
 
   // Check if user is admin or super_admin
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
@@ -146,7 +146,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
             <Ionicons name="search" size={16} color={theme.textSecondary} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder={placeholder}
+              placeholder="Поиск..."
               placeholderTextColor={theme.inputPlaceholder}
               value={searchQuery}
               onChangeText={setSearchQuery}
