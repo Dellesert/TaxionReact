@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { User } from '@/types/user.types';
@@ -80,9 +80,9 @@ export const ProfileSidebarNavigation: React.FC<ProfileSidebarNavigationProps> =
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: isDark ? theme.card : '#F5F5F7',
-      borderRightWidth: 1,
-      borderRightColor: theme.border,
+      backgroundColor: isDark ? theme.card : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: theme.border,
     },
     scrollContent: {
       paddingTop: 12,
@@ -241,6 +241,20 @@ const styles = StyleSheet.create({
     width: 280,
     minWidth: 240,
     maxWidth: 320,
+    borderRadius: 16,
+    margin: 16,
+    marginRight: 0,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
   },
   scrollView: {
     flex: 1,

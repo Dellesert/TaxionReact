@@ -54,7 +54,9 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   onWeekDisplayModeChange,
   hideToolbar = false,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  // Card background - white for light mode to stand out from gray background
+  const cardBgColor = isDark ? theme.card : '#FFFFFF';
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [viewMode, setViewMode] = useState<CalendarView>(initialView);
   // Use external weekDisplayMode if provided (from TitleBar), otherwise use internal state
@@ -134,7 +136,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
       {/* Main Content Area - 3 Column Layout */}
       <View style={styles.contentContainer}>
         {/* Left Sidebar - Mini Calendar & Stats */}
-        <View style={[styles.leftSidebar, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.leftSidebar, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.leftSidebarContent}
@@ -223,7 +225,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
           <View
             style={[
               styles.rightSidebar,
-              { backgroundColor: theme.card, borderColor: theme.border },
+              { backgroundColor: cardBgColor, borderColor: theme.border },
             ]}
           >
             <EventDetailsPanel

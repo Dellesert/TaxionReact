@@ -27,7 +27,7 @@ import {
 import { CustomTitleBar } from '@shared/components/common/CustomTitleBar';
 import { TitleBarSearchProvider } from '@shared/contexts/TitleBarSearchContext';
 import { TitleBarControlsProvider } from '@shared/contexts/TitleBarControlsContext';
-import { DesktopNavigationProvider } from '@shared/contexts/DesktopNavigationContext';
+import { DesktopNavigationProvider, navigateToTabGlobal } from '@shared/contexts/DesktopNavigationContext';
 import { SidebarProvider } from '@shared/contexts/SidebarContext';
 import { isElectron } from '@shared/utils/platform';
 import { electronPushNotificationService } from '@/services/pushNotificationElectron.service';
@@ -229,12 +229,9 @@ export default function App() {
       // Electron: Setup navigation callback for notification clicks
       if (isElectron()) {
         electronPushNotificationService.setNavigationCallback((notificationData) => {
+          console.log('[App Electron] Push notification clicked:', notificationData);
 
           if (!notificationData) {
-            return;
-          }
-
-          if (!navigationRef.current?.isReady()) {
             return;
           }
 
@@ -251,72 +248,86 @@ export default function App() {
           const screenName = getNavigationScreenByType(type, flattenedData);
           const params = getNavigationParams(type, flattenedData);
 
+          console.log('[App Electron] Navigation info:', { type, screenName, params });
+
           if (!screenName || !params) {
+            console.warn('[App Electron] No screen or params for navigation');
             return;
           }
 
           // Small delay to ensure window is focused and ready
           setTimeout(() => {
             try {
-              if (screenName === 'Chats' && params.screen === 'Chat' && params.params?.chatId) {
-                // Navigate to specific chat (nested navigation)
-                const chatId = params.params.chatId;
-                const messageId = params.params.messageId;
-                console.log('[App Electron] Navigating to Chat:', chatId, messageId ? `messageId: ${messageId}` : '');
-                // @ts-ignore
-                navigationRef.current?.navigate('Chats', {
-                  screen: 'Chat',
-                  params: {
-                    chatId,
-                    ...(messageId && { messageId }),
-                  }
-                });
-              } else if (screenName === 'Tasks' && params.taskId) {
-                // Navigate to specific task (nested navigation)
-                const subtaskId = params.subtaskId;
-                const commentId = params.commentId;
-                console.log('[App Electron] Navigating to Task:', params.taskId, subtaskId ? `subtaskId: ${subtaskId}` : '', commentId ? `commentId: ${commentId}` : '');
-                // @ts-ignore
-                navigationRef.current?.navigate('Tasks', {
-                  screen: 'TaskDetail',
-                  params: {
-                    taskId: params.taskId,
-                    ...(subtaskId && { subtaskId }),
-                    ...(commentId && { commentId }),
-                  }
-                });
-              } else if (screenName === 'Polls' && params.screen === 'PollDetail' && params.params?.pollId) {
-                // Navigate to specific poll (nested navigation)
-                const pollId = params.params.pollId;
-                const commentId = params.params.commentId;
-                console.log('[App Electron] Navigating to Poll:', pollId, commentId ? `commentId: ${commentId}` : '');
-                // @ts-ignore
-                navigationRef.current?.navigate('Polls', {
-                  screen: 'PollDetail',
-                  params: {
-                    pollId,
-                    ...(commentId && { commentId }),
-                  }
-                });
+              // Use desktop navigation via global function
+              // This works because DesktopNavigationProvider registers the global function
+              // Type assertion for params from getNavigationParams
+              const p = params as Record<string, any>;
+              const nestedParams = p.params as Record<string, any> | undefined;
+
+              let navigationParams: Record<string, unknown> = {};
+              let tab = screenName;
+
+              if (screenName === 'Chats' && p.screen === 'Chat' && nestedParams?.chatId) {
+                tab = 'Chats';
+                navigationParams = {
+                  chatId: nestedParams.chatId,
+                  ...(nestedParams.messageId ? { messageId: nestedParams.messageId } : {}),
+                };
+              } else if (screenName === 'Tasks' && p.taskId) {
+                tab = 'Tasks';
+                navigationParams = {
+                  taskId: p.taskId,
+                  ...(p.subtaskId ? { subtaskId: p.subtaskId } : {}),
+                  ...(p.commentId ? { commentId: p.commentId } : {}),
+                };
+              } else if (screenName === 'Polls' && (p.screen === 'PollDetail' || nestedParams?.pollId || p.pollId)) {
+                tab = 'Polls';
+                const pollId = nestedParams?.pollId || p.pollId;
+                navigationParams = {
+                  pollId,
+                  ...(nestedParams?.commentId ? { commentId: nestedParams.commentId } : {}),
+                };
               } else if (screenName === 'Calendar') {
-                // Navigate to calendar (event detail if available)
-                if (params.eventId) {
-                  console.log('[App Electron] Navigating to Calendar with eventId:', params.eventId);
-                  // @ts-ignore
-                  navigationRef.current?.navigate('Calendar', {
-                    screen: 'CalendarMain',
-                    params: { eventId: params.eventId },
-                    initial: false,
-                  });
-                } else {
-                  console.log('[App Electron] Navigating to Calendar without eventId');
-                  // @ts-ignore
-                  navigationRef.current?.navigate('Calendar');
+                tab = 'Calendar';
+                if (p.eventId) {
+                  navigationParams = { eventId: p.eventId };
                 }
-              } else {
+              }
+
+              console.log('[App Electron] Using desktop navigation:', tab, navigationParams);
+
+              // Try desktop navigation first (for wide screens)
+              const desktopNavUsed = navigateToTabGlobal(tab, navigationParams);
+
+              if (!desktopNavUsed && navigationRef.current?.isReady()) {
+                // Fallback to mobile navigation if desktop navigation is not available
+                console.log('[App Electron] Fallback to mobile navigation');
+                if (screenName === 'Tasks' && p.taskId) {
+                  // @ts-ignore
+                  navigationRef.current?.navigate('Tasks', {
+                    screen: 'TaskDetail',
+                    params: { taskId: p.taskId },
+                  });
+                } else if (screenName === 'Polls' && (p.screen === 'PollDetail' || nestedParams?.pollId || p.pollId)) {
+                  const pollId = nestedParams?.pollId || p.pollId;
+                  // @ts-ignore
+                  navigationRef.current?.navigate('Polls', {
+                    screen: 'PollDetail',
+                    params: { pollId },
+                  });
+                } else if (screenName === 'Chats' && p.screen === 'Chat') {
+                  // @ts-ignore
+                  navigationRef.current?.navigate('Chats', params);
+                } else if (screenName === 'Calendar') {
+                  // @ts-ignore
+                  navigationRef.current?.navigate('Calendar', p.eventId ? {
+                    screen: 'CalendarMain',
+                    params: { eventId: p.eventId },
+                  } : undefined);
+                }
               }
             } catch (error) {
-              console.error('[App] Navigation error:', error);
+              console.error('[App Electron] Navigation error:', error);
             }
           }, 300);
         });

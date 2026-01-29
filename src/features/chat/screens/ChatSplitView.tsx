@@ -23,7 +23,9 @@ import { getChatDisplayName, getChatDisplayAvatar } from '../utils/chatUtils';
 type ChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Chat'>;
 
 export const ChatSplitView: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  // Card background - white for light mode to stand out from gray background
+  const cardBgColor = isDark ? theme.card : '#FFFFFF';
   const navigation = useNavigation<ChatNavigationProp>();
   const desktopNav = useDesktopNavigation();
   const currentUser = useAuthStore((state) => state.user);
@@ -108,12 +110,12 @@ export const ChatSplitView: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Список чатов слева */}
-      <View style={[styles.chatList, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={[styles.chatList, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
         <ChatListScreen onChatSelect={handleChatSelect} isDesktopMode={true} />
       </View>
 
       {/* Чат или заглушка справа */}
-      <View style={[styles.chatDetail, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={[styles.chatDetail, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
         {selectedChatId ? (
           <>
             {/* Header for desktop mode */}

@@ -4,8 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Platform, Image } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface AboutLogoProps {
@@ -16,10 +15,12 @@ interface AboutLogoProps {
 export const AboutLogo: React.FC<AboutLogoProps> = ({ appName, versionText }) => {
   const { theme } = useTheme();
 
+  const isDesktop = Platform.OS === 'web';
+
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: theme.backgroundSecondary,
-      borderBottomColor: theme.border,
+      backgroundColor: isDesktop ? 'transparent' : theme.backgroundSecondary,
+      borderBottomColor: isDesktop ? 'transparent' : theme.border,
     },
     logoContainer: {
       backgroundColor: theme.primary,
@@ -35,7 +36,11 @@ export const AboutLogo: React.FC<AboutLogoProps> = ({ appName, versionText }) =>
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       <View style={[styles.logoContainer, dynamicStyles.logoContainer]}>
-        <Ionicons name="flash" size={50} color="#FFFFFF" />
+        <Image
+          source={require('../../../../../assets/images/logo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </View>
       <Text style={[styles.appName, dynamicStyles.appName]}>{appName}</Text>
       <Text style={[styles.versionText, dynamicStyles.versionText]}>{versionText}</Text>
@@ -56,11 +61,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
+  },
+  logoImage: {
+    width: 60,
+    height: 60,
   },
   appName: {
     fontSize: 24,

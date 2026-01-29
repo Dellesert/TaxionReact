@@ -10,7 +10,6 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAboutActions } from '../../hooks/useAboutActions';
 import { AboutLogo } from '../about/AboutLogo';
 import { AboutSection } from '../about/AboutSection';
-import { AboutFeatureItem } from '../about/AboutFeatureItem';
 import { AboutInfoRow } from '../about/AboutInfoRow';
 import { AboutContactLink } from '../about/AboutContactLink';
 import { AboutFooter } from '../about/AboutFooter';
@@ -20,7 +19,6 @@ import {
   APP_NAME,
   COMPANY_NAME,
   APP_DESCRIPTION,
-  APP_FEATURES,
   CONTACT_LINKS,
 } from '../../utils/aboutConstants';
 import { formatVersionText, formatCopyrightText, getPlatformName } from '../../utils/aboutHelpers';
@@ -81,18 +79,6 @@ const AboutContent: React.FC = () => {
         {/* Description Section */}
         <AboutSection title="О приложении">
           <Text style={[styles.descriptionText, { color: theme.text }]}>{APP_DESCRIPTION}</Text>
-        </AboutSection>
-
-        {/* Features Section */}
-        <AboutSection title="Возможности">
-          {APP_FEATURES.map((feature, index) => (
-            <AboutFeatureItem
-              key={feature.text}
-              icon={feature.icon}
-              text={feature.text}
-              isLast={index === APP_FEATURES.length - 1}
-            />
-          ))}
         </AboutSection>
 
         {/* App Info Section */}

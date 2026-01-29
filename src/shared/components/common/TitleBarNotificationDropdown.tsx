@@ -143,9 +143,30 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
           console.log('[TitleBarNotificationDropdown] Using desktop navigation');
 
           // Extract actual params from nested structure
-          let navigationParams = params;
-          if (params.screen && params.params) {
-            navigationParams = params.params;
+          let navigationParams: Record<string, unknown> = { ...params };
+          if (params.screen && params.params && typeof params.params === 'object') {
+            navigationParams = params.params as Record<string, unknown>;
+          }
+
+          // Handle grouped task notifications (task_ids instead of taskId)
+          // Convert to single taskId for navigation
+          const taskIds = navigationParams.taskIds;
+          if (taskIds && Array.isArray(taskIds) && taskIds.length > 0) {
+            const firstTaskId = taskIds[0];
+            if (typeof firstTaskId === 'number') {
+              navigationParams = { taskId: firstTaskId };
+              console.log('[TitleBarNotificationDropdown] Converted taskIds to taskId:', firstTaskId);
+            }
+          }
+
+          // Handle grouped poll notifications (poll_ids if any)
+          const pollIds = navigationParams.pollIds;
+          if (pollIds && Array.isArray(pollIds) && pollIds.length > 0) {
+            const firstPollId = pollIds[0];
+            if (typeof firstPollId === 'number') {
+              navigationParams = { pollId: firstPollId };
+              console.log('[TitleBarNotificationDropdown] Converted pollIds to pollId:', firstPollId);
+            }
           }
 
           // Map screen names to desktop tabs
@@ -157,6 +178,7 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
             Polls: 'Polls',
             PollDetail: 'Polls',
             Calendar: 'Calendar',
+            EventDetail: 'Calendar',
           };
 
           const tab = screenToTabMap[screenName] || screenName;

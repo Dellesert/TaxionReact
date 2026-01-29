@@ -3,7 +3,7 @@
  * Контекст для управления навигацией на десктопе
  */
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 
 export interface DesktopNavigationParams {
   // Chat navigation
@@ -15,6 +15,9 @@ export interface DesktopNavigationParams {
 
   // Poll navigation
   pollId?: number;
+
+  // Event navigation
+  eventId?: number;
 
   // Schedule navigation
   scheduleId?: number;
@@ -32,6 +35,27 @@ interface DesktopNavigationContextValue {
 
 export const DesktopNavigationContext = createContext<DesktopNavigationContextValue | null>(null);
 
+// Global navigation function for use outside React components (e.g., push notification callbacks)
+let globalNavigateToTab: ((tab: string, params?: DesktopNavigationParams) => void) | null = null;
+
+export const setGlobalNavigateToTab = (fn: typeof globalNavigateToTab) => {
+  globalNavigateToTab = fn;
+};
+
+/**
+ * Navigate to a tab from outside React components
+ * Use this for push notification navigation in Electron desktop
+ */
+export const navigateToTabGlobal = (tab: string, params?: DesktopNavigationParams): boolean => {
+  if (globalNavigateToTab) {
+    console.log('[DesktopNavigation] navigateToTabGlobal:', tab, params);
+    globalNavigateToTab(tab, params);
+    return true;
+  }
+  console.warn('[DesktopNavigation] navigateToTabGlobal: no global function registered');
+  return false;
+};
+
 interface DesktopNavigationProviderProps {
   children: ReactNode;
 }
@@ -41,6 +65,7 @@ export const DesktopNavigationProvider: React.FC<DesktopNavigationProviderProps>
   const [navigationParams, setNavigationParams] = useState<DesktopNavigationParams | null>(null);
 
   const navigateToTab = useCallback((tab: string, params?: DesktopNavigationParams) => {
+    console.log('[DesktopNavigation] navigateToTab:', tab, params);
     setActiveTab(tab);
     if (params) {
       setNavigationParams(params);
@@ -50,6 +75,12 @@ export const DesktopNavigationProvider: React.FC<DesktopNavigationProviderProps>
   const clearNavigationParams = useCallback(() => {
     setNavigationParams(null);
   }, []);
+
+  // Register global navigation function for use outside React components
+  useEffect(() => {
+    setGlobalNavigateToTab(navigateToTab);
+    return () => setGlobalNavigateToTab(null);
+  }, [navigateToTab]);
 
   const value: DesktopNavigationContextValue = {
     activeTab,

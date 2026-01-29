@@ -24,7 +24,7 @@ import StorageContent from '../components/sections/StorageContent';
 import AboutContent from '../components/sections/AboutContent';
 
 export const ProfileSplitView: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const { isLoggingOut, handleLogout } = useProfileActions();
   const isDesktop = useIsWideScreen();
@@ -140,6 +140,9 @@ export const ProfileSplitView: React.FC = () => {
     }
   };
 
+  // Card background - white for light mode to stand out from gray background
+  const cardBgColor = isDark ? theme.card : '#FFFFFF';
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Sidebar Navigation */}
@@ -152,7 +155,7 @@ export const ProfileSplitView: React.FC = () => {
       />
 
       {/* Content Area */}
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
         {renderContent()}
       </View>
     </View>
@@ -166,6 +169,21 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginLeft: 16,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
   },
 });
 
