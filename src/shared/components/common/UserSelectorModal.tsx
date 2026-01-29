@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,10 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useDebounce } from '@shared/hooks/useDebounce';
 import Avatar from '@shared/components/common/Avatar';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && SCREEN_WIDTH >= 768;
 
 interface UserSelectorModalProps {
   visible: boolean;
@@ -341,6 +346,33 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   }, [selectedUserIds, mode, multiSelect, theme, toggleUserSelection]);
 
   const styles = StyleSheet.create({
+    desktopOverlay: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      padding: 20,
+    },
+    desktopModal: {
+      width: '100%',
+      maxWidth: 600,
+      maxHeight: '90%',
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: theme.background,
+      ...Platform.select({
+        web: {
+          boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.2)',
+        },
+        default: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.2,
+          shadowRadius: 40,
+          elevation: 10,
+        },
+      }),
+    },
     container: {
       flex: 1,
       backgroundColor: theme.background,
@@ -532,129 +564,156 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     },
   });
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
-      onRequestClose={onClose}
-    >
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backButton}>
-            <Ionicons name="close" size={24} color={theme.text} />
+  const renderContent = () => (
+    <>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onClose} style={styles.backButton}>
+          <Ionicons name="close" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{title}</Text>
+        {multiSelect && selectedUserIds.length > 0 && (
+          <TouchableOpacity onPress={handleClearAll} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>Очистить</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{title}</Text>
-          {multiSelect && selectedUserIds.length > 0 && (
-            <TouchableOpacity onPress={handleClearAll} style={styles.clearButton}>
-              <Text style={styles.clearButtonText}>Очистить</Text>
-            </TouchableOpacity>
-          )}
-          {multiSelect && (
-            <TouchableOpacity onPress={handleDone} style={styles.doneButton}>
-              <Text style={styles.doneButtonText}>
-                Готово {selectedUserIds.length > 0 && `(${selectedUserIds.length})`}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Selected Users Count */}
-        {selectedUserIds.length > 0 && multiSelect && (
-          <View style={styles.selectedCount}>
-            <Ionicons name="people" size={20} color={theme.primary} />
-            <Text style={styles.selectedCountText}>Выбрано: {selectedUserIds.length}</Text>
-          </View>
         )}
+        {multiSelect && (
+          <TouchableOpacity onPress={handleDone} style={styles.doneButton}>
+            <Text style={styles.doneButtonText}>
+              Готово {selectedUserIds.length > 0 && `(${selectedUserIds.length})`}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
-        {/* Search */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={theme.textTertiary} />
-          <TextInput
-            ref={searchInputRef}
-            style={styles.searchInput}
-            placeholder="Поиск участников..."
-            placeholderTextColor={theme.inputPlaceholder}
-            value={searchQuery}
-            onChangeText={handleSearchChange}
-            autoCorrect={false}
-            autoCapitalize="none"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={handleSearchClear}>
-              <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          )}
+      {/* Selected Users Count */}
+      {selectedUserIds.length > 0 && multiSelect && (
+        <View style={styles.selectedCount}>
+          <Ionicons name="people" size={20} color={theme.primary} />
+          <Text style={styles.selectedCountText}>Выбрано: {selectedUserIds.length}</Text>
         </View>
+      )}
 
-        {/* Users List */}
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={styles.loadingText}>Загрузка пользователей...</Text>
-          </View>
-        ) : (
-          <SectionList
-            sections={userSections}
-            keyExtractor={keyExtractor}
-            renderItem={renderUserItem}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            windowSize={21}
-            keyboardShouldPersistTaps="handled"
-            renderSectionHeader={({ section }) => {
-              if (!multiSelect) {
-                // Radio mode - non-clickable headers
-                return (
-                  <View style={styles.sectionHeaderContainer}>
-                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
-                    <Text style={styles.sectionHeaderCount}>
-                      {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
-                    </Text>
-                  </View>
-                );
-              }
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color={theme.textTertiary} />
+        <TextInput
+          ref={searchInputRef}
+          style={styles.searchInput}
+          placeholder="Поиск участников..."
+          placeholderTextColor={theme.inputPlaceholder}
+          value={searchQuery}
+          onChangeText={handleSearchChange}
+          autoCorrect={false}
+          autoCapitalize="none"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={handleSearchClear}>
+            <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-              // Multi-select mode - clickable headers with checkboxes
-              const departmentUserIds = section.data.map(u => u.id);
-              const selectedCount = departmentUserIds.filter(id => selectedUserIds.includes(id)).length;
-              const allSelected = selectedCount === departmentUserIds.length;
-              const someSelected = selectedCount > 0 && selectedCount < departmentUserIds.length;
-
+      {/* Users List */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>Загрузка пользователей...</Text>
+        </View>
+      ) : (
+        <SectionList
+          sections={userSections}
+          keyExtractor={keyExtractor}
+          renderItem={renderUserItem}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          windowSize={21}
+          keyboardShouldPersistTaps="handled"
+          renderSectionHeader={({ section }) => {
+            if (!multiSelect) {
+              // Radio mode - non-clickable headers
               return (
-                <TouchableOpacity
-                  style={styles.sectionHeaderContainer}
-                  onPress={() => toggleDepartmentSelection(section.data)}
-                >
-                  <View style={styles.sectionHeaderLeft}>
-                    <View style={[styles.sectionCheckbox, { borderColor: theme.border }, (allSelected || someSelected) && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
-                      {allSelected ? (
-                        <Ionicons name="checkmark" size={18} color="white" />
-                      ) : someSelected ? (
-                        <View style={[styles.partialCheckmark, { backgroundColor: 'white' }]} />
-                      ) : null}
-                    </View>
-                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
-                  </View>
+                <View style={styles.sectionHeaderContainer}>
+                  <Text style={styles.sectionHeaderText}>{section.title}</Text>
                   <Text style={styles.sectionHeaderCount}>
                     {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
                   </Text>
-                </TouchableOpacity>
+                </View>
               );
-            }}
-            contentContainerStyle={styles.listContent}
-            stickySectionHeadersEnabled={true}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={64} color={theme.border} />
-                <Text style={styles.emptyText}>Пользователи не найдены</Text>
-              </View>
             }
-          />
-        )}
-      </SafeAreaView>
+
+            // Multi-select mode - clickable headers with checkboxes
+            const departmentUserIds = section.data.map(u => u.id);
+            const selectedCount = departmentUserIds.filter(id => selectedUserIds.includes(id)).length;
+            const allSelected = selectedCount === departmentUserIds.length;
+            const someSelected = selectedCount > 0 && selectedCount < departmentUserIds.length;
+
+            return (
+              <TouchableOpacity
+                style={styles.sectionHeaderContainer}
+                onPress={() => toggleDepartmentSelection(section.data)}
+              >
+                <View style={styles.sectionHeaderLeft}>
+                  <View style={[styles.sectionCheckbox, { borderColor: theme.border }, (allSelected || someSelected) && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                    {allSelected ? (
+                      <Ionicons name="checkmark" size={18} color="white" />
+                    ) : someSelected ? (
+                      <View style={[styles.partialCheckmark, { backgroundColor: 'white' }]} />
+                    ) : null}
+                  </View>
+                  <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                </View>
+                <Text style={styles.sectionHeaderCount}>
+                  {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+          contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={true}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={64} color={theme.border} />
+              <Text style={styles.emptyText}>Пользователи не найдены</Text>
+            </View>
+          }
+        />
+      )}
+    </>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={isDesktop}
+      animationType={isDesktop ? 'fade' : 'slide'}
+      presentationStyle={isDesktop ? 'overFullScreen' : Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+      onRequestClose={onClose}
+    >
+      {isDesktop ? (
+        // Desktop version: centered modal with overlay
+        <TouchableOpacity
+          style={styles.desktopOverlay}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <TouchableOpacity
+            style={styles.desktopModal}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.container}>
+              {renderContent()}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      ) : (
+        // Mobile version: fullscreen
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+          {renderContent()}
+        </SafeAreaView>
+      )}
     </Modal>
   );
 };

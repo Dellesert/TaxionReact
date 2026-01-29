@@ -25,6 +25,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +37,10 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useDebounce } from '@shared/hooks/useDebounce';
 import Avatar from '@shared/components/common/Avatar';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && SCREEN_WIDTH >= 768;
 
 interface DelegateTaskModalProps {
   visible: boolean;
@@ -238,117 +243,168 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
     );
   };
 
+  const desktopStyles = StyleSheet.create({
+    overlay: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      padding: 20,
+    },
+    modal: {
+      width: '100%',
+      maxWidth: 600,
+      maxHeight: '90%',
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: theme.background,
+      ...Platform.select({
+        web: {
+          boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.2)',
+        },
+        default: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.2,
+          shadowRadius: 40,
+          elevation: 10,
+        },
+      }),
+    },
+  });
+
+  const renderContent = () => (
+    <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+      {/* Modal Header */}
+      <View style={[styles.modalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border, paddingTop: isDesktop ? 16 : Platform.OS === 'android' ? 16 + insets.top : 16 }]}>
+        <TouchableOpacity
+          onPress={onClose}
+          style={styles.closeButton}
+          disabled={isLoading}
+        >
+          <Ionicons name="close" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={[styles.modalTitle, { color: theme.text }]}>Делегировать задачу</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      {/* Search Bar */}
+      <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Ionicons
+          name="search"
+          size={20}
+          color={theme.textTertiary}
+          style={styles.searchIcon}
+        />
+        <TextInput
+          style={[styles.searchInput, { color: theme.text }]}
+          placeholder="Поиск по имени, email или должности..."
+          placeholderTextColor={theme.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+          editable={!isLoading}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setSearchQuery('')}
+            style={styles.searchClearButton}
+          >
+            <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* User List */}
+      {isLoadingUsers ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#E94444" />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Загрузка пользователей...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle" size={48} color="#EF4444" />
+          <Text style={[styles.errorText, { color: theme.textSecondary }]}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadUsers}>
+            <Text style={styles.retryButtonText}>Повторить</Text>
+          </TouchableOpacity>
+        </View>
+      ) : sections.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <Ionicons name="people-outline" size={48} color={theme.textTertiary} />
+          <Text style={[styles.emptyText, { color: theme.textTertiary }]}>
+            {searchQuery
+              ? 'Пользователи не найдены'
+              : 'Нет доступных пользователей'}
+          </Text>
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          renderItem={renderUserItem}
+          renderSectionHeader={({ section }) => (
+            <View
+              style={[
+                styles.sectionHeader,
+                { backgroundColor: theme.background },
+              ]}
+            >
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+                {section.title}
+              </Text>
+            </View>
+          )}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContainer}
+          stickySectionHeadersEnabled={true}
+        />
+      )}
+
+      {/* Footer with Delegate Button */}
+      <View style={[styles.modalFooter, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: isDesktop ? 12 : 12 + insets.bottom }]}>
+        <TouchableOpacity
+          style={[
+            styles.delegateButton,
+            (isLoading || !selectedUserId) && styles.delegateButtonDisabled,
+          ]}
+          onPress={handleDelegate}
+          disabled={isLoading || !selectedUserId}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.delegateButtonText}>Делегировать</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+      transparent={isDesktop}
+      animationType={isDesktop ? 'fade' : 'slide'}
+      presentationStyle={isDesktop ? 'overFullScreen' : Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
     >
-      <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
-        {/* Modal Header */}
-        <View style={[styles.modalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border, paddingTop: Platform.OS === 'android' ? 16 + insets.top : 16 }]}>
+      {isDesktop ? (
+        <TouchableOpacity
+          style={desktopStyles.overlay}
+          activeOpacity={1}
+          onPress={onClose}
+        >
           <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeButton}
-            disabled={isLoading}
+            style={desktopStyles.modal}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
           >
-            <Ionicons name="close" size={24} color={theme.text} />
+            {renderContent()}
           </TouchableOpacity>
-          <Text style={[styles.modalTitle, { color: theme.text }]}>Делегировать задачу</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Ionicons
-            name="search"
-            size={20}
-            color={theme.textTertiary}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={[styles.searchInput, { color: theme.text }]}
-            placeholder="Поиск по имени, email или должности..."
-            placeholderTextColor={theme.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none"
-            editable={!isLoading}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              style={styles.searchClearButton}
-            >
-              <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* User List */}
-        {isLoadingUsers ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#E94444" />
-            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Загрузка пользователей...</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.centerContainer}>
-            <Ionicons name="alert-circle" size={48} color="#EF4444" />
-            <Text style={[styles.errorText, { color: theme.textSecondary }]}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={loadUsers}>
-              <Text style={styles.retryButtonText}>Повторить</Text>
-            </TouchableOpacity>
-          </View>
-        ) : sections.length === 0 ? (
-          <View style={styles.centerContainer}>
-            <Ionicons name="people-outline" size={48} color={theme.textTertiary} />
-            <Text style={[styles.emptyText, { color: theme.textTertiary }]}>
-              {searchQuery
-                ? 'Пользователи не найдены'
-                : 'Нет доступных пользователей'}
-            </Text>
-          </View>
-        ) : (
-          <SectionList
-            sections={sections}
-            renderItem={renderUserItem}
-            renderSectionHeader={({ section }) => (
-              <View
-                style={[
-                  styles.sectionHeader,
-                  { backgroundColor: theme.background },
-                ]}
-              >
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-                  {section.title}
-                </Text>
-              </View>
-            )}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={styles.listContainer}
-            stickySectionHeadersEnabled={true}
-          />
-        )}
-
-        {/* Footer with Delegate Button */}
-        <View style={[styles.modalFooter, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: 12 + insets.bottom }]}>
-          <TouchableOpacity
-            style={[
-              styles.delegateButton,
-              (isLoading || !selectedUserId) && styles.delegateButtonDisabled,
-            ]}
-            onPress={handleDelegate}
-            disabled={isLoading || !selectedUserId}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.delegateButtonText}>Делегировать</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
+        </TouchableOpacity>
+      ) : (
+        renderContent()
+      )}
     </Modal>
   );
 };
