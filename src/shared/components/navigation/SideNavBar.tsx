@@ -314,6 +314,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     borderRightWidth: 1,
+    borderBottomRightRadius: 16,
     position: 'relative',
   },
   containerCollapsed: {

@@ -93,7 +93,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
   return (
     <View style={[styles.titleBar, { backgroundColor: theme.backgroundSecondary }]}>
       {/* Draggable area - Left side with page title (aligned with sidebar) */}
-      <View style={[styles.dragArea, { width: sidebarWidth, borderRightWidth: 1, borderRightColor: theme.border }]}>
+      <View style={[styles.dragArea, { width: sidebarWidth, borderRightWidth: 1, borderRightColor: theme.border, borderTopRightRadius: 16 }]}>
         {!isCollapsed && pageTitle ? (
           <View style={styles.pageTitleContainer}>
             <Text style={[styles.pageTitle, { color: theme.text }]} numberOfLines={1}>
