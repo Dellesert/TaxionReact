@@ -1,13 +1,25 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
+import React, { useMemo, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Platform, Pressable, GestureResponderEvent } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
 import type { Schedule, ScheduleEntry, ShiftType } from '../types/schedule.types';
 import { SHIFT_TYPE_LABELS } from '../types/schedule.types';
+import { ShiftQuickPicker } from './ShiftQuickPicker';
+
+interface CellInfo {
+  userId: number;
+  userName: string;
+  date: Date;
+  dateKey: string;
+  entry: ScheduleEntry | null;
+}
 
 interface ScheduleGridViewProps {
   schedule: Schedule;
   entries: ScheduleEntry[];
+  canEdit?: boolean;
+  onShiftSelect?: (userId: number, date: string, shiftType: ShiftType, existingEntry: ScheduleEntry | null) => Promise<void>;
+  onEntryDelete?: (entryId: number) => Promise<void>;
 }
 
 interface UserRow {
@@ -100,8 +112,21 @@ const isToday = (date: Date): boolean => {
 export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   schedule,
   entries,
+  canEdit = false,
+  onShiftSelect,
+  onEntryDelete,
 }) => {
   const { theme } = useTheme();
+
+  // Quick picker state
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
+  const [selectedCell, setSelectedCell] = useState<CellInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hoveredCell, setHoveredCell] = useState<string | null>(null); // "userId-dateKey"
+
+  // Optimistic updates - temporary local state for instant feedback
+  const [optimisticUpdates, setOptimisticUpdates] = useState<Map<string, ShiftType | 'deleted'>>(new Map());
 
   // Generate dates for the schedule period
   const dates = useMemo(() => {
@@ -139,6 +164,111 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
 
   const CELL_WIDTH = 36;
   const NAME_COLUMN_WIDTH = 180;
+
+  // Handle cell press - open quick picker
+  const handleCellPress = useCallback((
+    event: GestureResponderEvent,
+    cellInfo: CellInfo
+  ) => {
+    if (!canEdit) return;
+
+    const { pageX, pageY } = event.nativeEvent;
+    setPickerPosition({ x: pageX, y: pageY });
+    setSelectedCell(cellInfo);
+    setPickerVisible(true);
+  }, [canEdit]);
+
+  // Handle shift selection from picker with optimistic update
+  const handleShiftSelect = useCallback(async (shiftType: ShiftType) => {
+    if (!selectedCell || !onShiftSelect) return;
+
+    const cellKey = `${selectedCell.userId}-${selectedCell.dateKey}`;
+
+    // Apply optimistic update immediately for instant feedback
+    setOptimisticUpdates(prev => {
+      const next = new Map(prev);
+      next.set(cellKey, shiftType);
+      return next;
+    });
+
+    // Close picker immediately
+    setPickerVisible(false);
+    setSelectedCell(null);
+
+    try {
+      await onShiftSelect(
+        selectedCell.userId,
+        selectedCell.dateKey,
+        shiftType,
+        selectedCell.entry
+      );
+    } catch (error) {
+      console.error('Failed to save shift:', error);
+      // Revert optimistic update on error
+      setOptimisticUpdates(prev => {
+        const next = new Map(prev);
+        next.delete(cellKey);
+        return next;
+      });
+    } finally {
+      // Clear optimistic update after real data arrives (slight delay to ensure store updated)
+      setTimeout(() => {
+        setOptimisticUpdates(prev => {
+          const next = new Map(prev);
+          next.delete(cellKey);
+          return next;
+        });
+      }, 100);
+    }
+  }, [selectedCell, onShiftSelect]);
+
+  // Handle entry deletion with optimistic update
+  const handleDelete = useCallback(async () => {
+    if (!selectedCell?.entry || !onEntryDelete) return;
+
+    const cellKey = `${selectedCell.userId}-${selectedCell.dateKey}`;
+
+    // Apply optimistic delete immediately
+    setOptimisticUpdates(prev => {
+      const next = new Map(prev);
+      next.set(cellKey, 'deleted');
+      return next;
+    });
+
+    // Close picker immediately
+    setPickerVisible(false);
+    const entryId = selectedCell.entry.id;
+    setSelectedCell(null);
+
+    try {
+      await onEntryDelete(entryId);
+    } catch (error) {
+      console.error('Failed to delete entry:', error);
+      // Revert optimistic update on error
+      setOptimisticUpdates(prev => {
+        const next = new Map(prev);
+        next.delete(cellKey);
+        return next;
+      });
+    } finally {
+      // Clear optimistic update after real data arrives
+      setTimeout(() => {
+        setOptimisticUpdates(prev => {
+          const next = new Map(prev);
+          next.delete(cellKey);
+          return next;
+        });
+      }, 100);
+    }
+  }, [selectedCell, onEntryDelete]);
+
+  // Close picker
+  const handleClosePicker = useCallback(() => {
+    if (!isLoading) {
+      setPickerVisible(false);
+      setSelectedCell(null);
+    }
+  }, [isLoading]);
 
   return (
     <View style={styles.container}>
@@ -215,28 +345,56 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                     const entry = userRow.entriesByDate.get(dateKey);
                     const weekend = isWeekend(date);
                     const today = isToday(date);
+                    const cellKey = `${userRow.userId}-${dateKey}`;
+                    const isHovered = hoveredCell === cellKey;
+
+                    // Check for optimistic update
+                    const optimisticValue = optimisticUpdates.get(cellKey);
+                    const isOptimisticDelete = optimisticValue === 'deleted';
+                    const optimisticShiftType = optimisticValue && optimisticValue !== 'deleted' ? optimisticValue : null;
+
+                    // Determine what to display: optimistic update takes priority
+                    const displayShiftType = optimisticShiftType || (entry && !isOptimisticDelete ? entry.shift_type : null);
+
+                    const cellInfo: CellInfo = {
+                      userId: userRow.userId,
+                      userName: userRow.userName,
+                      date,
+                      dateKey,
+                      entry: entry || null,
+                    };
 
                     return (
-                      <View
+                      <Pressable
                         key={index}
                         style={[
                           styles.entryCell,
                           { width: CELL_WIDTH, borderColor: theme.border },
                           weekend && { backgroundColor: theme.backgroundSecondary + '50' },
                           today && { backgroundColor: theme.primary + '10' },
+                          canEdit && styles.entryCellClickable,
+                          canEdit && isHovered && { backgroundColor: theme.primary + '15' },
                         ]}
+                        onPress={(e) => handleCellPress(e, cellInfo)}
+                        onHoverIn={() => canEdit && setHoveredCell(cellKey)}
+                        onHoverOut={() => setHoveredCell(null)}
+                        disabled={!canEdit}
                       >
-                        {entry ? (
+                        {displayShiftType ? (
                           <View style={[
                             styles.shiftBadge,
-                            { backgroundColor: getShiftColor(entry.shift_type) },
+                            { backgroundColor: getShiftColor(displayShiftType) },
                           ]}>
                             <Text style={styles.shiftText}>
-                              {getShiftShortLabel(entry.shift_type)}
+                              {getShiftShortLabel(displayShiftType)}
                             </Text>
                           </View>
+                        ) : canEdit && isHovered ? (
+                          <View style={styles.addHint}>
+                            <Text style={[styles.addHintText, { color: theme.primary }]}>+</Text>
+                          </View>
                         ) : null}
-                      </View>
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -276,6 +434,17 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
           </View>
         </View>
       </View>
+
+      {/* Quick Shift Picker */}
+      <ShiftQuickPicker
+        visible={pickerVisible}
+        entry={selectedCell?.entry || null}
+        position={pickerPosition}
+        onSelectShift={handleShiftSelect}
+        onDelete={handleDelete}
+        onClose={handleClosePicker}
+        isLoading={isLoading}
+      />
     </View>
   );
 };
@@ -395,5 +564,25 @@ const styles = StyleSheet.create({
   },
   legendLabel: {
     fontSize: 12,
+  },
+  entryCellClickable: {
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        transition: 'background-color 0.15s ease',
+      },
+    }),
+  },
+  addHint: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.6,
+  },
+  addHintText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

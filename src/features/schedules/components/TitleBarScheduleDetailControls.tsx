@@ -112,7 +112,6 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
       onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
     >
       <Ionicons name="ellipsis-horizontal" size={14} color={theme.text} />
-      <Text style={[styles.buttonLabel, { color: theme.text }]}>Меню</Text>
     </View>
   );
 

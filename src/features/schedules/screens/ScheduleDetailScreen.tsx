@@ -46,6 +46,7 @@ import {
   type UpdateScheduleEntryRequest,
   type CreateTemplateEntryRequest,
   type CreateBatchTemplateEntriesRequest,
+  type ShiftType,
 } from '../types/schedule.types';
 import { templateApi } from '../api/schedule.api';
 import type { ScheduleStackParamList } from '../navigation/types';
@@ -265,6 +266,39 @@ export const ScheduleDetailScreen: React.FC = () => {
     refresh();
   }, [schedule, refresh]);
 
+  // Handler for quick shift selection in Grid View
+  // Note: No refresh() needed - store updates entries optimistically
+  const handleGridShiftSelect = useCallback(async (
+    userId: number,
+    dateKey: string, // YYYY-MM-DD
+    shiftType: ShiftType,
+    existingEntry: ScheduleEntry | null
+  ) => {
+    if (!schedule) return;
+
+    if (existingEntry) {
+      // Update existing entry
+      await updateEntry(schedule.id, existingEntry.id, { shift_type: shiftType });
+    } else {
+      // Create new entry
+      const createData: CreateScheduleEntryRequest = {
+        user_id: userId,
+        date: `${dateKey}T00:00:00Z`,
+        shift_type: shiftType,
+      };
+      await createEntry(schedule.id, createData);
+    }
+    // Store updates entries optimistically, no refresh needed
+  }, [schedule, createEntry, updateEntry]);
+
+  // Handler for entry deletion from Grid View
+  // Note: No refresh() needed - store updates entries optimistically
+  const handleGridEntryDelete = useCallback(async (entryId: number) => {
+    if (!schedule) return;
+    await deleteEntry(schedule.id, entryId);
+    // Store updates entries optimistically, no refresh needed
+  }, [schedule, deleteEntry]);
+
   const handleDeleteSchedule = useCallback(() => {
     if (!schedule) return;
     showConfirm(
@@ -462,7 +496,13 @@ export const ScheduleDetailScreen: React.FC = () => {
                       <ActivityIndicator size="small" color={theme.primary} />
                     </View>
                   ) : (
-                    <ScheduleGridView schedule={schedule} entries={entries} />
+                    <ScheduleGridView
+                      schedule={schedule}
+                      entries={entries}
+                      canEdit={canManageEntries}
+                      onShiftSelect={handleGridShiftSelect}
+                      onEntryDelete={handleGridEntryDelete}
+                    />
                   )}
                 </View>
               ) : viewMode === 'shifts' && schedule.mode === 'monthly' ? (
