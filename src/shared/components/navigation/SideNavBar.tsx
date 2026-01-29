@@ -145,7 +145,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
           <View style={[styles.searchInputContainer, { backgroundColor: theme.input, borderColor: theme.inputBorder }]}>
             <Ionicons name="search" size={16} color={theme.textSecondary} style={styles.searchIcon} />
             <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
+              style={[styles.searchInput, { color: theme.text, outlineStyle: 'none' } as any]}
               placeholder="Поиск..."
               placeholderTextColor={theme.inputPlaceholder}
               value={searchQuery}
@@ -341,23 +341,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 36,
     borderRadius: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderWidth: 1,
-    gap: 8,
+    gap: 6,
+    overflow: 'hidden',
   },
   searchIcon: {
     flexShrink: 0,
   },
   searchInput: {
     flex: 1,
+    minWidth: 0,
     fontSize: 14,
     height: 32,
     padding: 0,
-    outlineStyle: 'none',
   },
   clearButton: {
-    padding: 4,
-    flexShrink: 0,
+    padding: 2,
   },
   avatarContainer: {
     marginTop: 'auto',
