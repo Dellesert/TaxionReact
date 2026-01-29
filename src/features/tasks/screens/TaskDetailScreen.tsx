@@ -388,7 +388,7 @@ const TaskDetailScreen: React.FC = () => {
 
   // Integrate with TitleBar in Electron
   useTitleBarControlsIntegration({
-    pageTitle: 'Детали задачи',
+    pageTitle: task?.title || 'Загрузка...',
     leftControls: titleBarLeftControls,
     rightControls: titleBarRightControls,
     enabled: isElectron && isDesktop,
