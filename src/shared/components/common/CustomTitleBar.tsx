@@ -91,7 +91,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
   };
 
   return (
-    <View style={[styles.titleBar, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
+    <View style={[styles.titleBar, { backgroundColor: theme.backgroundSecondary }]}>
       {/* Draggable area - Left side with page title (aligned with sidebar) */}
       <View style={[styles.dragArea, { width: sidebarWidth, borderRightWidth: 1, borderRightColor: theme.border }]}>
         {!isCollapsed && pageTitle ? (
@@ -219,6 +219,9 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
         </View>
       </View>
 
+      {/* Bottom border - starts after sidebar */}
+      <View style={[styles.bottomBorder, { left: sidebarWidth, backgroundColor: theme.border }]} />
+
       {/* Notification Dropdown */}
       <TitleBarNotificationDropdown
         visible={notificationDropdownVisible}
@@ -238,12 +241,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    //borderBottomWidth: 1,
     // @ts-ignore - Web-only styles
     WebkitAppRegion: 'no-drag',
     userSelect: 'none',
     zIndex: 100,
     position: 'relative',
+  },
+  bottomBorder: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    height: 1,
   },
   dragArea: {
     height: '100%',
