@@ -118,10 +118,11 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
       style={[
         styles.menu,
         { backgroundColor: theme.card, borderColor: theme.border },
+        isDesktop && styles.menuDesktop,
         isDesktop && buttonPosition && {
           position: 'absolute',
           top: buttonPosition.y + buttonPosition.height + 8,
-          right: 16,
+          left: buttonPosition.x + buttonPosition.width - 220, // Выравнивание правого края меню с кнопкой
         },
       ]}
     >
@@ -250,6 +251,10 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
     }),
+  },
+  menuDesktop: {
+    width: 220,
+    maxWidth: 280,
   },
   menuItem: {
     flexDirection: 'row',

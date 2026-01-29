@@ -147,6 +147,12 @@ export const ScheduleDetailScreen: React.FC = () => {
   }, [navigation]);
 
   const handleOpenMenu = useCallback(() => {
+    // На Electron позиция устанавливается через onMenuButtonLayout из TitleBar
+    if (isElectron && isWideScreen) {
+      setShowActionMenu(true);
+      return;
+    }
+    // На обычном веб/мобильном - измеряем позицию кнопки
     if (isWideScreen && menuButtonRef.current) {
       menuButtonRef.current.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
         setMenuButtonPosition({ x: pageX, y: pageY, width, height });
@@ -155,7 +161,12 @@ export const ScheduleDetailScreen: React.FC = () => {
     } else {
       setShowActionMenu(true);
     }
-  }, [isWideScreen]);
+  }, [isElectron, isWideScreen]);
+
+  // Callback для получения позиции кнопки из TitleBar
+  const handleMenuButtonLayout = useCallback((layout: { x: number; y: number; width: number; height: number }) => {
+    setMenuButtonPosition(layout);
+  }, []);
 
   // TitleBar left controls - back button + view switcher
   const titleBarLeftControls = useMemo(() => {
@@ -185,10 +196,11 @@ export const ScheduleDetailScreen: React.FC = () => {
         showViewSwitcher={false}
         canEdit={canEdit}
         onOpenMenu={handleOpenMenu}
+        onMenuButtonLayout={handleMenuButtonLayout}
         showMenuOnly
       />
     );
-  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu]);
+  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu, handleMenuButtonLayout]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -294,6 +306,37 @@ export const ScheduleDetailScreen: React.FC = () => {
   // Handler for entry deletion from Grid View
   // Note: No refresh() needed - store updates entries optimistically
   const handleGridEntryDelete = useCallback(async (entryId: number) => {
+    if (!schedule) return;
+    await deleteEntry(schedule.id, entryId);
+    // Store updates entries optimistically, no refresh needed
+  }, [schedule, deleteEntry]);
+
+  // Handler for adding entry from Shifts View
+  const handleShiftsAddEntry = useCallback(async (
+    userId: number,
+    dateKey: string, // YYYY-MM-DD
+    shiftType: ShiftType
+  ) => {
+    if (!schedule) return;
+
+    const createData: CreateScheduleEntryRequest = {
+      user_id: userId,
+      date: `${dateKey}T00:00:00Z`,
+      shift_type: shiftType,
+    };
+    await createEntry(schedule.id, createData);
+    // Store updates entries optimistically, no refresh needed
+  }, [schedule, createEntry]);
+
+  // Handler for updating entry (replace user) from Shifts View
+  const handleShiftsUpdateEntry = useCallback(async (entryId: number, userId: number) => {
+    if (!schedule) return;
+    await updateEntry(schedule.id, entryId, { user_id: userId });
+    // Store updates entries optimistically, no refresh needed
+  }, [schedule, updateEntry]);
+
+  // Handler for entry deletion from Shifts View
+  const handleShiftsEntryDelete = useCallback(async (entryId: number) => {
     if (!schedule) return;
     await deleteEntry(schedule.id, entryId);
     // Store updates entries optimistically, no refresh needed
@@ -529,7 +572,14 @@ export const ScheduleDetailScreen: React.FC = () => {
                       <ActivityIndicator size="small" color={theme.primary} />
                     </View>
                   ) : (
-                    <ScheduleShiftsView schedule={schedule} entries={entries} />
+                    <ScheduleShiftsView
+                      schedule={schedule}
+                      entries={entries}
+                      canEdit={canManageEntries}
+                      onAddEntry={handleShiftsAddEntry}
+                      onUpdateEntry={handleShiftsUpdateEntry}
+                      onDeleteEntry={handleShiftsEntryDelete}
+                    />
                   )}
                 </View>
               ) : (

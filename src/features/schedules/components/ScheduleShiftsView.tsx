@@ -1,12 +1,18 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
+import React, { useMemo, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Platform, Pressable, GestureResponderEvent } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
-import type { Schedule, ScheduleEntry } from '../types/schedule.types';
+import type { Schedule, ScheduleEntry, ShiftType } from '../types/schedule.types';
+import { UserQuickPicker } from './UserQuickPicker';
 
 interface ScheduleShiftsViewProps {
   schedule: Schedule;
   entries: ScheduleEntry[];
+  canEdit?: boolean;
+  onAddEntry?: (userId: number, dateKey: string, shiftType: ShiftType) => Promise<void>;
+  onUpdateEntry?: (entryId: number, userId: number) => Promise<void>;
+  onDeleteEntry?: (entryId: number) => Promise<void>;
 }
 
 interface DateRow {
@@ -102,11 +108,110 @@ const getUserFullName = (entry: ScheduleEntry): string => {
   return entry.user.name || entry.user.last_name || `#${entry.user_id}`;
 };
 
+interface CellInfo {
+  dateKey: string;
+  shiftType: 'morning' | 'evening';
+  entry: ScheduleEntry | null;
+  existingUserIds: number[];
+}
+
 export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
   schedule,
   entries,
+  canEdit = false,
+  onAddEntry,
+  onUpdateEntry,
+  onDeleteEntry,
 }) => {
   const { theme } = useTheme();
+
+  // Quick picker state
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
+  const [selectedCell, setSelectedCell] = useState<CellInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hoveredCell, setHoveredCell] = useState<string | null>(null); // "dateKey-shiftType"
+
+  // Handle cell press - open quick picker
+  const handleCellPress = useCallback((
+    event: GestureResponderEvent,
+    cellInfo: CellInfo
+  ) => {
+    if (!canEdit) return;
+
+    const { pageX, pageY } = event.nativeEvent;
+    setPickerPosition({ x: pageX, y: pageY });
+    setSelectedCell(cellInfo);
+    setPickerVisible(true);
+  }, [canEdit]);
+
+  // Handle entry press - open quick picker for existing entry
+  const handleEntryPress = useCallback((
+    event: GestureResponderEvent,
+    entry: ScheduleEntry,
+    shiftType: 'morning' | 'evening',
+    existingUserIds: number[]
+  ) => {
+    if (!canEdit) return;
+    event.stopPropagation?.();
+
+    const { pageX, pageY } = event.nativeEvent;
+    const dateKey = entry.date.split('T')[0];
+    setPickerPosition({ x: pageX, y: pageY });
+    setSelectedCell({
+      dateKey,
+      shiftType,
+      entry,
+      existingUserIds,
+    });
+    setPickerVisible(true);
+  }, [canEdit]);
+
+  // Handle user selection from picker
+  const handleSelectUser = useCallback(async (userId: number) => {
+    if (!selectedCell) return;
+
+    setIsLoading(true);
+    try {
+      if (selectedCell.entry && onUpdateEntry) {
+        // Replace user in existing entry
+        await onUpdateEntry(selectedCell.entry.id, userId);
+      } else if (onAddEntry) {
+        // Add new entry
+        await onAddEntry(userId, selectedCell.dateKey, selectedCell.shiftType);
+      }
+      setPickerVisible(false);
+      setSelectedCell(null);
+    } catch (error) {
+      console.error('Failed to save entry:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCell, onAddEntry, onUpdateEntry]);
+
+  // Handle entry deletion
+  const handleDelete = useCallback(async () => {
+    if (!selectedCell?.entry || !onDeleteEntry) return;
+
+    setIsLoading(true);
+    try {
+      await onDeleteEntry(selectedCell.entry.id);
+      setPickerVisible(false);
+      setSelectedCell(null);
+    } catch (error) {
+      console.error('Failed to delete entry:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCell, onDeleteEntry]);
+
+  // Close picker
+  const handleClosePicker = useCallback(() => {
+    if (!isLoading) {
+      setPickerVisible(false);
+      setSelectedCell(null);
+    }
+  }, [isLoading]);
 
   // Generate dates and group entries by date and shift
   const dateRows = useMemo((): DateRow[] => {
@@ -142,8 +247,20 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
     });
   }, [schedule.start_date, schedule.end_date, entries]);
 
-  const renderEntry = (entry: ScheduleEntry) => (
-    <View key={entry.id} style={styles.entryItem}>
+  const renderEntry = (
+    entry: ScheduleEntry,
+    shiftType: 'morning' | 'evening',
+    existingUserIds: number[]
+  ) => (
+    <Pressable
+      key={entry.id}
+      style={[
+        styles.entryItem,
+        canEdit && styles.entryItemClickable,
+      ]}
+      onPress={(e) => handleEntryPress(e, entry, shiftType, existingUserIds)}
+      disabled={!canEdit}
+    >
       <Avatar
         name={getUserFullName(entry)}
         imageUrl={entry.user?.avatar}
@@ -152,7 +269,10 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
       <Text style={[styles.nameText, { color: theme.text }]} numberOfLines={1}>
         {getUserDisplayName(entry)}
       </Text>
-    </View>
+      {canEdit && (
+        <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+      )}
+    </Pressable>
   );
 
   return (
@@ -215,27 +335,97 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
                 </View>
 
                 {/* Morning cell */}
-                <View style={[styles.shiftCell, { borderRightColor: theme.border }]}>
-                  {row.morningEntries.length > 0 && (
-                    <View style={styles.namesContainer}>
-                      {row.morningEntries.map(renderEntry)}
-                    </View>
-                  )}
-                </View>
+                {(() => {
+                  const morningUserIds = row.morningEntries.map(e => e.user_id);
+                  const morningCellKey = `${row.dateKey}-morning`;
+                  const isMorningHovered = hoveredCell === morningCellKey;
+
+                  return (
+                    <Pressable
+                      style={[
+                        styles.shiftCell,
+                        { borderRightColor: theme.border },
+                        canEdit && styles.shiftCellClickable,
+                        canEdit && isMorningHovered && { backgroundColor: theme.primary + '08' },
+                      ]}
+                      onPress={(e) => handleCellPress(e, {
+                        dateKey: row.dateKey,
+                        shiftType: 'morning',
+                        entry: null,
+                        existingUserIds: morningUserIds,
+                      })}
+                      onHoverIn={() => canEdit && setHoveredCell(morningCellKey)}
+                      onHoverOut={() => setHoveredCell(null)}
+                      disabled={!canEdit}
+                    >
+                      {row.morningEntries.length > 0 ? (
+                        <View style={styles.namesContainer}>
+                          {row.morningEntries.map(entry => renderEntry(entry, 'morning', morningUserIds))}
+                        </View>
+                      ) : canEdit && isMorningHovered ? (
+                        <View style={styles.addHint}>
+                          <Ionicons name="add" size={18} color={theme.primary} />
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  );
+                })()}
 
                 {/* Evening cell */}
-                <View style={[styles.shiftCell, styles.lastColumn]}>
-                  {row.eveningEntries.length > 0 && (
-                    <View style={styles.namesContainer}>
-                      {row.eveningEntries.map(renderEntry)}
-                    </View>
-                  )}
-                </View>
+                {(() => {
+                  const eveningUserIds = row.eveningEntries.map(e => e.user_id);
+                  const eveningCellKey = `${row.dateKey}-evening`;
+                  const isEveningHovered = hoveredCell === eveningCellKey;
+
+                  return (
+                    <Pressable
+                      style={[
+                        styles.shiftCell,
+                        styles.lastColumn,
+                        canEdit && styles.shiftCellClickable,
+                        canEdit && isEveningHovered && { backgroundColor: theme.primary + '08' },
+                      ]}
+                      onPress={(e) => handleCellPress(e, {
+                        dateKey: row.dateKey,
+                        shiftType: 'evening',
+                        entry: null,
+                        existingUserIds: eveningUserIds,
+                      })}
+                      onHoverIn={() => canEdit && setHoveredCell(eveningCellKey)}
+                      onHoverOut={() => setHoveredCell(null)}
+                      disabled={!canEdit}
+                    >
+                      {row.eveningEntries.length > 0 ? (
+                        <View style={styles.namesContainer}>
+                          {row.eveningEntries.map(entry => renderEntry(entry, 'evening', eveningUserIds))}
+                        </View>
+                      ) : canEdit && isEveningHovered ? (
+                        <View style={styles.addHint}>
+                          <Ionicons name="add" size={18} color={theme.primary} />
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  );
+                })()}
               </View>
             );
           })}
         </View>
       </ScrollView>
+
+      {/* User Quick Picker */}
+      <UserQuickPicker
+        visible={pickerVisible}
+        entry={selectedCell?.entry || null}
+        position={pickerPosition}
+        dateKey={selectedCell?.dateKey || ''}
+        shiftType={selectedCell?.shiftType || 'morning'}
+        onSelectUser={handleSelectUser}
+        onDelete={handleDelete}
+        onClose={handleClosePicker}
+        isLoading={isLoading}
+        existingUserIds={selectedCell?.existingUserIds || []}
+      />
     </View>
   );
 };
@@ -258,11 +448,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 2,
     ...(Platform.OS === 'web' && {
-      position: 'sticky',
+      position: 'sticky' as const,
       top: 0,
       zIndex: 10,
     }),
-  },
+  } as any,
   dateHeaderCell: {
     width: 90,
     paddingVertical: 12,
@@ -313,6 +503,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRightWidth: 1,
     justifyContent: 'center',
+    minHeight: 44,
   },
   namesContainer: {
     gap: 6,
@@ -321,9 +512,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginHorizontal: -8,
+    borderRadius: 8,
+  },
+  entryItemClickable: {
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        transition: 'background-color 0.15s ease',
+      },
+    }),
   },
   nameText: {
     fontSize: 13,
     flex: 1,
+  },
+  shiftCellClickable: {
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        transition: 'background-color 0.15s ease',
+      },
+    }),
+  },
+  addHint: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    opacity: 0.6,
   },
 });
