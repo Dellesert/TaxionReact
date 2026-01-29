@@ -353,6 +353,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     height: 32,
     padding: 0,
+    outlineStyle: 'none',
   },
   clearButton: {
     padding: 4,
