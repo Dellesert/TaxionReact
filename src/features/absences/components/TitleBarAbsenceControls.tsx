@@ -26,6 +26,8 @@ interface TitleBarAbsenceControlsProps {
   viewMode?: AbsenceViewMode;
   /** Callback when view mode changes */
   onViewModeChange?: (mode: AbsenceViewMode) => void;
+  /** Ref for filter button (for positioning dropdown) */
+  filterButtonRef?: React.RefObject<View>;
 }
 
 export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = ({
@@ -38,6 +40,7 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
   showActionsOnly = false,
   viewMode = 'list',
   onViewModeChange,
+  filterButtonRef,
 }) => {
   const { theme } = useTheme();
 
@@ -66,6 +69,8 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
         {/* Filter Button */}
         {onFilterPress && (
           <View
+            ref={filterButtonRef}
+            collapsable={false}
             style={[styles.filterButton, { backgroundColor: theme.backgroundTertiary }]}
             // @ts-ignore - Web-only
             onClick={onFilterPress}

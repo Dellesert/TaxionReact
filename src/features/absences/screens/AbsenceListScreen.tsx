@@ -246,6 +246,7 @@ export const AbsenceListScreen: React.FC = () => {
         selectedTypeFilter={selectedTypeFilter}
         onCreatePress={handleCreateAbsence}
         showActionsOnly
+        filterButtonRef={filterButtonRef}
       />
     );
   }, [isElectron, isDesktop, selectedYear, handleYearChange, handleFilterToggle, selectedTypeFilter, handleCreateAbsence]);
