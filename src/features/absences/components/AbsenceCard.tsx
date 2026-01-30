@@ -10,6 +10,7 @@ import {
   ABSENCE_TYPE_LABELS,
   ABSENCE_TYPE_COLORS,
   type Absence,
+  type Substitution,
 } from '../types/absence.types';
 
 interface AbsenceCardProps {
@@ -43,6 +44,17 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
   const getAvatarUrl = () => {
     return absence.user?.avatar || undefined;
   };
+
+  const getSubstituteName = (sub: Substitution) => {
+    if (sub.substitute?.name) return sub.substitute.name;
+    if (sub.substitute?.first_name && sub.substitute?.last_name) {
+      return `${sub.substitute.last_name} ${sub.substitute.first_name}`;
+    }
+    return `#${sub.substitute_id}`;
+  };
+
+  const hasSubstitutions = absence.substitutions && absence.substitutions.length > 0;
+  const substitutionCount = absence.substitution_count ?? absence.substitutions?.length ?? 0;
 
   return (
     <TouchableOpacity
@@ -98,6 +110,42 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
           >
             {absence.reason}
           </Text>
+        )}
+
+        {/* Substitutions row */}
+        {(hasSubstitutions || substitutionCount > 0) && (
+          <View style={[styles.substitutionsRow, { backgroundColor: theme.background }]}>
+            <View style={[styles.substitutionIcon, { backgroundColor: `${theme.primary}15` }]}>
+              <Ionicons name="people" size={12} color={theme.primary} />
+            </View>
+            {hasSubstitutions ? (
+              absence.substitutions!.length === 1 ? (
+                <Text style={[styles.substitutesText, { color: theme.textSecondary }]} numberOfLines={1}>
+                  Замещает: <Text style={{ color: theme.text, fontWeight: '500' }}>{getSubstituteName(absence.substitutions![0])}</Text>
+                </Text>
+              ) : (
+                <View style={styles.multipleSubstitutes}>
+                  {absence.substitutions!.slice(0, 2).map((sub, index) => (
+                    <Text key={sub.id} style={[styles.substituteWithDate, { color: theme.textSecondary }]} numberOfLines={1}>
+                      <Text style={{ color: theme.text, fontWeight: '500' }}>{getSubstituteName(sub)}</Text>
+                      {' '}
+                      <Text style={{ fontSize: 11 }}>({formatDate(sub.start_date)}–{formatDate(sub.end_date)})</Text>
+                      {index < Math.min(absence.substitutions!.length, 2) - 1 && ', '}
+                    </Text>
+                  ))}
+                  {absence.substitutions!.length > 2 && (
+                    <Text style={[styles.moreCount, { color: theme.textTertiary }]}>
+                      {' '}+{absence.substitutions!.length - 2}
+                    </Text>
+                  )}
+                </View>
+              )
+            ) : (
+              <Text style={[styles.substitutesText, { color: theme.textSecondary }]}>
+                {substitutionCount} замещени{substitutionCount === 1 ? 'е' : substitutionCount >= 2 && substitutionCount <= 4 ? 'я' : 'й'}
+              </Text>
+            )}
+          </View>
         )}
       </View>
     </TouchableOpacity>
@@ -161,5 +209,37 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 2,
     fontStyle: 'italic',
+  },
+  substitutionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  substitutionIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  substitutesText: {
+    fontSize: 12,
+    flex: 1,
+  },
+  multipleSubstitutes: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  substituteWithDate: {
+    fontSize: 12,
+  },
+  moreCount: {
+    fontSize: 11,
   },
 });

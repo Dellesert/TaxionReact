@@ -5,6 +5,9 @@ import type {
   AbsenceFilters,
   CreateAbsenceRequest,
   UpdateAbsenceRequest,
+  Substitution,
+  CreateSubstitutionRequest,
+  UpdateSubstitutionRequest,
 } from '../types/absence.types';
 
 interface AbsenceState {
@@ -12,6 +15,11 @@ interface AbsenceState {
   absences: Absence[];
   currentAbsence: Absence | null;
   userAbsences: Absence[];
+
+  // Substitutions
+  substitutions: Substitution[];
+  isLoadingSubstitutions: boolean;
+  isSubmittingSubstitution: boolean;
 
   // Loading states
   isLoading: boolean;
@@ -38,6 +46,20 @@ interface AbsenceState {
   // Actions - User Absences
   loadUserAbsences: (userId: number, startDate?: string, endDate?: string) => Promise<void>;
 
+  // Actions - Substitutions
+  loadSubstitutions: (absenceId: number) => Promise<Substitution[]>;
+  createSubstitution: (
+    absenceId: number,
+    data: CreateSubstitutionRequest
+  ) => Promise<Substitution>;
+  updateSubstitution: (
+    absenceId: number,
+    substitutionId: number,
+    data: UpdateSubstitutionRequest
+  ) => Promise<Substitution>;
+  deleteSubstitution: (absenceId: number, substitutionId: number) => Promise<void>;
+  clearSubstitutions: () => void;
+
   // Utility
   setFilters: (filters: AbsenceFilters) => void;
   clearError: () => void;
@@ -48,6 +70,9 @@ const initialState = {
   absences: [] as Absence[],
   currentAbsence: null as Absence | null,
   userAbsences: [] as Absence[],
+  substitutions: [] as Substitution[],
+  isLoadingSubstitutions: false,
+  isSubmittingSubstitution: false,
   isLoading: false,
   isLoadingUser: false,
   isSubmitting: false,
@@ -199,6 +224,91 @@ export const useAbsenceStore = create<AbsenceState>((set, get) => ({
       set({ isLoadingUser: false });
     }
   },
+
+  // ============================================
+  // SUBSTITUTIONS
+  // ============================================
+
+  loadSubstitutions: async (absenceId) => {
+    set({ isLoadingSubstitutions: true, error: null });
+
+    try {
+      const substitutions = await absenceApi.getSubstitutions(absenceId);
+      set({ substitutions });
+      return substitutions;
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось загрузить замещения';
+      set({ error: message });
+      throw error;
+    } finally {
+      set({ isLoadingSubstitutions: false });
+    }
+  },
+
+  createSubstitution: async (absenceId, data) => {
+    set({ isSubmittingSubstitution: true, error: null });
+
+    try {
+      const substitution = await absenceApi.createSubstitution(absenceId, data);
+      set((state) => ({
+        substitutions: [...state.substitutions, substitution],
+      }));
+      return substitution;
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось создать замещение';
+      set({ error: message });
+      throw error;
+    } finally {
+      set({ isSubmittingSubstitution: false });
+    }
+  },
+
+  updateSubstitution: async (absenceId, substitutionId, data) => {
+    set({ isSubmittingSubstitution: true, error: null });
+
+    try {
+      const updated = await absenceApi.updateSubstitution(
+        absenceId,
+        substitutionId,
+        data
+      );
+      set((state) => ({
+        substitutions: state.substitutions.map((s) =>
+          s.id === substitutionId ? updated : s
+        ),
+      }));
+      return updated;
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось обновить замещение';
+      set({ error: message });
+      throw error;
+    } finally {
+      set({ isSubmittingSubstitution: false });
+    }
+  },
+
+  deleteSubstitution: async (absenceId, substitutionId) => {
+    set({ isSubmittingSubstitution: true, error: null });
+
+    try {
+      await absenceApi.deleteSubstitution(absenceId, substitutionId);
+      set((state) => ({
+        substitutions: state.substitutions.filter((s) => s.id !== substitutionId),
+      }));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось удалить замещение';
+      set({ error: message });
+      throw error;
+    } finally {
+      set({ isSubmittingSubstitution: false });
+    }
+  },
+
+  clearSubstitutions: () => set({ substitutions: [] }),
 
   // ============================================
   // UTILITY

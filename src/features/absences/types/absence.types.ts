@@ -69,6 +69,22 @@ export interface Absence {
   creator?: AbsenceUser;
   created_at: string;
   updated_at: string;
+  // Substitutions (optional, may be included in list response)
+  substitutions?: Substitution[];
+  substitution_count?: number;
+}
+
+// Forward declaration for Absence
+export interface Substitution {
+  id: number;
+  absence_id: number;
+  substitute_id: number;
+  substitute?: AbsenceUser;
+  start_date: string;
+  end_date: string;
+  note?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============================================
@@ -118,4 +134,22 @@ export interface AbsenceFilters {
   start_date?: string;
   end_date?: string;
   sort_order?: 'asc' | 'desc';
+}
+
+// ============================================
+// SUBSTITUTION REQUEST DTOs
+// ============================================
+
+export interface CreateSubstitutionRequest {
+  substitute_id: number;
+  start_date: string;
+  end_date: string;
+  note?: string;
+}
+
+export interface UpdateSubstitutionRequest {
+  substitute_id?: number;
+  start_date?: string;
+  end_date?: string;
+  note?: string;
 }

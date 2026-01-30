@@ -52,20 +52,23 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
     }, [month.date]);
 
-    // Separate absence events from regular events
-    const { absenceEvents, regularEvents } = useMemo(() => {
+    // Separate absence, substitution, and regular events
+    const { absenceEvents, substitutionEvents, regularEvents } = useMemo(() => {
       const absences: Event[] = [];
+      const substitutions: Event[] = [];
       const regular: Event[] = [];
 
       month.events.forEach((event) => {
         if (event.type === 'absence') {
           absences.push(event);
+        } else if (event.type === 'substitution') {
+          substitutions.push(event);
         } else {
           regular.push(event);
         }
       });
 
-      return { absenceEvents: absences, regularEvents: regular };
+      return { absenceEvents: absences, substitutionEvents: substitutions, regularEvents: regular };
     }, [month.events]);
 
     // Group regular events by date
@@ -128,6 +131,45 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       return 'middle';
     }, []);
 
+    // Check if a date falls within any substitution period
+    const getSubstitutionForDate = useCallback((date: Date): Event | null => {
+      const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+      for (const substitution of substitutionEvents) {
+        const startDate = parseISO(substitution.start_time);
+        const endDate = parseISO(substitution.end_time);
+
+        // Use UTC components to avoid timezone issues
+        const subStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+        const subEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+        if (isWithinInterval(checkDate, { start: subStart, end: subEnd })) {
+          return substitution;
+        }
+      }
+
+      return null;
+    }, [substitutionEvents]);
+
+    // Get position of date in substitution range (for styling)
+    const getSubstitutionPosition = useCallback((date: Date, substitution: Event): 'start' | 'middle' | 'end' | 'single' => {
+      const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const startDate = parseISO(substitution.start_time);
+      const endDate = parseISO(substitution.end_time);
+
+      // Use UTC components to avoid timezone issues
+      const subStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+      const subEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+      const isStart = isSameDay(checkDate, subStart);
+      const isEnd = isSameDay(checkDate, subEnd);
+
+      if (isStart && isEnd) return 'single';
+      if (isStart) return 'start';
+      if (isEnd) return 'end';
+      return 'middle';
+    }, []);
+
     // Get events for a specific date
     const getEventsForDate = (date: Date): Event[] => {
       const year = date.getFullYear();
@@ -167,6 +209,11 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       const absence = getAbsenceForDate(normalizedDate);
       const hasAbsence = absence !== null && isCurrentMonth;
       const absencePosition = hasAbsence ? getAbsencePosition(normalizedDate, absence!) : null;
+
+      // Check for substitution on this date
+      const substitution = getSubstitutionForDate(normalizedDate);
+      const hasSubstitution = substitution !== null && isCurrentMonth;
+      const substitutionPosition = hasSubstitution ? getSubstitutionPosition(normalizedDate, substitution!) : null;
 
       // Check if it's first/last day of week for proper corner rounding
       const isFirstDayOfWeek = dayIndex === 0;
@@ -218,6 +265,44 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
           borderLeftWidth: (absencePosition === 'start' || absencePosition === 'single' || isFirstDayOfWeek) ? 1.5 : 0,
           borderRightWidth: (absencePosition === 'end' || absencePosition === 'single' || isLastDayOfWeek) ? 1.5 : 0,
           borderColor,
+        };
+      };
+
+      // Get substitution bar style (horizontal stripe at bottom)
+      const getSubstitutionBarStyle = () => {
+        if (!hasSubstitution) return null;
+
+        const barColor = substitution!.color || '#FF9800'; // Orange default
+
+        // Determine corner rounding based on position and week boundaries
+        let borderTopLeftRadius = 0;
+        let borderBottomLeftRadius = 0;
+        let borderTopRightRadius = 0;
+        let borderBottomRightRadius = 0;
+
+        // Round left corners if start of substitution OR first day of week
+        if (substitutionPosition === 'single' || substitutionPosition === 'start' || isFirstDayOfWeek) {
+          borderTopLeftRadius = 3;
+          borderBottomLeftRadius = 3;
+        }
+
+        // Round right corners if end of substitution OR last day of week
+        if (substitutionPosition === 'single' || substitutionPosition === 'end' || isLastDayOfWeek) {
+          borderTopRightRadius = 3;
+          borderBottomRightRadius = 3;
+        }
+
+        return {
+          position: 'absolute' as const,
+          bottom: 0,
+          height: 4,
+          left: (substitutionPosition === 'start' || substitutionPosition === 'single' || isFirstDayOfWeek) ? 4 : 0,
+          right: (substitutionPosition === 'end' || substitutionPosition === 'single' || isLastDayOfWeek) ? 4 : 0,
+          backgroundColor: barColor,
+          borderTopLeftRadius,
+          borderBottomLeftRadius,
+          borderTopRightRadius,
+          borderBottomRightRadius,
         };
       };
 
@@ -273,6 +358,9 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
               )}
             </View>
           )}
+
+          {/* Substitution bar - horizontal stripe at bottom */}
+          {hasSubstitution && <View style={getSubstitutionBarStyle()} />}
         </TouchableOpacity>
       );
     };

@@ -16,72 +16,100 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { ActionModal } from '@shared/components/common/ActionModal';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
+import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useAbsenceStore } from '../store/absenceStore';
-import { AbsenceTypeIcon } from './AbsenceTypeIcon';
-import { SubstitutionsSection } from './SubstitutionsSection';
-import {
-  Absence,
-  AbsenceType,
-  ABSENCE_TYPES,
-  ABSENCE_TYPE_LABELS,
-  ABSENCE_TYPE_COLORS,
-  UpdateAbsenceRequest,
+import type {
+  Substitution,
+  CreateSubstitutionRequest,
+  UpdateSubstitutionRequest,
 } from '../types/absence.types';
 
-interface EditAbsenceModalProps {
+interface AddSubstitutionModalProps {
   visible: boolean;
   onClose: () => void;
-  absence: Absence | null;
-  onAbsenceUpdated?: () => void;
-  onAbsenceDeleted?: () => void;
+  absenceId: number;
+  absenceUserId: number;
+  absenceStartDate: string;
+  absenceEndDate: string;
+  editingSubstitution?: Substitution | null;
+  onSuccess?: () => void;
 }
 
-export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
+export const AddSubstitutionModal: React.FC<AddSubstitutionModalProps> = ({
   visible,
   onClose,
-  absence,
-  onAbsenceUpdated,
-  onAbsenceDeleted,
+  absenceId,
+  absenceUserId,
+  absenceStartDate,
+  absenceEndDate,
+  editingSubstitution,
+  onSuccess,
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
 
-  const { updateAbsence, deleteAbsence, isSubmitting } = useAbsenceStore();
-
-  // Local confirm dialog state (для корректной работы на iOS)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const {
+    createSubstitution,
+    updateSubstitution,
+    isSubmittingSubstitution,
+  } = useAbsenceStore();
 
   // Form state
-  const [selectedType, setSelectedType] = useState<AbsenceType | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(() => new Date());
   const [endDate, setEndDate] = useState(() => new Date());
-  const [reason, setReason] = useState('');
+  const [note, setNote] = useState('');
 
-  // Date pickers
+  // Pickers
+  const [showUserPicker, setShowUserPicker] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
-  // Initialize form when absence changes
+  // Parse absence dates for constraints
+  const parsedAbsenceStart = parseISO(absenceStartDate);
+  const parsedAbsenceEnd = parseISO(absenceEndDate);
+  const minDate = new Date(
+    parsedAbsenceStart.getUTCFullYear(),
+    parsedAbsenceStart.getUTCMonth(),
+    parsedAbsenceStart.getUTCDate()
+  );
+  const maxDate = new Date(
+    parsedAbsenceEnd.getUTCFullYear(),
+    parsedAbsenceEnd.getUTCMonth(),
+    parsedAbsenceEnd.getUTCDate()
+  );
+
+  // Initialize form when modal opens or editing changes
   useEffect(() => {
-    if (absence && visible) {
-      setSelectedType(absence.type);
-      // Parse ISO dates and extract date components to avoid timezone issues
-      // We want to display the date as stored, not converted to local timezone
-      const parsedStart = parseISO(absence.start_date);
-      const parsedEnd = parseISO(absence.end_date);
-      // Use UTC components to create local dates for display
-      setStartDate(new Date(parsedStart.getUTCFullYear(), parsedStart.getUTCMonth(), parsedStart.getUTCDate()));
-      setEndDate(new Date(parsedEnd.getUTCFullYear(), parsedEnd.getUTCMonth(), parsedEnd.getUTCDate()));
-      setReason(absence.reason || '');
+    if (visible) {
+      if (editingSubstitution) {
+        setSelectedUserId(editingSubstitution.substitute_id);
+        setSelectedUserName(
+          editingSubstitution.substitute?.name ||
+          (editingSubstitution.substitute?.first_name && editingSubstitution.substitute?.last_name
+            ? `${editingSubstitution.substitute.last_name} ${editingSubstitution.substitute.first_name}`
+            : null)
+        );
+        const parsedStart = parseISO(editingSubstitution.start_date);
+        const parsedEnd = parseISO(editingSubstitution.end_date);
+        setStartDate(new Date(parsedStart.getUTCFullYear(), parsedStart.getUTCMonth(), parsedStart.getUTCDate()));
+        setEndDate(new Date(parsedEnd.getUTCFullYear(), parsedEnd.getUTCMonth(), parsedEnd.getUTCDate()));
+        setNote(editingSubstitution.note || '');
+      } else {
+        setSelectedUserId(null);
+        setSelectedUserName(null);
+        setStartDate(minDate);
+        setEndDate(maxDate);
+        setNote('');
+      }
     }
-  }, [absence, visible]);
+  }, [visible, editingSubstitution]);
 
   const handleStartDateChange = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
@@ -99,10 +127,8 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!absence) return;
-
-    if (!selectedType) {
-      showError('Выберите тип');
+    if (!selectedUserId) {
+      showError('Выберите замещающего сотрудника');
       return;
     }
     if (endDate < startDate) {
@@ -111,59 +137,40 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
     }
 
     try {
-      // Use YYYY-MM-DD format to avoid timezone issues
-      // The backend should interpret these as date-only values
       const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
       const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
-      // Create UTC dates to avoid local timezone offset issues
       const startDateISO = `${startDateStr}T00:00:00.000Z`;
       const endDateISO = `${endDateStr}T23:59:59.000Z`;
 
-      const data: UpdateAbsenceRequest = {
-        type: selectedType,
-        start_date: startDateISO,
-        end_date: endDateISO,
-        reason: reason.trim() || undefined,
-      };
-
-      await updateAbsence(absence.id, data);
-      showSuccess('Обновлено');
-      onAbsenceUpdated?.();
+      if (editingSubstitution) {
+        const data: UpdateSubstitutionRequest = {
+          substitute_id: selectedUserId,
+          start_date: startDateISO,
+          end_date: endDateISO,
+          note: note.trim() || undefined,
+        };
+        await updateSubstitution(absenceId, editingSubstitution.id, data);
+        showSuccess('Замещение обновлено');
+      } else {
+        const data: CreateSubstitutionRequest = {
+          substitute_id: selectedUserId,
+          start_date: startDateISO,
+          end_date: endDateISO,
+          note: note.trim() || undefined,
+        };
+        await createSubstitution(absenceId, data);
+        showSuccess('Замещение добавлено');
+      }
+      onSuccess?.();
       onClose();
     } catch (error: any) {
-      showError(error.message || 'Не удалось обновить ');
+      showError(error.message || 'Не удалось сохранить замещение');
     }
   };
 
-  const handleDelete = () => {
-    if (!absence) return;
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!absence) return;
-    setIsDeleting(true);
-    try {
-      await deleteAbsence(absence.id);
-      showSuccess('Удалено');
-      setShowDeleteConfirm(false);
-      onAbsenceDeleted?.();
-      onClose();
-    } catch (error: any) {
-      showError(error.message || 'Не удалось удалить');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const isValid = selectedType && endDate >= startDate;
-
-  if (!absence) return null;
-
-  const userName = absence.user
-    ? `${absence.user.last_name || ''} ${absence.user.first_name || ''}`.trim() || absence.user.name
-    : `Пользователь #${absence.user_id}`;
+  const isValid = selectedUserId && endDate >= startDate;
+  const isEditing = !!editingSubstitution;
 
   return (
     <Modal
@@ -205,7 +212,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
 
             <View style={styles.headerCenter}>
               <Text style={[styles.headerTitle, { color: theme.text }]}>
-                Редактирование
+                {isEditing ? 'Редактирование' : 'Новое замещение'}
               </Text>
             </View>
 
@@ -219,71 +226,39 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* User Info (read-only) */}
+            {/* User Selection */}
             <View style={styles.inputSection}>
               <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Сотрудник
+                Замещающий сотрудник *
               </Text>
-              <View
+              <TouchableOpacity
                 style={[
-                  styles.infoBox,
+                  styles.selectorButton,
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  !!selectedUserId && { borderColor: theme.primary, borderWidth: 2 },
                 ]}
+                onPress={() => setShowUserPicker(true)}
               >
-                <Ionicons name="person-outline" size={20} color={theme.primary} />
-                <Text style={[styles.infoText, { color: theme.text }]}>
-                  {userName}
+                <Ionicons
+                  name={selectedUserId ? 'person' : 'person-outline'}
+                  size={20}
+                  color={selectedUserId ? theme.primary : theme.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.selectorText,
+                    { color: selectedUserId ? theme.text : theme.textSecondary },
+                  ]}
+                >
+                  {selectedUserName || (selectedUserId ? `Сотрудник #${selectedUserId}` : 'Выберите сотрудника')}
                 </Text>
-              </View>
-            </View>
-
-            {/* Type Selection */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Тип
-              </Text>
-              <View style={styles.typeGrid}>
-                {ABSENCE_TYPES.map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.typeCard,
-                      { backgroundColor: theme.card, borderColor: theme.border },
-                      selectedType === type && {
-                        borderColor: ABSENCE_TYPE_COLORS[type],
-                        borderWidth: 2,
-                      },
-                    ]}
-                    onPress={() => setSelectedType(type)}
-                  >
-                    <AbsenceTypeIcon type={type} size="medium" />
-                    <Text
-                      style={[
-                        styles.typeLabel,
-                        { color: theme.text },
-                        selectedType === type && { fontWeight: '600' },
-                      ]}
-                    >
-                      {ABSENCE_TYPE_LABELS[type]}
-                    </Text>
-                    {selectedType === type && (
-                      <View
-                        style={[
-                          styles.typeCheck,
-                          { backgroundColor: ABSENCE_TYPE_COLORS[type] },
-                        ]}
-                      >
-                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              </TouchableOpacity>
             </View>
 
             {/* Date Range */}
             <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Период *</Text>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>Период замещения *</Text>
               <View style={styles.dateRow}>
                 <TouchableOpacity
                   style={[
@@ -313,12 +288,15 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                   </Text>
                 </TouchableOpacity>
               </View>
+              <Text style={[styles.dateHint, { color: theme.textTertiary }]}>
+                В пределах периода отсутствия: {format(minDate, 'dd MMM', { locale: ru })} — {format(maxDate, 'dd MMM', { locale: ru })}
+              </Text>
             </View>
 
-            {/* Reason */}
+            {/* Note */}
             <View style={styles.inputSection}>
               <Text style={[styles.inputLabel, { color: theme.text }]}>
-                Причина (необязательно)
+                Примечание (необязательно)
               </Text>
               <TextInput
                 style={[
@@ -329,40 +307,19 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                     color: theme.text,
                   },
                 ]}
-                placeholder="Укажите причину..."
+                placeholder="Например: замещает на первую неделю"
                 placeholderTextColor={theme.inputPlaceholder}
-                value={reason}
-                onChangeText={setReason}
-                maxLength={500}
+                value={note}
+                onChangeText={setNote}
+                maxLength={200}
                 multiline
-                numberOfLines={3}
+                numberOfLines={2}
                 textAlignVertical="top"
               />
               <Text style={[styles.charCount, { color: theme.textTertiary }]}>
-                {reason.length}/500
+                {note.length}/200
               </Text>
             </View>
-
-            {/* Substitutions */}
-            {absence && (
-              <SubstitutionsSection
-                absenceId={absence.id}
-                absenceUserId={absence.user_id}
-                absenceStartDate={absence.start_date}
-                absenceEndDate={absence.end_date}
-              />
-            )}
-
-            {/* Delete Button */}
-            <TouchableOpacity
-              style={[styles.deleteButton, { borderColor: theme.error }]}
-              onPress={handleDelete}
-            >
-              <Ionicons name="trash-outline" size={20} color={theme.error} />
-              <Text style={[styles.deleteButtonText, { color: theme.error }]}>
-                Удалить
-              </Text>
-            </TouchableOpacity>
           </ScrollView>
 
           {/* Bottom Actions */}
@@ -392,14 +349,16 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                 !isValid && { opacity: 0.5 },
               ]}
               onPress={handleSubmit}
-              disabled={!isValid || isSubmitting}
+              disabled={!isValid || isSubmittingSubstitution}
             >
-              {isSubmitting ? (
+              {isSubmittingSubstitution ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
                   <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  <Text style={styles.submitButtonText}>Сохранить</Text>
+                  <Text style={styles.submitButtonText}>
+                    {isEditing ? 'Сохранить' : 'Добавить'}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -412,6 +371,8 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
               value={startDate}
               onChange={handleStartDateChange}
               onClose={() => setShowStartDatePicker(false)}
+              minimumDate={minDate}
+              maximumDate={maxDate}
               mode="date"
             />
           )}
@@ -423,29 +384,28 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
               onChange={handleEndDateChange}
               onClose={() => setShowEndDatePicker(false)}
               minimumDate={startDate}
+              maximumDate={maxDate}
               mode="date"
             />
           )}
 
-          {/* Delete Confirmation Modal - рендерится внутри для корректной работы на iOS */}
-          <ActionModal
-            visible={showDeleteConfirm}
-            title="Удаление"
-            message="Вы уверены, что хотите удалить?"
-            onDismiss={() => setShowDeleteConfirm(false)}
-            dismissable={!isDeleting}
-            actions={[
-              {
-                text: 'Отмена',
-                onPress: () => setShowDeleteConfirm(false),
-                style: 'cancel',
-              },
-              {
-                text: 'Удалить',
-                onPress: confirmDelete,
-                style: 'destructive',
-              },
-            ]}
+          {/* User Picker */}
+          <UserSelectorModal
+            visible={showUserPicker}
+            onClose={() => setShowUserPicker(false)}
+            selectedUserIds={selectedUserId ? [selectedUserId] : []}
+            onSelectionChange={(userIds, selectedUsers) => {
+              if (userIds.length > 0) {
+                setSelectedUserId(userIds[0]);
+                setSelectedUserName(selectedUsers?.[0]?.name || null);
+              }
+              setShowUserPicker(false);
+            }}
+            multiSelect={false}
+            title="Выберите замещающего"
+            mode="radio"
+            includeCurrentUser={false}
+            excludeUserIds={[absenceUserId]}
           />
         </View>
       </View>
@@ -466,8 +426,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   containerDesktop: {
-    width: 500,
-    maxHeight: '90%',
+    width: 480,
+    maxHeight: '85%',
     borderRadius: 16,
     overflow: 'hidden',
     ...Platform.select({
@@ -519,7 +479,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  infoBox: {
+  selectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
@@ -528,36 +488,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 10,
   },
-  infoText: {
+  selectorText: {
     flex: 1,
     fontSize: 15,
-  },
-  typeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  typeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 8,
-    minWidth: '45%',
-    flex: 1,
-  },
-  typeLabel: {
-    fontSize: 13,
-    flex: 1,
-  },
-  typeCheck: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   dateRow: {
     flexDirection: 'row',
@@ -579,12 +512,16 @@ const styles = StyleSheet.create({
   dateSeparator: {
     fontSize: 16,
   },
+  dateHint: {
+    fontSize: 12,
+    marginTop: 4,
+  },
   textArea: {
     fontSize: 15,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    minHeight: 80,
+    minHeight: 60,
     borderWidth: 1,
     textAlignVertical: 'top',
   },
@@ -625,19 +562,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-    marginTop: 12,
-  },
-  deleteButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

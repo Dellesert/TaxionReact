@@ -7,7 +7,7 @@ import { ISODateString } from '@/types/common.types';
 import { User } from '@/types/user.types';
 
 // Event Types
-export type EventType = 'personal' | 'meeting' | 'deadline' | 'schedule' | 'absence';
+export type EventType = 'personal' | 'meeting' | 'deadline' | 'schedule' | 'absence' | 'substitution';
 
 // Event Participant Status
 export type EventParticipantStatus = 'pending' | 'accepted' | 'declined' | 'maybe';
@@ -75,6 +75,7 @@ export interface Event {
   task_id?: number; // Link to task
   schedule_entry_id?: number; // Link to schedule entry
   absence_id?: number; // Link to absence (for absence events)
+  substitution_id?: number; // Link to substitution (for substitution events)
   created_at: ISODateString;
   updated_at: ISODateString;
 }

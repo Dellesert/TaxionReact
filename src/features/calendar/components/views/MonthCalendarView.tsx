@@ -11,6 +11,9 @@ import {
   format,
   isSameMonth,
   isToday,
+  isSameDay,
+  parseISO,
+  isWithinInterval,
 } from 'date-fns';
 import { DayEventsSheet } from '../modals/DayEventsSheet';
 
@@ -25,11 +28,14 @@ interface MonthCalendarViewProps {
 
 interface CalendarDayProps {
   date: Date;
+  dayIndex: number;
   selectedDate: Date;
   isCompact: boolean;
   viewMode: 'day' | 'week';
   isInSelectedWeek: boolean;
   dayEvents: Event[];
+  substitution: Event | null;
+  substitutionPosition: 'start' | 'middle' | 'end' | 'single' | null;
   onDatePress: (date: Date) => void;
   onDayWithEventsPress: (date: Date, dateKey: string) => void;
   theme: ReturnType<typeof useTheme>['theme'];
@@ -51,11 +57,14 @@ const getEventDotColors = (events: Event[]): string[] => {
 // Separate component for each day to properly use hooks
 const CalendarDay: React.FC<CalendarDayProps> = ({
   date,
+  dayIndex,
   selectedDate,
   isCompact,
   viewMode,
   isInSelectedWeek,
   dayEvents,
+  substitution,
+  substitutionPosition,
   onDatePress,
   onDayWithEventsPress,
   theme,
@@ -85,6 +94,43 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
   const hasEvents = dayEvents.length > 0;
   const dotColors = getEventDotColors(dayEvents);
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+  // Substitution bar logic
+  const hasSubstitution = substitution !== null && isCurrentMonth;
+  const isFirstDayOfWeek = dayIndex === 0;
+  const isLastDayOfWeek = dayIndex === 6;
+
+  const getSubstitutionBarStyle = () => {
+    if (!hasSubstitution) return null;
+
+    const barColor = substitution!.color || '#FF9800';
+    let borderTopLeftRadius = 0;
+    let borderBottomLeftRadius = 0;
+    let borderTopRightRadius = 0;
+    let borderBottomRightRadius = 0;
+
+    if (substitutionPosition === 'single' || substitutionPosition === 'start' || isFirstDayOfWeek) {
+      borderTopLeftRadius = 3;
+      borderBottomLeftRadius = 3;
+    }
+    if (substitutionPosition === 'single' || substitutionPosition === 'end' || isLastDayOfWeek) {
+      borderTopRightRadius = 3;
+      borderBottomRightRadius = 3;
+    }
+
+    return {
+      position: 'absolute' as const,
+      bottom: 0,
+      height: 4,
+      left: (substitutionPosition === 'start' || substitutionPosition === 'single' || isFirstDayOfWeek) ? 4 : 0,
+      right: (substitutionPosition === 'end' || substitutionPosition === 'single' || isLastDayOfWeek) ? 4 : 0,
+      backgroundColor: barColor,
+      borderTopLeftRadius,
+      borderBottomLeftRadius,
+      borderTopRightRadius,
+      borderBottomRightRadius,
+    };
+  };
 
   const handleDayPress = () => {
     if (isCompact && isCurrentMonth) {
@@ -162,6 +208,9 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
           )}
         </View>
       )}
+
+      {/* Substitution bar - horizontal stripe at bottom */}
+      {hasSubstitution && <View style={getSubstitutionBarStyle()} />}
     </TouchableOpacity>
   );
 };
@@ -232,7 +281,7 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     return grouped;
   }, [events]);
 
-  // Get events for a specific date
+  // Get events for a specific date (excluding substitutions)
   const getEventsForDate = (date: Date): Event[] => {
     // Use the same logic as grouping to ensure consistency
     const year = date.getFullYear();
@@ -240,7 +289,48 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     const day = String(date.getDate()).padStart(2, '0');
     const dateKey = `${year}-${month}-${day}`;
 
-    return eventsByDate[dateKey] || [];
+    return (eventsByDate[dateKey] || []).filter(e => e.type !== 'substitution');
+  };
+
+  // Get substitution events
+  const substitutionEvents = useMemo(() => {
+    return events.filter(e => e.type === 'substitution');
+  }, [events]);
+
+  // Get substitution for a specific date
+  const getSubstitutionForDate = (date: Date): Event | null => {
+    const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    for (const substitution of substitutionEvents) {
+      const startDate = parseISO(substitution.start_time);
+      const endDate = parseISO(substitution.end_time);
+
+      const subStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+      const subEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+      if (isWithinInterval(checkDate, { start: subStart, end: subEnd })) {
+        return substitution;
+      }
+    }
+    return null;
+  };
+
+  // Get position of date in substitution range
+  const getSubstitutionPosition = (date: Date, substitution: Event): 'start' | 'middle' | 'end' | 'single' => {
+    const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const startDate = parseISO(substitution.start_time);
+    const endDate = parseISO(substitution.end_time);
+
+    const subStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+    const subEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+    const isStart = isSameDay(checkDate, subStart);
+    const isEnd = isSameDay(checkDate, subEnd);
+
+    if (isStart && isEnd) return 'single';
+    if (isStart) return 'start';
+    if (isEnd) return 'end';
+    return 'middle';
   };
 
   // Handler for when a day with events is pressed (for sheet)
@@ -292,20 +382,27 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
       >
         {weeks.map((week, weekIndex) => (
           <View key={weekIndex} style={styles.weekRow}>
-            {week.map((day) => (
-              <CalendarDay
-                key={day.toISOString()}
-                date={day}
-                selectedDate={selectedDate}
-                isCompact={isCompact}
-                viewMode={viewMode}
-                isInSelectedWeek={isInSelectedWeek(day)}
-                dayEvents={getEventsForDate(day)}
-                onDatePress={onDatePress}
-                onDayWithEventsPress={handleDayWithEventsPress}
-                theme={theme}
-              />
-            ))}
+            {week.map((day, dayIndex) => {
+              const substitution = getSubstitutionForDate(day);
+              const substitutionPos = substitution ? getSubstitutionPosition(day, substitution) : null;
+              return (
+                <CalendarDay
+                  key={day.toISOString()}
+                  date={day}
+                  dayIndex={dayIndex}
+                  selectedDate={selectedDate}
+                  isCompact={isCompact}
+                  viewMode={viewMode}
+                  isInSelectedWeek={isInSelectedWeek(day)}
+                  dayEvents={getEventsForDate(day)}
+                  substitution={substitution}
+                  substitutionPosition={substitutionPos}
+                  onDatePress={onDatePress}
+                  onDayWithEventsPress={handleDayWithEventsPress}
+                  theme={theme}
+                />
+              );
+            })}
           </View>
         ))}
       </ScrollView>

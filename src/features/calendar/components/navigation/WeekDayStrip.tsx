@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
-import { format, isToday, isSameDay, parseISO } from 'date-fns';
+import { format, isToday, isSameDay, parseISO, isWithinInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -62,15 +62,60 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
     [selectedDate]
   );
 
-  // Get events for a specific date
+  // Get events for a specific date (excluding substitutions)
   const getEventsForDate = useCallback(
     (date: Date): Event[] => {
       return events.filter((event) => {
+        if (event.type === 'substitution') return false;
         const eventDate = parseISO(event.start_time);
         return isSameDay(eventDate, date);
       });
     },
     [events]
+  );
+
+  // Get substitution for a specific date
+  const getSubstitutionForDate = useCallback(
+    (date: Date): Event | null => {
+      const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+      for (const event of events) {
+        if (event.type !== 'substitution') continue;
+
+        const startDate = parseISO(event.start_time);
+        const endDate = parseISO(event.end_time);
+
+        const subStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+        const subEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+        if (isWithinInterval(checkDate, { start: subStart, end: subEnd })) {
+          return event;
+        }
+      }
+      return null;
+    },
+    [events]
+  );
+
+  // Get position of date in substitution range
+  const getSubstitutionPosition = useCallback(
+    (date: Date, substitution: Event): 'start' | 'middle' | 'end' | 'single' => {
+      const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const startDate = parseISO(substitution.start_time);
+      const endDate = parseISO(substitution.end_time);
+
+      const subStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+      const subEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+      const isStart = isSameDay(checkDate, subStart);
+      const isEnd = isSameDay(checkDate, subEnd);
+
+      if (isStart && isEnd) return 'single';
+      if (isStart) return 'start';
+      if (isEnd) return 'end';
+      return 'middle';
+    },
+    []
   );
 
   // Swipe gesture handler
@@ -127,7 +172,7 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
         {/* Week Days */}
         <GestureDetector gesture={swipeGesture}>
           <Animated.View style={[styles.weekContainer, animatedStyle]}>
-            {weekDays.map((date) => {
+            {weekDays.map((date, dayIndex) => {
               const isSelected = isDateSelected(date);
               const isTodayDate = isToday(date);
               const dayEvents = getEventsForDate(date);
@@ -136,6 +181,46 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
 
               // Get unique colors from events (max 3 dots)
               const eventColors = [...new Set(dayEvents.map(e => e.color))].slice(0, 3);
+
+              // Check for substitution
+              const substitution = getSubstitutionForDate(date);
+              const hasSubstitution = substitution !== null;
+              const substitutionPosition = hasSubstitution ? getSubstitutionPosition(date, substitution!) : null;
+              const isFirstDay = dayIndex === 0;
+              const isLastDay = dayIndex === weekDays.length - 1;
+
+              // Get substitution bar style
+              const getSubstitutionBarStyle = () => {
+                if (!hasSubstitution) return null;
+
+                const barColor = substitution!.color || '#FF9800';
+                let borderTopLeftRadius = 0;
+                let borderBottomLeftRadius = 0;
+                let borderTopRightRadius = 0;
+                let borderBottomRightRadius = 0;
+
+                if (substitutionPosition === 'single' || substitutionPosition === 'start' || isFirstDay) {
+                  borderTopLeftRadius = 2;
+                  borderBottomLeftRadius = 2;
+                }
+                if (substitutionPosition === 'single' || substitutionPosition === 'end' || isLastDay) {
+                  borderTopRightRadius = 2;
+                  borderBottomRightRadius = 2;
+                }
+
+                return {
+                  position: 'absolute' as const,
+                  bottom: 0,
+                  height: 3,
+                  left: (substitutionPosition === 'start' || substitutionPosition === 'single' || isFirstDay) ? 2 : 0,
+                  right: (substitutionPosition === 'end' || substitutionPosition === 'single' || isLastDay) ? 2 : 0,
+                  backgroundColor: barColor,
+                  borderTopLeftRadius,
+                  borderBottomLeftRadius,
+                  borderTopRightRadius,
+                  borderBottomRightRadius,
+                };
+              };
 
               return (
                 <TouchableOpacity
@@ -181,6 +266,8 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
                       />
                     ))}
                   </View>
+                  {/* Substitution bar */}
+                  {hasSubstitution && <View style={getSubstitutionBarStyle()} />}
                 </TouchableOpacity>
               );
             })}
