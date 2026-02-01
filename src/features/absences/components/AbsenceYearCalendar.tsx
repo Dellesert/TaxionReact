@@ -69,8 +69,11 @@ const formatDate = (date: Date): string => {
 };
 
 // Helper to parse date string as local date (not UTC)
+// Handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss" formats
 const parseLocalDate = (dateStr: string): Date => {
-  const [year, month, day] = dateStr.split('-').map(Number);
+  // Take only the date part (first 10 characters: YYYY-MM-DD)
+  const datePart = dateStr.substring(0, 10);
+  const [year, month, day] = datePart.split('-').map(Number);
   return new Date(year, month - 1, day);
 };
 
