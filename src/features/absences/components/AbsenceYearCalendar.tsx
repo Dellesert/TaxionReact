@@ -60,9 +60,18 @@ const getFirstDayOfMonth = (year: number, month: number): number => {
   return day === 0 ? 6 : day - 1; // Convert to Monday-first (0 = Monday)
 };
 
-// Helper to format date as YYYY-MM-DD
+// Helper to format date as YYYY-MM-DD (using local date, not UTC)
 const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper to parse date string as local date (not UTC)
+const parseLocalDate = (dateStr: string): Date => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
 };
 
 // Helper to blend colors when multiple absences overlap
@@ -118,8 +127,8 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
     const map = new Map<string, DayAbsence[]>();
 
     for (const absence of filteredAbsences) {
-      const startDate = new Date(absence.start_date);
-      const endDate = new Date(absence.end_date);
+      const startDate = parseLocalDate(absence.start_date);
+      const endDate = parseLocalDate(absence.end_date);
 
       // Iterate through each day of the absence
       const currentDate = new Date(startDate);
