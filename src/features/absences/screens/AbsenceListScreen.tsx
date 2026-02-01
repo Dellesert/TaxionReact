@@ -28,6 +28,7 @@ import { EditAbsenceModal } from '../components/EditAbsenceModal';
 import { YearPicker } from '../components/YearPicker';
 import { TitleBarAbsenceControls, AbsenceViewMode } from '../components/TitleBarAbsenceControls';
 import { AbsenceYearCalendar } from '../components/AbsenceYearCalendar';
+import { AbsenceTimeline } from '../components/AbsenceTimeline';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import {
   Absence,
@@ -109,7 +110,7 @@ export const AbsenceListScreen: React.FC = () => {
     const loadViewMode = async () => {
       try {
         const saved = await AsyncStorage.getItem(ABSENCE_VIEW_MODE_STORAGE_KEY);
-        if (saved && (saved === 'list' || saved === 'calendar')) {
+        if (saved && (saved === 'list' || saved === 'calendar' || saved === 'timeline')) {
           setViewMode(saved as AbsenceViewMode);
         }
       } catch (error) {
@@ -448,8 +449,8 @@ export const AbsenceListScreen: React.FC = () => {
           />
         )}
 
-        {/* User Filter Chip - hide when in calendar mode (sidebar has user selection) */}
-        {!(isElectron && isDesktop && viewMode === 'calendar') && (
+        {/* User Filter Chip - hide when in calendar/timeline mode (they have their own user display) */}
+        {!(isElectron && isDesktop && (viewMode === 'calendar' || viewMode === 'timeline')) && (
           <View style={styles.userFilterContainer}>
             <TouchableOpacity
               style={[
@@ -487,10 +488,17 @@ export const AbsenceListScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Desktop layout for Electron - calendar or columns view */}
+        {/* Desktop layout for Electron - calendar, timeline or columns view */}
         {isElectron && isDesktop ? (
           viewMode === 'calendar' ? (
             <AbsenceYearCalendar
+              year={selectedYear}
+              absences={filteredAbsences}
+              selectedTypeFilter={selectedTypeFilter}
+              onAbsencePress={handleAbsencePress}
+            />
+          ) : viewMode === 'timeline' ? (
+            <AbsenceTimeline
               year={selectedYear}
               absences={filteredAbsences}
               selectedTypeFilter={selectedTypeFilter}

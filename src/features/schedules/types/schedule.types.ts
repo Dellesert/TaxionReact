@@ -4,7 +4,9 @@
 
 export type ScheduleType = 'work' | 'paid_services' | 'on_duty' | 'vk' | 'trips';
 
-export type ScheduleVisibility = 'creator_only' | 'management' | 'participants';
+export type ScheduleVisibility = 'creator_only' | 'management' | 'participants' | 'specific_users' | 'all';
+
+export type ScheduleEditPermission = 'creator_only' | 'management' | 'specific_users' | 'all';
 
 export type ShiftType = 'morning' | 'evening' | 'full_day' | 'custom';
 
@@ -29,6 +31,15 @@ export const VISIBILITY_LABELS: Record<ScheduleVisibility, string> = {
   creator_only: 'Только создатель',
   management: 'Руководство',
   participants: 'Участники',
+  specific_users: 'Выбранные пользователи',
+  all: 'Все',
+};
+
+export const EDIT_PERMISSION_LABELS: Record<ScheduleEditPermission, string> = {
+  creator_only: 'Только создатель',
+  management: 'Руководители',
+  specific_users: 'Выбранные пользователи',
+  all: 'Все',
 };
 
 export const SCHEDULE_MODE_LABELS: Record<ScheduleMode, string> = {
@@ -58,6 +69,7 @@ export interface Schedule {
   description?: string;
   type: ScheduleType;
   visibility: ScheduleVisibility;
+  edit_permission: ScheduleEditPermission;
   mode: ScheduleMode;
   template_id?: number;
   template?: ScheduleTemplate;
@@ -74,6 +86,8 @@ export interface Schedule {
   is_active: boolean;
   imported_from?: string;
   entries_count?: number;
+  viewer_ids?: number[];
+  editor_ids?: number[];
   created_at: string;
   updated_at: string;
 }
@@ -141,6 +155,7 @@ export interface CreateScheduleRequest {
   description?: string;
   type: ScheduleType;
   visibility?: ScheduleVisibility;
+  edit_permission?: ScheduleEditPermission;
   mode?: ScheduleMode;
   template_id?: number;
   start_date: string;
@@ -151,6 +166,8 @@ export interface CreateScheduleRequest {
   evening_end?: string;
   color?: string;
   department_id?: number;
+  viewer_ids?: number[];
+  editor_ids?: number[];
 }
 
 export interface UpdateScheduleRequest {
@@ -158,6 +175,7 @@ export interface UpdateScheduleRequest {
   description?: string;
   type?: ScheduleType;
   visibility?: ScheduleVisibility;
+  edit_permission?: ScheduleEditPermission;
   mode?: ScheduleMode;
   start_date?: string;
   end_date?: string;
@@ -167,6 +185,8 @@ export interface UpdateScheduleRequest {
   evening_end?: string;
   color?: string;
   is_active?: boolean;
+  viewer_ids?: number[];
+  editor_ids?: number[];
 }
 
 export interface CreateScheduleEntryRequest {

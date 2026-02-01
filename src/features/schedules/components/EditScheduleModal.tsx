@@ -36,10 +36,15 @@ import {
   UpdateScheduleRequest,
   ScheduleType,
   ScheduleVisibility,
+  ScheduleEditPermission,
   ScheduleMode,
   SCHEDULE_MODE_LABELS,
   DEFAULT_SCHEDULE_COLORS,
+  VISIBILITY_LABELS,
+  EDIT_PERMISSION_LABELS,
 } from '../types/schedule.types';
+import UserSelectorModal from '@shared/components/common/UserSelectorModal';
+import { User } from '@/types/user.types';
 
 interface EditScheduleModalProps {
   visible: boolean;
@@ -69,8 +74,17 @@ const SCHEDULE_TYPES: { value: ScheduleType; label: string; icon: string; descri
 
 const VISIBILITY_OPTIONS: { value: ScheduleVisibility; label: string; icon: string; description: string }[] = [
   { value: 'creator_only', label: 'Только создатель', icon: 'lock-closed-outline', description: 'Виден только вам' },
-  { value: 'management', label: 'Руководство', icon: 'people-outline', description: 'Виден руководителям' },
-  { value: 'participants', label: 'Участники', icon: 'globe-outline', description: 'Виден всем участникам графика' },
+  { value: 'management', label: 'Руководство', icon: 'shield-outline', description: 'Виден руководителям' },
+  { value: 'participants', label: 'Участники', icon: 'people-outline', description: 'Виден участникам графика' },
+  { value: 'specific_users', label: 'Выбранные пользователи', icon: 'person-add-outline', description: 'Виден выбранным пользователям' },
+  { value: 'all', label: 'Все', icon: 'globe-outline', description: 'Виден всем сотрудникам' },
+];
+
+const EDIT_PERMISSION_OPTIONS: { value: ScheduleEditPermission; label: string; icon: string; description: string }[] = [
+  { value: 'creator_only', label: 'Только создатель', icon: 'lock-closed-outline', description: 'Только вы можете редактировать' },
+  { value: 'management', label: 'Руководители', icon: 'shield-outline', description: 'Вы и руководители' },
+  { value: 'specific_users', label: 'Выбранные пользователи', icon: 'person-add-outline', description: 'Вы и выбранные пользователи' },
+  { value: 'all', label: 'Все', icon: 'globe-outline', description: 'Все могут редактировать' },
 ];
 
 export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
@@ -107,6 +121,13 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   // Step 4: Visibility, Color, and Mode
   const [visibility, setVisibility] = useState<ScheduleVisibility>('management');
+  const [editPermission, setEditPermission] = useState<ScheduleEditPermission>('creator_only');
+  const [viewerIds, setViewerIds] = useState<number[]>([]);
+  const [editorIds, setEditorIds] = useState<number[]>([]);
+  const [selectedViewers, setSelectedViewers] = useState<User[]>([]);
+  const [selectedEditors, setSelectedEditors] = useState<User[]>([]);
+  const [showViewerSelector, setShowViewerSelector] = useState(false);
+  const [showEditorSelector, setShowEditorSelector] = useState(false);
   const [color, setColor] = useState('#3B82F6');
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('recurring');
 
@@ -120,6 +141,9 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setDescription(schedule.description || '');
       setScheduleType(schedule.type);
       setVisibility(schedule.visibility);
+      setEditPermission(schedule.edit_permission || 'creator_only');
+      setViewerIds(schedule.viewer_ids || []);
+      setEditorIds(schedule.editor_ids || []);
       setStartDate(parseISO(schedule.start_date));
       setEndDate(parseISO(schedule.end_date));
       setColor(schedule.color || '#3B82F6');
@@ -250,6 +274,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         description: description.trim() || undefined,
         type: scheduleType,
         visibility,
+        edit_permission: editPermission,
         mode: scheduleMode,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
@@ -258,6 +283,8 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         morning_end: morningEnd,
         evening_start: eveningStart,
         evening_end: eveningEnd,
+        viewer_ids: visibility === 'specific_users' ? viewerIds : undefined,
+        editor_ids: editPermission === 'specific_users' ? editorIds : undefined,
       };
 
       await onSave(updateData);
@@ -631,6 +658,87 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                             )}
                           </TouchableOpacity>
                         ))}
+
+                        {/* User selector for specific_users visibility */}
+                        {visibility === 'specific_users' && (
+                          <TouchableOpacity
+                            onPress={() => setShowViewerSelector(true)}
+                            style={[
+                              styles.userSelectorButton,
+                              { backgroundColor: theme.card, borderColor: theme.primary },
+                            ]}
+                          >
+                            <View style={styles.userSelectorContent}>
+                              <Ionicons name="people" size={20} color={theme.primary} />
+                              <Text style={[styles.userSelectorText, { color: theme.text }]}>
+                                {selectedViewers.length > 0
+                                  ? `Выбрано: ${selectedViewers.length}`
+                                  : viewerIds.length > 0
+                                  ? `Выбрано: ${viewerIds.length}`
+                                  : 'Выбрать пользователей'}
+                              </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      <View style={styles.inputSection}>
+                        <Text style={[styles.inputLabel, { color: theme.text }]}>Права редактирования</Text>
+                        {EDIT_PERMISSION_OPTIONS.map((item) => (
+                          <TouchableOpacity
+                            key={item.value}
+                            onPress={() => setEditPermission(item.value)}
+                            style={[
+                              styles.visibilityCard,
+                              { backgroundColor: theme.card, borderColor: theme.border },
+                              editPermission === item.value && { borderColor: theme.primary, borderWidth: 2 },
+                            ]}
+                          >
+                            <View style={[
+                              styles.visibilityIcon,
+                              { backgroundColor: editPermission === item.value ? theme.primary : theme.backgroundSecondary }
+                            ]}>
+                              <Ionicons
+                                name={item.icon as any}
+                                size={20}
+                                color={editPermission === item.value ? '#FFFFFF' : theme.primary}
+                              />
+                            </View>
+                            <View style={styles.visibilityInfo}>
+                              <Text style={[styles.visibilityTitle, { color: theme.text }]}>{item.label}</Text>
+                              <Text style={[styles.visibilityDescription, { color: theme.textSecondary }]}>
+                                {item.description}
+                              </Text>
+                            </View>
+                            {editPermission === item.value && (
+                              <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+
+                        {/* User selector for specific_users edit permission */}
+                        {editPermission === 'specific_users' && (
+                          <TouchableOpacity
+                            onPress={() => setShowEditorSelector(true)}
+                            style={[
+                              styles.userSelectorButton,
+                              { backgroundColor: theme.card, borderColor: theme.primary },
+                            ]}
+                          >
+                            <View style={styles.userSelectorContent}>
+                              <Ionicons name="create" size={20} color={theme.primary} />
+                              <Text style={[styles.userSelectorText, { color: theme.text }]}>
+                                {selectedEditors.length > 0
+                                  ? `Выбрано: ${selectedEditors.length}`
+                                  : editorIds.length > 0
+                                  ? `Выбрано: ${editorIds.length}`
+                                  : 'Выбрать редакторов'}
+                              </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                          </TouchableOpacity>
+                        )}
                       </View>
 
                       <View style={styles.inputSection}>
@@ -729,6 +837,18 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                             {format(startDate, 'dd.MM.yy')} — {format(endDate, 'dd.MM.yy')}
                           </Text>
                         </View>
+                        <View style={styles.summaryRow}>
+                          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Видимость:</Text>
+                          <Text style={[styles.summaryValue, { color: theme.text }]}>
+                            {VISIBILITY_LABELS[visibility]}
+                          </Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Редактирование:</Text>
+                          <Text style={[styles.summaryValue, { color: theme.text }]}>
+                            {EDIT_PERMISSION_LABELS[editPermission]}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   )}
@@ -823,6 +943,33 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               mode="date"
             />
           )}
+
+          {/* User Selector Modals */}
+          <UserSelectorModal
+            visible={showViewerSelector}
+            onClose={() => setShowViewerSelector(false)}
+            selectedUserIds={viewerIds}
+            onSelectionChange={(ids, users) => {
+              setViewerIds(ids);
+              if (users) setSelectedViewers(users);
+            }}
+            multiSelect={true}
+            title="Кто может видеть график"
+            includeCurrentUser={true}
+          />
+
+          <UserSelectorModal
+            visible={showEditorSelector}
+            onClose={() => setShowEditorSelector(false)}
+            selectedUserIds={editorIds}
+            onSelectionChange={(ids, users) => {
+              setEditorIds(ids);
+              if (users) setSelectedEditors(users);
+            }}
+            multiSelect={true}
+            title="Кто может редактировать"
+            includeCurrentUser={true}
+          />
         </View>
       </View>
     </Modal>
@@ -1218,6 +1365,26 @@ const styles = StyleSheet.create({
   },
   navButtonTextCompact: {
     fontSize: 14,
+  },
+  // User selector button
+  userSelectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    marginTop: 8,
+  },
+  userSelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  userSelectorText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
 

@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { AbsenceType } from '../types/absence.types';
 
-export type AbsenceViewMode = 'list' | 'calendar';
+export type AbsenceViewMode = 'list' | 'calendar' | 'timeline';
 
 interface TitleBarAbsenceControlsProps {
   selectedYear: number;
@@ -195,8 +195,33 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
                 color={viewMode === 'calendar' ? theme.primary : theme.textSecondary}
               />
             </View>
+            <View
+              style={[
+                styles.viewButton,
+                viewMode === 'timeline' && [styles.activeViewButton, { backgroundColor: theme.backgroundSecondary }],
+              ]}
+              // @ts-ignore - Web-only
+              onClick={() => onViewModeChange('timeline')}
+              title="График"
+              onMouseEnter={(e: any) => {
+                if (viewMode !== 'timeline' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = theme.border;
+                }
+              }}
+              onMouseLeave={(e: any) => {
+                if (viewMode !== 'timeline' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              <Ionicons
+                name="git-compare-outline"
+                size={14}
+                color={viewMode === 'timeline' ? theme.primary : theme.textSecondary}
+              />
+            </View>
             <Text style={[styles.viewLabel, { color: theme.text }]}>
-              {viewMode === 'list' ? 'Список' : 'Календарь'}
+              {viewMode === 'list' ? 'Список' : viewMode === 'calendar' ? 'Календарь' : 'График'}
             </Text>
           </View>
         )}
