@@ -13,15 +13,19 @@ import {
   Absence,
   AbsenceType,
   AbsenceUser,
+  AbsenceColorMode,
   ABSENCE_TYPE_COLORS,
   ABSENCE_TYPE_LABELS,
   ABSENCE_TYPES,
 } from '../types/absence.types';
+import { getUserColorById } from '../constants/userColors.constants';
+import { useRussianHolidays } from '../hooks/useRussianHolidays';
 
 interface AbsenceYearCalendarProps {
   year: number;
   absences: Absence[];
   selectedTypeFilter?: AbsenceType | null;
+  colorMode?: AbsenceColorMode;
   onDayPress?: (date: Date, absences: Absence[]) => void;
   onAbsencePress?: (absence: Absence) => void;
 }
@@ -46,6 +50,8 @@ interface CalendarDay {
   date: Date;
   isToday: boolean;
   isWeekend: boolean;
+  isHoliday: boolean;
+  holidayName?: string;
   absences: DayAbsence[];
 }
 
@@ -89,10 +95,12 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
   year,
   absences,
   selectedTypeFilter,
+  colorMode = 'by_type',
   onDayPress,
   onAbsencePress,
 }) => {
   const { theme } = useTheme();
+  const { holidayMap } = useRussianHolidays(year);
 
   // Selected user filter
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -125,6 +133,14 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
     return filtered;
   }, [absences, selectedUserId, selectedTypeFilter]);
 
+  // Get color based on colorMode
+  const getAbsenceColor = useCallback((absence: Absence): string => {
+    if (colorMode === 'by_user') {
+      return absence.user?.color || getUserColorById(absence.user_id);
+    }
+    return ABSENCE_TYPE_COLORS[absence.type];
+  }, [colorMode]);
+
   // Build a map of date -> absences for quick lookup
   const absenceMap = useMemo(() => {
     const map = new Map<string, DayAbsence[]>();
@@ -140,7 +156,7 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
         const dayAbsences = map.get(dateKey) || [];
         dayAbsences.push({
           type: absence.type,
-          color: ABSENCE_TYPE_COLORS[absence.type],
+          color: getAbsenceColor(absence),
           absence,
         });
         map.set(dateKey, dayAbsences);
@@ -149,7 +165,7 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
     }
 
     return map;
-  }, [filteredAbsences]);
+  }, [filteredAbsences, getAbsenceColor]);
 
   // Get today's date string for comparison
   const today = useMemo(() => formatDate(new Date()), []);
@@ -168,6 +184,7 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
         date: new Date(),
         isToday: false,
         isWeekend: false,
+        isHoliday: false,
         absences: [],
       });
     }
@@ -178,12 +195,15 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
       const dateKey = formatDate(date);
       const dayOfWeek = (firstDay + day - 1) % 7;
       const isWeekend = dayOfWeek === 5 || dayOfWeek === 6; // Saturday or Sunday
+      const holiday = holidayMap.get(dateKey);
 
       currentWeek.push({
         day,
         date,
         isToday: dateKey === today,
         isWeekend,
+        isHoliday: !!holiday,
+        holidayName: holiday?.name,
         absences: absenceMap.get(dateKey) || [],
       });
 
@@ -200,6 +220,7 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
         date: new Date(),
         isToday: false,
         isWeekend: false,
+        isHoliday: false,
         absences: [],
       });
     }
@@ -208,7 +229,7 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
     }
 
     return weeks;
-  }, [year, absenceMap, today]);
+  }, [year, absenceMap, today, holidayMap]);
 
   // Handle day press
   const handleDayPress = useCallback((calendarDay: CalendarDay) => {
@@ -276,17 +297,23 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
                 : 'transparent';
 
               // Build tooltip text for hover
-              const tooltipText = hasAbsences
-                ? calendarDay.absences
-                    .map(a => `${a.absence.user?.name || 'Неизвестно'}: ${ABSENCE_TYPE_LABELS[a.type]}`)
-                    .join('\n')
-                : '';
+              let tooltipText = '';
+              if (calendarDay.isHoliday && calendarDay.holidayName) {
+                tooltipText = calendarDay.holidayName;
+              }
+              if (hasAbsences) {
+                const absenceTooltip = calendarDay.absences
+                  .map(a => `${a.absence.user?.name || 'Неизвестно'}: ${ABSENCE_TYPE_LABELS[a.type]}`)
+                  .join('\n');
+                tooltipText = tooltipText ? `${tooltipText}\n\n${absenceTooltip}` : absenceTooltip;
+              }
 
               return (
                 <View
                   key={dayIndex}
                   style={[
                     styles.dayCell,
+                    calendarDay.isHoliday && !hasAbsences && [styles.holidayCell, { backgroundColor: theme.error + '15' }],
                     hasAbsences && [styles.dayCellWithAbsence, { backgroundColor: bgColor + '30' }],
                     calendarDay.isToday && [styles.todayCell, { borderColor: theme.primary }],
                   ]}
@@ -299,7 +326,7 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
                       <Text
                         style={[
                           styles.dayText,
-                          { color: calendarDay.isWeekend ? theme.error : theme.text },
+                          { color: (calendarDay.isWeekend || calendarDay.isHoliday) ? theme.error : theme.text },
                           calendarDay.isToday && { color: theme.primary, fontWeight: '700' },
                           hasAbsences && styles.dayTextWithAbsence,
                         ]}
@@ -329,9 +356,32 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
     );
   }, [theme, getMonthData, handleDayPress]);
 
-  // Render legend
+  // Render legend based on colorMode
   const renderLegend = useCallback(() => {
-    // Show only types that have absences
+    if (colorMode === 'by_user') {
+      // Show users with their colors
+      const usersWithColors = users.map(user => ({
+        ...user,
+        color: user.color || getUserColorById(user.id),
+      }));
+
+      if (usersWithColors.length === 0) return null;
+
+      return (
+        <View style={styles.legendItems}>
+          {usersWithColors.map(user => (
+            <View key={user.id} style={styles.legendItem}>
+              <View style={[styles.legendColorBar, { backgroundColor: user.color }]} />
+              <Text style={[styles.legendText, { color: theme.textSecondary }]} numberOfLines={1}>
+                {user.name}
+              </Text>
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    // Default: Show types with their colors
     const activeTypes = ABSENCE_TYPES.filter(type =>
       filteredAbsences.some(a => a.type === type)
     );
@@ -350,13 +400,14 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
         ))}
       </View>
     );
-  }, [filteredAbsences, theme]);
+  }, [filteredAbsences, theme, colorMode, users]);
 
   // Render user item in sidebar
   const renderUserItem = useCallback((user: AbsenceUser) => {
     const isSelected = selectedUserId === user.id;
     const userAbsences = getUserAbsences(user.id);
     const absenceCount = userAbsences.length;
+    const userColor = user.color || getUserColorById(user.id);
 
     return (
       <TouchableOpacity
@@ -369,12 +420,15 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
         onPress={() => handleUserSelect(user.id)}
         activeOpacity={0.7}
       >
-        <Avatar
-          name={user.name || ''}
-          imageUrl={user.avatar}
-          userId={user.id}
-          size={36}
-        />
+        <View style={styles.avatarWithColor}>
+          <Avatar
+            name={user.name || ''}
+            imageUrl={user.avatar}
+            userId={user.id}
+            size={36}
+          />
+          <View style={[styles.userColorDot, { backgroundColor: userColor }]} />
+        </View>
         <View style={styles.userInfo}>
           <Text
             style={[styles.userName, { color: theme.text }]}
@@ -533,6 +587,19 @@ const styles = StyleSheet.create({
   userItemSelected: {
     borderWidth: 1,
   },
+  avatarWithColor: {
+    position: 'relative',
+  },
+  userColorDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   userInfo: {
     flex: 1,
   },
@@ -677,6 +744,9 @@ const styles = StyleSheet.create({
     } : {}),
   },
   dayCellWithAbsence: {
+    borderRadius: 6,
+  },
+  holidayCell: {
     borderRadius: 6,
   },
   todayCell: {

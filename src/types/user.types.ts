@@ -42,6 +42,7 @@ export interface User {
   department?: Department;
   phone?: string;
   bio?: string;
+  color?: string; // HEX color for calendar display
   is_active: boolean;
   two_factor_enabled: boolean;
   last_seen_at?: ISODateString;
@@ -62,6 +63,7 @@ export interface UpdateProfileDto {
   avatar?: string;
   avatar_thumbnail?: string; // Thumbnail URL from file-service
   department_id?: number;
+  color?: string; // HEX color for calendar display
 }
 
 export interface UpdatePasswordDto {
@@ -162,6 +164,7 @@ export interface UpdateUserDto {
   department_id?: number | null;
   phone?: string;
   is_active?: boolean;
+  color?: string; // HEX color for calendar display
 }
 
 // Department Management

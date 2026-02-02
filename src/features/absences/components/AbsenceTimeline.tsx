@@ -20,16 +20,20 @@ import {
   Absence,
   AbsenceType,
   AbsenceUser,
+  AbsenceColorMode,
   ABSENCE_TYPE_COLORS,
   ABSENCE_TYPE_LABELS,
   ABSENCE_TYPE_ICONS,
   ABSENCE_TYPES,
 } from '../types/absence.types';
+import { getUserColorById } from '../constants/userColors.constants';
+import { useRussianHolidays } from '../hooks/useRussianHolidays';
 
 interface AbsenceTimelineProps {
   year: number;
   absences: Absence[];
   selectedTypeFilter?: AbsenceType | null;
+  colorMode?: AbsenceColorMode;
   onAbsencePress?: (absence: Absence) => void;
 }
 
@@ -128,9 +132,19 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
   year,
   absences,
   selectedTypeFilter,
+  colorMode = 'by_type',
   onAbsencePress,
 }) => {
   const { theme } = useTheme();
+  const { holidays } = useRussianHolidays(year);
+
+  // Get color based on colorMode
+  const getAbsenceColor = useCallback((absence: Absence): string => {
+    if (colorMode === 'by_user') {
+      return absence.user?.color || getUserColorById(absence.user_id);
+    }
+    return ABSENCE_TYPE_COLORS[absence.type];
+  }, [colorMode]);
   const scrollViewRef = useRef<ScrollView>(null);
   const sidebarScrollRef = useRef<ScrollView>(null);
   const containerRef = useRef<View>(null);
@@ -319,6 +333,22 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
           />
         ))}
 
+        {/* Holiday lines */}
+        {holidays.map(holiday => {
+          const holidayDate = new Date(holiday.date);
+          if (holidayDate.getFullYear() !== year) return null;
+          const dayOfYear = getDayOfYear(holidayDate);
+          const position = (dayOfYear - 1) * DAY_WIDTH;
+          return (
+            <View
+              key={holiday.date}
+              style={[styles.holidayLine, { left: position, backgroundColor: theme.error + '25' }]}
+              // @ts-ignore - Web-only
+              title={holiday.name}
+            />
+          );
+        })}
+
         {/* Today line */}
         {todayPosition !== null && (
           <View
@@ -382,7 +412,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
                 {
                   left: barStyle.left,
                   width: barStyle.width,
-                  backgroundColor: ABSENCE_TYPE_COLORS[absence.type],
+                  backgroundColor: getAbsenceColor(absence),
                 },
                 isHovered && styles.absenceBarHovered,
               ]}
@@ -426,6 +456,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
       >
         {userRows.map((row, index) => {
           const isEven = index % 2 === 0;
+          const userColor = row.user.color || getUserColorById(row.user.id);
           return (
             <View
               key={row.user.id}
@@ -434,12 +465,15 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
                 { backgroundColor: isEven ? theme.card : theme.background },
               ]}
             >
-              <Avatar
-                name={row.user.name || ''}
-                imageUrl={row.user.avatar}
-                userId={row.user.id}
-                size={32}
-              />
+              <View style={styles.avatarWithColor}>
+                <Avatar
+                  name={row.user.name || ''}
+                  imageUrl={row.user.avatar}
+                  userId={row.user.id}
+                  size={32}
+                />
+                <View style={[styles.userColorDot, { backgroundColor: userColor }]} />
+              </View>
               <View style={styles.sidebarUserInfo}>
                 <Text
                   style={[styles.sidebarUserName, { color: theme.text }]}
@@ -465,6 +499,46 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
 
   // Render legend with stats
   const renderLegend = () => {
+    if (colorMode === 'by_user') {
+      // Show users with their colors
+      const userStats = userRows.map(row => ({
+        user: row.user,
+        color: row.user.color || getUserColorById(row.user.id),
+        totalDays: row.totalDays,
+      }));
+
+      if (userStats.length === 0) return null;
+
+      const grandTotal = userStats.reduce((sum, s) => sum + s.totalDays, 0);
+
+      return (
+        <View style={[styles.legend, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.legendStats}>
+            {userStats.map(({ user, color, totalDays }) => (
+              <View key={user.id} style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: color }]} />
+                <Text style={[styles.legendLabel, { color: theme.text }]} numberOfLines={1}>
+                  {user.name}
+                </Text>
+                <Text style={[styles.legendCount, { color: theme.textSecondary }]}>
+                  ({pluralizeDays(totalDays)})
+                </Text>
+              </View>
+            ))}
+          </View>
+          <View style={[styles.legendTotal, { borderColor: theme.border }]}>
+            <Text style={[styles.legendTotalLabel, { color: theme.textSecondary }]}>
+              Всего:
+            </Text>
+            <Text style={[styles.legendTotalValue, { color: theme.text }]}>
+              {pluralizeDays(grandTotal)}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    // Default: show types with their colors
     const stats = ABSENCE_TYPES.map(type => {
       const typeAbsences = filteredAbsences.filter(a => a.type === type);
       const totalDays = typeAbsences.reduce((sum, a) => {
@@ -778,6 +852,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 10,
   },
+  avatarWithColor: {
+    position: 'relative',
+  },
+  userColorDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   sidebarUserInfo: {
     flex: 1,
   },
@@ -860,6 +947,12 @@ const styles = StyleSheet.create({
     width: 1,
     borderRightWidth: 1,
     opacity: 0.3,
+  },
+  holidayLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: DAY_WIDTH,
   },
   todayLine: {
     position: 'absolute',

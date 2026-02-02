@@ -26,6 +26,7 @@ import { ru } from 'date-fns/locale';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useProfileAvatar } from '../../hooks/useProfileAvatar';
 import { getRoleLabel } from '@features/admin/utils/roleHelpers';
+import { ColorPicker } from '@shared/components/common/ColorPicker';
 
 const EditProfileContent: React.FC = () => {
   const { theme } = useTheme();
@@ -41,6 +42,7 @@ const EditProfileContent: React.FC = () => {
   const [birthDate, setBirthDate] = useState<Date | undefined>(
     user?.birth_date ? parseISO(user.birth_date) : undefined
   );
+  const [color, setColor] = useState(user?.color || '');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,7 @@ const EditProfileContent: React.FC = () => {
       if (middleName.trim()) updateData.middle_name = middleName.trim();
       if (phone.trim()) updateData.phone = phone.trim();
       if (birthDate) updateData.birth_date = format(birthDate, 'yyyy-MM-dd');
+      if (color) updateData.color = color;
 
       const updatedUser = await updateProfile(updateData);
 
@@ -409,6 +412,18 @@ const EditProfileContent: React.FC = () => {
           </Text>
           <Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
+      </View>
+
+      <View style={dynamicStyles.section}>
+        <Text style={dynamicStyles.sectionTitle}>Цвет в календаре</Text>
+        <Text style={[dynamicStyles.label, { marginTop: 0 }]}>
+          Этот цвет будет использоваться для отображения ваших отпусков в режиме "по сотруднику"
+        </Text>
+        <ColorPicker
+          value={color}
+          onChange={setColor}
+          disabled={isLoading}
+        />
       </View>
 
       {error && (

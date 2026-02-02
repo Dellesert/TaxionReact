@@ -8,7 +8,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import type { AbsenceType } from '../types/absence.types';
+import type { AbsenceType, AbsenceColorMode } from '../types/absence.types';
 
 export type AbsenceViewMode = 'list' | 'calendar' | 'timeline';
 
@@ -28,6 +28,10 @@ interface TitleBarAbsenceControlsProps {
   onViewModeChange?: (mode: AbsenceViewMode) => void;
   /** Ref for filter button (for positioning dropdown) */
   filterButtonRef?: React.RefObject<View>;
+  /** Current color mode (by_type or by_user) */
+  colorMode?: AbsenceColorMode;
+  /** Callback when color mode changes */
+  onColorModeChange?: (mode: AbsenceColorMode) => void;
 }
 
 export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = ({
@@ -41,6 +45,8 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
   viewMode = 'list',
   onViewModeChange,
   filterButtonRef,
+  colorMode = 'by_type',
+  onColorModeChange,
 }) => {
   const { theme } = useTheme();
 
@@ -222,6 +228,65 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
             </View>
             <Text style={[styles.viewLabel, { color: theme.text }]}>
               {viewMode === 'list' ? 'Список' : viewMode === 'calendar' ? 'Календарь' : 'График'}
+            </Text>
+          </View>
+        )}
+
+        {/* Color Mode Toggle */}
+        {onColorModeChange && (viewMode === 'calendar' || viewMode === 'timeline') && (
+          <View style={[styles.viewGroup, { backgroundColor: theme.backgroundTertiary }]}>
+            <View
+              style={[
+                styles.viewButton,
+                colorMode === 'by_type' && [styles.activeViewButton, { backgroundColor: theme.backgroundSecondary }],
+              ]}
+              // @ts-ignore - Web-only
+              onClick={() => onColorModeChange('by_type')}
+              title="По типу отпуска"
+              onMouseEnter={(e: any) => {
+                if (colorMode !== 'by_type' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = theme.border;
+                }
+              }}
+              onMouseLeave={(e: any) => {
+                if (colorMode !== 'by_type' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              <Ionicons
+                name="albums-outline"
+                size={14}
+                color={colorMode === 'by_type' ? theme.primary : theme.textSecondary}
+              />
+            </View>
+            <View
+              style={[
+                styles.viewButton,
+                colorMode === 'by_user' && [styles.activeViewButton, { backgroundColor: theme.backgroundSecondary }],
+              ]}
+              // @ts-ignore - Web-only
+              onClick={() => onColorModeChange('by_user')}
+              title="По сотруднику"
+              onMouseEnter={(e: any) => {
+                if (colorMode !== 'by_user' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = theme.border;
+                }
+              }}
+              onMouseLeave={(e: any) => {
+                if (colorMode !== 'by_user' && e.currentTarget?.style) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              <Ionicons
+                name="people-outline"
+                size={14}
+                color={colorMode === 'by_user' ? theme.primary : theme.textSecondary}
+              />
+            </View>
+            <Text style={[styles.viewLabel, { color: theme.text }]}>
+              {colorMode === 'by_type' ? 'Тип' : 'Сотрудник'}
             </Text>
           </View>
         )}

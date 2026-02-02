@@ -33,6 +33,7 @@ import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import {
   Absence,
   AbsenceType,
+  AbsenceColorMode,
   ABSENCE_TYPES,
   ABSENCE_TYPE_LABELS,
   ABSENCE_TYPE_COLORS,
@@ -53,8 +54,9 @@ const getYearRange = (year: number): { start_date: string; end_date: string } =>
   end_date: `${year}-12-31`,
 });
 
-// Storage key for view mode
+// Storage keys
 const ABSENCE_VIEW_MODE_STORAGE_KEY = '@absence_view_mode';
+const ABSENCE_COLOR_MODE_STORAGE_KEY = '@absence_color_mode';
 
 // Filter options for the dropdown menu
 const FILTER_OPTIONS: { key: AbsenceType | 'all'; label: string }[] = [
@@ -105,21 +107,30 @@ export const AbsenceListScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<AbsenceViewMode>('list');
   const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
 
-  // Load saved view mode on mount
+  // Color mode state (by_type vs by_user)
+  const [colorMode, setColorMode] = useState<AbsenceColorMode>('by_type');
+
+  // Load saved view mode and color mode on mount
   useEffect(() => {
-    const loadViewMode = async () => {
+    const loadSettings = async () => {
       try {
-        const saved = await AsyncStorage.getItem(ABSENCE_VIEW_MODE_STORAGE_KEY);
-        if (saved && (saved === 'list' || saved === 'calendar' || saved === 'timeline')) {
-          setViewMode(saved as AbsenceViewMode);
+        const [savedViewMode, savedColorMode] = await Promise.all([
+          AsyncStorage.getItem(ABSENCE_VIEW_MODE_STORAGE_KEY),
+          AsyncStorage.getItem(ABSENCE_COLOR_MODE_STORAGE_KEY),
+        ]);
+        if (savedViewMode && (savedViewMode === 'list' || savedViewMode === 'calendar' || savedViewMode === 'timeline')) {
+          setViewMode(savedViewMode as AbsenceViewMode);
+        }
+        if (savedColorMode && (savedColorMode === 'by_type' || savedColorMode === 'by_user')) {
+          setColorMode(savedColorMode as AbsenceColorMode);
         }
       } catch (error) {
-        console.error('Failed to load absence view mode:', error);
+        console.error('Failed to load absence settings:', error);
       } finally {
         setIsViewModeLoaded(true);
       }
     };
-    loadViewMode();
+    loadSettings();
   }, []);
 
   // Save view mode when it changes
@@ -127,6 +138,14 @@ export const AbsenceListScreen: React.FC = () => {
     setViewMode(mode);
     AsyncStorage.setItem(ABSENCE_VIEW_MODE_STORAGE_KEY, mode).catch((error) => {
       console.error('Failed to save absence view mode:', error);
+    });
+  }, []);
+
+  // Save color mode when it changes
+  const handleColorModeChange = useCallback((mode: AbsenceColorMode) => {
+    setColorMode(mode);
+    AsyncStorage.setItem(ABSENCE_COLOR_MODE_STORAGE_KEY, mode).catch((error) => {
+      console.error('Failed to save absence color mode:', error);
     });
   }, []);
 
@@ -231,10 +250,12 @@ export const AbsenceListScreen: React.FC = () => {
         onYearChange={handleYearChange}
         viewMode={viewMode}
         onViewModeChange={isViewModeLoaded ? handleViewModeChange : undefined}
+        colorMode={colorMode}
+        onColorModeChange={handleColorModeChange}
         showYearPickerOnly
       />
     );
-  }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode, handleViewModeChange, isViewModeLoaded]);
+  }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode, handleViewModeChange, isViewModeLoaded, colorMode, handleColorModeChange]);
 
   // TitleBar right controls - filter and create buttons
   const titleBarRightControls = useMemo(() => {
@@ -495,6 +516,7 @@ export const AbsenceListScreen: React.FC = () => {
               year={selectedYear}
               absences={filteredAbsences}
               selectedTypeFilter={selectedTypeFilter}
+              colorMode={colorMode}
               onAbsencePress={handleAbsencePress}
             />
           ) : viewMode === 'timeline' ? (
@@ -502,6 +524,7 @@ export const AbsenceListScreen: React.FC = () => {
               year={selectedYear}
               absences={filteredAbsences}
               selectedTypeFilter={selectedTypeFilter}
+              colorMode={colorMode}
               onAbsencePress={handleAbsencePress}
             />
           ) : (

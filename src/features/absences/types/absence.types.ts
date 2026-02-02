@@ -55,7 +55,11 @@ export interface AbsenceUser {
   avatar?: string;
   department?: string;
   position?: string;
+  color?: string; // HEX color for calendar display
 }
+
+// Color mode for absence calendar
+export type AbsenceColorMode = 'by_type' | 'by_user';
 
 export interface Absence {
   id: number;
