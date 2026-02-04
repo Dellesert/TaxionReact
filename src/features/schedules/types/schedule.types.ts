@@ -357,3 +357,43 @@ export interface ScheduleCalendarDay {
 }
 
 export type ScheduleViewMode = 'week' | 'month' | 'list';
+
+export type ScheduleListTab = 'summary' | 'list';
+
+// ============================================
+// DAILY SUMMARY
+// ============================================
+
+export interface DailySummaryUser {
+  user_id: number;
+  user: ScheduleUser;
+  shift_type: ShiftType;
+  start_time: string;
+  end_time: string;
+  location?: string;
+}
+
+export interface DailySummarySchedule {
+  schedule_id: number;
+  schedule_title: string;
+  schedule_type: ScheduleType;
+  color: string;
+  users: DailySummaryUser[];
+}
+
+export interface DailySummaryAbsence {
+  user_id: number;
+  user: ScheduleUser;
+  type: string;
+  reason?: string;
+}
+
+export interface DailySummary {
+  date: string;
+  schedules: DailySummarySchedule[];
+  absences: DailySummaryAbsence[];
+}
+
+export interface DailySummaryResponse {
+  summary: DailySummary;
+}

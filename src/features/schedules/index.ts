@@ -13,6 +13,7 @@ export { useScheduleDetails } from './hooks/useScheduleDetails';
 export { useMyScheduleEntries } from './hooks/useMyScheduleEntries';
 export { useScheduleTemplates } from './hooks/useScheduleTemplates';
 export { useScheduleImport } from './hooks/useScheduleImport';
+export { useDailySummary } from './hooks/useDailySummary';
 
 // Components
 export { ShiftTypeBadge } from './components/ShiftTypeBadge';
@@ -24,6 +25,9 @@ export { ImportScheduleModal } from './components/ImportScheduleModal';
 export { EditScheduleModal } from './components/EditScheduleModal';
 export { EditScheduleEntryModal } from './components/EditScheduleEntryModal';
 export { ScheduleEntriesList } from './components/ScheduleEntriesList';
+export { ScheduleTabs } from './components/ScheduleTabs';
+export { DayStrip } from './components/DayStrip';
+export { DailySummaryView } from './components/DailySummaryView';
 
 // Screens
 export { ScheduleListScreen } from './screens/ScheduleListScreen';

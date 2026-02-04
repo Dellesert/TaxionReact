@@ -21,6 +21,7 @@ import type {
   ImportResultResponse,
   ScheduleFilters,
   ScheduleEntryFilters,
+  DailySummaryResponse,
 } from '../types/schedule.types';
 
 const SCHEDULE_ENDPOINTS = {
@@ -30,6 +31,7 @@ const SCHEDULE_ENDPOINTS = {
   ENTRY: (scheduleId: number, entryId: number) =>
     `/schedules/${scheduleId}/entries/${entryId}`,
   MY_ENTRIES: '/schedules/my-entries',
+  DAILY_SUMMARY: '/schedules/daily-summary',
   IMPORT: '/schedules/import',
   IMPORT_FORMATS: '/schedules/import/formats',
 };
@@ -179,6 +181,19 @@ export const scheduleApi = {
     entryId: number
   ): Promise<void> => {
     await api.delete(SCHEDULE_ENDPOINTS.ENTRY(scheduleId, entryId));
+  },
+
+  // ============================================
+  // DAILY SUMMARY
+  // ============================================
+
+  getDailySummary: async (date?: string): Promise<DailySummaryResponse> => {
+    const params = date ? { date } : {};
+    const response = await api.get<DailySummaryResponse>(
+      SCHEDULE_ENDPOINTS.DAILY_SUMMARY,
+      { params }
+    );
+    return response.data;
   },
 
   // ============================================

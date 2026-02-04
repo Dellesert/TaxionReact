@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
@@ -22,13 +23,17 @@ import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchInt
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useSchedules } from '../hooks/useSchedules';
+import { useDailySummary } from '../hooks/useDailySummary';
 import { useSchedulePermissions } from '../hooks/useSchedulePermissions';
 import { ScheduleCard } from '../components/ScheduleCard';
 import { ScheduleListHeader } from '../components/ScheduleListHeader';
 import CreateScheduleModal from '../components/CreateScheduleModal';
 import { MonthPicker } from '../components/MonthPicker';
+import { ScheduleTabs } from '../components/ScheduleTabs';
+import { DayStrip } from '../components/DayStrip';
+import { DailySummaryView } from '../components/DailySummaryView';
 import { TitleBarScheduleControls } from '../components/TitleBarScheduleControls';
-import { SCHEDULE_TYPE_LABELS, type Schedule, type ScheduleType } from '../types/schedule.types';
+import { SCHEDULE_TYPE_LABELS, type Schedule, type ScheduleType, type ScheduleListTab } from '../types/schedule.types';
 import type { ScheduleStackParamList } from '../navigation/types';
 
 // Helper to format date as YYYY-MM-DD
@@ -78,6 +83,30 @@ export const ScheduleListScreen: React.FC = () => {
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
+  // Daily summary (mobile only)
+  const [activeTab, setActiveTab] = useState<ScheduleListTab>('summary');
+  const [tabContainerWidth, setTabContainerWidth] = useState(0);
+  const currentTabIndex = useSharedValue(0);
+
+  const {
+    selectedDate: summaryDate,
+    summary,
+    isLoading: isSummaryLoading,
+    error: summaryError,
+    changeDate: changeSummaryDate,
+    refresh: refreshSummary,
+  } = useDailySummary({ enabled: !isDesktop });
+
+  // Tab change handler (mobile only)
+  const handleTabChange = useCallback((tab: ScheduleListTab) => {
+    setActiveTab(tab);
+    currentTabIndex.value = withTiming(tab === 'summary' ? 0 : 1, { duration: 250 });
+  }, [currentTabIndex]);
+
+  const handleTabLayout = useCallback((event: any) => {
+    setTabContainerWidth(event.nativeEvent.layout.width);
+  }, []);
 
   // Handler for creating schedule (defined early for TitleBar integration)
   const handleCreateSchedule = useCallback(() => {
@@ -291,16 +320,19 @@ export const ScheduleListScreen: React.FC = () => {
         )
       )}
 
-      {/* Month Picker - show only on mobile (Electron desktop has it in TitleBar) */}
+      {/* Tabs - mobile only */}
       {!isDesktop && (
-        <MonthPicker
-          selectedDate={selectedMonth}
-          onMonthChange={handleMonthChange}
+        <ScheduleTabs
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          tabContainerWidth={tabContainerWidth}
+          currentTabIndex={currentTabIndex}
+          onLayout={handleTabLayout}
         />
       )}
 
-      {/* Error message */}
-      {error && (
+      {/* Error message (show on desktop or on list tab) */}
+      {error && (isDesktop || activeTab === 'list') && (
         <View style={[styles.errorBanner, { backgroundColor: theme.error + '20' }]}>
           <Ionicons name="alert-circle" size={20} color={theme.error} />
           <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
@@ -347,27 +379,47 @@ export const ScheduleListScreen: React.FC = () => {
               </View>
             )}
           </ScrollView>
+        ) : activeTab === 'summary' ? (
+          // Mobile daily summary tab
+          <>
+            <DayStrip
+              selectedDate={summaryDate}
+              onDateChange={changeSummaryDate}
+            />
+            <DailySummaryView
+              summary={summary}
+              isLoading={isSummaryLoading}
+              error={summaryError}
+              onRefresh={refreshSummary}
+            />
+          </>
         ) : (
-          // Mobile list layout with SectionList
-          <SectionList
-            sections={sections}
-            renderItem={renderItem}
-            renderSectionHeader={renderSectionHeader}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={styles.listContent}
-            stickySectionHeadersEnabled={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                tintColor={theme.primary}
-              />
-            }
-            onEndReached={loadMore}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={renderFooter}
-            ListEmptyComponent={renderEmpty}
-          />
+          // Mobile schedule list tab
+          <>
+            <MonthPicker
+              selectedDate={selectedMonth}
+              onMonthChange={handleMonthChange}
+            />
+            <SectionList
+              sections={sections}
+              renderItem={renderItem}
+              renderSectionHeader={renderSectionHeader}
+              keyExtractor={(item) => item.id.toString()}
+              contentContainerStyle={styles.listContent}
+              stickySectionHeadersEnabled={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={theme.primary}
+                />
+              }
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={renderFooter}
+              ListEmptyComponent={renderEmpty}
+            />
+          </>
         )}
       </View>
 
