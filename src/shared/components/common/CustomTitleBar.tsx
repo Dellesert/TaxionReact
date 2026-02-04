@@ -104,11 +104,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
             )}
           </View>
         ) : (
-          <View style={styles.collapsedTitleArea}>
-            {isPageLoading && (
-              <ActivityIndicator size="small" color={theme.textSecondary} />
-            )}
-          </View>
+          <View style={styles.collapsedTitleArea} />
         )}
         <View
           style={[styles.toggleButton, isCollapsed && styles.toggleButtonCollapsed]}
