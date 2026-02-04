@@ -39,6 +39,7 @@ import {
   ABSENCE_TYPE_COLORS,
 } from '../types/absence.types';
 import { AbsenceCard } from '../components/AbsenceCard';
+import { CustomScrollView } from '@shared/components/common/CustomScrollView';
 
 // Type for sections grouped by absence type
 interface AbsenceSection {
@@ -552,10 +553,10 @@ export const AbsenceListScreen: React.FC = () => {
                           </Text>
                         </View>
                       </View>
-                      <ScrollView
+                      <CustomScrollView
                         horizontal
-                        showsHorizontalScrollIndicator={true}
-                        contentContainerStyle={styles.rowCardsContent}
+                        thumbColor={`${section.color}66`}
+                        style={styles.rowCardsScroll}
                       >
                         {section.data.map((absence) => (
                           <View key={absence.id} style={styles.rowCardWrapper}>
@@ -566,7 +567,7 @@ export const AbsenceListScreen: React.FC = () => {
                             />
                           </View>
                         ))}
-                      </ScrollView>
+                      </CustomScrollView>
                     </View>
                   ))}
                 </View>
@@ -879,7 +880,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  rowCardsContent: {
+  rowCardsScroll: {
     gap: 10,
     paddingHorizontal: 2,
     paddingTop: 2,

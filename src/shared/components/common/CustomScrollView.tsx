@@ -38,10 +38,19 @@ export const CustomScrollView: React.FC<CustomScrollViewProps> = ({
   const className = `custom-scroll-${uniqueId.replace(/:/g, '')}`;
   const ref = useRef<any>(null);
 
-  const resolvedThumbHover = thumbHoverColor || thumbColor.replace(/[\d.]+\)$/, (match) => {
-    const opacity = Math.min(parseFloat(match) + 0.2, 1);
-    return `${opacity})`;
-  });
+  const resolvedThumbHover = thumbHoverColor || (() => {
+    // hex with alpha: #RRGGBBAA → bump alpha
+    if (/^#[0-9a-fA-F]{8}$/.test(thumbColor)) {
+      const alpha = parseInt(thumbColor.slice(7, 9), 16);
+      const newAlpha = Math.min(alpha + 50, 255).toString(16).padStart(2, '0');
+      return thumbColor.slice(0, 7) + newAlpha;
+    }
+    // rgba(r,g,b,a) → bump alpha
+    return thumbColor.replace(/[\d.]+\)$/, (match) => {
+      const opacity = Math.min(parseFloat(match) + 0.2, 1);
+      return `${opacity})`;
+    });
+  })();
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
