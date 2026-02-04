@@ -77,7 +77,7 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
 
             return (
               <TouchableOpacity
-                key={index}
+                key={day.toISOString()}
                 style={[
                   styles.dayCell,
                   selected && { backgroundColor: theme.primary },
