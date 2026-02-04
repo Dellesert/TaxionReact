@@ -252,8 +252,8 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
 
         return {
           position: 'absolute' as const,
-          top: 2,
-          bottom: 2,
+          top: 0,
+          bottom: -2,
           left: (absencePosition === 'start' || absencePosition === 'single' || isFirstDayOfWeek) ? 2 : 0,
           right: (absencePosition === 'end' || absencePosition === 'single' || isLastDayOfWeek) ? 2 : 0,
           backgroundColor: bgColor,
@@ -672,8 +672,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayCircle: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 8,
+    bottom: 3,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -703,13 +703,13 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   dotsContainerToday: {
-    bottom: 1,
+    bottom: 3,
   },
   dotsContainerWithSubstitution: {
-    bottom: 4,
+    bottom: 3,
   },
   eventDot: {
-    width: 4,
+    width: 8,
     height: 4,
     borderRadius: 2,
   },
