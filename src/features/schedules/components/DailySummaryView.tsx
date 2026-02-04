@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -131,6 +131,18 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
   onRefresh,
 }) => {
   const { theme } = useTheme();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setIsRefreshing(false);
+    }
+  }, [isLoading]);
+
+  const handleManualRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    onRefresh();
+  }, [onRefresh]);
 
   if (isLoading && !summary) {
     return (
@@ -151,8 +163,8 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
-          refreshing={isLoading}
-          onRefresh={onRefresh}
+          refreshing={isRefreshing}
+          onRefresh={handleManualRefresh}
           tintColor={theme.primary}
         />
       }
