@@ -69,6 +69,7 @@ export const ScheduleListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { canCreate } = useSchedulePermissions();
   const isDesktop = useIsWideScreen();
+  const cardBgColor = isDark ? theme.card : '#FFFFFF';
 
   // Get initial month range for filters
   const initialMonthRange = getMonthRange(new Date());
@@ -96,7 +97,7 @@ export const ScheduleListScreen: React.FC = () => {
     error: summaryError,
     changeDate: changeSummaryDate,
     refresh: refreshSummary,
-  } = useDailySummary({ enabled: !isDesktop });
+  } = useDailySummary({ enabled: true });
 
   // Tab change handler (mobile only)
   const handleTabChange = useCallback((tab: ScheduleListTab) => {
@@ -342,43 +343,62 @@ export const ScheduleListScreen: React.FC = () => {
       {/* Content */}
       <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
         {isElectron && isDesktop ? (
-          // Desktop columns layout - each type in its own column
-          <ScrollView
-            contentContainerStyle={styles.columnsScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {sections.length === 0 ? (
-              <View style={styles.emptyContainerDesktop}>
-                {renderEmpty()}
-              </View>
-            ) : (
-              <View style={styles.columnsContainer}>
-                {sections.map((section) => (
-                  <View key={section.title} style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                      <Text style={[styles.columnTitle, { color: theme.text }]}>
-                        {section.title}
-                      </Text>
-                      <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
-                          {section.data.length}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.columnContentInner}>
-                      {section.data.map((schedule) => (
-                        <ScheduleCard
-                          key={schedule.id}
-                          schedule={schedule}
-                          onPress={() => handleSchedulePress(schedule)}
-                        />
-                      ))}
-                    </View>
+          // Desktop layout - columns + daily summary sidebar
+          <View style={styles.desktopRow}>
+            {/* Left Sidebar - Daily Summary */}
+            <View style={[styles.summarySidebar, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
+              <DayStrip
+                selectedDate={summaryDate}
+                onDateChange={changeSummaryDate}
+              />
+              <DailySummaryView
+                summary={summary}
+                isLoading={isSummaryLoading}
+                error={summaryError}
+                onRefresh={refreshSummary}
+              />
+            </View>
+
+            {/* Main Panel - Schedule columns */}
+            <View style={styles.mainPanel}>
+              <ScrollView
+                contentContainerStyle={styles.columnsScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {sections.length === 0 ? (
+                  <View style={styles.emptyContainerDesktop}>
+                    {renderEmpty()}
                   </View>
-                ))}
-              </View>
-            )}
-          </ScrollView>
+                ) : (
+                  <View style={styles.columnsContainer}>
+                    {sections.map((section) => (
+                      <View key={section.title} style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                          <Text style={[styles.columnTitle, { color: theme.text }]}>
+                            {section.title}
+                          </Text>
+                          <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
+                            <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
+                              {section.data.length}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.columnContentInner}>
+                          {section.data.map((schedule) => (
+                            <ScheduleCard
+                              key={schedule.id}
+                              schedule={schedule}
+                              onPress={() => handleSchedulePress(schedule)}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
         ) : activeTab === 'summary' ? (
           // Mobile daily summary tab
           <>
@@ -495,6 +515,33 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     maxWidth: 500,
+  },
+  // Desktop row layout (schedule columns + summary sidebar)
+  desktopRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  mainPanel: {
+    flex: 1,
+    minWidth: 0,
+  },
+  summarySidebar: {
+    width: 380,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginRight: 0,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
   },
   // Desktop columns layout
   columnsScrollContent: {
