@@ -1,11 +1,12 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { Task } from '../../types/task.types';
 import type { StatusTab } from '../../hooks/useTaskListData';
 import { TaskItem } from '../lists/TaskItem';
 import { TaskListEmptyState } from '../states/TaskListEmptyState';
+import { CustomScrollView } from '@shared/components/common/CustomScrollView';
 import { STATUS_TABS } from '../../utils/taskListHelpers';
 
 interface TaskKanbanColumnProps {
@@ -89,11 +90,10 @@ export const TaskKanbanColumn: React.FC<TaskKanbanColumnProps> = ({
         </View>
 
       {/* Column Content */}
-      <ScrollView
+      <CustomScrollView
         style={styles.columnContent}
         onScroll={handleScroll}
         scrollEventThrottle={400}
-        showsVerticalScrollIndicator={false}
       >
         {total === 0 ? (
           <View style={styles.emptyContainer}>
@@ -120,7 +120,7 @@ export const TaskKanbanColumn: React.FC<TaskKanbanColumnProps> = ({
             )}
           </View>
         )}
-      </ScrollView>
+      </CustomScrollView>
       </View>
     </View>
   );

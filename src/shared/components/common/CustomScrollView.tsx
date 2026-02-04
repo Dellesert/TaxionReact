@@ -1,5 +1,9 @@
-import React, { useEffect, useRef, useId } from 'react';
-import { View, ScrollView, Platform, StyleSheet, ViewStyle } from 'react-native';
+import React, { useEffect, useRef, useId, useImperativeHandle, forwardRef } from 'react';
+import { View, ScrollView, Platform, StyleSheet, ViewStyle, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+
+export interface CustomScrollViewRef {
+  scrollTo: (options: { x?: number; y?: number; animated?: boolean }) => void;
+}
 
 interface CustomScrollViewProps {
   /** Scroll direction */
@@ -16,6 +20,12 @@ interface CustomScrollViewProps {
   style?: ViewStyle;
   /** Style applied to the content wrapper (like contentContainerStyle) */
   contentContainerStyle?: ViewStyle;
+  /** Scroll event callback (RN-compatible format) */
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** Scroll event throttle in ms (native only, web uses passive listener) */
+  scrollEventThrottle?: number;
+  /** Whether scrolling is enabled. Default: true */
+  scrollEnabled?: boolean;
   children: React.ReactNode;
 }
 
@@ -24,7 +34,7 @@ interface CustomScrollViewProps {
  * On web/Electron renders a View with CSS-styled thin scrollbar.
  * On native falls back to regular ScrollView.
  */
-export const CustomScrollView: React.FC<CustomScrollViewProps> = ({
+export const CustomScrollView = forwardRef<CustomScrollViewRef, CustomScrollViewProps>(({
   horizontal = false,
   thumbColor = 'rgba(128,128,128,0.35)',
   thumbHoverColor,
@@ -32,11 +42,15 @@ export const CustomScrollView: React.FC<CustomScrollViewProps> = ({
   size = 6,
   style,
   contentContainerStyle,
+  onScroll,
+  scrollEventThrottle,
+  scrollEnabled = true,
   children,
-}) => {
+}, forwardedRef) => {
   const uniqueId = useId();
   const className = `custom-scroll-${uniqueId.replace(/:/g, '')}`;
   const ref = useRef<any>(null);
+  const nativeScrollRef = useRef<ScrollView>(null);
 
   const resolvedThumbHover = thumbHoverColor || (() => {
     // hex with alpha: #RRGGBBAA → bump alpha
@@ -52,6 +66,24 @@ export const CustomScrollView: React.FC<CustomScrollViewProps> = ({
     });
   })();
 
+  // Expose scrollTo via ref
+  useImperativeHandle(forwardedRef, () => ({
+    scrollTo: (options: { x?: number; y?: number; animated?: boolean }) => {
+      if (Platform.OS === 'web' && ref.current) {
+        const el = ref.current as HTMLElement;
+        const behavior = options.animated === false ? 'instant' : 'smooth';
+        el.scrollTo({
+          left: options.x ?? 0,
+          top: options.y ?? 0,
+          behavior: behavior as ScrollBehavior,
+        });
+      } else if (nativeScrollRef.current) {
+        nativeScrollRef.current.scrollTo(options);
+      }
+    },
+  }), []);
+
+  // Inject CSS for custom scrollbar
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
@@ -62,10 +94,11 @@ export const CustomScrollView: React.FC<CustomScrollViewProps> = ({
     const sizeProp = horizontal ? 'height' : 'width';
     const isHover = visibility === 'hover';
     const idleThumb = isHover ? 'transparent' : thumbColor;
+    const overflowDisabled = scrollEnabled ? 'auto' : 'hidden';
 
     styleEl.textContent = `
       .${className} {
-        overflow-${axis}: auto;
+        overflow-${axis}: ${overflowDisabled};
         overflow-${horizontal ? 'y' : 'x'}: hidden;
         scrollbar-width: thin;
         scrollbar-color: ${idleThumb} transparent;
@@ -98,7 +131,7 @@ export const CustomScrollView: React.FC<CustomScrollViewProps> = ({
 
     document.head.appendChild(styleEl);
     return () => { styleEl.remove(); };
-  }, [className, horizontal, thumbColor, resolvedThumbHover, visibility, size]);
+  }, [className, horizontal, thumbColor, resolvedThumbHover, visibility, size, scrollEnabled]);
 
   useEffect(() => {
     if (Platform.OS === 'web' && ref.current?.classList) {
@@ -106,15 +139,40 @@ export const CustomScrollView: React.FC<CustomScrollViewProps> = ({
     }
   }, [className]);
 
+  // Attach DOM scroll listener on web to translate to RN-compatible onScroll
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !onScroll || !ref.current) return;
+
+    const el = ref.current as HTMLElement;
+
+    const handler = () => {
+      const event = {
+        nativeEvent: {
+          contentOffset: { x: el.scrollLeft, y: el.scrollTop },
+          contentSize: { width: el.scrollWidth, height: el.scrollHeight },
+          layoutMeasurement: { width: el.clientWidth, height: el.clientHeight },
+        },
+      } as NativeSyntheticEvent<NativeScrollEvent>;
+      onScroll(event);
+    };
+
+    el.addEventListener('scroll', handler, { passive: true });
+    return () => { el.removeEventListener('scroll', handler); };
+  }, [onScroll]);
+
   // Native fallback
   if (Platform.OS !== 'web') {
     return (
       <ScrollView
+        ref={nativeScrollRef}
         horizontal={horizontal}
         showsHorizontalScrollIndicator={horizontal}
         showsVerticalScrollIndicator={!horizontal}
         style={style}
         contentContainerStyle={contentContainerStyle}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
+        scrollEnabled={scrollEnabled}
       >
         {children}
       </ScrollView>
@@ -136,7 +194,7 @@ export const CustomScrollView: React.FC<CustomScrollViewProps> = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   horizontalContainer: {

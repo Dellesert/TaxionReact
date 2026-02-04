@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, useWindowDimensions, View, ScrollView } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import type { Task } from '../../types/task.types';
 import type { StatusTab, TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus } from '../../hooks/useTaskListData';
 import { TaskKanbanColumn } from './TaskKanbanColumn';
 import { STATUS_TABS_ORDER } from '../../utils/taskListHelpers';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { CustomScrollView } from '@shared/components/common/CustomScrollView';
 import { useSidebar } from '@shared/contexts/SidebarContext';
 
 interface TaskKanbanBoardProps {
@@ -61,9 +62,8 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
   return (
     <View style={styles.container}>
       {/* Kanban Columns */}
-      <ScrollView
+      <CustomScrollView
         horizontal
-        showsHorizontalScrollIndicator={true}
         style={styles.scrollContainer}
         contentContainerStyle={styles.columnsContainer}
       >
@@ -82,7 +82,7 @@ export const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
             columnWidth={columnWidth}
           />
         ))}
-      </ScrollView>
+      </CustomScrollView>
     </View>
   );
 };

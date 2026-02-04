@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { CustomScrollView, CustomScrollViewRef } from '@shared/components/common/CustomScrollView';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -24,7 +25,6 @@ import {
   ABSENCE_TYPE_COLORS,
   ABSENCE_TYPE_LABELS,
   ABSENCE_TYPE_ICONS,
-  ABSENCE_TYPES,
 } from '../types/absence.types';
 import { getUserColorById } from '../constants/userColors.constants';
 import { useRussianHolidays } from '../hooks/useRussianHolidays';
@@ -115,17 +115,17 @@ interface PopupData {
   user: AbsenceUser;
   x: number;
   y: number;
+  barBottom: number;
   startDate: Date;
   endDate: Date;
   duration: number;
 }
 
 // Timeline constants
-const SIDEBAR_WIDTH = 220;
+const SIDEBAR_WIDTH = 280;
 const ROW_HEIGHT = 52;
 const MONTH_HEADER_HEIGHT = 28;
 const DAY_HEADER_HEIGHT = 24;
-const TOTAL_HEADER_HEIGHT = MONTH_HEADER_HEIGHT + DAY_HEADER_HEIGHT;
 const DAY_WIDTH = 4; // Width per day in pixels
 
 export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
@@ -145,7 +145,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
     }
     return ABSENCE_TYPE_COLORS[absence.type];
   }, [colorMode]);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<CustomScrollViewRef>(null);
   const sidebarScrollRef = useRef<ScrollView>(null);
   const containerRef = useRef<View>(null);
   const [hoveredAbsence, setHoveredAbsence] = useState<number | null>(null);
@@ -390,6 +390,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
               user: row.user,
               x: rect.left + rect.width / 2,
               y: rect.top,
+              barBottom: rect.bottom,
               startDate,
               endDate,
               duration,
@@ -438,12 +439,9 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
   const renderSidebar = () => (
     <View style={[styles.sidebar, { backgroundColor: theme.card, borderColor: theme.border }]}>
       {/* Header */}
-      <View style={[styles.sidebarHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+      <View style={styles.sidebarHeader}>
         <Text style={[styles.sidebarHeaderText, { color: theme.text }]}>
-          Сотрудник
-        </Text>
-        <Text style={[styles.sidebarHeaderDays, { color: theme.textSecondary }]}>
-          Дней
+          Сотрудники
         </Text>
       </View>
 
@@ -454,15 +452,14 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
         showsVerticalScrollIndicator={false}
         scrollEnabled={false}
       >
-        {userRows.map((row, index) => {
-          const isEven = index % 2 === 0;
+        {userRows.map((row) => {
           const userColor = row.user.color || getUserColorById(row.user.id);
           return (
             <View
               key={row.user.id}
               style={[
                 styles.sidebarRow,
-                { backgroundColor: isEven ? theme.card : theme.background },
+                { borderColor: theme.border },
               ]}
             >
               <View style={styles.avatarWithColor}>
@@ -470,7 +467,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
                   name={row.user.name || ''}
                   imageUrl={row.user.avatar}
                   userId={row.user.id}
-                  size={32}
+                  size={36}
                 />
                 <View style={[styles.userColorDot, { backgroundColor: userColor }]} />
               </View>
@@ -482,12 +479,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
                   {row.user.name}
                 </Text>
                 <Text style={[styles.sidebarUserMeta, { color: theme.textSecondary }]}>
-                  {row.absences.length} {row.absences.length === 1 ? 'отсутствие' : row.absences.length < 5 ? 'отсутствия' : 'отсутствий'}
-                </Text>
-              </View>
-              <View style={[styles.totalDaysBadge, { backgroundColor: theme.primary + '20' }]}>
-                <Text style={[styles.totalDaysText, { color: theme.primary }]}>
-                  {row.totalDays}
+                  {row.absences.length} {row.absences.length === 1 ? 'отсутствие' : row.absences.length < 5 ? 'отсутствия' : 'отсутствий'} · {row.totalDays} дн.
                 </Text>
               </View>
             </View>
@@ -496,89 +488,6 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
       </ScrollView>
     </View>
   );
-
-  // Render legend with stats
-  const renderLegend = () => {
-    if (colorMode === 'by_user') {
-      // Show users with their colors
-      const userStats = userRows.map(row => ({
-        user: row.user,
-        color: row.user.color || getUserColorById(row.user.id),
-        totalDays: row.totalDays,
-      }));
-
-      if (userStats.length === 0) return null;
-
-      const grandTotal = userStats.reduce((sum, s) => sum + s.totalDays, 0);
-
-      return (
-        <View style={[styles.legend, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.legendStats}>
-            {userStats.map(({ user, color, totalDays }) => (
-              <View key={user.id} style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: color }]} />
-                <Text style={[styles.legendLabel, { color: theme.text }]} numberOfLines={1}>
-                  {user.name}
-                </Text>
-                <Text style={[styles.legendCount, { color: theme.textSecondary }]}>
-                  ({pluralizeDays(totalDays)})
-                </Text>
-              </View>
-            ))}
-          </View>
-          <View style={[styles.legendTotal, { borderColor: theme.border }]}>
-            <Text style={[styles.legendTotalLabel, { color: theme.textSecondary }]}>
-              Всего:
-            </Text>
-            <Text style={[styles.legendTotalValue, { color: theme.text }]}>
-              {pluralizeDays(grandTotal)}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    // Default: show types with their colors
-    const stats = ABSENCE_TYPES.map(type => {
-      const typeAbsences = filteredAbsences.filter(a => a.type === type);
-      const totalDays = typeAbsences.reduce((sum, a) => {
-        const start = parseLocalDate(a.start_date);
-        const end = parseLocalDate(a.end_date);
-        return sum + getDurationDays(start, end);
-      }, 0);
-      return { type, count: typeAbsences.length, totalDays };
-    }).filter(s => s.count > 0);
-
-    if (stats.length === 0) return null;
-
-    const grandTotal = stats.reduce((sum, s) => sum + s.totalDays, 0);
-
-    return (
-      <View style={[styles.legend, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={styles.legendStats}>
-          {stats.map(({ type, count, totalDays }) => (
-            <View key={type} style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: ABSENCE_TYPE_COLORS[type] }]} />
-              <Text style={[styles.legendLabel, { color: theme.text }]}>
-                {ABSENCE_TYPE_LABELS[type]}
-              </Text>
-              <Text style={[styles.legendCount, { color: theme.textSecondary }]}>
-                {count} ({pluralizeDays(totalDays)})
-              </Text>
-            </View>
-          ))}
-        </View>
-        <View style={[styles.legendTotal, { borderColor: theme.border }]}>
-          <Text style={[styles.legendTotalLabel, { color: theme.textSecondary }]}>
-            Всего:
-          </Text>
-          <Text style={[styles.legendTotalValue, { color: theme.text }]}>
-            {pluralizeDays(grandTotal)}
-          </Text>
-        </View>
-      </View>
-    );
-  };
 
   // Empty state
   if (userRows.length === 0) {
@@ -597,7 +506,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
   const renderPopup = () => {
     if (!popupData || Platform.OS !== 'web') return null;
 
-    const { absence, user, x, y, startDate, endDate, duration } = popupData;
+    const { absence, user, x, y, barBottom, startDate, endDate, duration } = popupData;
     const typeColor = ABSENCE_TYPE_COLORS[absence.type];
     const typeIcon = ABSENCE_TYPE_ICONS[absence.type];
     const typeLabel = ABSENCE_TYPE_LABELS[absence.type];
@@ -605,13 +514,17 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
     // Check if it's a single day
     const isSingleDay = duration === 1;
 
+    // Flip popup below the bar if not enough space above (~250px estimated popup height)
+    const showBelow = y < 250;
+
     return (
       <View
         style={[
           styles.popup,
+          showBelow ? styles.popupBelow : styles.popupAbove,
           {
             left: x,
-            top: y - 10,
+            top: showBelow ? barBottom + 10 : y - 10,
             backgroundColor: theme.card,
             borderColor: theme.border,
             // @ts-ignore
@@ -630,7 +543,11 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
         }}
       >
         {/* Arrow */}
-        <View style={[styles.popupArrow, { borderTopColor: theme.card }]} />
+        <View style={[
+          showBelow
+            ? [styles.popupArrowUp, { borderBottomColor: theme.card }]
+            : [styles.popupArrow, { borderTopColor: theme.card }],
+        ]} />
 
         {/* Header with type */}
         <View style={[styles.popupHeader, { backgroundColor: typeColor + '15' }]}>
@@ -707,20 +624,16 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
 
   return (
     <View ref={containerRef} style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Legend with stats */}
-      {renderLegend()}
-
       {/* Main content */}
       <View style={styles.mainContent}>
         {/* Sidebar */}
         {renderSidebar()}
 
         {/* Timeline area */}
-        <View style={styles.timelineContainer}>
-          <ScrollView
+        <View style={[styles.timelineContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <CustomScrollView
             ref={scrollViewRef}
             horizontal
-            showsHorizontalScrollIndicator={true}
             style={styles.timelineScroll}
             contentContainerStyle={{ width: timelineWidth }}
             onScroll={handleTimelineScroll}
@@ -747,7 +660,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
                 </View>
               )}
             </View>
-          </ScrollView>
+          </CustomScrollView>
         </View>
       </View>
 
@@ -770,52 +683,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  // Legend styles
-  legend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderRadius: 0,
-  },
-  legendStats: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendColor: {
-    width: 14,
-    height: 14,
-    borderRadius: 4,
-  },
-  legendLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  legendCount: {
-    fontSize: 12,
-  },
-  legendTotal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingLeft: 16,
-    borderLeftWidth: 1,
-  },
-  legendTotalLabel: {
-    fontSize: 13,
-  },
-  legendTotalValue: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
   // Main content
   mainContent: {
     flex: 1,
@@ -824,32 +691,39 @@ const styles = StyleSheet.create({
   // Sidebar styles
   sidebar: {
     width: SIDEBAR_WIDTH,
-    borderRightWidth: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginRight: 0,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {}),
   },
   sidebarHeader: {
-    height: TOTAL_HEADER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   sidebarHeaderText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-  },
-  sidebarHeaderDays: {
-    fontSize: 11,
-    fontWeight: '500',
   },
   sidebarList: {
     flex: 1,
+    paddingHorizontal: 12,
   },
   sidebarRow: {
-    height: ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginBottom: 6,
     gap: 10,
   },
   avatarWithColor: {
@@ -870,27 +744,25 @@ const styles = StyleSheet.create({
   },
   sidebarUserName: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   sidebarUserMeta: {
     fontSize: 11,
     marginTop: 2,
   },
-  totalDaysBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    minWidth: 36,
-    alignItems: 'center',
-  },
-  totalDaysText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
   // Timeline styles
   timelineContainer: {
     flex: 1,
     overflow: 'hidden',
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginLeft: 16,
+    padding: 12,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {}),
   },
   timelineScroll: {
     flex: 1,
@@ -1002,17 +874,22 @@ const styles = StyleSheet.create({
   // Popup styles
   popup: {
     position: 'fixed' as any,
-    transform: [{ translateX: '-50%' }, { translateY: '-100%' }],
     minWidth: 280,
     maxWidth: 340,
     borderRadius: 12,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: 'visible' as any,
     zIndex: 1000,
     ...(Platform.OS === 'web' ? {
       // @ts-ignore
       animation: 'fadeIn 0.15s ease',
     } : {}),
+  },
+  popupAbove: {
+    transform: [{ translateX: '-50%' }, { translateY: '-100%' }],
+  },
+  popupBelow: {
+    transform: [{ translateX: '-50%' }],
   },
   popupArrow: {
     position: 'absolute',
@@ -1024,6 +901,19 @@ const styles = StyleSheet.create({
     borderLeftWidth: 8,
     borderRightWidth: 8,
     borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  } as any,
+  popupArrowUp: {
+    position: 'absolute',
+    top: -8,
+    left: '50%',
+    marginLeft: -8,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   } as any,

@@ -217,6 +217,11 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
         );
       })}
 
+      {/* Divider above user avatar */}
+      {user && (
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+      )}
+
       {/* User Avatar at bottom */}
       {user && (
         <TouchableOpacity
@@ -360,8 +365,12 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: 2,
   },
-  avatarContainer: {
+  divider: {
+    height: 1,
+    marginHorizontal: 0,
     marginTop: 'auto',
+  },
+  avatarContainer: {
     marginHorizontal: 8,
     borderRadius: 12,
   },
