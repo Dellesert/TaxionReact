@@ -294,42 +294,41 @@ export const ScheduleListScreen: React.FC = () => {
           <ScreenHeader
             title="Графики работы"
             customContent={
-              <View style={styles.headerRow}>
-                <View style={styles.headerLeft}>
-                  {navigation.canGoBack() && (
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                      <Ionicons name="arrow-back" size={24} color={theme.primary} />
-                    </TouchableOpacity>
-                  )}
+              <>
+                <View style={styles.headerRow}>
+                  <View style={styles.headerLeft}>
+                    {navigation.canGoBack() && (
+                      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color={theme.primary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
+
+                  <View style={styles.headerRight}>
+                    {canCreate && (
+                      <TouchableOpacity
+                        onPress={handleCreateSchedule}
+                        style={styles.iconButton}
+                      >
+                        <Ionicons name="add" size={30} color={theme.primary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
 
-                <Text style={[styles.title, { color: theme.text }]}>Графики работы</Text>
-
-                <View style={styles.headerRight}>
-                  {canCreate && (
-                    <TouchableOpacity
-                      onPress={handleCreateSchedule}
-                      style={styles.iconButton}
-                    >
-                      <Ionicons name="add" size={30} color={theme.primary} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
+                <ScheduleTabs
+                  activeTab={activeTab}
+                  onTabChange={handleTabChange}
+                  tabContainerWidth={tabContainerWidth}
+                  currentTabIndex={currentTabIndex}
+                  onLayout={handleTabLayout}
+                />
+              </>
             }
           />
         )
-      )}
-
-      {/* Tabs - mobile only */}
-      {!isDesktop && (
-        <ScheduleTabs
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          tabContainerWidth={tabContainerWidth}
-          currentTabIndex={currentTabIndex}
-          onLayout={handleTabLayout}
-        />
       )}
 
       {/* Error message (show on desktop or on list tab) */}

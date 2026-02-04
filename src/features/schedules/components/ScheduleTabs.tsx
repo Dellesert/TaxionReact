@@ -50,7 +50,7 @@ export const ScheduleTabs: React.FC<ScheduleTabsProps> = ({
             { color: activeTab === 'summary' ? theme.primary : theme.textSecondary },
           ]}
         >
-          Сводка
+          Обзор
         </Text>
       </TouchableOpacity>
 
