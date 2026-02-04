@@ -88,8 +88,8 @@ const ScheduleSection: React.FC<{
         </View>
         {schedule.users.length > 0 ? (
           <View style={styles.usersList}>
-            {schedule.users.map((user) => (
-              <UserRow key={user.user_id} entry={user} />
+            {schedule.users.map((user, index) => (
+              <UserRow key={`${user.user_id}-${index}`} entry={user} />
             ))}
           </View>
         ) : (
