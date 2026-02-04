@@ -103,7 +103,7 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
   const getSubstitutionBarStyle = () => {
     if (!hasSubstitution) return null;
 
-    const barColor = substitution!.color || '#FF9800';
+    const barColor = '#9B59B6';
     let borderTopLeftRadius = 0;
     let borderBottomLeftRadius = 0;
     let borderTopRightRadius = 0;
@@ -120,8 +120,8 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
 
     return {
       position: 'absolute' as const,
-      bottom: 0,
-      height: 4,
+      bottom: 1,
+      height: 3,
       left: (substitutionPosition === 'start' || substitutionPosition === 'single' || isFirstDayOfWeek) ? 4 : 0,
       right: (substitutionPosition === 'end' || substitutionPosition === 'single' || isLastDayOfWeek) ? 4 : 0,
       backgroundColor: barColor,
@@ -188,7 +188,10 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
 
       {/* Event dots indicator - always show when has events */}
       {hasEvents && isCurrentMonth && (
-        <View style={styles.dotsContainer}>
+        <View style={[
+          styles.dotsContainer,
+          hasSubstitution && { bottom: 10 },
+        ]}>
           {dotColors.map((color, index) => (
             <View
               key={`${date.toISOString()}-${index}`}

@@ -272,7 +272,7 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       const getSubstitutionBarStyle = () => {
         if (!hasSubstitution) return null;
 
-        const barColor = substitution!.color || '#FF9800'; // Orange default
+        const barColor = '#9B59B6';
 
         // Determine corner rounding based on position and week boundaries
         let borderTopLeftRadius = 0;
@@ -294,8 +294,8 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
 
         return {
           position: 'absolute' as const,
-          bottom: 0,
-          height: 4,
+          bottom: -4,
+          height: 2,
           left: (substitutionPosition === 'start' || substitutionPosition === 'single' || isFirstDayOfWeek) ? 4 : 0,
           right: (substitutionPosition === 'end' || substitutionPosition === 'single' || isLastDayOfWeek) ? 4 : 0,
           backgroundColor: barColor,
@@ -344,7 +344,11 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
 
           {/* Event dots indicator - positioned below the day circle */}
           {hasEvents && isCurrentMonth && (
-            <View style={[styles.dotsContainer, isTodayDate && styles.dotsContainerToday]}>
+            <View style={[
+              styles.dotsContainer,
+              isTodayDate && styles.dotsContainerToday,
+              hasSubstitution && styles.dotsContainerWithSubstitution,
+            ]}>
               {dotColors.map((color, index) => (
                 <View
                   key={`${date.toISOString()}-${index}`}
@@ -668,8 +672,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayCircle: {
-    width: 32,
-    height: 32,
+    width: 26,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
@@ -690,7 +694,7 @@ const styles = StyleSheet.create({
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 4,
+    bottom: 8,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -700,6 +704,9 @@ const styles = StyleSheet.create({
   },
   dotsContainerToday: {
     bottom: 1,
+  },
+  dotsContainerWithSubstitution: {
+    bottom: 4,
   },
   eventDot: {
     width: 4,

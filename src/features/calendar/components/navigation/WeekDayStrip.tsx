@@ -193,7 +193,7 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
               const getSubstitutionBarStyle = () => {
                 if (!hasSubstitution) return null;
 
-                const barColor = substitution!.color || '#FF9800';
+                const barColor = '#9B59B6';
                 let borderTopLeftRadius = 0;
                 let borderBottomLeftRadius = 0;
                 let borderTopRightRadius = 0;
@@ -255,7 +255,10 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
                     </Text>
                   </View>
                   {/* Event indicator dots with event colors */}
-                  <View style={styles.dotContainer}>
+                  <View style={[
+                    styles.dotContainer,
+                    hasSubstitution && { marginBottom: 4 },
+                  ]}>
                     {eventColors.map((color, index) => (
                       <View
                         key={index}
