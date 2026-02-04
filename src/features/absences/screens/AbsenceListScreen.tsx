@@ -529,40 +529,44 @@ export const AbsenceListScreen: React.FC = () => {
             />
           ) : (
             <ScrollView
-              contentContainerStyle={styles.columnsScrollContent}
+              contentContainerStyle={styles.rowsScrollContent}
               showsVerticalScrollIndicator={false}
             >
               {absenceSections.length === 0 ? (
                 renderDesktopEmpty()
               ) : (
-                <View style={styles.columnsContainer}>
+                <View style={styles.rowsContainer}>
                   {absenceSections.map((section) => (
                     <View
                       key={section.type}
-                      style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}
+                      style={styles.typeRow}
                     >
-                      <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                        <View style={styles.columnHeaderLeft}>
-                          <View style={[styles.columnColorDot, { backgroundColor: section.color }]} />
-                          <Text style={[styles.columnTitle, { color: theme.text }]}>
-                            {section.title}
-                          </Text>
-                        </View>
-                        <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
-                          <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
+                      <View style={[styles.rowHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <View style={[styles.rowColorDot, { backgroundColor: section.color }]} />
+                        <Text style={[styles.rowTitle, { color: theme.text }]}>
+                          {section.title}
+                        </Text>
+                        <View style={[styles.rowCount, { backgroundColor: theme.background }]}>
+                          <Text style={[styles.rowCountText, { color: theme.textSecondary }]}>
                             {section.data.length}
                           </Text>
                         </View>
                       </View>
-                      <View style={styles.columnContentInner}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={true}
+                        contentContainerStyle={styles.rowCardsContent}
+                      >
                         {section.data.map((absence) => (
-                          <AbsenceCard
-                            key={absence.id}
-                            absence={absence}
-                            onPress={() => handleAbsencePress(absence)}
-                          />
+                          <View key={absence.id} style={styles.rowCardWrapper}>
+                            <AbsenceCard
+                              absence={absence}
+                              onPress={() => handleAbsencePress(absence)}
+                              style={styles.rowCardStretch}
+                            />
+                          </View>
                         ))}
-                      </View>
+                      </ScrollView>
                     </View>
                   ))}
                 </View>
@@ -822,17 +826,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  // Desktop columns layout
-  columnsScrollContent: {
+  // Desktop horizontal rows layout
+  rowsScrollContent: {
     flexGrow: 1,
   },
-  columnsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  rowsContainer: {
     padding: 16,
-    gap: 16,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
+    gap: 20,
   },
   emptyContainerDesktop: {
     flex: 1,
@@ -848,48 +848,50 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 300,
   },
-  typeColumn: {
-    width: 320,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-    flexShrink: 0,
+  typeRow: {
+    gap: 10,
   },
-  columnHeader: {
+  rowHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-  },
-  columnHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
     gap: 8,
   },
-  columnColorDot: {
+  rowColorDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
   },
-  columnTitle: {
+  rowTitle: {
     fontSize: 14,
     fontWeight: '600',
   },
-  columnCount: {
+  rowCount: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  columnCountText: {
+  rowCountText: {
     fontSize: 12,
     fontWeight: '500',
   },
-  columnContentInner: {
-    padding: 8,
-    gap: 8,
-    paddingBottom: 12,
+  rowCardsContent: {
+    gap: 10,
+    paddingHorizontal: 2,
+    paddingTop: 2,
+    paddingBottom: 14,
+  },
+  rowCardWrapper: {
+    width: 280,
+    alignSelf: 'stretch' as const,
+  },
+  rowCardStretch: {
+    flex: 1,
+    marginBottom: 0,
   },
 });
 
