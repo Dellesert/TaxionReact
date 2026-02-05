@@ -737,7 +737,7 @@ export const useChatStore = create<ChatState>()(
         // NEW API: Use getLatestMessages (cursor-based pagination)
         // Messages are returned in chronological order (oldest → newest)
         const response = await chatApi.getLatestMessages(chatId, {
-          limit: PAGINATION.DEFAULT_LIMIT,
+          limit: PAGINATION.INITIAL_LIMIT,
           include_unread_marker: true,
         });
 

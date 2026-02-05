@@ -252,7 +252,8 @@ export const TIMEOUTS = {
 
 // Pagination
 export const PAGINATION = {
-  DEFAULT_LIMIT: 10,
+  INITIAL_LIMIT: 20,
+  DEFAULT_LIMIT: 20,
   DEFAULT_OFFSET: 0,
   MAX_LIMIT: 100,
 } as const;
