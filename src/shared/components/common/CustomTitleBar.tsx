@@ -17,10 +17,12 @@ import { TitleBarNotificationDropdown } from './TitleBarNotificationDropdown';
 
 interface CustomTitleBarProps {
   navigationRef?: React.RefObject<NavigationContainerRef<any>>;
+  isAuthenticated?: boolean;
 }
 
 export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
-  navigationRef
+  navigationRef,
+  isAuthenticated = true,
 }) => {
   const isWideScreen = useIsWideScreen();
   const desktopNav = useContext(DesktopNavigationContext);
@@ -89,6 +91,49 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
       }
     }
   };
+
+  // Auth screens: show only draggable area + window controls (no sidebar, no notifications)
+  if (!isAuthenticated) {
+    return (
+      <View style={[styles.titleBar, { backgroundColor: theme.backgroundSecondary }]}>
+        {/* Draggable area - full width */}
+        <View style={styles.dragSpacer} />
+
+        {/* Window controls */}
+        <View style={styles.controls}>
+          <View
+            style={[styles.controlButton, getButtonStyle('minimize')]}
+            // @ts-ignore - Web-only event handlers
+            onClick={handleMinimize}
+            onMouseEnter={() => setHoveredButton('minimize')}
+            onMouseLeave={() => setHoveredButton(null)}
+          >
+            <Ionicons name="remove" size={14} color={theme.text} />
+          </View>
+
+          <View
+            style={[styles.controlButton, getButtonStyle('maximize')]}
+            // @ts-ignore - Web-only event handlers
+            onClick={handleMaximize}
+            onMouseEnter={() => setHoveredButton('maximize')}
+            onMouseLeave={() => setHoveredButton(null)}
+          >
+            <Ionicons name="square-outline" size={12} color={theme.text} />
+          </View>
+
+          <View
+            style={[styles.controlButton, getButtonStyle('close')]}
+            // @ts-ignore - Web-only event handlers
+            onClick={handleClose}
+            onMouseEnter={() => setHoveredButton('close')}
+            onMouseLeave={() => setHoveredButton(null)}
+          >
+            <Ionicons name="close" size={14} color={hoveredButton === 'close' ? '#FFFFFF' : theme.text} />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.titleBar, { backgroundColor: theme.backgroundSecondary }]}>
