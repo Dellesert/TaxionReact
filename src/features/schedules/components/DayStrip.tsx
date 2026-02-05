@@ -9,6 +9,10 @@ interface DayStripProps {
 }
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const MONTH_NAMES = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+];
 
 const getStartOfWeek = (date: Date): Date => {
   const d = new Date(date);
@@ -44,6 +48,12 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
     });
   }, [selectedDate]);
 
+  const monthYearLabel = useMemo(() => {
+    const month = MONTH_NAMES[selectedDate.getMonth()];
+    const year = selectedDate.getFullYear();
+    return `${month} ${year}`;
+  }, [selectedDate]);
+
   const handlePrevWeek = () => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() - 7);
@@ -59,6 +69,9 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
   return (
     <View style={styles.wrapper}>
       <View style={[styles.container, { backgroundColor: theme.card, shadowColor: theme.shadow }]}>
+        <Text style={[styles.monthYearLabel, { color: theme.textSecondary }]}>
+          {monthYearLabel}
+        </Text>
         {/* Day cells with navigation arrows */}
         <View style={styles.daysRow}>
           <TouchableOpacity
@@ -124,6 +137,14 @@ const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 16,
     paddingVertical: 8,
+  },
+  monthYearLabel: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    textAlign: 'center' as const,
+    marginBottom: 4,
+    marginTop: 2,
+    paddingBottom: 4,
   },
   container: {
     borderRadius: 12,
