@@ -416,13 +416,18 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         // @ts-ignore - FlashList 2.x uses different approach
         inverted={true}
         keyboardShouldPersistTaps="handled"
-        // iOS-specific: предотвращает прыжки при загрузке старых сообщений
+        // iOS: нативный maintainVisibleContentPosition предотвращает прыжки при загрузке старых сообщений
+        // Android: FlashList v2 включает maintainVisibleContentPosition по умолчанию,
+        // но он конфликтует с inverted на Android — offset correction идёт в неправильном направлении,
+        // что вызывает прыжки скролла наверх. Отключаем явно через { disabled: true }.
         maintainVisibleContentPosition={
           Platform.OS === 'ios'
             ? {
                 minIndexForVisible: 0,
               }
-            : undefined
+            : Platform.OS === 'android'
+              ? { disabled: true } as any
+              : undefined
         }
         onContentSizeChange={handleContentSizeChangeInternal}
         onScroll={onScroll}

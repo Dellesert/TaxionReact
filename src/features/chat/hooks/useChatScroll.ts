@@ -364,18 +364,36 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Для инвертированного списка проверяем близость к верхней границе
     // Когда пользователь скроллит вверх к старым сообщениям, offset.y становится маленьким или отрицательным
 
-    // ⚠️ ВАЖНО: На iOS с inverted={true} поведение может отличаться
-    // Попробуем два варианта проверки:
-    // 1. Стандартный: distanceFromTop <= 500 (работает на Web/Android)
-    // 2. Альтернативный: проверка расстояния от конца контента (может работать на iOS)
+    // ⚠️ ВАЖНО: На inverted списке поведение offset.y различается по платформам
+    // iOS: большой offset.y = близко к старым сообщениям (верх)
+    // Android inverted: маленький offset.y = визуальный низ (новые), большой = визуальный верх (старые)
+    //
+    // Для определения "близко к старым сообщениям" (для подгрузки):
+    // - Web: distanceFromTop <= 500 (стандартная проверка)
+    // - iOS: distanceFromBottom >= maxScroll - 500 (альтернативная проверка)
+    // - Android inverted: distanceFromTop > maxScroll - 500, т.е. offset.y большой = вверху у старых
+    //   Дополнительно: если контента мало (maxScroll < 500), весь список в "зоне загрузки",
+    //   поэтому нужно проверить что пользователь НЕ внизу (distanceFromBottom > 100)
+    const maxScroll = contentSize.height - layoutMeasurement.height;
     const isNearTopStandard = distanceFromTop <= 500;
-    const isNearTopAlternative = distanceFromBottom >= contentSize.height - layoutMeasurement.height - 500;
+    const isNearTopAlternative = distanceFromBottom >= maxScroll - 500;
 
-    // Для iOS используем альтернативную проверку, для остальных - стандартную
-    const isNearTop = Platform.OS === 'ios' ? isNearTopAlternative : isNearTopStandard;
-
-    // 🔍 ДИАГНОСТИКА: Логируем данные скролла только когда близко к верху (для отладки iOS)
-    if (isNearTop && !isLoadingMore) {
+    let isNearTop: boolean;
+    if (Platform.OS === 'android') {
+      // Android inverted: offset.y маленький внизу, большой вверху
+      // Пользователь "близко к старым" когда offset.y большой (далеко от 0)
+      // Если контента мало (maxScroll <= 500), проверяем что пользователь не внизу
+      if (maxScroll <= 500) {
+        // Весь контент в зоне 500px — загружаем только если пользователь НЕ у новых сообщений
+        isNearTop = distanceFromBottom > 100;
+      } else {
+        // Достаточно контента: проверяем что пользователь вверху (offset.y большой)
+        isNearTop = distanceFromTop >= maxScroll - 500;
+      }
+    } else if (Platform.OS === 'ios') {
+      isNearTop = isNearTopAlternative;
+    } else {
+      isNearTop = isNearTopStandard;
     }
 
     // Если пользователь близко к верху и есть еще сообщения - загружаем
@@ -385,7 +403,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       const oldestMessage = messages[0];
 
       if (oldestMessage && lastOldestMessageId.current !== oldestMessage.id) {
-
         // Запускаем загрузку немедленно (без задержки)
         handleLoadMoreRef.current?.();
       }
@@ -526,6 +543,16 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         isLoadingOldMessages.current = false;
         contentHeightBeforeLoad.current = 0;
         scrollOffsetBeforeLoad.current = 0;
+      } else if (Platform.OS === 'android') {
+        // Страховка: если handleContentSizeChange не сбросит флаг за 500мс,
+        // сбрасываем принудительно чтобы не заблокировать следующую загрузку
+        setTimeout(() => {
+          if (isLoadingOldMessages.current) {
+            isLoadingOldMessages.current = false;
+            contentHeightBeforeLoad.current = 0;
+            scrollOffsetBeforeLoad.current = 0;
+          }
+        }, 500);
       }
     } catch (error) {
       lastOldestMessageId.current = null;
@@ -553,8 +580,31 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
   // Обработчик изменения размера контента
   const handleContentSizeChange = useCallback((_width: number, height: number) => {
+    const previousHeight = currentContentHeight.current;
     // Обновляем текущую высоту контента
     currentContentHeight.current = height;
+
+    // ✅ Android: ручная коррекция позиции скролла при загрузке старых сообщений
+    // На iOS это делает maintainVisibleContentPosition, но на Android он отключен
+    // (конфликтует с inverted). Поэтому вручную сдвигаем offset на разницу высот.
+    if (Platform.OS === 'android' && isLoadingOldMessages.current && previousHeight > 0 && height > previousHeight) {
+      const heightDiff = height - previousHeight;
+      const correctedOffset = lastScrollOffset.current + heightDiff;
+
+      // Корректируем позицию скролла чтобы видимый контент остался на месте
+      listRef.current?.scrollToOffset({
+        offset: correctedOffset,
+        animated: false,
+      });
+
+      // Обновляем сохранённый offset
+      lastScrollOffset.current = correctedOffset;
+
+      // Сбрасываем флаг загрузки старых сообщений
+      isLoadingOldMessages.current = false;
+      contentHeightBeforeLoad.current = 0;
+      scrollOffsetBeforeLoad.current = 0;
+    }
 
     // Сохраняем позицию непрочитанных для восстановления
     if (initialScrolled && firstUnreadIndex !== -1 && unreadCount >= 1) {
