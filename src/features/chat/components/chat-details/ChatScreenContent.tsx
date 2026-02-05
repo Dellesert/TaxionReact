@@ -217,7 +217,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
         </View>
       )}
 
-      <View style={styles.flex1}>
+      <View style={[styles.flex1, Platform.OS === 'web' && { marginBottom: 72 + effectiveInsetsBottom }]}>
         <MessageListComponent
           chatId={chatId}
           messageListItems={messageListItems}

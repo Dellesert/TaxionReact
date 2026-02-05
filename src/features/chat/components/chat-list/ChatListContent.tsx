@@ -8,6 +8,7 @@ import { ChatItem } from './ChatItem';
 import { ChatListSkeleton } from './ChatListSkeleton';
 import { ChatEmptyState } from './ChatEmptyState';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useCustomScrollbarStyle } from '@shared/hooks/useCustomScrollbarStyle';
 import { Chat } from '../../types/chat.types';
 import { ChatFilter, filterChatsBySearch, combineTabChats } from '../../utils/chatHelpers';
 import { useChatStore } from '@shared/store/chatStore';
@@ -73,6 +74,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
 }, ref) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { scrollbarRef } = useCustomScrollbarStyle();
 
   // Track actual container width (for split view support)
   const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH);
@@ -283,7 +285,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
   }, [containerWidth]);
 
   return (
-    <View style={{ flex: 1, overflow: 'hidden' }} onLayout={handleContainerLayout}>
+    <View ref={scrollbarRef} style={{ flex: 1, overflow: 'hidden' }} onLayout={handleContainerLayout}>
       <GestureDetector gesture={swipeGesture}>
         <Animated.View style={[
           {

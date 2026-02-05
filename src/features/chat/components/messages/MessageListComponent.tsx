@@ -7,6 +7,7 @@ import { UnreadMessagesBanner } from './UnreadMessagesBanner';
 import { MessageSkeleton } from './MessageSkeleton';
 import { ChatEmptyMessages } from '../states/ChatEmptyMessages';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useCustomScrollbarStyle } from '@shared/hooks/useCustomScrollbarStyle';
 
 type MessageListItem =
   | { type: 'message'; data: any }
@@ -111,6 +112,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   searchQuery,
 }) => {
   const { theme } = useTheme();
+  const { scrollbarRef } = useCustomScrollbarStyle();
 
   // State to control list opacity - prevents showing partially rendered list
   const [listOpacity] = React.useState(new Animated.Value(0));
@@ -183,8 +185,11 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   const showEmptyState = !isLoading && messageListItems.length === 0;
 
   // Базовый отступ внизу списка = высота инпута (статический)
-  // В веб-версии добавляем дополнительный отступ из-за особенностей рендеринга инвертированного списка
-  const baseBottomPadding = inputHeight + insetsBottom + (Platform.OS === 'web' ? 40 : 20);
+  // На web контейнер уже имеет marginBottom равный высоте инпута,
+  // поэтому не нужно дублировать отступ в contentContainerStyle
+  const baseBottomPadding = Platform.OS === 'web'
+    ? 20
+    : inputHeight + insetsBottom + 20;
 
   // Отслеживаем размеры контента и viewport
   const [contentHeight, setContentHeight] = React.useState(0);
@@ -280,6 +285,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   }
 
   return (
+    <View ref={scrollbarRef} style={{ flex: 1 }}>
     <Animated.View
       style={{
         flex: 1,
@@ -446,6 +452,7 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         ListFooterComponent={null}
       />
     </Animated.View>
+    </View>
   );
 };
 
