@@ -696,7 +696,7 @@ export default function App() {
         <DesktopNavigationProvider>
           <TitleBarSearchProvider>
             <TitleBarControlsProvider>
-              <CustomTitleBar navigationRef={navigationRef} />
+              <CustomTitleBar navigationRef={navigationRef} isAuthenticated={isAuthenticated} />
               <NotificationProvider>
                 <ActionModalProvider>
                   <NetworkSyncProvider enabled={isAuthenticated}>

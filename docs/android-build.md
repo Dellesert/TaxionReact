@@ -14,7 +14,7 @@
 |----------|----------|
 | Package name | `com.dellesert.tachyonmessenger` |
 | Version | 1.0.1 |
-| Version code | 2 |
+| Version code | 16 |
 | Min SDK | 24 |
 | Target SDK | 36 |
 
