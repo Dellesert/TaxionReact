@@ -21,6 +21,14 @@ export interface NotificationRegisterResponse extends NotificationResponse {
   platform?: string;
 }
 
+export type CloseBehavior = 'minimize' | 'quit' | null;
+
+export interface TraySettingsResponse {
+  success: boolean;
+  behavior?: CloseBehavior;
+  error?: string;
+}
+
 interface ElectronAPI {
   platform: string;
   isElectron: true;
@@ -61,6 +69,12 @@ interface ElectronAPI {
     unregister: () => Promise<NotificationResponse>;
     setBadgeCount: (count: number) => Promise<NotificationResponse>;
     onClicked: (callback: (data: NotificationData) => void) => () => void;
+  };
+
+  // Tray API
+  tray: {
+    getCloseBehavior: () => Promise<CloseBehavior>;
+    setCloseBehavior: (behavior: CloseBehavior) => Promise<TraySettingsResponse>;
   };
 }
 

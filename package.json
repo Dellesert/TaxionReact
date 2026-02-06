@@ -51,6 +51,10 @@
       {
         "from": "electron/resources/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "electron/resources/tray-icon-white.png",
+        "to": "tray-icon-white.png"
       }
     ],
     "asar": true,

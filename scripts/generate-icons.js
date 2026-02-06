@@ -48,6 +48,56 @@ async function generateIcons() {
     fs.copyFileSync(inputPng, path.join(outputDir, 'icon.png'));
     console.log('Created: electron/resources/icon.png');
 
+    // Generate white tray icon from icon_alpha.png (has transparent background)
+    const trayIconSize = 32;
+    const alphaIconPath = path.join(__dirname, '../assets/images/icon_alpha.png');
+
+    // Use icon_alpha.png which should have transparent background
+    const sourceIcon = fs.existsSync(alphaIconPath) ? alphaIconPath : inputPng;
+    console.log('Using source for tray icon:', sourceIcon);
+
+    // First trim transparent areas, then resize to fill the icon space
+    const trayIconBuffer = await sharp(sourceIcon)
+      .trim() // Remove transparent borders
+      .resize(trayIconSize, trayIconSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Convert non-transparent pixels to white while keeping alpha
+    const { data, info } = trayIconBuffer;
+    const whiteData = Buffer.alloc(data.length);
+
+    for (let i = 0; i < data.length; i += 4) {
+      const alpha = data[i + 3];
+      if (alpha > 0) {
+        // Only make visible pixels white
+        whiteData[i] = 255;     // R
+        whiteData[i + 1] = 255; // G
+        whiteData[i + 2] = 255; // B
+        whiteData[i + 3] = alpha; // A (keep original)
+      } else {
+        // Keep fully transparent pixels as-is
+        whiteData[i] = 0;
+        whiteData[i + 1] = 0;
+        whiteData[i + 2] = 0;
+        whiteData[i + 3] = 0;
+      }
+    }
+
+    // Save white tray icon
+    await sharp(whiteData, {
+      raw: {
+        width: info.width,
+        height: info.height,
+        channels: 4
+      }
+    })
+      .png()
+      .toFile(path.join(outputDir, 'tray-icon-white.png'));
+
+    console.log('Created: electron/resources/tray-icon-white.png');
+
     console.log('\nIcons generated successfully!');
   } catch (error) {
     console.error('Error generating icons:', error.message);

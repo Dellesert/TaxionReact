@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('electron', {
         'notification:setBadgeCount',
         'updater:check',
         'updater:getStatus',
+        'tray:getCloseBehavior',
+        'tray:setCloseBehavior',
       ];
 
       if (validChannels.includes(channel)) {
@@ -133,6 +135,22 @@ contextBridge.exposeInMainWorld('electron', {
      * @returns {Promise<{currentVersion: string, lastCheckTime: Date|null, autoCheckEnabled: boolean}>}
      */
     getStatus: () => ipcRenderer.invoke('updater:getStatus'),
+  },
+
+  // Tray API
+  tray: {
+    /**
+     * Get close behavior setting
+     * @returns {Promise<'minimize' | 'quit' | null>}
+     */
+    getCloseBehavior: () => ipcRenderer.invoke('tray:getCloseBehavior'),
+
+    /**
+     * Set close behavior setting
+     * @param {'minimize' | 'quit' | null} behavior - The behavior on window close
+     * @returns {Promise<{success: boolean, behavior?: string, error?: string}>}
+     */
+    setCloseBehavior: (behavior) => ipcRenderer.invoke('tray:setCloseBehavior', behavior),
   },
 });
 

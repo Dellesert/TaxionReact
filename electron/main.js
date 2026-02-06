@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, Notification, protocol, net, session, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, Notification, protocol, net, session, Menu, Tray, dialog, nativeImage } = require('electron');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
@@ -7,6 +7,24 @@ const FileCache = require('./FileCache');
 const { AppUpdater } = require('./updater');
 
 const isDev = !app.isPackaged;
+
+// Tray instance
+let tray = null;
+
+// Store for app settings (close behavior, etc.)
+const appSettingsStore = new Store({ name: 'app-settings' });
+
+// Close behavior options: 'minimize' | 'quit' | null (not set yet)
+function getCloseBehavior() {
+  return appSettingsStore.get('closeBehavior', null);
+}
+
+function setCloseBehavior(behavior) {
+  appSettingsStore.set('closeBehavior', behavior);
+}
+
+// Flag to track if we're really quitting
+let isQuitting = false;
 
 // Suppress console in production to avoid console window
 const originalConsoleLog = console.log;
@@ -41,6 +59,122 @@ const getIconPath = () => {
     return path.join(process.resourcesPath, 'assets/images/icon_alpha.png');
   }
 };
+
+// Get tray icon path (smaller version for tray)
+const getTrayIconPath = () => {
+  // Use the same icon for tray, electron will resize it
+  return getIconPath();
+};
+
+// Get tray icon - use white version if available, otherwise use regular icon
+function getTrayIcon() {
+  // Try to load white tray icon first
+  const whiteTrayIconPaths = [
+    // Dev paths
+    path.join(__dirname, 'resources', 'tray-icon-white.png'),
+    path.join(__dirname, '..', 'assets', 'images', 'tray-icon-white.png'),
+    // Production paths
+    path.join(process.resourcesPath || '', 'tray-icon-white.png'),
+  ];
+
+  for (const iconPath of whiteTrayIconPaths) {
+    try {
+      if (fs.existsSync(iconPath)) {
+        const icon = nativeImage.createFromPath(iconPath);
+        if (!icon.isEmpty()) {
+          console.log('[Tray] Using white tray icon from:', iconPath);
+          return icon;
+        }
+      }
+    } catch (e) {
+      // Continue to next path
+    }
+  }
+
+  // Fallback to regular icon
+  console.log('[Tray] White icon not found, using regular icon');
+  return nativeImage.createFromPath(getIconPath());
+}
+
+// Create system tray
+function createTray() {
+  if (tray) return;
+
+  let trayIcon;
+
+  try {
+    trayIcon = getTrayIcon();
+
+    // Resize for tray (16x16 on Windows, 22x22 on macOS, 24x24 on Linux)
+    if (process.platform === 'win32') {
+      trayIcon = trayIcon.resize({ width: 16, height: 16 });
+    } else if (process.platform === 'darwin') {
+      trayIcon = trayIcon.resize({ width: 22, height: 22 });
+      // macOS: Set as template image for automatic dark/light mode adaptation
+      trayIcon.setTemplateImage(true);
+    } else {
+      trayIcon = trayIcon.resize({ width: 24, height: 24 });
+    }
+  } catch (error) {
+    console.error('[Tray] Failed to load tray icon:', error);
+    return;
+  }
+
+  tray = new Tray(trayIcon);
+  tray.setToolTip('Tachyon Messenger');
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Открыть Tachyon',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Выход',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+
+  tray.setContextMenu(contextMenu);
+
+  // Double-click on tray icon opens the app
+  tray.on('double-click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  console.log('[Tray] System tray created');
+}
+
+// Show dialog asking user what to do on close
+async function showCloseDialog() {
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    buttons: ['Свернуть в трей', 'Закрыть приложение', 'Отмена'],
+    defaultId: 0,
+    cancelId: 2,
+    title: 'Закрытие приложения',
+    message: 'Что сделать при закрытии окна?',
+    detail: 'Вы можете изменить это поведение в настройках приложения.',
+    checkboxLabel: 'Запомнить мой выбор',
+    checkboxChecked: true,
+  });
+
+  return {
+    action: result.response === 0 ? 'minimize' : result.response === 1 ? 'quit' : 'cancel',
+    remember: result.checkboxChecked,
+  };
+}
 
 let mainWindow;
 let splashWindow;
@@ -165,10 +299,54 @@ function createWindow() {
     mainWindow.maximize();
   }
 
-  // Save window state on resize, move, and close
+  // Save window state on resize and move
   mainWindow.on('resize', saveWindowState);
   mainWindow.on('move', saveWindowState);
-  mainWindow.on('close', saveWindowState);
+
+  // Handle window close - minimize to tray or quit based on user preference
+  mainWindow.on('close', async (event) => {
+    saveWindowState();
+
+    // If we're really quitting, allow the close
+    if (isQuitting) {
+      return;
+    }
+
+    // Check user's close behavior preference
+    const closeBehavior = getCloseBehavior();
+
+    if (closeBehavior === 'minimize') {
+      // User chose to minimize to tray
+      event.preventDefault();
+      mainWindow.hide();
+      console.log('[Electron] Window hidden to tray');
+    } else if (closeBehavior === 'quit') {
+      // User chose to quit - allow normal close
+      isQuitting = true;
+    } else {
+      // First time - show dialog
+      event.preventDefault();
+
+      const result = await showCloseDialog();
+
+      if (result.action === 'cancel') {
+        // User cancelled, do nothing
+        return;
+      }
+
+      if (result.remember) {
+        setCloseBehavior(result.action);
+      }
+
+      if (result.action === 'minimize') {
+        mainWindow.hide();
+        console.log('[Electron] Window hidden to tray (first time)');
+      } else {
+        isQuitting = true;
+        mainWindow.close();
+      }
+    }
+  });
 
   // Load the app
   if (isDev) {
@@ -348,6 +526,9 @@ app.whenReady().then(async () => {
   // Setup IPC handlers
   setupIPCHandlers();
 
+  // Create system tray
+  createTray();
+
   // Create main window (splash will close when main window is ready)
   createWindow();
 
@@ -359,17 +540,32 @@ app.whenReady().then(async () => {
   });
 });
 
-// Quit when all windows are closed (except on macOS)
+// Quit when all windows are closed (except on macOS and when minimizing to tray)
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
+  // On macOS, keep the app running in the dock
+  // On other platforms, if we have a tray and user prefers minimize, keep running
+  if (process.platform === 'darwin') {
+    return;
   }
+
+  // If tray exists and we're not actually quitting, keep the app running
+  if (tray && !isQuitting) {
+    return;
+  }
+
+  app.quit();
 });
 
 // Handle app quit
 app.on('before-quit', () => {
-  // Cleanup logic here if needed
+  isQuitting = true;
   console.log('[Electron] App is quitting...');
+
+  // Destroy tray on quit
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
 });
 
 // Security: Disable navigation to prevent XSS
@@ -637,6 +833,25 @@ function setupIPCHandlers() {
       };
     }
     return updater.getStatus();
+  });
+
+  // Tray settings handlers
+  ipcMain.handle('tray:getCloseBehavior', async () => {
+    return getCloseBehavior();
+  });
+
+  ipcMain.handle('tray:setCloseBehavior', async (event, behavior) => {
+    try {
+      if (behavior !== 'minimize' && behavior !== 'quit' && behavior !== null) {
+        throw new Error('Invalid close behavior');
+      }
+      setCloseBehavior(behavior);
+      console.log('[Tray] Close behavior set to:', behavior);
+      return { success: true, behavior };
+    } catch (error) {
+      console.error('[Tray] Error setting close behavior:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   console.log('[IPC] Handlers registered successfully');

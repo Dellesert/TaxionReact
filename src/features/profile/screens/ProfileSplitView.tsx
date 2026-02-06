@@ -20,6 +20,7 @@ import ActiveSessionsContent from '../components/sections/ActiveSessionsContent'
 import PasskeyManagementContent from '../components/sections/PasskeyManagementContent';
 import NotificationSettingsContent from '../components/sections/NotificationSettingsContent';
 import ThemeSettingsContent from '../components/sections/ThemeSettingsContent';
+import TraySettingsContent from '../components/sections/TraySettingsContent';
 import StorageContent from '../components/sections/StorageContent';
 import AboutContent from '../components/sections/AboutContent';
 
@@ -105,6 +106,16 @@ export const ProfileSplitView: React.FC = () => {
             description="Настройте внешний вид приложения"
           >
             <ThemeSettingsContent />
+          </ProfileContentArea>
+        );
+
+      case 'tray':
+        return (
+          <ProfileContentArea
+            title="Системный трей"
+            description="Настройте поведение при закрытии окна"
+          >
+            <TraySettingsContent />
           </ProfileContentArea>
         );
 
