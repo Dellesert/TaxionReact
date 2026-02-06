@@ -14,10 +14,34 @@ interface UseCalendarDataReturn {
 }
 
 /**
- * Create cache key from date range
+ * Format start date to ISO string preserving local calendar date
+ * Uses the same calendar day components but formats as UTC midnight
+ */
+const toStartDateISOString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}T00:00:00Z`;
+};
+
+/**
+ * Format end date to ISO string preserving local calendar date
+ * Uses the same calendar day components but formats as UTC end of day
+ */
+const toEndDateISOString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}T23:59:59Z`;
+};
+
+/**
+ * Create cache key from date range (using local dates)
  */
 const createRangeKey = (startDate: Date, endDate: Date): string => {
-  return `${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}`;
+  const startKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+  const endKey = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+  return `${startKey}_${endKey}`;
 };
 
 /**
@@ -64,8 +88,8 @@ export const useCalendarData = (
         setEvents(mockEvents);
       } else {
         const filters = {
-          start: startDate.toISOString(),
-          end: endDate.toISOString(),
+          start: toStartDateISOString(startDate),
+          end: toEndDateISOString(endDate),
         };
 
         const response = await calendarApi.getEvents(filters, 100, 0);

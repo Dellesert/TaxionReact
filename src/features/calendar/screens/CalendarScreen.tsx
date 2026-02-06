@@ -258,6 +258,7 @@ const CalendarScreen: React.FC = () => {
   // Load events on mount and when dependencies change
   useEffect(() => {
     loadEvents().catch(() => showError('Не удалось загрузить события'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedView]);
 
   // Handlers

@@ -65,6 +65,12 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   const setWeekDisplayMode = onWeekDisplayModeChange ?? setInternalWeekDisplayMode;
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Sync viewMode with initialView when it changes externally (e.g., from TitleBar)
+  React.useEffect(() => {
+    setViewMode(initialView);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialView]);
+
   // Load events for the entire month for the mini calendar
   const { monthEvents } = useMonthEvents(selectedDate);
 

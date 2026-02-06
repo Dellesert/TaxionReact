@@ -34,6 +34,8 @@ interface CalendarDayProps {
   viewMode: 'day' | 'week';
   isInSelectedWeek: boolean;
   dayEvents: Event[];
+  absence: Event | null;
+  absencePosition: 'start' | 'middle' | 'end' | 'single' | null;
   substitution: Event | null;
   substitutionPosition: 'start' | 'middle' | 'end' | 'single' | null;
   onDatePress: (date: Date) => void;
@@ -63,6 +65,8 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
   viewMode,
   isInSelectedWeek,
   dayEvents,
+  absence,
+  absencePosition,
   substitution,
   substitutionPosition,
   onDatePress,
@@ -95,10 +99,54 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
   const dotColors = getEventDotColors(dayEvents);
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
-  // Substitution bar logic
+  // Absence and Substitution bar logic
+  const hasAbsence = absence !== null && isCurrentMonth;
   const hasSubstitution = substitution !== null && isCurrentMonth;
   const isFirstDayOfWeek = dayIndex === 0;
   const isLastDayOfWeek = dayIndex === 6;
+
+  // Get absence background style (similar to InfiniteMonthCalendar)
+  const getAbsenceStyle = () => {
+    if (!hasAbsence) return null;
+
+    const bgColor = absence!.color + '25'; // Light background
+    const borderColor = absence!.color + '60';
+
+    // Determine corner rounding based on position and week boundaries
+    let borderTopLeftRadius = 0;
+    let borderBottomLeftRadius = 0;
+    let borderTopRightRadius = 0;
+    let borderBottomRightRadius = 0;
+
+    // Round left corners if start of absence OR first day of week (for wrapped absences)
+    if (absencePosition === 'single' || absencePosition === 'start' || isFirstDayOfWeek) {
+      borderTopLeftRadius = 8;
+      borderBottomLeftRadius = 8;
+    }
+
+    // Round right corners if end of absence OR last day of week (for wrapped absences)
+    if (absencePosition === 'single' || absencePosition === 'end' || isLastDayOfWeek) {
+      borderTopRightRadius = 8;
+      borderBottomRightRadius = 8;
+    }
+
+    return {
+      position: 'absolute' as const,
+      top: 0,
+      bottom: -2,
+      left: (absencePosition === 'start' || absencePosition === 'single' || isFirstDayOfWeek) ? 2 : 0,
+      right: (absencePosition === 'end' || absencePosition === 'single' || isLastDayOfWeek) ? 2 : 0,
+      backgroundColor: bgColor,
+      borderTopLeftRadius,
+      borderBottomLeftRadius,
+      borderTopRightRadius,
+      borderBottomRightRadius,
+      borderWidth: 1.5,
+      borderLeftWidth: (absencePosition === 'start' || absencePosition === 'single' || isFirstDayOfWeek) ? 1.5 : 0,
+      borderRightWidth: (absencePosition === 'end' || absencePosition === 'single' || isLastDayOfWeek) ? 1.5 : 0,
+      borderColor,
+    };
+  };
 
   const getSubstitutionBarStyle = () => {
     if (!hasSubstitution) return null;
@@ -157,18 +205,19 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
       onMouseEnter={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(true) : undefined}
       onMouseLeave={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(false) : undefined}
     >
+      {/* Absence background layer */}
+      {hasAbsence && <View style={getAbsenceStyle()} />}
+
       <View
         style={[
           styles.dayContent,
           isTodayDate && [styles.todayContainer, { borderColor: theme.primary }],
           isSelectedDay && !isTodayDate && [styles.selectedDayContainer, { backgroundColor: theme.backgroundSecondary }],
           isSelectedDay && isTodayDate && [styles.selectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary }],
-          isInWeek && !isTodayDate && [styles.weekSelectedContainer, { backgroundColor: theme.primary + '20' }],
-          isInWeek && isTodayDate && [styles.weekSelectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.primary + '20' }],
           !isCurrentMonth && styles.dayOutOfMonth,
           isDayHovered && isCurrentMonth && Platform.OS === 'web' && [
             styles.dayContentHovered,
-            !isTodayDate && !isSelectedDay && !isInWeek && { backgroundColor: theme.backgroundSecondary }
+            !isTodayDate && !isSelectedDay && { backgroundColor: theme.backgroundSecondary }
           ],
         ]}
       >
@@ -284,7 +333,7 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     return grouped;
   }, [events]);
 
-  // Get events for a specific date (excluding substitutions)
+  // Get events for a specific date (excluding substitutions and absences)
   const getEventsForDate = (date: Date): Event[] => {
     // Use the same logic as grouping to ensure consistency
     const year = date.getFullYear();
@@ -292,13 +341,56 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     const day = String(date.getDate()).padStart(2, '0');
     const dateKey = `${year}-${month}-${day}`;
 
-    return (eventsByDate[dateKey] || []).filter(e => e.type !== 'substitution');
+    return (eventsByDate[dateKey] || []).filter(e => e.type !== 'substitution' && e.type !== 'absence');
   };
+
+  // Get absence events (vacations, sick leaves, etc.)
+  const absenceEvents = useMemo(() => {
+    return events.filter(e => e.type === 'absence');
+  }, [events]);
 
   // Get substitution events
   const substitutionEvents = useMemo(() => {
     return events.filter(e => e.type === 'substitution');
   }, [events]);
+
+  // Get absence for a specific date
+  const getAbsenceForDate = (date: Date): Event | null => {
+    const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    for (const absence of absenceEvents) {
+      const startDate = parseISO(absence.start_time);
+      const endDate = parseISO(absence.end_time);
+
+      // Use UTC components to avoid timezone issues
+      const absenceStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+      const absenceEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+      if (isWithinInterval(checkDate, { start: absenceStart, end: absenceEnd })) {
+        return absence;
+      }
+    }
+    return null;
+  };
+
+  // Get position of date in absence range (for styling)
+  const getAbsencePosition = (date: Date, absence: Event): 'start' | 'middle' | 'end' | 'single' => {
+    const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const startDate = parseISO(absence.start_time);
+    const endDate = parseISO(absence.end_time);
+
+    // Use UTC components to avoid timezone issues
+    const absenceStart = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+    const absenceEnd = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+
+    const isStart = isSameDay(checkDate, absenceStart);
+    const isEnd = isSameDay(checkDate, absenceEnd);
+
+    if (isStart && isEnd) return 'single';
+    if (isStart) return 'start';
+    if (isEnd) return 'end';
+    return 'middle';
+  };
 
   // Get substitution for a specific date
   const getSubstitutionForDate = (date: Date): Event | null => {
@@ -383,31 +475,54 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={isCompact ? styles.scrollContentCompact : styles.scrollContent}
       >
-        {weeks.map((week, weekIndex) => (
-          <View key={weekIndex} style={styles.weekRow}>
-            {week.map((day, dayIndex) => {
-              const substitution = getSubstitutionForDate(day);
-              const substitutionPos = substitution ? getSubstitutionPosition(day, substitution) : null;
-              return (
-                <CalendarDay
-                  key={day.toISOString()}
-                  date={day}
-                  dayIndex={dayIndex}
-                  selectedDate={selectedDate}
-                  isCompact={isCompact}
-                  viewMode={viewMode}
-                  isInSelectedWeek={isInSelectedWeek(day)}
-                  dayEvents={getEventsForDate(day)}
-                  substitution={substitution}
-                  substitutionPosition={substitutionPos}
-                  onDatePress={onDatePress}
-                  onDayWithEventsPress={handleDayWithEventsPress}
-                  theme={theme}
+        {weeks.map((week, weekIndex) => {
+          // Check if any day in this week is in the selected week
+          const isWeekSelected = isCompact && viewMode === 'week' && week.some(day => isInSelectedWeek(day));
+
+          return (
+            <View key={weekIndex} style={styles.weekRow}>
+              {/* Week indicator - single vertical bar for the entire row */}
+              {isWeekSelected && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 4,
+                    bottom: 4,
+                    width: 3,
+                    backgroundColor: theme.primary,
+                    borderRadius: 1.5,
+                  }}
                 />
-              );
-            })}
-          </View>
-        ))}
+              )}
+              {week.map((day, dayIndex) => {
+                const absence = getAbsenceForDate(day);
+                const absencePos = absence ? getAbsencePosition(day, absence) : null;
+                const substitution = getSubstitutionForDate(day);
+                const substitutionPos = substitution ? getSubstitutionPosition(day, substitution) : null;
+                return (
+                  <CalendarDay
+                    key={day.toISOString()}
+                    date={day}
+                    dayIndex={dayIndex}
+                    selectedDate={selectedDate}
+                    isCompact={isCompact}
+                    viewMode={viewMode}
+                    isInSelectedWeek={isInSelectedWeek(day)}
+                    dayEvents={getEventsForDate(day)}
+                    absence={absence}
+                    absencePosition={absencePos}
+                    substitution={substitution}
+                    substitutionPosition={substitutionPos}
+                    onDatePress={onDatePress}
+                    onDayWithEventsPress={handleDayWithEventsPress}
+                    theme={theme}
+                  />
+                );
+              })}
+            </View>
+          );
+        })}
       </ScrollView>
 
       {/* Day Events Sheet - Only for non-compact mode */}
@@ -530,13 +645,6 @@ const styles = StyleSheet.create({
     // backgroundColor set dynamically from theme
   },
   selectedTodayContainer: {
-    borderWidth: 2,
-    // borderColor and backgroundColor set dynamically from theme
-  },
-  weekSelectedContainer: {
-    // backgroundColor set dynamically from theme
-  },
-  weekSelectedTodayContainer: {
     borderWidth: 2,
     // borderColor and backgroundColor set dynamically from theme
   },
