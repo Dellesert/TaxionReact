@@ -129,17 +129,10 @@ export const ScheduleListScreen: React.FC = () => {
     enabled: true,
   });
 
-  // TitleBar left controls - month picker
+  // TitleBar left controls - no longer used (month picker moved to content area)
   const titleBarLeftControls = useMemo(() => {
-    if (!isElectron || !isDesktop) return null;
-    return (
-      <TitleBarScheduleControls
-        selectedMonth={selectedMonth}
-        onMonthChange={handleMonthChange}
-        showMonthPickerOnly
-      />
-    );
-  }, [isElectron, isDesktop, selectedMonth, handleMonthChange]);
+    return null;
+  }, []);
 
   // TitleBar right controls - create button only
   const titleBarRightControls = useMemo(() => {
@@ -360,6 +353,13 @@ export const ScheduleListScreen: React.FC = () => {
 
             {/* Main Panel - Schedule columns */}
             <View style={styles.mainPanel}>
+              {/* Month picker above schedule list */}
+              <View style={styles.monthPickerContainer}>
+                <MonthPicker
+                  selectedDate={selectedMonth}
+                  onMonthChange={handleMonthChange}
+                />
+              </View>
               <ScrollView
                 contentContainerStyle={styles.columnsScrollContent}
                 showsVerticalScrollIndicator={false}
@@ -369,30 +369,32 @@ export const ScheduleListScreen: React.FC = () => {
                     {renderEmpty()}
                   </View>
                 ) : (
-                  <View style={styles.columnsContainer}>
-                    {sections.map((section) => (
-                      <View key={section.title} style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                        <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                          <Text style={[styles.columnTitle, { color: theme.text }]}>
-                            {section.title}
-                          </Text>
-                          <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
-                            <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
-                              {section.data.length}
+                  <View style={styles.columnsWrapper}>
+                    <View style={styles.columnsContainer}>
+                      {sections.map((section) => (
+                        <View key={section.title} style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                          <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                            <Text style={[styles.columnTitle, { color: theme.text }]}>
+                              {section.title}
                             </Text>
+                            <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
+                              <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
+                                {section.data.length}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={styles.columnContentInner}>
+                            {section.data.map((schedule) => (
+                              <ScheduleCard
+                                key={schedule.id}
+                                schedule={schedule}
+                                onPress={() => handleSchedulePress(schedule)}
+                              />
+                            ))}
                           </View>
                         </View>
-                        <View style={styles.columnContentInner}>
-                          {section.data.map((schedule) => (
-                            <ScheduleCard
-                              key={schedule.id}
-                              schedule={schedule}
-                              onPress={() => handleSchedulePress(schedule)}
-                            />
-                          ))}
-                        </View>
-                      </View>
-                    ))}
+                      ))}
+                    </View>
                   </View>
                 )}
               </ScrollView>
@@ -524,6 +526,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  monthPickerContainer: {
+    alignItems: 'center',
+  },
   summarySidebar: {
     width: 380,
     borderRadius: 16,
@@ -546,13 +551,17 @@ const styles = StyleSheet.create({
   columnsScrollContent: {
     flexGrow: 1,
   },
+  columnsWrapper: {
+    alignItems: 'center',
+    padding: 16,
+  },
   columnsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 16,
     gap: 16,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'flex-start',
+    maxWidth: 1360, // 4 columns * 320px + 3 gaps * 16px + some padding
   },
   emptyContainerDesktop: {
     flex: 1,
