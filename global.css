@@ -7,3 +7,20 @@
 *::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera, Electron */
 }
+
+/* Window border for Electron - prevents white app from blending with white desktop */
+html.electron-app {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+  height: 100%;
+}
+
+/* Darker border for light theme */
+html.electron-app.theme-light {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Lighter border for dark theme */
+html.electron-app.theme-dark {
+  border-color: rgba(255, 255, 255, 0.1);
+}

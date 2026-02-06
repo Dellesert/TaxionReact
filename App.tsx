@@ -136,8 +136,23 @@ export default function App() {
   // Navigation ref for push notification navigation
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
+  // Текущая тема для CSS классов Electron
+  const theme = useThemeStore((state) => state.theme);
+
   // Прогрев кэша при авторизации (загружает чаты, задачи, опросы в фоне)
   useCacheWarmingOnAuth(isAuthenticated);
+
+  // Add Electron-specific CSS classes to html element for window border styling
+  useEffect(() => {
+    if (Platform.OS === 'web' && isElectron() && typeof document !== 'undefined') {
+      const html = document.documentElement;
+      html.classList.add('electron-app');
+
+      // Update theme class
+      html.classList.remove('theme-light', 'theme-dark');
+      html.classList.add(theme.isDark ? 'theme-dark' : 'theme-light');
+    }
+  }, [theme.isDark]);
 
   useEffect(() => {
     // Initialize auth state and theme on app start
