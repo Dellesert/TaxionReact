@@ -198,41 +198,6 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
           </View>
         )}
 
-        {/* Year Picker */}
-        <View style={[styles.yearPicker, { backgroundColor: theme.card }]}>
-          <View
-            style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
-            // @ts-ignore - Web-only
-            onClick={handlePrevYear}
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="chevron-back" size={14} color={theme.text} />
-          </View>
-
-          <View
-            style={styles.yearButton}
-            // @ts-ignore - Web-only
-            onClick={isCurrentYear ? undefined : handleToday}
-            onMouseEnter={(e: any) => !isCurrentYear && e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Text style={[styles.yearText, { color: theme.text }]}>
-              {selectedYear}
-            </Text>
-          </View>
-
-          <View
-            style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
-            // @ts-ignore - Web-only
-            onClick={handleNextYear}
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="chevron-forward" size={14} color={theme.text} />
-          </View>
-        </View>
-
         {/* Color Mode Toggle */}
         {onColorModeChange && (viewMode === 'calendar' || viewMode === 'timeline') && (
           <View style={[styles.viewGroup, { backgroundColor: theme.backgroundTertiary }]}>
@@ -291,6 +256,41 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
             </Text>
           </View>
         )}
+
+        {/* Year Picker */}
+        <View style={[styles.yearPicker, { backgroundColor: theme.card }]}>
+          <View
+            style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+            // @ts-ignore - Web-only
+            onClick={handlePrevYear}
+            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
+            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
+          >
+            <Ionicons name="chevron-back" size={14} color={theme.text} />
+          </View>
+
+          <View
+            style={styles.yearButton}
+            // @ts-ignore - Web-only
+            onClick={isCurrentYear ? undefined : handleToday}
+            onMouseEnter={(e: any) => !isCurrentYear && e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
+            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
+          >
+            <Text style={[styles.yearText, { color: theme.text }]}>
+              {selectedYear}
+            </Text>
+          </View>
+
+          <View
+            style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+            // @ts-ignore - Web-only
+            onClick={handleNextYear}
+            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
+            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
+          >
+            <Ionicons name="chevron-forward" size={14} color={theme.text} />
+          </View>
+        </View>
       </View>
     );
   }

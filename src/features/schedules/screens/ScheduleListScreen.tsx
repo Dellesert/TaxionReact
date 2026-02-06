@@ -550,18 +550,23 @@ const styles = StyleSheet.create({
   // Desktop columns layout
   columnsScrollContent: {
     flexGrow: 1,
-  },
-  columnsWrapper: {
-    alignItems: 'center',
     padding: 16,
   },
+  columnsWrapper: {
+  },
   columnsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    maxWidth: 1360, // 4 columns * 320px + 3 gaps * 16px + some padding
+    ...(Platform.OS === 'web' ? {
+      display: 'grid' as any,
+      gridTemplateColumns: 'repeat(auto-fill, 320px)' as any,
+      justifyContent: 'center' as any,
+      gap: 16,
+    } : {
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      gap: 16,
+      justifyContent: 'flex-start' as const,
+      alignItems: 'flex-start' as const,
+    }),
   },
   emptyContainerDesktop: {
     flex: 1,
