@@ -211,9 +211,8 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
       <View
         style={[
           styles.dayContent,
-          isTodayDate && [styles.todayContainer, { borderColor: theme.primary }],
           isSelectedDay && !isTodayDate && [styles.selectedDayContainer, { backgroundColor: theme.backgroundSecondary }],
-          isSelectedDay && isTodayDate && [styles.selectedTodayContainer, { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary }],
+          isSelectedDay && isTodayDate && [styles.selectedTodayContainer, { backgroundColor: theme.backgroundSecondary }],
           !isCurrentMonth && styles.dayOutOfMonth,
           isDayHovered && isCurrentMonth && Platform.OS === 'web' && [
             styles.dayContentHovered,
@@ -221,18 +220,25 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
           ],
         ]}
       >
-        <Text
+        <View
           style={[
-            styles.dayText,
-            { color: isCurrentMonth ? theme.text : theme.textTertiary },
-            isTodayDate && [styles.todayText, { color: theme.primary }],
-            isSelectedDay && !isTodayDate && styles.selectedDayText,
-            isInWeek && !isTodayDate && styles.weekSelectedText,
-            isWeekend && isCurrentMonth && !isTodayDate && !isSelectedDay && !isInWeek && { color: theme.primary },
+            styles.dayCircle,
+            isTodayDate && [styles.todayCircle, { backgroundColor: theme.primary }],
           ]}
         >
-          {format(date, 'd')}
-        </Text>
+          <Text
+            style={[
+              styles.dayText,
+              { color: isCurrentMonth ? theme.text : theme.textTertiary },
+              isTodayDate && styles.todayText,
+              isSelectedDay && !isTodayDate && styles.selectedDayText,
+              isInWeek && !isTodayDate && styles.weekSelectedText,
+              isWeekend && isCurrentMonth && !isTodayDate && !isSelectedDay && !isInWeek && { color: theme.primary },
+            ]}
+          >
+            {format(date, 'd')}
+          </Text>
+        </View>
       </View>
 
       {/* Event dots indicator - always show when has events */}
@@ -637,16 +643,21 @@ const styles = StyleSheet.create({
       transform: 'scale(1.05)',
     } : {}),
   },
-  todayContainer: {
-    borderWidth: 2,
-    // borderColor set dynamically from theme
+  dayCircle: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  todayCircle: {
+    // backgroundColor is set dynamically with theme.primary
   },
   selectedDayContainer: {
     // backgroundColor set dynamically from theme
   },
   selectedTodayContainer: {
-    borderWidth: 2,
-    // borderColor and backgroundColor set dynamically from theme
+    // backgroundColor set dynamically from theme
   },
   selectedDayText: {
     fontWeight: '700',
@@ -662,12 +673,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   todayText: {
-    // color set dynamically from theme
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 6,
+    bottom: 0,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -676,7 +687,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   eventDot: {
-    width: 4,
+    width: 8,
     height: 4,
     borderRadius: 2,
   },
