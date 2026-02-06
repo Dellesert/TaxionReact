@@ -321,6 +321,12 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderBottomRightRadius: 16,
     position: 'relative',
+    // Shadow for visual separation
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   containerCollapsed: {
     width: 72,
