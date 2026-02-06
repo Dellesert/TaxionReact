@@ -8,6 +8,34 @@ const { AppUpdater } = require('./updater');
 
 const isDev = !app.isPackaged;
 
+// Set AppUserModelId for Windows notifications
+// This is required for notifications to work properly on Windows
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.dellesert.tachyon-messenger');
+}
+
+// Single instance lock - prevent multiple instances of the app
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Another instance is already running, quit this one
+  app.quit();
+} else {
+  // This is the first instance, handle second-instance event
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, focus our window instead
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      if (!mainWindow.isVisible()) {
+        mainWindow.show();
+      }
+      mainWindow.focus();
+    }
+  });
+}
+
 // Tray instance
 let tray = null;
 
