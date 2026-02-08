@@ -60,10 +60,6 @@ interface MessageListComponentProps {
   searchQuery?: string;
 }
 
-// Средняя высота элемента для getItemLayout
-// Используется для приблизительного расчёта позиции скролла
-const ESTIMATED_ITEM_HEIGHT = 80;
-const DATE_SEPARATOR_HEIGHT = 40;
 
 // Мемоизированный компонент индикатора загрузки для пагинации
 const LoadingFooter = React.memo(() => (
@@ -128,7 +124,7 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
   isPositionReady = true,
   searchQuery,
 }) => {
-  const { theme } = useTheme();
+  useTheme(); // Хук используется для ре-рендера при смене темы
   const { scrollbarRef } = useCustomScrollbarStyle();
 
   // State to control list opacity - prevents showing partially rendered list
@@ -232,45 +228,45 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
   const isLayoutReady = viewportHeight > 0 && contentHeight > 0;
 
   // Логика подъёма списка при появлении клавиатуры
+  // На iOS не используем translateY - используем contentInset
   const animatedTranslateY = React.useMemo(() => {
+    if (Platform.OS === 'ios') {
+      return 0;
+    }
+
     // На Android: используем логику с учётом размера контента
     // Поднимаем только если контент больше viewport и пользователь внизу
-    if (Platform.OS !== 'ios') {
-      if (!isLayoutReady) {
-        return keyboardHeightAnim.interpolate({
-          inputRange: [0, 1000],
-          outputRange: hasReachedBottom ? [0, -1000] : [0, 0],
-        });
-      }
-
-      if (contentHeight >= viewportHeight) {
-        return keyboardHeightAnim.interpolate({
-          inputRange: [0, 1000],
-          outputRange: hasReachedBottom ? [0, -1000] : [0, 0],
-        });
-      }
-
-      // Контента меньше чем viewport - рассчитываем частичный подъём
-      const freeSpaceAboveMessages = viewportHeight - contentHeight;
-
-      if (keyboardHeight <= freeSpaceAboveMessages) {
-        return keyboardHeightAnim.interpolate({
-          inputRange: [0, 1000],
-          outputRange: [0, 0],
-        });
-      }
-
-      const overlap = keyboardHeight - freeSpaceAboveMessages;
-      const liftRatio = overlap / keyboardHeight;
-
+    if (!isLayoutReady) {
       return keyboardHeightAnim.interpolate({
         inputRange: [0, 1000],
-        outputRange: [0, -1000 * liftRatio],
+        outputRange: hasReachedBottom ? [0, -1000] : [0, 0],
       });
     }
 
-    // На iOS не используем translateY
-    return 0;
+    if (contentHeight >= viewportHeight) {
+      return keyboardHeightAnim.interpolate({
+        inputRange: [0, 1000],
+        outputRange: hasReachedBottom ? [0, -1000] : [0, 0],
+      });
+    }
+
+    // Контента меньше чем viewport - рассчитываем частичный подъём
+    const freeSpaceAboveMessages = viewportHeight - contentHeight;
+
+    if (keyboardHeight <= freeSpaceAboveMessages) {
+      return keyboardHeightAnim.interpolate({
+        inputRange: [0, 1000],
+        outputRange: [0, 0],
+      });
+    }
+
+    const overlap = keyboardHeight - freeSpaceAboveMessages;
+    const liftRatio = overlap / keyboardHeight;
+
+    return keyboardHeightAnim.interpolate({
+      inputRange: [0, 1000],
+      outputRange: [0, -1000 * liftRatio],
+    });
   }, [keyboardHeightAnim, isLayoutReady, contentHeight, viewportHeight, keyboardHeight, hasReachedBottom]);
 
   // Рендер элемента списка
@@ -354,29 +350,12 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
     item.type === 'date' ? `date-${index}` : `message-${item.data.id}`,
   []);
 
-  // getItemLayout для оптимизации скролла
-  // Возвращает приблизительные размеры - FlatList использует их для расчёта позиции
-  const getItemLayout = React.useCallback((data: MessageListItem[] | null, index: number) => {
-    if (!data) {
-      return { length: ESTIMATED_ITEM_HEIGHT, offset: ESTIMATED_ITEM_HEIGHT * index, index };
-    }
-
-    // Считаем offset суммируя высоты предыдущих элементов
-    let offset = 0;
-    for (let i = 0; i < index; i++) {
-      const item = data[i];
-      if (item?.type === 'date') {
-        offset += DATE_SEPARATOR_HEIGHT;
-      } else {
-        offset += ESTIMATED_ITEM_HEIGHT;
-      }
-    }
-
-    const item = data[index];
-    const length = item?.type === 'date' ? DATE_SEPARATOR_HEIGHT : ESTIMATED_ITEM_HEIGHT;
-
-    return { length, offset, index };
-  }, []);
+  // ВАЖНО: getItemLayout УБРАН намеренно!
+  // С getItemLayout scrollToIndex использует приблизительные размеры (80px),
+  // что приводит к неточному позиционированию при скролле к закреплённым сообщениям.
+  // Без getItemLayout FlatList использует реальные измеренные размеры элементов,
+  // что даёт точное позиционирование. Минус - scrollToIndex работает только
+  // для уже отрендеренных элементов, но onScrollToIndexFailed обрабатывает это.
 
   // Флаг готовности списка - защита от преждевременного onEndReached
   const isListReady = React.useRef(false);
@@ -455,8 +434,7 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
           updateCellsBatchingPeriod={50}
           windowSize={21}
           initialNumToRender={20}
-          // getItemLayout для быстрого скролла к элементам
-          getItemLayout={getItemLayout}
+          // getItemLayout УБРАН - см. комментарий выше
           // Стили контейнера
           // Для inverted FlatList: paddingTop = визуальный низ (отступ от инпута)
           contentContainerStyle={[

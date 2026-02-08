@@ -851,43 +851,80 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     console.log('[handleReplyPress] messageIndex:', messageIndex, 'isInJumpContext:', isInJumpContext.current);
 
     if (messageIndex !== -1) {
-      // ✅ ФИНАЛЬНАЯ СТРАТЕГИЯ: Как в Telegram - мгновенный прыжок + короткая доводка
+      // ✅ Двухфазная анимация для прыжка к сообщению
+      // 1. Мгновенный прыжок к позиции рядом с целью
+      // 2. Короткая плавная анимация к целевому сообщению
 
       const currentVisibleIndex = lastVisibleMessageIndex.current;
-      const distance = Math.abs(messageIndex - currentVisibleIndex);
+      // Если lastVisibleMessageIndex ещё не инициализирован (-1), считаем что мы внизу (index 0)
+      const effectiveCurrentIndex = currentVisibleIndex >= 0 ? currentVisibleIndex : 0;
+      const distance = Math.abs(messageIndex - effectiveCurrentIndex);
 
-      // Для близких элементов (< 10) - обычная анимация работает отлично
-      if (distance < 10) {
-        listRef.current?.scrollToIndex({
-          index: messageIndex,
-          animated: true,
-          viewPosition: 0.5,
-        });
+      console.log('[handleReplyPress] currentVisibleIndex:', currentVisibleIndex, 'effectiveCurrentIndex:', effectiveCurrentIndex, 'distance:', distance);
 
-        setHighlightedMessageId(messageId);
-        setTimeout(() => {
-          setHighlightedMessageId(null);
-        }, 2000);
+      // Функция для многократного скролла с коррекцией
+      // getItemLayout использует приблизительные размеры, поэтому нужно несколько попыток
+      const scrollWithRetry = (targetIdx: number, attempts: number = 3) => {
+        let attempt = 0;
+        const doScroll = () => {
+          attempt++;
+          console.log('[handleReplyPress] Scroll attempt', attempt, 'to index:', targetIdx);
+          listRef.current?.scrollToIndex({
+            index: targetIdx,
+            animated: attempt > 1, // Первый раз без анимации для скорости
+            viewPosition: 0.5,
+          });
+
+          if (attempt < attempts) {
+            // Следующая попытка через 200ms
+            setTimeout(doScroll, 200);
+          } else {
+            // После всех попыток - подсветка
+            setTimeout(() => {
+              setHighlightedMessageId(messageId);
+              setTimeout(() => {
+                setHighlightedMessageId(null);
+              }, 2000);
+            }, 150);
+          }
+        };
+        doScroll();
+      };
+
+      // Для близких элементов (< 8) - просто несколько попыток скролла
+      if (distance < 8) {
+        scrollWithRetry(messageIndex, 2);
         return;
       }
 
-      // ✅ ДЛЯ ДАЛЬНИХ ЭЛЕМЕНТОВ: Плавная анимация как в Telegram
-      // Просто используем scrollToIndex с анимацией - FlashList сам сделает плавный переход
+      // ДЛЯ ДАЛЬНИХ ЭЛЕМЕНТОВ: Двухфазная анимация
+      // 1. Прыжок к позиции рядом с целью
+      // 2. Несколько попыток скролла к цели для коррекции
 
-      // Один плавный скролл с анимацией
+      const OFFSET_ITEMS = 10;
+
+      let startIndex: number;
+      if (messageIndex > effectiveCurrentIndex) {
+        // Цель ВЫШЕ (старые сообщения) → начинаем НИЖЕ → анимация ВВЕРХ
+        startIndex = Math.max(0, messageIndex - OFFSET_ITEMS);
+      } else {
+        // Цель НИЖЕ (новые сообщения) → начинаем ВЫШЕ → анимация ВНИЗ
+        startIndex = Math.min(messages.length - 1, messageIndex + OFFSET_ITEMS);
+      }
+
+      console.log('[handleReplyPress] Two-phase scroll: startIndex:', startIndex, '→ targetIndex:', messageIndex);
+
+      // Фаза 1: Мгновенный прыжок к стартовой позиции
       listRef.current?.scrollToIndex({
-        index: messageIndex,
-        animated: true,
+        index: startIndex,
+        animated: false,
         viewPosition: 0.5,
       });
 
-      // Подсвечиваем сообщение после скролла
+      // Фаза 2: Несколько попыток скролла к цели
       setTimeout(() => {
-        setHighlightedMessageId(messageId);
-        setTimeout(() => {
-          setHighlightedMessageId(null);
-        }, 2000);
-      }, 500); // Ждём завершения анимации скролла
+        scrollWithRetry(messageIndex, 3);
+      }, 50);
 
     } else {
       // ✅ НОВАЯ СТРАТЕГИЯ: Непрерывная анимация с подменой контента
@@ -965,7 +1002,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
           if (targetIndex !== -1) {
             // ШАГ 3: Ждём пока React обновит FlashList с новыми данными
-            // Используем setTimeout чтобы дать React время на ре-рендер
             await new Promise<void>(resolve => setTimeout(resolve, 100));
 
             // Проверка прерывания после ожидания
@@ -974,20 +1010,28 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
               return;
             }
 
-            const OFFSET_ITEMS = 15; // Сколько элементов от цели начинаем
+            const OFFSET_ITEMS = 10; // Сколько элементов пролетает в анимации
 
-            const isInverted = updatedMessages.length >= 2 &&
-              new Date(updatedMessages[0].created_at) > new Date(updatedMessages[updatedMessages.length - 1].created_at);
+            // После jumpToMessage целевое сообщение загружено в контексте.
+            // Для inverted FlatList с reversed массивом:
+            // - index 0 = новые сообщения (визуально ВНИЗУ экрана)
+            // - большой index = старые сообщения (визуально ВВЕРХУ экрана)
+            //
+            // При jump к закреплённому (старому) сообщению:
+            // - Пользователь ожидает анимацию СНИЗУ ВВЕРХ
+            // - Поэтому ВСЕГДА начинаем с меньшего индекса (ниже визуально)
+            // - И анимируем к targetIndex
+            //
+            // При jump к новому сообщению (если такое бывает):
+            // - Начинаем с большего индекса (выше визуально)
+            // - Анимируем вниз к targetIndex
 
             let startIndex: number;
-            if (isInverted) {
-              // Для inverted списка: цель имеет больший индекс (старые сверху)
-              startIndex = Math.max(0, targetIndex - OFFSET_ITEMS);
-            } else {
-              startIndex = Math.min(updatedMessages.length - 1, targetIndex + OFFSET_ITEMS);
-            }
+            // Закреплённые сообщения обычно старые → targetIndex большой
+            // Начинаем НИЖЕ цели (меньший индекс) → анимация ВВЕРХ
+            startIndex = Math.max(0, targetIndex - OFFSET_ITEMS);
 
-            console.log('[performSeamlessScroll] Scrolling - isInverted:', isInverted, 'startIndex:', startIndex, 'targetIndex:', targetIndex);
+            console.log('[performSeamlessScroll] Two-phase scroll: startIndex:', startIndex, '→ targetIndex:', targetIndex);
 
             // Тихо прыгаем к стартовой позиции
             listRef.current?.scrollToIndex({
@@ -997,7 +1041,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
             });
 
             // ШАГ 4: Даём время на позиционирование, затем плавно скроллим к цели
-            await new Promise<void>(resolve => setTimeout(resolve, 50));
+            await new Promise<void>(resolve => setTimeout(resolve, 30));
 
             // Финальная проверка перед анимацией
             if (!isAnimatingToPin.current) {
@@ -1005,25 +1049,36 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
               return;
             }
 
-            console.log('[performSeamlessScroll] Final scroll to targetIndex:', targetIndex);
-            listRef.current?.scrollToIndex({
-              index: targetIndex,
-              animated: true,
-              viewPosition: 0.5,
-            });
+            // Многократный скролл для точного позиционирования
+            const scrollWithRetry = (attempts: number = 3) => {
+              let attempt = 0;
+              const doScroll = () => {
+                attempt++;
+                console.log('[performSeamlessScroll] Scroll attempt', attempt, 'to index:', targetIndex);
+                listRef.current?.scrollToIndex({
+                  index: targetIndex,
+                  animated: attempt > 1,
+                  viewPosition: 0.5,
+                });
 
-            // Снимаем флаг анимации после завершения
-            setTimeout(() => {
-              isAnimatingToPin.current = false;
-            }, 600);
+                if (attempt < attempts) {
+                  setTimeout(doScroll, 200);
+                } else {
+                  // После всех попыток - подсветка
+                  setTimeout(() => {
+                    isAnimatingToPin.current = false;
+                    setHighlightedMessageId(targetMessageId);
+                    setTimeout(() => {
+                      setHighlightedMessageId(null);
+                    }, 2000);
+                  }, 150);
+                }
+              };
+              doScroll();
+            };
 
-            // Подсветка сообщения
-            setTimeout(() => {
-              setHighlightedMessageId(targetMessageId);
-              setTimeout(() => {
-                setHighlightedMessageId(null);
-              }, 2000);
-            }, 400);
+            console.log('[performSeamlessScroll] Starting scroll retries to targetIndex:', targetIndex);
+            scrollWithRetry(3);
           } else {
             console.error('📍 ERROR: Target not found after context load');
             isAnimatingToPin.current = false;
