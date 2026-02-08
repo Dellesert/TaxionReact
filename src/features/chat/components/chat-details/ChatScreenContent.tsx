@@ -181,7 +181,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   onNavigateNext,
   activeSearchQuery,
 }) => {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
 
   // На iOS высота клавиатуры уже включает home indicator,
   // поэтому когда клавиатура открыта, не нужно добавлять insetsBottom
@@ -202,6 +202,12 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
       ],
     };
   }, [keyboardHeightAnim]);
+
+  // Высота инпут-контейнера
+  // Упрощённая логика - не добавляем лишнюю высоту
+  const inputWrapperHeight = useMemo(() => {
+    return 72 + effectiveInsetsBottom;
+  }, [effectiveInsetsBottom]);
 
   return (
     <>
@@ -279,8 +285,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
         style={[
           styles.inputWrapper,
           {
-            minHeight: 72 + effectiveInsetsBottom, // Фиксированная минимальная высота + safe area
-            overflow: 'hidden',
+            height: inputWrapperHeight,
           },
           inputWrapperAnimatedStyle,
         ]}
@@ -331,14 +336,16 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             )}
           </View>
         ) : (
-          // Native - используем BlurView
-          <BlurView
-            intensity={5}
-            tint={isDark ? 'dark' : 'light'}
-            style={[styles.blurContent, { paddingBottom: effectiveInsetsBottom }]}
+          // Native - используем View с фоном вместо BlurView для избежания артефактов
+          <View
+            style={[
+              styles.blurContent,
+              {
+                paddingBottom: effectiveInsetsBottom,
+                backgroundColor: theme.background,
+              },
+            ]}
           >
-            {/* Дополнительное затемнение поверх блюра */}
-            <View style={[styles.blurOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)' }]} />
             {isSearchVisible ? (
               <SearchNavigationBar
                 total={searchTotal ?? 0}
@@ -370,7 +377,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                 onRemoveFile={onRemoveFile}
               />
             )}
-          </BlurView>
+          </View>
         )}
       </Animated.View>
     </>
@@ -392,16 +399,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    overflow: 'hidden',
   },
   blurContent: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  blurOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
 });

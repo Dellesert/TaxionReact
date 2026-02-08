@@ -206,10 +206,14 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
   const showSkeletons = isLoading && messageListItems.length === 0;
   const showEmptyState = !isLoading && messageListItems.length === 0;
 
-  const baseBottomPadding = Platform.OS === 'web'
+  // Для inverted FlatList padding работает наоборот:
+  // - paddingTop в contentContainerStyle = отступ снизу (от инпута)
+  // - paddingBottom в contentContainerStyle = отступ сверху (от старых сообщений)
+  const bottomPaddingForInput = Platform.OS === 'web'
     ? 20
     : inputHeight + insetsBottom + 20;
 
+  // Состояние для расчёта подъёма на Android
   const [contentHeight, setContentHeight] = React.useState(0);
   const [viewportHeight, setViewportHeight] = React.useState(0);
 
@@ -227,33 +231,47 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
 
   const isLayoutReady = viewportHeight > 0 && contentHeight > 0;
 
-  const liftParams = React.useMemo(() => {
-    if (!isLayoutReady) {
-      return { shouldLift: hasReachedBottom, liftRatio: 1 };
-    }
-
-    if (contentHeight >= viewportHeight) {
-      return { shouldLift: hasReachedBottom, liftRatio: 1 };
-    }
-
-    const freeSpaceAboveMessages = viewportHeight - contentHeight;
-
-    if (keyboardHeight <= freeSpaceAboveMessages) {
-      return { shouldLift: false, liftRatio: 0 };
-    }
-
-    const overlap = keyboardHeight - freeSpaceAboveMessages;
-    const liftRatio = overlap / keyboardHeight;
-
-    return { shouldLift: true, liftRatio };
-  }, [isLayoutReady, contentHeight, viewportHeight, keyboardHeight, hasReachedBottom]);
-
+  // Логика подъёма списка при появлении клавиатуры
   const animatedTranslateY = React.useMemo(() => {
-    return keyboardHeightAnim.interpolate({
-      inputRange: [0, 1000],
-      outputRange: liftParams.shouldLift ? [0, -1000 * liftParams.liftRatio] : [0, 0],
-    });
-  }, [keyboardHeightAnim, liftParams]);
+    // На Android: используем логику с учётом размера контента
+    // Поднимаем только если контент больше viewport и пользователь внизу
+    if (Platform.OS !== 'ios') {
+      if (!isLayoutReady) {
+        return keyboardHeightAnim.interpolate({
+          inputRange: [0, 1000],
+          outputRange: hasReachedBottom ? [0, -1000] : [0, 0],
+        });
+      }
+
+      if (contentHeight >= viewportHeight) {
+        return keyboardHeightAnim.interpolate({
+          inputRange: [0, 1000],
+          outputRange: hasReachedBottom ? [0, -1000] : [0, 0],
+        });
+      }
+
+      // Контента меньше чем viewport - рассчитываем частичный подъём
+      const freeSpaceAboveMessages = viewportHeight - contentHeight;
+
+      if (keyboardHeight <= freeSpaceAboveMessages) {
+        return keyboardHeightAnim.interpolate({
+          inputRange: [0, 1000],
+          outputRange: [0, 0],
+        });
+      }
+
+      const overlap = keyboardHeight - freeSpaceAboveMessages;
+      const liftRatio = overlap / keyboardHeight;
+
+      return keyboardHeightAnim.interpolate({
+        inputRange: [0, 1000],
+        outputRange: [0, -1000 * liftRatio],
+      });
+    }
+
+    // На iOS не используем translateY
+    return 0;
+  }, [keyboardHeightAnim, isLayoutReady, contentHeight, viewportHeight, keyboardHeight, hasReachedBottom]);
 
   // Рендер элемента списка
   const renderItem = React.useCallback(({ item, index }: { item: MessageListItem; index: number }) => {
@@ -414,7 +432,7 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
   }
 
   return (
-    <View ref={scrollbarRef} style={{ flex: 1 }}>
+    <View ref={scrollbarRef} style={{ flex: 1, overflow: 'hidden' }}>
       <Animated.View
         style={{
           flex: 1,
@@ -440,10 +458,17 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
           // getItemLayout для быстрого скролла к элементам
           getItemLayout={getItemLayout}
           // Стили контейнера
+          // Для inverted FlatList: paddingTop = визуальный низ (отступ от инпута)
           contentContainerStyle={[
             styles.messagesList,
-            { paddingBottom: baseBottomPadding },
+            { paddingTop: bottomPaddingForInput },
           ]}
+          // На iOS используем contentInset для обработки клавиатуры
+          // Для inverted FlatList: top = визуальный низ
+          {...(Platform.OS === 'ios' && {
+            contentInset: { top: keyboardHeight },
+            contentOffset: { x: 0, y: -keyboardHeight },
+          })}
           // Поведение клавиатуры
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
@@ -502,6 +527,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   messagesList: {
-    paddingTop: 20,
+    // Для inverted FlatList: paddingBottom = визуальный верх (отступ перед старыми сообщениями)
+    paddingBottom: 20,
   },
 });
