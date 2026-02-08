@@ -20,13 +20,14 @@ export const useChatMessages = (
   const chat = useChatStore((state) => state.chats.find(c => c.id === chatId));
   const currentUser = useAuthStore((state) => state.user);
 
-  // Массив сообщений в прямом порядке для inverted списка [старые -> новые]
-  // inverted={true} переворачивает ВИЗУАЛЬНО, поэтому:
-  // - индекс 0 (старое сообщение) показывается ВВЕРХУ
-  // - последний индекс (новое сообщение) показывается ВНИЗУ
+  // Массив сообщений в ОБРАТНОМ порядке для inverted FlatList [новые -> старые]
+  // inverted={true} в FlatList означает:
+  // - index 0 показывается ВНИЗУ экрана (визуальный низ)
+  // - последний индекс показывается ВВЕРХУ экрана (визуальный верх)
+  // Поэтому новые сообщения должны быть в начале массива (index 0)
   const messages = useMemo(() => {
     if (!chatMessages) return [];
-    return [...chatMessages]; // Прямой порядок: старые → новые
+    return [...chatMessages].reverse(); // Обратный порядок: новые → старые
   }, [chatMessages]);
 
   // Создаем список элементов для отображения (только сообщения)
@@ -44,9 +45,10 @@ export const useChatMessages = (
       `${m.id}-${m.read_by?.length || 0}-${m.read_receipts?.length || 0}-${m.delivered_to?.length || 0}`
     ).join(',');
     // DEBUG: Логируем изменения messagesKey для отладки read status
+    // В обратном массиве [новые → старые]: первые 3 = самые новые
     if (__DEV__) {
-      console.log('[useChatMessages] messagesKey updated, last 3 messages status:',
-        messages.slice(-3).map(m => ({
+      console.log('[useChatMessages] messagesKey updated, newest 3 messages status:',
+        messages.slice(0, 3).map(m => ({
           id: m.id,
           read_by: m.read_by?.length || 0,
           read_receipts: m.read_receipts?.length || 0
@@ -57,12 +59,14 @@ export const useChatMessages = (
   }, [messages]);
 
   // Вычисляем индекс первого непрочитанного сообщения и их количество
+  // ВАЖНО: Массив messages теперь в обратном порядке [новые → старые]
+  // index 0 = самое новое (визуально внизу), большой индекс = старое (визуально вверху)
   const { firstUnreadIndex, unreadCount, detectedFirstUnreadId } = useMemo(() => {
     if (!currentUser || messages.length === 0) {
       return { firstUnreadIndex: -1, unreadCount: 0, detectedFirstUnreadId: null };
     }
 
-    let firstUnreadIndex = -1; // Индекс первого непрочитанного (перед которым показывать баннер)
+    let firstUnreadIndex = -1; // Индекс первого непрочитанного (самого старого)
     let count = 0;
     let detectedFirstUnreadId: number | null = null;
 
@@ -73,8 +77,9 @@ export const useChatMessages = (
       const fixedIndex = messages.findIndex(m => m.id === firstUnreadMessageId);
       if (fixedIndex !== -1) {
         firstUnreadIndex = fixedIndex;
-        // Считаем все сообщения от других пользователей начиная с этого индекса
-        for (let i = fixedIndex; i < messages.length; i++) {
+        // Считаем все сообщения от других пользователей от этого индекса к началу (к новым)
+        // В обратном массиве: от fixedIndex к 0 - это все более новые сообщения
+        for (let i = fixedIndex; i >= 0; i--) {
           const message = messages[i];
           if (message.sender_id !== currentUser.id) {
             count++;
@@ -90,13 +95,14 @@ export const useChatMessages = (
       const targetUnreadCount = savedUnreadCount > 0 ? savedUnreadCount : (chat?.unread_count || 0);
 
       if (targetUnreadCount > 0) {
-        // Идем с конца массива (самые новые) к началу (старые)
-        // Ищем последние targetUnreadCount сообщений от других пользователей
-        for (let i = messages.length - 1; i >= 0; i--) {
+        // В обратном массиве [новые → старые]:
+        // Идем с начала (новые, index 0) к концу (старые)
+        // Ищем targetUnreadCount сообщений от других пользователей
+        for (let i = 0; i < messages.length; i++) {
           const message = messages[i];
           if (message.sender_id !== currentUser.id) {
             // Это непрочитанное сообщение
-            firstUnreadIndex = i; // Обновляем индекс (самое старое непрочитанное)
+            firstUnreadIndex = i; // Обновляем индекс (самое старое найденное)
             detectedFirstUnreadId = message.id; // Запоминаем ID для фиксации
             count++;
 
@@ -108,8 +114,9 @@ export const useChatMessages = (
       }
     } else {
       // Нормальный режим - проверяем read_receipts
-      // Идем с конца (новые) к началу (старые), чтобы найти самое старое непрочитанное
-      for (let i = messages.length - 1; i >= 0; i--) {
+      // В обратном массиве [новые → старые]:
+      // Идем с начала (новые) к концу (старые), находим все непрочитанные
+      for (let i = 0; i < messages.length; i++) {
         const message = messages[i];
         const readReceipts = message.read_receipts || [];
         const hasReadReceipt = readReceipts.some((receipt) => receipt.user_id === currentUser.id);
@@ -123,14 +130,12 @@ export const useChatMessages = (
       }
     }
 
-    // В инвертированном списке с прямым порядком данных [старые → новые]:
-    // index 0 = самое старое сообщение (показывается ВВЕРХУ экрана из-за inverted)
-    // большой индекс = самое новое сообщение (показывается ВНИЗУ экрана)
+    // В inverted FlatList с обратным порядком данных [новые → старые]:
+    // index 0 = самое новое сообщение (показывается ВНИЗУ экрана)
+    // большой индекс = самое старое сообщение (показывается ВВЕРХУ экрана)
     //
-    // Баннер "непрочитанные" должен показываться ПЕРЕД первым непрочитанным,
-    // т.е. перед самым старым непрочитанным сообщением
-    //
-    // Поиск идет с конца к началу, чтобы найти самое старое непрочитанное (наименьший индекс)
+    // Баннер "непрочитанные" показывается на элементе с firstUnreadIndex
+    // (самое старое непрочитанное сообщение)
 
     return { firstUnreadIndex, unreadCount: count, detectedFirstUnreadId };
   }, [messages, currentUser, chat, ignoreReadReceipts, savedUnreadCount, chatId, firstUnreadMessageId]);

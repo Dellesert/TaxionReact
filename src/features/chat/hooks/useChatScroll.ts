@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { FlatList, Platform } from 'react-native';
+import { FlatList } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useChatStore } from '@shared/store/chatStore';
 import { getDateLabel } from '@shared/utils/dateHelpers';
@@ -36,8 +36,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const lastScrollOffset = useRef<number>(0);
   const currentContentHeight = useRef<number>(0); // Текущая высота контента (обновляется при каждом вызове handleContentSizeChange)
   const isLoadingOldMessages = useRef<boolean>(false); // Флаг загрузки старых сообщений
-  const contentHeightBeforeLoad = useRef<number>(0); // Высота контента перед загрузкой старых сообщений
-  const scrollOffsetBeforeLoad = useRef<number>(0); // Позиция скролла перед загрузкой
   const isLoadingNewerMessages = useRef<boolean>(false); // Флаг загрузки более новых сообщений (при скролле вниз в jump context)
   const lastNewestMessageId = useRef<number | null>(null); // ID последнего загруженного сообщения при incremental load
   const isAnimatingToPin = useRef<boolean>(false); // Флаг анимации к закрепленному сообщению
@@ -51,7 +49,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const scrollToBottomStartTime = useRef<number>(0); // Время начала анимации
   const scrollAnimationPhase = useRef<'waiting' | 'animating' | 'done'>('done'); // Фаза анимации
   const scrollCooldownUntil = useRef<number>(0); // Время до которого игнорируем изменения messagesKey
-  const scrollTargetIndex = useRef<number | null>(null); // Целевой индекс для скролла (null = scrollToEnd)
+  const scrollTargetIndex = useRef<number | null>(null); // Целевой индекс для скролла (null = scrollToOffset(0))
   const isExitingJumpContext = useRef<boolean>(false); // Флаг выхода из jump context - не скрывать плашку
   const SCROLL_STABILIZATION_DELAY = 200; // ms ждём стабилизации messagesKey
   const SCROLL_ANIMATION_MAX_DURATION = 2000; // максимум 2 секунды на всё
@@ -90,9 +88,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
 
     // ПРИОРИТЕТ 2: Скроллим к последнему сообщению (вниз)
-    // Для inverted FlashList: не передаём initialScrollIndex, чтобы показать начало
+    // Для inverted FlatList: не передаём initialScrollIndex, чтобы показать начало
     // Начало inverted списка = визуально низ экрана (новые сообщения)
-    // После рендера дополнительно вызовем scrollToEnd для гарантии
+    // После рендера вызовем scrollToOffset(0) для гарантии позиционирования
     setHasReachedBottom(true);
     return undefined; // undefined = FlashList начинает с начала = низ для inverted
   }, [messages.length, firstUnreadIndex, unreadCount]);
@@ -176,9 +174,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       }
 
       // СЛУЧАЙ 2: < 5 непрочитанных - скроллим к низу (последние сообщения)
-      // Используем scrollToEnd - он используется в handleScrollToBottom и работает для показа низа
+      // Для inverted FlatList: offset 0 = визуальный низ (новые сообщения)
       if (listRef.current) {
-        listRef.current.scrollToEnd({ animated: false });
+        listRef.current.scrollToOffset({ offset: 0, animated: false });
       }
       setIsPositionReady(true);
     }, 100);
@@ -211,8 +209,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           viewOffset: -30,
         });
       } else {
-        // Скроллим в самый низ
-        listRef.current?.scrollToEnd({ animated });
+        // Скроллим в самый низ (для inverted FlatList: offset 0 = новые сообщения)
+        listRef.current?.scrollToOffset({ offset: 0, animated });
       }
     };
 
@@ -349,58 +347,39 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Сохраняем текущую позицию скролла
     lastScrollOffset.current = contentOffset.y;
 
-    // Для инвертированного списка (inverted=true):
-    // offset.y начинается с отрицательных значений или малых при старте
-    // при скролле ВВЕРХ (к старым сообщениям) offset.y уменьшается
-    // при скролле ВНИЗ (к новым сообщениям) offset.y увеличивается
-
-    // Расстояние от верхнего края контента
-    const distanceFromTop = contentOffset.y;
-
-    // Вычисляем расстояния от краев для определения позиции скролла
-    // Порог 500px ≈ 5 сообщений (среднее сообщение ~100px)
-    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
-
-    // Для инвертированного списка проверяем близость к верхней границе
-    // Когда пользователь скроллит вверх к старым сообщениям, offset.y становится маленьким или отрицательным
-
-    // ⚠️ ВАЖНО: На inverted списке поведение offset.y различается по платформам
-    // iOS: большой offset.y = близко к старым сообщениям (верх)
-    // Android inverted: маленький offset.y = визуальный низ (новые), большой = визуальный верх (старые)
-    //
-    // Для определения "близко к старым сообщениям" (для подгрузки):
-    // - Web: distanceFromTop <= 500 (стандартная проверка)
-    // - iOS: distanceFromBottom >= maxScroll - 500 (альтернативная проверка)
-    // - Android inverted: distanceFromTop > maxScroll - 500, т.е. offset.y большой = вверху у старых
-    //   Дополнительно: если контента мало (maxScroll < 500), весь список в "зоне загрузки",
-    //   поэтому нужно проверить что пользователь НЕ внизу (distanceFromBottom > 100)
+    // Для inverted FlatList:
+    // - contentOffset.y = 0 → пользователь видит НОВЫЕ сообщения (визуальный низ)
+    // - contentOffset.y = maxScroll → пользователь видит СТАРЫЕ сообщения (визуальный верх)
     const maxScroll = contentSize.height - layoutMeasurement.height;
-    const isNearTopStandard = distanceFromTop <= 500;
-    const isNearTopAlternative = distanceFromBottom >= maxScroll - 500;
 
+    // distanceToOldMessages = сколько пикселей осталось до старых сообщений (визуальный верх)
+    // Когда contentOffset.y близок к maxScroll, distanceToOldMessages мало
+    const distanceToOldMessages = maxScroll - contentOffset.y;
+
+    // distanceToNewMessages = сколько пикселей до новых сообщений (визуальный низ)
+    // Когда contentOffset.y близок к 0, distanceToNewMessages мало
+    const distanceToNewMessages = contentOffset.y;
+
+    // isNearTop = пользователь близко к СТАРЫМ сообщениям (нужна пагинация)
+    // Используем большой порог (1500px ≈ 15-20 сообщений) для упредительной загрузки
+    // Это обеспечивает плавный бесконечный скролл без заметных пауз
     let isNearTop: boolean;
-    if (Platform.OS === 'android') {
-      // Android inverted: offset.y маленький внизу, большой вверху
-      // Пользователь "близко к старым" когда offset.y большой (далеко от 0)
-      // Если контента мало (maxScroll <= 500), проверяем что пользователь не внизу
-      if (maxScroll <= 500) {
-        // Весь контент в зоне 500px — загружаем только если пользователь НЕ у новых сообщений
-        isNearTop = distanceFromBottom > 100;
-      } else {
-        // Достаточно контента: проверяем что пользователь вверху (offset.y большой)
-        isNearTop = distanceFromTop >= maxScroll - 500;
-      }
-    } else if (Platform.OS === 'ios') {
-      isNearTop = isNearTopAlternative;
+    if (maxScroll <= 0) {
+      // Контента меньше чем viewport - не загружаем (всё уже видно)
+      isNearTop = false;
     } else {
-      isNearTop = isNearTopStandard;
+      // Когда до старых сообщений осталось <= 1500px - загружаем ещё
+      // Это примерно 15-20 сообщений, что даёт время загрузить до того как пользователь доскроллит
+      isNearTop = distanceToOldMessages <= 1500;
     }
 
     // Если пользователь близко к верху и есть еще сообщения - загружаем
-    // ВАЖНО: Убрали проверку initialScrolled, так как на iOS первое событие скролла происходит ДО установки этого флага
-    if (isNearTop && !isLoadingMore && hasMoreMessages && messages.length > 0) {
-      // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
-      const oldestMessage = messages[0];
+    // ВАЖНО: Проверяем initialScrolled чтобы не загружать при первом рендере!
+    // Также проверяем isInitialScrollComplete для дополнительной защиты
+    if (isNearTop && !isLoadingMore && hasMoreMessages && messages.length > 0 && initialScrolled && isInitialScrollComplete.current) {
+      // Для inverted FlatList с обратным массивом [новые → старые]:
+      // messages[length - 1] = самое СТАРОЕ сообщение (визуально вверху)
+      const oldestMessage = messages[messages.length - 1];
 
       if (oldestMessage && lastOldestMessageId.current !== oldestMessage.id) {
         // Запускаем загрузку немедленно (без задержки)
@@ -409,7 +388,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
 
     // Проверяем достигли ли низа списка
-    const isAtBottom = distanceFromBottom <= 500;
+    const isAtBottom = distanceToNewMessages <= 500;
 
     // Не меняем hasReachedBottom во время анимации клавиатуры
     // т.к. scroll events при анимации не отражают реальное намерение пользователя
@@ -419,21 +398,23 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
     // Если пользователь скроллит вручную далеко от низа во время анимации к низу - отменяем анимацию
     // Это позволяет пользователю прервать автоскролл если он хочет остаться наверху
-    if (isScrollToBottomAnimating.current && distanceFromBottom > 800) {
+    if (isScrollToBottomAnimating.current && distanceToNewMessages > 800) {
       isScrollToBottomAnimating.current = false;
       scrollAnimationPhase.current = 'done';
     }
 
     // Проверяем близость к низу (порог ~5 сообщений ≈ 500px)
     // Используется для автоскролла при новых сообщениях
-    const isCloseToBottom = distanceFromBottom <= 500;
+    const isCloseToBottom = distanceToNewMessages <= 500;
     isNearBottom.current = isCloseToBottom;
 
     if (isAtBottom) {
       // Если мы в контексте после jump и достигли низа загруженных сообщений - загружаем следующую партию
       // НО НЕ ЗАГРУЖАЕМ если идет анимация к закрепленному сообщению
       if (isInJumpContext.current && !isLoadingMore && !isLoadingNewerMessages.current && !isAnimatingToPin.current && messages.length > 0) {
-        const newestMessage = messages[messages.length - 1];
+        // Для inverted FlatList с обратным массивом [новые → старые]:
+        // messages[0] = самое НОВОЕ сообщение (визуально внизу)
+        const newestMessage = messages[0];
 
         // Проверяем что мы еще не загружали от этого сообщения
         if (newestMessage && lastNewestMessageId.current !== newestMessage.id) {
@@ -483,7 +464,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         // РЕАЛЬНО достиг самого низа (< 100px), а не просто близко к низу (< 500px)
         // Это нужно чтобы плашка "Новые сообщения" оставалась видимой пока пользователь
         // не доскроллит до самого конца
-        const isReallyAtBottom = distanceFromBottom <= 100;
+        const isReallyAtBottom = distanceToNewMessages <= 100;
         if (isReallyAtBottom) {
           setNewMessagesCount(0);
           setFirstNewMessageIndex(-1);
@@ -508,8 +489,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       return;
     }
 
-    // Для инвертированного списка: messages[0] = самое СТАРОЕ сообщение
-    const oldestMessage = messages[0];
+    // Для inverted FlatList с обратным массивом [новые → старые]:
+    // messages[length - 1] = самое СТАРОЕ сообщение (визуально вверху)
+    const oldestMessage = messages[messages.length - 1];
     if (!oldestMessage || lastOldestMessageId.current === oldestMessage.id) {
       return;
     }
@@ -525,13 +507,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // Устанавливаем ID до начала загрузки для предотвращения дублирования
     lastOldestMessageId.current = oldestMessage.id;
 
-    // Сохраняем позицию перед загрузкой
-    const currentOffset = lastScrollOffset.current;
-    const currentHeight = currentContentHeight.current;
-
-    scrollOffsetBeforeLoad.current = currentOffset;
-    contentHeightBeforeLoad.current = currentHeight;
-
     setIsLoadingMore(true);
     isLoadingOldMessages.current = true;
 
@@ -540,27 +515,16 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       if (addedCount === 0) {
         setHasMoreMessages(false);
-        isLoadingOldMessages.current = false;
-        contentHeightBeforeLoad.current = 0;
-        scrollOffsetBeforeLoad.current = 0;
-      } else if (Platform.OS === 'android') {
-        // Страховка: если handleContentSizeChange не сбросит флаг за 500мс,
-        // сбрасываем принудительно чтобы не заблокировать следующую загрузку
-        setTimeout(() => {
-          if (isLoadingOldMessages.current) {
-            isLoadingOldMessages.current = false;
-            contentHeightBeforeLoad.current = 0;
-            scrollOffsetBeforeLoad.current = 0;
-          }
-        }, 500);
+      } else {
+        // После успешной загрузки сбрасываем ID чтобы разрешить следующую загрузку
+        // Это нужно для непрерывной пагинации при быстром скролле
+        lastOldestMessageId.current = null;
       }
     } catch (error) {
       lastOldestMessageId.current = null;
-      isLoadingOldMessages.current = false;
-      contentHeightBeforeLoad.current = 0;
-      scrollOffsetBeforeLoad.current = 0;
     } finally {
       setIsLoadingMore(false);
+      isLoadingOldMessages.current = false;
     }
   }, [chatId, messages, isLoadingMore, hasMoreMessages, loadMoreMessages]);
 
@@ -573,38 +537,13 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   useEffect(() => {
     return () => {
       isLoadingOldMessages.current = false;
-      contentHeightBeforeLoad.current = 0;
-      scrollOffsetBeforeLoad.current = 0;
     };
   }, []);
 
   // Обработчик изменения размера контента
   const handleContentSizeChange = useCallback((_width: number, height: number) => {
-    const previousHeight = currentContentHeight.current;
     // Обновляем текущую высоту контента
     currentContentHeight.current = height;
-
-    // ✅ Android: ручная коррекция позиции скролла при загрузке старых сообщений
-    // На iOS это делает maintainVisibleContentPosition, но на Android он отключен
-    // (конфликтует с inverted). Поэтому вручную сдвигаем offset на разницу высот.
-    if (Platform.OS === 'android' && isLoadingOldMessages.current && previousHeight > 0 && height > previousHeight) {
-      const heightDiff = height - previousHeight;
-      const correctedOffset = lastScrollOffset.current + heightDiff;
-
-      // Корректируем позицию скролла чтобы видимый контент остался на месте
-      listRef.current?.scrollToOffset({
-        offset: correctedOffset,
-        animated: false,
-      });
-
-      // Обновляем сохранённый offset
-      lastScrollOffset.current = correctedOffset;
-
-      // Сбрасываем флаг загрузки старых сообщений
-      isLoadingOldMessages.current = false;
-      contentHeightBeforeLoad.current = 0;
-      scrollOffsetBeforeLoad.current = 0;
-    }
 
     // Сохраняем позицию непрочитанных для восстановления
     if (initialScrolled && firstUnreadIndex !== -1 && unreadCount >= 1) {
@@ -616,14 +555,16 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   }, [initialScrolled, firstUnreadIndex, unreadCount, chatId]);
 
   // Отслеживаем новые сообщения от других пользователей
+  // ВАЖНО: Массив messages в обратном порядке [новые → старые]
+  // messages[0] = самое новое, messages[length-1] = самое старое
   useEffect(() => {
 
     // Пропускаем при первой инициализации или если нет сообщений
     if (!initialScrolled || messages.length === 0) {
       previousMessagesLength.current = messages.length;
-      // Сохраняем ID последнего сообщения
+      // Сохраняем ID ПЕРВОГО (самого нового) сообщения
       if (messages.length > 0) {
-        previousLastMessageId.current = messages[messages.length - 1].id;
+        previousLastMessageId.current = messages[0].id;
       }
       return;
     }
@@ -634,18 +575,19 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     // ВАЖНО: обрабатываем только если длина массива УВЕЛИЧИЛАСЬ (реально добавились новые сообщения)
     // Если длина осталась прежней - это просто обновление существующего сообщения (например, pin/unpin)
     if (newMessagesAdded > 0 && currentUserId) {
-      // Проверяем, куда добавились сообщения - в начало (старые) или в конец (новые)
-      // Старые сообщения добавляются в НАЧАЛО массива, новые - в КОНЕЦ
+      // В обратном массиве [новые → старые]:
+      // - Новые сообщения добавляются в НАЧАЛО (index 0)
+      // - Старые сообщения добавляются в КОНЕЦ
 
       // ПРОСТАЯ И НАДЕЖНАЯ ПРОВЕРКА:
-      // Сравниваем ID текущего последнего сообщения с сохраненным ID предыдущего последнего
-      const currentLastMessage = messages[messages.length - 1];
-      const currentLastId = currentLastMessage.id;
+      // Сравниваем ID первого (самого нового) сообщения с сохраненным
+      const currentFirstMessage = messages[0];
+      const currentFirstId = currentFirstMessage.id;
 
-      // Если ID последнего сообщения НЕ изменился - значит добавились старые в начало
-      if (previousLastMessageId.current !== null && currentLastId === previousLastMessageId.current) {
+      // Если ID первого сообщения НЕ изменился - значит добавились старые в конец
+      if (previousLastMessageId.current !== null && currentFirstId === previousLastMessageId.current) {
         previousMessagesLength.current = messages.length;
-        previousLastMessageId.current = currentLastId;
+        previousLastMessageId.current = currentFirstId;
         return;
       }
 
@@ -657,7 +599,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         if (!prevMsgExists) {
           // Массив был заменён - синхронизируем состояние и выходим
           previousMessagesLength.current = messages.length;
-          previousLastMessageId.current = currentLastId;
+          previousLastMessageId.current = currentFirstId;
           setNewMessagesCount(0);
           setFirstNewMessageIndex(-1);
           return;
@@ -674,23 +616,24 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         // Проверяем, это инкрементальная загрузка или реальные новые сообщения
         // Инкрементальная загрузка добавляет сообщения с ID близкими к lastNewestMessageId
         // Реальные новые сообщения будут иметь ID значительно больше
-        const isIncrementalLoad = currentLastId <= lastNewestMessageId.current ||
-          (currentLastId - lastNewestMessageId.current) < 100; // Небольшой буфер для batch загрузки
+        const isIncrementalLoad = currentFirstId <= lastNewestMessageId.current ||
+          (currentFirstId - lastNewestMessageId.current) < 100; // Небольшой буфер для batch загрузки
 
         if (isIncrementalLoad) {
           previousMessagesLength.current = messages.length;
-          previousLastMessageId.current = currentLastId;
+          previousLastMessageId.current = currentFirstId;
           return;
         }
       }
 
-      // Это новые сообщения в конце массива
-      const newMessages = messages.slice(previousMessagesLength.current);
+      // Это новые сообщения в начале массива (новые добавляются в начало в обратном порядке)
+      // Берём первые newMessagesAdded элементов
+      const newMessages = messages.slice(0, newMessagesAdded);
       const newFromOthers = newMessages.filter(msg => msg.sender_id !== currentUserId).length;
 
       if (newFromOthers > 0) {
         // УПРОЩЕННАЯ ЛОГИКА: Автоскролл если пользователь близко к низу (~5 сообщений)
-        // isNearBottom.current обновляется в handleScroll и проверяет distanceFromBottom <= 500
+        // isNearBottom.current обновляется в handleScroll и проверяет distanceToNewMessages <= 500
         //
         // Если пользователь внизу или близко к низу - автоматически прокручиваем к новому сообщению
         // Если пользователь далеко от низа (скроллил вверх) - показываем счетчик новых сообщений
@@ -701,16 +644,19 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           // Небольшая задержка для корректного рендера нового сообщения
           setTimeout(() => {
             if (listRef.current) {
-              listRef.current.scrollToEnd({
+              // Для inverted FlatList: offset 0 = новые сообщения (визуальный низ)
+              listRef.current.scrollToOffset({
+                offset: 0,
                 animated: true,
               });
             }
           }, 100);
         } else {
           // Если это первое новое сообщение - запоминаем его индекс
+          // В обратном массиве новые сообщения в начале, ищем среди первых newMessagesAdded
           if (firstNewMessageIndex === -1) {
             const firstNewMsgIndex = messages.findIndex((msg, idx) =>
-              idx >= previousMessagesLength.current && msg.sender_id !== currentUserId
+              idx < newMessagesAdded && msg.sender_id !== currentUserId
             );
             if (firstNewMsgIndex !== -1) {
               setFirstNewMessageIndex(firstNewMsgIndex);
@@ -723,8 +669,8 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         }
       }
 
-      // Обновляем сохраненный ID последнего сообщения
-      previousLastMessageId.current = currentLastId;
+      // Обновляем сохраненный ID первого (самого нового) сообщения
+      previousLastMessageId.current = currentFirstId;
     }
 
     // Обновляем previousMessagesLength только если длина РЕАЛЬНО изменилась
@@ -773,9 +719,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       await loadMessages(chatId);
 
       // Синхронизируем refs с новым массивом для предотвращения ложных "новых" сообщений
+      // ВАЖНО: freshMessages в store в порядке [старые → новые], но наш messages reversed [новые → старые]
+      // previousLastMessageId хранит ID самого НОВОГО сообщения (первого в reversed массиве)
       const freshMessages = useChatStore.getState().messages[chatId] || [];
       previousMessagesLength.current = freshMessages.length;
       if (freshMessages.length > 0) {
+        // Самое новое сообщение в оригинальном массиве - последнее
         previousLastMessageId.current = freshMessages[freshMessages.length - 1].id;
       }
 
@@ -803,7 +752,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       // - Плашка появится автоматически когда React обновит firstUnreadIndex
       // - Это избегает проблемы с мерцанием плашки в неправильном месте
       console.log('[ScrollToBottom] Will scroll to bottom (jump context exit)');
-      scrollTargetIndex.current = null; // null означает scrollToEnd
+      scrollTargetIndex.current = null; // null означает scrollToOffset(0) - к новым сообщениям
 
       // Устанавливаем защиту плашки - handleScroll не будет скрывать её некоторое время
       isExitingJumpContext.current = true;
@@ -873,8 +822,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         isScrollingToUnread.current = false;
       }, 500);
     } else {
-      // Просто скроллим в самый низ
-      listRef.current?.scrollToEnd({
+      // Просто скроллим в самый низ (для inverted FlatList: offset 0 = новые сообщения)
+      listRef.current?.scrollToOffset({
+        offset: 0,
         animated: true,
       });
       setHasReachedBottom(true);
@@ -965,9 +915,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
           // Синхронизируем refs с новым массивом сразу после загрузки
           // Это предотвращает ложное определение "новых" сообщений в useEffect
+          // ВАЖНО: freshMessages в store в порядке [старые → новые]
+          // previousLastMessageId хранит ID самого НОВОГО сообщения
           const freshMessages = useChatStore.getState().messages[chatId] || [];
           previousMessagesLength.current = freshMessages.length;
           if (freshMessages.length > 0) {
+            // Самое новое сообщение в оригинальном массиве - последнее
             previousLastMessageId.current = freshMessages[freshMessages.length - 1].id;
           }
 

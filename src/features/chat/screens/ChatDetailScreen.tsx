@@ -19,7 +19,8 @@ import { useChatTyping } from '../hooks/useChatTyping';
 
 // Components
 import { ChatDetailHeader } from '../components/headers/ChatDetailHeader';
-import { MessageListComponent } from '../components/messages/MessageListComponent';
+// Используем FlatList версию вместо FlashList
+import { MessageListComponentFlatList as MessageListComponent } from '../components/messages/MessageListComponentFlatList';
 import { EmptyMessagesState } from '../components/messages/EmptyMessagesState';
 
 type ChatDetailRouteParams = {

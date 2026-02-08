@@ -4,7 +4,9 @@ import { BlurView } from 'expo-blur';
 import { PinnedMessageBanner } from '../messages/PinnedMessageBanner';
 import { FloatingDateHeader } from '../common/FloatingDateHeader';
 import { ScrollToBottomButton } from '../common/ScrollToBottomButton';
-import { MessageListComponent } from '../messages/MessageListComponent';
+// Используем FlatList версию вместо FlashList для лучшей работы со скролом
+// FlashList версия сохранена в MessageListComponent.tsx
+import { MessageListComponentFlatList as MessageListComponent } from '../messages/MessageListComponentFlatList';
 import { MessageInput } from '../messages/MessageInput';
 import { SelectionModeToolbar } from '../common/SelectionModeToolbar';
 import { SearchNavigationBar } from '../search/SearchNavigationBar';
