@@ -862,46 +862,32 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       console.log('[handleReplyPress] currentVisibleIndex:', currentVisibleIndex, 'effectiveCurrentIndex:', effectiveCurrentIndex, 'distance:', distance);
 
-      // Функция для многократного скролла с коррекцией
-      // getItemLayout использует приблизительные размеры, поэтому нужно несколько попыток
-      const scrollWithRetry = (targetIdx: number, attempts: number = 3) => {
-        let attempt = 0;
-        const doScroll = () => {
-          attempt++;
-          console.log('[handleReplyPress] Scroll attempt', attempt, 'to index:', targetIdx);
+      // Для близких элементов (< 8) - один плавный скролл + коррекция
+      if (distance < 8) {
+        listRef.current?.scrollToIndex({
+          index: messageIndex,
+          animated: true,
+          viewPosition: 0.5,
+        });
+
+        // Тихая коррекция и подсветка
+        setTimeout(() => {
           listRef.current?.scrollToIndex({
-            index: targetIdx,
-            animated: attempt > 1, // Первый раз без анимации для скорости
+            index: messageIndex,
+            animated: false, // Без анимации - просто коррекция
             viewPosition: 0.5,
           });
-
-          if (attempt < attempts) {
-            // Следующая попытка через 200ms
-            setTimeout(doScroll, 200);
-          } else {
-            // После всех попыток - подсветка
-            setTimeout(() => {
-              setHighlightedMessageId(messageId);
-              setTimeout(() => {
-                setHighlightedMessageId(null);
-              }, 2000);
-            }, 150);
-          }
-        };
-        doScroll();
-      };
-
-      // Для близких элементов (< 8) - просто несколько попыток скролла
-      if (distance < 8) {
-        scrollWithRetry(messageIndex, 2);
+          setHighlightedMessageId(messageId);
+          setTimeout(() => setHighlightedMessageId(null), 2000);
+        }, 400);
         return;
       }
 
       // ДЛЯ ДАЛЬНИХ ЭЛЕМЕНТОВ: Двухфазная анимация
-      // 1. Прыжок к позиции рядом с целью
-      // 2. Несколько попыток скролла к цели для коррекции
+      // 1. Тихий прыжок к позиции рядом с целью
+      // 2. Один плавный скролл к цели + тихая коррекция
 
-      const OFFSET_ITEMS = 10;
+      const OFFSET_ITEMS = 8;
 
       let startIndex: number;
       if (messageIndex > effectiveCurrentIndex) {
@@ -914,16 +900,31 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
       console.log('[handleReplyPress] Two-phase scroll: startIndex:', startIndex, '→ targetIndex:', messageIndex);
 
-      // Фаза 1: Мгновенный прыжок к стартовой позиции
+      // Фаза 1: Тихий прыжок к стартовой позиции
       listRef.current?.scrollToIndex({
         index: startIndex,
         animated: false,
         viewPosition: 0.5,
       });
 
-      // Фаза 2: Несколько попыток скролла к цели
+      // Фаза 2: Один плавный скролл к цели
       setTimeout(() => {
-        scrollWithRetry(messageIndex, 3);
+        listRef.current?.scrollToIndex({
+          index: messageIndex,
+          animated: true,
+          viewPosition: 0.5,
+        });
+
+        // Тихая коррекция позиции и подсветка
+        setTimeout(() => {
+          listRef.current?.scrollToIndex({
+            index: messageIndex,
+            animated: false, // Без анимации - только коррекция
+            viewPosition: 0.5,
+          });
+          setHighlightedMessageId(messageId);
+          setTimeout(() => setHighlightedMessageId(null), 2000);
+        }, 350);
       }, 50);
 
     } else {
@@ -1049,36 +1050,25 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
               return;
             }
 
-            // Многократный скролл для точного позиционирования
-            const scrollWithRetry = (attempts: number = 3) => {
-              let attempt = 0;
-              const doScroll = () => {
-                attempt++;
-                console.log('[performSeamlessScroll] Scroll attempt', attempt, 'to index:', targetIndex);
-                listRef.current?.scrollToIndex({
-                  index: targetIndex,
-                  animated: attempt > 1,
-                  viewPosition: 0.5,
-                });
+            // Один плавный скролл к цели
+            console.log('[performSeamlessScroll] Smooth scroll to targetIndex:', targetIndex);
+            listRef.current?.scrollToIndex({
+              index: targetIndex,
+              animated: true,
+              viewPosition: 0.5,
+            });
 
-                if (attempt < attempts) {
-                  setTimeout(doScroll, 200);
-                } else {
-                  // После всех попыток - подсветка
-                  setTimeout(() => {
-                    isAnimatingToPin.current = false;
-                    setHighlightedMessageId(targetMessageId);
-                    setTimeout(() => {
-                      setHighlightedMessageId(null);
-                    }, 2000);
-                  }, 150);
-                }
-              };
-              doScroll();
-            };
-
-            console.log('[performSeamlessScroll] Starting scroll retries to targetIndex:', targetIndex);
-            scrollWithRetry(3);
+            // Тихая коррекция позиции и подсветка
+            setTimeout(() => {
+              listRef.current?.scrollToIndex({
+                index: targetIndex,
+                animated: false, // Без анимации - только коррекция
+                viewPosition: 0.5,
+              });
+              isAnimatingToPin.current = false;
+              setHighlightedMessageId(targetMessageId);
+              setTimeout(() => setHighlightedMessageId(null), 2000);
+            }, 400);
           } else {
             console.error('📍 ERROR: Target not found after context load');
             isAnimatingToPin.current = false;
