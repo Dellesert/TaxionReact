@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { ExpandableCreateButton, ExpandableFilterButton } from '@shared/components/common';
 import type { AbsenceType, AbsenceColorMode } from '../types/absence.types';
 
 export type AbsenceViewMode = 'list' | 'calendar' | 'timeline';
@@ -74,37 +75,22 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
       <View style={styles.container}>
         {/* Filter Button */}
         {onFilterPress && (
-          <View
-            ref={filterButtonRef}
-            collapsable={false}
-            style={[styles.filterButton, { backgroundColor: theme.backgroundTertiary }]}
-            // @ts-ignore - Web-only
-            onClick={onFilterPress}
+          <ExpandableFilterButton
+            label="Фильтры"
             title="Фильтры"
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
-          >
-            <Ionicons name="funnel-outline" size={14} color={theme.text} />
-            <Text style={[styles.buttonLabel, { color: theme.text }]}>Фильтры</Text>
-            {hasActiveFilters && (
-              <View style={[styles.filterIndicator, { backgroundColor: theme.primary }]} />
-            )}
-          </View>
+            onPress={onFilterPress}
+            hasActiveFilters={hasActiveFilters}
+            buttonRef={filterButtonRef}
+          />
         )}
 
         {/* Create Button */}
         {onCreatePress && (
-          <View
-            style={[styles.addButton, { backgroundColor: theme.primary }]}
-            // @ts-ignore - Web-only
-            onClick={onCreatePress}
+          <ExpandableCreateButton
+            label="Создать"
             title="Добавить нерабочий день"
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="add" size={16} color="#FFFFFF" />
-            <Text style={styles.addButtonLabel}>Создать</Text>
-          </View>
+            onPress={onCreatePress}
+          />
         )}
       </View>
     );
@@ -335,35 +321,22 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
 
       {/* Filter Button */}
       {onFilterPress && (
-        <View
-          style={[styles.filterButton, { backgroundColor: theme.backgroundTertiary }]}
-          // @ts-ignore - Web-only
-          onClick={onFilterPress}
+        <ExpandableFilterButton
+          label="Фильтры"
           title="Фильтры"
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.border)}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
-        >
-          <Ionicons name="funnel-outline" size={14} color={theme.text} />
-          <Text style={[styles.buttonLabel, { color: theme.text }]}>Фильтры</Text>
-          {hasActiveFilters && (
-            <View style={[styles.filterIndicator, { backgroundColor: theme.primary }]} />
-          )}
-        </View>
+          onPress={onFilterPress}
+          hasActiveFilters={hasActiveFilters}
+          buttonRef={filterButtonRef}
+        />
       )}
 
       {/* Create Button */}
       {onCreatePress && (
-        <View
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
-          // @ts-ignore - Web-only
-          onClick={onCreatePress}
+        <ExpandableCreateButton
+          label="Создать"
           title="Добавить нерабочий день"
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.9')}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-        >
-          <Ionicons name="add" size={16} color="#FFFFFF" />
-          <Text style={styles.addButtonLabel}>Создать</Text>
-        </View>
+          onPress={onCreatePress}
+        />
       )}
     </View>
   );
@@ -401,47 +374,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
-    position: 'relative',
-    gap: 6,
-  } as any,
-  filterIndicator: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  } as any,
-  buttonLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-  } as any,
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-    paddingHorizontal: 10,
-    paddingRight: 15,
-    borderRadius: 6,
-    cursor: 'pointer',
-    transition: 'opacity 0.15s ease',
-    gap: 6,
-  } as any,
-  addButtonLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#FFFFFF',
-  } as any,
   viewGroup: {
     flexDirection: 'row',
     alignItems: 'center',

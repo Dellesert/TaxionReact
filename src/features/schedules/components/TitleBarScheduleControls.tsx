@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { ExpandableCreateButton } from '@shared/components/common';
 
 const MONTH_NAMES = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -75,17 +76,11 @@ export const TitleBarScheduleControls: React.FC<TitleBarScheduleControlsProps> =
     return (
       <View style={styles.container}>
         {canCreate && onNewSchedule && (
-          <View
-            style={[styles.addButton, { backgroundColor: theme.primary }]}
-            // @ts-ignore - Web-only
-            onClick={onNewSchedule}
+          <ExpandableCreateButton
+            label="Создать"
             title="Создать график"
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="add" size={16} color="#FFFFFF" />
-            <Text style={styles.addButtonLabel}>Создать</Text>
-          </View>
+            onPress={onNewSchedule}
+          />
         )}
       </View>
     );
@@ -176,17 +171,11 @@ export const TitleBarScheduleControls: React.FC<TitleBarScheduleControlsProps> =
 
       {/* Create Button */}
       {canCreate && onNewSchedule && (
-        <View
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
-          // @ts-ignore - Web-only
-          onClick={onNewSchedule}
+        <ExpandableCreateButton
+          label="Создать"
           title="Создать график"
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.9')}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-        >
-          <Ionicons name="add" size={16} color="#FFFFFF" />
-          <Text style={styles.addButtonLabel}>Создать</Text>
-        </View>
+          onPress={onNewSchedule}
+        />
       )}
     </View>
   );
@@ -224,21 +213,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-    paddingHorizontal: 10,
-    paddingRight: 15,
-    borderRadius: 6,
-    cursor: 'pointer',
-    transition: 'opacity 0.15s ease',
-    gap: 6,
-  } as any,
-  addButtonLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#FFFFFF',
-  } as any,
 });

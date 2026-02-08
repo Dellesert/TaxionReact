@@ -8,6 +8,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Text, Modal, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { ExpandableCreateButton } from '@shared/components/common';
 import { ChatType } from '../../types/chat.types';
 
 interface TitleBarChatControlsProps {
@@ -98,18 +99,12 @@ export const TitleBarChatControls: React.FC<TitleBarChatControlsProps> = ({
       <View style={styles.container}>
         {!isEditMode && onNewChat && (
           <>
-            <View
-              // @ts-ignore - ref type
-              ref={addButtonRef}
-              style={[styles.addButton, { backgroundColor: theme.primary }]}
-              // @ts-ignore - Web-only
-              onClick={onNewChat}
-              title="Создать чат"
-              onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.9')}
-              onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-            >
-              <Ionicons name="add" size={16} color="#FFFFFF" />
-              <Text style={styles.addButtonLabel}>Создать</Text>
+            <View ref={addButtonRef} collapsable={false}>
+              <ExpandableCreateButton
+                label="Создать"
+                title="Создать чат"
+                onPress={onNewChat}
+              />
             </View>
 
             {/* Create Chat Dropdown Menu */}
@@ -193,18 +188,12 @@ export const TitleBarChatControls: React.FC<TitleBarChatControlsProps> = ({
 
       {/* Create Chat Button */}
       {!isEditMode && onNewChat && (
-        <View
-          // @ts-ignore - ref type
-          ref={addButtonRef}
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
-          // @ts-ignore - Web-only
-          onClick={onNewChat}
-          title="Создать чат"
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.9')}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-        >
-          <Ionicons name="add" size={16} color="#FFFFFF" />
-          <Text style={styles.addButtonLabel}>Создать</Text>
+        <View ref={addButtonRef} collapsable={false}>
+          <ExpandableCreateButton
+            label="Создать"
+            title="Создать чат"
+            onPress={onNewChat}
+          />
         </View>
       )}
 
@@ -286,26 +275,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   } as any,
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-    paddingHorizontal: 10,
-    paddingRight: 15,
-    borderRadius: 6,
-    cursor: 'pointer',
-    transition: 'opacity 0.15s ease',
-    gap: 6,
-  } as any,
   buttonLabel: {
     fontSize: 13,
     fontWeight: '500',
-  } as any,
-  addButtonLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#FFFFFF',
   } as any,
   modalOverlay: {
     flex: 1,

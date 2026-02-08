@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { ExpandableCreateButton } from '@shared/components/common';
 import { CalendarView, WeekDisplayMode } from '../../types/calendar.types';
 
 interface TitleBarCalendarControlsProps {
@@ -39,17 +40,11 @@ export const TitleBarCalendarControls: React.FC<TitleBarCalendarControlsProps> =
     return (
       <View style={styles.container}>
         {onAddPress && (
-          <View
-            style={[styles.addButton, { backgroundColor: theme.primary }]}
-            // @ts-ignore - Web-only
-            onClick={onAddPress}
+          <ExpandableCreateButton
+            label="Создать"
             title="Создать событие"
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="add" size={16} color="#FFFFFF" />
-            <Text style={styles.addButtonLabel}>Создать</Text>
-          </View>
+            onPress={onAddPress}
+          />
         )}
       </View>
     );
@@ -99,25 +94,8 @@ const styles = StyleSheet.create({
     transition: 'background-color 0.15s ease',
     gap: 6,
   } as any,
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-    paddingHorizontal: 10,
-    paddingRight: 15,
-    borderRadius: 6,
-    cursor: 'pointer',
-    transition: 'opacity 0.15s ease',
-    gap: 6,
-  } as any,
   buttonLabel: {
     fontSize: 13,
     fontWeight: '500',
-  } as any,
-  addButtonLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#FFFFFF',
   } as any,
 });

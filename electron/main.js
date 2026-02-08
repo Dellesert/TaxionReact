@@ -462,6 +462,10 @@ if (!isDev) {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Disable proxy to avoid ERR_PROXY_CONNECTION_FAILED
+  // This must be done for both dev and production
+  session.defaultSession.setProxy({ mode: 'direct' });
+
   // Register custom protocol handler for production
   if (!isDev) {
     // MIME types map
@@ -519,9 +523,6 @@ app.whenReady().then(async () => {
 
   // Disable CORS for API requests in production
   if (!isDev) {
-    // Disable proxy to avoid ERR_PROXY_CONNECTION_FAILED
-    session.defaultSession.setProxy({ mode: 'direct' });
-
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
       // Remove origin header for external API requests to avoid CORS preflight
       if (!details.url.startsWith('app://')) {
