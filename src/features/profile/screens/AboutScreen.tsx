@@ -3,8 +3,8 @@
  * Экран "О приложении" с информацией о приложении
  */
 
-import React from 'react';
-import { View, StyleSheet, ScrollView, Platform, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Platform, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,11 +30,38 @@ import {
   CONTACT_LINKS,
 } from '../utils/aboutConstants';
 import { formatVersionText, formatCopyrightText, getPlatformName } from '../utils/aboutHelpers';
+import { appUpdaterService } from '@/services/appUpdater.service';
+
+const isAndroid = Platform.OS === 'android';
 
 export default function AboutScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { handleOpenWebsite, handleOpenEmail } = useAboutActions();
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+
+  const handleCheckUpdate = useCallback(async () => {
+    setIsCheckingUpdate(true);
+    setUpdateStatus(null);
+
+    try {
+      const result = await appUpdaterService.checkForUpdates(false);
+
+      if (result.error) {
+        setUpdateStatus('Ошибка проверки');
+      } else if (result.hasUpdate) {
+        setUpdateStatus(`Доступна версия ${result.version}`);
+      } else {
+        setUpdateStatus('Установлена последняя версия');
+      }
+    } catch (error) {
+      setUpdateStatus('Ошибка проверки');
+    } finally {
+      setIsCheckingUpdate(false);
+      setTimeout(() => setUpdateStatus(null), 5000);
+    }
+  }, []);
 
   const handleContactPress = (action: 'website' | 'email') => {
     if (action === 'website') {
@@ -78,7 +105,33 @@ export default function AboutScreen() {
         <AboutSection title="Информация">
           <AboutInfoRow label="Версия" value={APP_VERSION} />
           <AboutInfoRow label="Сборка" value={APP_BUILD} />
-          <AboutInfoRow label="Платформа" value={getPlatformName()} isLast />
+          <AboutInfoRow label="Платформа" value={getPlatformName()} isLast={!isAndroid} />
+
+          {/* Update check button - only on Android */}
+          {isAndroid && (
+            <TouchableOpacity
+              style={[
+                styles.updateButton,
+                { backgroundColor: theme.backgroundSecondary, borderTopColor: theme.borderLight },
+              ]}
+              onPress={handleCheckUpdate}
+              disabled={isCheckingUpdate}
+            >
+              {isCheckingUpdate ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Ionicons name="refresh-outline" size={20} color={theme.primary} />
+              )}
+              <Text style={[styles.updateButtonText, { color: theme.text }]}>
+                {isCheckingUpdate ? 'Проверка...' : 'Проверить обновления'}
+              </Text>
+              {updateStatus && (
+                <Text style={[styles.updateStatus, { color: theme.textSecondary }]}>
+                  {updateStatus}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
         </AboutSection>
 
         {/* Contact Section */}
@@ -135,5 +188,20 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  updateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+  },
+  updateButtonText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 15,
+  },
+  updateStatus: {
+    fontSize: 13,
   },
 });

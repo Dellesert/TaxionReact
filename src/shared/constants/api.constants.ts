@@ -219,6 +219,11 @@ export const API_ENDPOINTS = {
     UPDATE_PREFERENCES: '/notifications/preferences',
   },
 
+  // App Versions (Updates)
+  APP_VERSIONS: {
+    LATEST: (platform: 'android' | 'ios' | 'windows') => `/app-versions/latest/${platform}`,
+  },
+
   // Devices (Push Notifications)
   DEVICES: {
     REGISTER: '/devices',

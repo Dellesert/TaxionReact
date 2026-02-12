@@ -32,6 +32,7 @@ import { DesktopNavigationProvider, navigateToTabGlobal } from '@shared/contexts
 import { SidebarProvider } from '@shared/contexts/SidebarContext';
 import { isElectron } from '@shared/utils/platform';
 import { electronPushNotificationService } from '@/services/pushNotificationElectron.service';
+import { appUpdaterService } from '@/services/appUpdater.service';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -163,9 +164,16 @@ export default function App() {
     // Initialize system theme listener
     const subscription = initSystemThemeListener();
 
+    // Start auto update check for Android
+    // Electron has its own updater in electron/updater.js
+    if (Platform.OS === 'android') {
+      appUpdaterService.startAutoCheck();
+    }
+
     return () => {
       // Cleanup listener on unmount
       subscription?.remove();
+      appUpdaterService.stopAutoCheck();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
