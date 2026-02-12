@@ -880,17 +880,22 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       if (!isAnimatingToPin.current) return;
 
       // Находим индекс в обновлённом массиве
-      const updatedMessages = useChatStore.getState().messages[chatId] || [];
+      // ⚠️ ВАЖНО: Store хранит сообщения в порядке [старые → новые],
+      // но FlatList использует reversed массив [новые → старые]!
+      // Поэтому нужно реверснуть массив перед поиском индекса.
+      const storeMessages = useChatStore.getState().messages[chatId] || [];
+      const updatedMessages = [...storeMessages].reverse(); // Тот же порядок что и в FlatList
       const targetIndex = updatedMessages.findIndex(m => m.id === messageId);
-      previousMessagesLength.current = updatedMessages.length;
+      previousMessagesLength.current = storeMessages.length;
 
       if (targetIndex !== -1) {
-        // Небольшая задержка для стабилизации FlatList
-        await new Promise<void>(resolve => setTimeout(resolve, reduceScrollAnimations ? 30 : 80));
+        // Небольшая задержка для стабилизации FlatList после замены массива
+        const stabilizationDelay = Platform.OS === 'ios' ? 100 : (reduceScrollAnimations ? 30 : 80);
+        await new Promise<void>(resolve => setTimeout(resolve, stabilizationDelay));
 
         if (!isAnimatingToPin.current) return;
 
-        // Скроллим к цели
+        // Скроллим к цели с подсветкой
         scrollAndHighlight(targetIndex, !reduceScrollAnimations);
       } else {
         console.error('[handleReplyPress] Target not found after jump');
