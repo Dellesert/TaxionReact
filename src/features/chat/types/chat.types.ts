@@ -75,6 +75,19 @@ export interface LinkPreview {
   site_name?: string;
 }
 
+// Chat Link Response (from GET /chats/:id/links)
+export interface ChatLink {
+  message_id: number;
+  sender_id: number;
+  sender?: {
+    id: number;
+    name: string;
+    avatar?: string;
+  };
+  link_preview: LinkPreview;
+  created_at: ISODateString;
+}
+
 // Message Interface
 export interface Message {
   id: number;

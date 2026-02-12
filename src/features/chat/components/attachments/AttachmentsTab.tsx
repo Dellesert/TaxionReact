@@ -13,6 +13,8 @@ import {
   ScrollView,
   Dimensions,
   Platform,
+  Linking,
+  Image as RNImage,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -21,7 +23,7 @@ import FileViewer from 'react-native-file-viewer';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { Attachment } from '../../types/chat.types';
+import { Attachment, ChatLink } from '../../types/chat.types';
 import * as chatApi from '../../api/chat.api';
 import { ImageViewer } from '../modals/ImageViewer';
 import * as secureStorage from '@shared/utils/secureStorage';
@@ -41,7 +43,10 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
   const { showError } = useNotification();
   const [selectedType, setSelectedType] = useState<AttachmentType>('images');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [links, setLinks] = useState<ChatLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLinksLoading, setIsLinksLoading] = useState(false);
+  const [linksLoaded, setLinksLoaded] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -103,21 +108,59 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
     }
   };
 
+  const loadLinks = async () => {
+    if (linksLoaded) return;
+    try {
+      setIsLinksLoading(true);
+      const { links: data } = await chatApi.getChatLinks(chatId, 100, 0);
+      setLinks(data || []);
+      setLinksLoaded(true);
+    } catch (error) {
+      console.error('Failed to load links:', error);
+      setLinks([]);
+    } finally {
+      setIsLinksLoading(false);
+    }
+  };
+
+  // Загружаем ссылки при переключении на вкладку "Ссылки"
+  useEffect(() => {
+    if (selectedType === 'links') {
+      loadLinks();
+    }
+  }, [selectedType]);
+
   const filterAttachmentsByType = (type: AttachmentType): Attachment[] => {
     switch (type) {
       case 'images':
         return attachments.filter((att) => att.file_type === 'image');
       case 'files':
         return attachments.filter((att) => att.file_type === 'document' || att.file_type === 'other' || att.file_type === 'audio');
-      case 'links':
-        // Ссылки могут потребовать отдельной логики
-        return [];
       default:
         return [];
     }
   };
 
   const filteredAttachments = filterAttachmentsByType(selectedType);
+
+  const handleLinkPress = async (url: string) => {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      }
+    } catch {
+      showError('Не удалось открыть ссылку');
+    }
+  };
+
+  const getHostname = (url: string): string => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return url;
+    }
+  };
 
   // Извлекаем все URL изображений для галереи
   const imageAttachments = attachments.filter((att) => att.file_type === 'image');
@@ -380,15 +423,76 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
       </ScrollView>
 
       {/* Контент */}
-      {filteredAttachments.length === 0 ? (
+      {selectedType === 'links' ? (
+        // Вкладка ссылок
+        isLinksLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+          </View>
+        ) : links.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="link-outline" size={64} color={theme.textTertiary} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              Нет ссылок
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.linksList}>
+            {links.map((link) => {
+              const preview = link.link_preview;
+              const hostname = getHostname(preview.url);
+
+              return (
+                <TouchableOpacity
+                  key={`${link.message_id}-${preview.url}`}
+                  style={[styles.linkItem, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}
+                  onPress={() => handleLinkPress(preview.url)}
+                  activeOpacity={0.7}
+                >
+                  {preview.image ? (
+                    <RNImage
+                      source={{ uri: preview.image }}
+                      style={styles.linkImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.linkImagePlaceholder, { backgroundColor: theme.primary + '15' }]}>
+                      <Ionicons name="globe-outline" size={28} color={theme.primary} />
+                    </View>
+                  )}
+                  <View style={styles.linkContent}>
+                    <Text style={[styles.linkSiteName, { color: theme.primary }]} numberOfLines={1}>
+                      {preview.site_name || hostname}
+                    </Text>
+                    {preview.title ? (
+                      <Text style={[styles.linkTitle, { color: theme.text }]} numberOfLines={2}>
+                        {preview.title}
+                      </Text>
+                    ) : null}
+                    {preview.description ? (
+                      <Text style={[styles.linkDescription, { color: theme.textSecondary }]} numberOfLines={2}>
+                        {preview.description}
+                      </Text>
+                    ) : null}
+                    <View style={styles.linkUrlRow}>
+                      <Ionicons name="link-outline" size={12} color={theme.textTertiary} />
+                      <Text style={[styles.linkUrl, { color: theme.textTertiary }]} numberOfLines={1}>
+                        {hostname}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )
+      ) : filteredAttachments.length === 0 ? (
         <View style={styles.emptyState}>
             <Ionicons
               name={
                 selectedType === 'images'
                   ? 'image-outline'
-                  : selectedType === 'files'
-                  ? 'document-outline'
-                  : 'link-outline'
+                  : 'document-outline'
               }
               size={64}
               color={theme.textTertiary}
@@ -396,13 +500,12 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               {selectedType === 'images' && 'Нет фотографий'}
               {selectedType === 'files' && 'Нет файлов'}
-              {selectedType === 'links' && 'Нет ссылок'}
             </Text>
           </View>
         ) : selectedType === 'images' ? (
           // Сетка изображений
           <View style={styles.imagesGrid}>
-            {filteredAttachments.map((attachment, index) => {
+            {filteredAttachments.map((attachment) => {
               // Найти индекс в общем массиве изображений для галереи
               const globalIndex = imageAttachments.findIndex((img) => img.id === attachment.id);
 
@@ -603,5 +706,56 @@ const styles = StyleSheet.create({
   },
   fileSize: {
     fontSize: 13,
+  },
+  linksList: {
+    padding: 16,
+  },
+  linkItem: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  linkImage: {
+    width: 80,
+    height: 80,
+  },
+  linkImagePlaceholder: {
+    width: 80,
+    height: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkContent: {
+    flex: 1,
+    padding: 10,
+    justifyContent: 'center',
+  },
+  linkSiteName: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  linkTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginBottom: 2,
+  },
+  linkDescription: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  linkUrlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  linkUrl: {
+    fontSize: 11,
+    flex: 1,
   },
 });

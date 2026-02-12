@@ -942,6 +942,30 @@ export const getChatAttachments = async (
 };
 
 /**
+ * Get all links (messages with link previews) for a chat
+ * @param chatId - ID of chat to get links from
+ * @param limit - Number of links to retrieve (default: 50, max: 100)
+ * @param offset - Offset for pagination (default: 0)
+ */
+export const getChatLinks = async (
+  chatId: number,
+  limit: number = 50,
+  offset: number = 0
+): Promise<{ links: any[]; total: number }> => {
+  try {
+    const response = await api.get(`/chats/${chatId}/links`, {
+      params: { limit, offset },
+    });
+    return {
+      links: response.data.links || [],
+      total: response.data.total || 0,
+    };
+  } catch (error) {
+    return { links: [], total: 0 };
+  }
+};
+
+/**
  * Bulk delete messages
  * @param messageIds - Array of message IDs to delete (1-100)
  * @param deleteFor - 'everyone' or 'me'
