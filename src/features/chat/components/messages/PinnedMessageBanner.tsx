@@ -3,7 +3,7 @@
  * Баннер для отображения закрепленных сообщений в верхней части чата
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -32,9 +32,21 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
   const isScrolling = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentIndexRef = useRef(currentIndex);
+  const pendingIndexChange = useRef(false); // Флаг отложенной смены индекса
+  const prevIsLoading = useRef(isLoading); // Предыдущее значение isLoading
 
   // Синхронизируем ref с state
   currentIndexRef.current = currentIndex;
+
+  // Переключаем на следующее сообщение когда загрузка завершена (isLoading: true → false)
+  useEffect(() => {
+    // Если загрузка завершилась и есть отложенная смена индекса
+    if (prevIsLoading.current === true && isLoading === false && pendingIndexChange.current) {
+      pendingIndexChange.current = false;
+      setCurrentIndex((prev) => (prev + 1) % pinnedMessages.length);
+    }
+    prevIsLoading.current = isLoading;
+  }, [isLoading, pinnedMessages.length]);
 
   // Check if user can unpin messages
   const canUnpin = React.useMemo(() => {
@@ -72,7 +84,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
     }
   }, [hasMore, sortedMessages.length]);
 
-  // Обработка клика на баннер: показать текущее сообщение и переключить на следующее
+  // Обработка клика на баннер: показать текущее сообщение и переключить на следующее после завершения
   const handleBannerPress = useCallback(() => {
     // Если уже идёт скролл - игнорируем повторные нажатия
     if (isScrolling.current) {
@@ -102,15 +114,22 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
     // Прокручиваем к сообщению
     onPress(messageIdToScrollTo);
 
-    // Переключаемся на следующее сообщение в баннере ПОСЛЕ начала скролла
+    // Отмечаем что нужно переключить на следующее сообщение после завершения скролла
     if (hasMore) {
-      setCurrentIndex((prev) => (prev + 1) % sortedMessages.length);
+      pendingIndexChange.current = true;
     }
 
     // Снимаем блокировку через 800мс (время на анимацию скролла)
+    // Также переключаем индекс если isLoading не используется (fallback)
     scrollTimeoutRef.current = setTimeout(() => {
       isScrolling.current = false;
-    }, 800);
+      // Fallback: если pendingIndexChange всё ещё true (isLoading не сработал),
+      // переключаем здесь
+      if (pendingIndexChange.current && hasMore) {
+        pendingIndexChange.current = false;
+        setCurrentIndex((prev) => (prev + 1) % sortedMessages.length);
+      }
+    }, 1000);
   }, [hasMore, sortedMessages, onPress]);
 
   // Открепить текущее сообщение
