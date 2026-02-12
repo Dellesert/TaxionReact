@@ -317,38 +317,15 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     return () => clearTimeout(stabilizationTimer);
   }, [messagesKey]);
 
-  // Handle keyboard show - for inverted list
+  // Keyboard handlers - упрощены, FlatList сам справляется с клавиатурой
   const handleKeyboardWillShow = useCallback((_keyboardHeight: number) => {
-    // Устанавливаем флаг что клавиатура анимируется - игнорируем scroll events
     isKeyboardAnimating.current = true;
-
-    // iOS: НЕ вызываем scrollToOffset - полагаемся только на translateY анимацию
-    // Это предотвращает race condition с initialScrollIndex на инвертированном списке
-    // translateY анимация (в MessageListComponent) уже поднимает список на нужную высоту
-
-    // Сбрасываем флаг после завершения анимации клавиатуры
-    // iOS анимация ~300ms, но scroll events могут приходить с задержкой
-    // Используем 500ms чтобы гарантированно игнорировать все scroll events от анимации
-    setTimeout(() => {
-      isKeyboardAnimating.current = false;
-    }, 500);
+    setTimeout(() => { isKeyboardAnimating.current = false; }, 400);
   }, []);
 
-  // Handle keyboard animation progress - не используется
-  const handleKeyboardAnimating = useCallback((_currentHeight: number, _targetHeight: number) => {
-    // Не делаем ничего
-  }, []);
-
-  // Handle keyboard hide - for inverted list
   const handleKeyboardWillHide = useCallback(() => {
-    // Устанавливаем флаг что клавиатура анимируется - игнорируем scroll events
     isKeyboardAnimating.current = true;
-
-    // Сбрасываем флаг после завершения анимации клавиатуры
-    // iOS анимация ~300ms, но scroll events могут приходить с задержкой
-    setTimeout(() => {
-      isKeyboardAnimating.current = false;
-    }, 500);
+    setTimeout(() => { isKeyboardAnimating.current = false; }, 400);
   }, []);
 
   // Обработчик скролла
@@ -837,288 +814,93 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     }
   }, [messages.length, newMessagesCount, firstNewMessageIndex, firstUnreadIndex, unreadCount, chatId]);
 
-  // Скролл к конкретному сообщению
+  // Скролл к конкретному сообщению (закреплённому или ответу)
   const handleReplyPress = useCallback(async (messageId: number, setHighlightedMessageId: (id: number | null) => void) => {
-    console.log('[handleReplyPress] Called with messageId:', messageId, 'messages.length:', messages.length);
-
-    // Если уже идёт анимация к другому сообщению - прерываем её
-    // Это важно для последовательных нажатий на закреплённые сообщения
+    // Прерываем предыдущую анимацию если она активна
     if (isAnimatingToPin.current) {
       isAnimatingToPin.current = false;
-      // Небольшая пауза чтобы предыдущая анимация успела прерваться
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 30));
     }
 
     const messageIndex = messages.findIndex(m => m.id === messageId);
-    console.log('[handleReplyPress] messageIndex:', messageIndex, 'isInJumpContext:', isInJumpContext.current);
 
-    if (messageIndex !== -1) {
-      // ✅ ОПТИМИЗАЦИЯ ДЛЯ ANDROID:
-      // На Android используем мгновенный скролл без анимации
-      // JS-анимации scrollToIndex тормозят на Android Go и бюджетных устройствах
-      if (reduceScrollAnimations) {
-        listRef.current?.scrollToIndex({
-          index: messageIndex,
-          animated: false,
-          viewPosition: 0.5,
-        });
-        setHighlightedMessageId(messageId);
-        setTimeout(() => setHighlightedMessageId(null), 2000);
-        return;
-      }
-
-      // ✅ Двухфазная анимация для прыжка к сообщению (для современных устройств)
-      // 1. Мгновенный прыжок к позиции рядом с целью
-      // 2. Короткая плавная анимация к целевому сообщению
-
-      const currentVisibleIndex = lastVisibleMessageIndex.current;
-      // Если lastVisibleMessageIndex ещё не инициализирован (-1), считаем что мы внизу (index 0)
-      const effectiveCurrentIndex = currentVisibleIndex >= 0 ? currentVisibleIndex : 0;
-      const distance = Math.abs(messageIndex - effectiveCurrentIndex);
-
-      console.log('[handleReplyPress] currentVisibleIndex:', currentVisibleIndex, 'effectiveCurrentIndex:', effectiveCurrentIndex, 'distance:', distance);
-
-      // Для близких элементов (< 8) - один плавный скролл + коррекция
-      if (distance < 8) {
-        listRef.current?.scrollToIndex({
-          index: messageIndex,
-          animated: true,
-          viewPosition: 0.5,
-        });
-
-        // Тихая коррекция и подсветка
-        setTimeout(() => {
-          listRef.current?.scrollToIndex({
-            index: messageIndex,
-            animated: false, // Без анимации - просто коррекция
-            viewPosition: 0.5,
-          });
-          setHighlightedMessageId(messageId);
-          setTimeout(() => setHighlightedMessageId(null), 2000);
-        }, 400);
-        return;
-      }
-
-      // ДЛЯ ДАЛЬНИХ ЭЛЕМЕНТОВ: Двухфазная анимация
-      // 1. Тихий прыжок к позиции рядом с целью
-      // 2. Один плавный скролл к цели + тихая коррекция
-
-      const OFFSET_ITEMS = 8;
-
-      let startIndex: number;
-      if (messageIndex > effectiveCurrentIndex) {
-        // Цель ВЫШЕ (старые сообщения) → начинаем НИЖЕ → анимация ВВЕРХ
-        startIndex = Math.max(0, messageIndex - OFFSET_ITEMS);
-      } else {
-        // Цель НИЖЕ (новые сообщения) → начинаем ВЫШЕ → анимация ВНИЗ
-        startIndex = Math.min(messages.length - 1, messageIndex + OFFSET_ITEMS);
-      }
-
-      console.log('[handleReplyPress] Two-phase scroll: startIndex:', startIndex, '→ targetIndex:', messageIndex);
-
-      // Фаза 1: Тихий прыжок к стартовой позиции
+    // Хелпер для скролла и подсветки
+    const scrollAndHighlight = (index: number, animated: boolean) => {
       listRef.current?.scrollToIndex({
-        index: startIndex,
-        animated: false,
+        index,
+        animated,
         viewPosition: 0.5,
       });
+      setHighlightedMessageId(messageId);
+      setTimeout(() => setHighlightedMessageId(null), 2000);
+    };
 
-      // Фаза 2: Один плавный скролл к цели
-      setTimeout(() => {
-        listRef.current?.scrollToIndex({
-          index: messageIndex,
-          animated: true,
-          viewPosition: 0.5,
+    // СЛУЧАЙ 1: Сообщение уже в текущем массиве
+    if (messageIndex !== -1) {
+      // На Android - без анимации для производительности
+      scrollAndHighlight(messageIndex, !reduceScrollAnimations);
+      return;
+    }
+
+    // СЛУЧАЙ 2: Сообщение не в массиве - нужен jump context
+    isJumpInProgress.current = true;
+    setIsJumpingToPinned(true);
+    isAnimatingToPin.current = true;
+
+    try {
+      // Загружаем контекст сообщения
+      const jumpToMessage = useChatStore.getState().jumpToMessage;
+      await jumpToMessage(chatId, messageId);
+
+      // Синхронизируем refs с новым массивом
+      const freshMessages = useChatStore.getState().messages[chatId] || [];
+      previousMessagesLength.current = freshMessages.length;
+      if (freshMessages.length > 0) {
+        previousLastMessageId.current = freshMessages[freshMessages.length - 1].id;
+      }
+      isJumpInProgress.current = false;
+
+      // Проверяем прерывание
+      if (!isAnimatingToPin.current) return;
+
+      // Устанавливаем флаги jump контекста
+      isInJumpContext.current = true;
+      setShowScrollToBottom(true);
+      setHasReachedBottom(false);
+      setNewMessagesCount(0);
+      setFirstNewMessageIndex(-1);
+
+      // Ждём рендер нового контента
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
         });
+      });
 
-        // Тихая коррекция позиции и подсветка
-        setTimeout(() => {
-          listRef.current?.scrollToIndex({
-            index: messageIndex,
-            animated: false, // Без анимации - только коррекция
-            viewPosition: 0.5,
-          });
-          setHighlightedMessageId(messageId);
-          setTimeout(() => setHighlightedMessageId(null), 2000);
-        }, 350);
-      }, 50);
+      if (!isAnimatingToPin.current) return;
 
-    } else {
-      // ✅ НОВАЯ СТРАТЕГИЯ: Непрерывная анимация с подменой контента
-      // 1. Начинаем скролл вверх на текущих сообщениях
-      // 2. Параллельно загружаем новый контекст
-      // 3. Незаметно подменяем сообщения во время скролла
-      // 4. Продолжаем скролл уже к закрепленному в новом контексте
+      // Находим индекс в обновлённом массиве
+      const updatedMessages = useChatStore.getState().messages[chatId] || [];
+      const targetIndex = updatedMessages.findIndex(m => m.id === messageId);
+      previousMessagesLength.current = updatedMessages.length;
 
-      const performSeamlessScroll = async () => {
-        // Сохраняем ID целевого сообщения для проверки актуальности
-        const targetMessageId = messageId;
-        console.log('[performSeamlessScroll] Starting for messageId:', targetMessageId);
+      if (targetIndex !== -1) {
+        // Небольшая задержка для стабилизации FlatList
+        await new Promise<void>(resolve => setTimeout(resolve, reduceScrollAnimations ? 30 : 80));
 
-        // Устанавливаем флаг что идёт jump операция - это предотвратит ложное обновление счётчика
-        isJumpInProgress.current = true;
+        if (!isAnimatingToPin.current) return;
 
-        // Показываем индикатор загрузки в баннере закрепленных сообщений
-        setIsJumpingToPinned(true);
-
-        try {
-          isAnimatingToPin.current = true;
-
-          // ШАГ 1: Загружаем контекст сообщения
-          const jumpToMessage = useChatStore.getState().jumpToMessage;
-          console.log('[performSeamlessScroll] Calling jumpToMessage...');
-          await jumpToMessage(chatId, messageId);
-          console.log('[performSeamlessScroll] jumpToMessage completed');
-
-          // Синхронизируем refs с новым массивом сразу после загрузки
-          // Это предотвращает ложное определение "новых" сообщений в useEffect
-          // ВАЖНО: freshMessages в store в порядке [старые → новые]
-          // previousLastMessageId хранит ID самого НОВОГО сообщения
-          const freshMessages = useChatStore.getState().messages[chatId] || [];
-          previousMessagesLength.current = freshMessages.length;
-          if (freshMessages.length > 0) {
-            // Самое новое сообщение в оригинальном массиве - последнее
-            previousLastMessageId.current = freshMessages[freshMessages.length - 1].id;
-          }
-
-          // Сбрасываем флаг jump сразу после синхронизации refs
-          // Теперь новые сообщения от WebSocket будут корректно обрабатываться
-          isJumpInProgress.current = false;
-
-          // Проверяем, не была ли анимация прервана (пользователь нажал на другое сообщение)
-          if (!isAnimatingToPin.current) {
-            console.log('[performSeamlessScroll] Animation was interrupted after jumpToMessage');
-            return;
-          }
-
-          // Устанавливаем флаги jump контекста
-          isInJumpContext.current = true;
-          setShowScrollToBottom(true);
-          setHasReachedBottom(false);
-          setNewMessagesCount(0);
-          setFirstNewMessageIndex(-1);
-
-          // ШАГ 2: Ждём стабилизации layout через requestAnimationFrame
-          // Два кадра гарантируют, что FlashList отрисовал новые данные
-          await new Promise<void>(resolve => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                resolve();
-              });
-            });
-          });
-
-          // Повторная проверка после ожидания
-          if (!isAnimatingToPin.current) {
-            console.log('[performSeamlessScroll] Animation was interrupted after RAF');
-            return;
-          }
-
-          const updatedMessages = useChatStore.getState().messages[chatId] || [];
-          const targetIndex = updatedMessages.findIndex(m => m.id === targetMessageId);
-          console.log('[performSeamlessScroll] After jump - updatedMessages.length:', updatedMessages.length, 'targetIndex:', targetIndex);
-
-          previousMessagesLength.current = updatedMessages.length;
-
-          if (targetIndex !== -1) {
-            // ШАГ 3: Ждём пока React обновит FlashList с новыми данными
-            // На Android уменьшаем задержку для быстрого отклика
-            await new Promise<void>(resolve => setTimeout(resolve, reduceScrollAnimations ? 50 : 100));
-
-            // Проверка прерывания после ожидания
-            if (!isAnimatingToPin.current) {
-              console.log('[performSeamlessScroll] Animation interrupted after waiting for render');
-              return;
-            }
-
-            // ✅ ОПТИМИЗАЦИЯ ДЛЯ ANDROID:
-            // На Android используем мгновенный скролл без анимации
-            if (reduceScrollAnimations) {
-              listRef.current?.scrollToIndex({
-                index: targetIndex,
-                animated: false,
-                viewPosition: 0.5,
-              });
-              isAnimatingToPin.current = false;
-              setIsJumpingToPinned(false);
-              setHighlightedMessageId(targetMessageId);
-              setTimeout(() => setHighlightedMessageId(null), 2000);
-              return;
-            }
-
-            const OFFSET_ITEMS = 10; // Сколько элементов пролетает в анимации
-
-            // После jumpToMessage целевое сообщение загружено в контексте.
-            // Для inverted FlatList с reversed массивом:
-            // - index 0 = новые сообщения (визуально ВНИЗУ экрана)
-            // - большой index = старые сообщения (визуально ВВЕРХУ экрана)
-            //
-            // При jump к закреплённому (старому) сообщению:
-            // - Пользователь ожидает анимацию СНИЗУ ВВЕРХ
-            // - Поэтому ВСЕГДА начинаем с меньшего индекса (ниже визуально)
-            // - И анимируем к targetIndex
-            //
-            // При jump к новому сообщению (если такое бывает):
-            // - Начинаем с большего индекса (выше визуально)
-            // - Анимируем вниз к targetIndex
-
-            let startIndex: number;
-            // Закреплённые сообщения обычно старые → targetIndex большой
-            // Начинаем НИЖЕ цели (меньший индекс) → анимация ВВЕРХ
-            startIndex = Math.max(0, targetIndex - OFFSET_ITEMS);
-
-            console.log('[performSeamlessScroll] Two-phase scroll: startIndex:', startIndex, '→ targetIndex:', targetIndex);
-
-            // Тихо прыгаем к стартовой позиции
-            listRef.current?.scrollToIndex({
-              index: startIndex,
-              animated: false,
-              viewPosition: 0.5,
-            });
-
-            // ШАГ 4: Даём время на позиционирование, затем плавно скроллим к цели
-            await new Promise<void>(resolve => setTimeout(resolve, 30));
-
-            // Финальная проверка перед анимацией
-            if (!isAnimatingToPin.current) {
-              console.log('[performSeamlessScroll] Animation interrupted before final scroll');
-              return;
-            }
-
-            // Один плавный скролл к цели
-            console.log('[performSeamlessScroll] Smooth scroll to targetIndex:', targetIndex);
-            listRef.current?.scrollToIndex({
-              index: targetIndex,
-              animated: true,
-              viewPosition: 0.5,
-            });
-
-            // Тихая коррекция позиции и подсветка
-            setTimeout(() => {
-              listRef.current?.scrollToIndex({
-                index: targetIndex,
-                animated: false, // Без анимации - только коррекция
-                viewPosition: 0.5,
-              });
-              isAnimatingToPin.current = false;
-              setIsJumpingToPinned(false); // Скрываем индикатор загрузки
-              setHighlightedMessageId(targetMessageId);
-              setTimeout(() => setHighlightedMessageId(null), 2000);
-            }, 400);
-          } else {
-            console.error('📍 ERROR: Target not found after context load');
-            isAnimatingToPin.current = false;
-            setIsJumpingToPinned(false); // Скрываем индикатор загрузки при ошибке
-          }
-        } catch (error) {
-          console.error('📍 ERROR:', error);
-          isAnimatingToPin.current = false;
-          setIsJumpingToPinned(false); // Скрываем индикатор загрузки при ошибке
-          isJumpInProgress.current = false; // На случай если ошибка до синхронизации refs
-        }
-      };
-
-      performSeamlessScroll();
+        // Скроллим к цели
+        scrollAndHighlight(targetIndex, !reduceScrollAnimations);
+      } else {
+        console.error('[handleReplyPress] Target not found after jump');
+      }
+    } catch (error) {
+      console.error('[handleReplyPress] Error:', error);
+      isJumpInProgress.current = false;
+    } finally {
+      isAnimatingToPin.current = false;
+      setIsJumpingToPinned(false);
     }
   }, [messages, chatId]);
 
@@ -1215,7 +997,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     handleReplyPress,
     handleKeyboardWillShow,
     handleKeyboardWillHide,
-    handleKeyboardAnimating,
     onViewableItemsChanged,
     viewabilityConfig,
     resetScroll,
