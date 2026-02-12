@@ -695,25 +695,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     const wasInJumpContext = isInJumpContext.current;
     console.log('[ScrollToBottom] handleScrollToBottom called, wasInJumpContext:', wasInJumpContext);
     if (wasInJumpContext) {
-      // ✅ ДВУХФАЗНАЯ АНИМАЦИЯ СКРОЛЛА К НИЗУ
-      // Проблема: После loadMessages приходят async обновления read_receipts,
-      // которые меняют messagesKey и вызывают re-render FlashList,
-      // что сбрасывает/прерывает анимацию скролла.
-      //
-      // Решение:
-      // 1. Фаза 1: Тихий прыжок близко к низу (без анимации)
-      // 2. Фаза 2: Ждём стабилизации messagesKey (200мс без изменений)
-      // 3. Фаза 3: Плавный scrollToOffset(0) - короткая надёжная анимация
-      // 4. Fallback: scrollToOffset(0, animated: false) гарантирует результат
-
-      // Сбрасываем флаги
+      // Сбрасываем флаги jump context
       isInJumpContext.current = false;
       lastNewestMessageId.current = null;
-
-      // Отмечаем начало процесса анимации
-      isScrollToBottomAnimating.current = true;
-      scrollToBottomStartTime.current = Date.now();
-      scrollAnimationPhase.current = 'waiting';
 
       // Загружаем последние сообщения
       await loadMessages(chatId);
@@ -737,15 +721,6 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       setNewMessagesCount(0);
       setFirstNewMessageIndex(-1);
 
-      // Ждём стабилизации layout через requestAnimationFrame
-      await new Promise<void>(resolve => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            resolve();
-          });
-        });
-      });
-
       // При выходе из jump context ВСЕГДА скроллим в низ:
       // - loadMessages загружает только последние 10-20 сообщений
       // - Если непрочитанные есть, они все будут видны внизу экрана
@@ -760,25 +735,41 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         isExitingJumpContext.current = false;
       }, JUMP_CONTEXT_EXIT_PROTECTION_DURATION);
 
-      // Фаза 1: Тихий прыжок близко к целевой позиции
-      const totalMessages = freshMessages.length;
-      const targetIdx = scrollTargetIndex.current ?? 0; // 0 = самый низ для inverted
-      console.log('[ScrollToBottom] Phase 1: Jump near target, totalMessages:', totalMessages, 'targetIndex:', targetIdx);
+      // УПРОЩЁННАЯ СТРАТЕГИЯ: Используем scrollToOffset(0) напрямую
+      // Для inverted FlatList offset: 0 ВСЕГДА означает "самый низ" (новые сообщения),
+      // независимо от текущего состояния массива в FlatList.
+      // Это работает надёжнее чем scrollToIndex, который зависит от синхронизации
+      // между store данными и отрендеренным состоянием FlatList.
 
-      if (listRef.current && totalMessages > 0) {
-        // Прыгаем к позиции немного выше целевой (чтобы финальная анимация была короткой)
-        const jumpIndex = Math.min(targetIdx + 15, totalMessages - 1);
-        console.log('[ScrollToBottom] Jumping to index:', jumpIndex);
-        listRef.current.scrollToIndex({
-          index: jumpIndex,
-          animated: false,
-          viewPosition: 0.5,
+      // Ждём пока React обновит FlatList с новыми данными из store
+      // Два RAF + небольшая задержка гарантируют что layout завершён
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setTimeout(resolve, 50);
+          });
         });
-      }
+      });
 
-      // Фаза 2 и 3 будут выполнены useEffect после стабилизации messagesKey
-      // (см. useEffect с зависимостью [messagesKey] выше)
-      console.log('[ScrollToBottom] Phase 1 complete, waiting for messagesKey stabilization...');
+      console.log('[ScrollToBottom] Scrolling to offset 0 (bottom)');
+
+      // Прямой скролл к низу - animated: true для плавности
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+
+      // Финализация после анимации
+      setTimeout(() => {
+        // Гарантируем финальную позицию (повторный вызов без анимации фиксирует позицию)
+        listRef.current?.scrollToOffset({ offset: 0, animated: false });
+        // Устанавливаем cooldown чтобы messagesKey useEffect не мешал
+        scrollCooldownUntil.current = Date.now() + SCROLL_COOLDOWN_DURATION;
+        setHasReachedBottom(true);
+        setUserScrolledToBottom(true);
+        setNewMessagesCount(0);
+        setFirstNewMessageIndex(-1);
+        setShowScrollToBottom(false);
+        console.log('[ScrollToBottom] Animation complete, finalized at bottom');
+      }, 400);
+
       return;
     }
 
