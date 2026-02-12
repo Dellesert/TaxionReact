@@ -31,3 +31,17 @@ export const deleteAllOtherSessions = async (): Promise<{ message: string; delet
   const response = await api.delete<{ message: string; deleted_count: number }>(BASE_URL);
   return response.data;
 };
+
+/**
+ * Rename a session (set custom device name)
+ */
+export const renameSession = async (
+  sessionId: string,
+  customName: string
+): Promise<{ message: string; custom_name: string }> => {
+  const response = await api.patch<{ message: string; custom_name: string }>(
+    `${BASE_URL}/${sessionId}/name`,
+    { custom_name: customName }
+  );
+  return response.data;
+};

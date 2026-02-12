@@ -102,6 +102,7 @@ export interface ActiveSession {
   role: UserRole;
   ip_address: string;
   user_agent: string;
+  custom_name?: string;
   created_at: string;
   expires_at: string;
   last_active_at: string;

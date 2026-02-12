@@ -29,14 +29,19 @@ export default function ActiveSessionsScreen() {
   const { theme } = useTheme();
   const { sessions, currentSessionId, loading, refreshing, handleRefresh, loadSessions } =
     useActiveSessionsData();
-  const { handleDeleteSession, handleDeleteAllOther } = useActiveSessionsActions(
+  const { handleDeleteSession, handleDeleteAllOther, handleRenameSession } = useActiveSessionsActions(
     currentSessionId,
     sessions,
     loadSessions
   );
 
   const renderSession = ({ item }: { item: ActiveSession }) => (
-    <SessionCard session={item} currentSessionId={currentSessionId} onDelete={handleDeleteSession} />
+    <SessionCard
+      session={item}
+      currentSessionId={currentSessionId}
+      onDelete={handleDeleteSession}
+      onRename={handleRenameSession}
+    />
   );
 
   return (

@@ -103,8 +103,24 @@ export const useActiveSessionsActions = (
     }
   };
 
+  /**
+   * Rename a session (set custom device name)
+   */
+  const handleRenameSession = async (session: ActiveSession, newName: string) => {
+    try {
+      await sessionApi.renameSession(session.session_id, newName);
+      showSuccess(newName ? 'Название обновлено' : 'Название сброшено');
+      await loadSessions();
+    } catch (error: unknown) {
+      console.error('Failed to rename session:', error);
+      showError('Не удалось переименовать сессию');
+      throw error;
+    }
+  };
+
   return {
     handleDeleteSession,
     handleDeleteAllOther,
+    handleRenameSession,
   };
 };
