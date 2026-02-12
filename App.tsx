@@ -7,6 +7,7 @@ import './global.css';
 import React, { useEffect, useRef } from 'react';
 import { LogBox, AppState, AppStateStatus, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { NavigationContainerRef } from '@react-navigation/native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from '@shared/store/authStore';
@@ -706,6 +707,7 @@ export default function App() {
   }, [isAuthenticated]);
 
   return (
+    <KeyboardProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SidebarProvider>
         <DesktopNavigationProvider>
@@ -725,5 +727,6 @@ export default function App() {
         </DesktopNavigationProvider>
       </SidebarProvider>
     </GestureHandlerRootView>
+    </KeyboardProvider>
   );
 }

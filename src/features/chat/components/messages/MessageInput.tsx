@@ -22,6 +22,7 @@ interface MessageInputProps {
   onFilesSelected?: (fileIds: number[]) => void;
   selectedFileIds?: number[];
   onRemoveFile?: (fileId: number) => void;
+  inputAccessoryViewID?: string;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -35,6 +36,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onFilesSelected,
   selectedFileIds = [],
   onRemoveFile,
+  inputAccessoryViewID,
 }) => {
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
@@ -260,6 +262,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           autoCapitalize="sentences"
           keyboardType="default"
           returnKeyType="default"
+          inputAccessoryViewID={inputAccessoryViewID}
         />
 
         <TouchableOpacity

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Animated, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { PinnedMessageBanner } from '../messages/PinnedMessageBanner';
 import { FloatingDateHeader } from '../common/FloatingDateHeader';
 import { ScrollToBottomButton } from '../common/ScrollToBottomButton';
@@ -284,28 +284,9 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
         />
       </View>
 
-      <Animated.View
-        style={[
-          styles.inputWrapper,
-          {
-            height: inputWrapperHeight,
-          },
-          inputWrapperAnimatedStyle,
-        ]}
-      >
-        {Platform.OS === 'web' ? (
-          // Web fallback - используем полупрозрачный фон с backdrop-filter
-          <View
-            style={[
-              styles.blurContent,
-              {
-                paddingBottom: effectiveInsetsBottom,
-                // @ts-ignore - backdrop-filter поддерживается на web
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-              },
-            ]}
-          >
+      {Platform.OS === 'ios' ? (
+        <KeyboardStickyView offset={{ closed: insetsBottom, opened: 0 }}>
+          <View style={{ backgroundColor: theme.background }}>
             {isSearchVisible ? (
               <SearchNavigationBar
                 total={searchTotal ?? 0}
@@ -338,51 +319,106 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
               />
             )}
           </View>
-        ) : (
-          // Native - используем View с фоном вместо BlurView для избежания артефактов
-          <View
-            style={[
-              styles.blurContent,
-              {
-                paddingBottom: effectiveInsetsBottom,
-                backgroundColor: theme.background,
-              },
-            ]}
-          >
-            {isSearchVisible ? (
-              <SearchNavigationBar
-                total={searchTotal ?? 0}
-                currentIndex={searchCurrentIndex ?? 0}
-                isLoading={isSearchLoading ?? false}
-                onNavigatePrev={onNavigatePrev ?? (() => {})}
-                onNavigateNext={onNavigateNext ?? (() => {})}
-                searchQuery={searchQuery ?? ''}
-                hideNavigation={keyboardHeight > 0}
-              />
-            ) : selectionMode ? (
-              <SelectionModeToolbar
-                selectedCount={selectedMessages.size}
-                onCancel={onExitSelectionMode}
-                onDelete={onBulkDelete}
-                onForward={onBulkForward}
-                canDeleteForEveryone={canDeleteForEveryone}
-              />
-            ) : (
-              <MessageInput
-                onSend={onSendMessage}
-                onTyping={onTyping}
-                editingMessage={editingMessage}
-                onCancelEdit={onCancelEdit}
-                replyingToMessage={replyingToMessage}
-                onCancelReply={onCancelReply}
-                onFilesSelected={onFilesSelected}
-                selectedFileIds={selectedFileIds}
-                onRemoveFile={onRemoveFile}
-              />
-            )}
-          </View>
-        )}
-      </Animated.View>
+        </KeyboardStickyView>
+      ) : (
+        <Animated.View
+          style={[
+            styles.inputWrapper,
+            {
+              height: inputWrapperHeight,
+            },
+            inputWrapperAnimatedStyle,
+          ]}
+        >
+          {Platform.OS === 'web' ? (
+            <View
+              style={[
+                styles.blurContent,
+                {
+                  paddingBottom: effectiveInsetsBottom,
+                  // @ts-ignore - backdrop-filter поддерживается на web
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                },
+              ]}
+            >
+              {isSearchVisible ? (
+                <SearchNavigationBar
+                  total={searchTotal ?? 0}
+                  currentIndex={searchCurrentIndex ?? 0}
+                  isLoading={isSearchLoading ?? false}
+                  onNavigatePrev={onNavigatePrev ?? (() => {})}
+                  onNavigateNext={onNavigateNext ?? (() => {})}
+                  searchQuery={searchQuery ?? ''}
+                  hideNavigation={keyboardHeight > 0}
+                />
+              ) : selectionMode ? (
+                <SelectionModeToolbar
+                  selectedCount={selectedMessages.size}
+                  onCancel={onExitSelectionMode}
+                  onDelete={onBulkDelete}
+                  onForward={onBulkForward}
+                  canDeleteForEveryone={canDeleteForEveryone}
+                />
+              ) : (
+                <MessageInput
+                  onSend={onSendMessage}
+                  onTyping={onTyping}
+                  editingMessage={editingMessage}
+                  onCancelEdit={onCancelEdit}
+                  replyingToMessage={replyingToMessage}
+                  onCancelReply={onCancelReply}
+                  onFilesSelected={onFilesSelected}
+                  selectedFileIds={selectedFileIds}
+                  onRemoveFile={onRemoveFile}
+                />
+              )}
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.blurContent,
+                {
+                  paddingBottom: effectiveInsetsBottom,
+                  backgroundColor: theme.background,
+                },
+              ]}
+            >
+              {isSearchVisible ? (
+                <SearchNavigationBar
+                  total={searchTotal ?? 0}
+                  currentIndex={searchCurrentIndex ?? 0}
+                  isLoading={isSearchLoading ?? false}
+                  onNavigatePrev={onNavigatePrev ?? (() => {})}
+                  onNavigateNext={onNavigateNext ?? (() => {})}
+                  searchQuery={searchQuery ?? ''}
+                  hideNavigation={keyboardHeight > 0}
+                />
+              ) : selectionMode ? (
+                <SelectionModeToolbar
+                  selectedCount={selectedMessages.size}
+                  onCancel={onExitSelectionMode}
+                  onDelete={onBulkDelete}
+                  onForward={onBulkForward}
+                  canDeleteForEveryone={canDeleteForEveryone}
+                />
+              ) : (
+                <MessageInput
+                  onSend={onSendMessage}
+                  onTyping={onTyping}
+                  editingMessage={editingMessage}
+                  onCancelEdit={onCancelEdit}
+                  replyingToMessage={replyingToMessage}
+                  onCancelReply={onCancelReply}
+                  onFilesSelected={onFilesSelected}
+                  selectedFileIds={selectedFileIds}
+                  onRemoveFile={onRemoveFile}
+                />
+              )}
+            </View>
+          )}
+        </Animated.View>
+      )}
     </>
   );
 };
