@@ -288,10 +288,12 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
       firstNewMessageIndex !== firstUnreadIndex &&
       newMessagesCount > 0;
 
+    // В inverted FlatList порядок рендера в JSX обратный визуальному:
+    // - Элементы в начале JSX (<>) появляются ВИЗУАЛЬНО НИЖЕ
+    // - Элементы в конце JSX (</>) появляются ВИЗУАЛЬНО ВЫШЕ
+    // Поэтому баннер должен быть ПОСЛЕ MessageItem в JSX, чтобы быть ВИЗУАЛЬНО НАД ним
     return (
       <>
-        {shouldShowUnreadBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
-        {shouldShowNewMessageBanner && <UnreadMessagesBanner unreadCount={newMessagesCount} />}
         <MessageItem
           message={message}
           chatType={chatType === 'saved' ? 'private' : chatType}
@@ -316,6 +318,8 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
           isVisible={viewableIndices.has(index)}
           searchQuery={searchQuery}
         />
+        {shouldShowNewMessageBanner && <UnreadMessagesBanner unreadCount={newMessagesCount} />}
+        {shouldShowUnreadBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
       </>
     );
   }, [
