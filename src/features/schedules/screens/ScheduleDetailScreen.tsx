@@ -21,6 +21,7 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Avatar } from '@shared/components/common/Avatar';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
+import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { ActionMenu, ActionMenuItem } from '@shared/components/common/ActionMenu';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useScheduleDetails } from '../hooks/useScheduleDetails';
@@ -83,6 +84,11 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [showEditEntryModal, setShowEditEntryModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ScheduleEntry | null>(null);
   const [selectedTemplateEntry, setSelectedTemplateEntry] = useState<ScheduleTemplateEntry | null>(null);
+
+  // User filter state for recurring schedules
+  const [showUserFilterPicker, setShowUserFilterPicker] = useState(false);
+  const [filterUserId, setFilterUserId] = useState<number | null>(null);
+  const [filterUserName, setFilterUserName] = useState<string | null>(null);
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
@@ -277,6 +283,26 @@ export const ScheduleDetailScreen: React.FC = () => {
     await templateApi.deleteTemplateEntry(schedule.template_id, entryId);
     refresh();
   }, [schedule, refresh]);
+
+  // Filtered template entries for recurring mode
+  const filteredTemplateEntries = useMemo(() => {
+    const allEntries = schedule?.template?.entries || [];
+    if (!filterUserId) return allEntries;
+    return allEntries.filter(
+      (entry) => entry.user_id === filterUserId || !entry.user_id
+    );
+  }, [schedule?.template?.entries, filterUserId]);
+
+  // Filtered entries for monthly mode
+  const filteredEntries = useMemo(() => {
+    if (!filterUserId) return entries;
+    return entries.filter((entry) => entry.user_id === filterUserId);
+  }, [entries, filterUserId]);
+
+  const handleUserFilterChange = useCallback((userId: number | null, userName: string | null) => {
+    setFilterUserId(userId);
+    setFilterUserName(userName);
+  }, []);
 
   // Handler for quick shift selection in Grid View
   // Note: No refresh() needed - store updates entries optimistically
@@ -589,8 +615,8 @@ export const ScheduleDetailScreen: React.FC = () => {
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>
                       {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
                       {schedule.mode === 'recurring'
-                        ? schedule.template?.entries?.length || 0
-                        : entries.length}
+                        ? filteredTemplateEntries.length
+                        : filteredEntries.length}
                       )
                     </Text>
                     {canManageEntries && (
@@ -606,10 +632,47 @@ export const ScheduleDetailScreen: React.FC = () => {
                     )}
                   </View>
 
+                  {/* User filter chip */}
+                  <View style={styles.userFilterContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.userFilterChip,
+                        { backgroundColor: theme.card, borderColor: theme.border },
+                        filterUserId ? { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary } : null,
+                      ]}
+                      onPress={() => setShowUserFilterPicker(true)}
+                    >
+                      <Ionicons
+                        name="person"
+                        size={16}
+                        color={filterUserId ? theme.primary : theme.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.userFilterText,
+                          { color: filterUserId ? theme.primary : theme.textSecondary },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {filterUserName || 'Все сотрудники'}
+                      </Text>
+                      {filterUserId ? (
+                        <TouchableOpacity
+                          onPress={() => handleUserFilterChange(null, null)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <Ionicons name="close-circle" size={18} color={theme.primary} />
+                        </TouchableOpacity>
+                      ) : (
+                        <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
                   {schedule.mode === 'recurring' ? (
                     // Recurring mode - show template entries by day of week
                     <TemplateEntriesList
-                      entries={schedule.template?.entries || []}
+                      entries={filteredTemplateEntries}
                       onEntryPress={canManageEntries ? (templateEntry) => {
                         setSelectedTemplateEntry(templateEntry);
                         setShowEditEntryModal(true);
@@ -619,8 +682,8 @@ export const ScheduleDetailScreen: React.FC = () => {
                     <View style={styles.entriesLoader}>
                       <ActivityIndicator size="small" color={theme.primary} />
                     </View>
-                  ) : entries.length > 0 ? (
-                    <ScheduleEntriesList entries={entries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
+                  ) : filteredEntries.length > 0 ? (
+                    <ScheduleEntriesList entries={filteredEntries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
                   ) : (
                     <View style={styles.emptyEntries}>
                       <Ionicons
@@ -631,7 +694,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                       <Text
                         style={[styles.emptyEntriesText, { color: theme.textSecondary }]}
                       >
-                        Нет записей в этом графике
+                        {filterUserId ? 'Нет записей для выбранного сотрудника' : 'Нет записей в этом графике'}
                       </Text>
                     </View>
                   )}
@@ -790,8 +853,8 @@ export const ScheduleDetailScreen: React.FC = () => {
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>
                   {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
                   {schedule.mode === 'recurring'
-                    ? schedule.template?.entries?.length || 0
-                    : entries.length}
+                    ? filteredTemplateEntries.length
+                    : filteredEntries.length}
                   )
                 </Text>
                 {canManageEntries && (
@@ -807,10 +870,47 @@ export const ScheduleDetailScreen: React.FC = () => {
                 )}
               </View>
 
+              {/* User filter chip */}
+              <View style={styles.userFilterContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.userFilterChip,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                    filterUserId ? { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary } : null,
+                  ]}
+                  onPress={() => setShowUserFilterPicker(true)}
+                >
+                  <Ionicons
+                    name="person"
+                    size={16}
+                    color={filterUserId ? theme.primary : theme.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.userFilterText,
+                      { color: filterUserId ? theme.primary : theme.textSecondary },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {filterUserName || 'Все сотрудники'}
+                  </Text>
+                  {filterUserId ? (
+                    <TouchableOpacity
+                      onPress={() => handleUserFilterChange(null, null)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close-circle" size={18} color={theme.primary} />
+                    </TouchableOpacity>
+                  ) : (
+                    <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
+                  )}
+                </TouchableOpacity>
+              </View>
+
               {schedule.mode === 'recurring' ? (
                 // Recurring mode - show template entries by day of week
                 <TemplateEntriesList
-                  entries={schedule.template?.entries || []}
+                  entries={filteredTemplateEntries}
                   onEntryPress={canManageEntries ? (templateEntry) => {
                     setSelectedTemplateEntry(templateEntry);
                     setShowEditEntryModal(true);
@@ -820,8 +920,8 @@ export const ScheduleDetailScreen: React.FC = () => {
                 <View style={styles.entriesLoader}>
                   <ActivityIndicator size="small" color={theme.primary} />
                 </View>
-              ) : entries.length > 0 ? (
-                <ScheduleEntriesList entries={entries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
+              ) : filteredEntries.length > 0 ? (
+                <ScheduleEntriesList entries={filteredEntries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
               ) : (
                 <View style={styles.emptyEntries}>
                   <Ionicons
@@ -832,7 +932,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                   <Text
                     style={[styles.emptyEntriesText, { color: theme.textSecondary }]}
                   >
-                    Нет записей в этом графике
+                    {filterUserId ? 'Нет записей для выбранного сотрудника' : 'Нет записей в этом графике'}
                   </Text>
                 </View>
               )}
@@ -881,6 +981,23 @@ export const ScheduleDetailScreen: React.FC = () => {
         onSaveBatchTemplateEntries={handleSaveBatchTemplateEntries}
         onDelete={handleDeleteEntry}
         onDeleteTemplateEntry={handleDeleteTemplateEntry}
+      />
+
+      {/* User Filter Modal for recurring schedules */}
+      <UserSelectorModal
+        visible={showUserFilterPicker}
+        onClose={() => setShowUserFilterPicker(false)}
+        selectedUserIds={filterUserId ? [filterUserId] : []}
+        onSelectionChange={(userIds, selectedUsers) => {
+          if (userIds.length > 0) {
+            handleUserFilterChange(userIds[0], selectedUsers?.[0]?.name || null);
+          }
+          setShowUserFilterPicker(false);
+        }}
+        multiSelect={false}
+        title="Фильтр по сотруднику"
+        mode="radio"
+        includeCurrentUser={true}
       />
     </SafeAreaView>
   );
@@ -1172,5 +1289,25 @@ const styles = StyleSheet.create({
   sidebarCreatorName: {
     fontSize: 15,
     fontWeight: '600',
+  },
+
+  // User filter styles
+  userFilterContainer: {
+    marginBottom: 12,
+  },
+  userFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  userFilterText: {
+    fontSize: 14,
+    fontWeight: '500',
+    maxWidth: 200,
   },
 });
