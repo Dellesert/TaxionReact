@@ -8,6 +8,7 @@ import React, { useEffect, useRef } from 'react';
 import { LogBox, AppState, AppStateStatus, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainerRef } from '@react-navigation/native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from '@shared/store/authStore';
@@ -33,6 +34,7 @@ import { SidebarProvider } from '@shared/contexts/SidebarContext';
 import { isElectron } from '@shared/utils/platform';
 import { electronPushNotificationService } from '@/services/pushNotificationElectron.service';
 import { appUpdaterService } from '@/services/appUpdater.service';
+import { ShareIntentHandler } from '@/features/chat/components/ShareIntentHandler';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -715,6 +717,7 @@ export default function App() {
   }, [isAuthenticated]);
 
   return (
+    <SafeAreaProvider>
     <KeyboardProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SidebarProvider>
@@ -724,10 +727,12 @@ export default function App() {
               <CustomTitleBar navigationRef={navigationRef} isAuthenticated={isAuthenticated} />
               <NotificationProvider>
                 <ActionModalProvider>
-                  <NetworkSyncProvider enabled={isAuthenticated}>
-                    <AppNavigator ref={navigationRef} />
-                    <OfflineBanner />
-                  </NetworkSyncProvider>
+                  <ShareIntentHandler>
+                    <NetworkSyncProvider enabled={isAuthenticated}>
+                      <AppNavigator ref={navigationRef} />
+                      <OfflineBanner />
+                    </NetworkSyncProvider>
+                  </ShareIntentHandler>
                 </ActionModalProvider>
               </NotificationProvider>
             </TitleBarControlsProvider>
@@ -736,5 +741,6 @@ export default function App() {
       </SidebarProvider>
     </GestureHandlerRootView>
     </KeyboardProvider>
+    </SafeAreaProvider>
   );
 }

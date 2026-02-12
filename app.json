@@ -86,7 +86,23 @@
       ],
       "expo-router",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsText": true,
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
+            "NSExtensionActivationSupportsImageWithMaxCount": 10,
+            "NSExtensionActivationSupportsMovieWithMaxCount": 3,
+            "NSExtensionActivationSupportsFileWithMaxCount": 5
+          },
+          "iosShareExtensionName": "Отправить в Тахион",
+          "androidIntentFilters": ["text/*", "image/*", "video/*", "*/*"],
+          "androidMultiIntentFilters": ["image/*", "video/*", "*/*"]
+        }
+      ]
     ],
     "extra": {
       "eas": {
