@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +23,6 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Avatar } from '@shared/components/common/Avatar';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
-import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { ActionMenu, ActionMenuItem } from '@shared/components/common/ActionMenu';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useScheduleDetails } from '../hooks/useScheduleDetails';
@@ -298,6 +299,25 @@ export const ScheduleDetailScreen: React.FC = () => {
     if (!filterUserId) return entries;
     return entries.filter((entry) => entry.user_id === filterUserId);
   }, [entries, filterUserId]);
+
+  // Unique users from schedule entries (for filter picker)
+  const scheduleUsers = useMemo(() => {
+    const userMap = new Map<number, { id: number; name: string; avatar?: string }>();
+    if (schedule?.mode === 'recurring') {
+      (schedule.template?.entries || []).forEach((entry) => {
+        if (entry.user_id && entry.user) {
+          userMap.set(entry.user_id, { id: entry.user.id, name: entry.user.name, avatar: entry.user.avatar });
+        }
+      });
+    } else {
+      entries.forEach((entry) => {
+        if (entry.user_id && entry.user) {
+          userMap.set(entry.user_id, { id: entry.user.id, name: entry.user.name, avatar: entry.user.avatar });
+        }
+      });
+    }
+    return Array.from(userMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [schedule?.mode, schedule?.template?.entries, entries]);
 
   const handleUserFilterChange = useCallback((userId: number | null, userName: string | null) => {
     setFilterUserId(userId);
@@ -983,22 +1003,73 @@ export const ScheduleDetailScreen: React.FC = () => {
         onDeleteTemplateEntry={handleDeleteTemplateEntry}
       />
 
-      {/* User Filter Modal for recurring schedules */}
-      <UserSelectorModal
+      {/* User Filter Picker - shows only users from the schedule */}
+      <Modal
         visible={showUserFilterPicker}
-        onClose={() => setShowUserFilterPicker(false)}
-        selectedUserIds={filterUserId ? [filterUserId] : []}
-        onSelectionChange={(userIds, selectedUsers) => {
-          if (userIds.length > 0) {
-            handleUserFilterChange(userIds[0], selectedUsers?.[0]?.name || null);
-          }
-          setShowUserFilterPicker(false);
-        }}
-        multiSelect={false}
-        title="Фильтр по сотруднику"
-        mode="radio"
-        includeCurrentUser={true}
-      />
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowUserFilterPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.filterModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowUserFilterPicker(false)}
+        >
+          <View style={[styles.filterModalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.filterModalTitle, { color: theme.text }]}>
+              Фильтр по сотруднику
+            </Text>
+
+            {/* "All employees" option */}
+            <TouchableOpacity
+              style={[
+                styles.filterModalItem,
+                { borderBottomColor: theme.border },
+                !filterUserId && { backgroundColor: theme.backgroundSecondary },
+              ]}
+              onPress={() => {
+                handleUserFilterChange(null, null);
+                setShowUserFilterPicker(false);
+              }}
+            >
+              <Ionicons name="people-outline" size={20} color={theme.primary} />
+              <Text style={[styles.filterModalItemText, { color: theme.text }]}>
+                Все сотрудники
+              </Text>
+              {!filterUserId && (
+                <Ionicons name="checkmark" size={20} color={theme.primary} />
+              )}
+            </TouchableOpacity>
+
+            <FlatList
+              data={scheduleUsers}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.filterModalItem,
+                    { borderBottomColor: theme.border },
+                    filterUserId === item.id && { backgroundColor: theme.backgroundSecondary },
+                  ]}
+                  onPress={() => {
+                    handleUserFilterChange(item.id, item.name);
+                    setShowUserFilterPicker(false);
+                  }}
+                >
+                  <Avatar name={item.name} imageUrl={item.avatar} size={28} />
+                  <Text style={[styles.filterModalItemText, { color: theme.text }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  {filterUserId === item.id && (
+                    <Ionicons name="checkmark" size={20} color={theme.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+              style={styles.filterModalList}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1309,5 +1380,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     maxWidth: 200,
+  },
+
+  // Filter modal styles
+  filterModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  filterModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '70%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  filterModalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    padding: 16,
+    paddingBottom: 12,
+  },
+  filterModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterModalItemText: {
+    fontSize: 15,
+    flex: 1,
+  },
+  filterModalList: {
+    flexGrow: 0,
   },
 });
