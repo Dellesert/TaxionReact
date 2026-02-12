@@ -132,6 +132,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     handleForwardToChat,
   } = useChatActions(chatIdNum);
 
+  // Callback для сброса состояния непрочитанных при выходе из jump context
+  const handleResetUnreadState = useCallback((newUnreadCount?: number) => {
+    setIgnoreReadReceipts(true); // Включаем игнорирование read_receipts для корректного показа плашки
+    setFirstUnreadMessageId(null); // Сбрасываем фиксированный ID чтобы пересчитать
+    if (newUnreadCount !== undefined && newUnreadCount > 0) {
+      setSavedUnreadCount(newUnreadCount); // Устанавливаем количество непрочитанных для useChatMessages
+    }
+  }, [setIgnoreReadReceipts, setFirstUnreadMessageId, setSavedUnreadCount]);
+
   const {
     listRef,
     initialScrolled,
@@ -158,7 +167,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     resetScroll,
     handleFlashListLoad,
     isPositionReady,
-  } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount, currentUser?.id, messagesKey);
+  } = useChatScroll(chatIdNum, messages, firstUnreadIndex, unreadCount, currentUser?.id, messagesKey, setShowUnreadBanner, handleResetUnreadState);
 
   // Message search - callback for navigating to search results
   const handleNavigateToSearchResult = useCallback((messageId: number) => {

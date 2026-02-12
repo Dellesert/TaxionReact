@@ -19,7 +19,16 @@ export const setReduceScrollAnimations = (value: boolean) => {
  *
  * ОПТИМИЗАЦИЯ: Мемоизация селекторов для снижения ре-рендеров
  */
-export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex: number, unreadCount: number, currentUserId?: number, messagesKey?: string) => {
+export const useChatScroll = (
+  chatId: number,
+  messages: any[],
+  firstUnreadIndex: number,
+  unreadCount: number,
+  currentUserId?: number,
+  messagesKey?: string,
+  onShowUnreadBanner?: (show: boolean) => void,
+  onResetUnreadState?: (unreadCount?: number) => void // Callback для сброса состояния непрочитанных при выходе из jump context
+) => {
   const listRef = useRef<FlatList<any>>(null);
   const [initialScrolled, setInitialScrolled] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -755,6 +764,15 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
         isScrollingToUnread.current = true;
 
+        // ВАЖНО: Сбрасываем флаги чтобы useEffect в ChatScreen не скрыл плашку
+        setUserScrolledToBottom(false);
+        setHasReachedBottom(false);
+        hasScrolledAwayFromBottom.current = false; // Сбрасываем чтобы следующий скролл вниз был "намеренным"
+
+        // Сбрасываем состояние непрочитанных и показываем плашку
+        onResetUnreadState?.(actualUnreadCount); // Сброс ignoreReadReceipts и установка количества непрочитанных
+        onShowUnreadBanner?.(true);
+
         listRef.current?.scrollToIndex({
           index: actualFirstUnreadIndex,
           animated: true,
@@ -762,12 +780,12 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
           viewOffset: -30,
         });
 
-        // Финализация после анимации
+        // Финализация после анимации - увеличенный таймаут для защиты плашки
         setTimeout(() => {
           isScrollingToUnread.current = false;
           // Не сбрасываем showScrollToBottom - кнопка остаётся видимой
           console.log('[ScrollToBottom] Animation to unread complete');
-        }, 500);
+        }, 1500); // 1.5 секунды защиты чтобы handleScroll не скрыл плашку
       } else {
         // Нет непрочитанных - скроллим в самый низ
         console.log('[ScrollToBottom] No unread, scrolling to offset 0 (bottom)');
