@@ -281,6 +281,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           visible={showScrollToBottom}
           onPress={onScrollToBottom}
           unreadCount={newMessagesCount}
+          keyboardHeight={keyboardHeight}
         />
       </View>
 

@@ -7,6 +7,7 @@ interface ScrollToBottomButtonProps {
   visible: boolean;
   onPress: () => void;
   unreadCount?: number;
+  keyboardHeight?: number;
 }
 
 /**
@@ -16,14 +17,20 @@ export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
   visible,
   onPress,
   unreadCount = 0,
+  keyboardHeight = 0,
 }) => {
   const { theme } = useTheme();
 
   if (!visible) return null;
 
+  // Базовое положение - чуть выше поля ввода
+  // При открытой клавиатуре поднимаем кнопку на высоту клавиатуры
+  const baseBottom = Platform.OS === 'web' ? 100 :10;
+  const bottom = keyboardHeight > 0 ? baseBottom + keyboardHeight : baseBottom;
+
   return (
     <TouchableOpacity
-      style={[styles.button, { backgroundColor: theme.primary }]}
+      style={[styles.button, { backgroundColor: theme.primary, bottom }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -43,7 +50,6 @@ const styles = StyleSheet.create({
   button: {
     position: 'absolute',
     right: 16,
-    bottom: Platform.OS === 'web' ? 160 : 140, // Поднимаем кнопку выше инпута
     width: 48,
     height: 48,
     borderRadius: 24,
