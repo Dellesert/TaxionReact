@@ -164,30 +164,35 @@ export const ScheduleListScreen: React.FC = () => {
     );
   }, [schedules, searchQuery]);
 
-  // Group schedules by type
+  // Group schedules by mode first (monthly before recurring), then by type
   const sections = useMemo((): ScheduleSection[] => {
-    const grouped = new Map<ScheduleType, Schedule[]>();
+    const sorted = [...filteredSchedules].sort((a, b) => {
+      // Monthly first, recurring second
+      if (a.mode !== b.mode) {
+        return a.mode === 'monthly' ? -1 : 1;
+      }
+      // Within same mode, sort by type order
+      return SCHEDULE_TYPE_ORDER.indexOf(a.type) - SCHEDULE_TYPE_ORDER.indexOf(b.type);
+    });
 
-    // Initialize groups
-    for (const type of SCHEDULE_TYPE_ORDER) {
-      grouped.set(type, []);
-    }
+    // Group sorted schedules into sections by type, preserving mode-based order
+    const sectionList: ScheduleSection[] = [];
+    let currentKey = '';
 
-    // Group filtered schedules
-    for (const schedule of filteredSchedules) {
-      const typeSchedules = grouped.get(schedule.type);
-      if (typeSchedules) {
-        typeSchedules.push(schedule);
+    for (const schedule of sorted) {
+      const key = `${schedule.mode}_${schedule.type}`;
+      if (key !== currentKey) {
+        currentKey = key;
+        sectionList.push({
+          title: SCHEDULE_TYPE_LABELS[schedule.type],
+          data: [schedule],
+        });
+      } else {
+        sectionList[sectionList.length - 1].data.push(schedule);
       }
     }
 
-    // Convert to sections, filtering out empty groups
-    return SCHEDULE_TYPE_ORDER
-      .filter(type => (grouped.get(type)?.length ?? 0) > 0)
-      .map(type => ({
-        title: SCHEDULE_TYPE_LABELS[type],
-        data: grouped.get(type) ?? [],
-      }));
+    return sectionList;
   }, [filteredSchedules]);
 
   // Handle manual pull-to-refresh
