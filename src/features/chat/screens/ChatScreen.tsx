@@ -153,7 +153,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     handleReplyPress: scrollToMessage,
     handleKeyboardWillShow,
     handleKeyboardWillHide,
-    handleKeyboardAnimating,
     onViewableItemsChanged,
     viewabilityConfig,
     resetScroll,
@@ -261,13 +260,13 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Connect keyboard callbacks to scroll handlers
   useEffect(() => {
-    setKeyboardCallbacks(handleKeyboardWillShow, handleKeyboardWillHide, handleKeyboardAnimating);
+    setKeyboardCallbacks(handleKeyboardWillShow, handleKeyboardWillHide);
 
     // Cleanup on unmount
     return () => {
-      setKeyboardCallbacks(null, null, null);
+      setKeyboardCallbacks(null, null);
     };
-  }, [handleKeyboardWillShow, handleKeyboardWillHide, handleKeyboardAnimating, setKeyboardCallbacks]);
+  }, [handleKeyboardWillShow, handleKeyboardWillHide, setKeyboardCallbacks]);
 
   // Показываем контент сразу без задержки
   useFocusEffect(
