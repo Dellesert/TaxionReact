@@ -28,6 +28,8 @@ interface NotificationState {
   deleteNotification: (notificationId: number) => Promise<void>;
   deleteAllNotifications: () => Promise<void>;
   handleNewNotification: (notification: Notification) => void;
+  handleNotificationUpdate: (notification: Notification) => void;
+  markNotificationsReadByChat: (chatId: number) => void;
   clearError: () => void;
 }
 
@@ -261,6 +263,56 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         unreadCount: newUnreadCount,
       };
     });
+  },
+
+  /**
+   * Handle notification update from WebSocket (e.g., grouped notification count changed)
+   */
+  handleNotificationUpdate: (notification: Notification) => {
+    set((state) => {
+      const exists = state.notifications.some((n) => n.id === notification.id);
+      if (exists) {
+        return {
+          notifications: state.notifications.map((n) =>
+            n.id === notification.id ? { ...n, ...notification } : n
+          ),
+        };
+      }
+      // If notification doesn't exist locally, add it
+      return {
+        notifications: [notification, ...state.notifications],
+      };
+    });
+  },
+
+  /**
+   * Mark all message notifications for a specific chat as read (local state + refresh count)
+   * Called when the user reads messages in a chat — backend also marks notifications as read.
+   */
+  markNotificationsReadByChat: (chatId: number) => {
+    let markedCount = 0;
+
+    set((state) => {
+      const updatedNotifications = state.notifications.map((notif) => {
+        if (
+          !notif.is_read &&
+          notif.type === 'message' &&
+          notif.data?.chat_id === chatId
+        ) {
+          markedCount++;
+          return { ...notif, is_read: true };
+        }
+        return notif;
+      });
+
+      return {
+        notifications: updatedNotifications,
+        unreadCount: Math.max(0, state.unreadCount - markedCount),
+      };
+    });
+
+    // Also refresh unread count from server to stay in sync
+    get().loadUnreadCount();
   },
 
   /**

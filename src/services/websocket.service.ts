@@ -26,6 +26,7 @@ type WSMessageType =
   | 'user_join' | 'user_leave' | 'user_presence'
   // Notifications
   | 'notification:new'
+  | 'notification:update'
   // Session
   | 'session_revoked'
   // System
@@ -799,6 +800,15 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
               // Fallback to in-app notification if Electron notification fails
               inAppNotificationStore.showNotification(message.data);
             }
+          }
+          break;
+
+        case 'notification:update':
+          // Handle notification update (e.g., grouped notification count changed)
+          if (message.data) {
+            const notifStore = useNotificationStore.getState();
+            // Replace the updated notification in the local list
+            notifStore.handleNotificationUpdate(message.data);
           }
           break;
 

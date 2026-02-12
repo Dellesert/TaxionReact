@@ -18,6 +18,7 @@ import { useUserStore } from '@shared/store/userStore';
 import { websocketService } from '@services/websocket.service';
 import { getZustandChatStorage, isNative } from '@shared/storage';
 import { PAGINATION } from '@shared/constants/api.constants';
+import { useNotificationStore } from '@shared/store/notificationStore';
 
 // In-flight user requests cache to prevent duplicate requests
 const inFlightUserRequests = new Map<number, Promise<any>>();
@@ -1279,6 +1280,12 @@ export const useChatStore = create<ChatState>()(
           totalUnreadCount: newTotalUnreadCount,
         };
       });
+
+      // Backend also marks message notifications as read for this chat.
+      // Sync the notification store: mark local notifications for this chat as read
+      // and refresh the unread count from the server.
+      const notificationStore = useNotificationStore.getState();
+      notificationStore.markNotificationsReadByChat(chatId);
     } catch (error: any) {
       console.error('Failed to mark chat as read:', error);
     }
