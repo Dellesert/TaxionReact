@@ -8,6 +8,7 @@ import { View, StyleSheet } from 'react-native';
 import Toast, { ToastType, ToastProps } from '@shared/components/ui/Toast';
 import { ApiError } from '@types/common.types';
 import { formatApiError, extractRequestId } from '@shared/utils/errorUtils';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 
 interface NotificationItem extends Omit<ToastProps, 'onHide'> {
   id: string;
@@ -25,6 +26,7 @@ interface NotificationContextValue {
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isDesktop = useIsWideScreen();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   // Оптимизация: отслеживаем таймауты для очистки при размонтировании
   const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
@@ -131,7 +133,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           {notifications.map((notification, index) => (
             <View
               key={notification.id}
-              style={[styles.toastWrapper, { bottom: 100 + index * 90 }]}
+              style={[styles.toastWrapper, { bottom: (isDesktop ? 1 : 100) + index * 90 }]}
             >
               <Toast
                 {...notification}
