@@ -649,16 +649,38 @@ export const useChatScroll = (
             }
           }, 100);
         } else {
-          // Если это первое новое сообщение - запоминаем его индекс
-          // В обратном массиве новые сообщения в начале, ищем среди первых newMessagesAdded
-          if (firstNewMessageIndex === -1) {
-            const firstNewMsgIndex = messages.findIndex((msg, idx) =>
-              idx < newMessagesAdded && msg.sender_id !== currentUserId
-            );
-            if (firstNewMsgIndex !== -1) {
-              setFirstNewMessageIndex(firstNewMsgIndex);
+          // Запоминаем индекс САМОГО СТАРОГО нового непрочитанного сообщения
+          // (чтобы плашка показывалась над ним, а не над самым последним)
+          //
+          // ВАЖНО: При добавлении новых сообщений в начало массива, все предыдущие
+          // индексы сдвигаются на newMessagesAdded позиций!
+          // Поэтому нужно учитывать текущий firstNewMessageIndex и сдвинуть его.
+          //
+          // В обратном массиве [новые → старые]:
+          // - index 0 = самое новое сообщение (визуально внизу)
+          // - больший index = более старое (визуально выше)
+          // Плашка должна быть над САМЫМ СТАРЫМ из всех накопленных новых сообщений.
+
+          // Находим самое старое непрочитанное среди НОВЫХ сообщений
+          let oldestInNewBatch = -1;
+          for (let i = 0; i < newMessagesAdded && i < messages.length; i++) {
+            if (messages[i].sender_id !== currentUserId) {
+              oldestInNewBatch = i;
             }
           }
+
+          // Если уже был firstNewMessageIndex, сдвигаем его на количество новых сообщений
+          // и берём максимум между сдвинутым старым и новым найденным
+          setFirstNewMessageIndex(prev => {
+            if (prev === -1) {
+              // Первый раз - просто устанавливаем индекс самого старого в новом пакете
+              return oldestInNewBatch;
+            }
+            // Сдвигаем предыдущий индекс (т.к. новые сообщения добавились в начало)
+            const shiftedPrev = prev + newMessagesAdded;
+            // Берём максимум - самое старое из всех накопленных
+            return oldestInNewBatch !== -1 ? Math.max(shiftedPrev, oldestInNewBatch) : shiftedPrev;
+          });
 
           setNewMessagesCount(prev => {
             return prev + newFromOthers;
