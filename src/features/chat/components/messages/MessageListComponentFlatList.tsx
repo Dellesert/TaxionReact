@@ -205,9 +205,13 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
   // Для inverted FlatList padding работает наоборот:
   // - paddingTop в contentContainerStyle = отступ снизу (от инпута)
   // - paddingBottom в contentContainerStyle = отступ сверху (от старых сообщений)
+  // На iOS KeyboardStickyView уже занимает место в layout — нужен только небольшой отступ
+  // На Android инпут position:absolute — нужен padding на его высоту
   const bottomPaddingForInput = Platform.OS === 'web'
     ? 20
-    : inputHeight + insetsBottom + 20;
+    : Platform.OS === 'ios'
+      ? 8
+      : inputHeight + insetsBottom + 4;
 
   // Состояние для расчёта подъёма на Android
   const [contentHeight, setContentHeight] = React.useState(0);
