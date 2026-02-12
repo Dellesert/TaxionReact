@@ -22,6 +22,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Event } from '../../types/calendar.types';
 import { MonthData, useInfiniteCalendarData } from '../../hooks/useInfiniteCalendarData';
 import { useTheme } from '@shared/hooks/useTheme';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 interface InfiniteMonthCalendarProps {
   onDatePress: (date: Date) => void;
@@ -205,6 +206,10 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
       const hasEvents = dayEvents.length > 0;
       const dotColors = getEventDotColors(dayEvents);
 
+      // Check for holiday on this date
+      const holiday = isCurrentMonth ? getHoliday(normalizedDate) : null;
+      const isHoliday = holiday !== null;
+
       // Check for absence on this date
       const absence = getAbsenceForDate(normalizedDate);
       const hasAbsence = absence !== null && isCurrentMonth;
@@ -314,6 +319,19 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
           activeOpacity={isCurrentMonth ? 0.6 : 1}
           disabled={!isCurrentMonth}
         >
+          {/* Holiday background layer */}
+          {isHoliday && !hasAbsence && (
+            <View style={{
+              position: 'absolute',
+              top: 2,
+              bottom: 0,
+              left: 2,
+              right: 2,
+              backgroundColor: theme.error + '15',
+              borderRadius: 8,
+            }} />
+          )}
+
           {/* Absence background layer */}
           {hasAbsence && <View style={getAbsenceStyle()} />}
 
@@ -335,6 +353,7 @@ const MonthGridItem: React.FC<MonthGridItemProps> = React.memo(
                   { color: isCurrentMonth ? theme.text : theme.textTertiary },
                   isTodayDate && styles.todayText,
                   isWeekend && isCurrentMonth && !isTodayDate && { color: theme.primary },
+                  isHoliday && !isTodayDate && { color: theme.error },
                 ]}
               >
                 {format(date, 'd')}

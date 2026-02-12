@@ -16,6 +16,7 @@ import {
   isWithinInterval,
 } from 'date-fns';
 import { DayEventsSheet } from '../modals/DayEventsSheet';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 interface MonthCalendarViewProps {
   selectedDate: Date;
@@ -77,6 +78,7 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
 
   const isCurrentMonth = isSameMonth(date, selectedDate);
   const isTodayDate = isToday(date);
+  const isHoliday = isCurrentMonth && getHoliday(date) !== null;
 
   // Check if this day is the selected day (for desktop compact mode)
   const isSelectedDay = isCompact && viewMode === 'day' &&
@@ -205,6 +207,19 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
       onMouseEnter={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(true) : undefined}
       onMouseLeave={Platform.OS === 'web' && isCurrentMonth ? () => setIsDayHovered(false) : undefined}
     >
+      {/* Holiday background layer */}
+      {isHoliday && !hasAbsence && (
+        <View style={{
+          position: 'absolute',
+          top: 2,
+          bottom: 0,
+          left: 2,
+          right: 2,
+          backgroundColor: theme.error + '15',
+          borderRadius: 8,
+        }} />
+      )}
+
       {/* Absence background layer */}
       {hasAbsence && <View style={getAbsenceStyle()} />}
 
@@ -234,6 +249,7 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
               isSelectedDay && !isTodayDate && styles.selectedDayText,
               isInWeek && !isTodayDate && styles.weekSelectedText,
               isWeekend && isCurrentMonth && !isTodayDate && !isSelectedDay && !isInWeek && { color: theme.primary },
+              isHoliday && !isTodayDate && { color: theme.error },
             ]}
           >
             {format(date, 'd')}
