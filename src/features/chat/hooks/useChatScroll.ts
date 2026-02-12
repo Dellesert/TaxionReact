@@ -773,6 +773,17 @@ export const useChatScroll = (
         onResetUnreadState?.(actualUnreadCount); // Сброс ignoreReadReceipts и установка количества непрочитанных
         onShowUnreadBanner?.(true);
 
+        // ВАЖНО: Ждём пока React обновит firstUnreadIndex в useChatMessages
+        // после вызова onResetUnreadState (который устанавливает savedUnreadCount)
+        // Без этой задержки плашка отрендерится по старому firstUnreadIndex
+        await new Promise<void>(resolve => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              setTimeout(resolve, 100); // Дополнительная задержка для стабилизации
+            });
+          });
+        });
+
         listRef.current?.scrollToIndex({
           index: actualFirstUnreadIndex,
           animated: true,
