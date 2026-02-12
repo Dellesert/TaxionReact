@@ -709,25 +709,11 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
       setNewMessagesCount(0);
       setFirstNewMessageIndex(-1);
 
-      // При выходе из jump context ВСЕГДА скроллим в низ:
-      // - loadMessages загружает только последние 10-20 сообщений
-      // - Если непрочитанные есть, они все будут видны внизу экрана
-      // - Плашка появится автоматически когда React обновит firstUnreadIndex
-      // - Это избегает проблемы с мерцанием плашки в неправильном месте
-      console.log('[ScrollToBottom] Will scroll to bottom (jump context exit)');
-      scrollTargetIndex.current = null; // null означает scrollToOffset(0) - к новым сообщениям
-
       // Устанавливаем защиту плашки - handleScroll не будет скрывать её некоторое время
       isExitingJumpContext.current = true;
       setTimeout(() => {
         isExitingJumpContext.current = false;
       }, JUMP_CONTEXT_EXIT_PROTECTION_DURATION);
-
-      // УПРОЩЁННАЯ СТРАТЕГИЯ: Используем scrollToOffset(0) напрямую
-      // Для inverted FlatList offset: 0 ВСЕГДА означает "самый низ" (новые сообщения),
-      // независимо от текущего состояния массива в FlatList.
-      // Это работает надёжнее чем scrollToIndex, который зависит от синхронизации
-      // между store данными и отрендеренным состоянием FlatList.
 
       // Ждём пока React обновит FlatList с новыми данными из store
       // Два RAF + небольшая задержка гарантируют что layout завершён
@@ -739,24 +725,67 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         });
       });
 
-      console.log('[ScrollToBottom] Scrolling to offset 0 (bottom)');
+      // ПРОВЕРЯЕМ: Есть ли непрочитанные сообщения в загруженных данных?
+      // Пересчитываем firstUnreadIndex из свежих данных store
+      // currentUserId передаётся как параметр хука
+      const reversedMessages = [...freshMessages].reverse(); // [новые → старые] как в FlatList
 
-      // Прямой скролл к низу - animated: true для плавности
-      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+      let actualFirstUnreadIndex = -1;
+      let actualUnreadCount = 0;
 
-      // Финализация после анимации
-      setTimeout(() => {
-        // Гарантируем финальную позицию (повторный вызов без анимации фиксирует позицию)
-        listRef.current?.scrollToOffset({ offset: 0, animated: false });
-        // Устанавливаем cooldown чтобы messagesKey useEffect не мешал
-        scrollCooldownUntil.current = Date.now() + SCROLL_COOLDOWN_DURATION;
-        setHasReachedBottom(true);
-        setUserScrolledToBottom(true);
-        setNewMessagesCount(0);
-        setFirstNewMessageIndex(-1);
-        setShowScrollToBottom(false);
-        console.log('[ScrollToBottom] Animation complete, finalized at bottom');
-      }, 400);
+      if (currentUserId) {
+        for (let i = 0; i < reversedMessages.length; i++) {
+          const message = reversedMessages[i];
+          const readReceipts = message.read_receipts || [];
+          const hasReadReceipt = readReceipts.some((receipt: any) => receipt.user_id === currentUserId);
+          const isUnread = message.sender_id !== currentUserId && !hasReadReceipt;
+
+          if (isUnread) {
+            actualFirstUnreadIndex = i;
+            actualUnreadCount++;
+          }
+        }
+      }
+
+      console.log('[ScrollToBottom] After loadMessages - actualFirstUnreadIndex:', actualFirstUnreadIndex, 'actualUnreadCount:', actualUnreadCount);
+
+      // Если есть непрочитанные - скроллим к плашке непрочитанных
+      if (actualFirstUnreadIndex !== -1 && actualUnreadCount >= 1) {
+        console.log('[ScrollToBottom] Scrolling to unread banner at index:', actualFirstUnreadIndex);
+
+        isScrollingToUnread.current = true;
+
+        listRef.current?.scrollToIndex({
+          index: actualFirstUnreadIndex,
+          animated: true,
+          viewPosition: 0.5,
+          viewOffset: -30,
+        });
+
+        // Финализация после анимации
+        setTimeout(() => {
+          isScrollingToUnread.current = false;
+          // Не сбрасываем showScrollToBottom - кнопка остаётся видимой
+          console.log('[ScrollToBottom] Animation to unread complete');
+        }, 500);
+      } else {
+        // Нет непрочитанных - скроллим в самый низ
+        console.log('[ScrollToBottom] No unread, scrolling to offset 0 (bottom)');
+
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+
+        // Финализация после анимации
+        setTimeout(() => {
+          listRef.current?.scrollToOffset({ offset: 0, animated: false });
+          scrollCooldownUntil.current = Date.now() + SCROLL_COOLDOWN_DURATION;
+          setHasReachedBottom(true);
+          setUserScrolledToBottom(true);
+          setNewMessagesCount(0);
+          setFirstNewMessageIndex(-1);
+          setShowScrollToBottom(false);
+          console.log('[ScrollToBottom] Animation complete, finalized at bottom');
+        }, 400);
+      }
 
       return;
     }
