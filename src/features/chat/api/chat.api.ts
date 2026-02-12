@@ -484,6 +484,16 @@ export const sendMessage = async (chatId: number, data: SendMessageDto): Promise
     message.task_data = (response.data.message as any).task_data;
   }
 
+  // Parse link_preview if it's a JSON string
+  if ((response.data.message as any).link_preview && typeof (response.data.message as any).link_preview === 'string') {
+    try {
+      message.link_preview = JSON.parse((response.data.message as any).link_preview);
+    } catch (e) {
+    }
+  } else if ((response.data.message as any).link_preview) {
+    message.link_preview = (response.data.message as any).link_preview;
+  }
+
   return message;
 };
 
@@ -702,6 +712,17 @@ function normalizeMessage(msg: any): Message {
     }
   } else if ((msg as any).task_data) {
     message.task_data = (msg as any).task_data;
+  }
+
+  // Parse link_preview if it's a JSON string
+  if ((msg as any).link_preview && typeof (msg as any).link_preview === 'string') {
+    try {
+      message.link_preview = JSON.parse((msg as any).link_preview);
+    } catch (e) {
+      // Ignore parse errors
+    }
+  } else if ((msg as any).link_preview) {
+    message.link_preview = (msg as any).link_preview;
   }
 
   return message;

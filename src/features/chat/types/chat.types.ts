@@ -66,6 +66,15 @@ export interface MessageTaskData {
   assigned_to?: number[];
 }
 
+// Link Preview Interface
+export interface LinkPreview {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  site_name?: string;
+}
+
 // Message Interface
 export interface Message {
   id: number;
@@ -94,6 +103,7 @@ export interface Message {
   delivered_to?: number[]; // Локальное поле - список user IDs кто получил сообщение через WebSocket
   poll_data?: MessagePollData; // Данные опроса для сообщений типа 'poll'
   task_data?: MessageTaskData; // Данные задачи для сообщений типа 'task'
+  link_preview?: LinkPreview; // Превью ссылки из текста сообщения
   // Forward-related fields
   forwarded_from_message_id?: number; // ID оригинального сообщения
   original_sender_id?: number; // ID оригинального отправителя

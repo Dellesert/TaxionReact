@@ -1776,6 +1776,7 @@ export const useChatStore = create<ChatState>()(
   },
 
   handleMessageUpdate: (message: Message) => {
+    console.log('🔗 [DEBUG] handleMessageUpdate called, link_preview:', (message as any).link_preview, 'type:', typeof (message as any).link_preview);
     // Parse poll_data if it's a JSON string (comes from WebSocket)
     // Create updated message object and explicitly preserve message_type
     const updatedMessage: any = {
@@ -1788,6 +1789,15 @@ export const useChatStore = create<ChatState>()(
         updatedMessage.poll_data = JSON.parse((message as any).poll_data);
       } catch (e) {
         console.error('❌ Failed to parse poll_data in WebSocket update:', e);
+      }
+    }
+
+    // Parse link_preview if it's a JSON string (comes from WebSocket)
+    if ((message as any).link_preview && typeof (message as any).link_preview === 'string') {
+      try {
+        updatedMessage.link_preview = JSON.parse((message as any).link_preview);
+      } catch (e) {
+        console.error('❌ Failed to parse link_preview in WebSocket update:', e);
       }
     }
 

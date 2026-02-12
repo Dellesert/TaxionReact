@@ -470,6 +470,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             reply_to: messageData?.reply_to,
             sender: messageData?.sender, // Don't provide fallback - let MessageItem fetch it
             status: messageData?.status || 'sent',
+            link_preview: messageData?.link_preview,
           };
 
           // Pass is_latest flag to the store for auto-scroll logic
@@ -478,6 +479,8 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
         case 'message_edit':
           // Handle message edit/restore - backend sends full message object in data
+          console.log('🔗 [DEBUG] message_edit raw data:', JSON.stringify(message.data, null, 2));
+          console.log('🔗 [DEBUG] link_preview in data:', message.data?.link_preview, 'type:', typeof message.data?.link_preview);
           const editedMessage = {
             id: message.data?.id || message.data?.message_id,
             chat_id: message.chat_id || message.data?.chat_id,
@@ -500,6 +503,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             deleted_by: message.data?.deleted_by,
             deleted_at: message.data?.deleted_at,
             poll_data: message.data?.poll_data, // Include poll_data from WebSocket
+            link_preview: message.data?.link_preview,
           };
           chatStore.handleMessageUpdate(editedMessage);
           break;

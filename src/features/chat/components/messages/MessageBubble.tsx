@@ -10,6 +10,7 @@ import TaskMessageCard from './TaskMessageCard';
 import { MessageStatus } from '../common/MessageStatus';
 import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName } from '../../utils/message.utils';
 import { LinkifiedText } from '../common/LinkifiedText';
+import { LinkPreviewCard } from './LinkPreviewCard';
 
 interface MessageBubbleProps {
   message: Message;
@@ -56,6 +57,11 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   searchQuery,
 }) => {
   const { theme } = useTheme();
+
+  // DEBUG: проверяем link_preview в компоненте
+  if (message.link_preview || (message as any).link_preview) {
+    console.log('🔗 [DEBUG] MessageBubble link_preview:', message.link_preview, 'raw:', JSON.stringify((message as any).link_preview));
+  }
 
   // ⚠️ ВАЖНО: Фильтруем контент удалённых сообщений!
   // Бэкенд больше НЕ фильтрует контент в WebSocket
@@ -247,6 +253,14 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                     isOwnMessage && dynamicStyles.ownMessageText,
                   ]}
                   searchQuery={searchQuery}
+                />
+              )}
+
+              {/* Link preview card */}
+              {message.link_preview && !message.is_deleted && (
+                <LinkPreviewCard
+                  linkPreview={message.link_preview}
+                  isOwnMessage={isOwnMessage}
                 />
               )}
 
@@ -443,7 +457,8 @@ export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, next
     prevProps.isOwnMessage !== nextProps.isOwnMessage ||
     prevProps.isSavedChat !== nextProps.isSavedChat ||
     prevProps.isForwarded !== nextProps.isForwarded ||
-    prevProps.searchQuery !== nextProps.searchQuery
+    prevProps.searchQuery !== nextProps.searchQuery ||
+    prevProps.message.link_preview?.url !== nextProps.message.link_preview?.url
   ) {
     return false;
   }
