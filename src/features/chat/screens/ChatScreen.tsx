@@ -145,6 +145,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     firstNewMessageIndex,
     initialScrollIndex,
     scrollSessionKey,
+    isJumpingToPinned,
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,
@@ -557,6 +558,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         userRole={currentUserRole}
         pinnedMessages={pinnedMessages}
         currentUserRole={currentUserRole}
+        isJumpingToPinned={isJumpingToPinned}
         currentDateLabel={currentDateLabel}
         showDateHeader={showDateHeader}
         showScrollToBottom={showScrollToBottom}

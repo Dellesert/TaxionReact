@@ -66,6 +66,7 @@ interface ChatScreenContentProps {
   // Pinned messages
   pinnedMessages: Message[];
   currentUserRole: string;
+  isJumpingToPinned?: boolean;
 
   // UI state
   currentDateLabel: string;
@@ -151,6 +152,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   userRole,
   pinnedMessages,
   currentUserRole,
+  isJumpingToPinned,
   currentDateLabel,
   showDateHeader,
   showScrollToBottom,
@@ -221,6 +223,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             currentUserRole={currentUserRole}
             onPress={onPinnedMessagePress}
             onUnpin={onUnpin}
+            isLoading={isJumpingToPinned}
           />
         </View>
       )}

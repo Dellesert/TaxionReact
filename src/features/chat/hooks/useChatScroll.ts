@@ -39,6 +39,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
   const isLoadingNewerMessages = useRef<boolean>(false); // Флаг загрузки более новых сообщений (при скролле вниз в jump context)
   const lastNewestMessageId = useRef<number | null>(null); // ID последнего загруженного сообщения при incremental load
   const isAnimatingToPin = useRef<boolean>(false); // Флаг анимации к закрепленному сообщению
+  const [isJumpingToPinned, setIsJumpingToPinned] = useState<boolean>(false); // State для UI индикатора загрузки
   const isScrollingToUnread = useRef<boolean>(false); // Флаг скролла к непрочитанным (по кнопке)
   const isInitialScrollComplete = useRef<boolean>(false); // Флаг что FlashList завершил начальный скролл
   const [isPositionReady, setIsPositionReady] = useState<boolean>(false); // Флаг что позиция скролла готова для показа списка
@@ -933,6 +934,9 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
         // Устанавливаем флаг что идёт jump операция - это предотвратит ложное обновление счётчика
         isJumpInProgress.current = true;
 
+        // Показываем индикатор загрузки в баннере закрепленных сообщений
+        setIsJumpingToPinned(true);
+
         try {
           isAnimatingToPin.current = true;
 
@@ -1057,16 +1061,19 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
                 viewPosition: 0.5,
               });
               isAnimatingToPin.current = false;
+              setIsJumpingToPinned(false); // Скрываем индикатор загрузки
               setHighlightedMessageId(targetMessageId);
               setTimeout(() => setHighlightedMessageId(null), 2000);
             }, 400);
           } else {
             console.error('📍 ERROR: Target not found after context load');
             isAnimatingToPin.current = false;
+            setIsJumpingToPinned(false); // Скрываем индикатор загрузки при ошибке
           }
         } catch (error) {
           console.error('📍 ERROR:', error);
           isAnimatingToPin.current = false;
+          setIsJumpingToPinned(false); // Скрываем индикатор загрузки при ошибке
           isJumpInProgress.current = false; // На случай если ошибка до синхронизации refs
         }
       };
@@ -1132,6 +1139,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     isLoadingNewerMessages.current = false; // ✅ Сбрасываем флаг загрузки новых сообщений
     lastNewestMessageId.current = null; // ✅ Сбрасываем ID последнего загруженного сообщения
     isAnimatingToPin.current = false; // ✅ Сбрасываем флаг анимации
+    setIsJumpingToPinned(false); // ✅ Сбрасываем состояние индикатора загрузки
     isScrollingToUnread.current = false; // ✅ Сбрасываем флаг скролла к непрочитанным
     isKeyboardAnimating.current = false; // ✅ Сбрасываем флаг анимации клавиатуры
     isInitialScrollComplete.current = false; // ✅ Сбрасываем флаг завершения начального скролла
@@ -1159,6 +1167,7 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     initialScrollIndex,
     scrollSessionKey, // Возвращаем ключ сеанса для FlashList
     isPositionReady, // Флаг готовности позиции для показа списка
+    isJumpingToPinned, // Флаг загрузки при прыжке к закрепленному сообщению
     handleScroll,
     handleLoadMore,
     handleContentSizeChange,

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Message } from '../../types/chat.types';
@@ -16,6 +16,7 @@ interface PinnedMessageBannerProps {
   currentUserRole?: 'owner' | 'admin' | 'member';
   onPress: (messageId: number) => void;
   onUnpin: (messageId: number) => void;
+  isLoading?: boolean;
 }
 
 export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
@@ -24,6 +25,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
   currentUserRole,
   onPress,
   onUnpin,
+  isLoading,
 }) => {
   const { theme } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -181,9 +183,14 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
       style={[styles.container, dynamicStyles.container]}
       onPress={handleBannerPress}
       activeOpacity={0.7}
+      disabled={isLoading}
     >
       <View style={styles.content}>
-        <Ionicons name="pin" size={20} color={theme.primary} style={styles.icon} />
+        {isLoading ? (
+          <ActivityIndicator size="small" color={theme.primary} style={styles.icon} />
+        ) : (
+          <Ionicons name="pin" size={20} color={theme.primary} style={styles.icon} />
+        )}
 
         <View style={styles.textContainer}>
           <View style={styles.header}>
