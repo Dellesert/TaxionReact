@@ -1,8 +1,18 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { FlatList } from 'react-native';
+import { FlatList, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useChatStore } from '@shared/store/chatStore';
 import { getDateLabel } from '@shared/utils/dateHelpers';
+
+// Флаг для отключения анимаций скролла на Android
+// Android Go и бюджетные устройства плохо справляются с JS-анимациями scrollToIndex
+// Можно переключить на true для тестирования или через настройки
+let reduceScrollAnimations = Platform.OS === 'android';
+
+// Экспортируем функцию для настройки (можно вызвать из настроек приложения)
+export const setReduceScrollAnimations = (value: boolean) => {
+  reduceScrollAnimations = value;
+};
 
 /**
  * Хук для управления скроллом в чате
@@ -843,7 +853,21 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
     console.log('[handleReplyPress] messageIndex:', messageIndex, 'isInJumpContext:', isInJumpContext.current);
 
     if (messageIndex !== -1) {
-      // ✅ Двухфазная анимация для прыжка к сообщению
+      // ✅ ОПТИМИЗАЦИЯ ДЛЯ ANDROID:
+      // На Android используем мгновенный скролл без анимации
+      // JS-анимации scrollToIndex тормозят на Android Go и бюджетных устройствах
+      if (reduceScrollAnimations) {
+        listRef.current?.scrollToIndex({
+          index: messageIndex,
+          animated: false,
+          viewPosition: 0.5,
+        });
+        setHighlightedMessageId(messageId);
+        setTimeout(() => setHighlightedMessageId(null), 2000);
+        return;
+      }
+
+      // ✅ Двухфазная анимация для прыжка к сообщению (для современных устройств)
       // 1. Мгновенный прыжок к позиции рядом с целью
       // 2. Короткая плавная анимация к целевому сообщению
 
@@ -998,11 +1022,27 @@ export const useChatScroll = (chatId: number, messages: any[], firstUnreadIndex:
 
           if (targetIndex !== -1) {
             // ШАГ 3: Ждём пока React обновит FlashList с новыми данными
-            await new Promise<void>(resolve => setTimeout(resolve, 100));
+            // На Android уменьшаем задержку для быстрого отклика
+            await new Promise<void>(resolve => setTimeout(resolve, reduceScrollAnimations ? 50 : 100));
 
             // Проверка прерывания после ожидания
             if (!isAnimatingToPin.current) {
               console.log('[performSeamlessScroll] Animation interrupted after waiting for render');
+              return;
+            }
+
+            // ✅ ОПТИМИЗАЦИЯ ДЛЯ ANDROID:
+            // На Android используем мгновенный скролл без анимации
+            if (reduceScrollAnimations) {
+              listRef.current?.scrollToIndex({
+                index: targetIndex,
+                animated: false,
+                viewPosition: 0.5,
+              });
+              isAnimatingToPin.current = false;
+              setIsJumpingToPinned(false);
+              setHighlightedMessageId(targetMessageId);
+              setTimeout(() => setHighlightedMessageId(null), 2000);
               return;
             }
 
