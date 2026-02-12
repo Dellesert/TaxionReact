@@ -12,6 +12,10 @@ import { API_BASE_URL, HTTP_STATUS, TIMEOUTS } from '@shared/constants/api.const
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { ApiError, ApiResponse } from '@/types/common.types';
 import { RefreshTokenResponse } from '@/types/user.types';
+import { useAuthStore } from '@shared/store/authStore';
+
+// Guard against multiple simultaneous 401 logout calls
+let isLoggingOut = false;
 
 /**
  * Generate User-Agent string based on platform
@@ -122,13 +126,17 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    // Handle 401 Unauthorized errors (session expired)
-    if (error.response?.status === HTTP_STATUS.UNAUTHORIZED) {
-      // Clear session data from storage
-      await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
-      await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
-
-      // Auth store will handle redirect to login
+    // Handle 401 Unauthorized errors (session expired/revoked)
+    if (error.response?.status === HTTP_STATUS.UNAUTHORIZED && !isLoggingOut) {
+      isLoggingOut = true;
+      try {
+        // Session was invalidated on server (e.g. device removed), skip API call
+        await useAuthStore.getState().logout({ skipApi: true });
+      } catch (e) {
+        console.error('Auto-logout on 401 failed:', e);
+      } finally {
+        isLoggingOut = false;
+      }
     }
 
     // Extract structured error data from response

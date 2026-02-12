@@ -26,8 +26,13 @@ type WSMessageType =
   | 'user_join' | 'user_leave' | 'user_presence'
   // Notifications
   | 'notification:new'
+  // Session
+  | 'session_revoked'
   // System
   | 'error' | 'pong' | 'ping';
+
+// WebSocket close code for session revocation (custom code range 4000-4999)
+const WS_CLOSE_SESSION_REVOKED = 4001;
 
 interface WSMessage {
   type: WSMessageType;
@@ -793,6 +798,17 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           }
           break;
 
+        case 'session_revoked':
+          // Session was revoked (device removed from active sessions)
+          console.log('[WS] Session revoked by server, logging out...');
+          this.isIntentionalClose = true; // Prevent reconnection attempts
+          try {
+            await authStore.logout({ skipApi: true });
+          } catch (e) {
+            console.error('[WS] Auto-logout on session_revoked failed:', e);
+          }
+          break;
+
         case 'ping':
         case 'pong':
           // WebSocket ping/pong frames are handled automatically by the browser
@@ -824,11 +840,23 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
   /**
    * Handle WebSocket close
    */
-  private handleClose(event: CloseEvent): void {
+  private async handleClose(event: CloseEvent): Promise<void> {
 
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
+    }
+
+    // Session revoked via close code (backend closed connection with 4001)
+    if (event.code === WS_CLOSE_SESSION_REVOKED) {
+      console.log('[WS] Connection closed with session_revoked code, logging out...');
+      this.isIntentionalClose = true;
+      try {
+        await useAuthStore.getState().logout({ skipApi: true });
+      } catch (e) {
+        console.error('[WS] Auto-logout on close code 4001 failed:', e);
+      }
+      return;
     }
 
     // Auto-reconnect if not intentional close
