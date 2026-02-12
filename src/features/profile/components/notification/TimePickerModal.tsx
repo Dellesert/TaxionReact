@@ -8,7 +8,7 @@ interface TimePickerModalProps {
   visible: boolean;
   type: 'start' | 'end';
   selectedHour: number | null;
-  onSelect: (hour: number) => void;
+  onSelect: (hour: number | null) => void;
   onClose: () => void;
 }
 
@@ -86,6 +86,26 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
             </Text>
           </View>
           <ScrollView style={dynamicStyles.modalBody}>
+            {/* Кнопка сброса */}
+            <TouchableOpacity
+              style={dynamicStyles.modalOption}
+              onPress={() => {
+                onSelect(null);
+                onClose();
+              }}
+            >
+              <Text
+                style={[
+                  dynamicStyles.modalOptionText,
+                  selectedHour === null && dynamicStyles.modalOptionSelected,
+                ]}
+              >
+                Отключить
+              </Text>
+              {selectedHour === null && (
+                <Ionicons name="checkmark" size={24} color={theme.primary} />
+              )}
+            </TouchableOpacity>
             {hours.map((hour) => (
               <TouchableOpacity
                 key={hour}

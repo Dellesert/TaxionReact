@@ -98,19 +98,23 @@ export const useNotificationSettings = () => {
         if (pref.email_enabled) newSettings.email = true;
         if (pref.sms_enabled) newSettings.sms = true;
 
+        // Тип считается включённым, если хотя бы один канал активен
+        const typeEnabled =
+          pref.in_app_enabled || pref.push_enabled || pref.email_enabled || pref.sms_enabled;
+
         // Сохраняем настройки для каждого типа
         if (pref.notification_type === 'message') {
-          newSettings.message = pref.in_app_enabled;
+          newSettings.message = typeEnabled;
         } else if (pref.notification_type === 'mention') {
-          newSettings.mention = pref.in_app_enabled;
+          newSettings.mention = typeEnabled;
         } else if (pref.notification_type === 'task') {
-          newSettings.task = pref.in_app_enabled;
+          newSettings.task = typeEnabled;
         } else if (pref.notification_type === 'poll') {
-          newSettings.poll = pref.in_app_enabled;
+          newSettings.poll = typeEnabled;
         } else if (pref.notification_type === 'calendar') {
-          newSettings.calendar = pref.in_app_enabled;
+          newSettings.calendar = typeEnabled;
         } else if (pref.notification_type === 'system') {
-          newSettings.system = pref.in_app_enabled;
+          newSettings.system = typeEnabled;
         }
       });
 
@@ -138,13 +142,20 @@ export const useNotificationSettings = () => {
           sms: 'sms_enabled',
         };
 
-        await Promise.all(
-          ALL_NOTIFICATION_TYPES.map((type) =>
-            updateUserPreference(type, {
-              [fieldMap[channel]]: value,
-            })
-          )
+        // Обновляем канал только для типов, которые включены
+        const enabledTypes = ALL_NOTIFICATION_TYPES.filter(
+          (type) => settings[type as keyof NotificationSettings]
         );
+
+        if (enabledTypes.length > 0) {
+          await Promise.all(
+            enabledTypes.map((type) =>
+              updateUserPreference(type, {
+                [fieldMap[channel]]: value,
+              })
+            )
+          );
+        }
 
         showSuccess('Настройки сохранены');
       } catch (error: any) {
@@ -156,7 +167,7 @@ export const useNotificationSettings = () => {
         setSaving(null);
       }
     },
-    [showSuccess, showError]
+    [settings, showSuccess, showError]
   );
 
   /**
@@ -169,9 +180,23 @@ export const useNotificationSettings = () => {
       setSaving(type);
 
       try {
-        await updateUserPreference(type, {
-          in_app_enabled: value,
-        });
+        if (value) {
+          // Включаем тип: активируем in_app + каналы согласно глобальным настройкам
+          await updateUserPreference(type, {
+            in_app_enabled: true,
+            push_enabled: settings.push,
+            email_enabled: settings.email,
+            sms_enabled: false,
+          });
+        } else {
+          // Выключаем тип: отключаем ВСЕ каналы для этого типа
+          await updateUserPreference(type, {
+            in_app_enabled: false,
+            push_enabled: false,
+            email_enabled: false,
+            sms_enabled: false,
+          });
+        }
 
         showSuccess('Настройки сохранены');
       } catch (error: any) {
@@ -183,7 +208,7 @@ export const useNotificationSettings = () => {
         setSaving(null);
       }
     },
-    [showSuccess, showError]
+    [settings.push, settings.email, showSuccess, showError]
   );
 
   /**
@@ -232,23 +257,58 @@ export const useNotificationSettings = () => {
   );
 
   /**
-   * Update quiet hours setting
+   * Update quiet hours setting (always sends device timezone).
+   * Если задано только начало — автоматически ставит конец (07:00).
+   * Если задан только конец — автоматически ставит начало (23:00).
    */
   const handleQuietHoursChange = useCallback(
-    async (type: 'start' | 'end', hour: number) => {
-      const field = type === 'start' ? 'quietHoursStart' : 'quietHoursEnd';
-      const apiField = type === 'start' ? 'quiet_hours_start' : 'quiet_hours_end';
-      const oldValue = settings[field];
+    async (type: 'start' | 'end', hour: number | null) => {
+      const oldStart = settings.quietHoursStart;
+      const oldEnd = settings.quietHoursEnd;
+      const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-      setSettings((prev) => ({ ...prev, [field]: hour }));
+      setSaving(type === 'start' ? 'quiet_hours_start' : 'quiet_hours_end');
 
       try {
-        await updateAdvancedSetting(apiField, hour);
+        if (hour === null) {
+          // Сброс: отключаем оба поля
+          setSettings((prev) => ({ ...prev, quietHoursStart: null, quietHoursEnd: null }));
+          await Promise.all(
+            ALL_NOTIFICATION_TYPES.map((t) =>
+              updateUserPreference(t, { reset_quiet_hours: true, timezone: deviceTimezone })
+            )
+          );
+          showSuccess('Тихие часы отключены');
+        } else {
+          // Автозаполнение парного значения если оно не задано
+          const DEFAULT_START = 23;
+          const DEFAULT_END = 7;
+
+          let newStart = type === 'start' ? hour : (oldStart ?? DEFAULT_START);
+          let newEnd = type === 'end' ? hour : (oldEnd ?? DEFAULT_END);
+
+          setSettings((prev) => ({ ...prev, quietHoursStart: newStart, quietHoursEnd: newEnd }));
+
+          await Promise.all(
+            ALL_NOTIFICATION_TYPES.map((t) =>
+              updateUserPreference(t, {
+                quiet_hours_start: newStart,
+                quiet_hours_end: newEnd,
+                timezone: deviceTimezone,
+              })
+            )
+          );
+          showSuccess('Настройки сохранены');
+        }
       } catch (error) {
-        setSettings((prev) => ({ ...prev, [field]: oldValue }));
+        // Откат
+        setSettings((prev) => ({ ...prev, quietHoursStart: oldStart, quietHoursEnd: oldEnd }));
+        showError('Не удалось сохранить настройки');
+      } finally {
+        setSaving(null);
       }
     },
-    [settings, updateAdvancedSetting]
+    [settings, showSuccess, showError]
   );
 
   /**

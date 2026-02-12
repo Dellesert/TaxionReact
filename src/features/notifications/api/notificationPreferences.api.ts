@@ -18,6 +18,7 @@ export interface UserNotificationPreference {
   min_priority: NotificationPriority;
   quiet_hours_start?: number;
   quiet_hours_end?: number;
+  timezone?: string;
   weekend_enabled: boolean;
   digest_enabled: boolean;
   digest_frequency?: number;
@@ -34,6 +35,8 @@ export interface UpdatePreferenceRequest {
   min_priority?: NotificationPriority;
   quiet_hours_start?: number;
   quiet_hours_end?: number;
+  reset_quiet_hours?: boolean;
+  timezone?: string;
   weekend_enabled?: boolean;
   digest_enabled?: boolean;
   digest_frequency?: number;
