@@ -285,8 +285,10 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
       </View>
 
       {Platform.OS === 'ios' ? (
-        <KeyboardStickyView offset={{ closed: insetsBottom, opened: 0 }}>
-          <View style={{ backgroundColor: theme.background }}>
+        <KeyboardStickyView
+          offset={{ closed: 0, opened: insetsBottom }}
+        >
+          <View style={{ backgroundColor: theme.background, paddingBottom: insetsBottom }}>
             {isSearchVisible ? (
               <SearchNavigationBar
                 total={searchTotal ?? 0}
