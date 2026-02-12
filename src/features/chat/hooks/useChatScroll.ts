@@ -696,7 +696,7 @@ export const useChatScroll = (
     if (messages.length !== previousMessagesLength.current) {
       previousMessagesLength.current = messages.length;
     }
-  }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId, firstNewMessageIndex]);
+  }, [messages.length, initialScrolled, hasReachedBottom, currentUserId, chatId]);
 
   // Скролл к низу по кнопке
   const handleScrollToBottom = useCallback(async () => {
