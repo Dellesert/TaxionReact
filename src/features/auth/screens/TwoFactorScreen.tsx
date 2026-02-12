@@ -115,6 +115,7 @@ const TwoFactorScreen: React.FC = () => {
             isLoading={isLoading}
             onCodeChange={handleCodeChange}
             onKeyPress={handleKeyPress}
+            onSubmit={onVerify}
           />
 
           <TwoFactorActions

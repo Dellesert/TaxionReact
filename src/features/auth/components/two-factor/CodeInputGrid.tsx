@@ -8,6 +8,7 @@ interface CodeInputGridProps {
   isLoading: boolean;
   onCodeChange: (text: string, index: number) => void;
   onKeyPress: (e: any, index: number) => void;
+  onSubmit?: () => void;
 }
 
 export const CodeInputGrid: React.FC<CodeInputGridProps> = ({
@@ -16,6 +17,7 @@ export const CodeInputGrid: React.FC<CodeInputGridProps> = ({
   isLoading,
   onCodeChange,
   onKeyPress,
+  onSubmit,
 }) => {
   const { theme } = useTheme();
 
@@ -46,6 +48,8 @@ export const CodeInputGrid: React.FC<CodeInputGridProps> = ({
           autoComplete="one-time-code"
           selectTextOnFocus
           editable={!isLoading}
+          onSubmitEditing={onSubmit}
+          blurOnSubmit={false}
         />
       ))}
     </View>
