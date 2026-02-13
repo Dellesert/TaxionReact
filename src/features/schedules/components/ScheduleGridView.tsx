@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, Pressable, GestureResponderEvent } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
-import type { Schedule, ScheduleEntry, ShiftType } from '../types/schedule.types';
+import type { Schedule, ScheduleEntry, ScheduleUser, ShiftType } from '../types/schedule.types';
 import { SHIFT_TYPE_LABELS } from '../types/schedule.types';
 import { ShiftQuickPicker } from './ShiftQuickPicker';
 
@@ -18,6 +18,7 @@ interface ScheduleGridViewProps {
   schedule: Schedule;
   entries: ScheduleEntry[];
   canEdit?: boolean;
+  groupMembers?: ScheduleUser[];
   onShiftSelect?: (userId: number, date: string, shiftType: ShiftType, existingEntry: ScheduleEntry | null) => Promise<void>;
   onEntryDelete?: (entryId: number) => Promise<void>;
 }
@@ -113,6 +114,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   schedule,
   entries,
   canEdit = false,
+  groupMembers,
   onShiftSelect,
   onEntryDelete,
 }) => {
@@ -133,10 +135,23 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
     return generateDates(schedule.start_date, schedule.end_date);
   }, [schedule.start_date, schedule.end_date]);
 
-  // Group entries by user
+  // Group entries by user, include group members even without entries
   const userRows = useMemo((): UserRow[] => {
     const usersMap = new Map<number, UserRow>();
 
+    // First, add all group members as rows (even if they have no entries)
+    if (groupMembers && groupMembers.length > 0) {
+      for (const member of groupMembers) {
+        usersMap.set(member.id, {
+          userId: member.id,
+          userName: member.name || `Пользователь #${member.id}`,
+          userAvatar: member.avatar,
+          entriesByDate: new Map(),
+        });
+      }
+    }
+
+    // Then, process entries and merge with existing rows
     for (const entry of entries) {
       if (!entry.user) continue;
 
@@ -160,7 +175,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
     return Array.from(usersMap.values()).sort((a, b) =>
       a.userName.localeCompare(b.userName, 'ru')
     );
-  }, [entries]);
+  }, [entries, groupMembers]);
 
   const CELL_WIDTH = 36;
   const NAME_COLUMN_WIDTH = 180;

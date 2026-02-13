@@ -3,6 +3,7 @@ import type {
   Schedule,
   ScheduleEntry,
   ScheduleTemplate,
+  ScheduleUser,
   ScheduleListResponse,
   ScheduleEntriesResponse,
   TemplateListResponse,
@@ -30,6 +31,7 @@ const SCHEDULE_ENDPOINTS = {
   ENTRIES: (id: number) => `/schedules/${id}/entries`,
   ENTRY: (scheduleId: number, entryId: number) =>
     `/schedules/${scheduleId}/entries/${entryId}`,
+  GROUP_MEMBERS: (id: number) => `/schedules/${id}/group-members`,
   MY_ENTRIES: '/schedules/my-entries',
   DAILY_SUMMARY: '/schedules/daily-summary',
   IMPORT: '/schedules/import',
@@ -218,6 +220,17 @@ export const scheduleApi = {
       { ...data, preview: false }
     );
     return response.data.result;
+  },
+
+  // ============================================
+  // GROUP MEMBERS
+  // ============================================
+
+  getScheduleGroupMembers: async (scheduleId: number): Promise<ScheduleUser[]> => {
+    const response = await api.get<{ members: ScheduleUser[]; count: number }>(
+      SCHEDULE_ENDPOINTS.GROUP_MEMBERS(scheduleId)
+    );
+    return response.data.members || [];
   },
 
   getSupportedFormats: async (): Promise<{

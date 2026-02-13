@@ -76,6 +76,7 @@ export interface Schedule {
   created_by: number;
   creator?: ScheduleUser;
   department_id?: number;
+  user_group_id?: number;
   start_date: string;
   end_date: string;
   morning_start: string;
@@ -166,6 +167,7 @@ export interface CreateScheduleRequest {
   evening_end?: string;
   color?: string;
   department_id?: number;
+  user_group_id?: number;
   viewer_ids?: number[];
   editor_ids?: number[];
 }
@@ -185,6 +187,7 @@ export interface UpdateScheduleRequest {
   evening_end?: string;
   color?: string;
   is_active?: boolean;
+  user_group_id?: number | null;
   viewer_ids?: number[];
   editor_ids?: number[];
 }

@@ -42,6 +42,7 @@ import {
   SCHEDULE_TYPE_LABELS,
   VISIBILITY_LABELS,
   type ScheduleEntry,
+  type ScheduleUser,
   type ScheduleTemplateEntry,
   type UpdateScheduleRequest,
   type CreateScheduleEntryRequest,
@@ -50,7 +51,7 @@ import {
   type CreateBatchTemplateEntriesRequest,
   type ShiftType,
 } from '../types/schedule.types';
-import { templateApi } from '../api/schedule.api';
+import { templateApi, scheduleApi } from '../api/schedule.api';
 import type { ScheduleStackParamList } from '../navigation/types';
 
 type RouteProps = RouteProp<ScheduleStackParamList, 'ScheduleDetail'>;
@@ -86,6 +87,9 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [selectedEntry, setSelectedEntry] = useState<ScheduleEntry | null>(null);
   const [selectedTemplateEntry, setSelectedTemplateEntry] = useState<ScheduleTemplateEntry | null>(null);
 
+  // Group members for the schedule's linked user group
+  const [groupMembers, setGroupMembers] = useState<ScheduleUser[]>([]);
+
   // User filter state for recurring schedules
   const [showUserFilterPicker, setShowUserFilterPicker] = useState(false);
   const [filterUserId, setFilterUserId] = useState<number | null>(null);
@@ -117,6 +121,17 @@ export const ScheduleDetailScreen: React.FC = () => {
       localStorage.setItem(key, viewMode);
     }
   }, [isElectron, schedule?.type, viewMode]);
+
+  // Load group members when schedule has a linked user group
+  useEffect(() => {
+    if (schedule?.user_group_id) {
+      scheduleApi.getScheduleGroupMembers(schedule.id)
+        .then((members) => setGroupMembers(members))
+        .catch((err) => console.error('Failed to load group members:', err));
+    } else {
+      setGroupMembers([]);
+    }
+  }, [schedule?.id, schedule?.user_group_id]);
 
   const handleCreatorPress = useCallback(() => {
     if (schedule?.creator?.id) {
@@ -588,6 +603,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                     <ScheduleGridView
                       schedule={schedule}
                       entries={entries}
+                      groupMembers={groupMembers}
                       canEdit={canManageEntries}
                       onShiftSelect={handleGridShiftSelect}
                       onEntryDelete={handleGridEntryDelete}
