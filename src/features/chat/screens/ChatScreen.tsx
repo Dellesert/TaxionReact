@@ -436,9 +436,11 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [initialScrolled, ignoreReadReceipts, userScrolledToBottom, keyboardHeight, showUnreadBanner]);
 
-  // Отметить как прочитанное и скрыть баннер только когда пользователь намеренно проскроллил вниз
+  // Отметить как прочитанное и скрыть баннер когда пользователь внизу чата
+  // userScrolledToBottom — намеренная прокрутка вниз
+  // hasReachedBottom — пользователь уже находится внизу (например, при открытии из push-уведомления)
   useEffect(() => {
-    if (messages.length > 0 && initialScrolled && userScrolledToBottom) {
+    if (messages.length > 0 && initialScrolled && (userScrolledToBottom || hasReachedBottom)) {
       const markReadTimer = setTimeout(async () => {
         try {
           await markChatAsRead(chatIdNum);
@@ -455,7 +457,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       }, 500);
       return () => clearTimeout(markReadTimer);
     }
-  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, userScrolledToBottom, showUnreadBanner]);
+  }, [chatIdNum, messages.length, markChatAsRead, initialScrolled, userScrolledToBottom, hasReachedBottom, showUnreadBanner]);
 
   // Event handlers
   const handleTyping = (isTyping: boolean) => {
