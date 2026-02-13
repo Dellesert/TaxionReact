@@ -11,8 +11,8 @@ export const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 export const APP_BUILD = Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode ?? '1';
 export const APP_NAME = 'Tachyon Messenger';
 export const COMPANY_NAME = 'Tachyon Technologies';
-export const SUPPORT_EMAIL = 'support@taxion.ru';
-export const WEBSITE_URL = 'https://tahion.spb.ru';
+export const SUPPORT_EMAIL = 'mishajackson@inbox.ru';
+export const WEBSITE_URL = 'https://exmple.com';
 
 export const APP_DESCRIPTION =
   'Tachyon Messenger — современный корпоративный мессенджер с функциями управления задачами, ' +
