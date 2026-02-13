@@ -27,7 +27,8 @@ export const useChatScroll = (
   currentUserId?: number,
   messagesKey?: string,
   onShowUnreadBanner?: (show: boolean) => void,
-  onResetUnreadState?: (unreadCount?: number) => void // Callback для сброса состояния непрочитанных при выходе из jump context
+  onResetUnreadState?: (unreadCount?: number) => void, // Callback для сброса состояния непрочитанных при выходе из jump context
+  keyboardHeight?: number, // Высота клавиатуры для корректного scrollToOffset на iOS
 ) => {
   const listRef = useRef<FlatList<any>>(null);
   const [initialScrolled, setInitialScrolled] = useState(false);
@@ -63,6 +64,14 @@ export const useChatScroll = (
   const isInitialScrollComplete = useRef<boolean>(false); // Флаг что FlashList завершил начальный скролл
   const [isPositionReady, setIsPositionReady] = useState<boolean>(false); // Флаг что позиция скролла готова для показа списка
   const isJumpInProgress = useRef<boolean>(false); // Флаг что идёт jump к сообщению (замена массива)
+  const keyboardHeightRef = useRef<number>(0); // Текущая высота клавиатуры (ref для использования в callbacks)
+  keyboardHeightRef.current = keyboardHeight || 0;
+
+  // Для inverted FlatList с contentInset на iOS: offset 0 ≠ визуальный низ при открытой клавиатуре.
+  // Реальный низ = -contentInset.top = -keyboardHeight
+  const getBottomOffset = useCallback(() => {
+    return Platform.OS === 'ios' ? -keyboardHeightRef.current : 0;
+  }, []);
 
   // ✅ Refs для двухфазной анимации скролла из jump context
   const isScrollToBottomAnimating = useRef<boolean>(false); // Флаг активной анимации скролла к низу
@@ -194,9 +203,9 @@ export const useChatScroll = (
       }
 
       // СЛУЧАЙ 2: < 5 непрочитанных - скроллим к низу (последние сообщения)
-      // Для inverted FlatList: offset 0 = визуальный низ (новые сообщения)
+      // Для inverted FlatList с contentInset на iOS: низ = -keyboardHeight
       if (listRef.current) {
-        listRef.current.scrollToOffset({ offset: 0, animated: false });
+        listRef.current.scrollToOffset({ offset: getBottomOffset(), animated: false });
       }
       setIsPositionReady(true);
     }, 100);
@@ -229,8 +238,8 @@ export const useChatScroll = (
           viewOffset: -30,
         });
       } else {
-        // Скроллим в самый низ (для inverted FlatList: offset 0 = новые сообщения)
-        listRef.current?.scrollToOffset({ offset: 0, animated });
+        // Скроллим в самый низ (для inverted FlatList с contentInset на iOS: низ = -keyboardHeight)
+        listRef.current?.scrollToOffset({ offset: getBottomOffset(), animated });
       }
     };
 
@@ -641,9 +650,9 @@ export const useChatScroll = (
           // Небольшая задержка для корректного рендера нового сообщения
           setTimeout(() => {
             if (listRef.current) {
-              // Для inverted FlatList: offset 0 = новые сообщения (визуальный низ)
+              // Для inverted FlatList с contentInset на iOS: низ = -keyboardHeight
               listRef.current.scrollToOffset({
-                offset: 0,
+                offset: getBottomOffset(),
                 animated: true,
               });
             }
@@ -823,11 +832,11 @@ export const useChatScroll = (
         // Нет непрочитанных - скроллим в самый низ
         console.log('[ScrollToBottom] No unread, scrolling to offset 0 (bottom)');
 
-        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+        listRef.current?.scrollToOffset({ offset: getBottomOffset(), animated: true });
 
         // Финализация после анимации
         setTimeout(() => {
-          listRef.current?.scrollToOffset({ offset: 0, animated: false });
+          listRef.current?.scrollToOffset({ offset: getBottomOffset(), animated: false });
           scrollCooldownUntil.current = Date.now() + SCROLL_COOLDOWN_DURATION;
           setHasReachedBottom(true);
           setUserScrolledToBottom(true);
@@ -881,9 +890,9 @@ export const useChatScroll = (
         isScrollingToUnread.current = false;
       }, 500);
     } else {
-      // Просто скроллим в самый низ (для inverted FlatList: offset 0 = новые сообщения)
+      // Просто скроллим в самый низ (для inverted FlatList с contentInset на iOS: низ = -keyboardHeight)
       listRef.current?.scrollToOffset({
-        offset: 0,
+        offset: getBottomOffset(),
         animated: true,
       });
       setHasReachedBottom(true);
