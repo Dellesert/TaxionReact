@@ -385,6 +385,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginBottom: 4,
+    marginLeft: 'auto',
   },
   cardMessageFooter: {
     justifyContent: 'flex-end',
