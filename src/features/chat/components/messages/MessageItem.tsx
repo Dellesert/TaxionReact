@@ -133,7 +133,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   }));
 
   const handleDoubleTap = useCallback(() => {
-    handleToggleReaction('❤️');
+    handleToggleReaction('👍');
     // Animate heart
     heartScale.value = 0;
     heartOpacity.value = 1;
@@ -272,7 +272,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             pointerEvents="none"
             style={[styles.heartOverlay, heartAnimStyle]}
           >
-            <Text style={styles.heartEmoji}>❤️</Text>
+            <Text style={styles.heartEmoji}>👍</Text>
           </Animated.View>
         </View>
       </View>
