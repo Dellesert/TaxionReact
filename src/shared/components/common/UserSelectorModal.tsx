@@ -70,6 +70,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   const [viewMode, setViewMode] = useState<ViewMode>('departments');
   const [userGroups, setUserGroups] = useState<UserGroupWithMembers[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   // Debounce search query for backend search (300ms delay)
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -301,7 +302,27 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   }, [userGroups, filteredUsers, searchQuery, excludeUserIds]);
 
   // Select the active sections based on view mode
-  const userSections = viewMode === 'groups' ? groupSections : departmentSections;
+  const baseSections = viewMode === 'groups' ? groupSections : departmentSections;
+
+  // Apply collapsed state: collapsed sections get empty data array
+  const userSections = useMemo(() => {
+    return baseSections.map(section => ({
+      ...section,
+      data: collapsedSections.has(section.title) ? [] : section.data,
+    }));
+  }, [baseSections, collapsedSections]);
+
+  const toggleSectionCollapse = React.useCallback((sectionTitle: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionTitle)) {
+        next.delete(sectionTitle);
+      } else {
+        next.add(sectionTitle);
+      }
+      return next;
+    });
+  }, []);
 
   const toggleUserSelection = (userId: number) => {
     if (multiSelect) {
@@ -691,6 +712,13 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       fontSize: 12,
       color: theme.textTertiary,
     },
+    collapseButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 4,
+      paddingLeft: 8,
+    },
   });
 
   const renderContent = () => (
@@ -782,30 +810,46 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
           windowSize={21}
           keyboardShouldPersistTaps="handled"
           renderSectionHeader={({ section }) => {
+            const isCollapsed = collapsedSections.has(section.title);
+            // Get real user count from baseSections (since collapsed sections have empty data)
+            const realSection = baseSections.find(s => s.title === section.title);
+            const realData = realSection?.data || section.data;
+            const userCount = realData.length;
+
             if (!multiSelect) {
-              // Radio mode - non-clickable headers
+              // Radio mode - tap header to collapse/expand
               return (
-                <View style={styles.sectionHeaderContainer}>
-                  <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                <TouchableOpacity
+                  style={styles.sectionHeaderContainer}
+                  onPress={() => toggleSectionCollapse(section.title)}
+                >
+                  <View style={styles.sectionHeaderLeft}>
+                    <Ionicons
+                      name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+                      size={18}
+                      color={theme.textSecondary}
+                    />
+                    <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                  </View>
                   <Text style={styles.sectionHeaderCount}>
-                    {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
+                    {userCount} {userCount === 1 ? 'пользователь' : 'пользователей'}
                   </Text>
-                </View>
+                </TouchableOpacity>
               );
             }
 
-            // Multi-select mode - clickable headers with checkboxes
-            const sectionUserIds = section.data.map(u => u.id);
+            // Multi-select mode - checkbox toggles selection, chevron toggles collapse
+            const sectionUserIds = realData.map(u => u.id);
             const selectedCount = sectionUserIds.filter(id => selectedUserIds.includes(id)).length;
             const allSelected = selectedCount === sectionUserIds.length;
             const someSelected = selectedCount > 0 && selectedCount < sectionUserIds.length;
 
             return (
-              <TouchableOpacity
-                style={styles.sectionHeaderContainer}
-                onPress={() => toggleDepartmentSelection(section.data)}
-              >
-                <View style={styles.sectionHeaderLeft}>
+              <View style={styles.sectionHeaderContainer}>
+                <TouchableOpacity
+                  style={styles.sectionHeaderLeft}
+                  onPress={() => toggleDepartmentSelection(realData)}
+                >
                   <View style={[styles.sectionCheckbox, { borderColor: theme.border }, (allSelected || someSelected) && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
                     {allSelected ? (
                       <Ionicons name="checkmark" size={18} color="white" />
@@ -814,11 +858,21 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
                     ) : null}
                   </View>
                   <Text style={styles.sectionHeaderText}>{section.title}</Text>
-                </View>
-                <Text style={styles.sectionHeaderCount}>
-                  {section.data.length} {section.data.length === 1 ? 'пользователь' : 'пользователей'}
-                </Text>
-              </TouchableOpacity>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.collapseButton}
+                  onPress={() => toggleSectionCollapse(section.title)}
+                >
+                  <Text style={styles.sectionHeaderCount}>
+                    {userCount} {userCount === 1 ? 'пользователь' : 'пользователей'}
+                  </Text>
+                  <Ionicons
+                    name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+                    size={18}
+                    color={theme.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
             );
           }}
           contentContainerStyle={styles.listContent}
