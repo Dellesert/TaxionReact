@@ -179,6 +179,11 @@ export const API_ENDPOINTS = {
     DELETE_REMINDER: (eventId: number, reminderId: number) => `/events/${eventId}/reminders/${reminderId}`,
   },
 
+  // Calendar data (production calendar)
+  CALENDAR: {
+    HOLIDAYS: '/calendar/holidays',
+  },
+
   // Poll
   POLL: {
     LIST: '/polls',
