@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,6 +79,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   searchQuery,
 }) => {
   const { theme } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const maxBubbleWidth = Math.min(screenWidth * 0.7, 420);
+  const minBubbleWidth = screenWidth < 500 ? '35%' : '15%';
   const currentUser = useAuthStore((state) => state.user);
   const { showError } = useNotification();
   const navigation = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
@@ -241,7 +244,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         )}
 
         {/* Пузырь сообщения */}
-        <View style={{ position: 'relative', maxWidth: '70%', minWidth: '35%' }}>
+        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth }}>
           <MessageBubble
             message={message}
             isOwnMessage={isOwnMessage}
