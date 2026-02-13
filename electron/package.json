@@ -1,6 +1,7 @@
 {
   "name": "tachyon-messenger",
   "version": "1.0.2",
+  "buildNumber": 1,
   "main": "main.js",
   "author": "Dellesert",
   "description": "Tachyon Messenger - Cross-platform messaging app",

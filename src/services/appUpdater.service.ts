@@ -13,6 +13,7 @@ const CHECK_INTERVAL = 60 * 60 * 1000; // Проверка каждый час
 
 interface UpdateInfo {
   version: string;
+  build_number?: number;
   changelog?: string;
   is_critical?: boolean;
   file_size?: number;
@@ -27,11 +28,15 @@ interface UpdateCheckResult {
 
 class AppUpdaterService {
   private currentVersion: string;
+  private currentBuildNumber: number;
   private checkIntervalId: ReturnType<typeof setInterval> | null = null;
   private lastCheckTime: Date | null = null;
 
   constructor() {
     this.currentVersion = Constants.expoConfig?.version ?? '1.0.0';
+    this.currentBuildNumber = Platform.OS === 'ios'
+      ? parseInt(Constants.expoConfig?.ios?.buildNumber ?? '0', 10)
+      : (Constants.expoConfig?.android?.versionCode ?? 0);
   }
 
   /**
@@ -78,7 +83,7 @@ class AppUpdaterService {
       const checkUrl = `${API_URL}/api/v1/app-versions/latest/${platform}`;
 
       console.log('[AppUpdater] Checking for updates...');
-      console.log('[AppUpdater] Current version:', this.currentVersion);
+      console.log('[AppUpdater] Current version:', this.currentVersion, 'build:', this.currentBuildNumber);
       console.log('[AppUpdater] API URL:', checkUrl);
 
       const response = await fetch(checkUrl, {
@@ -92,12 +97,16 @@ class AppUpdaterService {
 
       const data: UpdateInfo = await response.json();
       const latestVersion = data.version;
+      const latestBuildNumber = data.build_number ?? 0;
 
-      console.log('[AppUpdater] Latest version:', latestVersion);
+      console.log('[AppUpdater] Latest version:', latestVersion, 'build:', latestBuildNumber);
       this.lastCheckTime = new Date();
 
-      if (this.isNewerVersion(latestVersion, this.currentVersion)) {
-        console.log('[AppUpdater] Update available!');
+      const isNewerVer = this.isNewerVersion(latestVersion, this.currentVersion);
+      const isSameVerNewerBuild = latestVersion === this.currentVersion && latestBuildNumber > this.currentBuildNumber;
+
+      if (isNewerVer || isSameVerNewerBuild) {
+        console.log('[AppUpdater] Update available!', isNewerVer ? 'newer version' : 'newer build');
         this.showUpdateDialog(data);
         return { hasUpdate: true, version: latestVersion };
       } else {
@@ -125,11 +134,18 @@ class AppUpdaterService {
    * Показать диалог доступного обновления
    */
   private showUpdateDialog(updateInfo: UpdateInfo): void {
-    const { version, changelog, is_critical, file_size, download_url } = updateInfo;
+    const { version, build_number, changelog, is_critical, file_size, download_url } = updateInfo;
     const platform = this.getPlatformKey();
     const downloadUrl = download_url || `${API_URL}/downloads/${platform}/latest`;
 
-    let message = `Текущая версия: ${this.currentVersion}\nНовая версия: ${version}`;
+    const currentLabel = this.currentBuildNumber > 0
+      ? `${this.currentVersion} (${this.currentBuildNumber})`
+      : this.currentVersion;
+    const newLabel = build_number && build_number > 0
+      ? `${version} (${build_number})`
+      : version;
+
+    let message = `Текущая версия: ${currentLabel}\nНовая версия: ${newLabel}`;
 
     if (file_size) {
       message += `\nРазмер: ${this.formatFileSize(file_size)}`;

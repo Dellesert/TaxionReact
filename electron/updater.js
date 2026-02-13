@@ -8,10 +8,10 @@ const DOWNLOAD_URL = `${API_BASE_URL}/downloads/windows/latest`;
 const CHECK_INTERVAL = 60 * 60 * 1000; // Check every hour
 
 /**
- * Get app version from electron/package.json
+ * Get app version and build number from electron/package.json
  * In dev mode, app.getVersion() returns Electron version, not app version
  */
-function getAppVersion() {
+function getAppInfo() {
   try {
     // Try to read from electron/package.json
     const isDev = !app.isPackaged;
@@ -28,8 +28,11 @@ function getAppVersion() {
     if (fs.existsSync(packagePath)) {
       const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
       if (packageJson.version) {
-        console.log('[Updater] Got version from package.json:', packageJson.version);
-        return packageJson.version;
+        console.log('[Updater] Got version from package.json:', packageJson.version, 'build:', packageJson.buildNumber ?? 0);
+        return {
+          version: packageJson.version,
+          buildNumber: packageJson.buildNumber ?? 0,
+        };
       }
     }
   } catch (error) {
@@ -39,13 +42,15 @@ function getAppVersion() {
   // Fallback to app.getVersion() (works correctly in production)
   const version = app.getVersion();
   console.log('[Updater] Fallback to app.getVersion():', version);
-  return version;
+  return { version, buildNumber: 0 };
 }
 
 class AppUpdater {
   constructor(mainWindow) {
     this.mainWindow = mainWindow;
-    this.currentVersion = getAppVersion();
+    const appInfo = getAppInfo();
+    this.currentVersion = appInfo.version;
+    this.currentBuildNumber = appInfo.buildNumber;
     this.checkIntervalId = null;
     this.lastCheckTime = null;
   }
@@ -85,7 +90,7 @@ class AppUpdater {
   async checkForUpdates(silent = false) {
     try {
       console.log('[Updater] Checking for updates...');
-      console.log('[Updater] Current version:', this.currentVersion);
+      console.log('[Updater] Current version:', this.currentVersion, 'build:', this.currentBuildNumber);
       console.log('[Updater] API URL:', UPDATE_CHECK_URL);
 
       const response = await fetch(UPDATE_CHECK_URL, {
@@ -105,15 +110,18 @@ class AppUpdater {
       console.log('[Updater] API response:', JSON.stringify(data, null, 2));
 
       const latestVersion = data.version;
+      const latestBuildNumber = data.build_number ?? 0;
 
-      console.log('[Updater] Latest version from API:', latestVersion);
+      console.log('[Updater] Latest version from API:', latestVersion, 'build:', latestBuildNumber);
       console.log('[Updater] Comparing:', latestVersion, 'vs', this.currentVersion);
-      console.log('[Updater] isNewerVersion result:', this.isNewerVersion(latestVersion, this.currentVersion));
 
       this.lastCheckTime = new Date();
 
-      if (this.isNewerVersion(latestVersion, this.currentVersion)) {
-        console.log('[Updater] Update available!');
+      const isNewerVer = this.isNewerVersion(latestVersion, this.currentVersion);
+      const isSameVerNewerBuild = latestVersion === this.currentVersion && latestBuildNumber > this.currentBuildNumber;
+
+      if (isNewerVer || isSameVerNewerBuild) {
+        console.log('[Updater] Update available!', isNewerVer ? 'newer version' : 'newer build');
         await this.showUpdateDialog(data);
         return { hasUpdate: true, version: latestVersion };
       } else {
@@ -142,10 +150,17 @@ class AppUpdater {
    * Show update available dialog
    */
   async showUpdateDialog(updateInfo) {
-    const { version, changelog, is_critical, file_size } = updateInfo;
+    const { version, build_number, changelog, is_critical, file_size } = updateInfo;
     const sizeMB = this.formatFileSize(file_size || 0);
 
-    let detail = `Текущая версия: ${this.currentVersion}\nНовая версия: ${version}`;
+    const currentLabel = this.currentBuildNumber > 0
+      ? `${this.currentVersion} (${this.currentBuildNumber})`
+      : this.currentVersion;
+    const newLabel = build_number && build_number > 0
+      ? `${version} (${build_number})`
+      : version;
+
+    let detail = `Текущая версия: ${currentLabel}\nНовая версия: ${newLabel}`;
 
     if (file_size) {
       detail += `\nРазмер: ${sizeMB}`;
@@ -244,6 +259,7 @@ class AppUpdater {
   getStatus() {
     return {
       currentVersion: this.currentVersion,
+      currentBuildNumber: this.currentBuildNumber,
       lastCheckTime: this.lastCheckTime,
       autoCheckEnabled: !!this.checkIntervalId,
     };
