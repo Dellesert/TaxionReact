@@ -296,45 +296,47 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
       </View>
 
       <View style={[styles.messageFooter, isCardMessage && styles.cardMessageFooter]}>
-        {!!(message.is_edited && !message.is_deleted) && (
-          <Text
-            style={[
-              styles.edited,
-              dynamicStyles.edited,
-              isOwnMessage && dynamicStyles.ownEdited,
-            ]}
-          >
-            изменено
-          </Text>
-        )}
-        <Text
-          style={[
-            styles.time,
-            dynamicStyles.time,
-            isOwnMessage && dynamicStyles.ownTime,
-          ]}
-        >
-          {formatTime(message.created_at)}
-        </Text>
-        {!isCardMessage && (
-          <MessageStatus
-            message={message}
-            isOwnMessage={isOwnMessage}
+        {/* Reactions on the left */}
+        {message.reactions && message.reactions.length > 0 && onReactionPress && (
+          <MessageReactions
+            reactions={message.reactions}
             currentUserId={currentUserId}
-            onRetry={onRetryMessage}
+            isOwnMessage={isOwnMessage}
+            onReactionPress={onReactionPress}
           />
         )}
-      </View>
 
-      {/* Reactions display */}
-      {message.reactions && message.reactions.length > 0 && onReactionPress && (
-        <MessageReactions
-          reactions={message.reactions}
-          currentUserId={currentUserId}
-          isOwnMessage={isOwnMessage}
-          onReactionPress={onReactionPress}
-        />
-      )}
+        <View style={styles.footerRight}>
+          {!!(message.is_edited && !message.is_deleted) && (
+            <Text
+              style={[
+                styles.edited,
+                dynamicStyles.edited,
+                isOwnMessage && dynamicStyles.ownEdited,
+              ]}
+            >
+              изменено
+            </Text>
+          )}
+          <Text
+            style={[
+              styles.time,
+              dynamicStyles.time,
+              isOwnMessage && dynamicStyles.ownTime,
+            ]}
+          >
+            {formatTime(message.created_at)}
+          </Text>
+          {!isCardMessage && (
+            <MessageStatus
+              message={message}
+              isOwnMessage={isOwnMessage}
+              currentUserId={currentUserId}
+              onRetry={onRetryMessage}
+            />
+          )}
+        </View>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -375,8 +377,14 @@ const styles = StyleSheet.create({
   messageFooter: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     marginTop: 4,
+    gap: 8,
+  },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 4,
   },
   cardMessageFooter: {
     justifyContent: 'flex-end',
@@ -386,14 +394,12 @@ const styles = StyleSheet.create({
   time: {
     fontSize: 11,
     color: '#ccc',
-    transform: [{ translateY: 3 }],
   },
   edited: {
     fontSize: 11,
     marginRight: 4,
     fontStyle: 'italic',
     color: '#aaa',
-    transform: [{ translateY: 3 }],
   },
   replyContainer: {
     borderLeftWidth: 3,

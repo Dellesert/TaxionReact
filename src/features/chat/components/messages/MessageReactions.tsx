@@ -45,10 +45,7 @@ const MessageReactionsComponent: React.FC<MessageReactionsProps> = ({
   if (groups.length === 0) return null;
 
   return (
-    <View style={[
-      styles.container,
-      { alignSelf: isOwnMessage ? 'flex-end' : 'flex-start' },
-    ]}>
+    <View style={styles.container}>
       {groups.map((group) => (
         <TouchableOpacity
           key={group.emoji}
@@ -83,8 +80,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 6,
     gap: 4,
+    flexShrink: 1,
   },
   badge: {
     flexDirection: 'row',
