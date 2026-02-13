@@ -160,7 +160,7 @@ interface ChatState {
   handleUserLeave: (chatId: number, userId?: number) => void;
   handleUserPresence: (presence: any) => void;
   handleMessageRead: (chatId: number, messageId: number, userId?: number) => void;
-  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number) => void;
+  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number, action?: string) => void;
   clearError: () => void;
   getChatById: (chatId: number) => Chat | undefined;
   /** Merge updated chats (for differential sync) */
@@ -1177,30 +1177,46 @@ export const useChatStore = create<ChatState>()(
 
   addReaction: async (messageId: number, emoji: string) => {
     try {
-      const updatedMessage = await chatApi.addReaction(messageId, { emoji });
-      set((state) => {
-        const existingMessages = state.messages[updatedMessage.chat_id] || [];
-        const existingMsg = existingMessages.find(m => m.id === messageId);
+      const currentUser = useAuthStore.getState().user;
+      const userId = currentUser?.id || 0;
 
-        // Мержим сообщение, сохраняя forward-related поля
-        const mergedMessage = {
-          ...existingMsg,
-          ...updatedMessage,
-          original_sender: updatedMessage.original_sender || existingMsg?.original_sender,
-          original_sender_id: updatedMessage.original_sender_id ?? existingMsg?.original_sender_id,
-          is_forwarded: updatedMessage.is_forwarded ?? existingMsg?.is_forwarded,
-          forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? existingMsg?.forwarded_from_message_id,
-        };
+      // Find chatId for this message
+      let chatId: number | undefined;
+      const state = get();
+      for (const [cid, msgs] of Object.entries(state.messages)) {
+        if (msgs.find(m => m.id === messageId)) {
+          chatId = Number(cid);
+          break;
+        }
+      }
 
-        return {
+      // Optimistic update
+      if (chatId !== undefined) {
+        set((state) => ({
           messages: {
             ...state.messages,
-            [updatedMessage.chat_id]: existingMessages.map((msg) =>
-              msg.id === messageId ? mergedMessage : msg
-            ),
+            [chatId!]: (state.messages[chatId!] || []).map((msg) => {
+              if (msg.id === messageId) {
+                const exists = msg.reactions?.some(r => r.emoji === emoji && r.user_id === userId);
+                if (exists) return msg;
+                return {
+                  ...msg,
+                  reactions: [...(msg.reactions || []), {
+                    id: Date.now(),
+                    message_id: messageId,
+                    user_id: userId,
+                    emoji,
+                    created_at: new Date().toISOString(),
+                  }],
+                };
+              }
+              return msg;
+            }),
           },
-        };
-      });
+        }));
+      }
+
+      await chatApi.addReaction(messageId, { emoji });
     } catch (error: any) {
       set({ error: error.message || 'Failed to add reaction' });
     }
@@ -1208,30 +1224,40 @@ export const useChatStore = create<ChatState>()(
 
   removeReaction: async (messageId: number, emoji: string) => {
     try {
-      const updatedMessage = await chatApi.removeReaction(messageId, emoji);
-      set((state) => {
-        const existingMessages = state.messages[updatedMessage.chat_id] || [];
-        const existingMsg = existingMessages.find(m => m.id === messageId);
+      const currentUser = useAuthStore.getState().user;
+      const userId = currentUser?.id || 0;
 
-        // Мержим сообщение, сохраняя forward-related поля
-        const mergedMessage = {
-          ...existingMsg,
-          ...updatedMessage,
-          original_sender: updatedMessage.original_sender || existingMsg?.original_sender,
-          original_sender_id: updatedMessage.original_sender_id ?? existingMsg?.original_sender_id,
-          is_forwarded: updatedMessage.is_forwarded ?? existingMsg?.is_forwarded,
-          forwarded_from_message_id: updatedMessage.forwarded_from_message_id ?? existingMsg?.forwarded_from_message_id,
-        };
+      // Find chatId for this message
+      let chatId: number | undefined;
+      const state = get();
+      for (const [cid, msgs] of Object.entries(state.messages)) {
+        if (msgs.find(m => m.id === messageId)) {
+          chatId = Number(cid);
+          break;
+        }
+      }
 
-        return {
+      // Optimistic update
+      if (chatId !== undefined) {
+        set((state) => ({
           messages: {
             ...state.messages,
-            [updatedMessage.chat_id]: existingMessages.map((msg) =>
-              msg.id === messageId ? mergedMessage : msg
-            ),
+            [chatId!]: (state.messages[chatId!] || []).map((msg) => {
+              if (msg.id === messageId) {
+                return {
+                  ...msg,
+                  reactions: (msg.reactions || []).filter(
+                    (r) => !(r.emoji === emoji && r.user_id === userId)
+                  ),
+                };
+              }
+              return msg;
+            }),
           },
-        };
-      });
+        }));
+      }
+
+      await chatApi.removeReaction(messageId, emoji);
     } catch (error: any) {
       set({ error: error.message || 'Failed to remove reaction' });
     }
@@ -2199,13 +2225,22 @@ export const useChatStore = create<ChatState>()(
     });
   },
 
-  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number) => {
+  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number, action?: string) => {
     // Update reactions array in message
     set((state) => ({
       messages: {
         ...state.messages,
         [chatId]: (state.messages[chatId] || []).map((msg) => {
           if (msg.id === messageId) {
+            if (action === 'removed') {
+              return {
+                ...msg,
+                reactions: msg.reactions.filter(
+                  (r) => !(r.emoji === emoji && r.user_id === userId)
+                ),
+              };
+            }
+            // Default: add reaction
             const existingReaction = msg.reactions.find(
               (r) => r.emoji === emoji && r.user_id === userId
             );

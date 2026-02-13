@@ -742,7 +742,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           break;
 
         case 'reaction':
-          chatStore.handleReaction(message.chat_id, message.data.message_id, message.data.emoji, message.user_id);
+          chatStore.handleReaction(message.chat_id, message.data.message_id, message.data.emoji, message.user_id, message.data.action);
           break;
 
         case 'error':
