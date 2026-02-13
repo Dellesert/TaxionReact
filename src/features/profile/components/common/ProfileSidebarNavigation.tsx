@@ -10,6 +10,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { User } from '@/types/user.types';
 
 export type ProfileSection =
+  | 'accounts'
   | 'profile'
   | 'change-password'
   | 'active-sessions'
@@ -42,6 +43,12 @@ interface ProfileSidebarNavigationProps {
 
 const getSidebarStructure = (): SidebarGroup[] => {
   return [
+    {
+      title: 'АККАУНТЫ',
+      items: [
+        { id: 'accounts', label: 'Управление аккаунтами', icon: 'people-outline', iconColor: '#6366F1' },
+      ],
+    },
     {
       title: 'ПРОФИЛЬ',
       items: [

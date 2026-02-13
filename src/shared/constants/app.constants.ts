@@ -10,6 +10,16 @@ export const STORAGE_KEYS = {
   THEME: 'theme',
   LANGUAGE: 'language',
   NOTIFICATION_PREFERENCES: 'notification_preferences',
+  // Multi-account keys
+  ACCOUNTS: 'accounts', // JSON array of SavedAccount[]
+  ACTIVE_ACCOUNT_ID: 'active_account_id', // Current active user ID
+  SESSION_ID_PREFIX: 'session_id_', // + userId -> per-account session
+  USER_DATA_PREFIX: 'user_data_', // + userId -> per-account user data
+} as const;
+
+// Multi-account limits
+export const ACCOUNT_LIMITS = {
+  MAX_ACCOUNTS: 5,
 } as const;
 
 // Session Configuration

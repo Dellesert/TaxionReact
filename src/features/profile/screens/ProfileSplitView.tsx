@@ -23,6 +23,7 @@ import ThemeSettingsContent from '../components/sections/ThemeSettingsContent';
 import TraySettingsContent from '../components/sections/TraySettingsContent';
 import StorageContent from '../components/sections/StorageContent';
 import AboutContent from '../components/sections/AboutContent';
+import AccountsSettingsContent from '../components/sections/AccountsSettingsContent';
 
 export const ProfileSplitView: React.FC = () => {
   const { theme, isDark } = useTheme();
@@ -49,6 +50,16 @@ export const ProfileSplitView: React.FC = () => {
 
   const renderContent = () => {
     switch (activeSection) {
+      case 'accounts':
+        return (
+          <ProfileContentArea
+            title="Аккаунты"
+            description="Управление сохранёнными аккаунтами"
+          >
+            <AccountsSettingsContent />
+          </ProfileContentArea>
+        );
+
       case 'profile':
         return (
           <ProfileContentArea

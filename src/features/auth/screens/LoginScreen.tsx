@@ -18,7 +18,10 @@ import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { LoginLogo } from '../components/login/LoginLogo';
 import { LoginForm } from '../components/login/LoginForm';
 import { AlternativeLoginMethods } from '../components/login/AlternativeLoginMethods';
+import { SavedAccountsList } from '../components/login/SavedAccountsList';
+import { useAccountStore } from '@shared/store/accountStore';
 import type { ApiError } from '../../../types/common.types';
+import type { SavedAccount } from '@/types/account.types';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -28,6 +31,16 @@ const LoginScreen: React.FC = () => {
   const notification = useNotification();
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
+  const { savedAccounts, isSwitching, quickSwitch } = useAccountStore();
+
+  // Handlers for saved accounts
+  const handleQuickSwitch = (account: SavedAccount) => {
+    quickSwitch(account.userId);
+  };
+
+  const handleSelectAccount = (account: SavedAccount) => {
+    setEmail(account.email);
+  };
 
   // Form state
   const {
@@ -157,6 +170,13 @@ const LoginScreen: React.FC = () => {
               onPasskeyLogin={handlePasskeyLogin}
               onAcceptInvitation={handleAcceptInvitation}
             />
+
+            <SavedAccountsList
+              accounts={savedAccounts}
+              isSwitching={isSwitching}
+              onQuickSwitch={handleQuickSwitch}
+              onSelectAccount={handleSelectAccount}
+            />
           </ScrollView>
         </View>
       </View>
@@ -209,6 +229,13 @@ const LoginScreen: React.FC = () => {
               isLoading={isLoading}
               onPasskeyLogin={handlePasskeyLogin}
               onAcceptInvitation={handleAcceptInvitation}
+            />
+
+            <SavedAccountsList
+              accounts={savedAccounts}
+              isSwitching={isSwitching}
+              onQuickSwitch={handleQuickSwitch}
+              onSelectAccount={handleSelectAccount}
             />
           </Animated.View>
         </ScrollView>

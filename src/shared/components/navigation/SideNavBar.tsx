@@ -5,14 +5,26 @@
  */
 
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Text, TextInput, StyleSheet, Modal, Pressable, Platform } from 'react-native';
+import { View, TouchableOpacity, Text, TextInput, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { Avatar } from '@shared/components/common/Avatar';
+import { AccountSwitcherModal } from '@shared/components/account/AccountSwitcherModal';
 import { useSidebar } from '@shared/contexts/SidebarContext';
 import { useTitleBarSearch } from '@shared/contexts/TitleBarSearchContext';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
+import * as accountManager from '@services/accountManager';
+import { websocketService } from '@services/websocket.service';
+import { clearAllStorages } from '@shared/storage';
+import { clearSyncMetadata } from '@shared/storage/syncMetadata';
+import { useChatStore } from '@shared/store/chatStore';
+import { useTaskStore } from '@shared/store/taskStore';
+import { usePollStore } from '@shared/store/pollStore';
+import { useCalendarStore } from '@shared/store/calendarStore';
+import { useUserStore } from '@shared/store/userStore';
 
 interface NavItem {
   name: string;
@@ -92,10 +104,9 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   totalUnreadCount = 0,
 }) => {
   const { theme } = useTheme();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const unreadNotificationCount = useNotificationStore((state) => state.unreadCount);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const { isCollapsed } = useSidebar();
   const { searchQuery, isVisible: isSearchVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
 
@@ -105,16 +116,51 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setIsLoggingOut(false);
-      setShowLogoutModal(false);
+  /**
+   * Add account: save current session, clear stores, show login screen.
+   * Current session stays alive on the server.
+   */
+  const handleAddAccount = async () => {
+    const currentUser = useAuthStore.getState().user;
+    const currentSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+
+    // Save current account
+    if (currentUser && currentSessionId) {
+      await accountManager.saveAccountAfterLogin(currentUser, currentSessionId);
     }
+
+    // Disconnect WS
+    websocketService.disconnect();
+
+    // Clear all in-memory stores
+    useChatStore.getState().set({
+      chats: [],
+      tabs: {
+        all: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+        private: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+        group: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+        favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+      },
+      messages: {},
+      totalUnreadCount: 0,
+    });
+    useTaskStore.getState().clearCache();
+    usePollStore.getState().clearCache();
+    useCalendarStore.getState().clearCache();
+    useUserStore.getState().clearCache();
+    await clearAllStorages();
+    await clearSyncMetadata();
+
+    // Clear legacy keys so Auth screen shows
+    await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
+    await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+
+    // Set auth to unauthenticated -> shows Login screen
+    useAuthStore.setState({
+      user: null,
+      sessionId: null,
+      isAuthenticated: false,
+    });
   };
 
   // Filter items based on admin status and Electron environment
@@ -229,7 +275,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
             styles.avatarContainer,
             isCollapsed ? styles.avatarContainerCollapsed : styles.avatarContainerExpanded,
           ]}
-          onPress={() => setShowLogoutModal(true)}
+          onPress={() => setShowAccountSwitcher(true)}
           activeOpacity={0.7}
         >
           <View style={[styles.avatarBorder, { borderColor: theme.primary }]}>
@@ -252,66 +298,12 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* Logout Modal */}
-      <Modal
-        visible={showLogoutModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLogoutModal(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowLogoutModal(false)}
-        >
-          <View
-            style={[styles.modalContent, { backgroundColor: theme.card }]}
-            onStartShouldSetResponder={() => true}
-          >
-            {/* User Info */}
-            <View style={styles.modalHeader}>
-              <Avatar
-                imageUrl={user?.avatar}
-                thumbnailUrl={user?.avatar_thumbnail}
-                name={user?.name || user?.email || ''}
-                size={56}
-                userId={user?.id || 0}
-              />
-              <Text style={[styles.modalUserName, { color: theme.text }]}>
-                {user?.name || user?.email}
-              </Text>
-              {user?.email && user?.name && (
-                <Text style={[styles.modalUserEmail, { color: theme.textSecondary }]}>
-                  {user.email}
-                </Text>
-              )}
-            </View>
-
-            {/* Logout Button */}
-            <TouchableOpacity
-              style={[styles.logoutButton, isLoggingOut && styles.logoutButtonDisabled]}
-              onPress={handleLogout}
-              disabled={isLoggingOut}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.logoutButtonText}>
-                {isLoggingOut ? 'Выход...' : 'Выйти'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Cancel Button */}
-            <TouchableOpacity
-              style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
-              onPress={() => setShowLogoutModal(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.cancelButtonText, { color: theme.text }]}>
-                Отмена
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
+      {/* Account Switcher Modal */}
+      <AccountSwitcherModal
+        visible={showAccountSwitcher}
+        onClose={() => setShowAccountSwitcher(false)}
+        onAddAccount={handleAddAccount}
+      />
     </View>
   );
 };
@@ -460,65 +452,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: 320,
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  modalUserName: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  modalUserEmail: {
-    fontSize: 14,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EF4444',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 12,
-    gap: 8,
-  },
-  logoutButtonDisabled: {
-    opacity: 0.6,
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

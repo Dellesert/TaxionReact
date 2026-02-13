@@ -130,6 +130,12 @@ api.interceptors.response.use(
     if (error.response?.status === HTTP_STATUS.UNAUTHORIZED && !isLoggingOut) {
       isLoggingOut = true;
       try {
+        // Mark account session as invalid (keep in saved accounts list)
+        const accountManager = require('@services/accountManager');
+        const currentUser = useAuthStore.getState().user;
+        if (currentUser) {
+          await accountManager.markAccountSessionInvalid(currentUser.id);
+        }
         // Session was invalidated on server (e.g. device removed), skip API call
         await useAuthStore.getState().logout({ skipApi: true });
       } catch (e) {

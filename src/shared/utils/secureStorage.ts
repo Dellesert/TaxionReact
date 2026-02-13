@@ -23,9 +23,13 @@ if (isElectron()) {
 
 const isWeb = Platform.OS === 'web' && !isElectron();
 
-// Keys that should use AsyncStorage instead of SecureStore in development
-// because SecureStore doesn't persist in Expo Go
-const PERSISTENT_KEYS = ['access_token', 'refresh_token', 'user_data'];
+// Key prefixes that should use AsyncStorage instead of SecureStore in development
+// because SecureStore doesn't persist in Expo Go.
+// Uses prefix matching to support multi-account keys (session_id_123, user_data_456, etc.)
+const PERSISTENT_KEY_PREFIXES = ['access_token', 'refresh_token', 'user_data', 'session_id', 'accounts', 'active_account_id'];
+
+const isPersistentKey = (key: string): boolean =>
+  PERSISTENT_KEY_PREFIXES.some(prefix => key.startsWith(prefix));
 
 /**
  * Migrate data from SecureStore to AsyncStorage for persistent keys
@@ -36,7 +40,7 @@ export const migrateToAsyncStorage = async (): Promise<void> => {
   if (isWeb || electronSecureStorage) return;
 
 
-  for (const key of PERSISTENT_KEYS) {
+  for (const key of PERSISTENT_KEY_PREFIXES) {
     try {
       // Try to get value from SecureStore
       const secureValue = await SecureStore.getItemAsync(key);
@@ -72,7 +76,7 @@ export const setItemAsync = async (key: string, value: string): Promise<void> =>
     } else {
       // Native: use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
       // SecureStore doesn't persist in Expo Go development mode
-      if (PERSISTENT_KEYS.includes(key)) {
+      if (isPersistentKey(key)) {
         await AsyncStorage.setItem(key, value);
       } else {
         await SecureStore.setItemAsync(key, value);
@@ -96,7 +100,7 @@ export const getItemAsync = async (key: string): Promise<string | null> => {
       value = localStorage.getItem(key);
     } else {
       // Native: use AsyncStorage for persistent keys (tokens) to ensure they survive app restarts
-      if (PERSISTENT_KEYS.includes(key)) {
+      if (isPersistentKey(key)) {
         value = await AsyncStorage.getItem(key);
       } else {
         value = await SecureStore.getItemAsync(key);
@@ -120,7 +124,7 @@ export const deleteItemAsync = async (key: string): Promise<void> => {
       localStorage.removeItem(key);
     } else {
       // Native: use AsyncStorage for persistent keys (tokens)
-      if (PERSISTENT_KEYS.includes(key)) {
+      if (isPersistentKey(key)) {
         await AsyncStorage.removeItem(key);
       } else {
         await SecureStore.deleteItemAsync(key);

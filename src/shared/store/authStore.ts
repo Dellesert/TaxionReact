@@ -16,6 +16,7 @@ import { isMockMode, mockLogin, mockRegister } from '@shared/utils/mockData';
 import { websocketService } from '@services/websocket.service';
 import { clearAllStorages } from '@shared/storage';
 import { clearSyncMetadata } from '@shared/storage/syncMetadata';
+import * as accountManager from '@services/accountManager';
 import { useChatStore } from './chatStore';
 import { useTaskStore } from './taskStore';
 import { usePollStore } from './pollStore';
@@ -60,6 +61,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Migrate from SecureStore to AsyncStorage (for Expo Go compatibility)
       await secureStorage.migrateToAsyncStorage();
 
+      // Migrate single-account to multi-account scheme (no-op if already done)
+      await accountManager.migrateToMultiAccount();
+
       // Load session ID from secure storage
       const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
 
@@ -79,6 +83,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isInitializing: false,
             });
           } catch (error) {
+            // Mark session as invalid in multi-account store
+            if (user?.id) {
+              await accountManager.markAccountSessionInvalid(user.id);
+            }
             await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
             await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
             set({ sessionId: null, isInitializing: false });
@@ -91,6 +99,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else {
         set({ isInitializing: false });
       }
+
+      // Load accounts list for the account switcher UI
+      // (lazy import to avoid circular dependency)
+      const { useAccountStore } = require('./accountStore');
+      await useAccountStore.getState().loadAccounts();
     } catch (error) {
       console.error('❌ Failed to initialize auth:', error);
       set({ isInitializing: false });
@@ -139,6 +152,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       });
+
+      // Save to multi-account store
+      if (response.user && savedSessionId) {
+        await accountManager.saveAccountAfterLogin(response.user, savedSessionId);
+        const { useAccountStore } = require('./accountStore');
+        await useAccountStore.getState().loadAccounts();
+      }
 
       // No token refresh service needed for session mode!
     } catch (error: any) {
@@ -198,6 +218,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.log('🔧 Mock logout - skipping API call');
       }
 
+      // Mark session as invalid in multi-account store
+      const currentUser = get().user;
+      if (currentUser) {
+        await accountManager.markAccountSessionInvalid(currentUser.id);
+      }
+
       // Clear session data from secure storage
       await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
       await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
@@ -227,6 +253,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       console.log('[Auth] All caches cleared on logout');
 
+      // Refresh accounts list
+      const { useAccountStore } = require('./accountStore');
+      await useAccountStore.getState().loadAccounts();
+
       // Clear state
       set({
         user: null,
@@ -252,6 +282,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Update stored user data
       await secureStorage.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+
+      // Sync to per-account storage
+      await accountManager.setAccountUserData(user.id, user);
+      await accountManager.updateAccountMetadata(user.id, user);
     } catch (error) {
       console.error('Failed to refresh user:', error);
       throw error;

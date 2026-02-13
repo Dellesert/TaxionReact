@@ -10,3 +10,4 @@ export { useTaskStore } from './taskStore';
 export { useCalendarStore } from './calendarStore';
 export { usePollStore } from './pollStore';
 export { useUserStore } from './userStore';
+export { useAccountStore } from './accountStore';
