@@ -7,6 +7,7 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { Message } from '../../types/chat.types';
 import { formatTime } from '../../utils/message.utils';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
+import { ReactionBar } from '../messages/ReactionBar';
 
 interface MessageContextMenuProps {
   visible: boolean;
@@ -26,6 +27,8 @@ interface MessageContextMenuProps {
   onDelete?: () => void;
   onRestore?: (messageId: number) => void;
   onEnterSelectionMode?: (messageId: number) => void;
+  onReaction?: (emoji: string) => void;
+  currentUserId?: number;
 }
 
 /**
@@ -49,9 +52,18 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   onDelete,
   onRestore,
   onEnterSelectionMode,
+  onReaction,
+  currentUserId,
 }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
+
+  const userReactionEmojis = React.useMemo(() => {
+    if (!currentUserId) return [];
+    return message.reactions
+      .filter(r => r.user_id === currentUserId)
+      .map(r => r.emoji);
+  }, [message.reactions, currentUserId]);
 
   // Check if user can pin/unpin messages
   const canPinUnpin = React.useMemo(() => {
@@ -175,6 +187,20 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             styles.contextMenu,
             { backgroundColor: theme.backgroundSecondary, top: menuPosition.top, left: menuPosition.left }
           ]}>
+            {/* Панель быстрых реакций */}
+            {!message.is_deleted && onReaction && (
+              <>
+                <ReactionBar
+                  onSelectEmoji={(emoji) => {
+                    onReaction(emoji);
+                    onClose();
+                  }}
+                  existingReactions={userReactionEmojis}
+                />
+                <View style={[styles.separator, { backgroundColor: theme.border }]} />
+              </>
+            )}
+
             {/* Превью выбранного сообщения */}
             <View style={[styles.messagePreview, { backgroundColor: theme.background }]}>
               {(() => {

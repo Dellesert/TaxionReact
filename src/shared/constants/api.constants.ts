@@ -129,7 +129,7 @@ export const API_ENDPOINTS = {
     PIN: (id: number) => `/messages/${id}/pin`,
     UNPIN: (id: number) => `/messages/${id}/unpin`,
     ADD_REACTION: (id: number) => `/messages/${id}/reactions`,
-    REMOVE_REACTION: (id: number, emoji: string) => `/messages/${id}/reactions/${emoji}`,
+    REMOVE_REACTION: (id: number, emoji: string) => `/messages/${id}/reactions?emoji=${encodeURIComponent(emoji)}`,
     MARK_READ: (id: number) => `/messages/${id}/read`,
     MARK_CHAT_READ: (chatId: number) => `/messages/chat/${chatId}/read`, // DEPRECATED - use CHAT.READ
     SEARCH: '/messages/search',

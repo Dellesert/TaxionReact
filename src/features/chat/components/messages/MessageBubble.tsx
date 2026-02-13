@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -11,6 +11,7 @@ import { MessageStatus } from '../common/MessageStatus';
 import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName } from '../../utils/message.utils';
 import { LinkifiedText } from '../common/LinkifiedText';
 import { LinkPreviewCard } from './LinkPreviewCard';
+import { MessageReactions } from './MessageReactions';
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,13 +21,15 @@ interface MessageBubbleProps {
   replySender: User | null;
   imageUrls: { [key: number]: string };
   currentUserId?: number;
-  onLongPress: () => void;
+  onLongPress?: () => void;
+  onDoubleTap?: () => void;
   onPollPress?: (pollId: number) => void;
   onTaskPress?: (taskId: number) => void;
   onReplyPress?: (messageId: number) => void;
   onImagePress: (imageUrl: string) => void;
   messageBubbleRef: React.RefObject<View>;
   onRetryMessage?: (messageId: number) => void;
+  onReactionPress?: (emoji: string) => void;
   isVisible?: boolean;
   isSavedChat?: boolean;
   isForwarded?: boolean;
@@ -45,12 +48,14 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   imageUrls,
   currentUserId,
   onLongPress,
+  onDoubleTap,
   onPollPress,
   onTaskPress,
   onReplyPress,
   onImagePress,
   messageBubbleRef,
   onRetryMessage,
+  onReactionPress,
   isVisible = true,
   isSavedChat = false,
   isForwarded = false,
@@ -135,6 +140,30 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                         (message.message_type === 'task' && message.task_data) ||
                         (isTaskMessage && parsedTaskData);
 
+  // Double-tap detection
+  const lastTapRef = useRef(0);
+
+  const handlePress = useCallback(() => {
+    const now = Date.now();
+    if (onDoubleTap && now - lastTapRef.current < 300) {
+      lastTapRef.current = 0;
+      onDoubleTap();
+      return;
+    }
+    lastTapRef.current = now;
+
+    // Normal press logic
+    if (message.message_type === 'poll' && message.poll_data) {
+      onPollPress?.(message.poll_data.poll_id);
+    }
+    if (message.message_type === 'task' && message.task_data) {
+      onTaskPress?.(message.task_data.task_id);
+    }
+    if (isTaskMessage && parsedTaskData) {
+      onTaskPress?.(parsedTaskData.task_id);
+    }
+  }, [onDoubleTap, message.message_type, message.poll_data, message.task_data, onPollPress, onTaskPress, isTaskMessage, parsedTaskData]);
+
   // Проверяем, есть ли файловые вложения (не изображения)
   const hasFileAttachments = message.attachments?.some(a => {
     const mimeType = a.mime_type || a.file_type || '';
@@ -145,20 +174,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     <TouchableOpacity
       ref={messageBubbleRef}
       activeOpacity={0.9}
-      onPress={() => {
-        // Если это опрос - открываем его
-        if (message.message_type === 'poll' && message.poll_data) {
-          onPollPress?.(message.poll_data.poll_id);
-        }
-        // Если это задача (из message_type) - открываем её
-        if (message.message_type === 'task' && message.task_data) {
-          onTaskPress?.(message.task_data.task_id);
-        }
-        // Если это задача (встроенная в текст) - открываем её
-        if (isTaskMessage && parsedTaskData) {
-          onTaskPress?.(parsedTaskData.task_id);
-        }
-      }}
+      onPress={handlePress}
       onLongPress={onLongPress}
       style={[
         styles.messageBubble,
@@ -309,14 +325,22 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
           />
         )}
       </View>
+
+      {/* Reactions display */}
+      {message.reactions && message.reactions.length > 0 && onReactionPress && (
+        <MessageReactions
+          reactions={message.reactions}
+          currentUserId={currentUserId}
+          isOwnMessage={isOwnMessage}
+          onReactionPress={onReactionPress}
+        />
+      )}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   messageBubble: {
-    maxWidth: '70%',
-    minWidth: '35%',
     borderRadius: 18,
     borderBottomLeftRadius: 3,
     padding: 12,
@@ -514,6 +538,18 @@ export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, next
   const prevDelivered = prevProps.message.delivered_to || [];
   const nextDelivered = nextProps.message.delivered_to || [];
   if (prevDelivered.length !== nextDelivered.length) {
+    return false;
+  }
+
+  // Сравниваем реакции
+  const prevReactions = prevProps.message.reactions || [];
+  const nextReactions = nextProps.message.reactions || [];
+  if (prevReactions.length !== nextReactions.length) {
+    return false;
+  }
+  const prevReactionKey = prevReactions.map(r => `${r.id}-${r.emoji}`).sort().join(',');
+  const nextReactionKey = nextReactions.map(r => `${r.id}-${r.emoji}`).sort().join(',');
+  if (prevReactionKey !== nextReactionKey) {
     return false;
   }
 

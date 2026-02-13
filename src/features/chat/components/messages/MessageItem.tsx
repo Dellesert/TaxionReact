@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { Message } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { useAuthStore } from '@shared/store/authStore';
+import { useChatStore } from '@shared/store/chatStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { MessageBubble } from './MessageBubble';
 import { MessageContextMenu } from '../modals/MessageContextMenu';
@@ -18,6 +19,7 @@ import { useMessageData } from '../../hooks/useMessageData';
 import { useImageLoader } from '@shared/hooks/useImageLoader';
 import { isForwardedMessage } from '../../utils/message.utils';
 import { getOrCreateDirectChat } from '../../api/chat.api';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming } from 'react-native-reanimated';
 
 interface MessageItemProps {
   message: Message;
@@ -101,12 +103,47 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const isSavedOwnMessage = isSavedChat && !isForwarded;
   const isSavedForwardedMessage = isSavedChat && isForwarded;
 
+  // Reaction toggle logic
+  const addReaction = useChatStore((state) => state.addReaction);
+  const removeReaction = useChatStore((state) => state.removeReaction);
+
+  const handleToggleReaction = useCallback((emoji: string) => {
+    const currentUserId = currentUser?.id;
+    if (!currentUserId) return;
+    const hasReacted = message.reactions?.some(
+      (r) => r.emoji === emoji && r.user_id === currentUserId
+    );
+    if (hasReacted) {
+      removeReaction(message.id, emoji);
+    } else {
+      addReaction(message.id, emoji);
+    }
+  }, [message.id, message.reactions, currentUser?.id, addReaction, removeReaction]);
+
+  // Heart animation for double-tap
+  const heartScale = useSharedValue(0);
+  const heartOpacity = useSharedValue(0);
+
+  const heartAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartScale.value }],
+    opacity: heartOpacity.value,
+  }));
+
+  const handleDoubleTap = useCallback(() => {
+    handleToggleReaction('❤️');
+    // Animate heart
+    heartScale.value = 0;
+    heartOpacity.value = 1;
+    heartScale.value = withSpring(1, { damping: 8, stiffness: 200 });
+    heartOpacity.value = withDelay(400, withTiming(0, { duration: 300 }));
+  }, [handleToggleReaction, heartScale, heartOpacity]);
+
   const handleLongPress = () => {
     messageBubbleRef.current?.measureInWindow((x, y, width, height) => {
       const screenWidth = Dimensions.get('window').width;
       const screenHeight = Dimensions.get('window').height;
       const menuWidth = 250;
-      const menuHeight = 450;
+      const menuHeight = 510;
       const minTopMargin = 160; // Отступ сверху (для header и safe area)
       const minBottomMargin = 20; // Отступ снизу
 
@@ -204,26 +241,37 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         )}
 
         {/* Пузырь сообщения */}
-        <MessageBubble
-          message={message}
-          isOwnMessage={isOwnMessage}
-          isHighlighted={isHighlighted}
-          sender={sender}
-          replySender={replySender}
-          imageUrls={imageUrls}
-          currentUserId={currentUser?.id}
-          onLongPress={selectionMode ? undefined : handleLongPress}
-          onPollPress={onPollPress}
-          onTaskPress={onTaskPress}
-          onReplyPress={onReplyPress}
-          onImagePress={handleImagePress}
-          messageBubbleRef={messageBubbleRef}
-          onRetryMessage={onRetryMessage}
-          isVisible={isVisible}
-          isSavedChat={isSavedChat}
-          isForwarded={isForwarded}
-          searchQuery={searchQuery}
-        />
+        <View style={{ position: 'relative', maxWidth: '70%', minWidth: '35%' }}>
+          <MessageBubble
+            message={message}
+            isOwnMessage={isOwnMessage}
+            isHighlighted={isHighlighted}
+            sender={sender}
+            replySender={replySender}
+            imageUrls={imageUrls}
+            currentUserId={currentUser?.id}
+            onLongPress={selectionMode ? undefined : handleLongPress}
+            onDoubleTap={selectionMode ? undefined : handleDoubleTap}
+            onPollPress={onPollPress}
+            onTaskPress={onTaskPress}
+            onReplyPress={onReplyPress}
+            onImagePress={handleImagePress}
+            messageBubbleRef={messageBubbleRef}
+            onRetryMessage={onRetryMessage}
+            onReactionPress={handleToggleReaction}
+            isVisible={isVisible}
+            isSavedChat={isSavedChat}
+            isForwarded={isForwarded}
+            searchQuery={searchQuery}
+          />
+          {/* Heart animation overlay */}
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.heartOverlay, heartAnimStyle]}
+          >
+            <Text style={styles.heartEmoji}>❤️</Text>
+          </Animated.View>
+        </View>
       </View>
 
       {/* Контекстное меню */}
@@ -245,6 +293,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         onDelete={() => setShowDeleteModal(true)}
         onRestore={onRestore}
         onEnterSelectionMode={onEnterSelectionMode}
+        onReaction={handleToggleReaction}
+        currentUserId={currentUser?.id}
       />
 
       {/* Модальное окно удаления */}
@@ -406,6 +456,18 @@ const styles = StyleSheet.create({
   },
   savedForwardedContainer: {
     flexDirection: 'row',
+  },
+  heartOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heartEmoji: {
+    fontSize: 48,
   },
 });
 
