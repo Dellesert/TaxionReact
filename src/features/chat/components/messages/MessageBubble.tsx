@@ -9,7 +9,8 @@ import PollMessageCard from './PollMessageCard';
 import TaskMessageCard from './TaskMessageCard';
 import { MessageStatus } from '../common/MessageStatus';
 import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName } from '../../utils/message.utils';
-import { LinkifiedText } from '../common/LinkifiedText';
+import { FormattedText } from '../common/FormattedText';
+import { stripFormatting } from '../../utils/formatting';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import { MessageReactions } from './MessageReactions';
 
@@ -220,7 +221,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
             {replySender?.name || message.reply_to.sender?.name || `User ${message.reply_to.sender_id}`}
           </Text>
           <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={2}>
-            {message.reply_to.content}
+            {stripFormatting(message.reply_to.content)}
           </Text>
         </TouchableOpacity>
       )}
@@ -261,7 +262,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
           <>
             <View style={[styles.messageContent, hasFileAttachments && styles.messageContentWithFiles]}>
               {messageContent && messageContent.length > 0 && (
-                <LinkifiedText
+                <FormattedText
                   text={messageContent}
                   style={[
                     styles.messageText,

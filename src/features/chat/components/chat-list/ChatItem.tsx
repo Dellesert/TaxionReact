@@ -12,6 +12,7 @@ import { getChatDisplayName, getChatDisplayAvatar, getChatDisplayAvatarThumbnail
 import { ActionModal } from '@shared/components/common/ActionModal';
 import { useChatPrefetch } from '@shared/hooks/usePrefetch';
 import { getTypingUserNames, formatTypingText } from '../../utils/chatScreenHelpers';
+import { stripFormatting } from '../../utils/formatting';
 
 interface ChatItemProps {
   chat: Chat;
@@ -174,7 +175,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     }
 
     // Формируем текст сообщения
-    let messageText = message.content || '';
+    let messageText = stripFormatting(message.content || '');
 
     // Если сообщение пустое но есть вложения
     // Проверяем и attachments и любое поле которое может содержать файлы

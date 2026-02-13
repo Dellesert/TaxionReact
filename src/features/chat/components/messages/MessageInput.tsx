@@ -1,15 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Platform,
+  NativeSyntheticEvent,
+  TextInputSelectionChangeEventData,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { FileAttachmentPicker } from '../attachments/FileAttachmentPicker';
 import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
+import { FormattingToolbar, FormatMarker } from './FormattingToolbar';
 
 interface MessageInputProps {
   onSend: (message: string, replyToId?: number) => void;
@@ -41,6 +44,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
   const [inputHeight, setInputHeight] = useState(42); // Начальная высота инпута
+  const [showFormattingToolbar, setShowFormattingToolbar] = useState(false);
+  const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<AutoCorrectedTextInputRef>(null);
 
@@ -124,27 +129,89 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
-  // Обработчик клавиш для веба: Enter - отправка, Ctrl+Enter - новая строка
+  // Отслеживаем выделение текста
+  const handleSelectionChange = useCallback(
+    (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+      selectionRef.current = e.nativeEvent.selection;
+    },
+    []
+  );
+
+  // Применяем форматирование к выделенному тексту или вставляем маркеры на курсор
+  const handleFormat = useCallback(
+    (marker: FormatMarker) => {
+      const { start, end } = selectionRef.current;
+      const before = message.substring(0, start);
+      const selected = message.substring(start, end);
+      const after = message.substring(end);
+
+      const newMessage = before + marker.open + selected + marker.close + after;
+      setMessage(newMessage);
+
+      // Ставим курсор после вставленного текста (или между маркерами если нет выделения)
+      const newCursorPos = start + marker.open.length + selected.length;
+      setTimeout(() => {
+        inputRef.current?.setSelection(newCursorPos, newCursorPos);
+      }, 50);
+    },
+    [message]
+  );
+
+  // Обработчик клавиш для веба: Enter - отправка, Ctrl+Enter - новая строка, форматирование
   const handleKeyPress = (e: any) => {
-    if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter') {
-      // Ctrl+Enter или Cmd+Enter - новая строка
-      if (e.nativeEvent.ctrlKey || e.nativeEvent.metaKey) {
-        e.preventDefault();
-        // Вставляем символ новой строки в текущую позицию курсора
-        const target = e.target as HTMLTextAreaElement;
-        const start = target.selectionStart || 0;
-        const end = target.selectionEnd || 0;
-        const newMessage = message.substring(0, start) + '\n' + message.substring(end);
-        setMessage(newMessage);
-        // Восстанавливаем позицию курсора после новой строки
-        setTimeout(() => {
-          target.selectionStart = target.selectionEnd = start + 1;
-        }, 0);
-        return;
+    if (Platform.OS === 'web') {
+      const { key, ctrlKey, metaKey, shiftKey } = e.nativeEvent;
+      const mod = ctrlKey || metaKey;
+
+      // Шорткаты форматирования
+      if (mod && !shiftKey) {
+        if (key === 'b' || key === 'B') {
+          e.preventDefault();
+          handleFormat({ open: '*', close: '*' });
+          return;
+        }
+        if (key === 'i' || key === 'I') {
+          e.preventDefault();
+          handleFormat({ open: '_', close: '_' });
+          return;
+        }
+        if (key === 'e' || key === 'E') {
+          e.preventDefault();
+          handleFormat({ open: '`', close: '`' });
+          return;
+        }
       }
-      // Enter без модификаторов - отправка сообщения
-      e.preventDefault();
-      handleSend();
+      if (mod && shiftKey) {
+        if (key === 'x' || key === 'X') {
+          e.preventDefault();
+          handleFormat({ open: '~', close: '~' });
+          return;
+        }
+        if (key === 'p' || key === 'P') {
+          e.preventDefault();
+          handleFormat({ open: '||', close: '||' });
+          return;
+        }
+      }
+
+      if (key === 'Enter') {
+        // Ctrl+Enter или Cmd+Enter - новая строка
+        if (mod) {
+          e.preventDefault();
+          const target = e.target as HTMLTextAreaElement;
+          const start = target.selectionStart || 0;
+          const end = target.selectionEnd || 0;
+          const newMessage = message.substring(0, start) + '\n' + message.substring(end);
+          setMessage(newMessage);
+          setTimeout(() => {
+            target.selectionStart = target.selectionEnd = start + 1;
+          }, 0);
+          return;
+        }
+        // Enter без модификаторов - отправка сообщения
+        e.preventDefault();
+        handleSend();
+      }
     }
   };
 
@@ -228,6 +295,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         </View>
       )}
 
+      {/* Тулбар форматирования */}
+      {showFormattingToolbar && (
+        <FormattingToolbar onFormat={handleFormat} />
+      )}
+
       <View style={[styles.container, dynamicStyles.container]}>
         {onFilesSelected && !editingMessage && (
           <FileAttachmentPicker
@@ -241,6 +313,19 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </TouchableOpacity>
         )}
 
+        {/* Кнопка тоглера форматирования */}
+        <TouchableOpacity
+          style={[styles.formatToggle, { backgroundColor: showFormattingToolbar ? theme.primary + '20' : 'transparent' }]}
+          onPress={() => setShowFormattingToolbar(prev => !prev)}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="text-outline"
+            size={20}
+            color={showFormattingToolbar ? theme.primary : theme.textTertiary}
+          />
+        </TouchableOpacity>
+
         <AutoCorrectedTextInput
           ref={inputRef}
           style={[
@@ -253,6 +338,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           value={message}
           onChangeText={handleChangeText}
           onContentSizeChange={handleContentSizeChange}
+          onSelectionChange={handleSelectionChange}
           multiline
           maxLength={4000}
           editable={!disabled}
@@ -303,6 +389,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  formatToggle: {
+    width: 32,
+    height: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    flexShrink: 0,
   },
   input: {
     flex: 1,

@@ -11,6 +11,8 @@ export interface AutoCorrectedTextInputRef {
    * На Android просто возвращает текущее значение.
    */
   commitAutocorrection: () => void;
+  /** Устанавливает позицию курсора / выделение */
+  setSelection: (start: number, end: number) => void;
 }
 
 interface AutoCorrectedTextInputProps extends TextInputProps {
@@ -58,13 +60,21 @@ export const AutoCorrectedTextInput = forwardRef<AutoCorrectedTextInputRef, Auto
       }
     }, []);
 
+    const setSelection = useCallback((start: number, end: number) => {
+      const input = inputRef.current as any;
+      if (input?.setNativeProps) {
+        input.setNativeProps({ selection: { start, end } });
+      }
+    }, []);
+
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
       blur: () => inputRef.current?.blur(),
       clear: () => inputRef.current?.clear(),
       isFocused: () => inputRef.current?.isFocused() ?? false,
       commitAutocorrection,
-    }), [commitAutocorrection]);
+      setSelection,
+    }), [commitAutocorrection, setSelection]);
 
     return (
       <TextInput
