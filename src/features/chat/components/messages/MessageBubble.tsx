@@ -378,8 +378,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginTop: 4,
-    gap: 8,
+    marginTop: 12,
+    gap: 14,
   },
   footerRight: {
     flexDirection: 'row',
