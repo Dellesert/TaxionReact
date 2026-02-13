@@ -1,6 +1,6 @@
 /**
  * UserSelectorModal
- * Универсальный компонент для выбора пользователей с группировкой по подразделениям
+ * Универсальный компонент для выбора пользователей с группировкой по подразделениям или группам
  * Используется в чатах, задачах и опросах
  */
 
@@ -19,8 +19,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { User } from '@/types/user.types';
+import { User, UserGroupWithMembers } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
+import { getUserGroups } from '@api/user-group.api';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useDebounce } from '@shared/hooks/useDebounce';
@@ -29,6 +30,8 @@ import Avatar from '@shared/components/common/Avatar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 const isDesktop = isWeb && SCREEN_WIDTH >= 768;
+
+type ViewMode = 'departments' | 'groups';
 
 interface UserSelectorModalProps {
   visible: boolean;
@@ -42,6 +45,7 @@ interface UserSelectorModalProps {
   onDone?: () => void; // Callback when Done button is pressed
   filterForTaskAssignment?: boolean; // Фильтр для назначения задач (только свой отдел + руководители других)
   includeCurrentUser?: boolean; // Включить текущего пользователя в список (для графиков)
+  showGroupView?: boolean; // Показывать переключатель "По отделениям / По группам" (default: true)
 }
 
 const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
@@ -56,12 +60,16 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   onDone,
   filterForTaskAssignment = false,
   includeCurrentUser = false,
+  showGroupView = true,
 }) => {
   const { theme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('departments');
+  const [userGroups, setUserGroups] = useState<UserGroupWithMembers[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
 
   // Debounce search query for backend search (300ms delay)
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -115,7 +123,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       // Backend now handles all filtering, sorting, and search
       setUsers(filteredUsers);
     } catch (error) {
-      console.error('❌ Failed to load users:', error);
+      console.error('Failed to load users:', error);
     } finally {
       if (isInitialLoad) {
         setIsLoading(false);
@@ -123,15 +131,34 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     }
   }, [filterForTaskAssignment, excludeUserIds]);
 
+  // Load user groups
+  const loadGroups = React.useCallback(async () => {
+    try {
+      setIsLoadingGroups(true);
+      const groups = await getUserGroups(true) as UserGroupWithMembers[];
+      setUserGroups(groups);
+    } catch (error) {
+      console.error('Failed to load user groups:', error);
+    } finally {
+      setIsLoadingGroups(false);
+    }
+  }, []);
+
   // Load users when modal opens (initial load)
   const isFirstLoad = React.useRef(true);
   useEffect(() => {
     if (visible) {
       if (isFirstLoad.current) {
         loadUsers(undefined, true);
+        if (showGroupView) {
+          loadGroups();
+        }
         isFirstLoad.current = false;
       } else {
         loadUsers(undefined, false);
+        if (showGroupView) {
+          loadGroups();
+        }
       }
     }
   }, [visible]);
@@ -171,7 +198,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   }, [users, searchQuery]);
 
   // Группируем пользователей по подразделениям (preserving backend order)
-  const userSections = useMemo(() => {
+  const departmentSections = useMemo(() => {
     // Group users by department while preserving backend order
     const departmentMap = new Map<string, User[]>();
     const noDepartmentUsers: User[] = [];
@@ -215,6 +242,66 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
 
     return sections;
   }, [filteredUsers]);
+
+  // Группируем пользователей по группам
+  const groupSections = useMemo(() => {
+    if (!userGroups || userGroups.length === 0) {
+      // No groups — show all users in one "Без группы" section
+      if (filteredUsers.length > 0) {
+        return [{
+          title: 'Без группы',
+          data: filteredUsers,
+          departmentId: null as number | null,
+        }];
+      }
+      return [];
+    }
+
+    const searchQuery_ = searchQuery.toLowerCase().trim();
+    const userIdsInGroups = new Set<number>();
+    const sections: Array<{ title: string; data: User[]; departmentId: number | null }> = [];
+
+    userGroups.forEach((group) => {
+      if (!group.members || group.members.length === 0) return;
+
+      // Filter members by search query and excludeUserIds
+      let members = group.members.filter((m) => !excludeUserIds.includes(m.id));
+
+      if (searchQuery_) {
+        members = members.filter((user) => {
+          const name = user.name?.toLowerCase() || '';
+          const email = user.email?.toLowerCase() || '';
+          const position = user.position?.toLowerCase() || '';
+          return name.includes(searchQuery_) || email.includes(searchQuery_) || position.includes(searchQuery_);
+        });
+      }
+
+      if (members.length === 0) return;
+
+      members.forEach((m) => userIdsInGroups.add(m.id));
+
+      sections.push({
+        title: group.name,
+        data: members,
+        departmentId: null,
+      });
+    });
+
+    // Add ungrouped users
+    const ungroupedUsers = filteredUsers.filter((u) => !userIdsInGroups.has(u.id));
+    if (ungroupedUsers.length > 0) {
+      sections.push({
+        title: 'Без группы',
+        data: ungroupedUsers,
+        departmentId: null,
+      });
+    }
+
+    return sections;
+  }, [userGroups, filteredUsers, searchQuery, excludeUserIds]);
+
+  // Select the active sections based on view mode
+  const userSections = viewMode === 'groups' ? groupSections : departmentSections;
 
   const toggleUserSelection = (userId: number) => {
     if (multiSelect) {
@@ -299,7 +386,10 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     }, 100);
   }, []);
 
-  const keyExtractor = React.useCallback((item: User) => item.id.toString(), []);
+  const keyExtractor = React.useCallback((item: User, index: number) => {
+    // Use index as part of key since user can appear in multiple group sections
+    return `${item.id}-${index}`;
+  }, []);
 
   const renderUserItem = React.useCallback(({ item }: { item: User }) => {
     const isSelected = selectedUserIds.includes(item.id);
@@ -440,6 +530,45 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       marginLeft: 8,
       fontSize: 16,
       color: theme.text,
+    },
+    // Segmented control styles
+    segmentedControl: {
+      flexDirection: 'row',
+      marginHorizontal: 16,
+      marginVertical: 8,
+      borderRadius: 8,
+      backgroundColor: theme.backgroundSecondary,
+      padding: 2,
+    },
+    segmentButton: {
+      flex: 1,
+      paddingVertical: 8,
+      alignItems: 'center',
+      borderRadius: 6,
+    },
+    segmentButtonActive: {
+      backgroundColor: theme.background,
+      ...Platform.select({
+        web: {
+          boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.1)',
+        },
+        default: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.1,
+          shadowRadius: 3,
+          elevation: 2,
+        },
+      }),
+    },
+    segmentButtonText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.textSecondary,
+    },
+    segmentButtonTextActive: {
+      color: theme.text,
+      fontWeight: '600',
     },
     listContent: {
       paddingVertical: 8,
@@ -614,8 +743,30 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         )}
       </View>
 
+      {/* View Mode Toggle */}
+      {showGroupView && userGroups.length > 0 && (
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[styles.segmentButton, viewMode === 'departments' && styles.segmentButtonActive]}
+            onPress={() => setViewMode('departments')}
+          >
+            <Text style={[styles.segmentButtonText, viewMode === 'departments' && styles.segmentButtonTextActive]}>
+              По отделениям
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentButton, viewMode === 'groups' && styles.segmentButtonActive]}
+            onPress={() => setViewMode('groups')}
+          >
+            <Text style={[styles.segmentButtonText, viewMode === 'groups' && styles.segmentButtonTextActive]}>
+              По группам
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Users List */}
-      {isLoading ? (
+      {isLoading || (viewMode === 'groups' && isLoadingGroups) ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>Загрузка пользователей...</Text>
@@ -644,10 +795,10 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
             }
 
             // Multi-select mode - clickable headers with checkboxes
-            const departmentUserIds = section.data.map(u => u.id);
-            const selectedCount = departmentUserIds.filter(id => selectedUserIds.includes(id)).length;
-            const allSelected = selectedCount === departmentUserIds.length;
-            const someSelected = selectedCount > 0 && selectedCount < departmentUserIds.length;
+            const sectionUserIds = section.data.map(u => u.id);
+            const selectedCount = sectionUserIds.filter(id => selectedUserIds.includes(id)).length;
+            const allSelected = selectedCount === sectionUserIds.length;
+            const someSelected = selectedCount > 0 && selectedCount < sectionUserIds.length;
 
             return (
               <TouchableOpacity

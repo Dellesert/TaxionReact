@@ -102,6 +102,10 @@ export type AdminStackParamList = {
   EditUser: {
     userId: number;
   };
+  UserGroups: undefined;
+  EditUserGroup: {
+    groupId: number;
+  };
   MetricsAnalytics: undefined;
   PerformanceAnalytics: undefined;
   DepartmentsAnalytics: undefined;

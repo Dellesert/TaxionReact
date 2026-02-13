@@ -239,6 +239,16 @@ export const API_ENDPOINTS = {
     VALIDATE: '/devices/validate',
     STATS: '/devices/stats',
   },
+
+  // User Groups
+  USER_GROUP: {
+    LIST: '/user-groups',
+    BY_ID: (id: number) => `/user-groups/${id}`,
+    CREATE: '/user-groups',
+    UPDATE: (id: number) => `/user-groups/${id}`,
+    DELETE: (id: number) => `/user-groups/${id}`,
+    MEMBERS: (id: number) => `/user-groups/${id}/members`,
+  },
 } as const;
 
 // HTTP Status Codes

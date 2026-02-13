@@ -13,6 +13,7 @@ import { AdminContentArea } from '../components/common/AdminContentArea';
 import AnalyticsDesktopContent from '../components/desktop-content/AnalyticsDesktopContent';
 import DepartmentsDesktopContent from '../components/desktop-content/DepartmentsDesktopContent';
 import UsersDesktopContent from '../components/desktop-content/UsersDesktopContent';
+import UserGroupsDesktopContent from '../components/desktop-content/UserGroupsDesktopContent';
 
 export const AdminSplitView: React.FC = () => {
   const { theme } = useTheme();
@@ -39,6 +40,9 @@ export const AdminSplitView: React.FC = () => {
 
       case 'users':
         return <UsersDesktopContent />;
+
+      case 'user-groups':
+        return <UserGroupsDesktopContent />;
 
       default:
         return (

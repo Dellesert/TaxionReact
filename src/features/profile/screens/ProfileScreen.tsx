@@ -259,6 +259,25 @@ const ProfileScreen: React.FC = () => {
                 iconColor="#e99444ff"
                 text="Управление пользователями"
                 onPress={() => navigation.navigate('Users')}
+              />
+              <ProfileMenuItem
+                icon="people-circle-outline"
+                iconColor="#10B981"
+                text="Управление группами"
+                onPress={() => navigation.navigate('UserGroups')}
+                isLast
+              />
+            </ProfileMenuSection>
+          )}
+
+          {/* User Groups - for department_head (admins have it in admin section above) */}
+          {!isAdmin(user) && user?.role === 'department_head' && (
+            <ProfileMenuSection title="УПРАВЛЕНИЕ">
+              <ProfileMenuItem
+                icon="people-circle-outline"
+                iconColor="#10B981"
+                text="Управление группами"
+                onPress={() => navigation.navigate('UserGroups')}
                 isLast
               />
             </ProfileMenuSection>

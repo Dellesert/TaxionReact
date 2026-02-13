@@ -7,6 +7,8 @@ import AdminSplitView from '@/features/admin/screens/AdminSplitView';
 import DepartmentsScreen from '@/features/admin/screens/DepartmentsScreen';
 import EditDepartmentScreen from '@/features/admin/screens/EditDepartmentScreen';
 import UsersScreen from '@/features/admin/screens/UsersScreen';
+import UserGroupsScreen from '@/features/admin/screens/UserGroupsScreen';
+import EditUserGroupScreen from '@/features/admin/screens/EditUserGroupScreen';
 import MetricsAnalyticsScreen from '@/features/admin/screens/MetricsAnalyticsScreen';
 import MetricsDesktopContent from '@/features/admin/components/desktop-content/MetricsDesktopContent';
 import PerformanceAnalyticsScreen from '@/features/admin/screens/PerformanceAnalyticsScreen';
@@ -49,6 +51,8 @@ const AdminNavigator: React.FC = () => {
       <Stack.Screen name="Departments" component={DepartmentsScreen} />
       <Stack.Screen name="EditDepartment" component={EditDepartmentScreen} />
       <Stack.Screen name="Users" component={UsersScreen} />
+      <Stack.Screen name="UserGroups" component={UserGroupsScreen} />
+      <Stack.Screen name="EditUserGroup" component={EditUserGroupScreen} />
       <Stack.Screen name="MetricsAnalytics" component={MetricsAnalyticsWrapper} />
       <Stack.Screen name="PerformanceAnalytics" component={PerformanceAnalyticsScreen} />
       <Stack.Screen name="DepartmentsAnalytics" component={DepartmentsAnalyticsScreen} />

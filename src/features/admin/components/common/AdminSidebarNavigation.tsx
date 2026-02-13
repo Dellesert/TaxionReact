@@ -8,7 +8,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
-export type AdminSection = 'analytics' | 'departments' | 'users';
+export type AdminSection = 'analytics' | 'departments' | 'users' | 'user-groups';
 
 interface SidebarItem {
   id: AdminSection;
@@ -44,6 +44,13 @@ const ADMIN_SECTIONS: SidebarItem[] = [
     icon: 'people-outline',
     iconColor: '#e99444ff',
     description: 'Управление пользователями системы',
+  },
+  {
+    id: 'user-groups',
+    label: 'Группы',
+    icon: 'people-circle-outline',
+    iconColor: '#10B981',
+    description: 'Управление группами пользователей',
   },
 ];
 

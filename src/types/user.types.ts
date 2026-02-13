@@ -284,3 +284,34 @@ export interface PasskeyListResponse {
 export interface UpdatePasskeyDto {
   name: string;  // Backend expects 'name', not 'device_name'
 }
+
+// ============= User Groups =============
+
+export interface UserGroup {
+  id: number;
+  name: string;
+  description?: string;
+  creator_id: number;
+  member_count: number;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+export interface UserGroupWithMembers extends UserGroup {
+  members: User[];
+}
+
+export interface CreateUserGroupDto {
+  name: string;
+  description?: string;
+  user_ids?: number[];
+}
+
+export interface UpdateUserGroupDto {
+  name?: string;
+  description?: string;
+}
+
+export interface UpdateUserGroupMembersDto {
+  user_ids: number[];
+}

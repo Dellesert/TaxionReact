@@ -26,8 +26,20 @@ import ScheduleNavigator from '@features/schedules/navigation/ScheduleNavigator'
 import AbsenceNavigator from '@features/absences/navigation/AbsenceNavigator';
 import { AnimatedTabBar } from '@shared/components/navigation/AnimatedTabBar';
 import { SideNavBar } from '@shared/components/navigation/SideNavBar';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import UserGroupsScreen from '@/features/admin/screens/UserGroupsScreen';
+import EditUserGroupScreen from '@/features/admin/screens/EditUserGroupScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+
+// Standalone navigator for UserGroups (accessible to department_head)
+const UserGroupStack = createNativeStackNavigator();
+const UserGroupNavigator: React.FC = () => (
+  <UserGroupStack.Navigator screenOptions={{ headerShown: false }}>
+    <UserGroupStack.Screen name="UserGroupsList" component={UserGroupsScreen} />
+    <UserGroupStack.Screen name="EditUserGroup" component={EditUserGroupScreen} />
+  </UserGroupStack.Navigator>
+);
 
 const MainNavigatorContent: React.FC = () => {
   const { theme } = useTheme();
@@ -61,6 +73,8 @@ const MainNavigatorContent: React.FC = () => {
           return <AbsenceNavigator />;
         case 'Notifications':
           return <NotificationNavigator />;
+        case 'UserGroups':
+          return <UserGroupNavigator />;
         case 'Admin':
           return <AdminNavigator />;
         case 'Profile':
