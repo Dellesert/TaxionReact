@@ -6,6 +6,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useEventPrefetch } from '@shared/hooks/useEventPrefetch';
+import { FormattedText } from '@features/chat/components/common/FormattedText';
 
 interface EventItemProps {
   event: Event;
@@ -91,11 +92,13 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
 
         {/* Description - limited to 100 characters */}
         {event.description && (
-          <Text style={[styles.description, { color: theme.textSecondary }]} numberOfLines={2}>
-            {event.description.length > 100
+          <FormattedText
+            text={event.description.length > 100
               ? `${event.description.substring(0, 100)}...`
               : event.description}
-          </Text>
+            style={[styles.description, { color: theme.textSecondary }]}
+            numberOfLines={2}
+          />
         )}
 
         {/* Metadata section - single row with creator avatar */}

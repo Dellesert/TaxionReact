@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { FormattedText } from '@features/chat/components/common/FormattedText';
 import { useAuthStore } from '@shared/store/authStore';
 import { Event, EventParticipantStatus } from '../types/calendar.types';
 import * as calendarApi from '../api/calendar.api';
@@ -678,7 +679,7 @@ const EventDetailScreen: React.FC = () => {
             {event.description && (
               <View style={[styles.section, { borderBottomColor: theme.border }]}>
                 <Text style={[styles.sectionTitleAlt, { color: theme.textSecondary }]}>Описание</Text>
-                <Text style={[styles.descriptionText, { color: theme.text }]}>{event.description}</Text>
+                <FormattedText text={event.description} style={[styles.descriptionText, { color: theme.text }]} />
               </View>
             )}
 

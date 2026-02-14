@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { FormattedText } from '@features/chat/components/common/FormattedText';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useAuthStore } from '@shared/store/authStore';
 import { Event, EventParticipantStatus } from '../../types/calendar.types';
@@ -532,7 +533,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           {displayEvent.description && (
             <View style={[styles.section, { borderBottomColor: theme.border }]}>
               <Text style={[styles.sectionTitleAlt, { color: theme.textSecondary }]}>Описание</Text>
-              <Text style={[styles.descriptionText, { color: theme.text }]}>{displayEvent.description}</Text>
+              <FormattedText text={displayEvent.description} style={[styles.descriptionText, { color: theme.text }]} />
             </View>
           )}
 

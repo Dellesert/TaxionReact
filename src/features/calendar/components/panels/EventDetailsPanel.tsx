@@ -11,6 +11,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useAuthStore } from '@shared/store/authStore';
+import { FormattedText } from '@features/chat/components/common/FormattedText';
 import { Event, EventParticipantStatus } from '../../types/calendar.types';
 import * as calendarApi from '../../api/calendar.api';
 import { format } from 'date-fns';
@@ -519,7 +520,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         {event.description && (
           <View style={[styles.section, { borderBottomColor: theme.border }]}>
             <Text style={[styles.sectionTitleAlt, { color: theme.textSecondary }]}>Описание</Text>
-            <Text style={[styles.descriptionText, { color: theme.text }]}>{event.description}</Text>
+            <FormattedText text={event.description} style={[styles.descriptionText, { color: theme.text }]} />
           </View>
         )}
 
