@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dellesert.tachyon-messenger",
-      "buildNumber": "20",
+      "buildNumber": "21",
       "associatedDomains": ["webcredentials:taxion.fusioninsight.cloud"],
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
@@ -71,6 +71,7 @@
       "@react-native-firebase/messaging",
       "./plugins/withPodfileModifications.js",
       "./plugins/withPushNotificationDelegates.js",
+      "./plugins/withExportOptions.js",
       [
         "expo-image-picker",
         {
@@ -90,6 +91,10 @@
       "expo-secure-store",
       "expo-web-browser",
       [
+        "./plugins/withShareExtensionDisplayName.js",
+        { "displayName": "Отправить в Тахион" }
+      ],
+      [
         "expo-share-intent",
         {
           "iosActivationRules": {
@@ -100,7 +105,6 @@
             "NSExtensionActivationSupportsMovieWithMaxCount": 3,
             "NSExtensionActivationSupportsFileWithMaxCount": 5
           },
-          "iosShareExtensionName": "Отправить в Тахион",
           "androidIntentFilters": ["text/*", "image/*", "video/*", "*/*"],
           "androidMultiIntentFilters": ["image/*", "video/*", "*/*"]
         }
