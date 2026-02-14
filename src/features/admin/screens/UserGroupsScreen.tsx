@@ -15,8 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { useActionModal } from '@shared/contexts/ActionModalContext';
-import { getUserGroups, createUserGroup, deleteUserGroup } from '@api/user-group.api';
+import { getUserGroups, createUserGroup } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
 
 const UserGroupsScreen: React.FC = () => {
@@ -24,7 +23,6 @@ const UserGroupsScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const { showError, showSuccess } = useNotification();
-  const { showConfirm } = useActionModal();
   const [groups, setGroups] = useState<UserGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,43 +86,6 @@ const UserGroupsScreen: React.FC = () => {
       showError('Не удалось создать группу');
     } finally {
       setIsCreating(false);
-    }
-  };
-
-  const canManageGroup = (group: UserGroup) => {
-    if (user?.role === 'admin' || user?.role === 'super_admin') return true;
-    return group.creator_id === user?.id;
-  };
-
-  const handleDeleteGroup = async (group: UserGroup) => {
-    if (!canManageGroup(group)) {
-      showError('Вы можете удалять только свои группы');
-      return;
-    }
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(`Вы уверены, что хотите удалить группу "${group.name}"?`);
-      if (!confirmed) return;
-    } else {
-      const confirmed = await new Promise<boolean>((resolve) => {
-        showConfirm(
-          'Удаление группы',
-          `Вы уверены, что хотите удалить группу "${group.name}"?`,
-          () => resolve(true),
-          () => resolve(false),
-          { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
-        );
-      });
-      if (!confirmed) return;
-    }
-
-    try {
-      await deleteUserGroup(group.id);
-      showSuccess('Группа удалена');
-      loadGroups();
-    } catch (error: any) {
-      console.error('Failed to delete group:', error);
-      showError('Не удалось удалить группу');
     }
   };
 
@@ -305,48 +266,22 @@ const UserGroupsScreen: React.FC = () => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.groupHeader}>
-                    <View style={styles.groupInfo}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <Ionicons name="people-circle" size={20} color="#10B981" />
-                        <Text style={dynamicStyles.groupName}>
-                          {group.name}
-                        </Text>
-                      </View>
-                      {group.description ? (
-                        <Text style={dynamicStyles.groupDescription} numberOfLines={2}>
-                          {group.description}
-                        </Text>
-                      ) : null}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="people" size={16} color={theme.textSecondary} />
-                        <Text style={dynamicStyles.groupMembers}>
-                          {group.member_count || 0} участников
-                        </Text>
-                      </View>
-                    </View>
-                    {canManageGroup(group) && (
-                      <View style={{ gap: 8 }}>
-                        <TouchableOpacity
-                          style={[styles.actionButton, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            (navigation as any).navigate('EditUserGroup', { groupId: group.id });
-                          }}
-                        >
-                          <Ionicons name="create-outline" size={20} color={theme.primary} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.actionButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteGroup(group);
-                          }}
-                        >
-                          <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Ionicons name="people-circle" size={20} color="#10B981" />
+                    <Text style={dynamicStyles.groupName}>
+                      {group.name}
+                    </Text>
+                  </View>
+                  {group.description ? (
+                    <Text style={dynamicStyles.groupDescription} numberOfLines={2}>
+                      {group.description}
+                    </Text>
+                  ) : null}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="people" size={16} color={theme.textSecondary} />
+                    <Text style={dynamicStyles.groupMembers}>
+                      {group.member_count || 0} участников
+                    </Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -397,22 +332,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 16,
-  },
-  groupHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  groupInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   modalOverlay: {
     position: 'absolute',
