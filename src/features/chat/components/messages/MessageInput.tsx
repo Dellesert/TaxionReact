@@ -17,6 +17,7 @@ import { FormattingToolbar, FormatMarker } from './FormattingToolbar';
 import {
   parseFormatting,
   preProcessEscapes,
+  postProcessEscapes,
   FormattingNode,
   FormatType,
 } from '../../utils/formatting';
@@ -43,6 +44,79 @@ function getInputFormatStyle(formatType: FormatType): TextStyle {
       return {};
   }
 }
+
+// ─── Metadata-based formatting helpers ──────────────────────────────────────
+
+interface FormatRange {
+  start: number;
+  end: number;
+  type: FormatType;
+}
+
+function markerToFormatType(marker: FormatMarker): FormatType {
+  if (marker.open === '*') return 'bold';
+  if (marker.open === '_') return 'italic';
+  if (marker.open === '~') return 'strikethrough';
+  if (marker.open === '`') return 'code';
+  if (marker.open === '||') return 'spoiler';
+  return 'bold';
+}
+
+/** Разбирает текст с маркерами (напр. `*hello*`) в чистый текст + диапазоны */
+function parseMarkedText(markedText: string): { text: string; ranges: FormatRange[] } {
+  const tree = parseFormatting(preProcessEscapes(markedText));
+  const ranges: FormatRange[] = [];
+  let plainText = '';
+
+  function walk(nodes: FormattingNode[]) {
+    for (const node of nodes) {
+      if (node.type === 'text') {
+        plainText += postProcessEscapes(node.text);
+      } else {
+        const start = plainText.length;
+        walk(node.children);
+        const end = plainText.length;
+        if (end > start) {
+          ranges.push({ start, end, type: node.formatType });
+        }
+      }
+    }
+  }
+
+  walk(tree);
+  return { text: plainText, ranges };
+}
+
+/** Собирает чистый текст + диапазоны обратно в текст с маркерами для отправки */
+function buildMarkedText(text: string, ranges: FormatRange[]): string {
+  if (!ranges.length) return text;
+
+  const events: { pos: number; marker: string; isClose: boolean; rangeLen: number }[] = [];
+  for (const range of ranges) {
+    const markers = FORMAT_MARKERS[range.type];
+    events.push({ pos: range.start, marker: markers.open, isClose: false, rangeLen: range.end - range.start });
+    events.push({ pos: range.end, marker: markers.close, isClose: true, rangeLen: range.end - range.start });
+  }
+
+  // Сортировка: по позиции, закрывающие перед открывающими, внутренние перед внешними
+  events.sort((a, b) => {
+    if (a.pos !== b.pos) return a.pos - b.pos;
+    if (a.isClose !== b.isClose) return a.isClose ? -1 : 1;
+    if (a.isClose) return a.rangeLen - b.rangeLen;
+    return b.rangeLen - a.rangeLen;
+  });
+
+  // Вставляем маркеры с конца чтобы не сбивать позиции
+  let result = text;
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i];
+    result = result.substring(0, ev.pos) + ev.marker + result.substring(ev.pos);
+  }
+
+  return result;
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────
 
 interface MessageInputProps {
   onSend: (message: string, replyToId?: number) => void;
@@ -73,61 +147,127 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 }) => {
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
-  const [inputHeight, setInputHeight] = useState(42); // Начальная высота инпута
+  const [inputHeight, setInputHeight] = useState(42);
   const [hasSelection, setHasSelection] = useState(false);
   const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<AutoCorrectedTextInputRef>(null);
 
-  // Парсим форматирование для overlay
-  const formattingTree = useMemo(() => {
-    if (!message) return null;
-    return parseFormatting(preProcessEscapes(message));
-  }, [message]);
+  // Форматирование хранится отдельно от текста (без маркеров в строке)
+  const [formatRanges, setFormatRanges] = useState<FormatRange[]>([]);
+  const formatRangesRef = useRef<FormatRange[]>([]);
+  useEffect(() => { formatRangesRef.current = formatRanges; }, [formatRanges]);
 
-  const hasFormatting = useMemo(() => {
-    if (!formattingTree) return false;
-    return formattingTree.some(node => node.type === 'formatted');
-  }, [formattingTree]);
+  const hasFormatting = formatRanges.length > 0;
 
-  // Рендер ноды для overlay (маркеры прозрачные, текст стилизован)
-  const renderOverlayNode = (node: FormattingNode, key: string): React.ReactNode => {
-    if (node.type === 'text') {
-      return <Text key={key}>{node.text}</Text>;
+  // Overlay: разбиваем текст на сегменты по границам форматирования
+  const formattedOverlay = useMemo(() => {
+    if (!formatRanges.length || !message) return null;
+
+    const points = new Set<number>();
+    points.add(0);
+    points.add(message.length);
+    for (const range of formatRanges) {
+      points.add(Math.max(0, range.start));
+      points.add(Math.min(message.length, range.end));
     }
-    const markers = FORMAT_MARKERS[node.formatType];
-    const formatStyle = getInputFormatStyle(node.formatType);
-    return (
-      <React.Fragment key={key}>
-        <Text style={{ color: 'transparent' }}>{markers.open}</Text>
-        <Text style={formatStyle}>
-          {node.children.map((child, i) => renderOverlayNode(child, `${key}-${i}`))}
-        </Text>
-        <Text style={{ color: 'transparent' }}>{markers.close}</Text>
-      </React.Fragment>
-    );
-  };
+    const sorted = [...points].sort((a, b) => a - b);
 
-  // При установке editingMessage заполняем поле ввода
+    const elements: React.ReactNode[] = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const segStart = sorted[i];
+      const segEnd = sorted[i + 1];
+      if (segStart >= segEnd) continue;
+
+      const segText = message.substring(segStart, segEnd);
+      const activeFormats: FormatType[] = [];
+      for (const range of formatRanges) {
+        if (range.start <= segStart && range.end >= segEnd) {
+          activeFormats.push(range.type);
+        }
+      }
+
+      if (activeFormats.length === 0) {
+        elements.push(<Text key={`s-${i}`}>{segText}</Text>);
+      } else {
+        const style: TextStyle = {};
+        for (const fmt of activeFormats) {
+          Object.assign(style, getInputFormatStyle(fmt));
+        }
+        elements.push(<Text key={`s-${i}`} style={style}>{segText}</Text>);
+      }
+    }
+
+    return elements;
+  }, [message, formatRanges]);
+
+  // При установке editingMessage заполняем поле ввода и разбираем форматирование
   useEffect(() => {
     if (editingMessage) {
-      setMessage(editingMessage.content || '');
+      const content = editingMessage.content || '';
+      const { text, ranges } = parseMarkedText(content);
+      setMessage(text);
+      setFormatRanges(ranges);
     }
   }, [editingMessage]);
 
-  const handleChangeText = (text: string) => {
-    setMessage(text);
+  const handleChangeText = (newText: string) => {
+    // Корректируем диапазоны форматирования при изменении текста
+    if (formatRanges.length > 0) {
+      const oldText = message;
+      let prefixLen = 0;
+      const minLen = Math.min(oldText.length, newText.length);
+      while (prefixLen < minLen && oldText[prefixLen] === newText[prefixLen]) {
+        prefixLen++;
+      }
+      let suffixLen = 0;
+      while (
+        suffixLen < minLen - prefixLen &&
+        oldText[oldText.length - 1 - suffixLen] === newText[newText.length - 1 - suffixLen]
+      ) {
+        suffixLen++;
+      }
+      const changeStart = prefixLen;
+      const oldChangeEnd = oldText.length - suffixLen;
+      const newChangeEnd = newText.length - suffixLen;
+      const delta = newChangeEnd - oldChangeEnd;
+
+      setFormatRanges(prev =>
+        prev
+          .map(range => {
+            // Диапазон целиком до изменения
+            if (range.end <= changeStart) return range;
+            // Диапазон целиком после изменения
+            if (range.start >= oldChangeEnd) {
+              return { ...range, start: range.start + delta, end: range.end + delta };
+            }
+            // Изменение внутри диапазона (или совпадает по границам)
+            if (range.start <= changeStart && range.end >= oldChangeEnd) {
+              return { ...range, end: range.end + delta };
+            }
+            // Диапазон строго внутри изменения — удаляем
+            if (range.start >= changeStart && range.end <= oldChangeEnd) {
+              return null;
+            }
+            // Частичное перекрытие: диапазон начинается до, заканчивается в изменении
+            if (range.start < changeStart) {
+              return { ...range, end: changeStart };
+            }
+            // Частичное перекрытие: диапазон начинается в изменении, заканчивается после
+            return { ...range, start: newChangeEnd, end: range.end + delta };
+          })
+          .filter((r): r is FormatRange => r !== null && r.start < r.end)
+      );
+    }
+
+    setMessage(newText);
 
     // Send typing indicator
     if (onTyping) {
       onTyping(true);
-
-      // Clear existing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-
-      // Stop typing after 2 seconds of inactivity
       typingTimeoutRef.current = setTimeout(() => {
         onTyping(false);
       }, 2000);
@@ -153,13 +293,19 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             onTyping(false);
           }
 
+          // Собираем текст с маркерами для отправки
+          const ranges = formatRangesRef.current;
+          const markedText = ranges.length > 0
+            ? buildMarkedText(currentMessage, ranges).trim()
+            : currentMessage.trim();
+
           // Если редактируем, добавим префикс с ID сообщения
           if (editingMessage) {
-            onSend(`EDIT:${editingMessage.id}:${currentMessage.trim()}`);
+            onSend(`EDIT:${editingMessage.id}:${markedText}`);
             if (onCancelEdit) onCancelEdit();
           } else {
             // Отправляем сообщение с reply_to_id если отвечаем
-            onSend(currentMessage.trim(), replyingToMessage?.id);
+            onSend(markedText, replyingToMessage?.id);
             if (onCancelReply) onCancelReply();
           }
 
@@ -167,11 +313,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         }
         return currentMessage;
       });
+      setFormatRanges([]);
     }, 10);
   };
 
   const handleCancelEdit = () => {
     setMessage('');
+    setFormatRanges([]);
     if (onCancelEdit) onCancelEdit();
   };
 
@@ -199,36 +347,25 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     []
   );
 
-  // Применяем форматирование к выделенному тексту или вставляем маркеры на курсор
+  // Применяем форматирование к выделенному тексту (добавляем диапазон)
   const handleFormat = useCallback(
     (marker: FormatMarker) => {
-      let { start, end } = selectionRef.current;
+      const { start, end } = selectionRef.current;
+      if (start === end) return;
 
-      // Сдвигаем границы выделения, чтобы не захватывать невидимые маркеры
-      // форматирования и пробелы между маркерами и текстом (при тапе на мобильных
-      // устройствах выделение часто «цепляет» соседние прозрачные символы-маркеры)
-      if (start !== end) {
-        const markerChars = new Set(['*', '_', '~', '`', '|']);
-        while (start < end && markerChars.has(message[start])) start++;
-        while (end > start && markerChars.has(message[end - 1])) end--;
-        while (start < end && message[start] === ' ') start++;
-        while (end > start && message[end - 1] === ' ') end--;
-      }
-
-      const before = message.substring(0, start);
-      const selected = message.substring(start, end);
-      const after = message.substring(end);
-
-      const newMessage = before + marker.open + selected + marker.close + after;
-      setMessage(newMessage);
-
-      // Ставим курсор после вставленного текста (или между маркерами если нет выделения)
-      const newCursorPos = start + marker.open.length + selected.length;
-      setTimeout(() => {
-        inputRef.current?.setSelection(newCursorPos, newCursorPos);
-      }, 50);
+      const type = markerToFormatType(marker);
+      setFormatRanges(prev => {
+        // Если точно такой же диапазон с тем же типом уже есть — снимаем (toggle)
+        const existing = prev.findIndex(
+          r => r.type === type && r.start === start && r.end === end
+        );
+        if (existing >= 0) {
+          return prev.filter((_, i) => i !== existing);
+        }
+        return [...prev, { start, end, type }];
+      });
     },
-    [message]
+    []
   );
 
   // Обработчик клавиш для веба: Enter - отправка, Ctrl+Enter - новая строка, форматирование
@@ -419,10 +556,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             inputAccessoryViewID={inputAccessoryViewID}
             selectionColor={theme.primary}
           />
-          {hasFormatting && formattingTree && (
+          {hasFormatting && formattedOverlay && (
             <View style={styles.inputOverlay} pointerEvents="none">
               <Text style={[styles.inputOverlayText, { color: theme.text }]}>
-                {formattingTree.map((node, i) => renderOverlayNode(node, `o-${i}`))}
+                {formattedOverlay}
               </Text>
             </View>
           )}
@@ -447,9 +584,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'flex-end', // Выравнивание по нижнему краю для кнопок
+    alignItems: 'flex-end',
     paddingHorizontal: 16,
-    paddingBottom: 12, // Уменьшен, т.к. safe area padding добавляется в родительском компоненте
+    paddingBottom: 12,
     paddingTop: 8,
     borderTopWidth: 1,
   },
@@ -459,8 +596,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    flexShrink: 0, // Не сжимать кнопку
-    // Тени
+    flexShrink: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -512,8 +648,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    flexShrink: 0, // Не сжимать кнопку
-    // Тени
+    flexShrink: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
