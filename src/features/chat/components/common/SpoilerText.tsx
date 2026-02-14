@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Text, View, StyleSheet, StyleProp, TextStyle, Animated, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface SpoilerTextProps {
@@ -31,9 +32,12 @@ export const SpoilerText: React.FC<SpoilerTextProps> = ({ children, style }) => 
   return (
     <View
       style={{
-        borderRadius: 8,
+        borderRadius: 6,
         overflow: 'hidden',
-        marginHorizontal: 1,
+        marginHorizontal: 2,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        backgroundColor: revealed ? revealedBg : hiddenBg,
         ...(Platform.OS === 'web'
           ? { display: 'inline-flex' as any, verticalAlign: 'baseline' as any }
           : {}),
@@ -46,21 +50,21 @@ export const SpoilerText: React.FC<SpoilerTextProps> = ({ children, style }) => 
           styles.base,
           !revealed && {
             color: 'transparent',
-            backgroundColor: hiddenBg,
           },
           revealed && {
-            backgroundColor: revealedBg,
+            color: theme.text,
           },
         ]}
       >
         {children}
       </Text>
       {!revealed && (
-        <View style={styles.hiddenOverlay} pointerEvents="none">
-          <Text style={[styles.eyeIcon, { color: isDark ? `${theme.primary}99` : `${theme.primary}77` }]}>
-            {'\u25CF\u25CF\u25CF'}
-          </Text>
-        </View>
+        <BlurView
+          intensity={isDark ? 30 : 25}
+          tint={isDark ? 'light' : 'dark'}
+          style={styles.hiddenOverlay}
+          pointerEvents="none"
+        />
       )}
     </View>
   );
@@ -68,17 +72,10 @@ export const SpoilerText: React.FC<SpoilerTextProps> = ({ children, style }) => 
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
   },
   hiddenOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  eyeIcon: {
-    fontSize: 8,
-    letterSpacing: 3,
   },
 });
