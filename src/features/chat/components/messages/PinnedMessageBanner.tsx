@@ -281,7 +281,6 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 12,
-    marginTop: 2,
   },
   textContainer: {
     flex: 1,
