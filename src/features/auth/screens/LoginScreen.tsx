@@ -231,12 +231,6 @@ const LoginScreen: React.FC = () => {
               onAcceptInvitation={handleAcceptInvitation}
             />
 
-            <SavedAccountsList
-              accounts={savedAccounts}
-              isSwitching={isSwitching}
-              onQuickSwitch={handleQuickSwitch}
-              onSelectAccount={handleSelectAccount}
-            />
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>

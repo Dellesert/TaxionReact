@@ -10,20 +10,8 @@ import { useProfileActions } from '../hooks/useProfileActions';
 import { ProfileHeader } from '../components/common/ProfileHeader';
 import { ProfileMenuSection } from '../components/common/ProfileMenuSection';
 import { ProfileMenuItem } from '../components/common/ProfileMenuItem';
-import { AccountListSection } from '@shared/components/account/AccountListSection';
 import { getThemeLabel, isAdmin } from '../utils/profileHelpers';
 import { APP_VERSION, APP_BUILD } from '../utils/aboutConstants';
-import * as secureStorage from '@shared/utils/secureStorage';
-import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import * as accountManager from '@services/accountManager';
-import { websocketService } from '@services/websocket.service';
-import { clearAllStorages } from '@shared/storage';
-import { clearSyncMetadata } from '@shared/storage/syncMetadata';
-import { useChatStore } from '@shared/store/chatStore';
-import { useTaskStore } from '@shared/store/taskStore';
-import { usePollStore } from '@shared/store/pollStore';
-import { useCalendarStore } from '@shared/store/calendarStore';
-import { useUserStore } from '@shared/store/userStore';
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -53,44 +41,6 @@ const ProfileScreen: React.FC = () => {
     };
     loadProfile();
   }, [refreshUser]);
-
-  const handleAddAccount = useCallback(async () => {
-    const currentUser = useAuthStore.getState().user;
-    const currentSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
-
-    if (currentUser && currentSessionId) {
-      await accountManager.saveAccountAfterLogin(currentUser, currentSessionId);
-    }
-
-    websocketService.disconnect();
-
-    useChatStore.getState().set({
-      chats: [],
-      tabs: {
-        all: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-        private: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-        group: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-        favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-      },
-      messages: {},
-      totalUnreadCount: 0,
-    });
-    useTaskStore.getState().clearCache();
-    usePollStore.getState().clearCache();
-    useCalendarStore.getState().clearCache();
-    useUserStore.getState().clearCache();
-    await clearAllStorages();
-    await clearSyncMetadata();
-
-    await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
-    await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
-
-    useAuthStore.setState({
-      user: null,
-      sessionId: null,
-      isAuthenticated: false,
-    });
-  }, []);
 
   if (!user) {
     return null;
@@ -194,9 +144,6 @@ const ProfileScreen: React.FC = () => {
         <ProfileHeader user={user} cardBackgroundColor={isDark ? theme.background : '#F3F4F6'} />
 
         <View style={dynamicStyles.card}>
-          {/* Account Switching */}
-          <AccountListSection onAddAccount={handleAddAccount} />
-
           {/* Profile Actions */}
           <ProfileMenuSection title="ПРОФИЛЬ">
             <ProfileMenuItem
