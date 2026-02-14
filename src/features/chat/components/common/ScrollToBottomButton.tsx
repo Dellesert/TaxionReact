@@ -25,7 +25,7 @@ export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
 
   // Базовое положение - чуть выше поля ввода
   // При открытой клавиатуре поднимаем кнопку на высоту клавиатуры
-  const baseBottom = Platform.OS === 'web' ? 100 :10;
+  const baseBottom = Platform.OS === 'web' ? 90 : 10;
   const bottom = keyboardHeight > 0 ? baseBottom + keyboardHeight : baseBottom;
 
   return (

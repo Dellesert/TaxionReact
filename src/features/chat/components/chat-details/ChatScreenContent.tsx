@@ -277,13 +277,24 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           searchQuery={activeSearchQuery}
         />
 
+        {Platform.OS !== 'web' && (
+          <ScrollToBottomButton
+            visible={showScrollToBottom}
+            onPress={onScrollToBottom}
+            unreadCount={newMessagesCount}
+            keyboardHeight={keyboardHeight}
+          />
+        )}
+      </View>
+
+      {Platform.OS === 'web' && (
         <ScrollToBottomButton
           visible={showScrollToBottom}
           onPress={onScrollToBottom}
           unreadCount={newMessagesCount}
           keyboardHeight={keyboardHeight}
         />
-      </View>
+      )}
 
       {Platform.OS === 'ios' ? (
         <KeyboardStickyView
