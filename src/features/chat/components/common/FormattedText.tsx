@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Text, StyleSheet, StyleProp, TextStyle, Linking, Platform } from 'react-native';
+import { Text, View, StyleSheet, StyleProp, TextStyle, Linking, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import {
@@ -132,7 +132,6 @@ function getFormatStyle(formatType: FormatType, isDark: boolean): TextStyle {
     case 'code':
       return {
         fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-        backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
         fontSize: 14,
       };
     default:
@@ -226,6 +225,47 @@ export const FormattedText: React.FC<FormattedTextProps> = ({ text, style, searc
         <SpoilerText key={keyPrefix} style={formatStyle}>
           {node.children.map((child, i) => renderNode(child, `${keyPrefix}-${i}`))}
         </SpoilerText>
+      );
+    }
+
+    // Код/цитата — View-обёртка с кавычками, скруглением и падингом
+    if (node.formatType === 'code') {
+      const codeBg = isDark
+        ? `${theme.primary}18`
+        : `${theme.primary}12`;
+      const quoteColor = isDark
+        ? `${theme.primary}88`
+        : `${theme.primary}99`;
+      const borderColor = isDark
+        ? `${theme.primary}30`
+        : `${theme.primary}25`;
+      return (
+        <View
+          key={keyPrefix}
+          style={{
+            backgroundColor: codeBg,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: borderColor,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            marginHorizontal: 2,
+            marginVertical: 4,
+            ...(Platform.OS === 'web'
+              ? { display: 'inline-flex' as any, verticalAlign: 'baseline' as any }
+              : {}),
+          }}
+        >
+          <Text style={{ color: quoteColor, fontSize: 18, lineHeight: 18, fontFamily: 'Georgia', marginBottom: 2 }}>
+            {'\u201C'}
+          </Text>
+          <Text style={[formatStyle, { color: theme.text }]}>
+            {node.children.map((child, i) => renderNode(child, `${keyPrefix}-${i}`))}
+          </Text>
+          <Text style={{ color: quoteColor, fontSize: 18, lineHeight: 18, fontFamily: 'Georgia', textAlign: 'right', marginTop: 2 }}>
+            {'\u201D'}
+          </Text>
+        </View>
       );
     }
 
