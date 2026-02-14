@@ -8,6 +8,7 @@
 - [x] Firebase — `@react-native-firebase/app` + `@react-native-firebase/messaging`
 - [x] Podfile модификации — `withPodfileModifications.js`
 - [x] Share Extension — `expo-share-intent`
+- [x] ExportOptions plist файлы — `withExportOptions.js`
 
 **Ручные шаги:**
 - [ ] Поменять версию сборки +1 в app.json
@@ -41,6 +42,7 @@
 | `withDevEnvironment.js` | Переключает Bundle ID, иконку, GoogleService-Info для dev/prod |
 | `withPodfileModifications.js` | Добавляет `use_modular_headers!` для Firebase |
 | `withPushNotificationDelegates.js` | Добавляет push notification код в AppDelegate (импорты, делегаты, extensions) |
+| `withExportOptions.js` | Генерирует `ExportOptions.plist` и `ExportOptions-AppStore.plist` в `ios/build/` |
 | `@react-native-firebase/app` | Добавляет `FirebaseApp.configure()` |
 | `@react-native-firebase/messaging` | Настройка Firebase Messaging |
 | `expo-notifications` | Добавляет `aps-environment` в entitlements |
@@ -113,26 +115,7 @@ xcodebuild -workspace ios/Dev.xcworkspace \
 
 ### 5. Экспортировать IPA
 
-Создать `ios/build/ExportOptions.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>method</key>
-    <string>development</string>
-    <key>teamID</key>
-    <string>QNVQ55232N</string>
-    <key>signingStyle</key>
-    <string>automatic</string>
-    <key>compileBitcode</key>
-    <false/>
-</dict>
-</plist>
-```
-
-Экспорт:
+`ios/build/ExportOptions.plist` генерируется автоматически плагином `withExportOptions.js`.
 
 ```bash
 xcodebuild -exportArchive \
@@ -228,26 +211,7 @@ xcodebuild -workspace ios/Tahion.xcworkspace \
 
 ### 5. Экспортировать для App Store / TestFlight
 
-Создать `ios/build/ExportOptions-AppStore.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>method</key>
-    <string>app-store-connect</string>
-    <key>teamID</key>
-    <string>QNVQ55232N</string>
-    <key>signingStyle</key>
-    <string>automatic</string>
-    <key>uploadSymbols</key>
-    <true/>
-</dict>
-</plist>
-```
-
-Экспорт:
+`ios/build/ExportOptions-AppStore.plist` генерируется автоматически плагином `withExportOptions.js`.
 
 ```bash
 xcodebuild -exportArchive \
@@ -406,7 +370,9 @@ TaxionReact/
 ├── plugins/
 │   ├── withDevEnvironment.js     # Переключение окружений (Bundle ID, иконка, GoogleService)
 │   ├── withPodfileModifications.js  # Firebase modular headers
-│   └── withPushNotificationDelegates.js  # Push notifications + FCM delegates
+│   ├── withPushNotificationDelegates.js  # Push notifications + FCM delegates
+│   ├── withExportOptions.js      # Генерация ExportOptions plist файлов
+│   └── withShareExtensionDisplayName.js  # Кириллическое имя Share Extension
 ├── ios/
 │   ├── Dev/                      # Dev проект (после prebuild с APP_ENV=development)
 │   │   ├── AppDelegate.swift     # ✅ Автоматически настраивается через plugins
@@ -415,6 +381,8 @@ TaxionReact/
 │   │   ├── AppDelegate.swift     # ✅ Автоматически настраивается через plugins
 │   │   └── Tahion.entitlements   # ✅ Associated Domains из app.json
 │   └── build/
+│       ├── ExportOptions.plist          # ✅ Генерируется автоматически
+│       ├── ExportOptions-AppStore.plist # ✅ Генерируется автоматически
 │       ├── Dev.xcarchive
 │       ├── Tahion.xcarchive
 │       ├── ipa-dev/
