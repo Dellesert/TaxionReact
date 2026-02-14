@@ -20,6 +20,7 @@ import { useImageLoader } from '@shared/hooks/useImageLoader';
 import { isForwardedMessage } from '../../utils/message.utils';
 import { getOrCreateDirectChat } from '../../api/chat.api';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
 interface MessageItemProps {
   message: Message;
@@ -110,6 +111,16 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const addReaction = useChatStore((state) => state.addReaction);
   const removeReaction = useChatStore((state) => state.removeReaction);
 
+  // Reaction animation
+  const heartScale = useSharedValue(0);
+  const heartOpacity = useSharedValue(0);
+  const [animatedEmoji, setAnimatedEmoji] = useState('👍');
+
+  const heartAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartScale.value }],
+    opacity: heartOpacity.value,
+  }));
+
   const handleToggleReaction = useCallback((emoji: string) => {
     const currentUserId = currentUser?.id;
     if (!currentUserId) return;
@@ -120,28 +131,22 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       removeReaction(message.id, emoji);
     } else {
       addReaction(message.id, emoji);
+      // Animate only when adding
+      setAnimatedEmoji(emoji);
+      heartScale.value = 0;
+      heartOpacity.value = 1;
+      heartScale.value = withSpring(1, { damping: 8, stiffness: 200 });
+      heartOpacity.value = withDelay(400, withTiming(0, { duration: 300 }));
     }
-  }, [message.id, message.reactions, currentUser?.id, addReaction, removeReaction]);
-
-  // Heart animation for double-tap
-  const heartScale = useSharedValue(0);
-  const heartOpacity = useSharedValue(0);
-
-  const heartAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: heartScale.value }],
-    opacity: heartOpacity.value,
-  }));
+  }, [message.id, message.reactions, currentUser?.id, addReaction, removeReaction, heartScale, heartOpacity]);
 
   const handleDoubleTap = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     handleToggleReaction('👍');
-    // Animate heart
-    heartScale.value = 0;
-    heartOpacity.value = 1;
-    heartScale.value = withSpring(1, { damping: 8, stiffness: 200 });
-    heartOpacity.value = withDelay(400, withTiming(0, { duration: 300 }));
-  }, [handleToggleReaction, heartScale, heartOpacity]);
+  }, [handleToggleReaction]);
 
   const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     messageBubbleRef.current?.measureInWindow((x, y, width, height) => {
       const screenWidth = Dimensions.get('window').width;
       const screenHeight = Dimensions.get('window').height;
@@ -272,7 +277,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             pointerEvents="none"
             style={[styles.heartOverlay, heartAnimStyle]}
           >
-            <Text style={styles.heartEmoji}>👍</Text>
+            <Text style={styles.heartEmoji}>{animatedEmoji}</Text>
           </Animated.View>
         </View>
       </View>

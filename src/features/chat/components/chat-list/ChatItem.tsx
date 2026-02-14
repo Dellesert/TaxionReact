@@ -13,6 +13,7 @@ import { ActionModal } from '@shared/components/common/ActionModal';
 import { useChatPrefetch } from '@shared/hooks/usePrefetch';
 import { getTypingUserNames, formatTypingText } from '../../utils/chatScreenHelpers';
 import { stripFormatting } from '../../utils/formatting';
+import * as Haptics from 'expo-haptics';
 
 interface ChatItemProps {
   chat: Chat;
@@ -220,6 +221,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
   const handleLongPress = () => {
     if (!isEditMode) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setShowContextMenu(true);
     }
   };
