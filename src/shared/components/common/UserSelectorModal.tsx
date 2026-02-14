@@ -435,6 +435,9 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
               {item.role === 'department_head' && (
                 <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={styles.deptHeadIcon} />
               )}
+              {item.role === 'admin' && (
+                <Ionicons name="shield" size={16} color="#3B82F6" style={styles.deptHeadIcon} />
+              )}
             </View>
             <Text style={[styles.userRole, { color: theme.textSecondary }]}>{getRoleText(item.role)}</Text>
             {item.position && (

@@ -561,6 +561,9 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
               {user.role === 'department_head' && (
                 <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
               )}
+              {user.role === 'admin' && (
+                <Ionicons name="shield" size={14} color="#3B82F6" style={{ marginLeft: 4 }} />
+              )}
             </View>
             {/* Роль участника в чате как текст под именем с цветовым акцентом */}
             <Text style={[styles.memberRole, { color: getRoleColor(item.role) }]}>
@@ -605,6 +608,9 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
               </Text>
               {item.role === 'department_head' && (
                 <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+              )}
+              {item.role === 'admin' && (
+                <Ionicons name="shield" size={14} color="#3B82F6" style={{ marginLeft: 4 }} />
               )}
             </View>
           </View>

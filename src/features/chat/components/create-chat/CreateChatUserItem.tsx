@@ -91,6 +91,14 @@ export const CreateChatUserItem: React.FC<CreateChatUserItemProps> = React.memo(
                 style={styles.icon}
               />
             )}
+            {user.role === 'admin' && (
+              <Ionicons
+                name="shield"
+                size={16}
+                color="#3B82F6"
+                style={styles.icon}
+              />
+            )}
           </View>
           <Text style={[styles.userRole, dynamicStyles.userRole]}>
             {getRoleText(user.role)}
