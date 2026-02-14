@@ -19,6 +19,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { Chat } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { getChatDisplayName, getChatDisplayAvatar } from '../../utils/chatUtils';
+import { stripFormatting } from '../../utils/formatting';
 
 interface ForwardMessagesModalProps {
   visible: boolean;
@@ -115,7 +116,7 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
           </Text>
           {item.last_message && (
             <Text style={[styles.lastMessage, { color: theme.textSecondary }]} numberOfLines={1}>
-              {item.last_message.content}
+              {stripFormatting(item.last_message.content)}
             </Text>
           )}
         </View>
