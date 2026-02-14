@@ -3,7 +3,7 @@
  * Экран для создания нового чата
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -18,8 +19,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { ChatStackParamList } from '@navigation/types';
 import { ChatType } from '../types/chat.types';
 import { useTheme } from '@shared/hooks/useTheme';
-import { User } from '@/types/user.types';
+import { User, UserGroupWithMembers } from '@/types/user.types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { getUserGroups } from '@api/user-group.api';
 
 // Hooks
 import { useCreateChatData } from '../hooks/useCreateChatData';
@@ -88,7 +90,85 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
     createChat,
   } = useCreateChatActions(chatType, onChatCreated);
 
-  const { sections: baseSections } = useUserSections(filteredUsers);
+  const { sections: departmentSections } = useUserSections(filteredUsers);
+
+  // View mode toggle (departments / groups)
+  type ViewMode = 'departments' | 'groups';
+  const [viewMode, setViewMode] = useState<ViewMode>('departments');
+  const [userGroups, setUserGroups] = useState<UserGroupWithMembers[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+
+  // Load user groups on mount
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        setIsLoadingGroups(true);
+        const groups = await getUserGroups(true) as UserGroupWithMembers[];
+        setUserGroups(groups);
+      } catch (error) {
+        console.error('Failed to load user groups:', error);
+      } finally {
+        setIsLoadingGroups(false);
+      }
+    };
+    loadGroups();
+  }, []);
+
+  // Group sections
+  const groupSections = useMemo(() => {
+    if (!userGroups || userGroups.length === 0) {
+      if (filteredUsers.length > 0) {
+        return [{ title: 'Без группы', data: filteredUsers, departmentId: null as number | null }];
+      }
+      return [];
+    }
+
+    const searchLower = searchQuery.toLowerCase().trim();
+    const userIdsInGroups = new Set<number>();
+    const sections: Array<{ title: string; data: User[]; departmentId: number | null }> = [];
+
+    userGroups.forEach((group) => {
+      if (!group.members || group.members.length === 0) return;
+
+      // Only keep members that exist in filteredUsers (respects search + exclusions)
+      const filteredUserIds = new Set(filteredUsers.map(u => u.id));
+      let members = group.members.filter((m) => filteredUserIds.has(m.id));
+
+      if (searchLower) {
+        members = members.filter((user) => {
+          const name = user.name?.toLowerCase() || '';
+          const email = user.email?.toLowerCase() || '';
+          const position = user.position?.toLowerCase() || '';
+          return name.includes(searchLower) || email.includes(searchLower) || position.includes(searchLower);
+        });
+      }
+
+      if (members.length === 0) return;
+
+      members.forEach((m) => userIdsInGroups.add(m.id));
+
+      sections.push({
+        title: group.name,
+        data: members,
+        departmentId: null,
+      });
+    });
+
+    // Add ungrouped users
+    const ungroupedUsers = filteredUsers.filter((u) => !userIdsInGroups.has(u.id));
+    if (ungroupedUsers.length > 0) {
+      sections.push({
+        title: 'Без группы',
+        data: ungroupedUsers,
+        departmentId: null,
+      });
+    }
+
+    return sections;
+  }, [userGroups, filteredUsers, searchQuery]);
+
+  // Select sections based on view mode
+  const baseSections = viewMode === 'groups' ? groupSections : departmentSections;
 
   // Collapsible sections state
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
@@ -298,7 +378,34 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
         onClear={handleSearchClear}
       />
 
+      {/* View Mode Toggle */}
+      {userGroups.length > 0 && (
+        <View style={[styles.segmentedControl, { backgroundColor: theme.backgroundSecondary }]}>
+          <TouchableOpacity
+            style={[styles.segmentButton, viewMode === 'departments' && [styles.segmentButtonActive, { backgroundColor: theme.background }]]}
+            onPress={() => setViewMode('departments')}
+          >
+            <Text style={[styles.segmentButtonText, { color: theme.textSecondary }, viewMode === 'departments' && styles.segmentButtonTextActive && { color: theme.text, fontWeight: '600' }]}>
+              По отделениям
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentButton, viewMode === 'groups' && [styles.segmentButtonActive, { backgroundColor: theme.background }]]}
+            onPress={() => setViewMode('groups')}
+          >
+            <Text style={[styles.segmentButtonText, { color: theme.textSecondary }, viewMode === 'groups' && { color: theme.text, fontWeight: '600' }]}>
+              По группам
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Users List */}
+      {isLoadingGroups && viewMode === 'groups' ? (
+        <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      ) : (
       <SectionList
         sections={sections}
         keyExtractor={keyExtractor}
@@ -313,6 +420,7 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
         windowSize={21}
         keyboardShouldPersistTaps="handled"
       />
+      )}
     </SafeAreaView>
   );
 };
@@ -343,6 +451,40 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 16,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 8,
+    padding: 2,
+  },
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  segmentButtonActive: {
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
+      },
+    }),
+  },
+  segmentButtonText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  segmentButtonTextActive: {
+    fontWeight: '600' as const,
   },
   sectionHeaderContainer: {
     flexDirection: 'row',
