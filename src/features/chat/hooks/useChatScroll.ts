@@ -950,6 +950,9 @@ export const useChatScroll = (
       previousMessagesLength.current = freshMessages.length;
       if (freshMessages.length > 0) {
         previousLastMessageId.current = freshMessages[freshMessages.length - 1].id;
+        // Устанавливаем lastNewestMessageId чтобы useEffect мог отличить
+        // WebSocket-сообщения от инкрементальной загрузки в jump context
+        lastNewestMessageId.current = freshMessages[freshMessages.length - 1].id;
       }
       isJumpInProgress.current = false;
 
