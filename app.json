@@ -108,7 +108,8 @@
           "androidIntentFilters": ["text/*", "image/*", "video/*", "*/*"],
           "androidMultiIntentFilters": ["image/*", "video/*", "*/*"]
         }
-      ]
+      ],
+      "./plugins/withShareExtensionConfig.js"
     ],
     "extra": {
       "eas": {
