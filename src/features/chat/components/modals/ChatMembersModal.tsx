@@ -134,9 +134,9 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
         // Исключаем пользователей уже в чате
         if (memberIds.includes(u.id)) return false;
 
-        // Если текущий пользователь - обычный сотрудник, исключаем администраторов
+        // Если текущий пользователь - обычный сотрудник, исключаем только супер-администраторов
         if (currentUser?.role === 'employee') {
-          if (u.role === 'admin' || u.role === 'super_admin') return false;
+          if (u.role === 'super_admin') return false;
         }
 
         return true;

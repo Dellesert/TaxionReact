@@ -14,10 +14,10 @@ export const filterOutCurrentUser = (users: User[], currentUserId: number | unde
 };
 
 /**
- * Filter out admin users from list
+ * Filter out super admin users from list
  */
 export const filterOutAdmins = (users: User[]): User[] => {
-  return users.filter((user) => user.role !== 'admin' && user.role !== 'super_admin');
+  return users.filter((user) => user.role !== 'super_admin');
 };
 
 /**

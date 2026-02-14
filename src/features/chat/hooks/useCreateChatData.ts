@@ -52,9 +52,9 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
         const filters: any = {
           is_active: true,
           exclude_me: true, // Exclude current user on backend
-          // Exclude admins only for non-admin users
+          // Exclude only super admins for non-admin users
           // Admins can see other admins when creating chats
-          ...(isAdmin ? {} : { exclude_roles: 'admin,super_admin' }),
+          ...(isAdmin ? {} : { exclude_roles: 'super_admin' }),
 
           // Backend search (debounced)
           search: searchTerm || undefined,

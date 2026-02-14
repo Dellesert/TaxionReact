@@ -88,7 +88,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       let filters: any = {
         is_active: true,
         exclude_me: !includeCurrentUser, // Exclude current user on backend (unless includeCurrentUser is true)
-        exclude_roles: 'admin,super_admin', // Exclude admins for all users
+        exclude_roles: 'super_admin', // Exclude only super admins
 
         // Backend search (debounced)
         search: searchTerm || undefined,
