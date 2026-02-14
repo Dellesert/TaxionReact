@@ -14,6 +14,19 @@ import { stripFormatting } from '../../utils/formatting';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import { MessageReactions } from './MessageReactions';
 
+// ─── Single emoji detection ──────────────────────────────────────────────────
+
+const SINGLE_EMOJI_REGEX = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}][\u200D\uFE0F\u{1F3FB}-\u{1F3FF}\u{1F1E0}-\u{1F1FF}\u20E3\p{Emoji_Presentation}\p{Extended_Pictographic}]*$/u;
+
+function isSingleEmoji(text: string): boolean {
+  if (!text) return false;
+  const trimmed = text.trim();
+  if (trimmed.length === 0 || trimmed.length > 20) return false;
+  return SINGLE_EMOJI_REGEX.test(trimmed);
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 interface MessageBubbleProps {
   message: Message;
   isOwnMessage: boolean;
@@ -141,6 +154,13 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                         (message.message_type === 'task' && message.task_data) ||
                         (isTaskMessage && parsedTaskData);
 
+  // Одиночный эмодзи без текста → крупное отображение без пузыря
+  const isEmojiOnly = useMemo(() => {
+    if (message.is_deleted || isCardMessage) return false;
+    if (message.attachments && message.attachments.length > 0) return false;
+    return isSingleEmoji(messageContent);
+  }, [messageContent, message.is_deleted, message.attachments, isCardMessage]);
+
   // Double-tap detection
   const lastTapRef = useRef(0);
 
@@ -186,6 +206,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         !isSavedChat && isOwnMessage && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
         isHighlighted && [styles.highlightedBubble, dynamicStyles.highlightedBubble],
         isCardMessage && { backgroundColor: 'transparent', padding: 0 },
+        isEmojiOnly && { backgroundColor: 'transparent', padding: 0 },
       ]}
     >
       {/* Уголок - просто используем ::before/::after эффект через позиционирование */}
@@ -268,6 +289,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                     styles.messageText,
                     dynamicStyles.messageText,
                     isOwnMessage && dynamicStyles.ownMessageText,
+                    isEmojiOnly && { fontSize: 96, lineHeight: 110 },
                   ]}
                   searchQuery={searchQuery}
                 />
