@@ -88,7 +88,31 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
     createChat,
   } = useCreateChatActions(chatType, onChatCreated);
 
-  const { sections } = useUserSections(filteredUsers);
+  const { sections: baseSections } = useUserSections(filteredUsers);
+
+  // Collapsible sections state
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  const toggleSectionCollapse = React.useCallback((sectionTitle: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionTitle)) {
+        next.delete(sectionTitle);
+      } else {
+        next.add(sectionTitle);
+      }
+      return next;
+    });
+  }, []);
+
+  // Sections with collapsed data filtered out
+  const sections = React.useMemo(() =>
+    baseSections.map(section => ({
+      ...section,
+      data: collapsedSections.has(section.title) ? [] : section.data,
+    })),
+    [baseSections, collapsedSections]
+  );
 
   // Memoize handlers to prevent recreating on every render
   const handleSearchChange = React.useCallback((text: string) => {
@@ -112,21 +136,29 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
 
   // Render section header
   const renderSectionHeader = React.useCallback(({ section }: { section: { title: string; data: User[] } }) => {
+    const isCollapsed = collapsedSections.has(section.title);
+    // Get real user count from baseSections (since collapsed sections have empty data)
+    const realSection = baseSections.find(s => s.title === section.title);
+    const realData = realSection?.data || section.data;
+    const userCount = realData.length;
+
     if (chatType === 'group') {
-      const departmentUserIds = section.data.map((u) => u.id);
+      const departmentUserIds = realData.map((u) => u.id);
       const allSelected = areAllUsersSelected(departmentUserIds, selectedUsers);
       const someSelected = areSomeUsersSelected(departmentUserIds, selectedUsers);
 
       return (
-        <TouchableOpacity
+        <View
           style={[
             styles.sectionHeaderContainer,
             { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border },
           ]}
-          onPress={() => toggleDepartmentSelection(departmentUserIds)}
-          activeOpacity={0.7}
         >
-          <View style={styles.sectionHeaderLeft}>
+          <TouchableOpacity
+            style={styles.sectionHeaderLeft}
+            onPress={() => toggleDepartmentSelection(departmentUserIds)}
+            activeOpacity={0.7}
+          >
             <View
               style={[
                 styles.sectionCheckbox,
@@ -147,31 +179,49 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
             <Text style={[styles.sectionHeaderText, { color: theme.text }]}>
               {section.title}
             </Text>
-          </View>
-          <Text style={[styles.sectionHeaderCount, { color: theme.textTertiary }]}>
-            {formatUserCount(section.data.length)}
-          </Text>
-        </TouchableOpacity>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.collapseButton}
+            onPress={() => toggleSectionCollapse(section.title)}
+          >
+            <Text style={[styles.sectionHeaderCount, { color: theme.textTertiary }]}>
+              {formatUserCount(userCount)}
+            </Text>
+            <Ionicons
+              name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+              size={18}
+              color={theme.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
       );
     }
 
-    // For private chat - regular header without checkbox
+    // For private chat - tap header to collapse/expand
     return (
-      <View
+      <TouchableOpacity
         style={[
           styles.sectionHeaderContainer,
           { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border },
         ]}
+        onPress={() => toggleSectionCollapse(section.title)}
       >
-        <Text style={[styles.sectionHeaderText, { color: theme.text }]}>
-          {section.title}
-        </Text>
+        <View style={styles.sectionHeaderLeft}>
+          <Ionicons
+            name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+            size={18}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.sectionHeaderText, { color: theme.text }]}>
+            {section.title}
+          </Text>
+        </View>
         <Text style={[styles.sectionHeaderCount, { color: theme.textTertiary }]}>
-          {formatUserCount(section.data.length)}
+          {formatUserCount(userCount)}
         </Text>
-      </View>
+      </TouchableOpacity>
     );
-  }, [chatType, selectedUsers, theme, toggleDepartmentSelection]);
+  }, [chatType, selectedUsers, theme, toggleDepartmentSelection, collapsedSections, baseSections, toggleSectionCollapse]);
 
   // Key extractor
   const keyExtractor = React.useCallback((item: User) => item.id.toString(), []);
@@ -309,6 +359,11 @@ const styles = StyleSheet.create({
   },
   sectionHeaderCount: {
     fontSize: 12,
+  },
+  collapseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
