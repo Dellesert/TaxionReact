@@ -120,9 +120,6 @@ const UserGroupsScreen: React.FC = () => {
       flex: 1,
       textAlign: 'center',
     },
-    headerRight: {
-      width: 40,
-    },
     groupCard: {
       backgroundColor: theme.backgroundSecondary,
       borderRadius: 16,
@@ -163,7 +160,9 @@ const UserGroupsScreen: React.FC = () => {
             <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
           <Text style={dynamicStyles.headerTitle}>Управление группами</Text>
-          <View style={dynamicStyles.headerRight} />
+          <TouchableOpacity style={{ padding: 8 }} onPress={() => setShowCreateModal(true)}>
+            <Ionicons name="add" size={28} color={theme.primary} />
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
       <View style={[dynamicStyles.container]}>
@@ -177,13 +176,9 @@ const UserGroupsScreen: React.FC = () => {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          {searchQuery.length > 0 ? (
+          {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
               <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={() => setShowCreateModal(true)} style={styles.createButton}>
-              <Ionicons name="add-circle" size={28} color={theme.primary} />
             </TouchableOpacity>
           )}
         </View>
@@ -311,9 +306,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-  },
-  createButton: {
-    padding: 4,
   },
   content: {
     flex: 1,
