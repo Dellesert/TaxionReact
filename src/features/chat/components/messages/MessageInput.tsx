@@ -202,7 +202,19 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   // Применяем форматирование к выделенному тексту или вставляем маркеры на курсор
   const handleFormat = useCallback(
     (marker: FormatMarker) => {
-      const { start, end } = selectionRef.current;
+      let { start, end } = selectionRef.current;
+
+      // Сдвигаем границы выделения, чтобы не захватывать невидимые маркеры
+      // форматирования и пробелы между маркерами и текстом (при тапе на мобильных
+      // устройствах выделение часто «цепляет» соседние прозрачные символы-маркеры)
+      if (start !== end) {
+        const markerChars = new Set(['*', '_', '~', '`', '|']);
+        while (start < end && markerChars.has(message[start])) start++;
+        while (end > start && markerChars.has(message[end - 1])) end--;
+        while (start < end && message[start] === ' ') start++;
+        while (end > start && message[end - 1] === ' ') end--;
+      }
+
       const before = message.substring(0, start);
       const selected = message.substring(start, end);
       const after = message.substring(end);
