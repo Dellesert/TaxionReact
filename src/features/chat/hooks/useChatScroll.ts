@@ -338,6 +338,10 @@ export const useChatScroll = (
   // Keyboard handlers - упрощены, FlatList сам справляется с клавиатурой
   const handleKeyboardWillShow = useCallback((_keyboardHeight: number) => {
     isKeyboardAnimating.current = true;
+    // Скрываем кнопку "scroll to bottom" - клавиатура автоматически скроллит вниз
+    setShowScrollToBottom(false);
+    setNewMessagesCount(0);
+    setFirstNewMessageIndex(-1);
     setTimeout(() => { isKeyboardAnimating.current = false; }, 400);
   }, []);
 
