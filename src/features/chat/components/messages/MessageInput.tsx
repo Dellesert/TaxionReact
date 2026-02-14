@@ -377,6 +377,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   // Форматы, несовместимые с code (code не поддерживает вложенное форматирование)
   const TEXT_STYLE_TYPES: FormatType[] = ['bold', 'italic', 'strikethrough'];
 
+  // Закрыть тулбар форматирования (снимаем выделение)
+  const handleCloseFormattingToolbar = useCallback(() => {
+    const pos = selectionRef.current.end;
+    setSelection({ start: pos, end: pos });
+    setHasSelection(false);
+    inputRef.current?.blur();
+  }, []);
+
   // Применяем форматирование к выделенному тексту (добавляем диапазон)
   const handleFormat = useCallback(
     (marker: FormatMarker) => {
@@ -555,11 +563,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       {/* Тулбар форматирования — показываем при выделении текста, позиционируем абсолютно чтобы не смещать инпут */}
       {hasSelection && Platform.OS === 'web' && (
         <View style={styles.formattingToolbarWeb}>
-          <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} />
+          <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} onClose={handleCloseFormattingToolbar} />
         </View>
       )}
       {hasSelection && Platform.OS !== 'web' && (
-        <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} />
+        <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} onClose={handleCloseFormattingToolbar} />
       )}
 
       <View style={[styles.container, dynamicStyles.container]}>

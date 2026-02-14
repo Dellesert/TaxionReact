@@ -13,6 +13,7 @@ export type FormatButtonType = 'bold' | 'italic' | 'strikethrough' | 'code' | 's
 interface FormattingToolbarProps {
   onFormat: (marker: FormatMarker) => void;
   activeFormats?: Set<FormatButtonType>;
+  onClose?: () => void;
 }
 
 const TOOLBAR_ITEMS: { icon?: string; label: string; marker: FormatMarker; formatType: FormatButtonType; textStyle?: object }[] = [
@@ -23,7 +24,7 @@ const TOOLBAR_ITEMS: { icon?: string; label: string; marker: FormatMarker; forma
   { icon: 'eye-off-outline', label: '', marker: { open: '||', close: '||' }, formatType: 'spoiler' },
 ];
 
-export const FormattingToolbar: React.FC<FormattingToolbarProps> = ({ onFormat, activeFormats }) => {
+export const FormattingToolbar: React.FC<FormattingToolbarProps> = ({ onFormat, activeFormats, onClose }) => {
   const { theme } = useTheme();
 
   return (
@@ -50,6 +51,15 @@ export const FormattingToolbar: React.FC<FormattingToolbarProps> = ({ onFormat, 
           </TouchableOpacity>
         );
       })}
+      {onClose && (
+        <TouchableOpacity
+          style={[styles.closeButton]}
+          onPress={onClose}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="close" size={18} color={theme.textSecondary} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -71,5 +81,13 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 16,
+  },
+  closeButton: {
+    width: 36,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 'auto',
   },
 });
