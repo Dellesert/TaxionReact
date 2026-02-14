@@ -270,7 +270,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 20,
     borderBottomWidth: 1,
     minHeight: 60,
     zIndex: 10,
