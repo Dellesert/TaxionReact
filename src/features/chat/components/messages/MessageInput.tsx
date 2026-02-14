@@ -298,7 +298,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   });
 
   return (
-    <View>
+    <View style={Platform.OS === 'web' ? styles.rootWeb : undefined}>
       {/* Индикатор редактирования */}
       {editingMessage && (
         <View style={[styles.editIndicator, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
@@ -357,8 +357,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         </View>
       )}
 
-      {/* Тулбар форматирования — показываем при выделении текста */}
-      {hasSelection && (
+      {/* Тулбар форматирования — показываем при выделении текста, позиционируем абсолютно чтобы не смещать инпут */}
+      {hasSelection && Platform.OS === 'web' && (
+        <View style={styles.formattingToolbarWeb}>
+          <FormattingToolbar onFormat={handleFormat} />
+        </View>
+      )}
+      {hasSelection && Platform.OS !== 'web' && (
         <FormattingToolbar onFormat={handleFormat} />
       )}
 
@@ -570,6 +575,17 @@ const styles = StyleSheet.create({
   },
   removeAllButton: {
     padding: 4,
+  },
+  rootWeb: {
+    position: 'relative' as const,
+    overflow: 'visible' as const,
+  },
+  formattingToolbarWeb: {
+    position: 'absolute' as const,
+    bottom: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
 });
 

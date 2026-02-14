@@ -338,6 +338,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
         <Animated.View
           style={[
             styles.inputWrapper,
+            Platform.OS === 'web' && styles.inputWrapperWeb,
             {
               height: inputWrapperHeight,
             },
@@ -348,6 +349,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
             <View
               style={[
                 styles.blurContent,
+                styles.blurContentWeb,
                 {
                   paddingBottom: effectiveInsetsBottom,
                   // @ts-ignore - backdrop-filter поддерживается на web
@@ -454,7 +456,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     overflow: 'hidden',
   },
+  inputWrapperWeb: {
+    overflow: 'visible' as const,
+  },
   blurContent: {
     flex: 1,
+  },
+  blurContentWeb: {
+    overflow: 'visible' as const,
   },
 });
