@@ -241,7 +241,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
                   )}
                   <Text
                     style={[styles.messageText, dynamicStyles.messageText]}
-                    numberOfLines={2}
+                    numberOfLines={1}
                     ellipsizeMode="tail"
                   >
                     {currentMessage.sender?.name ? `${currentMessage.sender.name}: ` : ''}{preview.text}
@@ -314,9 +314,8 @@ const styles = StyleSheet.create({
   },
   messageRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flex: 1,
-    minHeight: 44,
   },
   fileIcon: {
     marginRight: 6,
