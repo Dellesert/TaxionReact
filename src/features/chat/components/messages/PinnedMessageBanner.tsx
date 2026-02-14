@@ -277,10 +277,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   icon: {
     marginRight: 12,
+    marginTop: 2,
   },
   textContainer: {
     flex: 1,
@@ -313,8 +314,9 @@ const styles = StyleSheet.create({
   },
   messageRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
+    minHeight: 44,
   },
   fileIcon: {
     marginRight: 6,
