@@ -436,6 +436,7 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           inverted={true}
+          scrollsToTop={false}
           // Оптимизация рендеринга
           removeClippedSubviews={Platform.OS === 'android'}
           maxToRenderPerBatch={15}
