@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,42 @@ import {
   Platform,
   NativeSyntheticEvent,
   TextInputSelectionChangeEventData,
+  TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { FileAttachmentPicker } from '../attachments/FileAttachmentPicker';
 import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
 import { FormattingToolbar, FormatMarker } from './FormattingToolbar';
+import {
+  parseFormatting,
+  preProcessEscapes,
+  FormattingNode,
+  FormatType,
+} from '../../utils/formatting';
+
+const FORMAT_MARKERS: Record<FormatType, { open: string; close: string }> = {
+  bold: { open: '*', close: '*' },
+  italic: { open: '_', close: '_' },
+  strikethrough: { open: '~', close: '~' },
+  code: { open: '`', close: '`' },
+  spoiler: { open: '||', close: '||' },
+};
+
+function getInputFormatStyle(formatType: FormatType): TextStyle {
+  switch (formatType) {
+    case 'bold':
+      return { fontWeight: 'bold' };
+    case 'italic':
+      return { fontStyle: 'italic' };
+    case 'strikethrough':
+      return { textDecorationLine: 'line-through' };
+    case 'code':
+      return { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' };
+    default:
+      return {};
+  }
+}
 
 interface MessageInputProps {
   onSend: (message: string, replyToId?: number) => void;
@@ -48,6 +78,35 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<AutoCorrectedTextInputRef>(null);
+
+  // Парсим форматирование для overlay
+  const formattingTree = useMemo(() => {
+    if (!message) return null;
+    return parseFormatting(preProcessEscapes(message));
+  }, [message]);
+
+  const hasFormatting = useMemo(() => {
+    if (!formattingTree) return false;
+    return formattingTree.some(node => node.type === 'formatted');
+  }, [formattingTree]);
+
+  // Рендер ноды для overlay (маркеры прозрачные, текст стилизован)
+  const renderOverlayNode = (node: FormattingNode, key: string): React.ReactNode => {
+    if (node.type === 'text') {
+      return <Text key={key}>{node.text}</Text>;
+    }
+    const markers = FORMAT_MARKERS[node.formatType];
+    const formatStyle = getInputFormatStyle(node.formatType);
+    return (
+      <React.Fragment key={key}>
+        <Text style={{ color: 'transparent' }}>{markers.open}</Text>
+        <Text style={formatStyle}>
+          {node.children.map((child, i) => renderOverlayNode(child, `${key}-${i}`))}
+        </Text>
+        <Text style={{ color: 'transparent' }}>{markers.close}</Text>
+      </React.Fragment>
+    );
+  };
 
   // При установке editingMessage заполняем поле ввода
   useEffect(() => {
@@ -316,30 +375,41 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </TouchableOpacity>
         )}
 
-        <AutoCorrectedTextInput
-          ref={inputRef}
-          style={[
-            styles.input,
-            dynamicStyles.input,
-            Platform.OS === 'web' && { height: inputHeight }
-          ]}
-          placeholder="Сообщение"
-          placeholderTextColor={theme.inputPlaceholder}
-          value={message}
-          onChangeText={handleChangeText}
-          onContentSizeChange={handleContentSizeChange}
-          onSelectionChange={handleSelectionChange}
-          multiline
-          maxLength={4000}
-          editable={!disabled}
-          onSubmitEditing={handleSend}
-          onKeyPress={handleKeyPress}
-          autoCorrect={true}
-          autoCapitalize="sentences"
-          keyboardType="default"
-          returnKeyType="default"
-          inputAccessoryViewID={inputAccessoryViewID}
-        />
+        <View style={styles.inputWrapper}>
+          <AutoCorrectedTextInput
+            ref={inputRef}
+            style={[
+              styles.input,
+              dynamicStyles.input,
+              hasFormatting && { color: 'transparent' },
+              Platform.OS === 'web' && { height: inputHeight }
+            ]}
+            placeholder="Сообщение"
+            placeholderTextColor={theme.inputPlaceholder}
+            value={message}
+            onChangeText={handleChangeText}
+            onContentSizeChange={handleContentSizeChange}
+            onSelectionChange={handleSelectionChange}
+            multiline
+            maxLength={4000}
+            editable={!disabled}
+            onSubmitEditing={handleSend}
+            onKeyPress={handleKeyPress}
+            autoCorrect={true}
+            autoCapitalize="sentences"
+            keyboardType="default"
+            returnKeyType="default"
+            inputAccessoryViewID={inputAccessoryViewID}
+            selectionColor={theme.primary}
+          />
+          {hasFormatting && formattingTree && (
+            <View style={styles.inputOverlay} pointerEvents="none">
+              <Text style={[styles.inputOverlayText, { color: theme.text }]}>
+                {formattingTree.map((node, i) => renderOverlayNode(node, `o-${i}`))}
+              </Text>
+            </View>
+          )}
+        </View>
 
         <TouchableOpacity
           style={[styles.sendButton, dynamicStyles.sendButton, (!message.trim() && selectedFileIds.length === 0) && dynamicStyles.sendButtonDisabled]}
@@ -380,18 +450,19 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  input: {
+  inputWrapper: {
     flex: 1,
-    minHeight: 42, // Минимальная высота равна высоте кнопок
+    marginHorizontal: 8,
+  },
+  input: {
+    minHeight: 42,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'web' ? 11 : 13, // Меньший отступ сверху на web для выравнивания текста
-    paddingBottom: Platform.OS === 'web' ? 11 : 12, // Меньший отступ снизу на web
+    paddingTop: Platform.OS === 'web' ? 11 : 13,
+    paddingBottom: Platform.OS === 'web' ? 11 : 12,
     fontSize: 15,
     lineHeight: 20,
-    marginHorizontal: 8,
-    maxHeight: 120, // Максимальная высота (примерно 5 строк)
-    // Тени
+    maxHeight: 120,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -399,9 +470,24 @@ const styles = StyleSheet.create({
     elevation: 3,
     ...Platform.select({
       web: {
-        outlineStyle: 'none', // Убираем outline на web
+        outlineStyle: 'none',
       },
     }),
+  },
+  inputOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'web' ? 11 : 13,
+    paddingBottom: Platform.OS === 'web' ? 11 : 12,
+  },
+  inputOverlayText: {
+    fontSize: 15,
+    lineHeight: 20,
   },
   sendButton: {
     width: 42,
