@@ -17,10 +17,6 @@ export const LogoutAllButton: React.FC<LogoutAllButtonProps> = ({ onPress, visib
   const { theme } = useTheme();
   const isDesktop = Platform.OS === 'web';
 
-  if (!visible) {
-    return null;
-  }
-
   return (
     <View
       style={[
@@ -28,6 +24,8 @@ export const LogoutAllButton: React.FC<LogoutAllButtonProps> = ({ onPress, visib
         {
           backgroundColor: isDesktop ? 'transparent' : theme.card,
           borderBottomColor: isDesktop ? 'transparent' : theme.border,
+          opacity: visible ? 1 : 0,
+          pointerEvents: visible ? 'auto' : 'none',
         },
       ]}
     >
