@@ -2,17 +2,17 @@
 
 ## ⚠️ Чеклист перед сборкой
 
-**Обязательно выполнить после каждого `expo prebuild`:**
-- [ ] Поменять версию сборки +1 в app.json 
-- [ ] Добавить импорты в AppDelegate.swift (`FirebaseMessaging`, `UserNotifications`)
-- [ ] Добавить регистрацию push notifications в `didFinishLaunchingWithOptions`
-- [ ] Добавить методы делегатов для push notifications
-- [ ] Добавить extension-ы `UNUserNotificationCenterDelegate` и `MessagingDelegate`
-- [ ] Проверить `*.entitlements` файл (должен содержать `aps-environment` и `com.apple.developer.associated-domains`)
+**После `expo prebuild` всё генерируется автоматически через config plugins:**
+- [x] Push notifications (импорты, делегаты, extensions) — `withPushNotificationDelegates.js`
+- [x] Associated Domains / Passkey — `associatedDomains` в `app.json`
+- [x] Firebase — `@react-native-firebase/app` + `@react-native-firebase/messaging`
+- [x] Podfile модификации — `withPodfileModifications.js`
+- [x] Share Extension — `expo-share-intent`
+
+**Ручные шаги:**
+- [ ] Поменять версию сборки +1 в app.json
 - [ ] Для Production: убедиться, что Associated Domains включен в Apple Developer Console
 - [ ] Проверить наличие файла `apple-app-site-association` на сервере
-
-**См. подробные инструкции в разделах 3 и "Настройка Passkey"**
 
 ---
 
@@ -32,6 +32,24 @@
 - Node.js 18+
 - Установленные зависимости: `npm install`
 
+## Config Plugins (автоматизация)
+
+Все нативные настройки iOS управляются через config plugins в `app.json`:
+
+| Плагин | Что делает |
+|--------|-----------|
+| `withDevEnvironment.js` | Переключает Bundle ID, иконку, GoogleService-Info для dev/prod |
+| `withPodfileModifications.js` | Добавляет `use_modular_headers!` для Firebase |
+| `withPushNotificationDelegates.js` | Добавляет push notification код в AppDelegate (импорты, делегаты, extensions) |
+| `@react-native-firebase/app` | Добавляет `FirebaseApp.configure()` |
+| `@react-native-firebase/messaging` | Настройка Firebase Messaging |
+| `expo-notifications` | Добавляет `aps-environment` в entitlements |
+| `expo-share-intent` | Создаёт Share Extension для получения контента из других приложений |
+
+**`associatedDomains`** в `app.json` → автоматически добавляет `com.apple.developer.associated-domains` в entitlements (для Passkey).
+
+---
+
 ## Dev Client (Development)
 
 ### 1. Prebuild
@@ -47,103 +65,28 @@ APP_ENV=development npx expo prebuild --clean --platform ios
 cd ios && LANG=en_US.UTF-8 pod install && cd ..
 ```
 
-### 3. Добавить push notifications и passkey в AppDelegate.swift
+### 3. Проверить (опционально)
 
-⚠️ **ВАЖНО:** После каждого prebuild необходимо вручную добавлять этот код!
+После prebuild убедитесь, что автоматически сгенерировано:
 
-#### 3.1. Добавить импорты в `ios/Dev/AppDelegate.swift`:
+**`ios/Dev/AppDelegate.swift`** должен содержать:
+- `import FirebaseMessaging` и `import UserNotifications`
+- `UNUserNotificationCenter.current().delegate = self`
+- `Messaging.messaging().delegate = self`
+- `application.registerForRemoteNotifications()`
+- Extensions `UNUserNotificationCenterDelegate` и `MessagingDelegate`
 
-```swift
-import FirebaseMessaging
-import UserNotifications
-```
-
-#### 3.2. Добавить регистрацию в `didFinishLaunchingWithOptions` после `FirebaseApp.configure()`:
-
-```swift
-// Register for remote notifications
-UNUserNotificationCenter.current().delegate = self
-Messaging.messaging().delegate = self
-application.registerForRemoteNotifications()
-```
-
-#### 3.3. Добавить методы для push notifications после основного класса:
-
-```swift
-// MARK: - Push Notifications
-
-public override func application(
-  _ application: UIApplication,
-  didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-) {
-  Messaging.messaging().apnsToken = deviceToken
-}
-
-public override func application(
-  _ application: UIApplication,
-  didFailToRegisterForRemoteNotificationsWithError error: Error
-) {
-  print("Failed to register for remote notifications: \(error.localizedDescription)")
-}
-```
-
-#### 3.4. Добавить extension-ы в конец файла перед `ReactNativeDelegate`:
-
-```swift
-// MARK: - UNUserNotificationCenterDelegate
-
-extension AppDelegate: UNUserNotificationCenterDelegate {
-  public func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    willPresent notification: UNNotification,
-    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-  ) {
-    completionHandler([[.banner, .sound, .badge]])
-  }
-
-  public func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    didReceive response: UNNotificationResponse,
-    withCompletionHandler completionHandler: @escaping () -> Void
-  ) {
-    completionHandler()
-  }
-}
-
-// MARK: - MessagingDelegate
-
-extension AppDelegate: MessagingDelegate {
-  public func messaging(
-    _ messaging: Messaging,
-    didReceiveRegistrationToken fcmToken: String?
-  ) {
-    if let fcmToken = fcmToken {
-      print("FCM Token: \(fcmToken)")
-    }
-  }
-}
-```
-
-#### 3.5. Проверить entitlements файл `ios/Dev/Dev.entitlements`:
-
-Убедитесь, что файл содержит:
-
+**`ios/Dev/Dev.entitlements`** должен содержать:
 ```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-  <dict>
-    <key>aps-environment</key>
-    <string>development</string>
-    <key>com.apple.developer.associated-domains</key>
-    <array>
-      <string>webcredentials:taxion.fusioninsight.cloud</string>
-    </array>
-  </dict>
-</plist>
+<key>aps-environment</key>
+<string>development</string>
+<key>com.apple.developer.associated-domains</key>
+<array>
+  <string>webcredentials:taxion.fusioninsight.cloud</string>
+</array>
 ```
 
-**Важно:** Для passkey также необходимо настроить файл на сервере:
+**Для passkey также необходимо настроить файл на сервере:**
 - URL: `https://taxion.fusioninsight.cloud/.well-known/apple-app-site-association`
 - Содержимое:
 ```json
@@ -225,105 +168,30 @@ APP_ENV=production npx expo prebuild --clean --platform ios
 cd ios && LANG=en_US.UTF-8 pod install && cd ..
 ```
 
-### 3. Добавить push notifications и passkey в AppDelegate.swift
+### 3. Проверить (опционально)
 
-⚠️ **ВАЖНО:** После каждого prebuild необходимо вручную добавлять этот код!
+После prebuild убедитесь, что автоматически сгенерировано:
 
-#### 3.1. Добавить импорты в `ios/Tahion/AppDelegate.swift`:
+**`ios/Tahion/AppDelegate.swift`** должен содержать:
+- `import FirebaseMessaging` и `import UserNotifications`
+- `UNUserNotificationCenter.current().delegate = self`
+- `Messaging.messaging().delegate = self`
+- `application.registerForRemoteNotifications()`
+- Extensions `UNUserNotificationCenterDelegate` и `MessagingDelegate`
 
-```swift
-import FirebaseMessaging
-import UserNotifications
-```
-
-#### 3.2. Добавить регистрацию в `didFinishLaunchingWithOptions` после `FirebaseApp.configure()`:
-
-```swift
-// Register for remote notifications
-UNUserNotificationCenter.current().delegate = self
-Messaging.messaging().delegate = self
-application.registerForRemoteNotifications()
-```
-
-#### 3.3. Добавить методы для push notifications после основного класса:
-
-```swift
-// MARK: - Push Notifications
-
-public override func application(
-  _ application: UIApplication,
-  didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-) {
-  Messaging.messaging().apnsToken = deviceToken
-}
-
-public override func application(
-  _ application: UIApplication,
-  didFailToRegisterForRemoteNotificationsWithError error: Error
-) {
-  print("Failed to register for remote notifications: \(error.localizedDescription)")
-}
-```
-
-#### 3.4. Добавить extension-ы в конец файла перед `ReactNativeDelegate`:
-
-```swift
-// MARK: - UNUserNotificationCenterDelegate
-
-extension AppDelegate: UNUserNotificationCenterDelegate {
-  public func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    willPresent notification: UNNotification,
-    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-  ) {
-    completionHandler([[.banner, .sound, .badge]])
-  }
-
-  public func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    didReceive response: UNNotificationResponse,
-    withCompletionHandler completionHandler: @escaping () -> Void
-  ) {
-    completionHandler()
-  }
-}
-
-// MARK: - MessagingDelegate
-
-extension AppDelegate: MessagingDelegate {
-  public func messaging(
-    _ messaging: Messaging,
-    didReceiveRegistrationToken fcmToken: String?
-  ) {
-    if let fcmToken = fcmToken {
-      print("FCM Token: \(fcmToken)")
-    }
-  }
-}
-```
-
-#### 3.5. Проверить entitlements файл `ios/Tahion/Tahion.entitlements`:
-
-Убедитесь, что файл содержит:
-
+**`ios/Tahion/Tahion.entitlements`** должен содержать:
 ```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-  <dict>
-    <key>aps-environment</key>
-    <string>production</string>
-    <key>com.apple.developer.associated-domains</key>
-    <array>
-      <string>webcredentials:taxion.fusioninsight.cloud</string>
-    </array>
-  </dict>
-</plist>
+<key>aps-environment</key>
+<string>production</string>
+<key>com.apple.developer.associated-domains</key>
+<array>
+  <string>webcredentials:taxion.fusioninsight.cloud</string>
+</array>
 ```
 
-#### 3.6. Проверить Associated Domains в Apple Developer Console
+#### Проверить Associated Domains в Apple Developer Console
 
-**Перед сборкой убедитесь:**
+**Перед первой сборкой убедитесь:**
 
 1. Откройте [Apple Developer Console](https://developer.apple.com/account)
 2. Перейдите в **Certificates, Identifiers & Profiles** → **Identifiers**
@@ -403,13 +271,10 @@ xcrun altool --upload-app \
 
 ## Быстрые команды
 
-⚠️ **ВАЖНО:** Эти команды НЕ включают настройку push notifications и passkey!
-После выполнения команды обязательно выполните шаги из раздела 3 (добавление кода в AppDelegate.swift и проверка entitlements).
-
 ### Dev Client (одной командой)
 
 ```bash
-# Полная сборка dev client (БЕЗ push notifications и passkey)
+# Полная сборка dev client
 rm -rf ios && \
 APP_ENV=development npx expo prebuild --platform ios && \
 cd ios && LANG=en_US.UTF-8 pod install && cd .. && \
@@ -420,33 +285,13 @@ xcodebuild -exportArchive -archivePath ios/build/Dev.xcarchive \
   -exportPath ios/build/ipa-dev -exportOptionsPlist ios/build/ExportOptions.plist
 ```
 
-**После выполнения команды:**
-1. Откройте `ios/Dev/AppDelegate.swift`
-2. Добавьте код push notifications и passkey (см. раздел 3)
-3. Проверьте `ios/Dev/Dev.entitlements`
-4. Пересоберите архив командой xcodebuild
-
 ### Release (одной командой)
 
 ```bash
-# Полная сборка release (БЕЗ push notifications и passkey)
+# Полная сборка release
 rm -rf ios && \
 APP_ENV=production npx expo prebuild --platform ios && \
 cd ios && LANG=en_US.UTF-8 pod install && cd .. && \
-xcodebuild -workspace ios/Tahion.xcworkspace -scheme Tahion -configuration Release -sdk iphoneos \
-  -archivePath ios/build/Tahion.xcarchive archive \
-  CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=QNVQ55232N -allowProvisioningUpdates && \
-xcodebuild -exportArchive -archivePath ios/build/Tahion.xcarchive \
-  -exportPath ios/build/ipa-release -exportOptionsPlist ios/build/ExportOptions-AppStore.plist -allowProvisioningUpdates
-```
-
-**После выполнения команды:**
-1. Откройте `ios/Tahion/AppDelegate.swift`
-2. Добавьте код push notifications и passkey (см. раздел 3)
-3. Проверьте `ios/Tahion/Tahion.entitlements`
-4. Убедитесь, что Associated Domains включен в Apple Developer Console
-5. Пересоберите архив и экспорт:
-```bash
 xcodebuild -workspace ios/Tahion.xcworkspace -scheme Tahion -configuration Release -sdk iphoneos \
   -archivePath ios/build/Tahion.xcarchive archive \
   CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=QNVQ55232N -allowProvisioningUpdates && \
@@ -472,8 +317,14 @@ cd ios && LANG=en_US.UTF-8 pod install
 ### Push notifications не работают
 
 1. Проверить что APNs ключ (.p8) загружен в Firebase Console для соответствующего Bundle ID
-2. Проверить что AppDelegate.swift содержит код для регистрации push notifications
+2. Проверить что AppDelegate.swift содержит код для регистрации push notifications (должен генерироваться автоматически через `withPushNotificationDelegates.js`)
 3. Устанавливать через Xcode/devicectl, не через SideStore (переподписывает приложение)
+
+### Share Extension не появляется в меню "Поделиться"
+
+1. Проверить что `expo-share-intent` плагин есть в `app.json`
+2. Убедиться что prebuild выполнен с `--clean` флагом
+3. Проверить что в Xcode проекте есть таргет Share Extension
 
 ### Очистка кэша сборки
 
@@ -553,15 +404,16 @@ TaxionReact/
 ├── GoogleService-Info.plist      # Production Firebase config
 ├── GoogleService-Info-Dev.plist  # Development Firebase config
 ├── plugins/
-│   ├── withDevEnvironment.js     # Плагин для переключения окружений
-│   └── withPodfileModifications.js
+│   ├── withDevEnvironment.js     # Переключение окружений (Bundle ID, иконка, GoogleService)
+│   ├── withPodfileModifications.js  # Firebase modular headers
+│   └── withPushNotificationDelegates.js  # Push notifications + FCM delegates
 ├── ios/
 │   ├── Dev/                      # Dev проект (после prebuild с APP_ENV=development)
-│   │   ├── AppDelegate.swift     # ⚠️ Требует ручного добавления push/passkey кода
-│   │   └── Dev.entitlements      # ⚠️ Проверить Associated Domains
+│   │   ├── AppDelegate.swift     # ✅ Автоматически настраивается через plugins
+│   │   └── Dev.entitlements      # ✅ Associated Domains из app.json
 │   ├── Tahion/                   # Production проект (после prebuild с APP_ENV=production)
-│   │   ├── AppDelegate.swift     # ⚠️ Требует ручного добавления push/passkey кода
-│   │   └── Tahion.entitlements   # ⚠️ Проверить Associated Domains
+│   │   ├── AppDelegate.swift     # ✅ Автоматически настраивается через plugins
+│   │   └── Tahion.entitlements   # ✅ Associated Domains из app.json
 │   └── build/
 │       ├── Dev.xcarchive
 │       ├── Tahion.xcarchive

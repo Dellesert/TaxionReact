@@ -18,6 +18,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.dellesert.tachyon-messenger",
       "buildNumber": "20",
+      "associatedDomains": ["webcredentials:taxion.fusioninsight.cloud"],
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -69,6 +70,7 @@
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
       "./plugins/withPodfileModifications.js",
+      "./plugins/withPushNotificationDelegates.js",
       [
         "expo-image-picker",
         {
