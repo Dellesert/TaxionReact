@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { FileAttachmentPicker } from '../attachments/FileAttachmentPicker';
 import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
-import { FormattingToolbar, FormatMarker } from './FormattingToolbar';
+import { FormattingToolbar, FormatMarker, FormatButtonType } from './FormattingToolbar';
 import {
   parseFormatting,
   preProcessEscapes,
@@ -87,23 +87,35 @@ function parseMarkedText(markedText: string): { text: string; ranges: FormatRang
   return { text: plainText, ranges };
 }
 
+/** Приоритет формата: чем меньше число — тем раньше парсер его обрабатывает (внешний маркер) */
+const FORMAT_PRIORITY: Record<FormatType, number> = {
+  code: 0,
+  spoiler: 1,
+  bold: 2,
+  strikethrough: 3,
+  italic: 4,
+};
+
 /** Собирает чистый текст + диапазоны обратно в текст с маркерами для отправки */
 function buildMarkedText(text: string, ranges: FormatRange[]): string {
   if (!ranges.length) return text;
 
-  const events: { pos: number; marker: string; isClose: boolean; rangeLen: number }[] = [];
+  const events: { pos: number; marker: string; isClose: boolean; rangeLen: number; priority: number }[] = [];
   for (const range of ranges) {
     const markers = FORMAT_MARKERS[range.type];
-    events.push({ pos: range.start, marker: markers.open, isClose: false, rangeLen: range.end - range.start });
-    events.push({ pos: range.end, marker: markers.close, isClose: true, rangeLen: range.end - range.start });
+    const priority = FORMAT_PRIORITY[range.type];
+    events.push({ pos: range.start, marker: markers.open, isClose: false, rangeLen: range.end - range.start, priority });
+    events.push({ pos: range.end, marker: markers.close, isClose: true, rangeLen: range.end - range.start, priority });
   }
 
-  // Сортировка: по позиции, закрывающие перед открывающими, внутренние перед внешними
+  // Сортировка: по позиции, закрывающие перед открывающими, внутренние перед внешними.
+  // При одинаковой длине диапазона — тайбрейкер по приоритету формата,
+  // чтобы маркеры с высоким приоритетом парсера (bold) были внешними.
   events.sort((a, b) => {
     if (a.pos !== b.pos) return a.pos - b.pos;
     if (a.isClose !== b.isClose) return a.isClose ? -1 : 1;
-    if (a.isClose) return a.rangeLen - b.rangeLen;
-    return b.rangeLen - a.rangeLen;
+    if (a.isClose) return a.rangeLen !== b.rangeLen ? a.rangeLen - b.rangeLen : b.priority - a.priority;
+    return a.rangeLen !== b.rangeLen ? b.rangeLen - a.rangeLen : a.priority - b.priority;
   });
 
   // Вставляем маркеры с конца чтобы не сбивать позиции
@@ -149,6 +161,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [message, setMessage] = useState('');
   const [inputHeight, setInputHeight] = useState(42);
   const [hasSelection, setHasSelection] = useState(false);
+  const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
   const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<AutoCorrectedTextInputRef>(null);
@@ -341,11 +354,28 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
       const { start, end } = e.nativeEvent.selection;
       selectionRef.current = { start, end };
+      setSelection({ start, end });
       const selected = start !== end;
       setHasSelection(prev => prev !== selected ? selected : prev);
     },
     []
   );
+
+  // Активные форматы для текущего выделения (для подсветки кнопок тулбара)
+  const activeFormats = useMemo(() => {
+    const result = new Set<FormatButtonType>();
+    if (!hasSelection) return result;
+    const { start, end } = selection;
+    for (const range of formatRanges) {
+      if (range.start === start && range.end === end) {
+        result.add(range.type);
+      }
+    }
+    return result;
+  }, [formatRanges, selection, hasSelection]);
+
+  // Форматы, несовместимые с code (code не поддерживает вложенное форматирование)
+  const TEXT_STYLE_TYPES: FormatType[] = ['bold', 'italic', 'strikethrough'];
 
   // Применяем форматирование к выделенному тексту (добавляем диапазон)
   const handleFormat = useCallback(
@@ -362,7 +392,23 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         if (existing >= 0) {
           return prev.filter((_, i) => i !== existing);
         }
-        return [...prev, { start, end, type }];
+
+        let next = prev;
+
+        // Code несовместим с bold/italic/strikethrough — убираем их
+        if (type === 'code') {
+          next = next.filter(
+            r => !(TEXT_STYLE_TYPES.includes(r.type) && r.start === start && r.end === end)
+          );
+        }
+        // И наоборот: при выборе текстового стиля убираем code на том же диапазоне
+        if (TEXT_STYLE_TYPES.includes(type)) {
+          next = next.filter(
+            r => !(r.type === 'code' && r.start === start && r.end === end)
+          );
+        }
+
+        return [...next, { start, end, type }];
       });
     },
     []
@@ -509,11 +555,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       {/* Тулбар форматирования — показываем при выделении текста, позиционируем абсолютно чтобы не смещать инпут */}
       {hasSelection && Platform.OS === 'web' && (
         <View style={styles.formattingToolbarWeb}>
-          <FormattingToolbar onFormat={handleFormat} />
+          <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} />
         </View>
       )}
       {hasSelection && Platform.OS !== 'web' && (
-        <FormattingToolbar onFormat={handleFormat} />
+        <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} />
       )}
 
       <View style={[styles.container, dynamicStyles.container]}>

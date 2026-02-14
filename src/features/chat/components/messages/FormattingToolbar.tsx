@@ -8,39 +8,48 @@ export interface FormatMarker {
   close: string;
 }
 
+export type FormatButtonType = 'bold' | 'italic' | 'strikethrough' | 'code' | 'spoiler';
+
 interface FormattingToolbarProps {
   onFormat: (marker: FormatMarker) => void;
+  activeFormats?: Set<FormatButtonType>;
 }
 
-const TOOLBAR_ITEMS: { icon?: string; label: string; marker: FormatMarker; textStyle?: object }[] = [
-  { label: 'B', marker: { open: '*', close: '*' }, textStyle: { fontWeight: 'bold' as const } },
-  { label: 'I', marker: { open: '_', close: '_' }, textStyle: { fontStyle: 'italic' as const } },
-  { label: 'S', marker: { open: '~', close: '~' }, textStyle: { textDecorationLine: 'line-through' as const } },
-  { icon: 'code-slash-outline', label: '', marker: { open: '`', close: '`' } },
-  { icon: 'eye-off-outline', label: '', marker: { open: '||', close: '||' } },
+const TOOLBAR_ITEMS: { icon?: string; label: string; marker: FormatMarker; formatType: FormatButtonType; textStyle?: object }[] = [
+  { label: 'B', marker: { open: '*', close: '*' }, formatType: 'bold', textStyle: { fontWeight: 'bold' as const } },
+  { label: 'I', marker: { open: '_', close: '_' }, formatType: 'italic', textStyle: { fontStyle: 'italic' as const } },
+  { label: 'S', marker: { open: '~', close: '~' }, formatType: 'strikethrough', textStyle: { textDecorationLine: 'line-through' as const } },
+  { icon: 'code-slash-outline', label: '', marker: { open: '`', close: '`' }, formatType: 'code' },
+  { icon: 'eye-off-outline', label: '', marker: { open: '||', close: '||' }, formatType: 'spoiler' },
 ];
 
-export const FormattingToolbar: React.FC<FormattingToolbarProps> = ({ onFormat }) => {
+export const FormattingToolbar: React.FC<FormattingToolbarProps> = ({ onFormat, activeFormats }) => {
   const { theme } = useTheme();
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
-      {TOOLBAR_ITEMS.map((item, index) => (
-        <TouchableOpacity
-          key={index}
-          style={[styles.button, { backgroundColor: theme.input }]}
-          onPress={() => onFormat(item.marker)}
-          activeOpacity={0.7}
-        >
-          {item.icon ? (
-            <Ionicons name={item.icon as any} size={18} color={theme.text} />
-          ) : (
-            <Text style={[styles.buttonText, { color: theme.text }, item.textStyle]}>
-              {item.label}
-            </Text>
-          )}
-        </TouchableOpacity>
-      ))}
+      {TOOLBAR_ITEMS.map((item, index) => {
+        const isActive = activeFormats?.has(item.formatType) ?? false;
+        return (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.button,
+              { backgroundColor: isActive ? theme.primary : theme.input },
+            ]}
+            onPress={() => onFormat(item.marker)}
+            activeOpacity={0.7}
+          >
+            {item.icon ? (
+              <Ionicons name={item.icon as any} size={18} color={isActive ? '#fff' : theme.text} />
+            ) : (
+              <Text style={[styles.buttonText, { color: isActive ? '#fff' : theme.text }, item.textStyle]}>
+                {item.label}
+              </Text>
+            )}
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };
