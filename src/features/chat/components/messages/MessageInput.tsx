@@ -44,7 +44,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
   const [inputHeight, setInputHeight] = useState(42); // Начальная высота инпута
-  const [showFormattingToolbar, setShowFormattingToolbar] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
   const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<AutoCorrectedTextInputRef>(null);
@@ -132,7 +132,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   // Отслеживаем выделение текста
   const handleSelectionChange = useCallback(
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-      selectionRef.current = e.nativeEvent.selection;
+      const { start, end } = e.nativeEvent.selection;
+      selectionRef.current = { start, end };
+      const selected = start !== end;
+      setHasSelection(prev => prev !== selected ? selected : prev);
     },
     []
   );
@@ -295,8 +298,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         </View>
       )}
 
-      {/* Тулбар форматирования */}
-      {showFormattingToolbar && (
+      {/* Тулбар форматирования — показываем при выделении текста */}
+      {hasSelection && (
         <FormattingToolbar onFormat={handleFormat} />
       )}
 
@@ -312,19 +315,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             <Ionicons name="attach" size={26} color={theme.textTertiary} />
           </TouchableOpacity>
         )}
-
-        {/* Кнопка тоглера форматирования */}
-        <TouchableOpacity
-          style={[styles.formatToggle, { backgroundColor: showFormattingToolbar ? theme.primary + '20' : 'transparent' }]}
-          onPress={() => setShowFormattingToolbar(prev => !prev)}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name="text-outline"
-            size={20}
-            color={showFormattingToolbar ? theme.primary : theme.textTertiary}
-          />
-        </TouchableOpacity>
 
         <AutoCorrectedTextInput
           ref={inputRef}
@@ -389,14 +379,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  formatToggle: {
-    width: 32,
-    height: 42,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    flexShrink: 0,
   },
   input: {
     flex: 1,
