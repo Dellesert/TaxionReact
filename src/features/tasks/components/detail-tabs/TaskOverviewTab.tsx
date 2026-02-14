@@ -9,6 +9,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { getUserDisplayName, getPriorityConfig } from '../../utils/taskHelpers';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { FormattedText } from '@features/chat/components/common/FormattedText';
 
 interface TaskOverviewTabProps {
   task: Task;
@@ -86,16 +87,15 @@ export const TaskOverviewTab: React.FC<TaskOverviewTabProps> = ({
           {/* Content - show description if exists */}
           {task.description && (
             <View style={styles.descriptionContent}>
-              <Text
+              <FormattedText
+                text={task.description}
                 style={[
                   styles.descriptionText,
                   { color: theme.textSecondary },
                   !isDescriptionExpanded && styles.descriptionCollapsed,
                 ]}
                 numberOfLines={isDescriptionExpanded ? undefined : 2}
-              >
-                {task.description}
-              </Text>
+              />
               {task.description.length > 80 && (
                 <TouchableOpacity
                   style={styles.expandButton}

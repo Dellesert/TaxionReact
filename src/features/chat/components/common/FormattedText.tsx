@@ -17,6 +17,7 @@ interface FormattedTextProps {
   text: string;
   style?: StyleProp<TextStyle>;
   searchQuery?: string;
+  numberOfLines?: number;
 }
 
 type LinkType = 'url' | 'email' | 'phone' | 'text';
@@ -141,7 +142,7 @@ function getFormatStyle(formatType: FormatType, isDark: boolean): TextStyle {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export const FormattedText: React.FC<FormattedTextProps> = ({ text, style, searchQuery }) => {
+export const FormattedText: React.FC<FormattedTextProps> = ({ text, style, searchQuery, numberOfLines }) => {
   const { theme, isDark } = useTheme();
   const { showError } = useNotification();
 
@@ -277,7 +278,7 @@ export const FormattedText: React.FC<FormattedTextProps> = ({ text, style, searc
   };
 
   return (
-    <Text style={style}>
+    <Text style={style} numberOfLines={numberOfLines}>
       {tree.map((node, i) => renderNode(node, `f-${i}`))}
     </Text>
   );

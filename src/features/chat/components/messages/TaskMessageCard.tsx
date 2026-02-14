@@ -8,6 +8,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { MessageTaskData } from '../../types/chat.types';
+import { FormattedText } from '../common/FormattedText';
 
 interface TaskMessageCardProps {
   taskData: MessageTaskData;
@@ -212,9 +213,11 @@ const TaskMessageCard: React.FC<TaskMessageCardProps> = ({ taskData, onPress }) 
       </View>
 
       {taskData.task_description && (
-        <Text style={dynamicStyles.description} numberOfLines={3}>
-          {taskData.task_description}
-        </Text>
+        <FormattedText
+          text={taskData.task_description}
+          style={dynamicStyles.description}
+          numberOfLines={3}
+        />
       )}
 
       <View style={dynamicStyles.footer}>
