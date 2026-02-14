@@ -75,12 +75,23 @@ const withDevAppName = (config) => {
   return config;
 };
 
+const withDevScheme = (config) => {
+  if (isDev) {
+    // Use different URL scheme for dev builds to avoid conflict with production app
+    const originalScheme = config.scheme;
+    config.scheme = `${originalScheme}-dev`;
+    console.log(`✅ [Dev] URL scheme changed to: ${config.scheme}`);
+  }
+  return config;
+};
+
 const withDevEnvironment = (config) => {
   console.log(`\n🔧 Building for environment: ${isDev ? 'DEVELOPMENT' : 'PRODUCTION'}\n`);
 
   config = withDevAppName(config);
   config = withDevIcon(config);
   config = withDevBundleId(config);
+  config = withDevScheme(config);
   config = withDevGoogleServices(config);
 
   return config;
