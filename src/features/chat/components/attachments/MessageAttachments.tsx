@@ -369,6 +369,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           return {
             width: isPortrait ? '65%' as const : '100%' as const,
             aspectRatio,
+            ...(isPortrait && { alignSelf: isOwnMessage ? 'flex-end' as const : 'flex-start' as const }),
           };
         })()]}
         onPress={() => {
