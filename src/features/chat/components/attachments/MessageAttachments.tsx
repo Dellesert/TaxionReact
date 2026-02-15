@@ -360,12 +360,17 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     return (
       <TouchableOpacity
         key={`video-${attachment.id || index}`}
-        style={[styles.imageAttachment, {
-          width: '100%',
-          aspectRatio: (attachment.width && attachment.height)
+        style={[styles.imageAttachment, (() => {
+          const aspectRatio = (attachment.width && attachment.height)
             ? Math.max(9 / 16, Math.min(2, attachment.width / attachment.height))
-            : 16 / 9,
-        }]}
+            : 16 / 9;
+          // Portrait videos: limit width so they don't get too tall
+          const isPortrait = aspectRatio < 1;
+          return {
+            width: isPortrait ? '65%' as const : '100%' as const,
+            aspectRatio,
+          };
+        })()]}
         onPress={() => {
           onVideoPress?.(
             replaceLocalhostWithIP(attachment.file_url),
