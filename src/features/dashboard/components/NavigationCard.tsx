@@ -45,9 +45,6 @@ export const NavigationCard: React.FC<NavigationCardProps> = ({
       <Text style={[styles.description, { color: theme.textSecondary }]} numberOfLines={2}>
         {description}
       </Text>
-      <View style={[styles.arrowContainer, { backgroundColor: color + '12' }]}>
-        <Ionicons name="arrow-forward" size={16} color={color} />
-      </View>
     </TouchableOpacity>
   );
 };
@@ -76,15 +73,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     flex: 1,
-  },
-  arrowContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'flex-end',
-    marginTop: 8,
   },
 });
 
