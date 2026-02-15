@@ -8,6 +8,7 @@ import { Message } from '../../types/chat.types';
 import { formatTime } from '../../utils/message.utils';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 import { ReactionBar } from '../messages/ReactionBar';
+import { FormattedText } from '../common/FormattedText';
 
 interface MessageContextMenuProps {
   visible: boolean;
@@ -210,9 +211,11 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                     {/* Если есть текст И вложение - показываем текст отдельно */}
                     {preview.attachmentText ? (
                       <>
-                        <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={2}>
-                          {preview.text}
-                        </Text>
+                        <FormattedText
+                          text={preview.text}
+                          style={[styles.previewText, { color: theme.text }]}
+                          numberOfLines={2}
+                        />
                         <View style={[styles.previewContent, { marginTop: 6 }]}>
                           {preview.icon && (
                             <Ionicons
@@ -238,9 +241,11 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                             style={styles.previewIcon}
                           />
                         )}
-                        <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={3}>
-                          {preview.text}
-                        </Text>
+                        <FormattedText
+                          text={preview.text}
+                          style={[styles.previewText, { color: theme.text }]}
+                          numberOfLines={3}
+                        />
                       </View>
                     )}
 
