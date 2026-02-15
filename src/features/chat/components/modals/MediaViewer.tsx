@@ -11,6 +11,7 @@ import { GestureDetector, GestureHandlerRootView, Gesture } from 'react-native-g
 import * as Sharing from 'expo-sharing';
 import { Paths, File as ExpoFile } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import { getCachedVideoUri, cacheVideo, isVideoCacheUri } from '@shared/utils/videoCache';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -117,6 +118,27 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   const progress = videoDuration > 0 ? (currentTime / videoDuration) * 100 : 0;
 
+  // Resolve video source: use cached local file if available, otherwise stream from remote
+  const getVideoSource = (item: MediaItem) => {
+    if (Platform.OS === 'web') {
+      return { uri: item.url, headers: sessionId ? { 'X-Session-ID': sessionId } : undefined };
+    }
+
+    const cachedUri = getCachedVideoUri(item.url);
+    if (cachedUri) {
+      return { uri: cachedUri }; // Local file, no auth headers needed
+    }
+
+    // Not cached yet — stream from remote and cache in background
+    if (sessionId) {
+      cacheVideo(item.url, sessionId).catch((err) =>
+        console.warn('[MediaViewer] Background video cache failed:', err),
+      );
+    }
+
+    return { uri: item.url, headers: sessionId ? { 'X-Session-ID': sessionId } : undefined };
+  };
+
   useEffect(() => {
     const loadSessionId = async () => {
       const authSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
@@ -170,10 +192,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
       if (item?.type === 'video') {
         setVideoLoading(true);
-        player.replace({
-          uri: item.url,
-          headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-        });
+        player.replace(getVideoSource(item));
         player.play();
       } else {
         player.pause();
@@ -288,10 +307,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     // Load video if navigating to a video slide
     if (newItem?.type === 'video') {
       setVideoLoading(true);
-      player.replace({
-        uri: newItem.url,
-        headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-      });
+      player.replace(getVideoSource(newItem));
       player.play();
     }
   };
@@ -587,6 +603,12 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   // === HELPER FUNCTIONS ===
 
   const downloadFileLocally = async (url: string, isVideo: boolean): Promise<string | null> => {
+    // Reuse cached video if available
+    if (isVideo) {
+      const cachedUri = getCachedVideoUri(url);
+      if (cachedUri) return cachedUri;
+    }
+
     try {
       const ext = isVideo ? 'mp4' : 'jpg';
       const prefix = isVideo ? 'video' : 'image';
@@ -652,7 +674,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       Alert.alert('Ошибка', `Не удалось поделиться ${isVideo ? 'видео' : 'изображением'}`);
     } finally {
       setIsSharing(false);
-      if (localUri) {
+      // Don't delete cached video files — they should persist in cache
+      if (localUri && !isVideoCacheUri(localUri)) {
         try {
           const file = new ExpoFile(localUri);
           if (file.exists) {
@@ -693,7 +716,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       Alert.alert('Ошибка', `Не удалось сохранить ${isVideo ? 'видео' : 'изображение'}`);
     } finally {
       setIsSharing(false);
-      if (localUri) {
+      // Don't delete cached video files — they should persist in cache
+      if (localUri && !isVideoCacheUri(localUri)) {
         try {
           const file = new ExpoFile(localUri);
           if (file.exists) {

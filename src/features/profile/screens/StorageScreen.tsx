@@ -28,11 +28,14 @@ import {
   getCacheLimit,
   setCacheLimit,
 } from '@shared/storage';
+import { getVideoCacheSize, clearVideoCache } from '@shared/utils/videoCache';
 
 interface CacheInfo {
   mmkv: StorageInfo;
   imageCache: number;
   imageCacheFileCount: number;
+  videoCache: number;
+  videoCacheFileCount: number;
   documentCache: number;
   totalCache: number;
   cacheLimit: number;
@@ -177,19 +180,34 @@ export default function StorageScreen() {
         }
       }
 
+      // Get video cache size
+      let videoCacheSize = 0;
+      let videoCacheFileCount = 0;
+      if (isNative) {
+        try {
+          const videoStats = await getVideoCacheSize();
+          videoCacheSize = videoStats.totalSize;
+          videoCacheFileCount = videoStats.fileCount;
+        } catch (e) {
+          console.log('[Storage] Error getting video cache size:', e);
+        }
+      }
+
       const cacheLimit = await getCacheLimit();
 
-      // Общий размер = данные (MMKV) + изображения
+      // Общий размер = данные (MMKV) + изображения + видео
       // documentCache не включаем - это системный кэш Expo/Metro
-      const totalCache = mmkvInfo.totalSize + imageCacheSize;
+      const totalCache = mmkvInfo.totalSize + imageCacheSize + videoCacheSize;
 
-      // Считаем процент от данных + изображений
+      // Считаем процент от данных + изображений + видео
       const usagePercent = cacheLimit > 0 ? Math.min(100, (totalCache / cacheLimit) * 100) : 0;
 
       setCacheInfo({
         mmkv: mmkvInfo,
         imageCache: imageCacheSize,
         imageCacheFileCount,
+        videoCache: videoCacheSize,
+        videoCacheFileCount,
         documentCache: documentCacheSize,
         totalCache,
         cacheLimit,
@@ -259,6 +277,32 @@ export default function StorageScreen() {
     );
   };
 
+  const handleClearVideoCache = async () => {
+    Alert.alert(
+      'Очистить кэш видео',
+      'Все кэшированные видео будут удалены. Видео будут загружены заново при просмотре.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Очистить',
+          style: 'destructive',
+          onPress: async () => {
+            setIsClearing(true);
+            try {
+              await clearVideoCache();
+              await loadCacheInfo();
+              Alert.alert('Готово', 'Кэш видео очищен');
+            } catch (error) {
+              Alert.alert('Ошибка', 'Не удалось очистить кэш видео');
+            } finally {
+              setIsClearing(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleClearAllCache = async () => {
     Alert.alert(
       'Очистить весь кэш',
@@ -274,6 +318,7 @@ export default function StorageScreen() {
               await clearAllStorages();
               await Image.clearDiskCache();
               await Image.clearMemoryCache();
+              await clearVideoCache();
 
               // Clear file cache
               const clearCacheDir = FileSystem.cacheDirectory;
@@ -558,7 +603,7 @@ export default function StorageScreen() {
               </View>
               <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.totalSize || 0)}</Text>
             </View>
-            <View style={[styles.row, styles.rowLast]}>
+            <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#F59E0B20' }]}>
                   <Ionicons name="image" size={20} color="#F59E0B" />
@@ -576,6 +621,24 @@ export default function StorageScreen() {
                 {isNative
                   ? formatBytes(cacheInfo?.imageCache || 0)
                   : 'Системный'}
+              </Text>
+            </View>
+            <View style={[styles.row, styles.rowLast]}>
+              <View style={styles.rowLeft}>
+                <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
+                  <Ionicons name="videocam" size={20} color="#EF4444" />
+                </View>
+                <View style={styles.rowTextContainer}>
+                  <Text style={styles.rowTitle}>Видео</Text>
+                  <Text style={styles.rowSubtitle}>
+                    {isNative && cacheInfo?.videoCacheFileCount
+                      ? `${cacheInfo.videoCacheFileCount} файлов`
+                      : 'Кэш видеозаписей'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.rowValue}>
+                {isNative ? formatBytes(cacheInfo?.videoCache || 0) : 'Системный'}
               </Text>
             </View>
           </View>
@@ -654,7 +717,7 @@ export default function StorageScreen() {
                   {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.row, styles.rowLast]}
+                  style={styles.row}
                   onPress={handleClearImageCache}
                   disabled={isClearing}
                 >
@@ -665,6 +728,22 @@ export default function StorageScreen() {
                     <View style={styles.rowTextContainer}>
                       <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш изображений</Text>
                       <Text style={styles.rowSubtitle}>Аватарки и медиа</Text>
+                    </View>
+                  </View>
+                  {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.row, styles.rowLast]}
+                  onPress={handleClearVideoCache}
+                  disabled={isClearing}
+                >
+                  <View style={styles.rowLeft}>
+                    <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
+                      <Ionicons name="videocam-outline" size={20} color="#EF4444" />
+                    </View>
+                    <View style={styles.rowTextContainer}>
+                      <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш видео</Text>
+                      <Text style={styles.rowSubtitle}>Кэшированные видеозаписи</Text>
                     </View>
                   </View>
                   {isClearing && <ActivityIndicator size="small" color="#EF4444" />}

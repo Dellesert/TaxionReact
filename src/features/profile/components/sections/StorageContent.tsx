@@ -27,11 +27,14 @@ import {
   getCacheUsagePercent,
 } from '@shared/storage';
 import { isElectron, getElectronAPI } from '@shared/utils/platform';
+import { getVideoCacheSize, clearVideoCache } from '@shared/utils/videoCache';
 
 interface CacheInfo {
   mmkv: StorageInfo;
   imageCache: number;
   imageCacheFileCount: number;
+  videoCache: number;
+  videoCacheFileCount: number;
   documentCache: number;
   totalCache: number;
   cacheLimit: number;
@@ -151,6 +154,19 @@ const StorageContent: React.FC = () => {
         }
       }
 
+      // Get video cache size
+      let videoCacheSize = 0;
+      let videoCacheFileCount = 0;
+      if (isNative) {
+        try {
+          const videoStats = await getVideoCacheSize();
+          videoCacheSize = videoStats.totalSize;
+          videoCacheFileCount = videoStats.fileCount;
+        } catch (e) {
+          console.log('[Storage] Error getting video cache size:', e);
+        }
+      }
+
       // Get Electron media cache stats
       if (isElectron()) {
         try {
@@ -172,8 +188,10 @@ const StorageContent: React.FC = () => {
         mmkv: mmkvInfo,
         imageCache: imageCacheSize,
         imageCacheFileCount,
+        videoCache: videoCacheSize,
+        videoCacheFileCount,
         documentCache: documentCacheSize,
-        totalCache: mmkvInfo.totalSize + documentCacheSize + imageCacheSize,
+        totalCache: mmkvInfo.totalSize + documentCacheSize + imageCacheSize + videoCacheSize,
         cacheLimit,
         usagePercent,
         electronMediaCache,
@@ -255,6 +273,32 @@ const StorageContent: React.FC = () => {
     );
   };
 
+  const handleClearVideoCache = async () => {
+    Alert.alert(
+      'Очистить кэш видео',
+      'Все кэшированные видео будут удалены. Видео будут загружены заново при просмотре.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Очистить',
+          style: 'destructive',
+          onPress: async () => {
+            setIsClearing(true);
+            try {
+              await clearVideoCache();
+              await loadCacheInfo();
+              Alert.alert('Готово', 'Кэш видео очищен');
+            } catch (error) {
+              Alert.alert('Ошибка', 'Не удалось очистить кэш видео');
+            } finally {
+              setIsClearing(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleClearAllCache = async () => {
     Alert.alert(
       'Очистить весь кэш',
@@ -270,6 +314,7 @@ const StorageContent: React.FC = () => {
               await clearAllStorages();
               await Image.clearDiskCache();
               await Image.clearMemoryCache();
+              await clearVideoCache();
 
               const clearCacheDir = FileSystem.cacheDirectory;
               if (isNative && clearCacheDir) {
@@ -545,7 +590,7 @@ const StorageContent: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Медиа</Text>
           <View style={styles.card}>
-            <View style={[styles.row, styles.rowLast]}>
+            <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#F59E0B20' }]}>
                   <Ionicons name="image" size={20} color="#F59E0B" />
@@ -580,6 +625,24 @@ const StorageContent: React.FC = () => {
                   // Web: browser manages cache
                   return 'Системный';
                 })()}
+              </Text>
+            </View>
+            <View style={[styles.row, styles.rowLast]}>
+              <View style={styles.rowLeft}>
+                <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
+                  <Ionicons name="videocam" size={20} color="#EF4444" />
+                </View>
+                <View style={styles.rowTextContainer}>
+                  <Text style={styles.rowTitle}>Видео</Text>
+                  <Text style={styles.rowSubtitle}>
+                    {isNative && cacheInfo?.videoCacheFileCount
+                      ? `${cacheInfo.videoCacheFileCount} файлов`
+                      : 'Кэш видеозаписей'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.rowValue}>
+                {isNative ? formatBytes(cacheInfo?.videoCache || 0) : 'Системный'}
               </Text>
             </View>
           </View>
@@ -658,7 +721,7 @@ const StorageContent: React.FC = () => {
                   {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.row, styles.rowLast]}
+                  style={styles.row}
                   onPress={handleClearImageCache}
                   disabled={isClearing}
                 >
@@ -669,6 +732,22 @@ const StorageContent: React.FC = () => {
                     <View style={styles.rowTextContainer}>
                       <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш изображений</Text>
                       <Text style={styles.rowSubtitle}>Аватарки и медиа</Text>
+                    </View>
+                  </View>
+                  {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.row, styles.rowLast]}
+                  onPress={handleClearVideoCache}
+                  disabled={isClearing}
+                >
+                  <View style={styles.rowLeft}>
+                    <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
+                      <Ionicons name="videocam-outline" size={20} color="#EF4444" />
+                    </View>
+                    <View style={styles.rowTextContainer}>
+                      <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш видео</Text>
+                      <Text style={styles.rowSubtitle}>Кэшированные видеозаписи</Text>
                     </View>
                   </View>
                   {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
