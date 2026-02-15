@@ -7,13 +7,14 @@
 - [x] Associated Domains / Passkey — `associatedDomains` в `app.json`
 - [x] Firebase — `@react-native-firebase/app` + `@react-native-firebase/messaging`
 - [x] Podfile модификации — `withPodfileModifications.js`
-- [x] Share Extension (таргет + entitlements) — `expo-share-intent`
+- [x] Share Extension (таргет + entitlements + App Groups) — `expo-share-intent`
 - [x] Share Extension кастомный UI (чат-пикер) — `withCustomShareViewController.js`
+- [x] Share Extension синхронизация данных — Expo Module `share-data` (pod `ShareData`)
 - [x] ExportOptions plist файлы — `withExportOptions.js`
 
 **Ручные шаги:**
 - [ ] Поменять версию сборки +1 в app.json
-- [ ] Для Production: убедиться, что Associated Domains включен в Apple Developer Console
+- [ ] Для Production: убедиться, что Associated Domains и App Groups включены в Apple Developer Console
 - [ ] Проверить наличие файла `apple-app-site-association` на сервере
 
 ---
@@ -51,7 +52,7 @@
 | `withShareExtensionConfig.js` | Устанавливает DEVELOPMENT_TEAM и buildNumber для Share Extension |
 | `withCustomShareViewController.js` | Заменяет ShareViewController на кастомный с нативным чат-пикером |
 
-**Expo Module `modules/share-data/`** — синхронизирует список чатов, сессию и API URL из React Native в App Group UserDefaults. Share Extension читает эти данные для отображения чатов и отправки сообщений напрямую.
+**Expo Module `modules/share-data/`** — синхронизирует список чатов, сессию и API URL из React Native в App Group UserDefaults. Share Extension читает эти данные для отображения чатов и отправки сообщений напрямую. App group идентификатор читается динамически из `Info.plist` (`AppGroupIdentifier`), что обеспечивает корректную работу в dev и production окружениях.
 
 **`associatedDomains`** в `app.json` → автоматически добавляет `com.apple.developer.associated-domains` в entitlements (для Passkey).
 
@@ -295,11 +296,13 @@ cd ios && LANG=en_US.UTF-8 pod install
 2. Убедиться что prebuild выполнен с `--clean` флагом
 3. Проверить что в Xcode проекте есть таргет ShareExtension
 
-### Share Extension показывает пустой список чатов
+### Share Extension показывает "Войдите в приложение" или пустой список чатов
 
-1. Убедиться что пользователь залогинен в основном приложении (данные синхронизируются при логине)
-2. Открыть основное приложение и дождаться загрузки списка чатов (синхронизация происходит после `loadChats`)
-3. Если сессия истекла — Share Extension покажет ошибку "Сессия истекла", нужно перелогиниться в приложении
+1. Проверить что pod `ShareData` есть в `ios/Podfile.lock` — если нет, нативный модуль не подключён и синхронизация данных не работает
+2. Убедиться что `share-data` есть в `package.json` dependencies (`"share-data": "file:./modules/share-data"`)
+3. Убедиться что пользователь залогинен в основном приложении (данные синхронизируются при логине)
+4. Открыть основное приложение и дождаться загрузки списка чатов (синхронизация происходит после `loadChats`)
+5. Если сессия истекла — Share Extension покажет ошибку "Сессия истекла", нужно перелогиниться в приложении
 
 ### Очистка кэша сборки
 
@@ -388,10 +391,13 @@ TaxionReact/
 │   └── withCustomShareViewController.js  # Кастомный ShareViewController с чат-пикером
 ├── modules/
 │   └── share-data/               # Expo Module для синхронизации данных в App Group
+│       ├── package.json           # Обязателен для Expo autolinking
 │       ├── expo-module.config.json
 │       ├── index.ts
 │       ├── src/ShareDataModule.ts  # TypeScript обёртка
-│       └── ios/ShareDataModule.swift  # Нативный модуль (запись в UserDefaults)
+│       └── ios/
+│           ├── ShareData.podspec   # Обязателен для CocoaPods
+│           └── ShareDataModule.swift  # Нативный модуль (запись в UserDefaults)
 ├── templates/
 │   └── ShareViewController.swift  # Шаблон кастомного Share Extension (чат-пикер + API клиент)
 ├── ios/
