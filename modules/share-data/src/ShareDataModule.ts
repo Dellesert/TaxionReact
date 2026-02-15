@@ -9,10 +9,15 @@ interface ShareChatData {
   last_message_time?: string;
 }
 
+function getShareDataModule() {
+  const { requireNativeModule } = require('expo-modules-core');
+  return requireNativeModule('ShareData');
+}
+
 export function syncChatsToShareExtension(chats: ShareChatData[]): void {
   if (Platform.OS !== 'ios') return;
   try {
-    const ShareData = require('..').default;
+    const ShareData = getShareDataModule();
     const json = JSON.stringify(chats.slice(0, 50));
     ShareData.syncChats(json);
   } catch (e) {
@@ -27,17 +32,21 @@ export function syncAuthToShareExtension(
 ): void {
   if (Platform.OS !== 'ios') return;
   try {
-    const ShareData = require('..').default;
+    const ShareData = getShareDataModule();
     ShareData.syncAuth(sessionId, userId, apiBaseUrl);
+    console.log('[ShareData] syncAuth called — userId:', userId, 'apiBaseUrl:', apiBaseUrl);
   } catch (e) {
-    console.warn('[ShareData] Failed to sync auth:', e);
+    console.error('[ShareData] Failed to sync auth:', e);
+    // TODO: убрать после отладки
+    const { Alert } = require('react-native');
+    Alert.alert('[ShareData] syncAuth error', String(e));
   }
 }
 
 export function clearShareExtensionData(): void {
   if (Platform.OS !== 'ios') return;
   try {
-    const ShareData = require('..').default;
+    const ShareData = getShareDataModule();
     ShareData.clearSyncedData();
   } catch (e) {
     console.warn('[ShareData] Failed to clear data:', e);

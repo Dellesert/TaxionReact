@@ -27,8 +27,8 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  const iconSize = compact ? 12 : 16;
-  const iconStyle = compact ? styles.compactStatusIcon : styles.statusIcon;
+  const iconSize = compact ? 12 : 12;
+  const iconStyle = styles.compactStatusIcon;
   const iconColor = compact ? '#FFFFFF' : theme.textTertiary;
 
   if (!isOwnMessage || message.is_deleted) return null;
@@ -121,8 +121,8 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({
 
 const styles = StyleSheet.create({
   statusIcon: {
-    marginLeft: 4,
-    transform: [{ translateY: 5 }],
+    marginLeft: 3,
+    transform: [{ translateY: 2 }],
   },
   compactStatusIcon: {
     marginLeft: 2,
