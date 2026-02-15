@@ -169,7 +169,8 @@
     "react-native-toast-message": "^2.3.3",
     "react-native-web": "^0.21.0",
     "zod": "^4.1.12",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "share-data": "file:./modules/share-data"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
