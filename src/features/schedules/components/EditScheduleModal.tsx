@@ -7,12 +7,13 @@
  * Шаг 4: Настройки (видимость, цвет)
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
   StyleSheet,
   Platform,
@@ -22,6 +23,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,7 +46,8 @@ import {
   EDIT_PERMISSION_LABELS,
 } from '../types/schedule.types';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
-import { User } from '@/types/user.types';
+import { User, UserGroup } from '@/types/user.types';
+import { getUserGroups } from '@/api/user-group.api';
 
 interface EditScheduleModalProps {
   visible: boolean;
@@ -131,6 +134,47 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [color, setColor] = useState('#3B82F6');
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('recurring');
 
+  // User group selection
+  const [userGroupId, setUserGroupId] = useState<number | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null);
+  const [availableGroups, setAvailableGroups] = useState<UserGroup[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const groupPickerOverlayAnim = useRef(new Animated.Value(0)).current;
+  const groupPickerSlideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+
+  const openGroupPicker = useCallback(() => {
+    setShowGroupPicker(true);
+    Animated.parallel([
+      Animated.timing(groupPickerOverlayAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(groupPickerSlideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 90,
+      }),
+    ]).start();
+  }, [groupPickerOverlayAnim, groupPickerSlideAnim]);
+
+  const closeGroupPicker = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(groupPickerOverlayAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(groupPickerSlideAnim, {
+        toValue: Dimensions.get('window').height,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShowGroupPicker(false));
+  }, [groupPickerOverlayAnim, groupPickerSlideAnim]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
@@ -152,9 +196,31 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setEveningStart(schedule.evening_start || '14:00');
       setEveningEnd(schedule.evening_end || '20:00');
       setScheduleMode(schedule.mode || 'recurring');
+      setUserGroupId(schedule.user_group_id || null);
       setCurrentStep(1);
     }
   }, [schedule, visible]);
+
+  // Load available groups when modal opens
+  useEffect(() => {
+    if (visible) {
+      setIsLoadingGroups(true);
+      getUserGroups()
+        .then((groups) => {
+          const typedGroups = groups as UserGroup[];
+          setAvailableGroups(typedGroups);
+          // Restore selected group from schedule data
+          if (schedule?.user_group_id) {
+            const found = typedGroups.find(g => g.id === schedule.user_group_id);
+            if (found) setSelectedGroup(found);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingGroups(false));
+    } else {
+      setSelectedGroup(null);
+    }
+  }, [visible, schedule]);
 
   // Track keyboard visibility
   useEffect(() => {
@@ -285,6 +351,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         evening_end: eveningEnd,
         viewer_ids: visibility === 'specific_users' ? viewerIds : undefined,
         editor_ids: editPermission === 'specific_users' ? editorIds : undefined,
+        user_group_id: userGroupId || null,
       };
 
       await onSave(updateData);
@@ -625,6 +692,137 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   {/* Step 4: Visibility and Color */}
                   {currentStep === 4 && (
                     <View style={styles.stepContent}>
+                      {/* User Group Selector */}
+                      <View style={styles.inputSection}>
+                        <Text style={[styles.inputLabel, { color: theme.text }]}>Группа пользователей</Text>
+                        <Text style={[styles.inputHint, { color: theme.textTertiary }]}>
+                          Привяжите группу, чтобы в графике были только её участники
+                        </Text>
+
+                        {selectedGroup ? (
+                          <View style={[styles.selectedGroupCard, { backgroundColor: theme.card, borderColor: theme.primary }]}>
+                            <View style={styles.selectedGroupInfo}>
+                              <Ionicons name="people-circle" size={24} color={theme.primary} />
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.selectedGroupName, { color: theme.text }]}>
+                                  {selectedGroup.name}
+                                </Text>
+                                <Text style={[styles.selectedGroupCount, { color: theme.textSecondary }]}>
+                                  {selectedGroup.member_count} участник(ов)
+                                </Text>
+                              </View>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setUserGroupId(null);
+                                  setSelectedGroup(null);
+                                }}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <Ionicons name="close-circle" size={24} color={theme.textTertiary} />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={openGroupPicker}
+                            style={[
+                              styles.userSelectorButton,
+                              { backgroundColor: theme.card, borderColor: theme.border },
+                            ]}
+                          >
+                            <View style={styles.userSelectorContent}>
+                              <Ionicons name="people-circle-outline" size={20} color={theme.primary} />
+                              <Text style={[styles.userSelectorText, { color: theme.textSecondary }]}>
+                                Выбрать группу (необязательно)
+                              </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Group picker modal */}
+                        <Modal
+                          visible={showGroupPicker}
+                          animationType="none"
+                          transparent={true}
+                          onRequestClose={closeGroupPicker}
+                        >
+                          <TouchableWithoutFeedback onPress={closeGroupPicker}>
+                            <Animated.View style={[
+                              styles.groupPickerOverlay,
+                              { opacity: groupPickerOverlayAnim },
+                              isDesktop && styles.groupPickerOverlayDesktop,
+                            ]}>
+                              <TouchableWithoutFeedback>
+                                <Animated.View style={[
+                                  styles.groupPickerContainer,
+                                  { backgroundColor: theme.card },
+                                  !isDesktop && { transform: [{ translateY: groupPickerSlideAnim }] },
+                                  isDesktop && styles.groupPickerContainerDesktop,
+                                ]}>
+                                  {!isDesktop && (
+                                    <View style={styles.groupPickerHandle}>
+                                      <View style={[styles.groupPickerHandleBar, { backgroundColor: theme.border }]} />
+                                    </View>
+                                  )}
+                                  <View style={[styles.groupPickerHeader, { borderBottomColor: theme.border }]}>
+                                    <Text style={[styles.groupPickerTitle, { color: theme.text }]}>
+                                      Выберите группу
+                                    </Text>
+                                    <TouchableOpacity onPress={closeGroupPicker}>
+                                      <Ionicons name="close" size={24} color={theme.textSecondary} />
+                                    </TouchableOpacity>
+                                  </View>
+                                  <ScrollView style={styles.groupPickerList}>
+                                    {isLoadingGroups ? (
+                                      <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 20 }} />
+                                    ) : availableGroups.length === 0 ? (
+                                      <Text style={[styles.groupPickerEmpty, { color: theme.textSecondary }]}>
+                                        Нет доступных групп
+                                      </Text>
+                                    ) : (
+                                      availableGroups.map((group) => (
+                                        <TouchableOpacity
+                                          key={group.id}
+                                          onPress={() => {
+                                            setUserGroupId(group.id);
+                                            setSelectedGroup(group);
+                                            closeGroupPicker();
+                                          }}
+                                          style={[
+                                            styles.groupPickerItem,
+                                            { borderBottomColor: theme.border },
+                                            userGroupId === group.id && { backgroundColor: theme.primary + '10' },
+                                          ]}
+                                        >
+                                          <Ionicons name="people-circle" size={28} color={theme.primary} />
+                                          <View style={{ flex: 1 }}>
+                                            <Text style={[styles.groupPickerItemName, { color: theme.text }]}>
+                                              {group.name}
+                                            </Text>
+                                            {group.description ? (
+                                              <Text style={[styles.groupPickerItemDesc, { color: theme.textTertiary }]} numberOfLines={1}>
+                                                {group.description}
+                                              </Text>
+                                            ) : null}
+                                            <Text style={[styles.groupPickerItemCount, { color: theme.textSecondary }]}>
+                                              {group.member_count} участник(ов)
+                                            </Text>
+                                          </View>
+                                          {userGroupId === group.id && (
+                                            <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                                          )}
+                                        </TouchableOpacity>
+                                      ))
+                                    )}
+                                  </ScrollView>
+                                </Animated.View>
+                              </TouchableWithoutFeedback>
+                            </Animated.View>
+                          </TouchableWithoutFeedback>
+                        </Modal>
+                      </View>
+
                       <View style={styles.inputSection}>
                         <Text style={[styles.inputLabel, { color: theme.text }]}>Видимость</Text>
                         {VISIBILITY_OPTIONS.map((item) => (
@@ -837,6 +1035,14 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                             {format(startDate, 'dd.MM.yy')} — {format(endDate, 'dd.MM.yy')}
                           </Text>
                         </View>
+                        {selectedGroup && (
+                          <View style={styles.summaryRow}>
+                            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Группа:</Text>
+                            <Text style={[styles.summaryValue, { color: theme.text }]}>
+                              {selectedGroup.name} ({selectedGroup.member_count})
+                            </Text>
+                          </View>
+                        )}
                         <View style={styles.summaryRow}>
                           <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Видимость:</Text>
                           <Text style={[styles.summaryValue, { color: theme.text }]}>
@@ -1385,6 +1591,105 @@ const styles = StyleSheet.create({
   userSelectorText: {
     fontSize: 15,
     fontWeight: '500',
+  },
+  // Input hint
+  inputHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -4,
+  },
+  // Selected group card
+  selectedGroupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  selectedGroupInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  selectedGroupName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  selectedGroupCount: {
+    fontSize: 13,
+  },
+  // Group picker modal
+  groupPickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  groupPickerOverlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  groupPickerContainer: {
+    maxHeight: '70%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  groupPickerContainerDesktop: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '80%',
+    borderRadius: 16,
+  },
+  groupPickerHandle: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  groupPickerHandleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  groupPickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  groupPickerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  groupPickerList: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  groupPickerEmpty: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  groupPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  groupPickerItemName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  groupPickerItemDesc: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  groupPickerItemCount: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });
 
