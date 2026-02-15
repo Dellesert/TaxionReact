@@ -14,6 +14,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { FileAttachmentPicker } from '../attachments/FileAttachmentPicker';
 import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
 import { FormattingToolbar, FormatMarker, FormatButtonType } from './FormattingToolbar';
+import { stripFormatting } from '../../utils/formatting';
 import {
   parseFormatting,
   preProcessEscapes,
@@ -527,7 +528,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 Ответ на сообщение
               </Text>
               <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
-                {replyingToMessage.content}
+                {stripFormatting(replyingToMessage.content)}
               </Text>
             </View>
           </View>
