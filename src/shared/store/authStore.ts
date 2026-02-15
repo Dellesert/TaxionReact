@@ -22,6 +22,8 @@ import { useTaskStore } from './taskStore';
 import { usePollStore } from './pollStore';
 import { useCalendarStore } from './calendarStore';
 import { useUserStore } from './userStore';
+import { syncAuthToShareExtension, clearShareExtensionData } from '../../../modules/share-data/src/ShareDataModule';
+import { API_BASE_URL } from '@shared/constants/api.constants';
 
 interface AuthState {
   // State
@@ -82,6 +84,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isAuthenticated: true,
               isInitializing: false,
             });
+            // Sync auth to iOS Share Extension
+            syncAuthToShareExtension(sessionId, currentUser.id, API_BASE_URL);
           } catch (error) {
             // Mark session as invalid in multi-account store
             if (user?.id) {
@@ -160,6 +164,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await useAccountStore.getState().loadAccounts();
       }
 
+      // Sync auth to iOS Share Extension
+      if (savedSessionId && response.user) {
+        syncAuthToShareExtension(savedSessionId, response.user.id, API_BASE_URL);
+      }
+
       // No token refresh service needed for session mode!
     } catch (error: any) {
       console.error('❌ Login error:', error);
@@ -233,6 +242,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Clear sync metadata (differential sync timestamps)
       await clearSyncMetadata();
+
+      // Clear iOS Share Extension data
+      clearShareExtensionData();
 
       // Clear Zustand stores in memory
       useChatStore.getState().set({

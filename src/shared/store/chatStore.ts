@@ -19,6 +19,7 @@ import { websocketService } from '@services/websocket.service';
 import { getZustandChatStorage, isNative } from '@shared/storage';
 import { PAGINATION } from '@shared/constants/api.constants';
 import { useNotificationStore } from '@shared/store/notificationStore';
+import { syncChatsToShareExtension } from '../../../modules/share-data/src/ShareDataModule';
 
 // In-flight user requests cache to prevent duplicate requests
 const inFlightUserRequests = new Map<number, Promise<any>>();
@@ -509,6 +510,17 @@ export const useChatStore = create<ChatState>()(
           isLoading: false
         });
       }
+
+      // Sync chats to iOS Share Extension
+      const allChats = useChatStore.getState().chats;
+      syncChatsToShareExtension(allChats.map(c => ({
+        id: c.id,
+        name: c.name || 'Без названия',
+        type: c.type,
+        avatar: c.avatar,
+        last_message_content: c.last_message?.content,
+        last_message_time: c.last_message?.created_at,
+      })));
     } catch (error: any) {
       set({ error: error.message || 'Failed to load chats', isLoading: false });
     }

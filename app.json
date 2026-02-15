@@ -109,7 +109,8 @@
           "androidMultiIntentFilters": ["image/*", "video/*", "*/*"]
         }
       ],
-      "./plugins/withShareExtensionConfig.js"
+      "./plugins/withShareExtensionConfig.js",
+      "./plugins/withCustomShareViewController.js"
     ],
     "extra": {
       "eas": {
