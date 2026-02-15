@@ -8,7 +8,7 @@ import { MessageAttachments } from '../attachments/MessageAttachments';
 import PollMessageCard from './PollMessageCard';
 import TaskMessageCard from './TaskMessageCard';
 import { MessageStatus } from '../common/MessageStatus';
-import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName } from '../../utils/message.utils';
+import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName, isVideoFile, isImageFile } from '../../utils/message.utils';
 import { FormattedText } from '../common/FormattedText';
 import { stripFormatting } from '../../utils/formatting';
 import { LinkPreviewCard } from './LinkPreviewCard';
@@ -163,6 +163,18 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     return isSingleEmoji(messageContent);
   }, [messageContent, message.is_deleted, message.attachments, isCardMessage]);
 
+  // Медиа без текста (фото/видео) → убираем фон пузыря, время и галочки на медиа
+  const isMediaOnly = useMemo(() => {
+    if (message.is_deleted || isCardMessage) return false;
+    if (!message.attachments || message.attachments.length === 0) return false;
+    const hasText = messageContent && messageContent.trim().length > 0;
+    if (hasText) return false;
+    return message.attachments.every(a => {
+      const mt = a.mime_type || a.file_type || '';
+      return isVideoFile(mt) || isImageFile(mt);
+    });
+  }, [message.attachments, message.is_deleted, messageContent, isCardMessage]);
+
   // Double-tap detection
   const lastTapRef = useRef(0);
 
@@ -209,6 +221,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         isHighlighted && [styles.highlightedBubble, dynamicStyles.highlightedBubble],
         isCardMessage && { backgroundColor: 'transparent', padding: 0 },
         isEmojiOnly && { backgroundColor: 'transparent', padding: 0 },
+        isMediaOnly && { backgroundColor: 'transparent', padding: 0 },
       ]}
     >
       {/* Уголок - просто используем ::before/::after эффект через позиционирование */}
@@ -314,6 +327,11 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                   onVideoPress={onVideoPress}
                   onLongPress={onLongPress}
                   isVisible={isVisible}
+                  isMediaOnly={isMediaOnly}
+                  chatMessage={isMediaOnly ? message : undefined}
+                  isOwnMessage={isMediaOnly ? isOwnMessage : undefined}
+                  currentUserId={isMediaOnly ? currentUserId : undefined}
+                  onRetryMessage={isMediaOnly ? onRetryMessage : undefined}
                 />
               )}
             </View>
@@ -321,48 +339,53 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         )}
       </View>
 
-      <View style={[styles.messageFooter, isCardMessage && styles.cardMessageFooter]}>
-        {/* Reactions on the left */}
-        {message.reactions && message.reactions.length > 0 && onReactionPress && (
-          <MessageReactions
-            reactions={message.reactions}
-            currentUserId={currentUserId}
-            isOwnMessage={isOwnMessage}
-            onReactionPress={onReactionPress}
-          />
-        )}
-
-        <View style={styles.footerRight}>
-          {!!(message.is_edited && !message.is_deleted) && (
-            <Text
-              style={[
-                styles.edited,
-                dynamicStyles.edited,
-                isOwnMessage && dynamicStyles.ownEdited,
-              ]}
-            >
-              изменено
-            </Text>
-          )}
-          <Text
-            style={[
-              styles.time,
-              dynamicStyles.time,
-              isOwnMessage && dynamicStyles.ownTime,
-            ]}
-          >
-            {formatTime(message.created_at)}
-          </Text>
-          {!isCardMessage && (
-            <MessageStatus
-              message={message}
-              isOwnMessage={isOwnMessage}
+      {/* Footer: скрываем полностью для video-only без реакций */}
+      {(!isMediaOnly || (message.reactions && message.reactions.length > 0)) && (
+        <View style={[styles.messageFooter, isCardMessage && styles.cardMessageFooter, isMediaOnly && { marginTop: 4 }]}>
+          {/* Reactions on the left */}
+          {message.reactions && message.reactions.length > 0 && onReactionPress && (
+            <MessageReactions
+              reactions={message.reactions}
               currentUserId={currentUserId}
-              onRetry={onRetryMessage}
+              isOwnMessage={isOwnMessage}
+              onReactionPress={onReactionPress}
             />
           )}
+
+          {!isMediaOnly && (
+            <View style={styles.footerRight}>
+              {!!(message.is_edited && !message.is_deleted) && (
+                <Text
+                  style={[
+                    styles.edited,
+                    dynamicStyles.edited,
+                    isOwnMessage && dynamicStyles.ownEdited,
+                  ]}
+                >
+                  изменено
+                </Text>
+              )}
+              <Text
+                style={[
+                  styles.time,
+                  dynamicStyles.time,
+                  isOwnMessage && dynamicStyles.ownTime,
+                ]}
+              >
+                {formatTime(message.created_at)}
+              </Text>
+              {!isCardMessage && (
+                <MessageStatus
+                  message={message}
+                  isOwnMessage={isOwnMessage}
+                  currentUserId={currentUserId}
+                  onRetry={onRetryMessage}
+                />
+              )}
+            </View>
+          )}
         </View>
-      </View>
+      )}
     </TouchableOpacity>
   );
 };

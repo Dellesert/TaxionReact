@@ -9,7 +9,9 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import { isImageFile, isVideoFile, formatDuration, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { isImageFile, isVideoFile, formatDuration, formatTime, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { MessageStatus } from '../common/MessageStatus';
+import { Message } from '../../types/chat.types';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 
 interface Attachment {
@@ -30,6 +32,11 @@ interface MessageAttachmentsProps {
   onVideoPress?: (videoUrl: string, thumbnailUrl?: string) => void;
   onLongPress?: () => void;
   isVisible?: boolean; // Флаг видимости для ленивой загрузки
+  isMediaOnly?: boolean;
+  chatMessage?: Message;
+  isOwnMessage?: boolean;
+  currentUserId?: number;
+  onRetryMessage?: (messageId: number) => void;
 }
 
 /**
@@ -41,6 +48,11 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
   onVideoPress,
   onLongPress,
   isVisible = true,
+  isMediaOnly = false,
+  chatMessage,
+  isOwnMessage,
+  currentUserId,
+  onRetryMessage,
 }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
@@ -260,8 +272,11 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     return null;
   }
 
+  // Показываем время на последнем изображении (если нет видео)
+  const showImageTimeOverlay = isMediaOnly && !!chatMessage && videos.length === 0;
+
   // Рендер одного изображения
-  const renderImage = (attachment: Attachment, index: number, imageStyle?: object, showOverlay: boolean = false) => {
+  const renderImage = (attachment: Attachment, index: number, imageStyle?: object, showOverlay: boolean = false, showTimeOverlay: boolean = false) => {
     // Используем thumbnail для превью, оригинал для просмотра
     const thumbnailUri = attachment.thumbnail_url || attachment.file_url;
     const imageUri = Platform.OS === 'web' && blobUrls[attachment.id]
@@ -310,6 +325,24 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
             <Text style={styles.imageOverlayText}>+{hiddenCount}</Text>
           </View>
         )}
+        {/* Time + status overlay for media-only messages */}
+        {showTimeOverlay && chatMessage && (
+          <View style={styles.videoTimeOverlay}>
+            {!!(chatMessage.is_edited && !chatMessage.is_deleted) && (
+              <Text style={styles.videoTimeText}>изм.</Text>
+            )}
+            <Text style={styles.videoTimeText}>
+              {formatTime(chatMessage.created_at)}
+            </Text>
+            <MessageStatus
+              message={chatMessage}
+              isOwnMessage={isOwnMessage || false}
+              currentUserId={currentUserId}
+              onRetry={onRetryMessage}
+              compact
+            />
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -325,7 +358,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     return (
       <TouchableOpacity
         key={`video-${attachment.id || index}`}
-        style={[styles.imageAttachment, styles.imageSingle]}
+        style={[styles.imageAttachment, styles.videoSingle]}
         onPress={() => {
           onVideoPress?.(
             replaceLocalhostWithIP(attachment.file_url),
@@ -359,12 +392,30 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
             <Ionicons name="play" size={24} color="#FFFFFF" />
           </View>
         </View>
-        {/* Duration badge */}
+        {/* Duration badge - top left */}
         {attachment.duration != null && attachment.duration > 0 && (
           <View style={styles.videoDurationBadge}>
             <Text style={styles.videoDurationText}>
               {formatDuration(attachment.duration)}
             </Text>
+          </View>
+        )}
+        {/* Time + status overlay for video-only messages - bottom right */}
+        {isMediaOnly && chatMessage && (
+          <View style={styles.videoTimeOverlay}>
+            {!!(chatMessage.is_edited && !chatMessage.is_deleted) && (
+              <Text style={styles.videoTimeText}>изм.</Text>
+            )}
+            <Text style={styles.videoTimeText}>
+              {formatTime(chatMessage.created_at)}
+            </Text>
+            <MessageStatus
+              message={chatMessage}
+              isOwnMessage={isOwnMessage || false}
+              currentUserId={currentUserId}
+              onRetry={onRetryMessage}
+              compact
+            />
           </View>
         )}
       </TouchableOpacity>
@@ -379,7 +430,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     if (imageLayout.type === 'single') {
       return (
         <View style={styles.imagesGrid}>
-          {renderImage(images[0], 0, styles.imageSingle)}
+          {renderImage(images[0], 0, styles.imageSingle, false, showImageTimeOverlay)}
         </View>
       );
     }
@@ -389,7 +440,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
       return (
         <View style={[styles.imagesGrid, styles.imagesRow]}>
           {renderImage(images[0], 0, styles.imageHalf)}
-          {renderImage(images[1], 1, styles.imageHalf)}
+          {renderImage(images[1], 1, styles.imageHalf, false, showImageTimeOverlay)}
         </View>
       );
     }
@@ -401,7 +452,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           {renderImage(images[0], 0, styles.imageHalf)}
           <View style={[styles.imagesColumn, styles.imageHalf]}>
             {renderImage(images[1], 1, styles.imageSmall)}
-            {renderImage(images[2], 2, styles.imageSmall)}
+            {renderImage(images[2], 2, styles.imageSmall, false, showImageTimeOverlay)}
           </View>
         </View>
       );
@@ -417,7 +468,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           </View>
           <View style={styles.imagesRow}>
             {renderImage(images[2], 2, styles.imageHalf)}
-            {renderImage(images[3], 3, styles.imageHalf, true)}
+            {renderImage(images[3], 3, styles.imageHalf, true, showImageTimeOverlay)}
           </View>
         </View>
       );
@@ -427,7 +478,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
   };
 
   return (
-    <View style={styles.attachmentsContainer}>
+    <View style={[styles.attachmentsContainer, isMediaOnly && { marginTop: 0 }]}>
       {/* Render images in grid */}
       {renderImagesGrid()}
 
@@ -522,6 +573,10 @@ const styles = StyleSheet.create({
     width: 90,
     aspectRatio: 2, // 2:1 прямоугольник (90x45)
   },
+  videoSingle: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+  },
   attachmentItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -585,14 +640,31 @@ const styles = StyleSheet.create({
   },
   videoDurationBadge: {
     position: 'absolute',
-    bottom: 6,
-    right: 6,
+    top: 6,
+    left: 6,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   videoDurationText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  videoTimeOverlay: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  videoTimeText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
@@ -625,6 +697,26 @@ export const MessageAttachments = React.memo(MessageAttachmentsComponent, (prevP
       prevProps.onLongPress !== nextProps.onLongPress) {
     return false;
   }
+
+  // Сравниваем video overlay пропсы
+  if (prevProps.isMediaOnly !== nextProps.isMediaOnly) {
+    return false;
+  }
+  if (prevProps.chatMessage?.id !== nextProps.chatMessage?.id ||
+      prevProps.chatMessage?.is_edited !== nextProps.chatMessage?.is_edited ||
+      prevProps.chatMessage?.is_deleted !== nextProps.chatMessage?.is_deleted) {
+    return false;
+  }
+  if (prevProps.isOwnMessage !== nextProps.isOwnMessage) {
+    return false;
+  }
+  // Сравниваем статусы доставки для video overlay
+  const prevReadBy = prevProps.chatMessage?.read_by || [];
+  const nextReadBy = nextProps.chatMessage?.read_by || [];
+  if (prevReadBy.length !== nextReadBy.length) return false;
+  const prevDelivered = prevProps.chatMessage?.delivered_to || [];
+  const nextDelivered = nextProps.chatMessage?.delivered_to || [];
+  if (prevDelivered.length !== nextDelivered.length) return false;
 
   // Все проверки пройдены - не нужно обновлять
   return true;

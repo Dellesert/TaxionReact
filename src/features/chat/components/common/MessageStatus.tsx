@@ -10,6 +10,7 @@ interface MessageStatusProps {
   currentUserId?: number;
   onRetry?: (messageId: number) => void;
   onDiscard?: (messageId: number) => void;
+  compact?: boolean;
 }
 
 /**
@@ -21,9 +22,14 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({
   isOwnMessage,
   currentUserId,
   onRetry,
+  compact = false,
   // onDiscard - может быть использован для кнопки "Отмена" в будущем
 }) => {
   const { theme } = useTheme();
+
+  const iconSize = compact ? 12 : 16;
+  const iconStyle = compact ? styles.compactStatusIcon : styles.statusIcon;
+  const iconColor = compact ? '#FFFFFF' : theme.textTertiary;
 
   if (!isOwnMessage || message.is_deleted) return null;
 
@@ -38,13 +44,15 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({
         >
           <Ionicons
             name="alert-circle"
-            size={16}
+            size={iconSize}
             color={theme.error || '#FF3B30'}
             style={styles.errorIcon}
           />
-          <Text style={[styles.retryText, { color: theme.error || '#FF3B30' }]}>
-            Повторить
-          </Text>
+          {!compact && (
+            <Text style={[styles.retryText, { color: theme.error || '#FF3B30' }]}>
+              Повторить
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     );
@@ -55,8 +63,8 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({
     return (
       <ActivityIndicator
         size="small"
-        color={theme.textTertiary}
-        style={styles.statusIcon}
+        color={compact ? '#FFFFFF' : theme.textTertiary}
+        style={iconStyle}
       />
     );
   }
@@ -77,9 +85,9 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({
     return (
       <Ionicons
         name="checkmark-done"
-        size={16}
-        color="#4CAF50"
-        style={styles.statusIcon}
+        size={iconSize}
+        color={compact ? '#90EE90' : '#4CAF50'}
+        style={iconStyle}
       />
     );
   }
@@ -89,9 +97,9 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({
     return (
       <Ionicons
         name="checkmark-done"
-        size={16}
-        color={theme.textTertiary}
-        style={styles.statusIcon}
+        size={iconSize}
+        color={iconColor}
+        style={iconStyle}
       />
     );
   }
@@ -101,9 +109,9 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({
     return (
       <Ionicons
         name="checkmark"
-        size={16}
-        color={theme.textTertiary}
-        style={styles.statusIcon}
+        size={iconSize}
+        color={iconColor}
+        style={iconStyle}
       />
     );
   }
@@ -115,6 +123,9 @@ const styles = StyleSheet.create({
   statusIcon: {
     marginLeft: 4,
     transform: [{ translateY: 5 }],
+  },
+  compactStatusIcon: {
+    marginLeft: 2,
   },
   failedContainer: {
     flexDirection: 'row',
