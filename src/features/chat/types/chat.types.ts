@@ -24,6 +24,8 @@ export interface Attachment {
   file_type: string; // Category: "image", "video", "audio", "document", "other"
   thumbnail_url?: string;
   duration?: number; // Duration in seconds (for video/audio)
+  width?: number; // Media width in pixels
+  height?: number; // Media height in pixels
   created_at?: ISODateString;
 }
 

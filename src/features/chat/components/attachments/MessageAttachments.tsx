@@ -23,6 +23,8 @@ interface Attachment {
   file_type?: string;
   thumbnail_url?: string;
   duration?: number;
+  width?: number;
+  height?: number;
 }
 
 interface MessageAttachmentsProps {
@@ -358,7 +360,12 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     return (
       <TouchableOpacity
         key={`video-${attachment.id || index}`}
-        style={[styles.imageAttachment, styles.videoSingle]}
+        style={[styles.imageAttachment, {
+          width: '100%',
+          aspectRatio: (attachment.width && attachment.height)
+            ? Math.max(9 / 16, Math.min(2, attachment.width / attachment.height))
+            : 16 / 9,
+        }]}
         onPress={() => {
           onVideoPress?.(
             replaceLocalhostWithIP(attachment.file_url),
