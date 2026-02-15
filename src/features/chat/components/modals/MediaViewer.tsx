@@ -59,6 +59,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoLoading, setVideoLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Refs
   const progressBarWidthRef = useRef(0);
@@ -362,6 +363,12 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   };
 
+  const toggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    player.muted = newMuted;
+  };
+
   const handleClose = () => {
     clearAutoHideTimer();
     player.pause();
@@ -520,15 +527,11 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       }
     });
 
-  // Single tap: toggle controls (images) or play/pause (videos)
+  // Single tap: toggle controls visibility (both images and videos)
   const singleTap = Gesture.Tap()
     .numberOfTaps(1)
     .onEnd(() => {
-      if (isCurrentItemVideo.value) {
-        runOnJS(toggleVideoPlayback)();
-      } else {
-        runOnJS(toggleControls)();
-      }
+      runOnJS(toggleControls)();
     });
 
   // Double tap for zoom (images only)
@@ -814,14 +817,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                               <ActivityIndicator size="large" color="#FFFFFF" />
                             </View>
                           )}
-                          {/* Play/Pause overlay */}
-                          {index === currentIndex && !isPlaying && !videoLoading && (
-                            <View style={styles.videoPlayOverlayCenter} pointerEvents="none">
-                              <View style={styles.videoPlayButtonLarge}>
-                                <Ionicons name="play" size={48} color="#FFFFFF" />
-                              </View>
-                            </View>
-                          )}
                         </View>
                       )
                     ) : (
@@ -933,6 +928,13 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           {/* Video progress bar */}
           {mediaItems[currentIndex]?.type === 'video' && (
             <View style={styles.progressRow}>
+              <TouchableOpacity
+                onPress={toggleVideoPlayback}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name={isPlaying ? 'pause' : 'play'} size={22} color="#FFFFFF" />
+              </TouchableOpacity>
               <Text style={styles.progressTimeText}>{formatTime(currentTime)}</Text>
               <View
                 style={styles.progressTrack}
@@ -955,6 +957,13 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 />
               </View>
               <Text style={styles.progressTimeText}>{formatTime(videoDuration)}</Text>
+              <TouchableOpacity
+                onPress={toggleMute}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
           )}
           <View style={styles.bottomButtonsRow}>
