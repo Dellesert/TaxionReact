@@ -1,0 +1,144 @@
+diff --git a/node_modules/expo-image-picker/ios/MediaHandler.swift b/node_modules/expo-image-picker/ios/MediaHandler.swift
+index 6e4fbe1..216a2d7 100644
+--- a/node_modules/expo-image-picker/ios/MediaHandler.swift
++++ b/node_modules/expo-image-picker/ios/MediaHandler.swift
+@@ -236,13 +236,17 @@ internal struct MediaHandler {
+     let (photoUrl, pairedVideoUrl) = try generatePairedUrls(
+       photoFileExtension: photoFileExtension, videoFileExtension: pairedVideoFileExtension)
+ 
++    // Allow network access so iCloud-stored assets can be downloaded
++    let resourceOptions = PHAssetResourceRequestOptions()
++    resourceOptions.isNetworkAccessAllowed = true
++
+     let imageData = try await PHAssetResourceManager.default().requestData(
+-      for: photoResource, options: nil)
++      for: photoResource, options: resourceOptions)
+ 
+     try await PHAssetResourceManager.default().writeData(
+-      for: photoResource, toFile: photoUrl, options: nil)
++      for: photoResource, toFile: photoUrl, options: resourceOptions)
+     try await PHAssetResourceManager.default().writeData(
+-      for: videoResource, toFile: pairedVideoUrl, options: nil)
++      for: videoResource, toFile: pairedVideoUrl, options: resourceOptions)
+ 
+     let fileSize = getFileSize(from: photoUrl)
+     let mimeType = getMimeType(from: photoUrl.pathExtension)
+@@ -304,25 +308,34 @@ internal struct MediaHandler {
+     // Fast-path: if we have a PHAsset and passthrough preset, stream the full-size resource to avoid
+     // assets-library URLs that FileManager cannot copy.
+     if options.videoExportPreset == .passthrough, let asset = mediaInfo[.phAsset] as? PHAsset {
+-      let resources = PHAssetResource.assetResources(for: asset)
+-      if let resource = resources.first(where: { $0.type == .fullSizeVideo }) ?? resources.first(where: { $0.type == .video }) {
+-        let originalFilename = resource.originalFilename
+-        let fileExtension = getFileExtension(from: originalFilename)
+-        let destinationUrl = try generateUrl(withFileExtension: fileExtension)
+-
+-        try await PHAssetResourceManager.default().writeData(
+-          for: resource,
+-          toFile: destinationUrl,
+-          options: nil
+-        )
++      do {
++        let resources = PHAssetResource.assetResources(for: asset)
++        if let resource = resources.first(where: { $0.type == .fullSizeVideo }) ?? resources.first(where: { $0.type == .video }) {
++          let originalFilename = resource.originalFilename
++          let fileExtension = getFileExtension(from: originalFilename)
++          let destinationUrl = try generateUrl(withFileExtension: fileExtension)
+ 
+-        let mimeType = getMimeType(from: destinationUrl.pathExtension)
+-        return try buildVideoResult(
+-          for: destinationUrl,
+-          withName: originalFilename,
+-          mimeType: mimeType,
+-          assetId: asset.localIdentifier
+-        )
++          // Allow network access so iCloud-stored assets can be downloaded
++          let resourceOptions = PHAssetResourceRequestOptions()
++          resourceOptions.isNetworkAccessAllowed = true
++
++          try await PHAssetResourceManager.default().writeData(
++            for: resource,
++            toFile: destinationUrl,
++            options: resourceOptions
++          )
++
++          let mimeType = getMimeType(from: destinationUrl.pathExtension)
++          return try buildVideoResult(
++            for: destinationUrl,
++            withName: originalFilename,
++            mimeType: mimeType,
++            assetId: asset.localIdentifier
++          )
++        }
++      } catch {
++        // If fast-path fails (e.g. iCloud asset), fall through to legacy path below
++        log.warn("Fast-path video copy failed: \(error.localizedDescription)")
+       }
+     }
+ 
+@@ -376,32 +389,41 @@ internal struct MediaHandler {
+     // ourselves is dramatically faster because it just streams the already-existing file.
+ 
+     if options.videoExportPreset == .passthrough, let assetId = selectedVideo.assetIdentifier {
+-      let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
+-      if let asset = fetchResult.firstObject {
+-        // Prefer the full-size resource when available, otherwise fall back to the default `.video`.
+-        let resources = PHAssetResource.assetResources(for: asset)
+-        if let resource = resources.first(where: { $0.type == .fullSizeVideo }) ??
+-          resources.first(where: { $0.type == .video }) {
+-          // Determine the file extension from the original filename so we preserve it (e.g. .MOV / .MP4)
+-          let originalFilename = resource.originalFilename
+-          let fileExtension = getFileExtension(from: originalFilename)
+-          let destinationUrl = try generateUrl(withFileExtension: fileExtension)
+-
+-          // Stream the resource into our cache directory. This API is asynchronous but doesn't require
+-          // a temporary file like `loadFileRepresentation`.
+-          try await PHAssetResourceManager.default().writeData(for: resource, toFile: destinationUrl, options: nil)
+-
+-          // Build and return the result using the helper.
+-          let mimeType = getMimeType(from: destinationUrl.pathExtension)
+-          return try buildVideoResult(
+-            for: destinationUrl,
+-            withName: originalFilename,
+-            mimeType: mimeType,
+-            assetId: assetId
+-          )
++      do {
++        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
++        if let asset = fetchResult.firstObject {
++          // Prefer the full-size resource when available, otherwise fall back to the default `.video`.
++          let resources = PHAssetResource.assetResources(for: asset)
++          if let resource = resources.first(where: { $0.type == .fullSizeVideo }) ??
++            resources.first(where: { $0.type == .video }) {
++            // Determine the file extension from the original filename so we preserve it (e.g. .MOV / .MP4)
++            let originalFilename = resource.originalFilename
++            let fileExtension = getFileExtension(from: originalFilename)
++            let destinationUrl = try generateUrl(withFileExtension: fileExtension)
++
++            // Allow network access so iCloud-stored assets can be downloaded
++            let resourceOptions = PHAssetResourceRequestOptions()
++            resourceOptions.isNetworkAccessAllowed = true
++
++            // Stream the resource into our cache directory. This API is asynchronous but doesn't require
++            // a temporary file like `loadFileRepresentation`.
++            try await PHAssetResourceManager.default().writeData(for: resource, toFile: destinationUrl, options: resourceOptions)
++
++            // Build and return the result using the helper.
++            let mimeType = getMimeType(from: destinationUrl.pathExtension)
++            return try buildVideoResult(
++              for: destinationUrl,
++              withName: originalFilename,
++              mimeType: mimeType,
++              assetId: assetId
++            )
++          }
+         }
++      } catch {
++        // If the fast-path fails (e.g. iCloud asset not available), fall through
++        // to the slower but more reliable loadFileRepresentation path below.
++        log.warn("Fast-path video copy failed, falling back to loadFileRepresentation: \(error.localizedDescription)")
+       }
+-      // If anything above fails we'll gracefully fall back to the existing (slower) path below.
+     }
+ 
+     let videoUrl = try await VideoUtils.loadVideoRepresentation(
