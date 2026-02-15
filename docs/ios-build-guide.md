@@ -298,11 +298,39 @@ cd ios && LANG=en_US.UTF-8 pod install
 
 ### Share Extension показывает "Войдите в приложение" или пустой список чатов
 
+**Самая частая причина — App Groups не настроен в Apple Developer Portal:**
+
+1. Открыть [Apple Developer Console](https://developer.apple.com/account) → **Certificates, Identifiers & Profiles** → **Identifiers**
+2. Найти `com.dellesert.tachyon-messenger` → включить **App Groups** → добавить группу `group.com.dellesert.tachyon-messenger`
+3. Найти `com.dellesert.tachyon-messenger.share-extension` → аналогично включить **App Groups** → добавить ту же группу
+4. Пересобрать с `CODE_SIGN_STYLE=Automatic -allowProvisioningUpdates` (Xcode автоматически обновит provisioning profiles)
+
+**Диагностика через логи (Xcode Console или Console.app):**
+- При запуске основного приложения в логах должно появиться: `[ShareData] syncAuth OK`
+- При открытии Share Extension: `[ShareExt] loadSyncedData` и `[ShareExt] Read from UserDefaults`
+- Если видно `[ShareData] ERROR: AppGroupIdentifier not found` — ключ отсутствует в Info.plist, нужен `expo prebuild --clean`
+- Если `sessionId=nil` в логах Share Extension — данные не синхронизированы, откройте основное приложение
+
+**Другие проверки:**
+
 1. Проверить что pod `ShareData` есть в `ios/Podfile.lock` — если нет, нативный модуль не подключён и синхронизация данных не работает
 2. Убедиться что `share-data` есть в `package.json` dependencies (`"share-data": "file:./modules/share-data"`)
 3. Убедиться что пользователь залогинен в основном приложении (данные синхронизируются при логине)
 4. Открыть основное приложение и дождаться загрузки списка чатов (синхронизация происходит после `loadChats`)
 5. Если сессия истекла — Share Extension покажет ошибку "Сессия истекла", нужно перелогиниться в приложении
+
+### Share Extension: фото/файлы не отображаются после отправки (404)
+
+Файлы, загруженные через Share Extension, должны быть публичными (`is_public: true`), иначе приложение попытается загрузить их по `/files/public/` URL и получит 404.
+
+**Проверка:** в `templates/ShareViewController.swift` функция `buildMultipartBody` должна содержать поле `is_public`:
+```swift
+// is_public field — chat attachments must be public so all members can access them
+handle.write("--\(boundary)\r\n".data(using: .utf8)!)
+handle.write(
+  "Content-Disposition: form-data; name=\"is_public\"\r\n\r\n".data(using: .utf8)!)
+handle.write("true\r\n".data(using: .utf8)!)
+```
 
 ### Очистка кэша сборки
 

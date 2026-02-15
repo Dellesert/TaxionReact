@@ -44,6 +44,6 @@
       <string>com.apple.share-services</string>
     </dict>
     <key>AppGroupIdentifier</key>
-    <string>group.com.dellesert.tachyon-messenger</string>
+    <string>group.com.dellesert.tachyon-messenger.dev</string>
   </dict>
 </plist>

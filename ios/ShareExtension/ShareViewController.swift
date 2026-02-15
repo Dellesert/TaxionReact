@@ -44,8 +44,8 @@ enum ShareError: Error, LocalizedError {
 class ShareViewController: UIViewController {
 
   // MARK: Config (replaced by config plugin)
-  let appGroupIdentifier = "group.com.dellesert.tachyon-messenger"
-  let shareScheme = "tachyon"
+  let appGroupIdentifier = "group.com.dellesert.tachyon-messenger.dev"
+  let shareScheme = "tachyon-dev"
 
   // MARK: Content type identifiers
   let imageContentType = UTType.image.identifier
@@ -256,21 +256,33 @@ class ShareViewController: UIViewController {
   // MARK: - Load Synced Data
 
   private func loadSyncedData() {
-    let defaults = UserDefaults(suiteName: appGroupIdentifier)
+    NSLog("[ShareExt] loadSyncedData — appGroupIdentifier=%@", appGroupIdentifier)
 
-    sessionId = defaults?.string(forKey: "shareExtension_sessionId")
-    currentUserId = defaults?.integer(forKey: "shareExtension_userId")
-    apiBaseUrl = defaults?.string(forKey: "shareExtension_apiBaseUrl")
+    guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else {
+      NSLog("[ShareExt] ERROR: UserDefaults(suiteName:) returned nil — App Group '%@' not configured in provisioning profile", appGroupIdentifier)
+      showError("Ошибка конфигурации App Group. Пересоберите приложение")
+      return
+    }
 
-    if let chatsJson = defaults?.string(forKey: "shareExtension_chats"),
+    sessionId = defaults.string(forKey: "shareExtension_sessionId")
+    currentUserId = defaults.integer(forKey: "shareExtension_userId")
+    apiBaseUrl = defaults.string(forKey: "shareExtension_apiBaseUrl")
+
+    NSLog("[ShareExt] Read from UserDefaults — sessionId=%@, userId=%d, apiBaseUrl=%@",
+          sessionId ?? "nil", currentUserId ?? 0, apiBaseUrl ?? "nil")
+
+    if let chatsJson = defaults.string(forKey: "shareExtension_chats"),
       let data = chatsJson.data(using: .utf8)
     {
       allChats = (try? JSONDecoder().decode([ShareChat].self, from: data)) ?? []
     }
 
+    NSLog("[ShareExt] Loaded %d chats from shared storage", allChats.count)
+
     filteredChats = allChats
 
     if sessionId == nil {
+      NSLog("[ShareExt] No session found — showing auth error")
       showError("Войдите в приложение Тахион для отправки")
       return
     }
@@ -683,6 +695,12 @@ class ShareViewController: UIViewController {
     handle.write(
       "Content-Disposition: form-data; name=\"file_type\"\r\n\r\n".data(using: .utf8)!)
     handle.write("\(fileType)\r\n".data(using: .utf8)!)
+
+    // is_public field — chat attachments must be public so all members can access them
+    handle.write("--\(boundary)\r\n".data(using: .utf8)!)
+    handle.write(
+      "Content-Disposition: form-data; name=\"is_public\"\r\n\r\n".data(using: .utf8)!)
+    handle.write("true\r\n".data(using: .utf8)!)
 
     // file field header
     handle.write("--\(boundary)\r\n".data(using: .utf8)!)
