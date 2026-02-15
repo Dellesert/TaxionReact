@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Image } from 'expo-image';
+import Svg, { Circle } from 'react-native-svg';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import FileViewer from 'react-native-file-viewer';
@@ -25,6 +26,7 @@ interface Attachment {
   duration?: number;
   width?: number;
   height?: number;
+  local_uri?: string; // Local URI for optimistic video uploads
 }
 
 interface MessageAttachmentsProps {
@@ -350,13 +352,60 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     );
   };
 
+  // Проверяем, загружается ли видео (оптимистичное сообщение с прогрессом)
+  const isUploading = chatMessage?.upload_progress != null && chatMessage.upload_progress < 100 && chatMessage.sending;
+
+  // Рендер кругового прогресса загрузки видео
+  const renderUploadProgressOverlay = (progress: number) => {
+    const size = 56;
+    const strokeWidth = 3;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (circumference * Math.round(progress)) / 100;
+
+    return (
+      <View style={styles.videoUploadOverlay}>
+        <Svg width={size} height={size}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="rgba(255, 255, 255, 0.3)"
+            strokeWidth={strokeWidth}
+            fill="none"
+          />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#FFFFFF"
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${size / 2}, ${size / 2}`}
+          />
+        </Svg>
+        <Text style={styles.uploadProgressText}>{Math.round(progress)}%</Text>
+      </View>
+    );
+  };
+
   // Рендер одного видео-превью
   const renderVideoThumbnail = (attachment: Attachment, index: number) => {
-    const thumbnailUri = attachment.thumbnail_url || attachment.file_url;
-    const imageUri = Platform.OS === 'web' && blobUrls[attachment.id]
-      ? blobUrls[attachment.id]
-      : replaceLocalhostWithIP(thumbnailUri);
-    const isPublicFile = imageUri.includes('/files/public/');
+    // Для оптимистичных сообщений используем локальный URI
+    const isLocalVideo = !!attachment.local_uri;
+    const thumbnailUri = isLocalVideo
+      ? attachment.local_uri!
+      : (attachment.thumbnail_url || attachment.file_url);
+    const imageUri = isLocalVideo
+      ? thumbnailUri
+      : (Platform.OS === 'web' && blobUrls[attachment.id]
+        ? blobUrls[attachment.id]
+        : replaceLocalhostWithIP(thumbnailUri));
+    const isPublicFile = !isLocalVideo && imageUri.includes('/files/public/');
 
     return (
       <TouchableOpacity
@@ -374,38 +423,49 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           };
         })()]}
         onPress={() => {
-          onVideoPress?.(
-            replaceLocalhostWithIP(attachment.file_url),
-            attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined
-          );
+          // Не открываем видео если оно ещё загружается
+          if (!isUploading) {
+            onVideoPress?.(
+              replaceLocalhostWithIP(attachment.file_url),
+              attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined
+            );
+          }
         }}
         onLongPress={onLongPress}
         delayLongPress={500}
+        disabled={isUploading}
       >
         <Image
-          source={Platform.OS === 'web' && blobUrls[attachment.id]
-            ? { uri: blobUrls[attachment.id] }
-            : {
-                uri: imageUri,
-                headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
-              }
+          source={isLocalVideo
+            ? { uri: imageUri }
+            : (Platform.OS === 'web' && blobUrls[attachment.id]
+              ? { uri: blobUrls[attachment.id] }
+              : {
+                  uri: imageUri,
+                  headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
+                }
+            )
           }
           style={styles.imagePreview}
           contentFit="cover"
           contentPosition="center"
           transition={200}
-          cachePolicy="disk"
+          cachePolicy={isLocalVideo ? "none" : "disk"}
           placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           placeholderContentFit="cover"
           priority={isVisible ? "high" : "low"}
-          recyclingKey={`video-thumb-${attachment.id}`}
+          recyclingKey={isLocalVideo ? `video-local-${index}` : `video-thumb-${attachment.id}`}
         />
-        {/* Play button overlay */}
-        <View style={styles.videoPlayOverlay}>
-          <View style={styles.videoPlayButton}>
-            <Ionicons name="play" size={24} color="#FFFFFF" />
+        {/* Upload progress overlay OR play button */}
+        {isUploading && chatMessage?.upload_progress != null ? (
+          renderUploadProgressOverlay(chatMessage.upload_progress)
+        ) : (
+          <View style={styles.videoPlayOverlay}>
+            <View style={styles.videoPlayButton}>
+              <Ionicons name="play" size={24} color="#FFFFFF" />
+            </View>
           </View>
-        </View>
+        )}
         {/* Duration badge - top left */}
         {attachment.duration != null && attachment.duration > 0 && (
           <View style={styles.videoDurationBadge}>
@@ -415,7 +475,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           </View>
         )}
         {/* Time + status overlay for video-only messages - bottom right */}
-        {isMediaOnly && chatMessage && (
+        {isMediaOnly && chatMessage && !isUploading && (
           <View style={styles.videoTimeOverlay}>
             {!!(chatMessage.is_edited && !chatMessage.is_deleted) && (
               <Text style={styles.videoTimeText}>изм.</Text>
@@ -681,6 +741,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  videoUploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  uploadProgressText: {
+    position: 'absolute',
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });
 
 // Мемоизация компонента для предотвращения лишних ре-рендеров
@@ -716,7 +788,9 @@ export const MessageAttachments = React.memo(MessageAttachmentsComponent, (prevP
   }
   if (prevProps.chatMessage?.id !== nextProps.chatMessage?.id ||
       prevProps.chatMessage?.is_edited !== nextProps.chatMessage?.is_edited ||
-      prevProps.chatMessage?.is_deleted !== nextProps.chatMessage?.is_deleted) {
+      prevProps.chatMessage?.is_deleted !== nextProps.chatMessage?.is_deleted ||
+      prevProps.chatMessage?.upload_progress !== nextProps.chatMessage?.upload_progress ||
+      prevProps.chatMessage?.sending !== nextProps.chatMessage?.sending) {
     return false;
   }
   if (prevProps.isOwnMessage !== nextProps.isOwnMessage) {

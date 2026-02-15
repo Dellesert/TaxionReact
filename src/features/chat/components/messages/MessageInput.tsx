@@ -142,6 +142,9 @@ interface MessageInputProps {
   onFilesSelected?: (fileIds: number[]) => void;
   selectedFileIds?: number[];
   onRemoveFile?: (fileId: number) => void;
+  onPendingVideoFiles?: (files: import('../../types/chat.types').PendingVideoFile[]) => void;
+  pendingVideoFiles?: import('../../types/chat.types').PendingVideoFile[];
+  onRemovePendingVideo?: (index: number) => void;
   inputAccessoryViewID?: string;
 }
 
@@ -156,6 +159,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onFilesSelected,
   selectedFileIds = [],
   onRemoveFile,
+  onPendingVideoFiles,
+  pendingVideoFiles = [],
+  onRemovePendingVideo,
   inputAccessoryViewID,
 }) => {
   const { theme } = useTheme();
@@ -295,8 +301,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     // Даём время на обновление state после автокоррекции
     setTimeout(() => {
       setMessage((currentMessage) => {
-        // Allow sending if either message has content OR files are selected
-        if (currentMessage.trim() || selectedFileIds.length > 0) {
+        // Allow sending if either message has content OR files/videos are selected
+        if (currentMessage.trim() || selectedFileIds.length > 0 || pendingVideoFiles.length > 0) {
           // Clear typing timeout
           if (typingTimeoutRef.current) {
             clearTimeout(typingTimeoutRef.current);
@@ -549,9 +555,30 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </View>
           <TouchableOpacity
             onPress={() => {
-              // Удаляем все файлы
               selectedFileIds.forEach(fileId => {
                 onRemoveFile?.(fileId);
+              });
+            }}
+            style={styles.removeAllButton}
+          >
+            <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Pending video files preview */}
+      {pendingVideoFiles.length > 0 && (
+        <View style={[styles.selectedFilesContainer, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
+          <View style={styles.selectedFilesInfo}>
+            <Ionicons name="videocam" size={16} color={theme.primary} />
+            <Text style={[styles.selectedFilesText, { color: theme.text }]} numberOfLines={1}>
+              {pendingVideoFiles.map(f => f.fileName).join(', ')}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              pendingVideoFiles.forEach((_, i) => {
+                onRemovePendingVideo?.(i);
               });
             }}
             style={styles.removeAllButton}
@@ -575,6 +602,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         {onFilesSelected && !editingMessage && (
           <FileAttachmentPicker
             onFilesSelected={onFilesSelected}
+            onPendingVideoFiles={onPendingVideoFiles}
             onError={(error) => console.error('File upload error:', error)}
           />
         )}
@@ -621,14 +649,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         </View>
 
         <TouchableOpacity
-          style={[styles.sendButton, dynamicStyles.sendButton, (!message.trim() && selectedFileIds.length === 0) && dynamicStyles.sendButtonDisabled]}
+          style={[styles.sendButton, dynamicStyles.sendButton, (!message.trim() && selectedFileIds.length === 0 && pendingVideoFiles.length === 0) && dynamicStyles.sendButtonDisabled]}
           onPress={handleSend}
-          disabled={disabled || (!message.trim() && selectedFileIds.length === 0)}
+          disabled={disabled || (!message.trim() && selectedFileIds.length === 0 && pendingVideoFiles.length === 0)}
         >
           <Ionicons
             name="send"
             size={16}
-            color={(message.trim() || selectedFileIds.length > 0) ? '#FFFFFF' : theme.textTertiary}
+            color={(message.trim() || selectedFileIds.length > 0 || pendingVideoFiles.length > 0) ? '#FFFFFF' : theme.textTertiary}
           />
         </TouchableOpacity>
       </View>

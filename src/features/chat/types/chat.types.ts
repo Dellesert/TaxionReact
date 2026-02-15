@@ -12,6 +12,17 @@ export type ChatType = 'private' | 'group' | 'channel' | 'saved';
 // Message Types
 export type MessageType = 'text' | 'image' | 'file' | 'voice' | 'video' | 'system' | 'poll' | 'task';
 
+// Pending video file (local, not yet uploaded)
+export interface PendingVideoFile {
+  localUri: string;       // Local URI from image picker
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
 // Attachment Interface
 export interface Attachment {
   id: number;
@@ -27,6 +38,7 @@ export interface Attachment {
   width?: number; // Media width in pixels
   height?: number; // Media height in pixels
   created_at?: ISODateString;
+  local_uri?: string; // Local URI for optimistic video uploads
 }
 
 // Reaction Interface
@@ -117,6 +129,8 @@ export interface Message {
   failed?: boolean; // Локальное поле - ошибка отправки (оптимистичные обновления)
   error?: string; // Локальное поле - текст ошибки
   delivered_to?: number[]; // Локальное поле - список user IDs кто получил сообщение через WebSocket
+  upload_progress?: number; // Локальное поле - прогресс загрузки видео 0-100
+  pending_video_files?: PendingVideoFile[]; // Локальное поле - видео файлы в процессе загрузки
   poll_data?: MessagePollData; // Данные опроса для сообщений типа 'poll'
   task_data?: MessageTaskData; // Данные задачи для сообщений типа 'task'
   link_preview?: LinkPreview; // Превью ссылки из текста сообщения

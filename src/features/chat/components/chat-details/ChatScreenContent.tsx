@@ -86,6 +86,9 @@ interface ChatScreenContentProps {
   selectedFileIds: number[];
   onFilesSelected: (fileIds: number[]) => void;
   onRemoveFile: (fileId: number) => void;
+  pendingVideoFiles?: import('../../types/chat.types').PendingVideoFile[];
+  onPendingVideoFiles?: (files: import('../../types/chat.types').PendingVideoFile[]) => void;
+  onRemovePendingVideo?: (index: number) => void;
 
   // Action handlers
   onScrollToBottom: () => void;
@@ -168,6 +171,9 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   selectedFileIds,
   onFilesSelected,
   onRemoveFile,
+  pendingVideoFiles,
+  onPendingVideoFiles,
+  onRemovePendingVideo,
   onScrollToBottom,
   onPinnedMessagePress,
   onBulkDelete,
@@ -330,6 +336,9 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                 onFilesSelected={onFilesSelected}
                 selectedFileIds={selectedFileIds}
                 onRemoveFile={onRemoveFile}
+                onPendingVideoFiles={onPendingVideoFiles}
+                pendingVideoFiles={pendingVideoFiles}
+                onRemovePendingVideo={onRemovePendingVideo}
               />
             )}
           </View>
@@ -387,6 +396,9 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                   onFilesSelected={onFilesSelected}
                   selectedFileIds={selectedFileIds}
                   onRemoveFile={onRemoveFile}
+                onPendingVideoFiles={onPendingVideoFiles}
+                pendingVideoFiles={pendingVideoFiles}
+                onRemovePendingVideo={onRemovePendingVideo}
                 />
               )}
             </View>
@@ -429,6 +441,9 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                   onFilesSelected={onFilesSelected}
                   selectedFileIds={selectedFileIds}
                   onRemoveFile={onRemoveFile}
+                onPendingVideoFiles={onPendingVideoFiles}
+                pendingVideoFiles={pendingVideoFiles}
+                onRemovePendingVideo={onRemovePendingVideo}
                 />
               )}
             </View>

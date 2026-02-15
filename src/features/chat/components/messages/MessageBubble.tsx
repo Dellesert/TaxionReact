@@ -328,10 +328,10 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                   onLongPress={onLongPress}
                   isVisible={isVisible}
                   isMediaOnly={isMediaOnly}
-                  chatMessage={isMediaOnly ? message : undefined}
-                  isOwnMessage={isMediaOnly ? isOwnMessage : undefined}
-                  currentUserId={isMediaOnly ? currentUserId : undefined}
-                  onRetryMessage={isMediaOnly ? onRetryMessage : undefined}
+                  chatMessage={message}
+                  isOwnMessage={isOwnMessage}
+                  currentUserId={currentUserId}
+                  onRetryMessage={onRetryMessage}
                 />
               )}
             </View>

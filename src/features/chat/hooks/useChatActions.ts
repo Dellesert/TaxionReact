@@ -3,6 +3,8 @@ import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { getChatDisplayName } from '../utils/chatUtils';
 import { useOptimisticMessage } from '@shared/hooks/useOptimisticMessage';
+import { useVideoUploadMessage } from '@shared/hooks/useVideoUploadMessage';
+import { PendingVideoFile } from '../types/chat.types';
 
 /**
  * Хук для обработки действий с сообщениями в чате
@@ -17,6 +19,7 @@ export const useChatActions = (chatId: number) => {
   const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
   const [forwardingMessage, setForwardingMessage] = useState<any | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
+  const [pendingVideoFiles, setPendingVideoFiles] = useState<PendingVideoFile[]>([]);
 
   // Оптимизация: извлекаем функции напрямую (они стабильны в Zustand)
   const sendMessage = useChatStore((state) => state.sendMessage);
@@ -39,12 +42,33 @@ export const useChatActions = (chatId: number) => {
     getMessageStatus,
   } = useOptimisticMessage(chatId);
 
+  // Загрузка видео с оптимистичным отображением
+  const {
+    sendMessageWithVideoUpload,
+    retryVideoUpload,
+    cancelVideoUpload,
+  } = useVideoUploadMessage(chatId);
+
+  /**
+   * Callback для FileAttachmentPicker — добавляет pending видео файлы
+   */
+  const handlePendingVideoFiles = useCallback((files: PendingVideoFile[]) => {
+    setPendingVideoFiles((prev) => [...prev, ...files]);
+  }, []);
+
+  /**
+   * Удалить pending видео по индексу
+   */
+  const removePendingVideo = useCallback((index: number) => {
+    setPendingVideoFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   /**
    * Отправка сообщения с оптимистичным обновлением
    * Сообщение появляется мгновенно, затем подтверждается сервером
    */
   const handleSendMessage = useCallback(async (content: string, replyToId?: number) => {
-    if (!content.trim() && selectedFileIds.length === 0) {
+    if (!content.trim() && selectedFileIds.length === 0 && pendingVideoFiles.length === 0) {
       setError({ error: 'Message content or files are required' });
       return;
     }
@@ -63,8 +87,17 @@ export const useChatActions = (chatId: number) => {
         const newContent = parts.slice(2).join(':');
         await updateMessage(messageId, newContent);
         setEditingMessage(null);
+      } else if (pendingVideoFiles.length > 0) {
+        // Видео-сообщение — оптимистичная загрузка в фоне
+        // Захватываем данные в локальные переменные и очищаем state ДО await,
+        // чтобы UI мгновенно обновился и нельзя было нажать "Отправить" повторно
+        const filesToUpload = [...pendingVideoFiles];
+        const fileIdsToSend = selectedFileIds.length > 0 ? [...selectedFileIds] : undefined;
+        setPendingVideoFiles([]);
+        setSelectedFileIds([]);
+        await sendMessageWithVideoUpload(content.trim(), replyToId, filesToUpload, fileIdsToSend);
       } else {
-        // Отправка нового сообщения - используем оптимистичные обновления
+        // Обычное сообщение — стандартный оптимистичный flow
         const fileIdsToSend = selectedFileIds.length > 0 ? selectedFileIds : undefined;
 
         // Отправляем с оптимистичным UI
@@ -75,10 +108,9 @@ export const useChatActions = (chatId: number) => {
       }
     } catch (error: any) {
       console.error('Failed to send/edit message:', error);
-      // Ошибки обрабатываются в useOptimisticMessage
-      // Не показываем дополнительную ошибку
+      // Ошибки обрабатываются в useOptimisticMessage / useVideoUploadMessage
     }
-  }, [chatId, selectedFileIds, getChatById, updateMessage, sendMessageOptimistic, setError]);
+  }, [chatId, selectedFileIds, pendingVideoFiles, getChatById, updateMessage, sendMessageOptimistic, sendMessageWithVideoUpload, setError]);
 
   const handleReply = (message: any) => {
     setReplyingToMessage(message);
@@ -184,21 +216,39 @@ export const useChatActions = (chatId: number) => {
   };
 
   /**
-   * Повторная отправка неудачного сообщения
+   * Повторная отправка неудачного сообщения (обычного или видео)
    */
   const handleRetryMessage = useCallback(async (messageId: number) => {
-    const success = await retryMessage(messageId);
-    if (!success) {
-      console.error('Failed to retry message:', messageId);
+    // Проверяем, есть ли pending видео файлы у этого сообщения
+    const messages = useChatStore.getState().messages[chatId] || [];
+    const failedMsg = messages.find((msg) => msg.id === messageId && msg.failed);
+
+    if (failedMsg?.pending_video_files && failedMsg.pending_video_files.length > 0) {
+      // Retry видео-загрузки
+      await retryVideoUpload(messageId);
+    } else {
+      // Retry обычного сообщения
+      const success = await retryMessage(messageId);
+      if (!success) {
+        console.error('Failed to retry message:', messageId);
+      }
     }
-  }, [retryMessage]);
+  }, [chatId, retryMessage, retryVideoUpload]);
 
   /**
    * Удаление неудачного сообщения
    */
   const handleDiscardFailedMessage = useCallback((messageId: number) => {
-    discardFailedMessage(messageId);
-  }, [discardFailedMessage]);
+    // Проверяем, видео ли это
+    const messages = useChatStore.getState().messages[chatId] || [];
+    const failedMsg = messages.find((msg) => msg.id === messageId);
+
+    if (failedMsg?.pending_video_files && failedMsg.pending_video_files.length > 0) {
+      cancelVideoUpload(messageId);
+    } else {
+      discardFailedMessage(messageId);
+    }
+  }, [chatId, discardFailedMessage, cancelVideoUpload]);
 
   return {
     editingMessage,
@@ -221,10 +271,15 @@ export const useChatActions = (chatId: number) => {
     handleUnpin,
     handleForward,
     handleForwardToChat,
-    // Новые функции для оптимистичных сообщений
+    // Оптимистичные сообщения
     handleRetryMessage,
     handleDiscardFailedMessage,
     isOptimisticMessage,
     getMessageStatus,
+    // Видео-загрузка
+    pendingVideoFiles,
+    setPendingVideoFiles,
+    handlePendingVideoFiles,
+    removePendingVideo,
   };
 };

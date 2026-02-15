@@ -19,14 +19,17 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useInAppNotificationStore } from '@shared/store/inAppNotificationStore';
 import { formatFileUploadError } from '@shared/utils/errorUtils';
 import { ApiError } from '@types/common.types';
+import { PendingVideoFile } from '../../types/chat.types';
 
 interface FileAttachmentPickerProps {
   onFilesSelected: (fileIds: number[]) => void;
+  onPendingVideoFiles?: (files: PendingVideoFile[]) => void;
   onError?: (error: string) => void;
 }
 
 export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   onFilesSelected,
+  onPendingVideoFiles,
   onError,
 }) => {
   const { theme } = useTheme();
@@ -102,7 +105,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
           })
         );
 
-        await uploadFiles(fileObjects);
+        await uploadFiles(fileObjects, result.assets);
       }
     } catch (error) {
       showErrorToast(error, 'Ошибка при съемке фото');
@@ -149,7 +152,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
           })
         );
 
-        await uploadFiles(fileObjects);
+        await uploadFiles(fileObjects, result.assets);
       }
     } catch (error) {
       showErrorToast(error, 'Ошибка при выборе изображения');
@@ -246,46 +249,71 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
     }
   };
 
-  const uploadFiles = async (files: (File | { uri: string; name: string; type: string })[]) => {
-    setUploading(true);
-    setProgress(0);
+  const uploadFiles = async (files: (File | { uri: string; name: string; type: string })[], assets?: ImagePicker.ImagePickerAsset[]) => {
+    // Separate video files from non-video files
+    const videoFiles: PendingVideoFile[] = [];
+    const nonVideoFiles: (File | { uri: string; name: string; type: string })[] = [];
 
-    try {
-      const uploadedFiles: FileUploadResponse[] = [];
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        // Set initial progress for this file (show at least 1% to indicate upload started)
-        const baseProgress = (i / files.length) * 100;
-        setProgress(Math.max(1, baseProgress));
-
-        const uploadedFile = await fileApi.uploadFile(
-          file,
-          undefined,
-          (fileProgress) => {
-            // Calculate total progress across all files
-            // baseProgress: progress from previously uploaded files
-            // fileProgress / 100 / files.length: current file's contribution to total progress
-            const totalProgress = baseProgress + (fileProgress / files.length);
-            setProgress(Math.min(99, totalProgress)); // Cap at 99% until all files are done
-          },
-          true  // Make chat attachments public so all chat members can access them
-        );
-
-        uploadedFiles.push(uploadedFile);
+    files.forEach((file, index) => {
+      const mimeType = file instanceof File ? file.type : file.type;
+      if (mimeType.startsWith('video/') && onPendingVideoFiles) {
+        const asset = assets?.[index];
+        videoFiles.push({
+          localUri: file instanceof File ? URL.createObjectURL(file) : file.uri,
+          fileName: file instanceof File ? file.name : file.name,
+          mimeType,
+          fileSize: file instanceof File ? file.size : 0,
+          width: asset?.width,
+          height: asset?.height,
+          duration: asset?.duration ? asset.duration / 1000 : undefined, // ms → seconds
+        });
+      } else {
+        nonVideoFiles.push(file);
       }
+    });
 
-      // Set 100% when all files are uploaded
-      setProgress(100);
+    // Send video files as pending (will be uploaded when message is sent)
+    if (videoFiles.length > 0) {
+      onPendingVideoFiles?.(videoFiles);
+    }
 
-      const fileIds = uploadedFiles.map(f => f.id);
-      onFilesSelected(fileIds);
-    } catch (error) {
-      showErrorToast(error, 'Ошибка при загрузке файлов');
-    } finally {
-      setUploading(false);
+    // Upload non-video files immediately as before
+    if (nonVideoFiles.length > 0) {
+      setUploading(true);
       setProgress(0);
+
+      try {
+        const uploadedFiles: FileUploadResponse[] = [];
+
+        for (let i = 0; i < nonVideoFiles.length; i++) {
+          const file = nonVideoFiles[i];
+
+          const baseProgress = (i / nonVideoFiles.length) * 100;
+          setProgress(Math.max(1, baseProgress));
+
+          const uploadedFile = await fileApi.uploadFile(
+            file,
+            undefined,
+            (fileProgress) => {
+              const totalProgress = baseProgress + (fileProgress / nonVideoFiles.length);
+              setProgress(Math.min(99, totalProgress));
+            },
+            true
+          );
+
+          uploadedFiles.push(uploadedFile);
+        }
+
+        setProgress(100);
+
+        const fileIds = uploadedFiles.map(f => f.id);
+        onFilesSelected(fileIds);
+      } catch (error) {
+        showErrorToast(error, 'Ошибка при загрузке файлов');
+      } finally {
+        setUploading(false);
+        setProgress(0);
+      }
     }
   };
 
