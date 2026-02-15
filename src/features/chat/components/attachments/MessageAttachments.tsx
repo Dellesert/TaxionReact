@@ -70,12 +70,12 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     loadSessionId();
   }, []);
 
-  const images = React.useMemo(
-    () => attachments.filter(a => isImageFile(a.mime_type || a.file_type || '')),
-    [attachments]
-  );
-  const videos = React.useMemo(
-    () => attachments.filter(a => isVideoFile(a.mime_type || a.file_type || '')),
+  // Unified media array (images + videos) preserving original order
+  const media = React.useMemo(
+    () => attachments.filter(a => {
+      const mt = a.mime_type || a.file_type || '';
+      return isImageFile(mt) || isVideoFile(mt);
+    }),
     [attachments]
   );
   const files = React.useMemo(
@@ -85,25 +85,28 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     }),
     [attachments]
   );
-  const imageCount = images.length;
+  const mediaCount = media.length;
 
-  // Create stable image IDs key for caching
-  const imageIds = React.useMemo(
-    () => images.map(img => img.id).join(','),
-    [images]
+  // Create stable media IDs key for caching
+  const mediaIds = React.useMemo(
+    () => media.map(m => m.id).join(','),
+    [media]
   );
 
   // Load images with auth headers for web platform
   React.useEffect(() => {
-    if (Platform.OS !== 'web' || images.length === 0 || !isVisible) {
+    if (Platform.OS !== 'web' || media.length === 0 || !isVisible) {
       return;
     }
 
     const loadImageBlobs = async () => {
       const newBlobUrls: { [key: number]: string } = {};
 
-      for (const attachment of images) {
+      for (const attachment of media) {
         try {
+          // Skip videos without thumbnails to avoid loading the full video file
+          const mt = attachment.mime_type || attachment.file_type || '';
+          if (isVideoFile(mt) && !attachment.thumbnail_url) continue;
           // Используем thumbnail для превью в списке сообщений
           const thumbnailUrl = attachment.thumbnail_url || attachment.file_url;
           const imageUrl = replaceLocalhostWithIP(thumbnailUrl);
@@ -145,30 +148,10 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         return {};
       });
     };
-  }, [imageIds, isVisible, sessionId]);
+  }, [mediaIds, isVisible, sessionId]);
 
-  // Prepare image URLs with proper baseURL replacement for gallery
-  // Для ImageViewer используем оригинальные изображения (file_url), а не thumbnails
-  const galleryImageUrls = images.map(img => replaceLocalhostWithIP(img.file_url));
-
-  // Количество скрытых фото (показываем максимум 4)
-  const hiddenCount = imageCount > 4 ? imageCount - 4 : 0;
-
-  // Размеры изображений - используем flex для автоматического распределения
-  const getImageLayout = () => {
-    if (imageCount === 1) {
-      return { type: 'single' as const };
-    }
-    if (imageCount === 2) {
-      return { type: 'row' as const };
-    }
-    if (imageCount === 3) {
-      return { type: 'left1-right2' as const };
-    }
-    return { type: 'grid2x2' as const };
-  };
-
-  const imageLayout = getImageLayout();
+  // Количество скрытых медиа (показываем максимум 4)
+  const hiddenCount = mediaCount > 4 ? mediaCount - 4 : 0;
 
   const handleFileDownload = async (attachment: Attachment) => {
     try {
@@ -274,26 +257,32 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     return null;
   }
 
-  // Показываем время на последнем изображении (если нет видео)
-  const showImageTimeOverlay = isMediaOnly && !!chatMessage && videos.length === 0;
-
-  // Рендер одного изображения
-  const renderImage = (attachment: Attachment, index: number, imageStyle?: object, showOverlay: boolean = false, showTimeOverlay: boolean = false) => {
-    // Используем thumbnail для превью, оригинал для просмотра
+  // Рендер одного медиа-элемента (фото или видео) в сетке
+  const renderMediaItem = (attachment: Attachment, gridIndex: number, imageStyle?: object, showOverlay: boolean = false, showTimeOverlay: boolean = false) => {
+    const mt = attachment.mime_type || attachment.file_type || '';
+    const isVideo = isVideoFile(mt);
     const thumbnailUri = attachment.thumbnail_url || attachment.file_url;
     const imageUri = Platform.OS === 'web' && blobUrls[attachment.id]
       ? blobUrls[attachment.id]
       : replaceLocalhostWithIP(thumbnailUri);
-
-    // Проверяем, является ли файл публичным (не требует авторизации)
     const isPublicFile = imageUri.includes('/files/public/');
 
     return (
       <TouchableOpacity
-        key={attachment.id || index}
+        key={attachment.id || gridIndex}
         style={[styles.imageAttachment, imageStyle]}
         onPress={() => {
-          onImagePress(Platform.OS === 'web' && blobUrls[attachment.id] ? blobUrls[attachment.id] : galleryImageUrls[index]);
+          if (isVideo) {
+            onVideoPress?.(
+              replaceLocalhostWithIP(attachment.file_url),
+              attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined
+            );
+          } else {
+            const fullUrl = Platform.OS === 'web' && blobUrls[attachment.id]
+              ? blobUrls[attachment.id]
+              : replaceLocalhostWithIP(attachment.file_url);
+            onImagePress(fullUrl);
+          }
         }}
         onLongPress={onLongPress}
         delayLongPress={500}
@@ -303,7 +292,6 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
             ? { uri: blobUrls[attachment.id] }
             : {
                 uri: imageUri,
-                // Не передаем заголовки для публичных файлов
                 headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
               }
           }
@@ -318,10 +306,23 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           recyclingKey={`attachment-${attachment.id}`}
           responsivePolicy="initial"
           allowDownscaling={true}
-          onError={(error) => {
-            console.error('❌ Message image load error:', imageUri, error);
-          }}
         />
+        {/* Video play button overlay */}
+        {isVideo && (
+          <View style={styles.videoPlayOverlay}>
+            <View style={styles.videoPlayButton}>
+              <Ionicons name="play" size={24} color="#FFFFFF" />
+            </View>
+          </View>
+        )}
+        {/* Video duration badge */}
+        {isVideo && attachment.duration != null && attachment.duration > 0 && (
+          <View style={styles.videoDurationBadge}>
+            <Text style={styles.videoDurationText}>
+              {formatDuration(attachment.duration)}
+            </Text>
+          </View>
+        )}
         {showOverlay && hiddenCount > 0 && (
           <View style={styles.imageOverlay}>
             <Text style={styles.imageOverlayText}>+{hiddenCount}</Text>
@@ -435,68 +436,68 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     );
   };
 
-  // Рендер сетки изображений в зависимости от количества
-  const renderImagesGrid = () => {
-    if (imageCount === 0) return null;
+  // Рендер сетки медиа (фото + видео) в зависимости от количества
+  const renderMediaGrid = () => {
+    if (mediaCount === 0) return null;
 
-    // 1 фото
-    if (imageLayout.type === 'single') {
+    const showTimeOverlay = isMediaOnly && !!chatMessage;
+
+    // 1 медиа
+    if (mediaCount === 1) {
+      const mt = media[0].mime_type || media[0].file_type || '';
+      if (isVideoFile(mt)) {
+        // Одиночное видео — показываем с оригинальным соотношением сторон
+        return renderVideoThumbnail(media[0], 0);
+      }
       return (
         <View style={styles.imagesGrid}>
-          {renderImage(images[0], 0, styles.imageSingle, false, showImageTimeOverlay)}
+          {renderMediaItem(media[0], 0, styles.imageSingle, false, showTimeOverlay)}
         </View>
       );
     }
 
-    // 2 фото - рядом
-    if (imageLayout.type === 'row') {
+    // 2 медиа — рядом
+    if (mediaCount === 2) {
       return (
         <View style={[styles.imagesGrid, styles.imagesRow]}>
-          {renderImage(images[0], 0, styles.imageHalf)}
-          {renderImage(images[1], 1, styles.imageHalf, false, showImageTimeOverlay)}
+          {renderMediaItem(media[0], 0, styles.imageHalf)}
+          {renderMediaItem(media[1], 1, styles.imageHalf, false, showTimeOverlay)}
         </View>
       );
     }
 
-    // 3 фото - 1 слева, 2 справа (столбец)
-    if (imageLayout.type === 'left1-right2') {
+    // 3 медиа — 1 слева, 2 справа (столбец)
+    if (mediaCount === 3) {
       return (
         <View style={[styles.imagesGrid, styles.imagesRow]}>
-          {renderImage(images[0], 0, styles.imageHalf)}
+          {renderMediaItem(media[0], 0, styles.imageHalf)}
           <View style={[styles.imagesColumn, styles.imageHalf]}>
-            {renderImage(images[1], 1, styles.imageSmall)}
-            {renderImage(images[2], 2, styles.imageSmall, false, showImageTimeOverlay)}
+            {renderMediaItem(media[1], 1, styles.imageSmall)}
+            {renderMediaItem(media[2], 2, styles.imageSmall, false, showTimeOverlay)}
           </View>
         </View>
       );
     }
 
-    // 4+ фото - сетка 2x2
-    if (imageLayout.type === 'grid2x2') {
-      return (
-        <View style={styles.imagesGrid}>
-          <View style={styles.imagesRow}>
-            {renderImage(images[0], 0, styles.imageHalf)}
-            {renderImage(images[1], 1, styles.imageHalf)}
-          </View>
-          <View style={styles.imagesRow}>
-            {renderImage(images[2], 2, styles.imageHalf)}
-            {renderImage(images[3], 3, styles.imageHalf, true, showImageTimeOverlay)}
-          </View>
+    // 4+ медиа — сетка 2x2
+    return (
+      <View style={styles.imagesGrid}>
+        <View style={styles.imagesRow}>
+          {renderMediaItem(media[0], 0, styles.imageHalf)}
+          {renderMediaItem(media[1], 1, styles.imageHalf)}
         </View>
-      );
-    }
-
-    return null;
+        <View style={styles.imagesRow}>
+          {renderMediaItem(media[2], 2, styles.imageHalf)}
+          {renderMediaItem(media[3], 3, styles.imageHalf, true, showTimeOverlay)}
+        </View>
+      </View>
+    );
   };
 
   return (
     <View style={[styles.attachmentsContainer, isMediaOnly && { marginTop: 0 }]}>
-      {/* Render images in grid */}
-      {renderImagesGrid()}
-
-      {/* Render video thumbnails */}
-      {videos.map((attachment, index) => renderVideoThumbnail(attachment, index))}
+      {/* Render media grid (photos + videos) */}
+      {renderMediaGrid()}
 
       {/* Render file attachments */}
       {files.map((attachment, index) => {
@@ -573,18 +574,16 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 4,
   },
-  // ✅ ИСПРАВЛЕНО: Фиксированные размеры с aspectRatio для предотвращения layout shift
   imageSingle: {
-    width: 180,
-    aspectRatio: 1, // 1:1 квадрат
+    width: '100%',
+    aspectRatio: 1,
   },
   imageHalf: {
-    width: 90,
-    aspectRatio: 1, // 1:1 квадрат
+    flex: 1,
+    aspectRatio: 1,
   },
   imageSmall: {
-    width: 90,
-    aspectRatio: 2, // 2:1 прямоугольник (90x45)
+    flex: 1,
   },
   videoSingle: {
     width: '100%',
