@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Modal, View, StyleSheet, Text, Platform, Dimensions, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -55,6 +55,14 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [isSharing, setIsSharing] = useState(false);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoLoading, setVideoLoading] = useState(false);
+
+  // Refs
+  const progressBarWidthRef = useRef(0);
+  const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSeekingRef = useRef(false);
 
   // Shared values for gallery
   const translateX = useSharedValue(0);
@@ -81,7 +89,33 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   // Video player
   const player = useVideoPlayer(null, (p) => {
     p.loop = false;
+    p.timeUpdateEventInterval = 0.25;
   });
+
+  // Auto-hide timer helpers
+  const clearAutoHideTimer = () => {
+    if (autoHideTimerRef.current) {
+      clearTimeout(autoHideTimerRef.current);
+      autoHideTimerRef.current = null;
+    }
+  };
+
+  const startAutoHideTimer = () => {
+    clearAutoHideTimer();
+    autoHideTimerRef.current = setTimeout(() => {
+      setControlsVisible(false);
+      controlsOpacity.value = withTiming(0, { duration: 300 });
+    }, 3000);
+  };
+
+  // Helpers
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progress = videoDuration > 0 ? (currentTime / videoDuration) * 100 : 0;
 
   useEffect(() => {
     const loadSessionId = async () => {
@@ -130,12 +164,17 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       const item = mediaItems[newIndex];
       isCurrentItemVideo.value = item?.type === 'video';
       setIsPlaying(false);
+      setCurrentTime(0);
+      setVideoDuration(0);
+      clearAutoHideTimer();
 
       if (item?.type === 'video') {
+        setVideoLoading(true);
         player.replace({
           uri: item.url,
           headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
         });
+        player.play();
       } else {
         player.pause();
       }
@@ -143,6 +182,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       // Cleanup on close
       player.pause();
       setIsPlaying(false);
+      setVideoLoading(false);
+      clearAutoHideTimer();
     }
   }, [visible, initialIndex, mediaItems.length]);
 
@@ -164,6 +205,55 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [visible, currentIndex, mediaItems.length]);
+
+  // Track video status: loading state + autoplay
+  useEffect(() => {
+    const sub = player.addListener('statusChange', ({ status }: { status: string }) => {
+      if (status === 'loading') {
+        setVideoLoading(true);
+      } else if (status === 'readyToPlay') {
+        setVideoLoading(false);
+        setVideoDuration(player.duration || 0);
+        // Ensure autoplay
+        if (!player.playing) {
+          player.play();
+        }
+        setIsPlaying(true);
+        setControlsVisible(true);
+        controlsOpacity.value = withTiming(1, { duration: 200 });
+        startAutoHideTimer();
+      } else if (status === 'error') {
+        setVideoLoading(false);
+      }
+    });
+    return () => sub.remove();
+  }, [player, currentIndex, visible]);
+
+  // Track video progress
+  useEffect(() => {
+    const sub = player.addListener('timeUpdate', ({ currentTime: ct }: { currentTime: number }) => {
+      if (!isSeekingRef.current) {
+        setCurrentTime(ct);
+        if (player.duration > 0) {
+          setVideoDuration(player.duration);
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [player]);
+
+  // Handle video end
+  useEffect(() => {
+    const sub = player.addListener('playToEnd', () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      player.currentTime = 0;
+      setControlsVisible(true);
+      controlsOpacity.value = withTiming(1, { duration: 200 });
+      clearAutoHideTimer();
+    });
+    return () => sub.remove();
+  }, [player]);
 
   const hasMultipleItems = mediaItems.length > 1;
 
@@ -190,13 +280,19 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     savedImageTranslateX.value = 0;
     savedImageTranslateY.value = 0;
 
+    // Reset video time
+    setCurrentTime(0);
+    setVideoDuration(0);
+    clearAutoHideTimer();
+
     // Load video if navigating to a video slide
     if (newItem?.type === 'video') {
+      setVideoLoading(true);
       player.replace({
         uri: newItem.url,
         headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
       });
-      // Don't autoplay - user taps to start
+      player.play();
     }
   };
 
@@ -235,19 +331,53 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   // Toggle video playback
   const toggleVideoPlayback = () => {
+    clearAutoHideTimer();
     if (player.playing) {
       player.pause();
       setIsPlaying(false);
+      setControlsVisible(true);
+      controlsOpacity.value = withTiming(1, { duration: 200 });
     } else {
       player.play();
       setIsPlaying(true);
+      setControlsVisible(true);
+      controlsOpacity.value = withTiming(1, { duration: 200 });
+      startAutoHideTimer();
     }
   };
 
   const handleClose = () => {
+    clearAutoHideTimer();
     player.pause();
     setIsPlaying(false);
     onClose();
+  };
+
+  // Seek handlers for progress bar
+  const seekToPosition = (locationX: number) => {
+    if (progressBarWidthRef.current <= 0 || videoDuration <= 0) return;
+    const ratio = Math.max(0, Math.min(1, locationX / progressBarWidthRef.current));
+    const seekTime = ratio * videoDuration;
+    player.currentTime = seekTime;
+    setCurrentTime(seekTime);
+  };
+
+  const handleSeekStart = (e: any) => {
+    isSeekingRef.current = true;
+    clearAutoHideTimer();
+    seekToPosition(e.nativeEvent.locationX);
+  };
+
+  const handleSeekMove = (e: any) => {
+    seekToPosition(e.nativeEvent.locationX);
+  };
+
+  const handleSeekEnd = (e: any) => {
+    seekToPosition(e.nativeEvent.locationX);
+    isSeekingRef.current = false;
+    if (isPlaying) {
+      startAutoHideTimer();
+    }
   };
 
   // === GESTURES ===
@@ -654,8 +784,14 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                               cachePolicy="disk"
                             />
                           )}
+                          {/* Loading indicator */}
+                          {index === currentIndex && videoLoading && (
+                            <View style={styles.videoPlayOverlayCenter} pointerEvents="none">
+                              <ActivityIndicator size="large" color="#FFFFFF" />
+                            </View>
+                          )}
                           {/* Play/Pause overlay */}
-                          {index === currentIndex && !isPlaying && (
+                          {index === currentIndex && !isPlaying && !videoLoading && (
                             <View style={styles.videoPlayOverlayCenter} pointerEvents="none">
                               <View style={styles.videoPlayButtonLarge}>
                                 <Ionicons name="play" size={48} color="#FFFFFF" />
@@ -770,28 +906,57 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }, animatedControlsStyle]}
           pointerEvents={controlsVisible ? 'auto' : 'none'}
         >
-          <TouchableOpacity
-            style={styles.bottomButton}
-            onPress={handleSaveToGallery}
-            activeOpacity={0.7}
-            disabled={isSharing}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="download-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.bottomButtonText}>Сохранить</Text>
-          </TouchableOpacity>
-
-          {onForward && (
+          {/* Video progress bar */}
+          {mediaItems[currentIndex]?.type === 'video' && (
+            <View style={styles.progressRow}>
+              <Text style={styles.progressTimeText}>{formatTime(currentTime)}</Text>
+              <View
+                style={styles.progressTrack}
+                onLayout={(e) => { progressBarWidthRef.current = e.nativeEvent.layout.width; }}
+                onStartShouldSetResponder={() => true}
+                onMoveShouldSetResponder={() => true}
+                onResponderGrant={handleSeekStart}
+                onResponderMove={handleSeekMove}
+                onResponderRelease={handleSeekEnd}
+                onResponderTerminate={handleSeekEnd}
+              >
+                <View style={styles.progressTrackBar}>
+                  <View style={[styles.progressFill, { width: `${progress}%` }]} />
+                </View>
+                <View
+                  style={[
+                    styles.progressThumb,
+                    { left: `${progress}%`, marginLeft: -6 },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressTimeText}>{formatTime(videoDuration)}</Text>
+            </View>
+          )}
+          <View style={styles.bottomButtonsRow}>
             <TouchableOpacity
               style={styles.bottomButton}
-              onPress={handleForward}
+              onPress={handleSaveToGallery}
               activeOpacity={0.7}
+              disabled={isSharing}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="arrow-redo-outline" size={24} color="#FFFFFF" />
-              <Text style={styles.bottomButtonText}>Переслать</Text>
+              <Ionicons name="download-outline" size={24} color="#FFFFFF" />
+              <Text style={styles.bottomButtonText}>Сохранить</Text>
             </TouchableOpacity>
-          )}
+
+            {onForward && (
+              <TouchableOpacity
+                style={styles.bottomButton}
+                onPress={handleForward}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-redo-outline" size={24} color="#FFFFFF" />
+                <Text style={styles.bottomButtonText}>Переслать</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </Animated.View>
       </GestureHandlerRootView>
     </Modal>
@@ -939,12 +1104,58 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    paddingTop: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  bottomButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 16,
     paddingHorizontal: 32,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+    gap: 8,
+  },
+  progressTimeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'] as any,
+    minWidth: 36,
+    textAlign: 'center' as const,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 36,
+    justifyContent: 'center' as const,
+  },
+  progressTrackBar: {
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  progressFill: {
+    height: '100%' as any,
+    borderRadius: 1.5,
+    backgroundColor: '#FFFFFF',
+  },
+  progressThumb: {
+    position: 'absolute' as const,
+    top: '50%' as any,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    marginTop: -6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
   bottomButton: {
     alignItems: 'center',
