@@ -18,7 +18,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.dellesert.tachyon-messenger",
       "buildNumber": "23",
-      "associatedDomains": ["webcredentials:taxion.fusioninsight.cloud"],
+      "associatedDomains": [
+        "webcredentials:taxion.fusioninsight.cloud"
+      ],
       "icon": "./assets/images/icon.png",
       "backgroundColor": "#E94444",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -94,7 +96,9 @@
       "./plugins/withShareExtensionConfig.js",
       [
         "./plugins/withShareExtensionDisplayName.js",
-        { "displayName": "Отправить в Тахион" }
+        {
+          "displayName": "Отправить в Тахион"
+        }
       ],
       [
         "expo-share-intent",
@@ -107,10 +111,20 @@
             "NSExtensionActivationSupportsMovieWithMaxCount": 3,
             "NSExtensionActivationSupportsFileWithMaxCount": 5
           },
-          "androidIntentFilters": ["text/*", "image/*", "video/*", "*/*"],
-          "androidMultiIntentFilters": ["image/*", "video/*", "*/*"]
+          "androidIntentFilters": [
+            "text/*",
+            "image/*",
+            "video/*",
+            "*/*"
+          ],
+          "androidMultiIntentFilters": [
+            "image/*",
+            "video/*",
+            "*/*"
+          ]
         }
-      ]
+      ],
+      "expo-video"
     ],
     "extra": {
       "eas": {
