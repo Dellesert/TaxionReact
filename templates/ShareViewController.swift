@@ -195,7 +195,7 @@ class ShareViewController: UIViewController {
       navBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
       navBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
       navBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-      navBar.heightAnchor.constraint(equalToConstant: 44),
+      navBar.heightAnchor.constraint(equalToConstant: 56),
 
       separator.leadingAnchor.constraint(equalTo: navBar.leadingAnchor),
       separator.trailingAnchor.constraint(equalTo: navBar.trailingAnchor),
