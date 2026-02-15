@@ -15,6 +15,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageContextMenu } from '../modals/MessageContextMenu';
 import { ActionModal } from '@shared/components/common/ActionModal';
 import { ImageViewer } from '../modals/ImageViewer';
+import { VideoPlayer } from '../modals/VideoPlayer';
 import { useMessageData } from '../../hooks/useMessageData';
 import { useImageLoader } from '@shared/hooks/useImageLoader';
 import { isForwardedMessage } from '../../utils/message.utils';
@@ -91,6 +92,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
+  const [selectedVideoThumbnail, setSelectedVideoThumbnail] = useState<string | undefined>();
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const messageBubbleRef = useRef<View>(null);
 
@@ -199,6 +203,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     setShowImageViewer(true);
   };
 
+  const handleVideoPress = (videoUrl: string, thumbnailUrl?: string) => {
+    setSelectedVideoUrl(videoUrl);
+    setSelectedVideoThumbnail(thumbnailUrl);
+    setShowVideoPlayer(true);
+  };
+
   const handlePress = () => {
     if (selectionMode && onToggleSelection) {
       onToggleSelection(message.id);
@@ -264,6 +274,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             onTaskPress={onTaskPress}
             onReplyPress={onReplyPress}
             onImagePress={handleImagePress}
+            onVideoPress={handleVideoPress}
             messageBubbleRef={messageBubbleRef}
             onRetryMessage={onRetryMessage}
             onReactionPress={handleToggleReaction}
@@ -416,6 +427,33 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           };
           setShowImageViewer(false);
           onForward(imageMessage);
+        } : undefined}
+      />
+
+      {/* Полноэкранный видеоплеер */}
+      <VideoPlayer
+        visible={showVideoPlayer}
+        videoUrl={selectedVideoUrl}
+        thumbnailUrl={selectedVideoThumbnail}
+        onClose={() => {
+          setShowVideoPlayer(false);
+          setSelectedVideoUrl('');
+        }}
+        onForward={onForward ? () => {
+          // Находим видео-вложение по URL
+          const videoAttachment = message.attachments?.find(
+            (att) => selectedVideoUrl.includes(att.file_url?.split('/').pop() || '__none__')
+          );
+          if (videoAttachment && onForward) {
+            const videoMessage: Message = {
+              ...message,
+              id: 0,
+              content: '',
+              attachments: [videoAttachment],
+            };
+            setShowVideoPlayer(false);
+            onForward(videoMessage);
+          }
         } : undefined}
       />
     </View>

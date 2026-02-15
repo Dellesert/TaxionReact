@@ -26,6 +26,7 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { Attachment, ChatLink } from '../../types/chat.types';
 import * as chatApi from '../../api/chat.api';
 import { ImageViewer } from '../modals/ImageViewer';
+import { VideoPlayer } from '../modals/VideoPlayer';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { replaceLocalhostWithIP } from '../../utils/message.utils';
@@ -49,6 +50,9 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
   const [linksLoaded, setLinksLoaded] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showImageViewer, setShowImageViewer] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
+  const [selectedVideoThumbnail, setSelectedVideoThumbnail] = useState<string | undefined>();
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Адаптивная сетка для десктопа и мобильных устройств
@@ -133,7 +137,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
   const filterAttachmentsByType = (type: AttachmentType): Attachment[] => {
     switch (type) {
       case 'images':
-        return attachments.filter((att) => att.file_type === 'image');
+        return attachments.filter((att) => att.file_type === 'image' || att.file_type === 'video');
       case 'files':
         return attachments.filter((att) => att.file_type === 'document' || att.file_type === 'other' || att.file_type === 'audio');
       default:
@@ -162,7 +166,8 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
     }
   };
 
-  // Извлекаем все URL изображений для галереи
+  // Извлекаем все медиа-вложения (изображения + видео) для галереи
+  const mediaAttachments = attachments.filter((att) => att.file_type === 'image' || att.file_type === 'video');
   const imageAttachments = attachments.filter((att) => att.file_type === 'image');
   const imageUrls = imageAttachments.map((att) => replaceLocalhostWithIP(att.file_url));
 
@@ -285,7 +290,17 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
   const handleAttachmentPress = async (attachment: Attachment, index: number) => {
     // Если это изображение, открываем в ImageViewer
     if (attachment.file_type === 'image') {
-      handleImagePress(index);
+      // Находим индекс среди только изображений для ImageViewer
+      const imageIndex = imageAttachments.findIndex((img) => img.id === attachment.id);
+      handleImagePress(imageIndex >= 0 ? imageIndex : 0);
+      return;
+    }
+
+    // Если это видео, открываем VideoPlayer
+    if (attachment.file_type === 'video') {
+      setSelectedVideoUrl(replaceLocalhostWithIP(attachment.file_url));
+      setSelectedVideoThumbnail(attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined);
+      setShowVideoPlayer(true);
       return;
     }
 
@@ -356,7 +371,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
           activeOpacity={0.7}
         >
           <Ionicons
-            name="image-outline"
+            name="images-outline"
             size={20}
             color={selectedType === 'images' ? '#FFFFFF' : theme.textSecondary}
           />
@@ -367,7 +382,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
               selectedType === 'images' && dynamicStyles.activeFilterText,
             ]}
           >
-            Фото
+            Медиа
           </Text>
         </TouchableOpacity>
 
@@ -498,16 +513,15 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
               color={theme.textTertiary}
             />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              {selectedType === 'images' && 'Нет фотографий'}
+              {selectedType === 'images' && 'Нет медиафайлов'}
               {selectedType === 'files' && 'Нет файлов'}
             </Text>
           </View>
         ) : selectedType === 'images' ? (
           // Сетка изображений
           <View style={styles.imagesGrid}>
-            {filteredAttachments.map((attachment) => {
-              // Найти индекс в общем массиве изображений для галереи
-              const globalIndex = imageAttachments.findIndex((img) => img.id === attachment.id);
+            {filteredAttachments.map((attachment, index) => {
+              const isVideo = attachment.file_type === 'video';
 
               return (
                 <TouchableOpacity
@@ -517,7 +531,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
                     dynamicStyles.imageContainer,
                     { width: imageSize, height: imageSize },
                   ]}
-                  onPress={() => handleAttachmentPress(attachment, globalIndex)}
+                  onPress={() => handleAttachmentPress(attachment, index)}
                   activeOpacity={0.8}
                 >
                   {/* Placeholder/Loading state */}
@@ -528,10 +542,10 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
                       borderColor: theme.border,
                     }
                   ]}>
-                    <Ionicons name="image-outline" size={32} color={theme.textTertiary} />
+                    <Ionicons name={isVideo ? "videocam-outline" : "image-outline"} size={32} color={theme.textTertiary} />
                   </View>
 
-                  {/* Actual image */}
+                  {/* Actual thumbnail */}
                   <Image
                     source={{
                       uri: replaceLocalhostWithIP(attachment.thumbnail_url || attachment.file_url),
@@ -544,6 +558,15 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
                     transition={200}
                     cachePolicy="disk"
                   />
+
+                  {/* Video play overlay */}
+                  {isVideo && (
+                    <View style={styles.videoPlayOverlay}>
+                      <View style={styles.videoPlayIcon}>
+                        <Ionicons name="play" size={20} color="#FFFFFF" />
+                      </View>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -600,6 +623,26 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
           if (attachment) {
             setShowImageViewer(false);
             onForwardImage(attachment);
+          }
+        } : undefined}
+      />
+
+      {/* Video Player Modal */}
+      <VideoPlayer
+        visible={showVideoPlayer}
+        videoUrl={selectedVideoUrl}
+        thumbnailUrl={selectedVideoThumbnail}
+        onClose={() => {
+          setShowVideoPlayer(false);
+          setSelectedVideoUrl('');
+        }}
+        onForward={onForwardImage ? () => {
+          const videoAttachment = mediaAttachments.find(
+            (att) => att.file_type === 'video' && selectedVideoUrl.includes(att.file_url?.split('/').pop() || '__none__')
+          );
+          if (videoAttachment) {
+            setShowVideoPlayer(false);
+            onForwardImage(videoAttachment);
           }
         } : undefined}
       />
@@ -757,5 +800,19 @@ const styles = StyleSheet.create({
   linkUrl: {
     fontSize: 11,
     flex: 1,
+  },
+  videoPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPlayIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 2,
   },
 });

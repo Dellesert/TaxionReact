@@ -14,6 +14,7 @@ export interface FileUploadResponse {
   file_type: string;
   file_url: string;
   thumbnail_url?: string;
+  duration?: number; // Duration in seconds (for video/audio)
   uploaded_by: number;
   is_public: boolean;
   created_at: string;

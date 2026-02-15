@@ -9,7 +9,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import { isImageFile, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { isImageFile, isVideoFile, formatDuration, replaceLocalhostWithIP } from '../../utils/message.utils';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 
 interface Attachment {
@@ -20,12 +20,14 @@ interface Attachment {
   mime_type: string;
   file_type?: string;
   thumbnail_url?: string;
+  duration?: number;
 }
 
 interface MessageAttachmentsProps {
   attachments: Attachment[];
   imageUrls?: { [key: number]: string }; // Deprecated, not used anymore
   onImagePress: (imageUrl: string) => void;
+  onVideoPress?: (videoUrl: string, thumbnailUrl?: string) => void;
   onLongPress?: () => void;
   isVisible?: boolean; // Флаг видимости для ленивой загрузки
 }
@@ -36,6 +38,7 @@ interface MessageAttachmentsProps {
 const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
   attachments,
   onImagePress,
+  onVideoPress,
   onLongPress,
   isVisible = true,
 }) => {
@@ -57,8 +60,15 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     () => attachments.filter(a => isImageFile(a.mime_type || a.file_type || '')),
     [attachments]
   );
+  const videos = React.useMemo(
+    () => attachments.filter(a => isVideoFile(a.mime_type || a.file_type || '')),
+    [attachments]
+  );
   const files = React.useMemo(
-    () => attachments.filter(a => !isImageFile(a.mime_type || a.file_type || '')),
+    () => attachments.filter(a => {
+      const mt = a.mime_type || a.file_type || '';
+      return !isImageFile(mt) && !isVideoFile(mt);
+    }),
     [attachments]
   );
   const imageCount = images.length;
@@ -304,6 +314,63 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     );
   };
 
+  // Рендер одного видео-превью
+  const renderVideoThumbnail = (attachment: Attachment, index: number) => {
+    const thumbnailUri = attachment.thumbnail_url || attachment.file_url;
+    const imageUri = Platform.OS === 'web' && blobUrls[attachment.id]
+      ? blobUrls[attachment.id]
+      : replaceLocalhostWithIP(thumbnailUri);
+    const isPublicFile = imageUri.includes('/files/public/');
+
+    return (
+      <TouchableOpacity
+        key={`video-${attachment.id || index}`}
+        style={[styles.imageAttachment, styles.imageSingle]}
+        onPress={() => {
+          onVideoPress?.(
+            replaceLocalhostWithIP(attachment.file_url),
+            attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined
+          );
+        }}
+        onLongPress={onLongPress}
+        delayLongPress={500}
+      >
+        <Image
+          source={Platform.OS === 'web' && blobUrls[attachment.id]
+            ? { uri: blobUrls[attachment.id] }
+            : {
+                uri: imageUri,
+                headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
+              }
+          }
+          style={styles.imagePreview}
+          contentFit="cover"
+          contentPosition="center"
+          transition={200}
+          cachePolicy="disk"
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+          placeholderContentFit="cover"
+          priority={isVisible ? "high" : "low"}
+          recyclingKey={`video-thumb-${attachment.id}`}
+        />
+        {/* Play button overlay */}
+        <View style={styles.videoPlayOverlay}>
+          <View style={styles.videoPlayButton}>
+            <Ionicons name="play" size={24} color="#FFFFFF" />
+          </View>
+        </View>
+        {/* Duration badge */}
+        {attachment.duration != null && attachment.duration > 0 && (
+          <View style={styles.videoDurationBadge}>
+            <Text style={styles.videoDurationText}>
+              {formatDuration(attachment.duration)}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   // Рендер сетки изображений в зависимости от количества
   const renderImagesGrid = () => {
     if (imageCount === 0) return null;
@@ -363,6 +430,9 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     <View style={styles.attachmentsContainer}>
       {/* Render images in grid */}
       {renderImagesGrid()}
+
+      {/* Render video thumbnails */}
+      {videos.map((attachment, index) => renderVideoThumbnail(attachment, index))}
 
       {/* Render file attachments */}
       {files.map((attachment, index) => {
@@ -499,6 +569,34 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
   },
+  videoPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPlayButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 3,
+  },
+  videoDurationBadge: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  videoDurationText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
 });
 
 // Мемоизация компонента для предотвращения лишних ре-рендеров
@@ -523,6 +621,7 @@ export const MessageAttachments = React.memo(MessageAttachmentsComponent, (prevP
 
   // Сравниваем функции (обычно это стабильные ссылки)
   if (prevProps.onImagePress !== nextProps.onImagePress ||
+      prevProps.onVideoPress !== nextProps.onVideoPress ||
       prevProps.onLongPress !== nextProps.onLongPress) {
     return false;
   }

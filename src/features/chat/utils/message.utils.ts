@@ -23,6 +23,22 @@ export const isImageFile = (mimeType: string): boolean => {
 };
 
 /**
+ * Проверяет, является ли файл видео
+ */
+export const isVideoFile = (mimeType: string): boolean => {
+  return mimeType.startsWith('video/');
+};
+
+/**
+ * Форматирует длительность в секундах в строку mm:ss
+ */
+export const formatDuration = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+/**
  * Проверяет, является ли сообщение пересланным
  * Поддерживает как новый формат (is_forwarded), так и старый (по префиксу в контенте)
  */

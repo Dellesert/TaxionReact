@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Pressable, View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
@@ -143,30 +144,9 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 
   const handleCopyMessage = async () => {
     try {
-      // Проверяем, доступен ли Clipboard API
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(message.content);
-      } else {
-        // Fallback для старых браузеров
-        const textArea = document.createElement('textarea');
-        textArea.value = message.content;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-
-        try {
-          document.execCommand('copy');
-        } catch (err) {
-          console.error('❌ Failed to copy using fallback:', err);
-          showError('Не удалось скопировать текст');
-        }
-
-        document.body.removeChild(textArea);
-      }
+      await Clipboard.setStringAsync(message.content);
     } catch (error) {
-      console.error('❌ Failed to copy message:', error);
+      console.error('Failed to copy message:', error);
       showError('Не удалось скопировать текст');
     }
     onClose();

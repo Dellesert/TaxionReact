@@ -84,17 +84,19 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const fileObjects = await Promise.all(
           result.assets.map(async (asset) => {
+            const isVideo = asset.type === 'video';
+            const fileName = asset.fileName || (isVideo ? `video_${Date.now()}.mp4` : `photo_${Date.now()}.jpg`);
+            const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+
             if (asset.uri.startsWith('blob:')) {
               const response = await fetch(asset.uri);
               const blob = await response.blob();
-              const fileName = asset.fileName || `photo_${Date.now()}.jpg`;
-              const mimeType = asset.type === 'video' ? 'video/mp4' : 'image/jpeg';
               return new File([blob], fileName, { type: mimeType });
             } else {
               return {
                 uri: asset.uri,
-                name: asset.fileName || `photo_${Date.now()}.jpg`,
-                type: asset.type === 'video' ? 'video/mp4' : 'image/jpeg',
+                name: fileName,
+                type: mimeType,
               };
             }
           })
@@ -129,17 +131,19 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const fileObjects = await Promise.all(
           result.assets.map(async (asset) => {
+            const isVideo = asset.type === 'video';
+            const fileName = asset.fileName || (isVideo ? `video_${Date.now()}.mp4` : `image_${Date.now()}.jpg`);
+            const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+
             if (asset.uri.startsWith('blob:')) {
               const response = await fetch(asset.uri);
               const blob = await response.blob();
-              const fileName = asset.fileName || `image_${Date.now()}.jpg`;
-              const mimeType = asset.type === 'video' ? 'video/mp4' : 'image/jpeg';
               return new File([blob], fileName, { type: mimeType });
             } else {
               return {
                 uri: asset.uri,
-                name: asset.fileName || `image_${Date.now()}.jpg`,
-                type: asset.type === 'video' ? 'video/mp4' : 'image/jpeg',
+                name: fileName,
+                type: mimeType,
               };
             }
           })

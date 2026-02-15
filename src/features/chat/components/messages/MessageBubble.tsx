@@ -41,6 +41,7 @@ interface MessageBubbleProps {
   onTaskPress?: (taskId: number) => void;
   onReplyPress?: (messageId: number) => void;
   onImagePress: (imageUrl: string) => void;
+  onVideoPress?: (videoUrl: string, thumbnailUrl?: string) => void;
   messageBubbleRef: React.RefObject<View>;
   onRetryMessage?: (messageId: number) => void;
   onReactionPress?: (emoji: string) => void;
@@ -67,6 +68,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   onTaskPress,
   onReplyPress,
   onImagePress,
+  onVideoPress,
   messageBubbleRef,
   onRetryMessage,
   onReactionPress,
@@ -309,6 +311,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                   attachments={message.attachments}
                   imageUrls={imageUrls}
                   onImagePress={onImagePress}
+                  onVideoPress={onVideoPress}
                   onLongPress={onLongPress}
                   isVisible={isVisible}
                 />

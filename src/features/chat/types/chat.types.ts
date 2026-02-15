@@ -23,6 +23,7 @@ export interface Attachment {
   mime_type: string; // MIME type of the file (e.g., "image/png", "application/pdf")
   file_type: string; // Category: "image", "video", "audio", "document", "other"
   thumbnail_url?: string;
+  duration?: number; // Duration in seconds (for video/audio)
   created_at?: ISODateString;
 }
 
