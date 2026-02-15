@@ -90,6 +90,8 @@
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
+      "./plugins/withCustomShareViewController.js",
+      "./plugins/withShareExtensionConfig.js",
       [
         "./plugins/withShareExtensionDisplayName.js",
         { "displayName": "Отправить в Тахион" }
@@ -108,9 +110,7 @@
           "androidIntentFilters": ["text/*", "image/*", "video/*", "*/*"],
           "androidMultiIntentFilters": ["image/*", "video/*", "*/*"]
         }
-      ],
-      "./plugins/withShareExtensionConfig.js",
-      "./plugins/withCustomShareViewController.js"
+      ]
     ],
     "extra": {
       "eas": {
