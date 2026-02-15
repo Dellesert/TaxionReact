@@ -7,7 +7,8 @@
 - [x] Associated Domains / Passkey — `associatedDomains` в `app.json`
 - [x] Firebase — `@react-native-firebase/app` + `@react-native-firebase/messaging`
 - [x] Podfile модификации — `withPodfileModifications.js`
-- [x] Share Extension — `expo-share-intent`
+- [x] Share Extension (таргет + entitlements) — `expo-share-intent`
+- [x] Share Extension кастомный UI (чат-пикер) — `withCustomShareViewController.js`
 - [x] ExportOptions plist файлы — `withExportOptions.js`
 
 **Ручные шаги:**
@@ -46,7 +47,11 @@
 | `@react-native-firebase/app` | Добавляет `FirebaseApp.configure()` |
 | `@react-native-firebase/messaging` | Настройка Firebase Messaging |
 | `expo-notifications` | Добавляет `aps-environment` в entitlements |
-| `expo-share-intent` | Создаёт Share Extension для получения контента из других приложений |
+| `expo-share-intent` | Создаёт Share Extension таргет, entitlements, Info.plist, storyboard |
+| `withShareExtensionConfig.js` | Устанавливает DEVELOPMENT_TEAM и buildNumber для Share Extension |
+| `withCustomShareViewController.js` | Заменяет ShareViewController на кастомный с нативным чат-пикером |
+
+**Expo Module `modules/share-data/`** — синхронизирует список чатов, сессию и API URL из React Native в App Group UserDefaults. Share Extension читает эти данные для отображения чатов и отправки сообщений напрямую.
 
 **`associatedDomains`** в `app.json` → автоматически добавляет `com.apple.developer.associated-domains` в entitlements (для Passkey).
 
@@ -288,7 +293,13 @@ cd ios && LANG=en_US.UTF-8 pod install
 
 1. Проверить что `expo-share-intent` плагин есть в `app.json`
 2. Убедиться что prebuild выполнен с `--clean` флагом
-3. Проверить что в Xcode проекте есть таргет Share Extension
+3. Проверить что в Xcode проекте есть таргет ShareExtension
+
+### Share Extension показывает пустой список чатов
+
+1. Убедиться что пользователь залогинен в основном приложении (данные синхронизируются при логине)
+2. Открыть основное приложение и дождаться загрузки списка чатов (синхронизация происходит после `loadChats`)
+3. Если сессия истекла — Share Extension покажет ошибку "Сессия истекла", нужно перелогиниться в приложении
 
 ### Очистка кэша сборки
 
@@ -372,7 +383,17 @@ TaxionReact/
 │   ├── withPodfileModifications.js  # Firebase modular headers
 │   ├── withPushNotificationDelegates.js  # Push notifications + FCM delegates
 │   ├── withExportOptions.js      # Генерация ExportOptions plist файлов
-│   └── withShareExtensionDisplayName.js  # Кириллическое имя Share Extension
+│   ├── withShareExtensionDisplayName.js  # Кириллическое имя Share Extension
+│   ├── withShareExtensionConfig.js  # DEVELOPMENT_TEAM для Share Extension
+│   └── withCustomShareViewController.js  # Кастомный ShareViewController с чат-пикером
+├── modules/
+│   └── share-data/               # Expo Module для синхронизации данных в App Group
+│       ├── expo-module.config.json
+│       ├── index.ts
+│       ├── src/ShareDataModule.ts  # TypeScript обёртка
+│       └── ios/ShareDataModule.swift  # Нативный модуль (запись в UserDefaults)
+├── templates/
+│   └── ShareViewController.swift  # Шаблон кастомного Share Extension (чат-пикер + API клиент)
 ├── ios/
 │   ├── Dev/                      # Dev проект (после prebuild с APP_ENV=development)
 │   │   ├── AppDelegate.swift     # ✅ Автоматически настраивается через plugins
@@ -380,6 +401,10 @@ TaxionReact/
 │   ├── Tahion/                   # Production проект (после prebuild с APP_ENV=production)
 │   │   ├── AppDelegate.swift     # ✅ Автоматически настраивается через plugins
 │   │   └── Tahion.entitlements   # ✅ Associated Domains из app.json
+│   ├── ShareExtension/            # Share Extension (после prebuild)
+│   │   ├── ShareViewController.swift  # ✅ Кастомный чат-пикер (из templates/)
+│   │   ├── ShareExtension-Info.plist  # ✅ Генерируется expo-share-intent
+│   │   └── ShareExtension.entitlements  # ✅ App Group entitlement
 │   └── build/
 │       ├── ExportOptions.plist          # ✅ Генерируется автоматически
 │       ├── ExportOptions-AppStore.plist # ✅ Генерируется автоматически

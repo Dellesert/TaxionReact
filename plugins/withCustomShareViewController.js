@@ -19,6 +19,11 @@ const withCustomShareViewController = (config) => {
         return config;
       }
 
+      const targetDir = path.dirname(targetFile);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
       let content = fs.readFileSync(templateFile, 'utf-8');
 
       const scheme = Array.isArray(config.scheme) ? config.scheme[0] : config.scheme || 'tachyon';
