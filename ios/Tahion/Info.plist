@@ -3,13 +3,13 @@
 <plist version="1.0">
   <dict>
     <key>AppGroupIdentifier</key>
-    <string>group.com.dellesert.tachyon-messenger.dev</string>
+    <string>group.com.dellesert.tachyon-messenger</string>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Тахион Dev</string>
+    <string>Тахион</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -29,8 +29,8 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>tachyon-dev</string>
-          <string>com.dellesert.tachyon-messenger.dev</string>
+          <string>tachyon</string>
+          <string>com.dellesert.tachyon-messenger</string>
         </array>
       </dict>
       <dict>
@@ -41,7 +41,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>24</string>
+    <string>25</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>

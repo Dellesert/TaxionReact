@@ -44,8 +44,8 @@ enum ShareError: Error, LocalizedError {
 class ShareViewController: UIViewController {
 
   // MARK: Config (replaced by config plugin)
-  let appGroupIdentifier = "group.com.dellesert.tachyon-messenger.dev"
-  let shareScheme = "tachyon-dev"
+  let appGroupIdentifier = "group.com.dellesert.tachyon-messenger"
+  let shareScheme = "tachyon"
 
   // MARK: Content type identifiers
   let imageContentType = UTType.image.identifier

@@ -43,7 +43,11 @@
       <key>NSExtensionPointIdentifier</key>
       <string>com.apple.share-services</string>
     </dict>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.1</string>
+    <key>CFBundleVersion</key>
+    <string>25</string>
     <key>AppGroupIdentifier</key>
-    <string>group.com.dellesert.tachyon-messenger.dev</string>
+    <string>group.com.dellesert.tachyon-messenger</string>
   </dict>
 </plist>
