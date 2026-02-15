@@ -8,6 +8,7 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { Message } from '../../types/chat.types';
 import { formatTime } from '../../utils/message.utils';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
+import { stripFormatting } from '../../utils/formatting';
 import { ReactionBar } from '../messages/ReactionBar';
 import { FormattedText } from '../common/FormattedText';
 
@@ -144,7 +145,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 
   const handleCopyMessage = async () => {
     try {
-      await Clipboard.setStringAsync(message.content);
+      await Clipboard.setStringAsync(stripFormatting(message.content));
     } catch (error) {
       console.error('Failed to copy message:', error);
       showError('Не удалось скопировать текст');
