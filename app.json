@@ -92,8 +92,8 @@
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
-      "./plugins/withCustomShareViewController.js",
       "./plugins/withShareExtensionConfig.js",
+      "./plugins/withCustomShareViewController.js",
       [
         "./plugins/withShareExtensionDisplayName.js",
         {
