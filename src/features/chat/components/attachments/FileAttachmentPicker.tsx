@@ -4,12 +4,12 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  ActivityIndicator,
   Platform,
   ActionSheetIOS,
   Modal,
   Pressable,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -286,12 +286,37 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   };
 
   if (uploading) {
+    const size = 32;
+    const strokeWidth = 3;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (circumference * Math.round(progress)) / 100;
+
     return (
       <View style={styles.uploadingContainer}>
-        <ActivityIndicator size="small" color={theme.primary} />
-        <Text style={[styles.uploadingText, { color: theme.textSecondary }]}>
-          Загрузка... {Math.round(progress)}%
-        </Text>
+        <Svg width={size} height={size}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={theme.backgroundTertiary}
+            strokeWidth={strokeWidth}
+            fill="none"
+          />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={theme.primary}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${size / 2}, ${size / 2}`}
+          />
+        </Svg>
       </View>
     );
   }
@@ -363,14 +388,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   uploadingContainer: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 8,
-    gap: 8,
-    marginRight: 5,
-  },
-  uploadingText: {
-    fontSize: 14,
+    width: 42,
+    height: 42,
   },
   modalOverlay: {
     flex: 1,
