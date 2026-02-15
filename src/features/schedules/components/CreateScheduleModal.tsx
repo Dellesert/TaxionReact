@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
   StyleSheet,
   Platform,
@@ -20,6 +21,7 @@ import {
   Animated,
   KeyboardAvoidingView,
   Keyboard,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -145,6 +147,40 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   const [availableGroups, setAvailableGroups] = useState<UserGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const groupPickerOverlayAnim = useRef(new Animated.Value(0)).current;
+  const groupPickerSlideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+
+  const openGroupPicker = useCallback(() => {
+    setShowGroupPicker(true);
+    Animated.parallel([
+      Animated.timing(groupPickerOverlayAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(groupPickerSlideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 90,
+      }),
+    ]).start();
+  }, [groupPickerOverlayAnim, groupPickerSlideAnim]);
+
+  const closeGroupPicker = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(groupPickerOverlayAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(groupPickerSlideAnim, {
+        toValue: Dimensions.get('window').height,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShowGroupPicker(false));
+  }, [groupPickerOverlayAnim, groupPickerSlideAnim]);
 
   const [isCreating, setIsCreating] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -1254,7 +1290,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                               </View>
                             ) : (
                               <TouchableOpacity
-                                onPress={() => setShowGroupPicker(true)}
+                                onPress={openGroupPicker}
                                 style={[
                                   styles.userSelectorButton,
                                   { backgroundColor: theme.card, borderColor: theme.border },
@@ -1273,65 +1309,83 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                             {/* Group picker modal */}
                             <Modal
                               visible={showGroupPicker}
-                              animationType="slide"
+                              animationType="none"
                               transparent={true}
-                              onRequestClose={() => setShowGroupPicker(false)}
+                              onRequestClose={closeGroupPicker}
                             >
-                              <View style={[styles.groupPickerOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                                <View style={[styles.groupPickerContainer, { backgroundColor: theme.card }]}>
-                                  <View style={[styles.groupPickerHeader, { borderBottomColor: theme.border }]}>
-                                    <Text style={[styles.groupPickerTitle, { color: theme.text }]}>
-                                      Выберите группу
-                                    </Text>
-                                    <TouchableOpacity onPress={() => setShowGroupPicker(false)}>
-                                      <Ionicons name="close" size={24} color={theme.textSecondary} />
-                                    </TouchableOpacity>
-                                  </View>
-                                  <ScrollView style={styles.groupPickerList}>
-                                    {isLoadingGroups ? (
-                                      <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 20 }} />
-                                    ) : availableGroups.length === 0 ? (
-                                      <Text style={[styles.groupPickerEmpty, { color: theme.textSecondary }]}>
-                                        Нет доступных групп
-                                      </Text>
-                                    ) : (
-                                      availableGroups.map((group) => (
-                                        <TouchableOpacity
-                                          key={group.id}
-                                          onPress={() => {
-                                            setUserGroupId(group.id);
-                                            setSelectedGroup(group);
-                                            setShowGroupPicker(false);
-                                          }}
-                                          style={[
-                                            styles.groupPickerItem,
-                                            { borderBottomColor: theme.border },
-                                            userGroupId === group.id && { backgroundColor: theme.primary + '10' },
-                                          ]}
-                                        >
-                                          <Ionicons name="people-circle" size={28} color={theme.primary} />
-                                          <View style={{ flex: 1 }}>
-                                            <Text style={[styles.groupPickerItemName, { color: theme.text }]}>
-                                              {group.name}
-                                            </Text>
-                                            {group.description ? (
-                                              <Text style={[styles.groupPickerItemDesc, { color: theme.textTertiary }]} numberOfLines={1}>
-                                                {group.description}
-                                              </Text>
-                                            ) : null}
-                                            <Text style={[styles.groupPickerItemCount, { color: theme.textSecondary }]}>
-                                              {group.member_count} участник(ов)
-                                            </Text>
-                                          </View>
-                                          {userGroupId === group.id && (
-                                            <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
-                                          )}
+                              <TouchableWithoutFeedback onPress={closeGroupPicker}>
+                                <Animated.View style={[
+                                  styles.groupPickerOverlay,
+                                  { opacity: groupPickerOverlayAnim },
+                                  isDesktop && styles.groupPickerOverlayDesktop,
+                                ]}>
+                                  <TouchableWithoutFeedback>
+                                    <Animated.View style={[
+                                      styles.groupPickerContainer,
+                                      { backgroundColor: theme.card },
+                                      !isDesktop && { transform: [{ translateY: groupPickerSlideAnim }] },
+                                      isDesktop && styles.groupPickerContainerDesktop,
+                                    ]}>
+                                      {!isDesktop && (
+                                        <View style={styles.groupPickerHandle}>
+                                          <View style={[styles.groupPickerHandleBar, { backgroundColor: theme.border }]} />
+                                        </View>
+                                      )}
+                                      <View style={[styles.groupPickerHeader, { borderBottomColor: theme.border }]}>
+                                        <Text style={[styles.groupPickerTitle, { color: theme.text }]}>
+                                          Выберите группу
+                                        </Text>
+                                        <TouchableOpacity onPress={closeGroupPicker}>
+                                          <Ionicons name="close" size={24} color={theme.textSecondary} />
                                         </TouchableOpacity>
-                                      ))
-                                    )}
-                                  </ScrollView>
-                                </View>
-                              </View>
+                                      </View>
+                                      <ScrollView style={styles.groupPickerList}>
+                                        {isLoadingGroups ? (
+                                          <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 20 }} />
+                                        ) : availableGroups.length === 0 ? (
+                                          <Text style={[styles.groupPickerEmpty, { color: theme.textSecondary }]}>
+                                            Нет доступных групп
+                                          </Text>
+                                        ) : (
+                                          availableGroups.map((group) => (
+                                            <TouchableOpacity
+                                              key={group.id}
+                                              onPress={() => {
+                                                setUserGroupId(group.id);
+                                                setSelectedGroup(group);
+                                                closeGroupPicker();
+                                              }}
+                                              style={[
+                                                styles.groupPickerItem,
+                                                { borderBottomColor: theme.border },
+                                                userGroupId === group.id && { backgroundColor: theme.primary + '10' },
+                                              ]}
+                                            >
+                                              <Ionicons name="people-circle" size={28} color={theme.primary} />
+                                              <View style={{ flex: 1 }}>
+                                                <Text style={[styles.groupPickerItemName, { color: theme.text }]}>
+                                                  {group.name}
+                                                </Text>
+                                                {group.description ? (
+                                                  <Text style={[styles.groupPickerItemDesc, { color: theme.textTertiary }]} numberOfLines={1}>
+                                                    {group.description}
+                                                  </Text>
+                                                ) : null}
+                                                <Text style={[styles.groupPickerItemCount, { color: theme.textSecondary }]}>
+                                                  {group.member_count} участник(ов)
+                                                </Text>
+                                              </View>
+                                              {userGroupId === group.id && (
+                                                <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                                              )}
+                                            </TouchableOpacity>
+                                          ))
+                                        )}
+                                      </ScrollView>
+                                    </Animated.View>
+                                  </TouchableWithoutFeedback>
+                                </Animated.View>
+                              </TouchableWithoutFeedback>
                             </Modal>
                           </View>
 
@@ -2325,12 +2379,33 @@ const styles = StyleSheet.create({
   // Group picker modal
   groupPickerOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+  },
+  groupPickerOverlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   groupPickerContainer: {
     maxHeight: '70%',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  groupPickerContainerDesktop: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '80%',
+    borderRadius: 16,
+  },
+  groupPickerHandle: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  groupPickerHandleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
   },
   groupPickerHeader: {
     flexDirection: 'row',
