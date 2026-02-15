@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Modal, View, StyleSheet, Text, Platform, Dimensions, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,20 +25,25 @@ const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 const IMAGE_CONTAINER_HEIGHT = SCREEN_HEIGHT * 0.8;
 
-interface ImageViewerProps {
-  visible: boolean;
-  imageUrls: string[];
-  initialIndex?: number;
-  onClose: () => void;
-  onForward?: (imageUrl: string) => void;
+export interface MediaItem {
+  type: 'image' | 'video';
+  url: string;
+  thumbnailUrl?: string;
+  attachmentId: number;
+  duration?: number;
 }
 
-/**
- * Компонент для полноэкранного просмотра изображений с поддержкой галереи
- */
-export const ImageViewer: React.FC<ImageViewerProps> = ({
+interface MediaViewerProps {
+  visible: boolean;
+  mediaItems: MediaItem[];
+  initialIndex?: number;
+  onClose: () => void;
+  onForward?: (item: MediaItem) => void;
+}
+
+export const MediaViewer: React.FC<MediaViewerProps> = ({
   visible,
-  imageUrls = [],
+  mediaItems = [],
   initialIndex = 0,
   onClose,
   onForward,
@@ -48,13 +54,14 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isSharing, setIsSharing] = useState(false);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Shared values для галереи
+  // Shared values for gallery
   const translateX = useSharedValue(0);
   const baseTranslateX = useSharedValue(0);
   const currentIndexShared = useSharedValue(initialIndex);
 
-  // Shared values для зума текущего изображения
+  // Shared values for image zoom
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const imageTranslateX = useSharedValue(0);
@@ -62,11 +69,19 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const savedImageTranslateX = useSharedValue(0);
   const savedImageTranslateY = useSharedValue(0);
 
-  // Для свайпа вниз
+  // Swipe down to close
   const swipeDownY = useSharedValue(0);
   const swipeDownOpacity = useSharedValue(1);
 
   const controlsOpacity = useSharedValue(1);
+
+  // Track whether current slide is video (for worklet access)
+  const isCurrentItemVideo = useSharedValue(false);
+
+  // Video player
+  const player = useVideoPlayer(null, (p) => {
+    p.loop = false;
+  });
 
   useEffect(() => {
     const loadSessionId = async () => {
@@ -76,29 +91,29 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     loadSessionId();
   }, []);
 
-  // Мемоизируем sources чтобы избежать повторных запросов при ререндере
+  // Memoize image sources to avoid re-fetches on re-render
   const imageSources = useMemo(() => {
     const headers = sessionId ? { 'X-Session-ID': sessionId } : undefined;
-    return imageUrls.map(uri => ({
-      uri,
+    return mediaItems.map(item => ({
+      uri: item.url,
       headers,
     }));
-  }, [imageUrls, sessionId]);
+  }, [mediaItems, sessionId]);
 
-  // Сброс при открытии
+  // Reset on open
   useEffect(() => {
     if (visible) {
-      const newIndex = Math.min(Math.max(initialIndex, 0), imageUrls.length - 1);
+      const newIndex = Math.min(Math.max(initialIndex, 0), mediaItems.length - 1);
       setCurrentIndex(newIndex);
       currentIndexShared.value = newIndex;
       setControlsVisible(true);
       controlsOpacity.value = 1;
 
-      // Сброс позиции галереи
+      // Reset gallery position
       translateX.value = -newIndex * SCREEN_WIDTH;
       baseTranslateX.value = -newIndex * SCREEN_WIDTH;
 
-      // Сброс зума
+      // Reset zoom
       scale.value = 1;
       savedScale.value = 1;
       imageTranslateX.value = 0;
@@ -108,12 +123,30 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       swipeDownY.value = 0;
       swipeDownOpacity.value = 1;
 
-      // Сброс состояний загрузки
+      // Reset image loading state
       setLoadedImages(new Set());
-    }
-  }, [visible, initialIndex, imageUrls.length]);
 
-  // Обработка клавиатуры для веба
+      // Video state
+      const item = mediaItems[newIndex];
+      isCurrentItemVideo.value = item?.type === 'video';
+      setIsPlaying(false);
+
+      if (item?.type === 'video') {
+        player.replace({
+          uri: item.url,
+          headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+        });
+      } else {
+        player.pause();
+      }
+    } else {
+      // Cleanup on close
+      player.pause();
+      setIsPlaying(false);
+    }
+  }, [visible, initialIndex, mediaItems.length]);
+
+  // Keyboard handling for web
   useEffect(() => {
     if (Platform.OS !== 'web' || !visible) {
       return;
@@ -130,25 +163,45 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [visible, currentIndex, imageUrls.length]);
+  }, [visible, currentIndex, mediaItems.length]);
 
-  const hasMultipleImages = imageUrls.length > 1;
+  const hasMultipleItems = mediaItems.length > 1;
 
-  // Функции навигации
+  // Navigation functions
   const updateIndex = (newIndex: number) => {
+    // Pause current video when navigating away
+    const prevItem = mediaItems[currentIndex];
+    if (prevItem?.type === 'video') {
+      player.pause();
+      setIsPlaying(false);
+    }
+
     setCurrentIndex(newIndex);
     currentIndexShared.value = newIndex;
-    // Сброс зума при смене изображения
+
+    const newItem = mediaItems[newIndex];
+    isCurrentItemVideo.value = newItem?.type === 'video';
+
+    // Reset zoom when switching slides
     scale.value = 1;
     savedScale.value = 1;
     imageTranslateX.value = 0;
     imageTranslateY.value = 0;
     savedImageTranslateX.value = 0;
     savedImageTranslateY.value = 0;
+
+    // Load video if navigating to a video slide
+    if (newItem?.type === 'video') {
+      player.replace({
+        uri: newItem.url,
+        headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+      });
+      // Don't autoplay - user taps to start
+    }
   };
 
   const goToNext = () => {
-    if (currentIndex < imageUrls.length - 1) {
+    if (currentIndex < mediaItems.length - 1) {
       const newIndex = currentIndex + 1;
       translateX.value = withSpring(-newIndex * SCREEN_WIDTH, { damping: 20, stiffness: 200 });
       baseTranslateX.value = -newIndex * SCREEN_WIDTH;
@@ -167,42 +220,56 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
 
   const snapToIndex = (index: number) => {
     'worklet';
-    const clampedIndex = clamp(index, 0, imageUrls.length - 1);
+    const clampedIndex = clamp(index, 0, mediaItems.length - 1);
     translateX.value = withSpring(-clampedIndex * SCREEN_WIDTH, { damping: 20, stiffness: 200 });
     baseTranslateX.value = -clampedIndex * SCREEN_WIDTH;
     runOnJS(updateIndex)(clampedIndex);
   };
 
-  // Переключение видимости контролов по тапу
+  // Toggle controls visibility
   const toggleControls = () => {
     const newVisible = !controlsVisible;
     setControlsVisible(newVisible);
     controlsOpacity.value = withTiming(newVisible ? 1 : 0, { duration: 200 });
   };
 
+  // Toggle video playback
+  const toggleVideoPlayback = () => {
+    if (player.playing) {
+      player.pause();
+      setIsPlaying(false);
+    } else {
+      player.play();
+      setIsPlaying(true);
+    }
+  };
+
   const handleClose = () => {
+    player.pause();
+    setIsPlaying(false);
     onClose();
   };
 
-  // === ЖЕСТЫ ===
+  // === GESTURES ===
 
-  // Фокальная точка для зума
+  // Focal point for zoom
   const focalX = useSharedValue(0);
   const focalY = useSharedValue(0);
 
-  // Pinch для зума
+  // Pinch for zoom (images only)
   const pinchGesture = Gesture.Pinch()
     .onStart((event) => {
-      // event.focalX — координата относительно GestureDetector (всей галереи)
-      // Нужно вычислить координату относительно текущего слайда
+      if (isCurrentItemVideo.value) return;
+
       const slideStartX = currentIndexShared.value * SCREEN_WIDTH;
       const focalXOnSlide = event.focalX - slideStartX;
 
-      // Координаты относительно центра слайда
       focalX.value = focalXOnSlide - SCREEN_WIDTH / 2;
       focalY.value = event.focalY - SCREEN_HEIGHT / 2;
     })
     .onUpdate((event) => {
+      if (isCurrentItemVideo.value) return;
+
       const newScale = clamp(savedScale.value * event.scale, 0.5, 5);
       scale.value = newScale;
 
@@ -211,7 +278,6 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         const newX = savedImageTranslateX.value + focalX.value * (1 - scaleDiff);
         const newY = savedImageTranslateY.value + focalY.value * (1 - scaleDiff);
 
-        // Ограничиваем перемещение
         const maxTranslateX = Math.max(0, (SCREEN_WIDTH * newScale - SCREEN_WIDTH) / 2);
         const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * newScale - IMAGE_CONTAINER_HEIGHT) / 2);
 
@@ -220,6 +286,8 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       }
     })
     .onEnd(() => {
+      if (isCurrentItemVideo.value) return;
+
       if (scale.value < 1) {
         scale.value = withSpring(1);
         savedScale.value = 1;
@@ -230,14 +298,12 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       } else if (scale.value > 4) {
         scale.value = withSpring(4);
         savedScale.value = 4;
-        // Пересчитываем ограничения для финального масштаба
         const maxTranslateX = Math.max(0, (SCREEN_WIDTH * 4 - SCREEN_WIDTH) / 2);
         const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * 4 - IMAGE_CONTAINER_HEIGHT) / 2);
         savedImageTranslateX.value = clamp(imageTranslateX.value, -maxTranslateX, maxTranslateX);
         savedImageTranslateY.value = clamp(imageTranslateY.value, -maxTranslateY, maxTranslateY);
       } else {
         savedScale.value = scale.value;
-        // Пересчитываем ограничения для текущего масштаба
         const maxTranslateX = Math.max(0, (SCREEN_WIDTH * scale.value - SCREEN_WIDTH) / 2);
         const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * scale.value - IMAGE_CONTAINER_HEIGHT) / 2);
         savedImageTranslateX.value = clamp(imageTranslateX.value, -maxTranslateX, maxTranslateX);
@@ -245,91 +311,87 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       }
     });
 
-  // Функция для ограничения перемещения при зуме
+  // Clamp translation when zoomed
   const clampTranslation = (translateVal: number, dimension: number, currentScale: number) => {
     'worklet';
-    // Максимальное смещение = (размер * масштаб - размер) / 2
     const maxTranslate = Math.max(0, (dimension * currentScale - dimension) / 2);
     return clamp(translateVal, -maxTranslate, maxTranslate);
   };
 
-  // Pan для перемещения при зуме ИЛИ свайпа между фото
+  // Pan for zoom panning OR gallery swipe
   const panGesture = Gesture.Pan()
     .minPointers(1)
     .maxPointers(1)
     .onUpdate((event) => {
-      if (scale.value > 1) {
-        // Зумлено - перемещаем изображение с ограничением
+      if (scale.value > 1 && !isCurrentItemVideo.value) {
+        // Zoomed image - pan with constraints
         const newX = savedImageTranslateX.value + event.translationX;
         const newY = savedImageTranslateY.value + event.translationY;
 
         imageTranslateX.value = clampTranslation(newX, SCREEN_WIDTH, scale.value);
         imageTranslateY.value = clampTranslation(newY, IMAGE_CONTAINER_HEIGHT, scale.value);
       } else {
-        // Не зумлено - свайп между фото или вниз для закрытия
+        // Not zoomed (or video) - gallery swipe or swipe-down-to-close
         const isHorizontal = Math.abs(event.translationX) > Math.abs(event.translationY);
 
-        if (isHorizontal && hasMultipleImages) {
-          // Горизонтальный свайп - переключение фото
+        if (isHorizontal && hasMultipleItems) {
           translateX.value = baseTranslateX.value + event.translationX;
         } else if (event.translationY > 0) {
-          // Свайп вниз - закрытие
           swipeDownY.value = event.translationY;
           swipeDownOpacity.value = 1 - (event.translationY / (SCREEN_HEIGHT * 0.5));
         }
       }
     })
     .onEnd((event) => {
-      if (scale.value > 1) {
-        // Зумлено - сохраняем позицию с ограничением
+      if (scale.value > 1 && !isCurrentItemVideo.value) {
         savedImageTranslateX.value = clampTranslation(imageTranslateX.value, SCREEN_WIDTH, scale.value);
         savedImageTranslateY.value = clampTranslation(imageTranslateY.value, IMAGE_CONTAINER_HEIGHT, scale.value);
       } else {
         const isHorizontal = Math.abs(event.translationX) > Math.abs(event.translationY);
 
-        if (isHorizontal && hasMultipleImages) {
-          // Горизонтальный свайп - определяем переход
+        if (isHorizontal && hasMultipleItems) {
           const velocityTriggered = Math.abs(event.velocityX) > SWIPE_VELOCITY_THRESHOLD;
           const distanceTriggered = Math.abs(event.translationX) > SWIPE_THRESHOLD;
 
           if (velocityTriggered || distanceTriggered) {
             const direction = event.translationX > 0 ? -1 : 1;
-            const newIndex = clamp(currentIndex + direction, 0, imageUrls.length - 1);
+            const newIndex = clamp(currentIndex + direction, 0, mediaItems.length - 1);
 
             if (newIndex !== currentIndex) {
               snapToIndex(newIndex);
             } else {
-              // Вернуться на текущий индекс (граница достигнута)
               translateX.value = withSpring(baseTranslateX.value, { damping: 20, stiffness: 200 });
             }
           } else {
-            // Вернуться на текущий индекс
             translateX.value = withSpring(baseTranslateX.value, { damping: 20, stiffness: 200 });
           }
         } else if (swipeDownY.value > 100) {
-          // Свайп вниз достаточный для закрытия
           runOnJS(handleClose)();
         } else {
-          // Вернуть на место
           swipeDownY.value = withSpring(0);
           swipeDownOpacity.value = withTiming(1);
         }
       }
     });
 
-  // Одинарный тап для скрытия/показа контролов
+  // Single tap: toggle controls (images) or play/pause (videos)
   const singleTap = Gesture.Tap()
     .numberOfTaps(1)
     .onEnd(() => {
-      runOnJS(toggleControls)();
+      if (isCurrentItemVideo.value) {
+        runOnJS(toggleVideoPlayback)();
+      } else {
+        runOnJS(toggleControls)();
+      }
     });
 
-  // Двойной тап для зума
+  // Double tap for zoom (images only)
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd((event) => {
+      if (isCurrentItemVideo.value) return;
+
       if (scale.value > 1) {
-        // Убрать зум
         scale.value = withSpring(1);
         savedScale.value = 1;
         imageTranslateX.value = withSpring(0);
@@ -337,24 +399,17 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         savedImageTranslateX.value = 0;
         savedImageTranslateY.value = 0;
       } else {
-        // Зумить на точку тапа
         const targetScale = 2.5;
 
-        // event.x — координата относительно GestureDetector (всей галереи)
-        // Нужно вычислить координату относительно текущего слайда
-        // Текущий слайд начинается на currentIndexShared.value * SCREEN_WIDTH
         const slideStartX = currentIndexShared.value * SCREEN_WIDTH;
         const tapXOnSlide = event.x - slideStartX;
 
-        // Координаты тапа относительно центра слайда
         const tapX = tapXOnSlide - SCREEN_WIDTH / 2;
         const tapY = event.y - SCREEN_HEIGHT / 2;
 
-        // Вычисляем желаемое смещение
         let newTranslateX = -tapX * (targetScale - 1);
         let newTranslateY = -tapY * (targetScale - 1);
 
-        // Ограничиваем смещение, чтобы изображение не уходило за границы
         const maxTranslateX = Math.max(0, (SCREEN_WIDTH * targetScale - SCREEN_WIDTH) / 2);
         const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * targetScale - IMAGE_CONTAINER_HEIGHT) / 2);
 
@@ -371,14 +426,14 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       }
     });
 
-  // Комбинируем жесты
+  // Compose gestures
   const composedGesture = Gesture.Simultaneous(
     Gesture.Exclusive(doubleTap, singleTap),
     pinchGesture,
     panGesture
   );
 
-  // === АНИМИРОВАННЫЕ СТИЛИ ===
+  // === ANIMATED STYLES ===
 
   const galleryStyle = useAnimatedStyle(() => ({
     transform: [
@@ -399,19 +454,21 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     opacity: controlsOpacity.value,
   }));
 
-  // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+  // === HELPER FUNCTIONS ===
 
-  const downloadImageLocally = async (imageUrl: string): Promise<string | null> => {
+  const downloadFileLocally = async (url: string, isVideo: boolean): Promise<string | null> => {
     try {
-      const filename = `image_${Date.now()}.jpg`;
+      const ext = isVideo ? 'mp4' : 'jpg';
+      const prefix = isVideo ? 'video' : 'image';
+      const filename = `${prefix}_${Date.now()}.${ext}`;
       const file = new ExpoFile(Paths.cache, filename);
 
-      const response = await fetch(imageUrl, {
+      const response = await fetch(url, {
         headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch image');
+        throw new Error(`Failed to fetch ${prefix}`);
       }
 
       const blob = await response.blob();
@@ -419,18 +476,16 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
-          const base64Data = result.split(',')[1];
-          resolve(base64Data);
+          resolve(result.split(',')[1]);
         };
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
 
       file.write(base64, { encoding: 'base64' });
-
       return file.uri;
     } catch (error) {
-      console.error('Failed to download image:', error);
+      console.error(`Failed to download file:`, error);
       return null;
     }
   };
@@ -438,8 +493,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const handleShare = async () => {
     if (isSharing) return;
 
-    const currentImageUrl = imageUrls[currentIndex];
-    if (!currentImageUrl) return;
+    const currentItem = mediaItems[currentIndex];
+    if (!currentItem) return;
+
+    const isVideo = currentItem.type === 'video';
 
     setIsSharing(true);
     let localUri: string | null = null;
@@ -450,22 +507,21 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         return;
       }
 
-      localUri = await downloadImageLocally(currentImageUrl);
+      localUri = await downloadFileLocally(currentItem.url, isVideo);
       if (!localUri) {
-        Alert.alert('Ошибка', 'Не удалось загрузить изображение');
+        Alert.alert('Ошибка', `Не удалось загрузить ${isVideo ? 'видео' : 'изображение'}`);
         return;
       }
 
       await Sharing.shareAsync(localUri, {
-        mimeType: 'image/jpeg',
-        dialogTitle: 'Поделиться изображением',
+        mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
+        dialogTitle: isVideo ? 'Поделиться видео' : 'Поделиться изображением',
       });
     } catch (error) {
       console.error('Share error:', error);
-      Alert.alert('Ошибка', 'Не удалось поделиться изображением');
+      Alert.alert('Ошибка', `Не удалось поделиться ${isVideo ? 'видео' : 'изображением'}`);
     } finally {
       setIsSharing(false);
-      // Очищаем временный файл после share
       if (localUri) {
         try {
           const file = new ExpoFile(localUri);
@@ -480,8 +536,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const handleSaveToGallery = async () => {
     if (isSharing) return;
 
-    const currentImageUrl = imageUrls[currentIndex];
-    if (!currentImageUrl) return;
+    const currentItem = mediaItems[currentIndex];
+    if (!currentItem) return;
+
+    const isVideo = currentItem.type === 'video';
 
     setIsSharing(true);
     let localUri: string | null = null;
@@ -492,20 +550,19 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         return;
       }
 
-      localUri = await downloadImageLocally(currentImageUrl);
+      localUri = await downloadFileLocally(currentItem.url, isVideo);
       if (!localUri) {
-        Alert.alert('Ошибка', 'Не удалось загрузить изображение');
+        Alert.alert('Ошибка', `Не удалось загрузить ${isVideo ? 'видео' : 'изображение'}`);
         return;
       }
 
       await MediaLibrary.saveToLibraryAsync(localUri);
-      Alert.alert('Успешно', 'Изображение сохранено в галерею');
+      Alert.alert('Успешно', `${isVideo ? 'Видео' : 'Изображение'} сохранено в галерею`);
     } catch (error) {
       console.error('Save to gallery error:', error);
-      Alert.alert('Ошибка', 'Не удалось сохранить изображение');
+      Alert.alert('Ошибка', `Не удалось сохранить ${isVideo ? 'видео' : 'изображение'}`);
     } finally {
       setIsSharing(false);
-      // Очищаем временный файл после сохранения
       if (localUri) {
         try {
           const file = new ExpoFile(localUri);
@@ -518,9 +575,9 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   };
 
   const handleForward = () => {
-    const currentImageUrl = imageUrls[currentIndex];
-    if (currentImageUrl && onForward) {
-      onForward(currentImageUrl);
+    const currentItem = mediaItems[currentIndex];
+    if (currentItem && onForward) {
+      onForward(currentItem);
     }
   };
 
@@ -528,8 +585,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     setLoadedImages(prev => new Set(prev).add(index));
   };
 
-  // Не отображаем модалку если нет изображений
-  if (!visible || imageUrls.length === 0) {
+  if (!visible || mediaItems.length === 0) {
     return null;
   }
 
@@ -544,15 +600,14 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       <GestureHandlerRootView style={styles.container}>
         <BlurView intensity={95} style={styles.blurOverlay} tint="dark" />
 
-        {/* Галерея изображений */}
+        {/* Media gallery */}
         <GestureDetector gesture={composedGesture}>
           <Animated.View style={[styles.galleryContainer, galleryStyle]}>
-            {imageUrls.map((uri, index) => {
-              // Ленивая загрузка: рендерим только текущее изображение ±1 для предзагрузки
+            {mediaItems.map((item, index) => {
               const shouldRender = Math.abs(index - currentIndex) <= 1;
 
               return (
-                <View key={`${index}-${uri}`} style={styles.imageSlide}>
+                <View key={`${index}-${item.url}`} style={styles.imageSlide}>
                   <Animated.View
                     style={[
                       styles.imageContainer,
@@ -560,20 +615,55 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                     ]}
                   >
                     {shouldRender ? (
-                      <>
-                        {!loadedImages.has(index) && (
-                          <View style={styles.loaderContainer}>
-                            <ActivityIndicator size="large" color="#FFFFFF" />
-                          </View>
-                        )}
-                        <Image
-                          source={imageSources[index]}
-                          style={styles.fullscreenImage}
-                          contentFit="contain"
-                          cachePolicy="disk"
-                          onLoadEnd={() => setImageLoaded(index)}
-                        />
-                      </>
+                      item.type === 'image' ? (
+                        // Image slide
+                        <>
+                          {!loadedImages.has(index) && (
+                            <View style={styles.loaderContainer}>
+                              <ActivityIndicator size="large" color="#FFFFFF" />
+                            </View>
+                          )}
+                          <Image
+                            source={imageSources[index]}
+                            style={styles.fullscreenImage}
+                            contentFit="contain"
+                            cachePolicy="disk"
+                            onLoadEnd={() => setImageLoaded(index)}
+                          />
+                        </>
+                      ) : (
+                        // Video slide
+                        <View style={styles.videoSlideContainer}>
+                          {index === currentIndex ? (
+                            <VideoView
+                              player={player}
+                              style={styles.fullscreenVideo}
+                              contentFit="contain"
+                              nativeControls={false}
+                              allowsFullscreen={false}
+                            />
+                          ) : (
+                            // Adjacent video slides show thumbnail
+                            <Image
+                              source={{
+                                uri: item.thumbnailUrl || item.url,
+                                headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+                              }}
+                              style={styles.fullscreenImage}
+                              contentFit="contain"
+                              cachePolicy="disk"
+                            />
+                          )}
+                          {/* Play/Pause overlay */}
+                          {index === currentIndex && !isPlaying && (
+                            <View style={styles.videoPlayOverlayCenter} pointerEvents="none">
+                              <View style={styles.videoPlayButtonLarge}>
+                                <Ionicons name="play" size={48} color="#FFFFFF" />
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      )
                     ) : (
                       <View style={styles.loaderContainer}>
                         <ActivityIndicator size="small" color="#FFFFFF" />
@@ -586,7 +676,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           </Animated.View>
         </GestureDetector>
 
-        {/* Заголовок с счетчиком */}
+        {/* Header with counter */}
         <Animated.View
           style={[styles.header, { paddingTop: 15 + insets.top }, animatedControlsStyle]}
           pointerEvents={controlsVisible ? 'auto' : 'none'}
@@ -605,15 +695,15 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             )}
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            {hasMultipleImages && (
+            {hasMultipleItems && (
               <Text style={styles.counterText}>
-                {currentIndex + 1} из {imageUrls.length}
+                {currentIndex + 1} из {mediaItems.length}
               </Text>
             )}
           </View>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={onClose}
+            onPress={handleClose}
             activeOpacity={0.7}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -621,8 +711,8 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Навигационные стрелки */}
-        {hasMultipleImages && (
+        {/* Navigation arrows */}
+        {hasMultipleItems && (
           <>
             {currentIndex > 0 && (
               <Animated.View
@@ -639,7 +729,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
               </Animated.View>
             )}
 
-            {currentIndex < imageUrls.length - 1 && (
+            {currentIndex < mediaItems.length - 1 && (
               <Animated.View
                 style={[styles.navButton, styles.navButtonRight, animatedControlsStyle]}
                 pointerEvents={controlsVisible ? 'auto' : 'none'}
@@ -654,10 +744,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
               </Animated.View>
             )}
 
-            {/* Индикаторы точек */}
-            {imageUrls.length <= 10 && (
+            {/* Dot indicators */}
+            {mediaItems.length <= 10 && (
               <Animated.View style={[styles.dotsContainer, { bottom: 70 + insets.bottom }, animatedControlsStyle]}>
-                {imageUrls.map((_, index) => (
+                {mediaItems.map((_, index) => (
                   <View
                     key={index}
                     style={[
@@ -675,7 +765,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           </>
         )}
 
-        {/* Нижняя панель с кнопками */}
+        {/* Bottom bar */}
         <Animated.View
           style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }, animatedControlsStyle]}
           pointerEvents={controlsVisible ? 'auto' : 'none'}
@@ -765,6 +855,30 @@ const styles = StyleSheet.create({
   fullscreenImage: {
     width: '100%',
     height: '100%',
+  },
+  videoSlideContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  videoPlayOverlayCenter: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPlayButtonLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 6,
   },
   navButton: {
     position: 'absolute',

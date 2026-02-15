@@ -5,4 +5,4 @@ export { MessageInput } from './messages/MessageInput';
 export { ChatDetailTabs } from './common/ChatDetailTabs';
 export { ParticipantsTab } from './chat-details/ParticipantsTab';
 export { AttachmentsTab } from './attachments/AttachmentsTab';
-export { ImageViewer } from './modals/ImageViewer';
+export { MediaViewer } from './modals/MediaViewer';

@@ -3,7 +3,7 @@
  * Вкладка вложений чата
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,8 +25,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Attachment, ChatLink } from '../../types/chat.types';
 import * as chatApi from '../../api/chat.api';
-import { ImageViewer } from '../modals/ImageViewer';
-import { VideoPlayer } from '../modals/VideoPlayer';
+import { MediaViewer, MediaItem } from '../modals/MediaViewer';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { replaceLocalhostWithIP } from '../../utils/message.utils';
@@ -48,11 +47,8 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
   const [isLoading, setIsLoading] = useState(true);
   const [isLinksLoading, setIsLinksLoading] = useState(false);
   const [linksLoaded, setLinksLoaded] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [showImageViewer, setShowImageViewer] = useState(false);
-  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
-  const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
-  const [selectedVideoThumbnail, setSelectedVideoThumbnail] = useState<string | undefined>();
+  const [showMediaViewer, setShowMediaViewer] = useState(false);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Адаптивная сетка для десктопа и мобильных устройств
@@ -168,8 +164,15 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
 
   // Извлекаем все медиа-вложения (изображения + видео) для галереи
   const mediaAttachments = attachments.filter((att) => att.file_type === 'image' || att.file_type === 'video');
-  const imageAttachments = attachments.filter((att) => att.file_type === 'image');
-  const imageUrls = imageAttachments.map((att) => replaceLocalhostWithIP(att.file_url));
+  const mediaItems: MediaItem[] = useMemo(() => {
+    return mediaAttachments.map(att => ({
+      type: att.file_type === 'video' ? 'video' as const : 'image' as const,
+      url: replaceLocalhostWithIP(att.file_url),
+      thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
+      attachmentId: att.id,
+      duration: att.duration,
+    }));
+  }, [mediaAttachments]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -188,14 +191,9 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
     return 'document-attach';
   };
 
-  const handleImagePress = (index: number) => {
-    setSelectedImageIndex(index);
-    setShowImageViewer(true);
-  };
-
-  const handleCloseImageViewer = () => {
-    setShowImageViewer(false);
-    setSelectedImageIndex(0);
+  const handleCloseMediaViewer = () => {
+    setShowMediaViewer(false);
+    setSelectedMediaIndex(0);
   };
 
   const handleFileDownload = async (attachment: Attachment) => {
@@ -288,19 +286,11 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
   };
 
   const handleAttachmentPress = async (attachment: Attachment, index: number) => {
-    // Если это изображение, открываем в ImageViewer
-    if (attachment.file_type === 'image') {
-      // Находим индекс среди только изображений для ImageViewer
-      const imageIndex = imageAttachments.findIndex((img) => img.id === attachment.id);
-      handleImagePress(imageIndex >= 0 ? imageIndex : 0);
-      return;
-    }
-
-    // Если это видео, открываем VideoPlayer
-    if (attachment.file_type === 'video') {
-      setSelectedVideoUrl(replaceLocalhostWithIP(attachment.file_url));
-      setSelectedVideoThumbnail(attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined);
-      setShowVideoPlayer(true);
+    // Если это изображение или видео, открываем в MediaViewer
+    if (attachment.file_type === 'image' || attachment.file_type === 'video') {
+      const mediaIndex = mediaItems.findIndex(item => item.attachmentId === attachment.id);
+      setSelectedMediaIndex(mediaIndex >= 0 ? mediaIndex : 0);
+      setShowMediaViewer(true);
       return;
     }
 
@@ -609,40 +599,17 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
           </View>
         )}
 
-      {/* Image Viewer Modal */}
-      <ImageViewer
-        visible={showImageViewer}
-        imageUrls={imageUrls}
-        initialIndex={selectedImageIndex}
-        onClose={handleCloseImageViewer}
-        onForward={onForwardImage ? (imageUrl: string) => {
-          // Находим attachment по URL
-          const attachment = imageAttachments.find(
-            (att) => replaceLocalhostWithIP(att.file_url) === imageUrl
-          );
+      {/* Media Viewer Modal (фото + видео) */}
+      <MediaViewer
+        visible={showMediaViewer}
+        mediaItems={mediaItems}
+        initialIndex={selectedMediaIndex}
+        onClose={handleCloseMediaViewer}
+        onForward={onForwardImage ? (item: MediaItem) => {
+          const attachment = attachments.find(att => att.id === item.attachmentId);
           if (attachment) {
-            setShowImageViewer(false);
+            setShowMediaViewer(false);
             onForwardImage(attachment);
-          }
-        } : undefined}
-      />
-
-      {/* Video Player Modal */}
-      <VideoPlayer
-        visible={showVideoPlayer}
-        videoUrl={selectedVideoUrl}
-        thumbnailUrl={selectedVideoThumbnail}
-        onClose={() => {
-          setShowVideoPlayer(false);
-          setSelectedVideoUrl('');
-        }}
-        onForward={onForwardImage ? () => {
-          const videoAttachment = mediaAttachments.find(
-            (att) => att.file_type === 'video' && selectedVideoUrl.includes(att.file_url?.split('/').pop() || '__none__')
-          );
-          if (videoAttachment) {
-            setShowVideoPlayer(false);
-            onForwardImage(videoAttachment);
           }
         } : undefined}
       />

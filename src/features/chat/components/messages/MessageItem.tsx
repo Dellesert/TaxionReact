@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,11 +14,10 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { MessageBubble } from './MessageBubble';
 import { MessageContextMenu } from '../modals/MessageContextMenu';
 import { ActionModal } from '@shared/components/common/ActionModal';
-import { ImageViewer } from '../modals/ImageViewer';
-import { VideoPlayer } from '../modals/VideoPlayer';
+import { MediaViewer, MediaItem } from '../modals/MediaViewer';
 import { useMessageData } from '../../hooks/useMessageData';
 import { useImageLoader } from '@shared/hooks/useImageLoader';
-import { isForwardedMessage } from '../../utils/message.utils';
+import { isForwardedMessage, isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
 import { getOrCreateDirectChat } from '../../api/chat.api';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -90,17 +89,34 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showImageViewer, setShowImageViewer] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
-  const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
-  const [selectedVideoThumbnail, setSelectedVideoThumbnail] = useState<string | undefined>();
+  const [showMediaViewer, setShowMediaViewer] = useState(false);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const messageBubbleRef = useRef<View>(null);
 
   // Используем кастомные хуки для загрузки данных
   const { sender, setSender, replySender } = useMessageData(message);
   const imageUrls = useImageLoader(message.attachments);
+
+  // Build unified media items list for MediaViewer
+  const mediaItems: MediaItem[] = useMemo(() => {
+    if (!message.attachments || message.attachments.length === 0) return [];
+    return message.attachments
+      .filter(att => {
+        const mt = att.mime_type || att.file_type || '';
+        return isImageFile(mt) || isVideoFile(mt);
+      })
+      .map(att => {
+        const mt = att.mime_type || att.file_type || '';
+        return {
+          type: isVideoFile(mt) ? 'video' as const : 'image' as const,
+          url: replaceLocalhostWithIP(att.file_url),
+          thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
+          attachmentId: att.id,
+          duration: att.duration,
+        };
+      });
+  }, [message.attachments]);
 
   const isOwnMessage = message.sender_id === currentUser?.id;
   const isAdmin = userRole === 'owner' || userRole === 'admin';
@@ -196,17 +212,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   };
 
   const handleImagePress = (imageUrl: string) => {
-    // Найти индекс изображения в массиве imageUrls
-    const imageUrlsArray = Object.values(imageUrls);
-    const index = imageUrlsArray.findIndex(url => url === imageUrl);
-    setSelectedImageIndex(index >= 0 ? index : 0);
-    setShowImageViewer(true);
+    const index = mediaItems.findIndex(item => item.url === imageUrl);
+    setSelectedMediaIndex(index >= 0 ? index : 0);
+    setShowMediaViewer(true);
   };
 
-  const handleVideoPress = (videoUrl: string, thumbnailUrl?: string) => {
-    setSelectedVideoUrl(videoUrl);
-    setSelectedVideoThumbnail(thumbnailUrl);
-    setShowVideoPlayer(true);
+  const handleVideoPress = (videoUrl: string, _thumbnailUrl?: string) => {
+    const index = mediaItems.findIndex(item => item.url === videoUrl);
+    setSelectedMediaIndex(index >= 0 ? index : 0);
+    setShowMediaViewer(true);
   };
 
   const handlePress = () => {
@@ -389,71 +403,29 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         }}
       />
 
-      {/* Полноэкранный просмотр изображения */}
-      <ImageViewer
-        visible={showImageViewer}
-        imageUrls={Object.values(imageUrls)}
-        initialIndex={selectedImageIndex}
+      {/* Полноэкранный просмотр медиа (фото + видео) */}
+      <MediaViewer
+        visible={showMediaViewer}
+        mediaItems={mediaItems}
+        initialIndex={selectedMediaIndex}
         onClose={() => {
-          setShowImageViewer(false);
-          setSelectedImageIndex(0);
+          setShowMediaViewer(false);
+          setSelectedMediaIndex(0);
         }}
-        onForward={onForward ? (imageUrl: string) => {
-          // Находим attachment по URL (imageUrls - это объект {id: url})
-          const imageUrlEntries = Object.entries(imageUrls);
-          const foundEntry = imageUrlEntries.find(([, url]) => url === imageUrl);
-
-          if (!foundEntry) {
-            console.error('Attachment not found for URL:', imageUrl);
-            return;
-          }
-
-          const attachmentId = parseInt(foundEntry[0], 10);
+        onForward={onForward ? (item: MediaItem) => {
           const originalAttachment = message.attachments?.find(
-            (att) => att.id === attachmentId
+            (att) => att.id === item.attachmentId
           );
+          if (!originalAttachment) return;
 
-          if (!originalAttachment) {
-            console.error('Attachment not found for id:', attachmentId);
-            return;
-          }
-
-          // Создаем сообщение с id: 0 для пересылки только файла
-          const imageMessage: Message = {
+          const mediaMessage: Message = {
             ...message,
-            id: 0, // id: 0 означает пересылку только файлов
+            id: 0,
             content: '',
             attachments: [originalAttachment],
           };
-          setShowImageViewer(false);
-          onForward(imageMessage);
-        } : undefined}
-      />
-
-      {/* Полноэкранный видеоплеер */}
-      <VideoPlayer
-        visible={showVideoPlayer}
-        videoUrl={selectedVideoUrl}
-        thumbnailUrl={selectedVideoThumbnail}
-        onClose={() => {
-          setShowVideoPlayer(false);
-          setSelectedVideoUrl('');
-        }}
-        onForward={onForward ? () => {
-          // Находим видео-вложение по URL
-          const videoAttachment = message.attachments?.find(
-            (att) => selectedVideoUrl.includes(att.file_url?.split('/').pop() || '__none__')
-          );
-          if (videoAttachment && onForward) {
-            const videoMessage: Message = {
-              ...message,
-              id: 0,
-              content: '',
-              attachments: [videoAttachment],
-            };
-            setShowVideoPlayer(false);
-            onForward(videoMessage);
-          }
+          setShowMediaViewer(false);
+          onForward(mediaMessage);
         } : undefined}
       />
     </View>
