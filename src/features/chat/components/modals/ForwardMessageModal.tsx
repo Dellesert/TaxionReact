@@ -21,6 +21,19 @@ import { Avatar } from '@shared/components/common/Avatar';
 import { getChatDisplayName, getChatDisplayAvatar } from '../../utils/chatUtils';
 import { stripFormatting } from '../../utils/formatting';
 
+const getMediaPreview = (message: Message): { icon: string; label: string } | null => {
+  const attachments = (message as any).attachments;
+  if (!attachments || attachments.length === 0) return null;
+
+  const hasVideo = attachments.some((a: any) => a.file_type === 'video' || a.mime_type?.startsWith('video/'));
+  const hasImage = attachments.some((a: any) => a.file_type === 'image' || a.mime_type?.startsWith('image/'));
+
+  if (hasVideo && hasImage) return { icon: 'images-outline', label: `Медиа (${attachments.length})` };
+  if (hasVideo) return { icon: 'videocam-outline', label: attachments.length > 1 ? `Видео (${attachments.length})` : 'Видео' };
+  if (hasImage) return { icon: 'image-outline', label: attachments.length > 1 ? `Фото (${attachments.length})` : 'Фото' };
+  return { icon: 'document-outline', label: attachments.length > 1 ? `Файл (${attachments.length})` : attachments[0]?.file_name || 'Файл' };
+};
+
 interface ForwardMessageModalProps {
   visible: boolean;
   message: Message | null;
@@ -136,20 +149,32 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
           </View>
 
           {/* Превью пересылаемого сообщения */}
-          {message && (
-            <View style={[styles.messagePreview, { backgroundColor: theme.backgroundSecondary, borderLeftColor: theme.primary }]}>
-              <Ionicons
-                name={message.message_type === 'poll' ? 'stats-chart' : 'arrow-redo-outline'}
-                size={16}
-                color={theme.primary}
-              />
-              <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={2}>
-                {message.message_type === 'poll'
-                  ? `📊 Опрос: ${stripFormatting(message.content)}`
-                  : stripFormatting(message.content)}
-              </Text>
-            </View>
-          )}
+          {message && (() => {
+            const textContent = stripFormatting(message.content);
+            const mediaPreview = getMediaPreview(message);
+            const isPoll = message.message_type === 'poll';
+
+            const iconName = isPoll
+              ? 'stats-chart'
+              : (!textContent && mediaPreview) ? mediaPreview.icon : 'arrow-redo-outline';
+
+            const previewText = isPoll
+              ? `Опрос: ${textContent}`
+              : textContent || mediaPreview?.label || '';
+
+            return (
+              <View style={[styles.messagePreview, { backgroundColor: theme.backgroundSecondary, borderLeftColor: theme.primary }]}>
+                <Ionicons
+                  name={iconName as any}
+                  size={16}
+                  color={theme.primary}
+                />
+                <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={2}>
+                  {previewText}
+                </Text>
+              </View>
+            );
+          })()}
 
           {/* Поиск */}
           <View style={[styles.searchContainer, { backgroundColor: theme.backgroundSecondary }]}>
