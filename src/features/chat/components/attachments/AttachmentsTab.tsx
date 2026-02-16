@@ -30,6 +30,7 @@ import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { replaceLocalhostWithIP } from '../../utils/message.utils';
 import { decodeFileName } from '../../utils/file.utils';
+import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 
 interface AttachmentsTabProps {
   chatId: number;
@@ -169,6 +170,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
       type: att.file_type === 'video' ? 'video' as const : 'image' as const,
       url: replaceLocalhostWithIP(att.file_url),
       thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
+      thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
       attachmentId: att.id,
       duration: att.duration,
     }));
@@ -538,7 +540,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
                   {/* Actual thumbnail */}
                   <Image
                     source={{
-                      uri: replaceLocalhostWithIP(attachment.thumbnail_url || attachment.file_url),
+                      uri: replaceLocalhostWithIP(getThumbnailUrl(attachment, 'medium')),
                       headers: sessionId ? {
                         'X-Session-ID': sessionId,
                       } : undefined,

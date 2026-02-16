@@ -12,6 +12,7 @@ import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { Message } from '../../types/chat.types';
 import { getFileIcon } from '../../utils/file.utils';
 import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 
 interface PinnedMessageBannerProps {
   pinnedMessages: Message[];
@@ -190,7 +191,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
       // Для фото/видео показываем "Фото"/"Видео" и превью
       if (isImage || isVideo) {
         const label = isImage ? 'Фото' : 'Видео';
-        const thumbnailUrl = attachment.thumbnail_url || attachment.file_url;
+        const thumbnailUrl = getThumbnailUrl(attachment, 'small');
         const extra = message.attachments.length > 1 ? ` и ещё ${message.attachments.length - 1}` : '';
         return {
           text: label + extra,

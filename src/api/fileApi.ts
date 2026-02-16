@@ -13,7 +13,10 @@ export interface FileUploadResponse {
   mime_type: string;
   file_type: string;
   file_url: string;
-  thumbnail_url?: string;
+  thumbnail_url?: string;        // Legacy = medium
+  thumbnail_small_url?: string;  // ~100x100
+  thumbnail_medium_url?: string; // ~400x300
+  thumbnail_large_url?: string;  // ~800x600
   duration?: number; // Duration in seconds (for video/audio)
   uploaded_by: number;
   is_public: boolean;

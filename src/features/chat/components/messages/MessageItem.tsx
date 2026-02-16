@@ -122,6 +122,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           type: isVideoFile(mt) ? 'video' as const : 'image' as const,
           url: replaceLocalhostWithIP(att.file_url),
           thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
+          thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
           attachmentId: att.id,
           duration: att.duration,
         };

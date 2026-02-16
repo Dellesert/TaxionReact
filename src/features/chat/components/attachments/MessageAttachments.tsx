@@ -14,6 +14,7 @@ import { isImageFile, isVideoFile, formatDuration, formatTime, replaceLocalhostW
 import { MessageStatus } from '../common/MessageStatus';
 import { Message } from '../../types/chat.types';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
+import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 
 interface Attachment {
   id: number;
@@ -23,6 +24,9 @@ interface Attachment {
   mime_type: string;
   file_type?: string;
   thumbnail_url?: string;
+  thumbnail_small_url?: string;
+  thumbnail_medium_url?: string;
+  thumbnail_large_url?: string;
   duration?: number;
   width?: number;
   height?: number;
@@ -109,8 +113,8 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           // Skip videos without thumbnails to avoid loading the full video file
           const mt = attachment.mime_type || attachment.file_type || '';
           if (isVideoFile(mt) && !attachment.thumbnail_url) continue;
-          // Используем thumbnail для превью в списке сообщений
-          const thumbnailUrl = attachment.thumbnail_url || attachment.file_url;
+          // Используем thumbnail подходящего размера для превью
+          const thumbnailUrl = getThumbnailUrl(attachment, mediaCount === 1 ? 'large' : 'medium');
           const imageUrl = replaceLocalhostWithIP(thumbnailUrl);
 
           // Проверяем, является ли файл публичным (не требует авторизации)
@@ -266,7 +270,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     const isLocal = !!attachment.local_uri;
     const thumbnailUri = isLocal
       ? attachment.local_uri!
-      : (attachment.thumbnail_url || attachment.file_url);
+      : getThumbnailUrl(attachment, mediaCount === 1 ? 'large' : 'medium');
     const imageUri = isLocal
       ? thumbnailUri
       : (Platform.OS === 'web' && blobUrls[attachment.id]
@@ -413,7 +417,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
     const isLocalVideo = !!attachment.local_uri;
     const thumbnailUri = isLocalVideo
       ? attachment.local_uri!
-      : (attachment.thumbnail_url || attachment.file_url);
+      : getThumbnailUrl(attachment, 'large');
     const imageUri = isLocalVideo
       ? thumbnailUri
       : (Platform.OS === 'web' && blobUrls[attachment.id]

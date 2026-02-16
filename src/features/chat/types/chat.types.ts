@@ -33,7 +33,10 @@ export interface Attachment {
   file_size: number;
   mime_type: string; // MIME type of the file (e.g., "image/png", "application/pdf")
   file_type: string; // Category: "image", "video", "audio", "document", "other"
-  thumbnail_url?: string;
+  thumbnail_url?: string;        // Legacy = medium
+  thumbnail_small_url?: string;  // ~100x100
+  thumbnail_medium_url?: string; // ~400x300
+  thumbnail_large_url?: string;  // ~800x600
   duration?: number; // Duration in seconds (for video/audio)
   width?: number; // Media width in pixels
   height?: number; // Media height in pixels

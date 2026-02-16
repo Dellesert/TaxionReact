@@ -29,7 +29,8 @@ const IMAGE_CONTAINER_HEIGHT = SCREEN_HEIGHT * 0.8;
 export interface MediaItem {
   type: 'image' | 'video';
   url: string;
-  thumbnailUrl?: string;
+  thumbnailUrl?: string;      // medium thumbnail (legacy)
+  thumbnailLargeUrl?: string;  // large thumbnail (~800px) for adjacent slides
   attachmentId: number;
   duration?: number;
 }
@@ -803,7 +804,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                             // Adjacent video slides show thumbnail
                             <Image
                               source={{
-                                uri: item.thumbnailUrl || item.url,
+                                uri: item.thumbnailLargeUrl || item.thumbnailUrl || item.url,
                                 headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
                               }}
                               style={styles.fullscreenImage}
