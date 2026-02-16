@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Modal, View, StyleSheet, Text, Platform, Alert, ActivityIndicator, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 const SWIPE_VELOCITY_THRESHOLD = 500;
+const SLIDE_WINDOW = 2;
 
 export interface MediaItem {
   type: 'image' | 'video';
@@ -42,6 +43,224 @@ interface MediaViewerProps {
   onDelete?: (item: MediaItem) => void;
 }
 
+// === Memoized sub-components ===
+
+const ImageSlideContent = React.memo<{
+  source: { uri: string; headers?: Record<string, string> };
+}>(({ source }) => {
+  const [loaded, setLoaded] = useState(false);
+  const onLoadEnd = useCallback(() => setLoaded(true), []);
+
+  return (
+    <>
+      {!loaded && (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
+      <Image
+        source={source}
+        style={styles.fullscreenImage}
+        contentFit="contain"
+        cachePolicy="disk"
+        onLoadEnd={onLoadEnd}
+      />
+    </>
+  );
+});
+
+const VideoSlideContent = React.memo<{
+  item: MediaItem;
+  isActive: boolean;
+  sessionId: string | null;
+  player: ReturnType<typeof useVideoPlayer>;
+  videoLoading: boolean;
+}>(({ item, isActive, sessionId, player, videoLoading }) => (
+  <View style={styles.videoSlideContainer}>
+    {isActive ? (
+      <VideoView
+        player={player}
+        style={styles.fullscreenVideo}
+        contentFit="contain"
+        nativeControls={false}
+        allowsFullscreen={false}
+        pointerEvents="none"
+      />
+    ) : (
+      <Image
+        source={{
+          uri: item.thumbnailLargeUrl || item.thumbnailUrl || item.url,
+          headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+        }}
+        style={styles.fullscreenImage}
+        contentFit="contain"
+        cachePolicy="disk"
+      />
+    )}
+    {isActive && videoLoading && (
+      <View style={styles.videoPlayOverlayCenter} pointerEvents="none">
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    )}
+  </View>
+));
+
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const VideoControlsBar = React.memo<{
+  player: ReturnType<typeof useVideoPlayer>;
+  showControls: () => void;
+  startAutoHideTimer: () => void;
+  clearAutoHideTimer: () => void;
+}>(({ player, showControls, startAutoHideTimer, clearAutoHideTimer }) => {
+  const [currentTime, setCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const progressBarWidthRef = useRef(0);
+  const isSeekingRef = useRef(false);
+
+  const progress = videoDuration > 0 ? (currentTime / videoDuration) * 100 : 0;
+
+  // Sync initial state in case player is already playing when we mount
+  useEffect(() => {
+    if (player.playing) setIsPlaying(true);
+    if (player.duration > 0) setVideoDuration(player.duration);
+  }, [player]);
+
+  // Track time updates
+  useEffect(() => {
+    const sub = player.addListener('timeUpdate', ({ currentTime: ct }: { currentTime: number }) => {
+      if (!isSeekingRef.current) {
+        setCurrentTime(ct);
+        if (player.duration > 0) {
+          setVideoDuration(player.duration);
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [player]);
+
+  // Track status for autoplay and duration
+  useEffect(() => {
+    const sub = player.addListener('statusChange', ({ status }: { status: string }) => {
+      if (status === 'readyToPlay') {
+        setVideoDuration(player.duration || 0);
+        if (!player.playing) player.play();
+        setIsPlaying(true);
+        showControls();
+        startAutoHideTimer();
+      }
+    });
+    return () => sub.remove();
+  }, [player, showControls, startAutoHideTimer]);
+
+  // Handle video end
+  useEffect(() => {
+    const sub = player.addListener('playToEnd', () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      player.currentTime = 0;
+      showControls();
+      clearAutoHideTimer();
+    });
+    return () => sub.remove();
+  }, [player, showControls, clearAutoHideTimer]);
+
+  const seekToPosition = (locationX: number) => {
+    if (progressBarWidthRef.current <= 0 || videoDuration <= 0) return;
+    const ratio = Math.max(0, Math.min(1, locationX / progressBarWidthRef.current));
+    const seekTime = ratio * videoDuration;
+    player.currentTime = seekTime;
+    setCurrentTime(seekTime);
+  };
+
+  const handleSeekStart = (e: any) => {
+    isSeekingRef.current = true;
+    clearAutoHideTimer();
+    seekToPosition(e.nativeEvent.locationX);
+  };
+
+  const handleSeekMove = (e: any) => {
+    seekToPosition(e.nativeEvent.locationX);
+  };
+
+  const handleSeekEnd = (e: any) => {
+    seekToPosition(e.nativeEvent.locationX);
+    isSeekingRef.current = false;
+    if (player.playing) {
+      startAutoHideTimer();
+    }
+  };
+
+  const toggleVideoPlayback = () => {
+    clearAutoHideTimer();
+    if (player.playing) {
+      player.pause();
+      setIsPlaying(false);
+      showControls();
+    } else {
+      player.play();
+      setIsPlaying(true);
+      showControls();
+      startAutoHideTimer();
+    }
+  };
+
+  const toggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    player.muted = newMuted;
+  };
+
+  return (
+    <View style={styles.progressRow}>
+      <TouchableOpacity
+        onPress={toggleVideoPlayback}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name={isPlaying ? 'pause' : 'play'} size={22} color="#FFFFFF" />
+      </TouchableOpacity>
+      <Text style={styles.progressTimeText}>{formatTime(currentTime)}</Text>
+      <View
+        style={styles.progressTrack}
+        onLayout={(e) => { progressBarWidthRef.current = e.nativeEvent.layout.width; }}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={handleSeekStart}
+        onResponderMove={handleSeekMove}
+        onResponderRelease={handleSeekEnd}
+        onResponderTerminate={handleSeekEnd}
+      >
+        <View style={styles.progressTrackBar}>
+          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        </View>
+        <View
+          style={[
+            styles.progressThumb,
+            { left: `${progress}%`, marginLeft: -6 },
+          ]}
+        />
+      </View>
+      <Text style={styles.progressTimeText}>{formatTime(videoDuration)}</Text>
+      <TouchableOpacity
+        onPress={toggleMute}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#FFFFFF" />
+      </TouchableOpacity>
+    </View>
+  );
+});
+
+// === Main component ===
+
 export const MediaViewer: React.FC<MediaViewerProps> = ({
   visible,
   mediaItems = [],
@@ -58,17 +277,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isSharing, setIsSharing] = useState(false);
-  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [videoDuration, setVideoDuration] = useState(0);
   const [videoLoading, setVideoLoading] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
 
   // Refs
-  const progressBarWidthRef = useRef(0);
   const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isSeekingRef = useRef(false);
   const webBlobUrlRef = useRef<string | null>(null);
   const webAbortControllerRef = useRef<AbortController | null>(null);
 
@@ -94,36 +306,39 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   // Track whether current slide is video (for worklet access)
   const isCurrentItemVideo = useSharedValue(false);
 
+  // Focal point for zoom
+  const focalX = useSharedValue(0);
+  const focalY = useSharedValue(0);
+
   // Video player
   const player = useVideoPlayer(null, (p) => {
     p.loop = false;
     p.timeUpdateEventInterval = 0.25;
   });
 
-  // Auto-hide timer helpers
-  const clearAutoHideTimer = () => {
+  // Stable callbacks for child components
+  const clearAutoHideTimer = useCallback(() => {
     if (autoHideTimerRef.current) {
       clearTimeout(autoHideTimerRef.current);
       autoHideTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const startAutoHideTimer = () => {
-    clearAutoHideTimer();
+  const startAutoHideTimer = useCallback(() => {
+    if (autoHideTimerRef.current) {
+      clearTimeout(autoHideTimerRef.current);
+      autoHideTimerRef.current = null;
+    }
     autoHideTimerRef.current = setTimeout(() => {
       setControlsVisible(false);
       controlsOpacity.value = withTiming(0, { duration: 300 });
     }, 3000);
-  };
+  }, []);
 
-  // Helpers
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const progress = videoDuration > 0 ? (currentTime / videoDuration) * 100 : 0;
+  const showControls = useCallback(() => {
+    setControlsVisible(true);
+    controlsOpacity.value = withTiming(1, { duration: 200 });
+  }, []);
 
   // Cleanup web blob URL to avoid memory leaks
   const cleanupWebBlobUrl = () => {
@@ -276,15 +491,9 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       swipeDownY.value = 0;
       swipeDownOpacity.value = 1;
 
-      // Reset image loading state
-      setLoadedImages(new Set());
-
       // Video state
       const item = mediaItems[newIndex];
       isCurrentItemVideo.value = item?.type === 'video';
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setVideoDuration(0);
       clearAutoHideTimer();
 
       if (item?.type === 'video') {
@@ -296,7 +505,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       // Cleanup on close
       player.pause();
       player.replace(null);
-      setIsPlaying(false);
       setVideoLoading(false);
       clearAutoHideTimer();
       webAbortControllerRef.current?.abort();
@@ -343,51 +551,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [visible, currentIndex, mediaItems.length]);
 
-  // Track video status: loading state + autoplay
+  // Track video loading state (playback state moved to VideoControlsBar)
   useEffect(() => {
     const sub = player.addListener('statusChange', ({ status }: { status: string }) => {
-      if (status === 'loading') {
-        setVideoLoading(true);
-      } else if (status === 'readyToPlay') {
-        setVideoLoading(false);
-        setVideoDuration(player.duration || 0);
-        // Ensure autoplay
-        if (!player.playing) {
-          player.play();
-        }
-        setIsPlaying(true);
-        setControlsVisible(true);
-        controlsOpacity.value = withTiming(1, { duration: 200 });
-        startAutoHideTimer();
-      } else if (status === 'error') {
-        setVideoLoading(false);
-      }
-    });
-    return () => sub.remove();
-  }, [player, currentIndex, visible]);
-
-  // Track video progress
-  useEffect(() => {
-    const sub = player.addListener('timeUpdate', ({ currentTime: ct }: { currentTime: number }) => {
-      if (!isSeekingRef.current) {
-        setCurrentTime(ct);
-        if (player.duration > 0) {
-          setVideoDuration(player.duration);
-        }
-      }
-    });
-    return () => sub.remove();
-  }, [player]);
-
-  // Handle video end
-  useEffect(() => {
-    const sub = player.addListener('playToEnd', () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      player.currentTime = 0;
-      setControlsVisible(true);
-      controlsOpacity.value = withTiming(1, { duration: 200 });
-      clearAutoHideTimer();
+      setVideoLoading(status === 'loading');
     });
     return () => sub.remove();
   }, [player]);
@@ -400,7 +567,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     const prevItem = mediaItems[currentIndex];
     if (prevItem?.type === 'video') {
       player.pause();
-      setIsPlaying(false);
     }
 
     setCurrentIndex(newIndex);
@@ -417,9 +583,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     savedImageTranslateX.value = 0;
     savedImageTranslateY.value = 0;
 
-    // Reset video time
-    setCurrentTime(0);
-    setVideoDuration(0);
     clearAutoHideTimer();
 
     // Load video if navigating to a video slide
@@ -461,68 +624,13 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     controlsOpacity.value = withTiming(newVisible ? 1 : 0, { duration: 200 });
   };
 
-  // Toggle video playback
-  const toggleVideoPlayback = () => {
-    clearAutoHideTimer();
-    if (player.playing) {
-      player.pause();
-      setIsPlaying(false);
-      setControlsVisible(true);
-      controlsOpacity.value = withTiming(1, { duration: 200 });
-    } else {
-      player.play();
-      setIsPlaying(true);
-      setControlsVisible(true);
-      controlsOpacity.value = withTiming(1, { duration: 200 });
-      startAutoHideTimer();
-    }
-  };
-
-  const toggleMute = () => {
-    const newMuted = !isMuted;
-    setIsMuted(newMuted);
-    player.muted = newMuted;
-  };
-
   const handleClose = () => {
     clearAutoHideTimer();
     player.pause();
-    setIsPlaying(false);
     onClose();
   };
 
-  // Seek handlers for progress bar
-  const seekToPosition = (locationX: number) => {
-    if (progressBarWidthRef.current <= 0 || videoDuration <= 0) return;
-    const ratio = Math.max(0, Math.min(1, locationX / progressBarWidthRef.current));
-    const seekTime = ratio * videoDuration;
-    player.currentTime = seekTime;
-    setCurrentTime(seekTime);
-  };
-
-  const handleSeekStart = (e: any) => {
-    isSeekingRef.current = true;
-    clearAutoHideTimer();
-    seekToPosition(e.nativeEvent.locationX);
-  };
-
-  const handleSeekMove = (e: any) => {
-    seekToPosition(e.nativeEvent.locationX);
-  };
-
-  const handleSeekEnd = (e: any) => {
-    seekToPosition(e.nativeEvent.locationX);
-    isSeekingRef.current = false;
-    if (isPlaying) {
-      startAutoHideTimer();
-    }
-  };
-
   // === GESTURES ===
-
-  // Focal point for zoom
-  const focalX = useSharedValue(0);
-  const focalY = useSharedValue(0);
 
   // Pinch for zoom (images and videos)
   const pinchGesture = Gesture.Pinch()
@@ -816,10 +924,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   };
 
-  const setImageLoaded = (index: number) => {
-    setLoadedImages(prev => new Set(prev).add(index));
-  };
-
   if (!visible || mediaItems.length === 0) {
     return null;
   }
@@ -839,72 +943,31 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         <GestureDetector gesture={composedGesture}>
           <Animated.View style={[styles.galleryContainer, { height: screenHeight }, galleryStyle]}>
             {mediaItems.map((item, index) => {
-              const shouldRender = Math.abs(index - currentIndex) <= 1;
+              const isNearby = Math.abs(index - currentIndex) <= SLIDE_WINDOW;
 
               return (
                 <View key={`${index}-${item.url}`} style={[styles.imageSlide, { width: screenWidth, height: screenHeight }]}>
-                  <Animated.View
-                    style={[
-                      styles.imageContainer,
-                      { width: screenWidth, height: imageContainerHeight },
-                      imageZoomStyle,
-                    ]}
-                  >
-                    {shouldRender ? (
-                      item.type === 'image' ? (
-                        // Image slide
-                        <>
-                          {!loadedImages.has(index) && (
-                            <View style={styles.loaderContainer}>
-                              <ActivityIndicator size="large" color="#FFFFFF" />
-                            </View>
-                          )}
-                          <Image
-                            source={imageSources[index]}
-                            style={styles.fullscreenImage}
-                            contentFit="contain"
-                            cachePolicy="disk"
-                            onLoadEnd={() => setImageLoaded(index)}
-                          />
-                        </>
+                  {isNearby ? (
+                    <Animated.View
+                      style={[
+                        styles.imageContainer,
+                        { width: screenWidth, height: imageContainerHeight },
+                        imageZoomStyle,
+                      ]}
+                    >
+                      {item.type === 'image' ? (
+                        <ImageSlideContent source={imageSources[index]} />
                       ) : (
-                        // Video slide
-                        <View style={styles.videoSlideContainer}>
-                          {index === currentIndex ? (
-                            <VideoView
-                              player={player}
-                              style={styles.fullscreenVideo}
-                              contentFit="contain"
-                              nativeControls={false}
-                              allowsFullscreen={false}
-                              pointerEvents="none"
-                            />
-                          ) : (
-                            // Adjacent video slides show thumbnail
-                            <Image
-                              source={{
-                                uri: item.thumbnailLargeUrl || item.thumbnailUrl || item.url,
-                                headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-                              }}
-                              style={styles.fullscreenImage}
-                              contentFit="contain"
-                              cachePolicy="disk"
-                            />
-                          )}
-                          {/* Loading indicator */}
-                          {index === currentIndex && videoLoading && (
-                            <View style={styles.videoPlayOverlayCenter} pointerEvents="none">
-                              <ActivityIndicator size="large" color="#FFFFFF" />
-                            </View>
-                          )}
-                        </View>
-                      )
-                    ) : (
-                      <View style={styles.loaderContainer}>
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      </View>
-                    )}
-                  </Animated.View>
+                        <VideoSlideContent
+                          item={item}
+                          isActive={index === currentIndex}
+                          sessionId={sessionId}
+                          player={player}
+                          videoLoading={videoLoading}
+                        />
+                      )}
+                    </Animated.View>
+                  ) : null}
                 </View>
               );
             })}
@@ -1005,46 +1068,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }, animatedControlsStyle]}
           pointerEvents={controlsVisible ? 'auto' : 'none'}
         >
-          {/* Video progress bar */}
+          {/* Video progress bar (self-contained — manages its own playback state) */}
           {mediaItems[currentIndex]?.type === 'video' && (
-            <View style={styles.progressRow}>
-              <TouchableOpacity
-                onPress={toggleVideoPlayback}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name={isPlaying ? 'pause' : 'play'} size={22} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.progressTimeText}>{formatTime(currentTime)}</Text>
-              <View
-                style={styles.progressTrack}
-                onLayout={(e) => { progressBarWidthRef.current = e.nativeEvent.layout.width; }}
-                onStartShouldSetResponder={() => true}
-                onMoveShouldSetResponder={() => true}
-                onResponderGrant={handleSeekStart}
-                onResponderMove={handleSeekMove}
-                onResponderRelease={handleSeekEnd}
-                onResponderTerminate={handleSeekEnd}
-              >
-                <View style={styles.progressTrackBar}>
-                  <View style={[styles.progressFill, { width: `${progress}%` }]} />
-                </View>
-                <View
-                  style={[
-                    styles.progressThumb,
-                    { left: `${progress}%`, marginLeft: -6 },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressTimeText}>{formatTime(videoDuration)}</Text>
-              <TouchableOpacity
-                onPress={toggleMute}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
+            <VideoControlsBar
+              key={currentIndex}
+              player={player}
+              showControls={showControls}
+              startAutoHideTimer={startAutoHideTimer}
+              clearAutoHideTimer={clearAutoHideTimer}
+            />
           )}
           <View style={styles.bottomButtonsRow}>
             {onForward && (
