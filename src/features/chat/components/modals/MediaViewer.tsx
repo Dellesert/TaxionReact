@@ -994,19 +994,21 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               </Text>
             )}
           </View>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={handleShare}
-            activeOpacity={0.7}
-            disabled={isSharing}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            {isSharing ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Ionicons name="share-outline" size={26} color="#FFFFFF" />
-            )}
-          </TouchableOpacity>
+          {!isElectron() && (
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleShare}
+              activeOpacity={0.7}
+              disabled={isSharing}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {isSharing ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="share-outline" size={26} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          )}
         </Animated.View>
 
         {/* Navigation arrows */}
@@ -1110,6 +1112,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // @ts-ignore - Web-only: override title bar drag region so buttons in modal are clickable
+    WebkitAppRegion: 'no-drag',
   },
   blurOverlay: {
     ...StyleSheet.absoluteFillObject,
