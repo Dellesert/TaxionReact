@@ -605,16 +605,24 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       {pendingVideoFiles.length > 0 && (
         <View style={[styles.selectedFilesContainer, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
           <View style={styles.selectedFilesInfo}>
-            <Ionicons name={pendingVideoFiles.some(f => f.mimeType.startsWith('video/')) ? "videocam" : "image"} size={16} color={theme.primary} />
+            <Ionicons name="attach" size={16} color={theme.primary} />
             <Text style={[styles.selectedFilesText, { color: theme.text }]} numberOfLines={1}>
-              {pendingVideoFiles.map(f => f.fileName).join(', ')}
+              {(() => {
+                const imageCount = pendingVideoFiles.filter(f => f.mimeType.startsWith('image/')).length;
+                const videoCount = pendingVideoFiles.filter(f => f.mimeType.startsWith('video/')).length;
+                const parts: string[] = [];
+                if (imageCount > 0) parts.push(`фото (${imageCount})`);
+                if (videoCount > 0) parts.push(`видео (${videoCount})`);
+                return parts.join(' ');
+              })()}
             </Text>
           </View>
           <TouchableOpacity
             onPress={() => {
-              pendingVideoFiles.forEach((_, i) => {
+              // Удаляем с конца, чтобы индексы не сбивались
+              for (let i = pendingVideoFiles.length - 1; i >= 0; i--) {
                 onRemovePendingVideo?.(i);
-              });
+              }
             }}
             style={styles.removeAllButton}
           >
