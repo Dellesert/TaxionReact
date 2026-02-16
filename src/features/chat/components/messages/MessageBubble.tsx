@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Message } from '../../types/chat.types';
@@ -177,6 +178,28 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     });
   }, [message.attachments, message.is_deleted, messageContent, isCardMessage]);
 
+  // Анимация подсветки для медиа/эмодзи (пульсация масштаба + рамка вместо фона)
+  const isMediaHighlight = isHighlighted && (isMediaOnly || isEmojiOnly);
+  const highlightProgress = useSharedValue(0);
+
+  useEffect(() => {
+    if (isMediaHighlight) {
+      highlightProgress.value = withSequence(
+        withTiming(1, { duration: 250 }),
+        withTiming(0.2, { duration: 250 }),
+        withTiming(0.8, { duration: 200 }),
+        withTiming(0, { duration: 500 }),
+      );
+    } else {
+      highlightProgress.value = 0;
+    }
+  }, [isMediaHighlight]);
+
+  const mediaScaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + highlightProgress.value * 0.04 }],
+  }));
+
+
   // Right-click context menu for web/Electron
   const handleContextMenu = useCallback((e: any) => {
     e.preventDefault();
@@ -223,7 +246,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   // Проверяем, есть ли вложения (любого типа) — для width: 100% контейнера
   const hasAttachments = message.attachments && message.attachments.length > 0;
 
-  return (
+  const bubble = (
     <TouchableOpacity
       ref={(node: any) => {
         (messageBubbleRef as any).current = node;
@@ -239,7 +262,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         isSavedChat && !isForwarded && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
         isSavedChat && isForwarded && styles.savedForwardedBubble,
         !isSavedChat && isOwnMessage && !isCardMessage && [styles.ownMessageBubble, dynamicStyles.ownMessageBubble],
-        isHighlighted && [styles.highlightedBubble, dynamicStyles.highlightedBubble],
+        isHighlighted && !isMediaOnly && !isEmojiOnly && [styles.highlightedBubble, dynamicStyles.highlightedBubble],
         isCardMessage && { backgroundColor: 'transparent', padding: 0 },
         isEmojiOnly && { backgroundColor: 'transparent', padding: 0 },
         isMediaOnly && { backgroundColor: 'transparent', padding: 0 },
@@ -409,6 +432,17 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
       )}
     </TouchableOpacity>
   );
+
+  // Для медиа/эмодзи: анимированная обёртка с пульсацией масштаба + рамка
+  if (isMediaOnly || isEmojiOnly) {
+    return (
+      <Animated.View style={mediaScaleStyle}>
+        {bubble}
+      </Animated.View>
+    );
+  }
+
+  return bubble;
 };
 
 const styles = StyleSheet.create({
