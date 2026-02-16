@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Keyboard } from 'react-native';
 import { useAuth } from '@shared/hooks/useAuth';
 import {
@@ -14,6 +14,7 @@ import { extractErrorCode } from '@shared/utils/errorUtils';
 import type { ApiError } from '../../../types/common.types';
 
 interface UsePasswordAuthReturn {
+  isPasswordLoading: boolean;
   handlePasswordLogin: (
     email: string,
     password: string,
@@ -28,6 +29,7 @@ interface UsePasswordAuthReturn {
  */
 export const usePasswordAuth = (): UsePasswordAuthReturn => {
   const { login } = useAuth();
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
   const handlePasswordLogin = useCallback(
     async (
@@ -48,6 +50,7 @@ export const usePasswordAuth = (): UsePasswordAuthReturn => {
         return;
       }
 
+      setIsPasswordLoading(true);
       try {
         console.log('Calling login...');
         const authApi = await import('../api/auth.api');
@@ -142,12 +145,15 @@ export const usePasswordAuth = (): UsePasswordAuthReturn => {
         } else {
           onError(err.message || 'Не удалось войти в систему');
         }
+      } finally {
+        setIsPasswordLoading(false);
       }
     },
     [login]
   );
 
   return {
+    isPasswordLoading,
     handlePasswordLogin,
   };
 };

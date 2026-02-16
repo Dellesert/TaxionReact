@@ -70,7 +70,10 @@ const LoginScreen: React.FC = () => {
   const { isPasskeyLoading, passkeySupported, handlePasskeyLogin } = usePasskeyAuth(handleError);
 
   // Password auth
-  const { handlePasswordLogin } = usePasswordAuth();
+  const { isPasswordLoading, handlePasswordLogin } = usePasswordAuth();
+
+  // Combined loading state: auth store loading OR password login in progress
+  const isLoginLoading = isLoading || isPasswordLoading;
 
   // Initialize animations
   useEffect(() => {
@@ -153,7 +156,7 @@ const LoginScreen: React.FC = () => {
               email={email}
               password={password}
               showPassword={showPassword}
-              isLoading={isLoading}
+              isLoading={isLoginLoading}
               passwordInputRef={passwordInputRef}
               onEmailChange={setEmail}
               onPasswordChange={setPassword}
@@ -166,7 +169,7 @@ const LoginScreen: React.FC = () => {
             <AlternativeLoginMethods
               passkeySupported={passkeySupported}
               isPasskeyLoading={isPasskeyLoading}
-              isLoading={isLoading}
+              isLoading={isLoginLoading}
               onPasskeyLogin={handlePasskeyLogin}
               onAcceptInvitation={handleAcceptInvitation}
             />
@@ -212,7 +215,7 @@ const LoginScreen: React.FC = () => {
               email={email}
               password={password}
               showPassword={showPassword}
-              isLoading={isLoading}
+              isLoading={isLoginLoading}
               passwordInputRef={passwordInputRef}
               onEmailChange={setEmail}
               onPasswordChange={setPassword}
@@ -226,7 +229,7 @@ const LoginScreen: React.FC = () => {
             <AlternativeLoginMethods
               passkeySupported={passkeySupported}
               isPasskeyLoading={isPasskeyLoading}
-              isLoading={isLoading}
+              isLoading={isLoginLoading}
               onPasskeyLogin={handlePasskeyLogin}
               onAcceptInvitation={handleAcceptInvitation}
             />
