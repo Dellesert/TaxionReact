@@ -130,7 +130,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   const [eveningEnd, setEveningEnd] = useState('18:00');
 
   // Step 4: Visibility, Color, and Mode
-  const [visibility, setVisibility] = useState<ScheduleVisibility>('management');
+  const [visibility, setVisibility] = useState<ScheduleVisibility>('all');
   const [editPermission, setEditPermission] = useState<ScheduleEditPermission>('creator_only');
   const [viewerIds, setViewerIds] = useState<number[]>([]);
   const [editorIds, setEditorIds] = useState<number[]>([]);
@@ -139,7 +139,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   const [showViewerSelector, setShowViewerSelector] = useState(false);
   const [showEditorSelector, setShowEditorSelector] = useState(false);
   const [color, setColor] = useState('#3B82F6');
-  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('recurring');
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('monthly');
 
   // User group selection
   const [userGroupId, setUserGroupId] = useState<number | null>(null);
@@ -558,7 +558,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     setMorningEnd('14:00');
     setEveningStart('14:00');
     setEveningEnd('20:00');
-    setVisibility('management');
+    setVisibility('all');
     setEditPermission('creator_only');
     setViewerIds([]);
     setEditorIds([]);
@@ -570,7 +570,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     setSelectedGroup(null);
     setShowGroupPicker(false);
     setColor('#3B82F6');
-    setScheduleMode('recurring');
+    setScheduleMode('monthly');
     slideAnim.setValue(0);
     // Reset import state
     setImportStep('select');
@@ -1574,32 +1574,6 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                             <Text style={[styles.inputLabel, { color: theme.text }]}>Режим графика</Text>
                             <View style={styles.modeRow}>
                               <TouchableOpacity
-                                onPress={() => setScheduleMode('recurring')}
-                                style={[
-                                  styles.modeCard,
-                                  { backgroundColor: theme.card, borderColor: theme.border },
-                                  scheduleMode === 'recurring' && { borderColor: theme.primary, borderWidth: 2 },
-                                ]}
-                              >
-                                <View style={[
-                                  styles.modeIconContainer,
-                                  { backgroundColor: scheduleMode === 'recurring' ? theme.primary : theme.backgroundSecondary }
-                                ]}>
-                                  <Ionicons
-                                    name="sync-outline"
-                                    size={24}
-                                    color={scheduleMode === 'recurring' ? '#FFFFFF' : theme.textSecondary}
-                                  />
-                                </View>
-                                <Text style={[
-                                  styles.modeLabel,
-                                  { color: scheduleMode === 'recurring' ? theme.primary : theme.text }
-                                ]}>
-                                  {SCHEDULE_MODE_LABELS.recurring}
-                                </Text>
-                              </TouchableOpacity>
-
-                              <TouchableOpacity
                                 onPress={() => setScheduleMode('monthly')}
                                 style={[
                                   styles.modeCard,
@@ -1622,6 +1596,32 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                                   { color: scheduleMode === 'monthly' ? theme.primary : theme.text }
                                 ]}>
                                   {SCHEDULE_MODE_LABELS.monthly}
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                onPress={() => setScheduleMode('recurring')}
+                                style={[
+                                  styles.modeCard,
+                                  { backgroundColor: theme.card, borderColor: theme.border },
+                                  scheduleMode === 'recurring' && { borderColor: theme.primary, borderWidth: 2 },
+                                ]}
+                              >
+                                <View style={[
+                                  styles.modeIconContainer,
+                                  { backgroundColor: scheduleMode === 'recurring' ? theme.primary : theme.backgroundSecondary }
+                                ]}>
+                                  <Ionicons
+                                    name="sync-outline"
+                                    size={24}
+                                    color={scheduleMode === 'recurring' ? '#FFFFFF' : theme.textSecondary}
+                                  />
+                                </View>
+                                <Text style={[
+                                  styles.modeLabel,
+                                  { color: scheduleMode === 'recurring' ? theme.primary : theme.text }
+                                ]}>
+                                  {SCHEDULE_MODE_LABELS.recurring}
                                 </Text>
                               </TouchableOpacity>
                             </View>

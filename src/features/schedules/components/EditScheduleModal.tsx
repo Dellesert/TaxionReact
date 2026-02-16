@@ -123,7 +123,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [eveningEnd, setEveningEnd] = useState('20:00');
 
   // Step 4: Visibility, Color, and Mode
-  const [visibility, setVisibility] = useState<ScheduleVisibility>('management');
+  const [visibility, setVisibility] = useState<ScheduleVisibility>('all');
   const [editPermission, setEditPermission] = useState<ScheduleEditPermission>('creator_only');
   const [viewerIds, setViewerIds] = useState<number[]>([]);
   const [editorIds, setEditorIds] = useState<number[]>([]);
@@ -132,7 +132,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [showViewerSelector, setShowViewerSelector] = useState(false);
   const [showEditorSelector, setShowEditorSelector] = useState(false);
   const [color, setColor] = useState('#3B82F6');
-  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('recurring');
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('monthly');
 
   // User group selection
   const [userGroupId, setUserGroupId] = useState<number | null>(null);
@@ -195,7 +195,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setMorningEnd(schedule.morning_end || '14:00');
       setEveningStart(schedule.evening_start || '14:00');
       setEveningEnd(schedule.evening_end || '20:00');
-      setScheduleMode(schedule.mode || 'recurring');
+      setScheduleMode(schedule.mode || 'monthly');
       setUserGroupId(schedule.user_group_id || null);
       setCurrentStep(1);
     }
@@ -943,32 +943,6 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                         <Text style={[styles.inputLabel, { color: theme.text }]}>Режим графика</Text>
                         <View style={styles.modeRow}>
                           <TouchableOpacity
-                            onPress={() => setScheduleMode('recurring')}
-                            style={[
-                              styles.modeCard,
-                              { backgroundColor: theme.card, borderColor: theme.border },
-                              scheduleMode === 'recurring' && { borderColor: theme.primary, borderWidth: 2 },
-                            ]}
-                          >
-                            <View style={[
-                              styles.modeIconContainer,
-                              { backgroundColor: scheduleMode === 'recurring' ? theme.primary : theme.backgroundSecondary }
-                            ]}>
-                              <Ionicons
-                                name="sync-outline"
-                                size={24}
-                                color={scheduleMode === 'recurring' ? '#FFFFFF' : theme.textSecondary}
-                              />
-                            </View>
-                            <Text style={[
-                              styles.modeLabel,
-                              { color: scheduleMode === 'recurring' ? theme.primary : theme.text }
-                            ]}>
-                              {SCHEDULE_MODE_LABELS.recurring}
-                            </Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
                             onPress={() => setScheduleMode('monthly')}
                             style={[
                               styles.modeCard,
@@ -991,6 +965,32 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                               { color: scheduleMode === 'monthly' ? theme.primary : theme.text }
                             ]}>
                               {SCHEDULE_MODE_LABELS.monthly}
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => setScheduleMode('recurring')}
+                            style={[
+                              styles.modeCard,
+                              { backgroundColor: theme.card, borderColor: theme.border },
+                              scheduleMode === 'recurring' && { borderColor: theme.primary, borderWidth: 2 },
+                            ]}
+                          >
+                            <View style={[
+                              styles.modeIconContainer,
+                              { backgroundColor: scheduleMode === 'recurring' ? theme.primary : theme.backgroundSecondary }
+                            ]}>
+                              <Ionicons
+                                name="sync-outline"
+                                size={24}
+                                color={scheduleMode === 'recurring' ? '#FFFFFF' : theme.textSecondary}
+                              />
+                            </View>
+                            <Text style={[
+                              styles.modeLabel,
+                              { color: scheduleMode === 'recurring' ? theme.primary : theme.text }
+                            ]}>
+                              {SCHEDULE_MODE_LABELS.recurring}
                             </Text>
                           </TouchableOpacity>
                         </View>

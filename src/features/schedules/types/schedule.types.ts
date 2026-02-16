@@ -43,8 +43,8 @@ export const EDIT_PERMISSION_LABELS: Record<ScheduleEditPermission, string> = {
 };
 
 export const SCHEDULE_MODE_LABELS: Record<ScheduleMode, string> = {
-  recurring: 'Повторяющийся',
   monthly: 'Ежемесячный',
+  recurring: 'Повторяющийся',
 };
 
 // ============================================
