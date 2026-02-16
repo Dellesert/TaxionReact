@@ -151,7 +151,7 @@ const PerformanceAnalyticsScreen: React.FC = () => {
     },
     periodSelector: {
       flexDirection: 'row',
-      gap: 10,
+      gap: 8,
       marginBottom: 24,
       padding: 4,
       backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
@@ -159,8 +159,8 @@ const PerformanceAnalyticsScreen: React.FC = () => {
     },
     periodButton: {
       flex: 1,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
       borderRadius: 10,
       alignItems: 'center',
     },
@@ -173,7 +173,7 @@ const PerformanceAnalyticsScreen: React.FC = () => {
       elevation: 2,
     },
     periodButtonText: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '600',
       color: theme.textSecondary,
     },
