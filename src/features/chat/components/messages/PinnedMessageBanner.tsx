@@ -4,11 +4,14 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import * as secureStorage from '@shared/utils/secureStorage';
+import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { Message } from '../../types/chat.types';
 import { getFileIcon } from '../../utils/file.utils';
+import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
 
 interface PinnedMessageBannerProps {
   pinnedMessages: Message[];
@@ -29,6 +32,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
 }) => {
   const { theme } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const isScrolling = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentIndexRef = useRef(currentIndex);
@@ -37,6 +41,15 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
 
   // Синхронизируем ref с state
   currentIndexRef.current = currentIndex;
+
+  // Загружаем sessionId для авторизованных запросов к превью
+  useEffect(() => {
+    const loadSessionId = async () => {
+      const id = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+      setSessionId(id);
+    };
+    loadSessionId();
+  }, []);
 
   // Переключаем на следующее сообщение когда загрузка завершена (isLoading: true → false)
   useEffect(() => {
@@ -158,7 +171,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
     },
   });
 
-  const getMessagePreview = (message: Message): { text: string; icon?: string } => {
+  const getMessagePreview = (message: Message): { text: string; icon?: string; thumbnailUrl?: string } => {
     // Если есть текст, показываем его
     if (message.content && message.content.trim().length > 0) {
       const text = message.content.length > 50
@@ -167,12 +180,26 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
       return { text };
     }
 
-    // Если текста нет, но есть вложения, показываем информацию о файле
+    // Если текста нет, но есть вложения
     if (message.attachments && message.attachments.length > 0) {
       const attachment = message.attachments[0];
-      const icon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
+      const mt = attachment.mime_type || attachment.file_type || '';
+      const isImage = isImageFile(mt);
+      const isVideo = isVideoFile(mt);
 
-      // Обрезаем длинное название файла
+      // Для фото/видео показываем "Фото"/"Видео" и превью
+      if (isImage || isVideo) {
+        const label = isImage ? 'Фото' : 'Видео';
+        const thumbnailUrl = attachment.thumbnail_url || attachment.file_url;
+        const extra = message.attachments.length > 1 ? ` и ещё ${message.attachments.length - 1}` : '';
+        return {
+          text: label + extra,
+          thumbnailUrl: replaceLocalhostWithIP(thumbnailUrl),
+        };
+      }
+
+      // Для остальных файлов — иконка и имя файла
+      const icon = getFileIcon(mt, attachment.file_name);
       let fileName = attachment.file_name;
       if (fileName.length > 30) {
         const ext = fileName.split('.').pop();
@@ -181,15 +208,9 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
       }
 
       if (message.attachments.length === 1) {
-        return {
-          text: fileName,
-          icon
-        };
+        return { text: fileName, icon };
       } else {
-        return {
-          text: `${fileName} и ещё ${message.attachments.length - 1}`,
-          icon
-        };
+        return { text: `${fileName} и ещё ${message.attachments.length - 1}`, icon };
       }
     }
 
@@ -231,14 +252,22 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
               const preview = getMessagePreview(currentMessage);
               return (
                 <>
-                  {preview.icon && (
+                  {preview.thumbnailUrl ? (
+                    <Image
+                      source={{
+                        uri: preview.thumbnailUrl,
+                        headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+                      }}
+                      style={styles.thumbnail}
+                    />
+                  ) : preview.icon ? (
                     <Ionicons
                       name={preview.icon as any}
                       size={16}
                       color={theme.primary}
                       style={styles.fileIcon}
                     />
-                  )}
+                  ) : null}
                   <Text
                     style={[styles.messageText, dynamicStyles.messageText]}
                     numberOfLines={1}
@@ -317,6 +346,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flex: 1,
     minHeight: 44,
+  },
+  thumbnail: {
+    width: 36,
+    height: 36,
+    borderRadius: 4,
+    marginRight: 8,
   },
   fileIcon: {
     marginRight: 6,
