@@ -26,6 +26,7 @@ const MessageReactionsComponent: React.FC<MessageReactionsProps> = ({
   const { theme } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEmoji, setSelectedEmoji] = useState<string>('');
+  const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
 
   const groups = useMemo(() => {
     const map = new Map<string, ReactionGroup>();
@@ -45,7 +46,18 @@ const MessageReactionsComponent: React.FC<MessageReactionsProps> = ({
     return Array.from(map.values());
   }, [reactions, currentUserId]);
 
-  const handleLongPress = (emoji: string) => {
+  const handleLongPress = (emoji: string, event: any) => {
+    // Получаем координаты клика для desktop
+    const nativeEvent = event?.nativeEvent;
+    if (nativeEvent && (nativeEvent.pageX !== undefined || nativeEvent.locationX !== undefined)) {
+      setClickPosition({
+        x: nativeEvent.pageX ?? nativeEvent.locationX ?? 0,
+        y: nativeEvent.pageY ?? nativeEvent.locationY ?? 0,
+      });
+    } else {
+      setClickPosition(null);
+    }
+
     setSelectedEmoji(emoji);
     setModalVisible(true);
   };
@@ -53,6 +65,7 @@ const MessageReactionsComponent: React.FC<MessageReactionsProps> = ({
   const handleCloseModal = () => {
     setModalVisible(false);
     setSelectedEmoji('');
+    setClickPosition(null);
   };
 
   if (groups.length === 0) return null;
@@ -65,7 +78,7 @@ const MessageReactionsComponent: React.FC<MessageReactionsProps> = ({
             key={group.emoji}
             activeOpacity={0.7}
             onPress={() => onReactionPress(group.emoji)}
-            onLongPress={() => handleLongPress(group.emoji)}
+            onLongPress={(event) => handleLongPress(group.emoji, event)}
             style={[
               styles.badge,
               {
@@ -94,6 +107,7 @@ const MessageReactionsComponent: React.FC<MessageReactionsProps> = ({
         emoji={selectedEmoji}
         reactions={reactions}
         onClose={handleCloseModal}
+        clickPosition={clickPosition}
       />
     </>
   );

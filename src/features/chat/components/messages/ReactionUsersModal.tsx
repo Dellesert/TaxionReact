@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Reaction } from '../../types/chat.types';
@@ -16,6 +18,7 @@ interface ReactionUsersModalProps {
   emoji: string;
   reactions: Reaction[];
   onClose: () => void;
+  clickPosition?: { x: number; y: number } | null;
 }
 
 const ReactionUsersModalComponent: React.FC<ReactionUsersModalProps> = ({
@@ -23,11 +26,52 @@ const ReactionUsersModalComponent: React.FC<ReactionUsersModalProps> = ({
   emoji,
   reactions,
   onClose,
+  clickPosition,
 }) => {
   const { theme } = useTheme();
 
   // Фильтруем реакции только для выбранного эмодзи
   const usersWithReaction = reactions.filter((r) => r.emoji === emoji);
+
+  // Проверяем, desktop ли это (web или electron)
+  const isDesktop = Platform.OS === 'web' || Platform.OS === 'windows' || Platform.OS === 'macos';
+
+  // Рассчитываем позицию модального окна
+  const getModalPosition = () => {
+    if (!isDesktop || !clickPosition) {
+      // Центрируем на мобильных или если нет координат клика
+      return {};
+    }
+
+    const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+    const modalWidth = 400; // Из styles.modalContent maxWidth
+    const modalHeight = 400; // Примерная высота модального окна
+    const offset = 10; // Небольшой отступ от курсора
+
+    // Рассчитываем позицию с учетом границ экрана
+    let top = clickPosition.y + offset;
+    let left = clickPosition.x + offset;
+
+    // Проверяем, не выходит ли окно за правую границу
+    if (left + modalWidth > screenWidth - 20) {
+      left = screenWidth - modalWidth - 20;
+    }
+
+    // Проверяем, не выходит ли окно за нижнюю границу
+    if (top + modalHeight > screenHeight - 20) {
+      top = screenHeight - modalHeight - 20;
+    }
+
+    // Не даем окну выйти за верхнюю и левую границы
+    top = Math.max(20, top);
+    left = Math.max(20, left);
+
+    return {
+      position: 'absolute' as const,
+      top,
+      left,
+    };
+  };
 
   return (
     <Modal
@@ -42,7 +86,11 @@ const ReactionUsersModalComponent: React.FC<ReactionUsersModalProps> = ({
         onPress={onClose}
       >
         <TouchableOpacity
-          style={[styles.modalContent, { backgroundColor: theme.card }]}
+          style={[
+            styles.modalContent,
+            { backgroundColor: theme.card },
+            getModalPosition(),
+          ]}
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
         >
