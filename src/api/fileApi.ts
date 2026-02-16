@@ -97,14 +97,15 @@ class FileApi {
     const xhr = new XMLHttpRequest();
 
     return new Promise<FileUploadResponse>((resolve, reject) => {
-      // Track upload progress - works on all platforms!
+      // Track upload progress
+      // Use onprogress property (more reliable on React Native iOS than addEventListener)
       if (onProgress) {
-        xhr.upload.addEventListener('progress', (event) => {
+        xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             const progress = (event.loaded / event.total) * 100;
             onProgress(progress);
           }
-        });
+        };
       }
 
       xhr.addEventListener('load', () => {

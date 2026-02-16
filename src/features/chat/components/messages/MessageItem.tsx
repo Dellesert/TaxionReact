@@ -81,8 +81,18 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 }) => {
   const { theme } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
-  const maxBubbleWidth = Math.min(screenWidth * 0.7, 420);
+  const isWideScreen = screenWidth > 768;
+  const maxBubbleWidth = isWideScreen
+    ? Math.min(screenWidth * 0.5, 560)
+    : Math.min(screenWidth * 0.7, 420);
   const minBubbleWidth = screenWidth < 500 ? '35%' : '15%';
+
+  // На десктопе для сообщений с медиа задаём явную ширину (не только maxWidth),
+  // чтобы процентные размеры дочерних элементов (width: '100%') корректно работали
+  const hasMedia = message.attachments?.some(a => {
+    const mt = a.mime_type || a.file_type || '';
+    return isImageFile(mt) || isVideoFile(mt);
+  });
   const currentUser = useAuthStore((state) => state.user);
   const { showError } = useNotification();
   const navigation = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
@@ -273,7 +283,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         )}
 
         {/* Пузырь сообщения */}
-        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth }}>
+        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth, ...(hasMedia && { width: maxBubbleWidth }) }}>
           <MessageBubble
             message={message}
             isOwnMessage={isOwnMessage}

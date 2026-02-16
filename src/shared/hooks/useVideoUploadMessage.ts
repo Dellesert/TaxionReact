@@ -36,6 +36,11 @@ export const useVideoUploadMessage = (chatId: number) => {
   const currentUser = useAuthStore((state) => state.user);
   const processingIntervalsRef = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
   const timeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const trickleIntervalsRef = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
+  // Хранит текущий реальный прогресс XHR для каждого tempId
+  const realProgressRef = useRef<Map<number, number>>(new Map());
+  // Хранит текущий отображаемый прогресс trickle для каждого tempId
+  const trickleProgressRef = useRef<Map<number, number>>(new Map());
 
   /**
    * Обновить прогресс загрузки на оптимистичном сообщении
@@ -249,13 +254,86 @@ export const useVideoUploadMessage = (chatId: number) => {
       clearTimeout(timeout);
       timeoutsRef.current.delete(tempId);
     }
+    const trickle = trickleIntervalsRef.current.get(tempId);
+    if (trickle) {
+      clearInterval(trickle);
+      trickleIntervalsRef.current.delete(tempId);
+    }
+    realProgressRef.current.delete(tempId);
+    trickleProgressRef.current.delete(tempId);
   }, []);
+
+  /**
+   * Запустить trickle-анимацию (0% → 70%) как fallback на случай,
+   * когда XHR progress events не приходят (частая проблема на React Native iOS).
+   * Реальный прогресс от XHR всегда имеет приоритет, если он больше.
+   */
+  const startTrickleAnimation = useCallback((tempId: number) => {
+    trickleProgressRef.current.set(tempId, 1);
+    realProgressRef.current.set(tempId, 0);
+
+    // Сразу показываем 1% чтобы пользователь видел, что загрузка началась
+    updateUploadProgress(tempId, 1);
+
+    // Скорость trickle зависит от размера файла:
+    // Маленькие файлы (< 5MB) — быстрее, большие — медленнее
+    const maxTrickle = 70; // Trickle не идёт дальше 70%, оставляем место для реального прогресса
+    const interval = setInterval(() => {
+      const currentTrickle = trickleProgressRef.current.get(tempId) || 0;
+      const currentReal = realProgressRef.current.get(tempId) || 0;
+
+      if (currentTrickle >= maxTrickle || currentReal >= maxTrickle) {
+        clearInterval(interval);
+        trickleIntervalsRef.current.delete(tempId);
+        return;
+      }
+
+      // Замедляемся по мере приближения к maxTrickle (ease-out)
+      const remaining = maxTrickle - currentTrickle;
+      const increment = Math.max(0.5, remaining * 0.08);
+      const newTrickle = Math.min(maxTrickle, currentTrickle + increment);
+      trickleProgressRef.current.set(tempId, newTrickle);
+
+      // Отображаемый прогресс = max(trickle, realProgress) — всегда показываем бОльший
+      const displayProgress = Math.max(newTrickle, currentReal);
+      updateUploadProgress(tempId, displayProgress);
+    }, 300);
+
+    trickleIntervalsRef.current.set(tempId, interval);
+  }, [updateUploadProgress]);
+
+  /**
+   * Обновить реальный прогресс от XHR, останавливает trickle если реальный прогресс больше
+   */
+  const updateRealProgress = useCallback((tempId: number, progress: number) => {
+    realProgressRef.current.set(tempId, progress);
+    const currentTrickle = trickleProgressRef.current.get(tempId) || 0;
+    const displayProgress = Math.max(progress, currentTrickle);
+    updateUploadProgress(tempId, Math.min(80, displayProgress));
+
+    // Если реальный прогресс обогнал trickle, останавливаем trickle
+    if (progress >= 70) {
+      const trickle = trickleIntervalsRef.current.get(tempId);
+      if (trickle) {
+        clearInterval(trickle);
+        trickleIntervalsRef.current.delete(tempId);
+      }
+    }
+  }, [updateUploadProgress]);
 
   /**
    * Запустить анимацию прогресса конвертации (80% → 99%)
    */
   const startProcessingAnimation = useCallback((tempId: number) => {
+    // Останавливаем trickle перед началом processing animation
+    const trickle = trickleIntervalsRef.current.get(tempId);
+    if (trickle) {
+      clearInterval(trickle);
+      trickleIntervalsRef.current.delete(tempId);
+    }
+
     let currentProgress = 80;
+    updateUploadProgress(tempId, 80);
     const interval = setInterval(() => {
       currentProgress = Math.min(99, currentProgress + 1);
       updateUploadProgress(tempId, currentProgress);
@@ -300,7 +378,10 @@ export const useVideoUploadMessage = (chatId: number) => {
     // 3. Добавляем в store (мгновенный UI)
     addToStore(optimisticMessage);
 
-    // 4. Таймаут
+    // 4. Запускаем trickle-анимацию (плавный прогресс как fallback, если XHR events не приходят)
+    startTrickleAnimation(tempId);
+
+    // 5. Таймаут
     const timeout = setTimeout(() => {
       if (pendingVideoUploads.has(tempId)) {
         markFailed(tempId, new Error('Превышено время ожидания загрузки'));
@@ -308,7 +389,7 @@ export const useVideoUploadMessage = (chatId: number) => {
     }, MAX_UPLOAD_TIMEOUT);
     timeoutsRef.current.set(tempId, timeout);
 
-    // 5. Загружаем файлы
+    // 6. Загружаем файлы
     try {
       const uploadedFileIds: number[] = [...(existingFileIds || [])];
       let uploadBytesComplete = false;
@@ -338,7 +419,8 @@ export const useVideoUploadMessage = (chatId: number) => {
               uploadBytesComplete = true;
               startProcessingAnimation(tempId);
             } else if (!uploadBytesComplete) {
-              updateUploadProgress(tempId, Math.min(80, totalProgress));
+              // Используем updateRealProgress — он сам сравнит с trickle и покажет бОльшее значение
+              updateRealProgress(tempId, totalProgress);
             }
           },
           true, // isPublic
@@ -370,7 +452,7 @@ export const useVideoUploadMessage = (chatId: number) => {
       console.error('[VideoUpload] Failed:', error);
       markFailed(tempId, error);
     }
-  }, [chatId, createVideoOptimisticMessage, addToStore, markFailed, cleanupTimers, updateUploadProgress, startProcessingAnimation, replaceWithReal]);
+  }, [chatId, createVideoOptimisticMessage, addToStore, markFailed, cleanupTimers, updateRealProgress, startTrickleAnimation, startProcessingAnimation, replaceWithReal]);
 
   /**
    * Повторная загрузка неудачного видео-сообщения
@@ -406,6 +488,9 @@ export const useVideoUploadMessage = (chatId: number) => {
       },
     }));
 
+    // Запускаем trickle-анимацию для retry
+    startTrickleAnimation(tempId);
+
     // Таймаут
     const timeout = setTimeout(() => {
       if (pendingVideoUploads.has(tempId)) {
@@ -439,7 +524,7 @@ export const useVideoUploadMessage = (chatId: number) => {
               uploadBytesComplete = true;
               startProcessingAnimation(tempId);
             } else if (!uploadBytesComplete) {
-              updateUploadProgress(tempId, Math.min(80, totalProgress));
+              updateRealProgress(tempId, totalProgress);
             }
           },
           true,
@@ -462,7 +547,7 @@ export const useVideoUploadMessage = (chatId: number) => {
       console.error('[VideoUpload] Retry failed:', error);
       markFailed(tempId, error);
     }
-  }, [chatId, markFailed, cleanupTimers, updateUploadProgress, startProcessingAnimation, replaceWithReal]);
+  }, [chatId, markFailed, cleanupTimers, updateUploadProgress, updateRealProgress, startTrickleAnimation, startProcessingAnimation, replaceWithReal]);
 
   /**
    * Отменить загрузку и удалить сообщение
