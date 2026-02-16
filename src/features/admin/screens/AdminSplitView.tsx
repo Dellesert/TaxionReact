@@ -6,6 +6,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAuthStore } from '@shared/store/authStore';
 import { AdminSidebarNavigation, AdminSection } from '../components/common/AdminSidebarNavigation';
 import { AdminContentArea } from '../components/common/AdminContentArea';
 
@@ -17,7 +18,9 @@ import UserGroupsDesktopContent from '../components/desktop-content/UserGroupsDe
 
 export const AdminSplitView: React.FC = () => {
   const { theme } = useTheme();
-  const [activeSection, setActiveSection] = useState<AdminSection>('analytics');
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const [activeSection, setActiveSection] = useState<AdminSection>(isAdmin ? 'analytics' : 'user-groups');
 
   const handleSectionChange = useCallback((section: AdminSection) => {
     setActiveSection(section);
@@ -62,6 +65,7 @@ export const AdminSplitView: React.FC = () => {
       <AdminSidebarNavigation
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
+        userRole={user?.role}
       />
 
       {/* Content Area */}

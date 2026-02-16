@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AdminStackParamList } from './types';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAuthStore } from '@shared/store/authStore';
 import AdminSplitView from '@/features/admin/screens/AdminSplitView';
 import DepartmentsScreen from '@/features/admin/screens/DepartmentsScreen';
 import EditDepartmentScreen from '@/features/admin/screens/EditDepartmentScreen';
@@ -35,6 +36,13 @@ const Stack = createNativeStackNavigator<AdminStackParamList>();
 
 const AdminNavigator: React.FC = () => {
   const isWideScreen = useIsWideScreen();
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+
+  const getMobileInitialRoute = () => {
+    if (isAdmin) return 'Departments';
+    return 'UserGroups'; // department_head видит только группы
+  };
 
   return (
     <Stack.Navigator
@@ -43,7 +51,7 @@ const AdminNavigator: React.FC = () => {
         animation: 'default',
         animationDuration: 150,
       }}
-      initialRouteName={isWideScreen ? 'AdminHub' : 'Departments'}
+      initialRouteName={isWideScreen ? 'AdminHub' : getMobileInitialRoute()}
     >
       {isWideScreen && (
         <Stack.Screen name="AdminHub" component={AdminSplitView} />

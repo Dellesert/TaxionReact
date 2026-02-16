@@ -31,7 +31,6 @@ interface NavItem {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconFocused: keyof typeof Ionicons.glyphMap;
-  adminOnly?: boolean;
   minRole?: 'department_head' | 'admin' | 'super_admin';
 }
 
@@ -85,18 +84,11 @@ const NAV_ITEMS: NavItem[] = [
     iconFocused: 'notifications',
   },
   {
-    name: 'UserGroups',
-    label: 'Группы',
-    icon: 'people-circle-outline',
-    iconFocused: 'people-circle',
-    minRole: 'department_head',
-  },
-  {
     name: 'Admin',
-    label: 'Админка',
+    label: 'Администрирование',
     icon: 'shield-outline',
     iconFocused: 'shield',
-    adminOnly: true,
+    minRole: 'department_head',
   },
   {
     name: 'Profile',
@@ -178,11 +170,10 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
     if (item.name === 'Notifications' && isElectron) {
       return false;
     }
-    // Показываем админку только админам
-    if (item.adminOnly) {
+    // Показываем пункты по минимальной роли
+    if (item.minRole === 'admin' || item.minRole === 'super_admin') {
       return isAdmin;
     }
-    // Показываем пункты для department_head и выше
     if (item.minRole === 'department_head') {
       return isDepartmentHeadOrAbove;
     }

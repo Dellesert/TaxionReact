@@ -7,6 +7,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { UserRole } from '@/types/user.types';
 
 export type AdminSection = 'analytics' | 'departments' | 'users' | 'user-groups';
 
@@ -16,11 +17,13 @@ interface SidebarItem {
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   description: string;
+  minRole: 'department_head' | 'admin';
 }
 
 interface AdminSidebarNavigationProps {
   activeSection: AdminSection;
   onSectionChange: (section: AdminSection) => void;
+  userRole?: UserRole;
 }
 
 const ADMIN_SECTIONS: SidebarItem[] = [
@@ -30,6 +33,7 @@ const ADMIN_SECTIONS: SidebarItem[] = [
     icon: 'bar-chart-outline',
     iconColor: '#3B82F6',
     description: 'Статистика и метрики системы',
+    minRole: 'admin',
   },
   {
     id: 'departments',
@@ -37,6 +41,7 @@ const ADMIN_SECTIONS: SidebarItem[] = [
     icon: 'business-outline',
     iconColor: '#e944d6ff',
     description: 'Управление структурой организации',
+    minRole: 'admin',
   },
   {
     id: 'users',
@@ -44,6 +49,7 @@ const ADMIN_SECTIONS: SidebarItem[] = [
     icon: 'people-outline',
     iconColor: '#e99444ff',
     description: 'Управление пользователями системы',
+    minRole: 'admin',
   },
   {
     id: 'user-groups',
@@ -51,14 +57,22 @@ const ADMIN_SECTIONS: SidebarItem[] = [
     icon: 'people-circle-outline',
     iconColor: '#10B981',
     description: 'Управление группами пользователей',
+    minRole: 'department_head',
   },
 ];
 
 export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
   activeSection,
   onSectionChange,
+  userRole,
 }) => {
   const { theme, isDark } = useTheme();
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+  const visibleSections = ADMIN_SECTIONS.filter(item => {
+    if (item.minRole === 'admin') return isAdmin;
+    return true; // department_head and above can see department_head items
+  });
 
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -217,7 +231,7 @@ export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
         </View>
 
         {/* Navigation Items */}
-        {ADMIN_SECTIONS.map(renderItem)}
+        {visibleSections.map(renderItem)}
       </ScrollView>
     </View>
   );
