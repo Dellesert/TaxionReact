@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useCallback, useState, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -593,39 +593,47 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     const attachment = allAttachments.find((att: Attachment) => att.id === item.attachmentId);
     if (!attachment) return;
 
-    Alert.alert(
-      'Удалить медиа',
-      'Вы уверены, что хотите удалить это медиа?',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await chatApi.deleteAttachment(attachment.message_id, attachment.id);
+    const doDelete = async () => {
+      try {
+        await chatApi.deleteAttachment(attachment.message_id, attachment.id);
 
-              // Remove from cache
-              chatAttachmentsCacheRef.current = allAttachments.filter(
-                (att: Attachment) => att.id !== attachment.id
-              );
+        // Remove from cache
+        chatAttachmentsCacheRef.current = allAttachments.filter(
+          (att: Attachment) => att.id !== attachment.id
+        );
 
-              // Update media viewer items
-              setGlobalMediaItems(prev => {
-                const updated = prev.filter(m => m.attachmentId !== item.attachmentId);
-                if (updated.length === 0) {
-                  setGlobalMediaViewerVisible(false);
-                }
-                return updated;
-              });
-            } catch (error) {
-              console.error('Failed to delete attachment:', error);
-              Alert.alert('Ошибка', 'Не удалось удалить медиа');
-            }
-          },
-        },
-      ],
-    );
+        // Update media viewer items
+        setGlobalMediaItems(prev => {
+          const updated = prev.filter(m => m.attachmentId !== item.attachmentId);
+          if (updated.length === 0) {
+            setGlobalMediaViewerVisible(false);
+          }
+          return updated;
+        });
+      } catch (error) {
+        console.error('Failed to delete attachment:', error);
+        if (Platform.OS === 'web') {
+          window.alert('Не удалось удалить медиа');
+        } else {
+          Alert.alert('Ошибка', 'Не удалось удалить медиа');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Вы уверены, что хотите удалить это медиа?')) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Удалить медиа',
+        'Вы уверены, что хотите удалить это медиа?',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          { text: 'Удалить', style: 'destructive', onPress: doDelete },
+        ],
+      );
+    }
   }, []);
 
   // UI state - show loading only if messages are not ready AND loader should be visible
