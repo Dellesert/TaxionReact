@@ -15,6 +15,7 @@ import { FileAttachmentPicker } from '../attachments/FileAttachmentPicker';
 import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
 import { FormattingToolbar, FormatMarker, FormatButtonType } from './FormattingToolbar';
 import { stripFormatting } from '../../utils/formatting';
+import { isImageFile, isVideoFile } from '../../utils/message.utils';
 import {
   parseFormatting,
   preProcessEscapes,
@@ -533,9 +534,40 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               <Text style={[styles.replyLabel, { color: theme.primary }]}>
                 Ответ на сообщение
               </Text>
-              <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
-                {stripFormatting(replyingToMessage.content)}
-              </Text>
+              {replyingToMessage.content && replyingToMessage.content.trim().length > 0 ? (
+                <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {stripFormatting(replyingToMessage.content)}
+                </Text>
+              ) : replyingToMessage.attachments && replyingToMessage.attachments.length > 0 ? (
+                <View style={styles.replyMediaRow}>
+                  {(() => {
+                    const att = replyingToMessage.attachments[0];
+                    const mt = att.mime_type || att.file_type || '';
+                    const isImage = isImageFile(mt);
+                    const isVideo = isVideoFile(mt);
+                    const count = replyingToMessage.attachments.length;
+                    const label = isVideo ? 'Видео' : isImage ? 'Фото' : att.file_name;
+                    const extra = count > 1 ? ` и ещё ${count - 1}` : '';
+                    return (
+                      <>
+                        <Ionicons
+                          name={isVideo ? 'videocam' : isImage ? 'image' : 'document'}
+                          size={14}
+                          color={theme.textSecondary}
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
+                          {label}{extra}
+                        </Text>
+                      </>
+                    );
+                  })()}
+                </View>
+              ) : (
+                <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
+                  Сообщение
+                </Text>
+              )}
             </View>
           </View>
           <TouchableOpacity onPress={handleCancelReply} style={styles.cancelButton}>
@@ -786,6 +818,10 @@ const styles = StyleSheet.create({
   },
   replyText: {
     fontSize: 13,
+  },
+  replyMediaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   selectedFilesContainer: {
     flexDirection: 'row',
