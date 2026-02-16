@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Reaction } from '../../types/chat.types';
+import { ReactionUsersModal } from './ReactionUsersModal';
 
 interface ReactionGroup {
   emoji: string;
@@ -23,6 +24,8 @@ const MessageReactionsComponent: React.FC<MessageReactionsProps> = ({
   onReactionPress,
 }) => {
   const { theme } = useTheme();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedEmoji, setSelectedEmoji] = useState<string>('');
 
   const groups = useMemo(() => {
     const map = new Map<string, ReactionGroup>();
@@ -42,37 +45,57 @@ const MessageReactionsComponent: React.FC<MessageReactionsProps> = ({
     return Array.from(map.values());
   }, [reactions, currentUserId]);
 
+  const handleLongPress = (emoji: string) => {
+    setSelectedEmoji(emoji);
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedEmoji('');
+  };
+
   if (groups.length === 0) return null;
 
   return (
-    <View style={styles.container}>
-      {groups.map((group) => (
-        <TouchableOpacity
-          key={group.emoji}
-          activeOpacity={0.7}
-          onPress={() => onReactionPress(group.emoji)}
-          style={[
-            styles.badge,
-            {
-              backgroundColor: group.userReacted
-                ? theme.primary + '20'
-                : theme.background,
-              borderColor: group.userReacted
-                ? theme.primary
-                : theme.border,
-            },
-          ]}
-        >
-          <Text style={styles.emoji}>{group.emoji}</Text>
-          <Text style={[
-            styles.count,
-            { color: group.userReacted ? theme.primary : theme.textSecondary },
-          ]}>
-            {group.count}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+    <>
+      <View style={styles.container}>
+        {groups.map((group) => (
+          <TouchableOpacity
+            key={group.emoji}
+            activeOpacity={0.7}
+            onPress={() => onReactionPress(group.emoji)}
+            onLongPress={() => handleLongPress(group.emoji)}
+            style={[
+              styles.badge,
+              {
+                backgroundColor: group.userReacted
+                  ? theme.primary + '20'
+                  : theme.background,
+                borderColor: group.userReacted
+                  ? theme.primary
+                  : theme.border,
+              },
+            ]}
+          >
+            <Text style={styles.emoji}>{group.emoji}</Text>
+            <Text style={[
+              styles.count,
+              { color: group.userReacted ? theme.primary : theme.textSecondary },
+            ]}>
+              {group.count}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <ReactionUsersModal
+        visible={modalVisible}
+        emoji={selectedEmoji}
+        reactions={reactions}
+        onClose={handleCloseModal}
+      />
+    </>
   );
 };
 
