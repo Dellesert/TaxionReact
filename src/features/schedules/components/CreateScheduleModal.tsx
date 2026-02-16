@@ -548,18 +548,20 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     }
   }, []);
 
-  // Handler for schedule type change during import (auto-sets color + shift times)
+  // Handler for schedule type change during import (auto-sets color + shift times + mode)
   const handleImportTypeChange = useCallback((type: ScheduleType) => {
     setScheduleType(type);
     setImportColor(DEFAULT_SCHEDULE_COLORS[type]);
     applyDefaultShiftTimes(type);
+    setScheduleMode(type === 'work' ? 'recurring' : 'monthly');
   }, [applyDefaultShiftTimes]);
 
-  // Handler for schedule type change during manual creation (auto-sets color + shift times)
+  // Handler for schedule type change during manual creation (auto-sets color + shift times + mode)
   const handleManualTypeChange = useCallback((type: ScheduleType) => {
     setScheduleType(type);
     setColor(DEFAULT_SCHEDULE_COLORS[type]);
     applyDefaultShiftTimes(type);
+    setScheduleMode(type === 'work' ? 'recurring' : 'monthly');
   }, [applyDefaultShiftTimes]);
 
   const handleClose = () => {
@@ -1584,63 +1586,6 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                                 <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
                               </TouchableOpacity>
                             )}
-                          </View>
-
-                          <View style={styles.inputSection}>
-                            <Text style={[styles.inputLabel, { color: theme.text }]}>Режим графика</Text>
-                            <View style={styles.modeRow}>
-                              <TouchableOpacity
-                                onPress={() => setScheduleMode('monthly')}
-                                style={[
-                                  styles.modeCard,
-                                  { backgroundColor: theme.card, borderColor: theme.border },
-                                  scheduleMode === 'monthly' && { borderColor: theme.primary, borderWidth: 2 },
-                                ]}
-                              >
-                                <View style={[
-                                  styles.modeIconContainer,
-                                  { backgroundColor: scheduleMode === 'monthly' ? theme.primary : theme.backgroundSecondary }
-                                ]}>
-                                  <Ionicons
-                                    name="calendar-outline"
-                                    size={24}
-                                    color={scheduleMode === 'monthly' ? '#FFFFFF' : theme.textSecondary}
-                                  />
-                                </View>
-                                <Text style={[
-                                  styles.modeLabel,
-                                  { color: scheduleMode === 'monthly' ? theme.primary : theme.text }
-                                ]}>
-                                  {SCHEDULE_MODE_LABELS.monthly}
-                                </Text>
-                              </TouchableOpacity>
-
-                              <TouchableOpacity
-                                onPress={() => setScheduleMode('recurring')}
-                                style={[
-                                  styles.modeCard,
-                                  { backgroundColor: theme.card, borderColor: theme.border },
-                                  scheduleMode === 'recurring' && { borderColor: theme.primary, borderWidth: 2 },
-                                ]}
-                              >
-                                <View style={[
-                                  styles.modeIconContainer,
-                                  { backgroundColor: scheduleMode === 'recurring' ? theme.primary : theme.backgroundSecondary }
-                                ]}>
-                                  <Ionicons
-                                    name="sync-outline"
-                                    size={24}
-                                    color={scheduleMode === 'recurring' ? '#FFFFFF' : theme.textSecondary}
-                                  />
-                                </View>
-                                <Text style={[
-                                  styles.modeLabel,
-                                  { color: scheduleMode === 'recurring' ? theme.primary : theme.text }
-                                ]}>
-                                  {SCHEDULE_MODE_LABELS.recurring}
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
                           </View>
 
                           <View style={styles.inputSection}>
