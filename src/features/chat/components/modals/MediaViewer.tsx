@@ -10,7 +10,6 @@ import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { GestureDetector, GestureHandlerRootView, Gesture } from 'react-native-gesture-handler';
 import * as Sharing from 'expo-sharing';
 import { Paths, File as ExpoFile } from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import { getCachedVideoUri, cacheVideo, isVideoCacheUri } from '@shared/utils/videoCache';
 import { isElectron } from '@shared/utils/platform';
 import { getElectronCachedVideoUri, cacheElectronVideo, isElectronCacheUri } from '@shared/utils/electronVideoCache';
@@ -43,6 +42,7 @@ interface MediaViewerProps {
   initialIndex?: number;
   onClose: () => void;
   onForward?: (item: MediaItem) => void;
+  onDelete?: (item: MediaItem) => void;
 }
 
 export const MediaViewer: React.FC<MediaViewerProps> = ({
@@ -51,6 +51,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   initialIndex = 0,
   onClose,
   onForward,
+  onDelete,
 }) => {
   const insets = useSafeAreaInsets();
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -302,6 +303,18 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       cleanupWebBlobUrl();
     }
   }, [visible, initialIndex, mediaItems.length]);
+
+  // Adjust currentIndex when items are removed (e.g. after deletion)
+  useEffect(() => {
+    if (!visible || mediaItems.length === 0) return;
+    if (currentIndex >= mediaItems.length) {
+      const newIndex = mediaItems.length - 1;
+      setCurrentIndex(newIndex);
+      currentIndexShared.value = newIndex;
+      translateX.value = -newIndex * SCREEN_WIDTH;
+      baseTranslateX.value = -newIndex * SCREEN_WIDTH;
+    }
+  }, [mediaItems.length]);
 
   // Keyboard handling for web
   useEffect(() => {
@@ -781,52 +794,17 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   };
 
-  const handleSaveToGallery = async () => {
-    if (isSharing) return;
-
-    const currentItem = mediaItems[currentIndex];
-    if (!currentItem) return;
-
-    const isVideo = currentItem.type === 'video';
-
-    setIsSharing(true);
-    let localUri: string | null = null;
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Ошибка', 'Необходимо разрешение для сохранения в галерею');
-        return;
-      }
-
-      localUri = await downloadFileLocally(currentItem.url, isVideo);
-      if (!localUri) {
-        Alert.alert('Ошибка', `Не удалось загрузить ${isVideo ? 'видео' : 'изображение'}`);
-        return;
-      }
-
-      await MediaLibrary.saveToLibraryAsync(localUri);
-      Alert.alert('Успешно', `${isVideo ? 'Видео' : 'Изображение'} сохранено в галерею`);
-    } catch (error) {
-      console.error('Save to gallery error:', error);
-      Alert.alert('Ошибка', `Не удалось сохранить ${isVideo ? 'видео' : 'изображение'}`);
-    } finally {
-      setIsSharing(false);
-      // Don't delete cached video files — they should persist in cache
-      if (localUri && !isVideoCacheUri(localUri) && !isElectronCacheUri(localUri)) {
-        try {
-          const file = new ExpoFile(localUri);
-          if (file.exists) {
-            file.delete();
-          }
-        } catch {}
-      }
-    }
-  };
-
   const handleForward = () => {
     const currentItem = mediaItems[currentIndex];
     if (currentItem && onForward) {
       onForward(currentItem);
+    }
+  };
+
+  const handleDelete = () => {
+    const currentItem = mediaItems[currentIndex];
+    if (currentItem && onDelete) {
+      onDelete(currentItem);
     }
   };
 
@@ -931,16 +909,11 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         >
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={handleShare}
+            onPress={handleClose}
             activeOpacity={0.7}
-            disabled={isSharing}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            {isSharing ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Ionicons name="share-outline" size={26} color="#FFFFFF" />
-            )}
+            <Ionicons name="arrow-back" size={26} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             {hasMultipleItems && (
@@ -951,11 +924,16 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           </View>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={handleClose}
+            onPress={handleShare}
             activeOpacity={0.7}
+            disabled={isSharing}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="close" size={28} color="#FFFFFF" />
+            {isSharing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="share-outline" size={26} color="#FFFFFF" />
+            )}
           </TouchableOpacity>
         </Animated.View>
 
@@ -1060,17 +1038,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             </View>
           )}
           <View style={styles.bottomButtonsRow}>
-            <TouchableOpacity
-              style={styles.bottomButton}
-              onPress={handleSaveToGallery}
-              activeOpacity={0.7}
-              disabled={isSharing}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="download-outline" size={24} color="#FFFFFF" />
-              <Text style={styles.bottomButtonText}>Сохранить</Text>
-            </TouchableOpacity>
-
             {onForward && (
               <TouchableOpacity
                 style={styles.bottomButton}
@@ -1079,7 +1046,17 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons name="arrow-redo-outline" size={24} color="#FFFFFF" />
-                <Text style={styles.bottomButtonText}>Переслать</Text>
+              </TouchableOpacity>
+            )}
+
+            {onDelete && (
+              <TouchableOpacity
+                style={[styles.bottomButton, { marginLeft: 'auto' }]}
+                onPress={handleDelete}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
               </TouchableOpacity>
             )}
           </View>

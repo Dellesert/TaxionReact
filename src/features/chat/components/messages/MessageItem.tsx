@@ -494,6 +494,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             setShowMediaViewer(false);
             onForward(mediaMessage);
           } : undefined}
+          onDelete={onDelete ? () => {
+            setShowMediaViewer(false);
+            onDelete(message.id, 'everyone');
+          } : undefined}
         />
       )}
     </View>

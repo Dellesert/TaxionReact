@@ -533,6 +533,14 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
 };
 
 /**
+ * Delete a single attachment from a message
+ * If it's the last attachment and no text, the whole message is deleted
+ */
+export const deleteAttachment = async (messageId: number, attachmentId: number): Promise<void> => {
+  await api.delete(API_ENDPOINTS.MESSAGE.DELETE_ATTACHMENT(messageId, attachmentId));
+};
+
+/**
  * Mark message as read
  */
 export const markMessageRead = async (messageId: number): Promise<void> => {

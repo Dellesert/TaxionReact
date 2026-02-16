@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useCallback, useState, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -586,6 +586,48 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     handleForward(mediaMessage as any);
   }, [chatIdNum, currentUser?.id, handleForward]);
 
+  const handleGlobalMediaDelete = useCallback((item: MediaItem) => {
+    const allAttachments = chatAttachmentsCacheRef.current;
+    if (!allAttachments) return;
+
+    const attachment = allAttachments.find((att: Attachment) => att.id === item.attachmentId);
+    if (!attachment) return;
+
+    Alert.alert(
+      'Удалить медиа',
+      'Вы уверены, что хотите удалить это медиа?',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await chatApi.deleteAttachment(attachment.message_id, attachment.id);
+
+              // Remove from cache
+              chatAttachmentsCacheRef.current = allAttachments.filter(
+                (att: Attachment) => att.id !== attachment.id
+              );
+
+              // Update media viewer items
+              setGlobalMediaItems(prev => {
+                const updated = prev.filter(m => m.attachmentId !== item.attachmentId);
+                if (updated.length === 0) {
+                  setGlobalMediaViewerVisible(false);
+                }
+                return updated;
+              });
+            } catch (error) {
+              console.error('Failed to delete attachment:', error);
+              Alert.alert('Ошибка', 'Не удалось удалить медиа');
+            }
+          },
+        },
+      ],
+    );
+  }, []);
+
   // UI state - show loading only if messages are not ready AND loader should be visible
   // This creates a delayed loading indicator (appears only after 1.5s)
   if (!messagesReady) {
@@ -727,6 +769,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         initialIndex={globalMediaInitialIndex}
         onClose={handleGlobalMediaViewerClose}
         onForward={handleGlobalMediaForward}
+        onDelete={handleGlobalMediaDelete}
       />
     </View>
   );

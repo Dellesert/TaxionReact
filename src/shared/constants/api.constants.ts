@@ -124,6 +124,7 @@ export const API_ENDPOINTS = {
     BY_ID: (id: number) => `/messages/${id}`,
     UPDATE: (id: number) => `/messages/${id}`,
     DELETE: (id: number) => `/messages/${id}`,
+    DELETE_ATTACHMENT: (messageId: number, attachmentId: number) => `/messages/${messageId}/attachments/${attachmentId}`,
     DELETE_PERMANENT: (id: number) => `/messages/${id}/permanent`,
     RESTORE: (id: number) => `/messages/${id}/restore`,
     PIN: (id: number) => `/messages/${id}/pin`,
