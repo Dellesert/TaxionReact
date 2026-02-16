@@ -253,31 +253,12 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   };
 
   const uploadFiles = async (files: (File | { uri: string; name: string; type: string })[], assets?: ImagePicker.ImagePickerAsset[]) => {
-    // Check attachment limit
-    const availableSlots = FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE - currentAttachmentCount;
-
-    if (availableSlots <= 0) {
-      showErrorToast(
-        null,
-        `Можно прикрепить не более ${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} файлов`
-      );
-      return;
-    }
-
-    // If user selected more than available slots, take only first N
-    let filesToProcess = files;
-    let showLimitWarning = false;
-
-    if (files.length > availableSlots) {
-      filesToProcess = files.slice(0, availableSlots);
-      showLimitWarning = true;
-    }
-
-    // Separate video files from non-video files
+    // Note: Limit checks are done in useChatActions hooks to avoid race conditions
+    // Just process all files - the callbacks will handle the limit
     const videoFiles: PendingVideoFile[] = [];
     const nonVideoFiles: (File | { uri: string; name: string; type: string })[] = [];
 
-    filesToProcess.forEach((file, index) => {
+    files.forEach((file, index) => {
       const mimeType = file instanceof File ? file.type : file.type;
       if ((mimeType.startsWith('video/') || mimeType.startsWith('image/')) && onPendingVideoFiles) {
         const asset = assets?.[index];
@@ -337,14 +318,6 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         setUploading(false);
         setProgress(0);
       }
-    }
-
-    // Show warning if we truncated the selection
-    if (showLimitWarning) {
-      showErrorToast(
-        null,
-        `Выбрано ${files.length} файлов, но прикреплено только ${filesToProcess.length}. Лимит: ${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} файлов.`
-      );
     }
   };
 
