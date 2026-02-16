@@ -290,10 +290,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
               attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined
             );
           } else {
-            const fullUrl = Platform.OS === 'web' && blobUrls[attachment.id]
-              ? blobUrls[attachment.id]
-              : replaceLocalhostWithIP(attachment.file_url);
-            onImagePress(fullUrl);
+            onImagePress(replaceLocalhostWithIP(attachment.file_url));
           }
         }}
         onLongPress={onLongPress}
