@@ -505,9 +505,10 @@ export default React.memo(MessageItem, (prevProps, nextProps) => {
     prevProps.isSelected !== nextProps.isSelected ||
     prevProps.isSavedChat !== nextProps.isSavedChat ||
     prevProps.searchQuery !== nextProps.searchQuery ||
-    // Оптимистичные обновления - проверяем статус отправки
+    // Оптимистичные обновления - проверяем статус отправки и прогресс загрузки
     (prevProps.message as any).sending !== (nextProps.message as any).sending ||
-    (prevProps.message as any).failed !== (nextProps.message as any).failed
+    (prevProps.message as any).failed !== (nextProps.message as any).failed ||
+    (prevProps.message as any).upload_progress !== (nextProps.message as any).upload_progress
   ) {
     return false;
   }

@@ -458,10 +458,14 @@ export const sendMessage = async (chatId: number, data: SendMessageDto): Promise
     { ...data, chat_id: chatId }
   );
 
-  // Normalize: convert 'type' to 'message_type' and parse poll_data
+  // Normalize: convert 'type' to 'message_type', ensure arrays are present
   const message: any = {
     ...response.data.message,
     message_type: (response.data.message as any).type || response.data.message.message_type || 'text',
+    attachments: response.data.message.attachments || [],
+    reactions: response.data.message.reactions || [],
+    read_by: response.data.message.read_by || [],
+    is_pinned: response.data.message.is_pinned || false,
   };
 
   // Parse poll_data if it's a JSON string

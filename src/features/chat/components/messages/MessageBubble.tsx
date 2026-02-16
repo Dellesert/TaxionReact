@@ -199,11 +199,8 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     }
   }, [onDoubleTap, message.message_type, message.poll_data, message.task_data, onPollPress, onTaskPress, isTaskMessage, parsedTaskData]);
 
-  // Проверяем, есть ли файловые вложения (не изображения)
-  const hasFileAttachments = message.attachments?.some(a => {
-    const mimeType = a.mime_type || a.file_type || '';
-    return !mimeType.startsWith('image/');
-  });
+  // Проверяем, есть ли вложения (любого типа) — для width: 100% контейнера
+  const hasAttachments = message.attachments && message.attachments.length > 0;
 
   return (
     <TouchableOpacity
@@ -296,7 +293,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
           </>
         ) : (
           <>
-            <View style={[styles.messageContent, hasFileAttachments && styles.messageContentWithFiles]}>
+            <View style={[styles.messageContent, hasAttachments && styles.messageContentWithFiles]}>
               {messageContent && messageContent.length > 0 && (
                 <FormattedText
                   text={messageContent}
@@ -570,9 +567,10 @@ export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, next
     return false;
   }
 
-  // Проверяем статусы отправки (для MessageStatus)
+  // Проверяем статусы отправки и прогресс загрузки
   if ((prevProps.message as any).sending !== (nextProps.message as any).sending ||
-      (prevProps.message as any).failed !== (nextProps.message as any).failed) {
+      (prevProps.message as any).failed !== (nextProps.message as any).failed ||
+      (prevProps.message as any).upload_progress !== (nextProps.message as any).upload_progress) {
     return false;
   }
 
