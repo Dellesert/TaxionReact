@@ -66,6 +66,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const progressBarWidthRef = useRef(0);
   const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSeekingRef = useRef(false);
+  const webBlobUrlRef = useRef<string | null>(null);
+  const webAbortControllerRef = useRef<AbortController | null>(null);
 
   // Shared values for gallery
   const translateX = useSharedValue(0);
@@ -120,25 +122,73 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   const progress = videoDuration > 0 ? (currentTime / videoDuration) * 100 : 0;
 
-  // Resolve video source: use cached local file if available, otherwise stream from remote
-  const getVideoSource = (item: MediaItem) => {
+  // Cleanup web blob URL to avoid memory leaks
+  const cleanupWebBlobUrl = () => {
+    if (webBlobUrlRef.current) {
+      URL.revokeObjectURL(webBlobUrlRef.current);
+      webBlobUrlRef.current = null;
+    }
+  };
+
+  // Load and play video — on web, fetches with auth headers and creates blob URL
+  // because HTML5 <video> element cannot send custom headers.
+  // Reads session ID directly from storage to avoid race condition with state.
+  const loadAndPlayVideo = async (item: MediaItem) => {
+    webAbortControllerRef.current?.abort();
+    cleanupWebBlobUrl();
+    setVideoLoading(true);
+
+    // Read session ID directly from storage (sessionId state may be null on first render)
+    const currentSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+
     if (Platform.OS === 'web') {
-      return { uri: item.url, headers: sessionId ? { 'X-Session-ID': sessionId } : undefined };
+      const isPublicFile = item.url.includes('/files/public/');
+
+      if (!isPublicFile && currentSessionId) {
+        const controller = new AbortController();
+        webAbortControllerRef.current = controller;
+
+        try {
+          const response = await fetch(item.url, {
+            headers: { 'X-Session-ID': currentSessionId },
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+          const blob = await response.blob();
+          if (controller.signal.aborted) return;
+
+          const blobUrl = URL.createObjectURL(blob);
+          webBlobUrlRef.current = blobUrl;
+          player.replace({ uri: blobUrl });
+        } catch (error) {
+          if ((error as Error).name === 'AbortError') return;
+          console.error('[MediaViewer] Web video load failed:', error);
+          setVideoLoading(false);
+          return;
+        }
+      } else {
+        player.replace({ uri: item.url });
+      }
+    } else {
+      // Native: use cache + streaming with headers
+      const cachedUri = getCachedVideoUri(item.url);
+      if (cachedUri) {
+        player.replace({ uri: cachedUri });
+      } else {
+        if (currentSessionId) {
+          cacheVideo(item.url, currentSessionId).catch((err) =>
+            console.warn('[MediaViewer] Background video cache failed:', err),
+          );
+        }
+        player.replace({
+          uri: item.url,
+          headers: currentSessionId ? { 'X-Session-ID': currentSessionId } : undefined,
+        });
+      }
     }
 
-    const cachedUri = getCachedVideoUri(item.url);
-    if (cachedUri) {
-      return { uri: cachedUri }; // Local file, no auth headers needed
-    }
-
-    // Not cached yet — stream from remote and cache in background
-    if (sessionId) {
-      cacheVideo(item.url, sessionId).catch((err) =>
-        console.warn('[MediaViewer] Background video cache failed:', err),
-      );
-    }
-
-    return { uri: item.url, headers: sessionId ? { 'X-Session-ID': sessionId } : undefined };
+    player.play();
   };
 
   useEffect(() => {
@@ -193,9 +243,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       clearAutoHideTimer();
 
       if (item?.type === 'video') {
-        setVideoLoading(true);
-        player.replace(getVideoSource(item));
-        player.play();
+        loadAndPlayVideo(item);
       } else {
         player.pause();
       }
@@ -205,6 +253,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       setIsPlaying(false);
       setVideoLoading(false);
       clearAutoHideTimer();
+      webAbortControllerRef.current?.abort();
+      cleanupWebBlobUrl();
     }
   }, [visible, initialIndex, mediaItems.length]);
 
@@ -308,9 +358,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
     // Load video if navigating to a video slide
     if (newItem?.type === 'video') {
-      setVideoLoading(true);
-      player.replace(getVideoSource(newItem));
-      player.play();
+      loadAndPlayVideo(newItem);
     }
   };
 
