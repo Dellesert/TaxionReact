@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Modal, View, StyleSheet, Text, Platform, Dimensions, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Modal, View, StyleSheet, Text, Platform, Alert, ActivityIndicator, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { BlurView } from 'expo-blur';
@@ -22,10 +22,7 @@ import Animated, {
   clamp,
 } from 'react-native-reanimated';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 const SWIPE_VELOCITY_THRESHOLD = 500;
-const IMAGE_CONTAINER_HEIGHT = SCREEN_HEIGHT * 0.8;
 
 export interface MediaItem {
   type: 'image' | 'video';
@@ -54,6 +51,9 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   onDelete,
 }) => {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const swipeThreshold = screenWidth * 0.25;
+  const imageContainerHeight = screenHeight * 0.8;
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -263,8 +263,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       controlsOpacity.value = 1;
 
       // Reset gallery position
-      translateX.value = -newIndex * SCREEN_WIDTH;
-      baseTranslateX.value = -newIndex * SCREEN_WIDTH;
+      translateX.value = -newIndex * screenWidth;
+      baseTranslateX.value = -newIndex * screenWidth;
 
       // Reset zoom
       scale.value = 1;
@@ -311,10 +311,18 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       const newIndex = mediaItems.length - 1;
       setCurrentIndex(newIndex);
       currentIndexShared.value = newIndex;
-      translateX.value = -newIndex * SCREEN_WIDTH;
-      baseTranslateX.value = -newIndex * SCREEN_WIDTH;
+      translateX.value = -newIndex * screenWidth;
+      baseTranslateX.value = -newIndex * screenWidth;
     }
   }, [mediaItems.length]);
+
+  // Sync gallery position when window dimensions change (desktop resize)
+  useEffect(() => {
+    if (visible) {
+      translateX.value = -currentIndex * screenWidth;
+      baseTranslateX.value = -currentIndex * screenWidth;
+    }
+  }, [screenWidth]);
 
   // Keyboard handling for web
   useEffect(() => {
@@ -423,8 +431,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const goToNext = () => {
     if (currentIndex < mediaItems.length - 1) {
       const newIndex = currentIndex + 1;
-      translateX.value = withSpring(-newIndex * SCREEN_WIDTH, { damping: 20, stiffness: 200 });
-      baseTranslateX.value = -newIndex * SCREEN_WIDTH;
+      translateX.value = withSpring(-newIndex * screenWidth, { damping: 20, stiffness: 200 });
+      baseTranslateX.value = -newIndex * screenWidth;
       updateIndex(newIndex);
     }
   };
@@ -432,8 +440,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const goToPrevious = () => {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
-      translateX.value = withSpring(-newIndex * SCREEN_WIDTH, { damping: 20, stiffness: 200 });
-      baseTranslateX.value = -newIndex * SCREEN_WIDTH;
+      translateX.value = withSpring(-newIndex * screenWidth, { damping: 20, stiffness: 200 });
+      baseTranslateX.value = -newIndex * screenWidth;
       updateIndex(newIndex);
     }
   };
@@ -441,8 +449,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const snapToIndex = (index: number) => {
     'worklet';
     const clampedIndex = clamp(index, 0, mediaItems.length - 1);
-    translateX.value = withSpring(-clampedIndex * SCREEN_WIDTH, { damping: 20, stiffness: 200 });
-    baseTranslateX.value = -clampedIndex * SCREEN_WIDTH;
+    translateX.value = withSpring(-clampedIndex * screenWidth, { damping: 20, stiffness: 200 });
+    baseTranslateX.value = -clampedIndex * screenWidth;
     runOnJS(updateIndex)(clampedIndex);
   };
 
@@ -519,11 +527,11 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   // Pinch for zoom (images and videos)
   const pinchGesture = Gesture.Pinch()
     .onStart((event) => {
-      const slideStartX = currentIndexShared.value * SCREEN_WIDTH;
+      const slideStartX = currentIndexShared.value * screenWidth;
       const focalXOnSlide = event.focalX - slideStartX;
 
-      focalX.value = focalXOnSlide - SCREEN_WIDTH / 2;
-      focalY.value = event.focalY - SCREEN_HEIGHT / 2;
+      focalX.value = focalXOnSlide - screenWidth / 2;
+      focalY.value = event.focalY - screenHeight / 2;
     })
     .onUpdate((event) => {
       const newScale = clamp(savedScale.value * event.scale, 0.5, 5);
@@ -534,8 +542,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         const newX = savedImageTranslateX.value + focalX.value * (1 - scaleDiff);
         const newY = savedImageTranslateY.value + focalY.value * (1 - scaleDiff);
 
-        const maxTranslateX = Math.max(0, (SCREEN_WIDTH * newScale - SCREEN_WIDTH) / 2);
-        const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * newScale - IMAGE_CONTAINER_HEIGHT) / 2);
+        const maxTranslateX = Math.max(0, (screenWidth * newScale - screenWidth) / 2);
+        const maxTranslateY = Math.max(0, (imageContainerHeight * newScale - imageContainerHeight) / 2);
 
         imageTranslateX.value = clamp(newX, -maxTranslateX, maxTranslateX);
         imageTranslateY.value = clamp(newY, -maxTranslateY, maxTranslateY);
@@ -552,14 +560,14 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       } else if (scale.value > 4) {
         scale.value = withSpring(4);
         savedScale.value = 4;
-        const maxTranslateX = Math.max(0, (SCREEN_WIDTH * 4 - SCREEN_WIDTH) / 2);
-        const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * 4 - IMAGE_CONTAINER_HEIGHT) / 2);
+        const maxTranslateX = Math.max(0, (screenWidth * 4 - screenWidth) / 2);
+        const maxTranslateY = Math.max(0, (imageContainerHeight * 4 - imageContainerHeight) / 2);
         savedImageTranslateX.value = clamp(imageTranslateX.value, -maxTranslateX, maxTranslateX);
         savedImageTranslateY.value = clamp(imageTranslateY.value, -maxTranslateY, maxTranslateY);
       } else {
         savedScale.value = scale.value;
-        const maxTranslateX = Math.max(0, (SCREEN_WIDTH * scale.value - SCREEN_WIDTH) / 2);
-        const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * scale.value - IMAGE_CONTAINER_HEIGHT) / 2);
+        const maxTranslateX = Math.max(0, (screenWidth * scale.value - screenWidth) / 2);
+        const maxTranslateY = Math.max(0, (imageContainerHeight * scale.value - imageContainerHeight) / 2);
         savedImageTranslateX.value = clamp(imageTranslateX.value, -maxTranslateX, maxTranslateX);
         savedImageTranslateY.value = clamp(imageTranslateY.value, -maxTranslateY, maxTranslateY);
       }
@@ -582,8 +590,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         const newX = savedImageTranslateX.value + event.translationX;
         const newY = savedImageTranslateY.value + event.translationY;
 
-        imageTranslateX.value = clampTranslation(newX, SCREEN_WIDTH, scale.value);
-        imageTranslateY.value = clampTranslation(newY, IMAGE_CONTAINER_HEIGHT, scale.value);
+        imageTranslateX.value = clampTranslation(newX, screenWidth, scale.value);
+        imageTranslateY.value = clampTranslation(newY, imageContainerHeight, scale.value);
       } else {
         // Not zoomed - gallery swipe or swipe-down-to-close
         const isHorizontal = Math.abs(event.translationX) > Math.abs(event.translationY);
@@ -592,20 +600,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           translateX.value = baseTranslateX.value + event.translationX;
         } else if (event.translationY > 0) {
           swipeDownY.value = event.translationY;
-          swipeDownOpacity.value = 1 - (event.translationY / (SCREEN_HEIGHT * 0.5));
+          swipeDownOpacity.value = 1 - (event.translationY / (screenHeight * 0.5));
         }
       }
     })
     .onEnd((event) => {
       if (scale.value > 1) {
-        savedImageTranslateX.value = clampTranslation(imageTranslateX.value, SCREEN_WIDTH, scale.value);
-        savedImageTranslateY.value = clampTranslation(imageTranslateY.value, IMAGE_CONTAINER_HEIGHT, scale.value);
+        savedImageTranslateX.value = clampTranslation(imageTranslateX.value, screenWidth, scale.value);
+        savedImageTranslateY.value = clampTranslation(imageTranslateY.value, imageContainerHeight, scale.value);
       } else {
         const isHorizontal = Math.abs(event.translationX) > Math.abs(event.translationY);
 
         if (isHorizontal && hasMultipleItems) {
           const velocityTriggered = Math.abs(event.velocityX) > SWIPE_VELOCITY_THRESHOLD;
-          const distanceTriggered = Math.abs(event.translationX) > SWIPE_THRESHOLD;
+          const distanceTriggered = Math.abs(event.translationX) > swipeThreshold;
 
           if (velocityTriggered || distanceTriggered) {
             const direction = event.translationX > 0 ? -1 : 1;
@@ -649,17 +657,17 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       } else {
         const targetScale = 2.5;
 
-        const slideStartX = currentIndexShared.value * SCREEN_WIDTH;
+        const slideStartX = currentIndexShared.value * screenWidth;
         const tapXOnSlide = event.x - slideStartX;
 
-        const tapX = tapXOnSlide - SCREEN_WIDTH / 2;
-        const tapY = event.y - SCREEN_HEIGHT / 2;
+        const tapX = tapXOnSlide - screenWidth / 2;
+        const tapY = event.y - screenHeight / 2;
 
         let newTranslateX = -tapX * (targetScale - 1);
         let newTranslateY = -tapY * (targetScale - 1);
 
-        const maxTranslateX = Math.max(0, (SCREEN_WIDTH * targetScale - SCREEN_WIDTH) / 2);
-        const maxTranslateY = Math.max(0, (IMAGE_CONTAINER_HEIGHT * targetScale - IMAGE_CONTAINER_HEIGHT) / 2);
+        const maxTranslateX = Math.max(0, (screenWidth * targetScale - screenWidth) / 2);
+        const maxTranslateY = Math.max(0, (imageContainerHeight * targetScale - imageContainerHeight) / 2);
 
         newTranslateX = clamp(newTranslateX, -maxTranslateX, maxTranslateX);
         newTranslateY = clamp(newTranslateY, -maxTranslateY, maxTranslateY);
@@ -829,16 +837,17 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
         {/* Media gallery */}
         <GestureDetector gesture={composedGesture}>
-          <Animated.View style={[styles.galleryContainer, galleryStyle]}>
+          <Animated.View style={[styles.galleryContainer, { height: screenHeight }, galleryStyle]}>
             {mediaItems.map((item, index) => {
               const shouldRender = Math.abs(index - currentIndex) <= 1;
 
               return (
-                <View key={`${index}-${item.url}`} style={styles.imageSlide}>
+                <View key={`${index}-${item.url}`} style={[styles.imageSlide, { width: screenWidth, height: screenHeight }]}>
                   <Animated.View
                     style={[
                       styles.imageContainer,
-                      index === currentIndex ? imageZoomStyle : undefined
+                      { width: screenWidth, height: imageContainerHeight },
+                      imageZoomStyle,
                     ]}
                   >
                     {shouldRender ? (
@@ -1100,17 +1109,13 @@ const styles = StyleSheet.create({
   },
   galleryContainer: {
     flexDirection: 'row',
-    height: SCREEN_HEIGHT,
   },
   imageSlide: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   imageContainer: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.8,
     justifyContent: 'center',
     alignItems: 'center',
   },
