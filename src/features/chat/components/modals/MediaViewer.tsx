@@ -503,11 +503,9 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const focalX = useSharedValue(0);
   const focalY = useSharedValue(0);
 
-  // Pinch for zoom (images only)
+  // Pinch for zoom (images and videos)
   const pinchGesture = Gesture.Pinch()
     .onStart((event) => {
-      if (isCurrentItemVideo.value) return;
-
       const slideStartX = currentIndexShared.value * SCREEN_WIDTH;
       const focalXOnSlide = event.focalX - slideStartX;
 
@@ -515,8 +513,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       focalY.value = event.focalY - SCREEN_HEIGHT / 2;
     })
     .onUpdate((event) => {
-      if (isCurrentItemVideo.value) return;
-
       const newScale = clamp(savedScale.value * event.scale, 0.5, 5);
       scale.value = newScale;
 
@@ -533,8 +529,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       }
     })
     .onEnd(() => {
-      if (isCurrentItemVideo.value) return;
-
       if (scale.value < 1) {
         scale.value = withSpring(1);
         savedScale.value = 1;
@@ -570,15 +564,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     .minPointers(1)
     .maxPointers(1)
     .onUpdate((event) => {
-      if (scale.value > 1 && !isCurrentItemVideo.value) {
-        // Zoomed image - pan with constraints
+      if (scale.value > 1) {
+        // Zoomed - pan with constraints
         const newX = savedImageTranslateX.value + event.translationX;
         const newY = savedImageTranslateY.value + event.translationY;
 
         imageTranslateX.value = clampTranslation(newX, SCREEN_WIDTH, scale.value);
         imageTranslateY.value = clampTranslation(newY, IMAGE_CONTAINER_HEIGHT, scale.value);
       } else {
-        // Not zoomed (or video) - gallery swipe or swipe-down-to-close
+        // Not zoomed - gallery swipe or swipe-down-to-close
         const isHorizontal = Math.abs(event.translationX) > Math.abs(event.translationY);
 
         if (isHorizontal && hasMultipleItems) {
@@ -590,7 +584,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       }
     })
     .onEnd((event) => {
-      if (scale.value > 1 && !isCurrentItemVideo.value) {
+      if (scale.value > 1) {
         savedImageTranslateX.value = clampTranslation(imageTranslateX.value, SCREEN_WIDTH, scale.value);
         savedImageTranslateY.value = clampTranslation(imageTranslateY.value, IMAGE_CONTAINER_HEIGHT, scale.value);
       } else {
@@ -628,12 +622,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       runOnJS(toggleControls)();
     });
 
-  // Double tap for zoom (images only)
+  // Double tap for zoom (images and videos)
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd((event) => {
-      if (isCurrentItemVideo.value) return;
-
       if (scale.value > 1) {
         scale.value = withSpring(1);
         savedScale.value = 1;
