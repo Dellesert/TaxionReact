@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { Modal, Pressable, View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
@@ -150,12 +150,12 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={Platform.OS === 'web' ? 'none' : 'fade'}
       onRequestClose={onClose}
     >
-      <BlurView intensity={80} style={styles.blurOverlay} tint="dark">
+      {Platform.OS === 'web' ? (
         <Pressable
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { backgroundColor: 'transparent' }]}
           onPress={onClose}
         >
           <View style={[
@@ -366,7 +366,211 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             )}
           </View>
         </Pressable>
-      </BlurView>
+      ) : (
+        <BlurView intensity={80} style={styles.blurOverlay} tint="dark">
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={onClose}
+          >
+            <View style={[
+              styles.contextMenu,
+              { backgroundColor: theme.backgroundSecondary, top: menuPosition.top, left: menuPosition.left }
+            ]}>
+              {/* Панель быстрых реакций */}
+              {!message.is_deleted && onReaction && (
+                <>
+                  <ReactionBar
+                    onSelectEmoji={(emoji) => {
+                      onReaction(emoji);
+                      onClose();
+                    }}
+                    existingReactions={userReactionEmojis}
+                  />
+                  <View style={[styles.separator, { backgroundColor: theme.border }]} />
+                </>
+              )}
+
+              {/* Превью выбранного сообщения */}
+              <View style={[styles.messagePreview, { backgroundColor: theme.background }]}>
+                {(() => {
+                  const preview = getMessagePreview();
+                  return (
+                    <>
+                      {preview.attachmentText ? (
+                        <>
+                          <FormattedText
+                            text={preview.text}
+                            style={[styles.previewText, { color: theme.text }]}
+                            numberOfLines={2}
+                          />
+                          <View style={[styles.previewContent, { marginTop: 6 }]}>
+                            {preview.icon && (
+                              <Ionicons
+                                name={preview.icon as any}
+                                size={16}
+                                color={theme.primary}
+                                style={styles.previewIcon}
+                              />
+                            )}
+                            <Text style={[styles.attachmentText, { color: theme.textSecondary }]} numberOfLines={1}>
+                              {preview.attachmentText}
+                            </Text>
+                          </View>
+                        </>
+                      ) : (
+                        <View style={styles.previewContent}>
+                          {preview.icon && (
+                            <Ionicons
+                              name={preview.icon as any}
+                              size={18}
+                              color={theme.primary}
+                              style={styles.previewIcon}
+                            />
+                          )}
+                          <FormattedText
+                            text={preview.text}
+                            style={[styles.previewText, { color: theme.text }]}
+                            numberOfLines={3}
+                          />
+                        </View>
+                      )}
+
+                      <Text style={[styles.previewTime, { color: theme.textSecondary }]}>
+                        {formatTime(message.created_at)}
+                      </Text>
+                    </>
+                  );
+                })()}
+              </View>
+
+              {/* Разделитель */}
+              <View style={[styles.separator, { backgroundColor: theme.border }]} />
+
+              {message.is_deleted ? (
+                <>
+                  {isAdmin && onRestore && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        onClose();
+                        onRestore(message.id);
+                      }}
+                    >
+                      <Ionicons name="reload-outline" size={20} color={theme.primary} />
+                      <Text style={[styles.menuText, { color: theme.primary }]}>Восстановить</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                <>
+                  {onReply && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        onClose();
+                        onReply(message);
+                      }}
+                    >
+                      <Ionicons name="arrow-undo-outline" size={20} color={theme.text} />
+                      <Text style={[styles.menuText, { color: theme.text }]}>Ответить</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {onEnterSelectionMode && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        onClose();
+                        onEnterSelectionMode(message.id);
+                      }}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={20} color={theme.text} />
+                      <Text style={[styles.menuText, { color: theme.text }]}>Выбрать</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleCopyMessage}
+                  >
+                    <Ionicons name="copy-outline" size={20} color={theme.text} />
+                    <Text style={[styles.menuText, { color: theme.text }]}>Скопировать</Text>
+                  </TouchableOpacity>
+
+                  {isOwnMessage && onEdit && !isForwardedMessage && message.message_type !== 'poll' && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        onClose();
+                        onEdit(message);
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={20} color={theme.text} />
+                      <Text style={[styles.menuText, { color: theme.text }]}>Изменить</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {canPinUnpin && (
+                    message.is_pinned ? (
+                      onUnpin && (
+                        <TouchableOpacity
+                          style={styles.menuItem}
+                          onPress={() => {
+                            onClose();
+                            onUnpin(message.id);
+                          }}
+                        >
+                          <Ionicons name="pin" size={20} color={theme.text} />
+                          <Text style={[styles.menuText, { color: theme.text }]}>Открепить</Text>
+                        </TouchableOpacity>
+                      )
+                    ) : (
+                      onPin && (
+                        <TouchableOpacity
+                          style={styles.menuItem}
+                          onPress={() => {
+                            onClose();
+                            onPin(message.id);
+                          }}
+                        >
+                          <Ionicons name="pin-outline" size={20} color={theme.text} />
+                          <Text style={[styles.menuText, { color: theme.text }]}>Закрепить</Text>
+                        </TouchableOpacity>
+                      )
+                    )
+                  )}
+
+                  {onForward && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        onClose();
+                        onForward(message);
+                      }}
+                    >
+                      <Ionicons name="arrow-redo-outline" size={20} color={theme.text} />
+                      <Text style={[styles.menuText, { color: theme.text }]}>Переслать</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {onDelete && !message.is_deleted && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        onClose();
+                        onDelete();
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#E94444" />
+                      <Text style={[styles.menuText, { color: '#E94444' }]}>Удалить</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
+          </Pressable>
+        </BlurView>
+      )}
     </Modal>
   );
 };
