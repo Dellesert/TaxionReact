@@ -890,6 +890,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                               contentFit="contain"
                               nativeControls={false}
                               allowsFullscreen={false}
+                              pointerEvents="none"
                             />
                           ) : (
                             // Adjacent video slides show thumbnail
