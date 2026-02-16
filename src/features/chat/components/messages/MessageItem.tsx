@@ -47,6 +47,7 @@ interface MessageItemProps {
   onRetryMessage?: (messageId: number) => void;
   isVisible?: boolean; // Добавляем флаг видимости для ленивой загрузки
   searchQuery?: string; // Поисковый запрос для подсветки текста
+  onMediaViewerOpen?: (attachmentId: number) => void; // Открытие глобального просмотра медиа (по всем вложениям чата)
 }
 
 /**
@@ -78,6 +79,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onRetryMessage,
   isVisible = true, // По умолчанию видим
   searchQuery,
+  onMediaViewerOpen,
 }) => {
   const { theme } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
@@ -261,12 +263,26 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   };
 
   const handleImagePress = (imageUrl: string) => {
+    if (onMediaViewerOpen) {
+      const attachment = message.attachments?.find(a => replaceLocalhostWithIP(a.file_url) === imageUrl);
+      if (attachment) {
+        onMediaViewerOpen(attachment.id);
+        return;
+      }
+    }
     const index = mediaItems.findIndex(item => item.url === imageUrl);
     setSelectedMediaIndex(index >= 0 ? index : 0);
     setShowMediaViewer(true);
   };
 
   const handleVideoPress = (videoUrl: string, _thumbnailUrl?: string) => {
+    if (onMediaViewerOpen) {
+      const attachment = message.attachments?.find(a => replaceLocalhostWithIP(a.file_url) === videoUrl);
+      if (attachment) {
+        onMediaViewerOpen(attachment.id);
+        return;
+      }
+    }
     const index = mediaItems.findIndex(item => item.url === videoUrl);
     setSelectedMediaIndex(index >= 0 ? index : 0);
     setShowMediaViewer(true);
@@ -453,31 +469,33 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         }}
       />
 
-      {/* Полноэкранный просмотр медиа (фото + видео) */}
-      <MediaViewer
-        visible={showMediaViewer}
-        mediaItems={mediaItems}
-        initialIndex={selectedMediaIndex}
-        onClose={() => {
-          setShowMediaViewer(false);
-          setSelectedMediaIndex(0);
-        }}
-        onForward={onForward ? (item: MediaItem) => {
-          const originalAttachment = message.attachments?.find(
-            (att) => att.id === item.attachmentId
-          );
-          if (!originalAttachment) return;
+      {/* Полноэкранный просмотр медиа (фото + видео) — только если нет глобального просмотра */}
+      {!onMediaViewerOpen && (
+        <MediaViewer
+          visible={showMediaViewer}
+          mediaItems={mediaItems}
+          initialIndex={selectedMediaIndex}
+          onClose={() => {
+            setShowMediaViewer(false);
+            setSelectedMediaIndex(0);
+          }}
+          onForward={onForward ? (item: MediaItem) => {
+            const originalAttachment = message.attachments?.find(
+              (att) => att.id === item.attachmentId
+            );
+            if (!originalAttachment) return;
 
-          const mediaMessage: Message = {
-            ...message,
-            id: 0,
-            content: '',
-            attachments: [originalAttachment],
-          };
-          setShowMediaViewer(false);
-          onForward(mediaMessage);
-        } : undefined}
-      />
+            const mediaMessage: Message = {
+              ...message,
+              id: 0,
+              content: '',
+              attachments: [originalAttachment],
+            };
+            setShowMediaViewer(false);
+            onForward(mediaMessage);
+          } : undefined}
+        />
+      )}
     </View>
   );
 };

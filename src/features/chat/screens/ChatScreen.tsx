@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback, useState } from 'react';
+import React, { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,10 @@ import { ChatScreenContent } from '../components/chat-details/ChatScreenContent'
 import { ChatModals } from '../components/modals/ChatModals';
 import { ForwardMessagesModal } from '../components/modals/ForwardMessagesModal';
 import { MessageSearchOverlay } from '../components/search/MessageSearchOverlay';
+import { MediaViewer, MediaItem } from '../components/modals/MediaViewer';
+import { Attachment } from '../types/chat.types';
+import * as chatApi from '../api/chat.api';
+import { replaceLocalhostWithIP } from '../utils/message.utils';
 import {
   canDeleteForEveryone as checkCanDeleteForEveryone,
   getUserRoleInChat,
@@ -507,6 +511,81 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }, 100);
   };
 
+  // === Глобальный просмотр медиа (по всем вложениям чата) ===
+  const [globalMediaViewerVisible, setGlobalMediaViewerVisible] = useState(false);
+  const [globalMediaItems, setGlobalMediaItems] = useState<MediaItem[]>([]);
+  const [globalMediaInitialIndex, setGlobalMediaInitialIndex] = useState(0);
+  const chatAttachmentsCacheRef = useRef<Attachment[] | null>(null);
+
+  // Сброс кеша при смене чата
+  useEffect(() => {
+    chatAttachmentsCacheRef.current = null;
+  }, [chatIdNum]);
+
+  const handleMediaViewerOpen = useCallback(async (attachmentId: number) => {
+    try {
+      let allAttachments = chatAttachmentsCacheRef.current;
+
+      if (!allAttachments) {
+        const { attachments } = await chatApi.getChatAttachments(chatIdNum, 100, 0);
+        allAttachments = attachments || [];
+        chatAttachmentsCacheRef.current = allAttachments;
+      }
+
+      // Фильтруем только медиа (изображения + видео)
+      const mediaAttachments = allAttachments.filter(
+        (att: Attachment) => att.file_type === 'image' || att.file_type === 'video'
+      );
+
+      // Разворачиваем: API возвращает DESC (новые первые), а в галерее
+      // свайп вправо должен вести к более новым фото (как в чате)
+      const items: MediaItem[] = mediaAttachments.map((att: Attachment) => ({
+        type: att.file_type === 'video' ? 'video' as const : 'image' as const,
+        url: replaceLocalhostWithIP(att.file_url),
+        thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
+        thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
+        attachmentId: att.id,
+        duration: att.duration,
+      })).reverse();
+
+      const index = items.findIndex(item => item.attachmentId === attachmentId);
+
+      setGlobalMediaItems(items);
+      setGlobalMediaInitialIndex(index >= 0 ? index : 0);
+      setGlobalMediaViewerVisible(true);
+    } catch (error) {
+      console.error('Failed to load chat attachments for media viewer:', error);
+    }
+  }, [chatIdNum]);
+
+  const handleGlobalMediaViewerClose = useCallback(() => {
+    setGlobalMediaViewerVisible(false);
+    setGlobalMediaInitialIndex(0);
+  }, []);
+
+  const handleGlobalMediaForward = useCallback((item: MediaItem) => {
+    const allAttachments = chatAttachmentsCacheRef.current;
+    if (!allAttachments) return;
+
+    const attachment = allAttachments.find((att: Attachment) => att.id === item.attachmentId);
+    if (!attachment) return;
+
+    // Создаём синтетическое сообщение для пересылки
+    const mediaMessage = {
+      id: 0,
+      chat_id: chatIdNum,
+      sender_id: currentUser?.id || 0,
+      content: '',
+      type: attachment.file_type === 'video' ? 'video' : 'image',
+      status: 'sent' as const,
+      created_at: new Date().toISOString(),
+      attachments: [attachment],
+    };
+
+    setGlobalMediaViewerVisible(false);
+    handleForward(mediaMessage as any);
+  }, [chatIdNum, currentUser?.id, handleForward]);
+
   // UI state - show loading only if messages are not ready AND loader should be visible
   // This creates a delayed loading indicator (appears only after 1.5s)
   if (!messagesReady) {
@@ -604,6 +683,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onNavigatePrev={navigateToPrev}
         onNavigateNext={navigateToNext}
         activeSearchQuery={isSearchVisible && searchQuery ? searchQuery : undefined}
+        onMediaViewerOpen={handleMediaViewerOpen}
       />
 
       <ChatModals
@@ -638,6 +718,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onSearchChange={setSearchQuery}
         onSubmitSearch={submitSearch}
         onClose={closeSearch}
+      />
+
+      {/* Глобальный просмотр медиа — по всем вложениям чата */}
+      <MediaViewer
+        visible={globalMediaViewerVisible}
+        mediaItems={globalMediaItems}
+        initialIndex={globalMediaInitialIndex}
+        onClose={handleGlobalMediaViewerClose}
+        onForward={handleGlobalMediaForward}
       />
     </View>
   );

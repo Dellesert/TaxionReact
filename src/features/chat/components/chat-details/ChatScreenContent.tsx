@@ -109,6 +109,7 @@ interface ChatScreenContentProps {
 
   // Search highlight - активный поисковый запрос для подсветки текста
   activeSearchQuery?: string;
+  onMediaViewerOpen?: (attachmentId: number) => void;
 }
 
 export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
@@ -188,6 +189,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   onNavigatePrev,
   onNavigateNext,
   activeSearchQuery,
+  onMediaViewerOpen,
 }) => {
   const { isDark, theme } = useTheme();
 
@@ -281,6 +283,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           onFlashListLoad={onFlashListLoad}
           isPositionReady={isPositionReady}
           searchQuery={activeSearchQuery}
+          onMediaViewerOpen={onMediaViewerOpen}
         />
 
         {Platform.OS !== 'web' && (
