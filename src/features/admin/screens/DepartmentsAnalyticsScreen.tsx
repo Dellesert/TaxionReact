@@ -3,7 +3,7 @@
  * Статистика по отделам
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
 import {
   getDepartmentTaskStats,
   type PeriodType,
@@ -48,10 +49,23 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
 
-  // Clear TitleBar controls when entering departments analytics
+  // Handle back navigation
+  const handleGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  // TitleBar controls for Electron
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron) return null;
+    return <TitleBarBackButton onGoBack={handleGoBack} />;
+  }, [isElectron, handleGoBack]);
+
+  // Integrate with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Статистика отделов',
-    leftControls: null,
+    leftControls: titleBarLeftControls,
     rightControls: null,
     enabled: isElectron,
   });
@@ -327,15 +341,17 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
   if (isLoading && departmentStats.length === 0) {
     return (
       <View style={dynamicStyles.container}>
-        <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
-          <View style={dynamicStyles.header}>
-            <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color={theme.primary} />
-            </TouchableOpacity>
-            <Text style={dynamicStyles.headerTitle}>Статистика отделов</Text>
-            <View style={dynamicStyles.headerRight} />
-          </View>
-        </SafeAreaView>
+        {!isElectron && (
+          <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+            <View style={dynamicStyles.header}>
+              <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
+                <Ionicons name="arrow-back" size={24} color={theme.primary} />
+              </TouchableOpacity>
+              <Text style={dynamicStyles.headerTitle}>Статистика отделов</Text>
+              <View style={dynamicStyles.headerRight} />
+            </View>
+          </SafeAreaView>
+        )}
         <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={dynamicStyles.loadingText}>Загрузка данных...</Text>
@@ -346,15 +362,17 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
-        <View style={dynamicStyles.header}>
-          <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={theme.primary} />
-          </TouchableOpacity>
-          <Text style={dynamicStyles.headerTitle}>Статистика отделов</Text>
-          <View style={dynamicStyles.headerRight} />
-        </View>
-      </SafeAreaView>
+      {!isElectron && (
+        <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color={theme.primary} />
+            </TouchableOpacity>
+            <Text style={dynamicStyles.headerTitle}>Статистика отделов</Text>
+            <View style={dynamicStyles.headerRight} />
+          </View>
+        </SafeAreaView>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}

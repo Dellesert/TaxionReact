@@ -3,7 +3,7 @@
  * Адаптированная версия основных показателей для desktop
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
 import {
   getDashboardAnalytics,
   formatBytes,
@@ -35,6 +38,30 @@ const MetricsDesktopContent: React.FC = () => {
   const gridColumns = isNarrow ? 1 : isMedium ? 2 : 3;
   const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
   const { showError } = useNotification();
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Handle back navigation
+  const handleGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  // TitleBar controls for Electron
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron) return null;
+    return <TitleBarBackButton onGoBack={handleGoBack} />;
+  }, [isElectron, handleGoBack]);
+
+  // Integrate with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Основные показатели',
+    leftControls: titleBarLeftControls,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
   const [isLoading, setIsLoading] = useState(true);
@@ -72,34 +99,6 @@ const MetricsDesktopContent: React.FC = () => {
   ];
 
   const dynamicStyles = StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    topHeader: {
-      paddingHorizontal: 16,
-      paddingTop: 20,
-      paddingBottom: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      backgroundColor: theme.backgroundSecondary,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 0,
-    },
-    backButton: {
-      padding: 8,
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: theme.text,
-      flex: 1,
-      textAlign: 'center',
-    },
-    headerRight: {
-      width: 40,
-    },
     contentWrapper: {
       padding: 16,
     },
@@ -285,20 +284,7 @@ const MetricsDesktopContent: React.FC = () => {
   }
 
   return (
-    <View style={dynamicStyles.container}>
-      {/* Top Header like in other analytics screens */}
-      <View style={dynamicStyles.topHeader}>
-        <TouchableOpacity
-          style={dynamicStyles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.primary} />
-        </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>Основные показатели</Text>
-        <View style={dynamicStyles.headerRight} />
-      </View>
-
-      <ScrollView
+    <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={dynamicStyles.contentWrapper}
         showsVerticalScrollIndicator={false}
@@ -531,7 +517,6 @@ const MetricsDesktopContent: React.FC = () => {
         </View>
       )}
       </ScrollView>
-    </View>
   );
 };
 

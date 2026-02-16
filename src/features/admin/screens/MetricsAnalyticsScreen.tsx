@@ -3,7 +3,7 @@
  * Основные показатели системы
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
 import {
   getDashboardAnalytics,
   formatBytes,
@@ -41,10 +42,23 @@ const MetricsAnalyticsScreen: React.FC = () => {
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
 
-  // Clear TitleBar controls when entering metrics screen
+  // Handle back navigation
+  const handleGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  // TitleBar controls for Electron
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron) return null;
+    return <TitleBarBackButton onGoBack={handleGoBack} />;
+  }, [isElectron, handleGoBack]);
+
+  // Integrate with TitleBar in Electron
   useTitleBarControlsIntegration({
-    pageTitle: 'Аналитика',
-    leftControls: null,
+    pageTitle: 'Основные показатели',
+    leftControls: titleBarLeftControls,
     rightControls: null,
     enabled: isElectron,
   });
@@ -242,15 +256,17 @@ const MetricsAnalyticsScreen: React.FC = () => {
   if (isLoading && !dashboardData) {
     return (
       <View style={dynamicStyles.container}>
-        <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
-          <View style={dynamicStyles.header}>
-            <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color={theme.primary} />
-            </TouchableOpacity>
-            <Text style={dynamicStyles.headerTitle}>Основные показатели</Text>
-            <View style={dynamicStyles.headerRight} />
-          </View>
-        </SafeAreaView>
+        {!isElectron && (
+          <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+            <View style={dynamicStyles.header}>
+              <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
+                <Ionicons name="arrow-back" size={24} color={theme.primary} />
+              </TouchableOpacity>
+              <Text style={dynamicStyles.headerTitle}>Основные показатели</Text>
+              <View style={dynamicStyles.headerRight} />
+            </View>
+          </SafeAreaView>
+        )}
         <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={dynamicStyles.loadingText}>Загрузка показателей...</Text>
@@ -261,15 +277,17 @@ const MetricsAnalyticsScreen: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
-        <View style={dynamicStyles.header}>
-          <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={theme.primary} />
-          </TouchableOpacity>
-          <Text style={dynamicStyles.headerTitle}>Основные показатели</Text>
-          <View style={dynamicStyles.headerRight} />
-        </View>
-      </SafeAreaView>
+      {!isElectron && (
+        <SafeAreaView style={{ backgroundColor: theme.backgroundSecondary }} edges={['top']}>
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity style={dynamicStyles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color={theme.primary} />
+            </TouchableOpacity>
+            <Text style={dynamicStyles.headerTitle}>Основные показатели</Text>
+            <View style={dynamicStyles.headerRight} />
+          </View>
+        </SafeAreaView>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}

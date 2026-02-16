@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
 import {
   getDashboardAnalytics,
   getTopPerformers,
@@ -41,6 +43,30 @@ const AnalyticsScreen: React.FC = () => {
   const [topPerformers, setTopPerformers] = useState<EmployeePerformance[]>([]);
   const [departmentStats, setDepartmentStats] = useState<DepartmentTaskStats[]>([]);
   const [securityData, setSecurityData] = useState<SecurityDashboardData | null>(null);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Handle back navigation
+  const handleGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  // TitleBar controls for Electron
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron) return null;
+    return <TitleBarBackButton onGoBack={handleGoBack} />;
+  }, [isElectron, handleGoBack]);
+
+  // Integrate with TitleBar in Electron
+  useTitleBarControlsIntegration({
+    pageTitle: 'Аналитика',
+    leftControls: titleBarLeftControls,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   useEffect(() => {
     loadAnalytics();
@@ -524,17 +550,19 @@ const AnalyticsScreen: React.FC = () => {
 
   if (isLoading && !dashboardData) {
     return (
-      <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
-        <View style={dynamicStyles.header}>
-          <TouchableOpacity
-            style={dynamicStyles.backButton}
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-          <Text style={dynamicStyles.headerTitle}>Аналитика</Text>
-        </View>
+      <SafeAreaView style={dynamicStyles.container} edges={isElectron ? [] : ['top', 'left', 'right']}>
+        {!isElectron && (
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity
+              style={dynamicStyles.backButton}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
+            </TouchableOpacity>
+            <Text style={dynamicStyles.headerTitle}>Аналитика</Text>
+          </View>
+        )}
         <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={dynamicStyles.loadingText}>Загрузка аналитики...</Text>
@@ -544,26 +572,28 @@ const AnalyticsScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={dynamicStyles.container} edges={isElectron ? [] : ['top', 'left', 'right']}>
       {/* Header */}
-      <View style={dynamicStyles.header}>
-        <TouchableOpacity
-          style={dynamicStyles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>Аналитика</Text>
-        <TouchableOpacity
-          style={dynamicStyles.refreshButton}
-          onPress={handleRefresh}
-          disabled={isRefreshing}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="refresh" size={24} color={theme.text} />
-        </TouchableOpacity>
-      </View>
+      {!isElectron && (
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity
+            style={dynamicStyles.backButton}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={dynamicStyles.headerTitle}>Аналитика</Text>
+          <TouchableOpacity
+            style={dynamicStyles.refreshButton}
+            onPress={handleRefresh}
+            disabled={isRefreshing}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="refresh" size={24} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}

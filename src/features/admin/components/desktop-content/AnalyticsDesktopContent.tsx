@@ -125,29 +125,6 @@ const AnalyticsDesktopContent: React.FC = () => {
       color: theme.textSecondary,
       lineHeight: 20,
     },
-    cardFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      marginTop: 16,
-      paddingTop: 16,
-      borderTopWidth: 1,
-      borderTopColor: theme.border,
-    },
-    actionButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-    },
-    actionButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.primary,
-    },
   });
 
   return (
@@ -171,12 +148,6 @@ const AnalyticsDesktopContent: React.FC = () => {
                   <View style={dynamicStyles.cardContent}>
                     <Text style={dynamicStyles.cardTitle}>{section.title}</Text>
                     <Text style={dynamicStyles.cardSubtitle}>{section.subtitle}</Text>
-                  </View>
-                </View>
-                <View style={dynamicStyles.cardFooter}>
-                  <View style={dynamicStyles.actionButton}>
-                    <Text style={dynamicStyles.actionButtonText}>Открыть</Text>
-                    <Ionicons name="arrow-forward" size={16} color={theme.primary} />
                   </View>
                 </View>
               </TouchableOpacity>
