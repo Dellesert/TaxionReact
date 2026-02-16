@@ -13,6 +13,7 @@ import { Message } from '../../types/chat.types';
 import { getFileIcon } from '../../utils/file.utils';
 import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
+import Avatar from '@shared/components/common/Avatar';
 
 interface PinnedMessageBannerProps {
   pinnedMessages: Message[];
@@ -254,12 +255,22 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
                     style={styles.fileIcon}
                   />
                 ) : null}
+                {currentMessage.sender && (
+                  <Avatar
+                    name={currentMessage.sender.name}
+                    imageUrl={currentMessage.sender.avatar}
+                    thumbnailUrl={currentMessage.sender.avatar_thumbnail}
+                    userId={currentMessage.sender.id}
+                    size={22}
+                    style={styles.senderAvatar}
+                  />
+                )}
                 <Text
                   style={[styles.messageText, dynamicStyles.messageText]}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {currentMessage.sender?.name ? `${currentMessage.sender.name}: ` : ''}{preview.text}
+                  {preview.text}
                 </Text>
               </>
             );
@@ -333,6 +344,9 @@ const styles = StyleSheet.create({
   fileIcon: {
     marginRight: 6,
     marginTop: 2,
+  },
+  senderAvatar: {
+    marginRight: 6,
   },
   messageText: {
     fontSize: 14,
