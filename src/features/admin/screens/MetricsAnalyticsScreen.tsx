@@ -193,6 +193,17 @@ const MetricsAnalyticsScreen: React.FC = () => {
       height: '100%',
       borderRadius: 2,
     },
+    fullWidthCard: {
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.2 : 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+      marginBottom: 16,
+    },
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
@@ -280,6 +291,7 @@ const MetricsAnalyticsScreen: React.FC = () => {
         </View>
 
         {dashboardData ? (
+          <>
           <View style={dynamicStyles.metricsGrid}>
             {/* Active Users */}
             <View style={dynamicStyles.metricCard}>
@@ -412,38 +424,38 @@ const MetricsAnalyticsScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Task Stats Details */}
-            <View style={[dynamicStyles.metricCard, { width: '100%', maxWidth: '100%' }]}>
-              <View style={dynamicStyles.metricCardInner}>
-                <View style={dynamicStyles.metricHeader}>
-                  <View style={[dynamicStyles.metricIcon, { backgroundColor: '#6366F1' }]}>
-                    <Ionicons name="stats-chart" size={20} color="#FFFFFF" />
-                  </View>
-                </View>
-                <Text style={dynamicStyles.metricLabel}>Детальная статистика задач</Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
-                  <View>
-                    <Text style={[dynamicStyles.metricValue, { fontSize: 20 }]}>
-                      {dashboardData.stats.tasks.in_progress || 0}
-                    </Text>
-                    <Text style={dynamicStyles.metricSubtext}>В работе</Text>
-                  </View>
-                  <View>
-                    <Text style={[dynamicStyles.metricValue, { fontSize: 20, color: '#EF4444' }]}>
-                      {dashboardData.stats.tasks.overdue || 0}
-                    </Text>
-                    <Text style={dynamicStyles.metricSubtext}>Просрочено</Text>
-                  </View>
-                  <View>
-                    <Text style={[dynamicStyles.metricValue, { fontSize: 20, color: '#10B981' }]}>
-                      {(dashboardData.stats.tasks.completion_rate || 0).toFixed(0)}%
-                    </Text>
-                    <Text style={dynamicStyles.metricSubtext}>Выполнение</Text>
-                  </View>
-                </View>
+          </View>
+
+          {/* Task Stats Details */}
+          <View style={dynamicStyles.fullWidthCard}>
+            <View style={dynamicStyles.metricHeader}>
+              <View style={[dynamicStyles.metricIcon, { backgroundColor: '#6366F1' }]}>
+                <Ionicons name="stats-chart" size={20} color="#FFFFFF" />
+              </View>
+            </View>
+            <Text style={dynamicStyles.metricLabel}>Детальная статистика задач</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+              <View>
+                <Text style={[dynamicStyles.metricValue, { fontSize: 20 }]}>
+                  {dashboardData.stats.tasks.in_progress || 0}
+                </Text>
+                <Text style={dynamicStyles.metricSubtext}>В работе</Text>
+              </View>
+              <View>
+                <Text style={[dynamicStyles.metricValue, { fontSize: 20, color: '#EF4444' }]}>
+                  {dashboardData.stats.tasks.overdue || 0}
+                </Text>
+                <Text style={dynamicStyles.metricSubtext}>Просрочено</Text>
+              </View>
+              <View>
+                <Text style={[dynamicStyles.metricValue, { fontSize: 20, color: '#10B981' }]}>
+                  {(dashboardData.stats.tasks.completion_rate || 0).toFixed(0)}%
+                </Text>
+                <Text style={dynamicStyles.metricSubtext}>Выполнение</Text>
               </View>
             </View>
           </View>
+          </>
         ) : (
           <View style={dynamicStyles.emptyState}>
             <Ionicons name="bar-chart-outline" size={64} color={theme.textTertiary} />
