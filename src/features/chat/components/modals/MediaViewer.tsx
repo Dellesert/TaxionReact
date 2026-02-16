@@ -294,6 +294,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     } else {
       // Cleanup on close
       player.pause();
+      player.replace(null);
       setIsPlaying(false);
       setVideoLoading(false);
       clearAutoHideTimer();
