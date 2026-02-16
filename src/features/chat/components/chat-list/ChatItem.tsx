@@ -34,6 +34,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showClearSavedModal, setShowClearSavedModal] = useState(false);
   const [clearHistory, setClearHistory] = useState(false);
@@ -222,6 +223,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   const handleLongPress = () => {
     if (!isEditMode) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setMenuPosition(null);
       setShowContextMenu(true);
     }
   };
@@ -235,6 +237,24 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
       const handler = (e: MouseEvent) => {
         e.preventDefault();
         if (!isEditMode) {
+          const screenWidth = window.innerWidth;
+          const screenHeight = window.innerHeight;
+          const menuWidth = 300;
+          const menuHeight = 280;
+
+          let left = e.pageX;
+          let top = e.pageY;
+
+          if (left + menuWidth > screenWidth) {
+            left = screenWidth - menuWidth - 10;
+          }
+          if (top + menuHeight > screenHeight) {
+            top = screenHeight - menuHeight - 10;
+          }
+          left = Math.max(10, left);
+          top = Math.max(10, top);
+
+          setMenuPosition({ top, left });
           setShowContextMenu(true);
         }
       };
@@ -452,9 +472,100 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
       <Modal
         visible={showContextMenu}
         transparent
-        animationType="fade"
+        animationType={Platform.OS === 'web' ? 'none' : 'fade'}
         onRequestClose={() => setShowContextMenu(false)}
       >
+        {Platform.OS === 'web' ? (
+          <Pressable
+            style={[styles.modalOverlay, { backgroundColor: 'transparent' }, menuPosition && { justifyContent: 'flex-start', alignItems: 'flex-start' }]}
+            onPress={() => setShowContextMenu(false)}
+          >
+            <View style={[
+              styles.contextMenu,
+              { backgroundColor: theme.backgroundSecondary },
+              menuPosition && { position: 'absolute', top: menuPosition.top, left: menuPosition.left },
+            ]}>
+              {/* Название чата */}
+              <View style={[styles.chatHeader, { backgroundColor: theme.background }]}>
+                <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>
+                  {getChatName()}
+                </Text>
+              </View>
+
+              {/* Разделитель */}
+              <View style={[styles.separator, { backgroundColor: theme.border }]} />
+
+              {/* Для saved чата - только очистить */}
+              {chat.type === 'saved' ? (
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={handleClearSaved}
+                >
+                  <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
+                  <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
+                    Очистить избранное
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <>
+                  {/* Избранное */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleToggleFavorite}
+                  >
+                    <Ionicons
+                      name={chat.is_favorite ? "star" : "star-outline"}
+                      size={22}
+                      color={chat.is_favorite ? theme.warning : theme.text}
+                    />
+                    <Text style={[styles.menuText, { color: theme.text }]}>
+                      {chat.is_favorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Закрепить/открепить */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleTogglePinned}
+                  >
+                    <Ionicons
+                      name={chat.is_pinned ? "pin" : "pin-outline"}
+                      size={22}
+                      color={chat.is_pinned ? theme.primary : theme.text}
+                    />
+                    <Text style={[styles.menuText, { color: theme.text }]}>
+                      {chat.is_pinned ? 'Открепить' : 'Закрепить'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Пометить как прочитанное */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleMarkAsRead}
+                  >
+                    <Ionicons name="checkmark-done-outline" size={22} color={theme.text} />
+                    <Text style={[styles.menuText, { color: theme.text }]}>
+                      Пометить как прочитанное
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Удалить */}
+                  {onDelete && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={handleDelete}
+                    >
+                      <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
+                      <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
+                        Удалить
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
+          </Pressable>
+        ) : (
         <BlurView intensity={80} style={styles.blurOverlay} tint="dark">
           <Pressable
             style={styles.modalOverlay}
@@ -542,6 +653,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
             </View>
           </Pressable>
         </BlurView>
+        )}
       </Modal>
 
       {/* Delete Modal */}
