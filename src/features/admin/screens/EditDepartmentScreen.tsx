@@ -18,6 +18,7 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
 import * as userApi from '@api/user.api';
 import { User } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
+import { ActionMenu } from '@shared/components/common/ActionMenu';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { AdminStackParamList } from '@navigation/types';
 
@@ -39,6 +40,8 @@ const EditDepartmentScreen: React.FC = () => {
   const [headId, setHeadId] = useState<number | undefined>();
   const [showUserSelector, setShowUserSelector] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -170,6 +173,36 @@ const EditDepartmentScreen: React.FC = () => {
     }
   };
 
+  const handleDeleteDepartment = async () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Вы уверены, что хотите удалить отдел "${name}"?`);
+      if (!confirmed) return;
+    } else {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        showConfirm(
+          'Удаление отдела',
+          `Вы уверены, что хотите удалить отдел "${name}"?`,
+          () => resolve(true),
+          () => resolve(false),
+          { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
+        );
+      });
+      if (!confirmed) return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await userApi.deleteDepartment(departmentId);
+      showSuccess('Отдел удалён');
+      navigation.goBack();
+    } catch (error: any) {
+      console.error('Failed to delete department:', error);
+      showError('Не удалось удалить отдел');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>
@@ -189,7 +222,7 @@ const EditDepartmentScreen: React.FC = () => {
             <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование отдела</Text>
-          <View style={{ width: 40, alignItems: 'flex-end' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TouchableOpacity
               onPress={handleSave}
               disabled={isSaving}
@@ -200,6 +233,12 @@ const EditDepartmentScreen: React.FC = () => {
               ) : (
                 <Ionicons name="checkmark" size={24} color={theme.primary} />
               )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowActionMenu(true)}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -291,6 +330,22 @@ const EditDepartmentScreen: React.FC = () => {
             )}
           </View>
         </ScrollView>
+
+        {/* Action Menu */}
+        <ActionMenu
+          visible={showActionMenu}
+          onClose={() => setShowActionMenu(false)}
+          items={[
+            {
+              key: 'delete',
+              icon: 'trash-outline',
+              label: 'Удалить отдел',
+              color: '#EF4444',
+              onPress: handleDeleteDepartment,
+              disabled: isDeleting,
+            },
+          ]}
+        />
 
         {/* User Selector Modal */}
         <UserSelectorModal

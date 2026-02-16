@@ -15,7 +15,6 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { useActionModal } from '@shared/contexts/ActionModalContext';
 import * as userApi from '@api/user.api';
 import { Department } from '@/types/user.types';
 
@@ -24,7 +23,6 @@ const DepartmentsScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const { showError, showSuccess } = useNotification();
-  const { showConfirm } = useActionModal();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,33 +84,6 @@ const DepartmentsScreen: React.FC = () => {
       showError('Не удалось создать отдел');
     } finally {
       setIsCreating(false);
-    }
-  };
-
-  const handleDeleteDepartment = async (department: Department) => {
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(`Вы уверены, что хотите удалить отдел "${department.name}"?`);
-      if (!confirmed) return;
-    } else {
-      const confirmed = await new Promise<boolean>((resolve) => {
-        showConfirm(
-          'Удаление отдела',
-          `Вы уверены, что хотите удалить отдел "${department.name}"?`,
-          () => resolve(true),
-          () => resolve(false),
-          { confirmText: 'Удалить', cancelText: 'Отмена', destructive: true }
-        );
-      });
-      if (!confirmed) return;
-    }
-
-    try {
-      await userApi.deleteDepartment(department.id);
-      showSuccess('Отдел удален');
-      loadDepartments();
-    } catch (error: any) {
-      console.error('Failed to delete department:', error);
-      showError('Не удалось удалить отдел');
     }
   };
 
@@ -283,46 +254,22 @@ const DepartmentsScreen: React.FC = () => {
                 }}
                 activeOpacity={0.7}
               >
-                <View style={styles.departmentHeader}>
-                  <View style={styles.departmentInfo}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <Ionicons name="business" size={20} color={theme.primary} />
-                      <Text style={dynamicStyles.departmentName}>
-                        {department.name}
-                      </Text>
-                    </View>
-                    {department.description && (
-                      <Text style={dynamicStyles.departmentDescription}>
-                        {department.description}
-                      </Text>
-                    )}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="people" size={16} color={theme.textSecondary} />
-                      <Text style={dynamicStyles.departmentMembers}>
-                        {department.user_count || department.members_count || 0} сотрудников
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={{ gap: 8 }}>
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        (navigation as any).navigate('EditDepartment', { departmentId: department.id });
-                      }}
-                    >
-                      <Ionicons name="create-outline" size={20} color={theme.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDeleteDepartment(department);
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Ionicons name="business" size={20} color={theme.primary} />
+                  <Text style={dynamicStyles.departmentName}>
+                    {department.name}
+                  </Text>
+                </View>
+                {department.description && (
+                  <Text style={dynamicStyles.departmentDescription}>
+                    {department.description}
+                  </Text>
+                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="people" size={16} color={theme.textSecondary} />
+                  <Text style={dynamicStyles.departmentMembers}>
+                    {department.user_count || department.members_count || 0} сотрудников
+                  </Text>
                 </View>
               </TouchableOpacity>
               ))}
@@ -373,22 +320,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 16,
-  },
-  departmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  departmentInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   modalOverlay: {
     position: 'absolute',
