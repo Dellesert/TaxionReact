@@ -43,6 +43,10 @@ interface CacheInfo {
     totalSize: number;
     fileCount: number;
   };
+  electronVideoCache?: {
+    totalSize: number;
+    fileCount: number;
+  };
 }
 
 /**
@@ -168,11 +172,15 @@ const StorageContent: React.FC = () => {
       }
 
       // Get Electron media cache stats
+      let electronVideoCache: { totalSize: number; fileCount: number } | undefined;
       if (isElectron()) {
         try {
           const electron = getElectronAPI();
           if (electron?.cache?.stats) {
             electronMediaCache = await electron.cache.stats();
+          }
+          if (electron?.cache?.videoStats) {
+            electronVideoCache = await electron.cache.videoStats();
           }
         } catch (e) {
           console.error('[Storage] Failed to get Electron cache stats:', e);
@@ -195,6 +203,7 @@ const StorageContent: React.FC = () => {
         cacheLimit,
         usagePercent,
         electronMediaCache,
+        electronVideoCache,
       });
     } catch (error) {
       console.error('Failed to load cache info:', error);
@@ -286,6 +295,19 @@ const StorageContent: React.FC = () => {
             setIsClearing(true);
             try {
               await clearVideoCache();
+
+              // Clear Electron video cache
+              if (isElectron()) {
+                try {
+                  const electron = getElectronAPI();
+                  if (electron?.cache?.clearVideos) {
+                    await electron.cache.clearVideos();
+                  }
+                } catch (e) {
+                  console.error('[Storage] Failed to clear Electron video cache:', e);
+                }
+              }
+
               await loadCacheInfo();
               Alert.alert('Готово', 'Кэш видео очищен');
             } catch (error) {
@@ -635,14 +657,28 @@ const StorageContent: React.FC = () => {
                 <View style={styles.rowTextContainer}>
                   <Text style={styles.rowTitle}>Видео</Text>
                   <Text style={styles.rowSubtitle}>
-                    {isNative && cacheInfo?.videoCacheFileCount
-                      ? `${cacheInfo.videoCacheFileCount} файлов`
-                      : 'Кэш видеозаписей'}
+                    {(() => {
+                      if (isElectron() && cacheInfo?.electronVideoCache) {
+                        return `${cacheInfo.electronVideoCache.fileCount} файлов`;
+                      }
+                      if (isNative && cacheInfo?.videoCacheFileCount) {
+                        return `${cacheInfo.videoCacheFileCount} файлов`;
+                      }
+                      return 'Кэш видеозаписей';
+                    })()}
                   </Text>
                 </View>
               </View>
               <Text style={styles.rowValue}>
-                {isNative ? formatBytes(cacheInfo?.videoCache || 0) : 'Системный'}
+                {(() => {
+                  if (isElectron() && cacheInfo?.electronVideoCache) {
+                    return formatBytes(cacheInfo.electronVideoCache.totalSize);
+                  }
+                  if (isNative) {
+                    return formatBytes(cacheInfo?.videoCache || 0);
+                  }
+                  return 'Системный';
+                })()}
               </Text>
             </View>
           </View>
