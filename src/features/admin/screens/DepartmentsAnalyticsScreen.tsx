@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import {
   getDepartmentTaskStats,
   type PeriodType,
@@ -43,6 +44,17 @@ const DepartmentsAnalyticsScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [departmentStats, setDepartmentStats] = useState<DepartmentTaskStats[]>([]);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering departments analytics
+  useTitleBarControlsIntegration({
+    pageTitle: 'Статистика отделов',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   useEffect(() => {
     loadDepartments();

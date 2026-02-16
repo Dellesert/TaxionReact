@@ -4,9 +4,10 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { AdminSidebarNavigation, AdminSection } from '../components/common/AdminSidebarNavigation';
 import { AdminContentArea } from '../components/common/AdminContentArea';
 
@@ -25,6 +26,17 @@ export const AdminSplitView: React.FC = () => {
 
   // Responsive sidebar width
   const sidebarWidth = width < 1024 ? 260 : 320;
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering admin section
+  useTitleBarControlsIntegration({
+    pageTitle: 'Администрирование',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   const handleSectionChange = useCallback((section: AdminSection) => {
     setActiveSection(section);

@@ -16,10 +16,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 
 const AnalyticsHubScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering analytics hub
+  useTitleBarControlsIntegration({
+    pageTitle: 'Аналитика',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   const sections = [
     {

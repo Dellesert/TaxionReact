@@ -18,6 +18,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useDebounce } from '@shared/hooks/useDebounce';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -35,6 +36,17 @@ const UsersScreen: React.FC = () => {
 
   // Debounce search query for backend search (300ms delay)
   const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering users screen
+  useTitleBarControlsIntegration({
+    pageTitle: 'Управление пользователями',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   const loadUsers = React.useCallback(async () => {
     try {

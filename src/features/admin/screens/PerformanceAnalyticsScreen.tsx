@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import {
   getTopPerformers,
   type EmployeePerformance,
@@ -38,6 +39,17 @@ const PerformanceAnalyticsScreen: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering performance analytics
+  useTitleBarControlsIntegration({
+    pageTitle: 'Производительность',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
   const [topPerformers, setTopPerformers] = useState<EmployeePerformance[]>([]);
 
   useEffect(() => {

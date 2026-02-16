@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { getUserGroups, createUserGroup } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
 
@@ -30,6 +31,17 @@ const UserGroupsScreen: React.FC = () => {
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering user groups screen
+  useTitleBarControlsIntegration({
+    pageTitle: 'Группы пользователей',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   // Check access: department_head, admin, super_admin
   if (user?.role !== 'admin' && user?.role !== 'super_admin' && user?.role !== 'department_head') {

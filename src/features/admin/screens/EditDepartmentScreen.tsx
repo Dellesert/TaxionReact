@@ -15,6 +15,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import * as userApi from '@api/user.api';
 import { User } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -42,6 +43,17 @@ const EditDepartmentScreen: React.FC = () => {
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when editing department
+  useTitleBarControlsIntegration({
+    pageTitle: 'Редактирование отдела',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   useEffect(() => {
     loadData();

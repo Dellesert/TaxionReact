@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import {
   getSecurityDashboard,
   type SecurityDashboardData,
@@ -38,6 +39,17 @@ const SecurityAnalyticsScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [securityData, setSecurityData] = useState<SecurityDashboardData | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('7d');
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering security analytics
+  useTitleBarControlsIntegration({
+    pageTitle: 'Безопасность',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   useEffect(() => {
     loadSecurityData();

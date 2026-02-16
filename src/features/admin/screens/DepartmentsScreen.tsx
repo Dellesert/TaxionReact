@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import * as userApi from '@api/user.api';
 import { Department } from '@/types/user.types';
 
@@ -29,6 +30,17 @@ const DepartmentsScreen: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newDepartmentName, setNewDepartmentName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering departments screen
+  useTitleBarControlsIntegration({
+    pageTitle: 'Управление отделами',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   // Check admin access
   if (user?.role !== 'admin' && user?.role !== 'super_admin') {

@@ -15,6 +15,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { getUserGroup, updateUserGroup, updateUserGroupMembers, deleteUserGroup } from '@api/user-group.api';
 import { ActionMenu } from '@shared/components/common/ActionMenu';
 import { User } from '@/types/user.types';
@@ -42,6 +43,17 @@ const EditUserGroupScreen: React.FC = () => {
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when editing user group
+  useTitleBarControlsIntegration({
+    pageTitle: 'Редактирование группы',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   useEffect(() => {
     loadData();

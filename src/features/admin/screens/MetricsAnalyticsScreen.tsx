@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import {
   getDashboardAnalytics,
   formatBytes,
@@ -36,6 +37,17 @@ const MetricsAnalyticsScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // Clear TitleBar controls when entering metrics screen
+  useTitleBarControlsIntegration({
+    pageTitle: 'Аналитика',
+    leftControls: null,
+    rightControls: null,
+    enabled: isElectron,
+  });
 
   useEffect(() => {
     loadAnalytics();
