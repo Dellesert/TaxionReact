@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { LinkPreview } from '../../types/chat.types';
@@ -47,7 +48,14 @@ const LinkPreviewCardComponent: React.FC<LinkPreviewCardProps> = ({ linkPreview,
         <Image
           source={{ uri: linkPreview.image }}
           style={styles.image}
-          resizeMode="cover"
+          contentFit="cover"
+          contentPosition="center"
+          transition={200}
+          cachePolicy="disk"
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+          placeholderContentFit="cover"
+          priority="normal"
+          recyclingKey={`link-preview-${linkPreview.url}`}
         />
       ) : null}
       <View style={styles.content}>
