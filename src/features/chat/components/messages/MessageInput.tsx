@@ -508,8 +508,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
   });
 
-  return (
-    <View style={Platform.OS === 'web' ? styles.rootWeb : undefined}>
+  const hasIndicators = !!(editingMessage || (replyingToMessage && !editingMessage) || selectedFileIds.length > 0 || pendingVideoFiles.length > 0);
+
+  const indicatorsContent = (
+    <>
       {/* Индикатор редактирования */}
       {editingMessage && (
         <View style={[styles.editIndicator, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
@@ -619,15 +621,28 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </TouchableOpacity>
         </View>
       )}
+    </>
+  );
 
-      {/* Тулбар форматирования — показываем при выделении текста, позиционируем абсолютно чтобы не смещать инпут */}
-      {hasSelection && Platform.OS === 'web' && (
-        <View style={styles.formattingToolbarWeb}>
-          <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} onClose={handleCloseFormattingToolbar} />
+  return (
+    <View style={Platform.OS === 'web' ? styles.rootWeb : undefined}>
+      {/* На вебе всё что над инпутом позиционируется абсолютно, чтобы не сдвигать его вниз */}
+      {Platform.OS === 'web' && (hasIndicators || hasSelection) && (
+        <View style={styles.floatingAboveWeb}>
+          {hasSelection && (
+            <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} onClose={handleCloseFormattingToolbar} />
+          )}
+          {indicatorsContent}
         </View>
       )}
-      {hasSelection && Platform.OS !== 'web' && (
-        <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} onClose={handleCloseFormattingToolbar} />
+      {/* На мобильных — обычный поток */}
+      {Platform.OS !== 'web' && (
+        <>
+          {indicatorsContent}
+          {hasSelection && (
+            <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} onClose={handleCloseFormattingToolbar} />
+          )}
+        </>
       )}
 
       <View style={[styles.container, dynamicStyles.container]}>
@@ -846,7 +861,7 @@ const styles = StyleSheet.create({
     position: 'relative' as const,
     overflow: 'visible' as const,
   },
-  formattingToolbarWeb: {
+  floatingAboveWeb: {
     position: 'absolute' as const,
     bottom: '100%',
     left: 0,
