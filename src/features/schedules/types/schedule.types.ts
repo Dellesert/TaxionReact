@@ -13,11 +13,11 @@ export type ShiftType = 'morning' | 'evening' | 'full_day' | 'custom';
 export type ScheduleMode = 'recurring' | 'monthly';
 
 export const SCHEDULE_TYPE_LABELS: Record<ScheduleType, string> = {
-  work: 'Рабочий график',
   paid_services: 'Платные услуги',
   on_duty: 'Дежурства',
   vk: 'ВК',
   trips: 'Выезды',
+  work: 'Рабочий график',
 };
 
 export const SHIFT_TYPE_LABELS: Record<ShiftType, string> = {
@@ -257,6 +257,10 @@ export interface ImportScheduleRequest {
   type: ScheduleType;
   start_date: string;
   end_date: string;
+  morning_start?: string;
+  morning_end?: string;
+  evening_start?: string;
+  evening_end?: string;
   color?: string;
   preview?: boolean;
   user_mapping_overrides?: UserMappingOverride[]; // Переопределения сопоставлений пользователей

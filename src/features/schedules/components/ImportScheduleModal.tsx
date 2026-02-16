@@ -61,11 +61,15 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [scheduleType, setScheduleType] = useState<ScheduleType>('work');
+  const [scheduleType, setScheduleType] = useState<ScheduleType>('paid_services');
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(
     format(addMonths(new Date(), 1), 'yyyy-MM-dd')
   );
+  const [morningStart, setMorningStart] = useState('10:00');
+  const [morningEnd, setMorningEnd] = useState('14:00');
+  const [eveningStart, setEveningStart] = useState('14:30');
+  const [eveningEnd, setEveningEnd] = useState('18:00');
 
   // User mapping overrides state
   const [userMappingOverrides, setUserMappingOverrides] = useState<
@@ -80,9 +84,13 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
       setUploadedFileId(null);
       setTitle('');
       setDescription('');
-      setScheduleType('work');
+      setScheduleType('paid_services');
       setStartDate(format(new Date(), 'yyyy-MM-dd'));
       setEndDate(format(addMonths(new Date(), 1), 'yyyy-MM-dd'));
+      setMorningStart('10:00');
+      setMorningEnd('14:00');
+      setEveningStart('14:30');
+      setEveningEnd('18:00');
       setUserMappingOverrides(new Map());
       clearPreview();
       clearError();
@@ -106,6 +114,21 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
     },
     []
   );
+
+  const formatTimeInput = (value: string): string => {
+    const cleaned = value.replace(/[^\d:]/g, '');
+    if (cleaned.length === 2 && !cleaned.includes(':')) {
+      return cleaned + ':';
+    }
+    const match = cleaned.match(/^(\d{0,2}):?(\d{0,2})/);
+    if (match) {
+      const [, hours, minutes] = match;
+      if (hours && minutes) {
+        return `${hours}:${minutes}`;
+      }
+    }
+    return cleaned.slice(0, 5);
+  };
 
   const handleSelectFile = useCallback(async () => {
     try {
@@ -172,6 +195,10 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
       type: scheduleType,
       start_date: startDateISO,
       end_date: endDateISO,
+      morning_start: morningStart,
+      morning_end: morningEnd,
+      evening_start: eveningStart,
+      evening_end: eveningEnd,
       preview: true,
     };
 
@@ -186,6 +213,10 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
     scheduleType,
     startDate,
     endDate,
+    morningStart,
+    morningEnd,
+    eveningStart,
+    eveningEnd,
     loadPreview,
   ]);
 
@@ -213,6 +244,10 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
       type: scheduleType,
       start_date: startDateISO,
       end_date: endDateISO,
+      morning_start: morningStart,
+      morning_end: morningEnd,
+      evening_start: eveningStart,
+      evening_end: eveningEnd,
       preview: false,
       user_mapping_overrides: overrides.length > 0 ? overrides : undefined,
     };
@@ -234,6 +269,10 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
     scheduleType,
     startDate,
     endDate,
+    morningStart,
+    morningEnd,
+    eveningStart,
+    eveningEnd,
     userMappingOverrides,
     executeImport,
     onSuccess,
@@ -422,6 +461,105 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
             placeholder="YYYY-MM-DD"
             placeholderTextColor={theme.inputPlaceholder}
           />
+        </View>
+      </View>
+
+      {/* Shift times */}
+      <View style={styles.formGroup}>
+        <Text style={[styles.label, { color: theme.text }]}>Время смен</Text>
+
+        <View
+          style={[
+            styles.shiftCard,
+            { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+          ]}
+        >
+          <View style={styles.shiftHeader}>
+            <Ionicons name="sunny-outline" size={20} color="#F59E0B" />
+            <Text style={[styles.shiftLabel, { color: theme.text }]}>Утренняя смена</Text>
+          </View>
+          <View style={styles.timeInputGroup}>
+            <TextInput
+              style={[
+                styles.timeInput,
+                {
+                  backgroundColor: theme.input,
+                  borderColor: theme.inputBorder,
+                  color: theme.text,
+                },
+              ]}
+              placeholder="08:00"
+              placeholderTextColor={theme.inputPlaceholder}
+              value={morningStart}
+              onChangeText={(text) => setMorningStart(formatTimeInput(text))}
+              keyboardType="numeric"
+              maxLength={5}
+            />
+            <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
+            <TextInput
+              style={[
+                styles.timeInput,
+                {
+                  backgroundColor: theme.input,
+                  borderColor: theme.inputBorder,
+                  color: theme.text,
+                },
+              ]}
+              placeholder="14:00"
+              placeholderTextColor={theme.inputPlaceholder}
+              value={morningEnd}
+              onChangeText={(text) => setMorningEnd(formatTimeInput(text))}
+              keyboardType="numeric"
+              maxLength={5}
+            />
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.shiftCard,
+            { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+          ]}
+        >
+          <View style={styles.shiftHeader}>
+            <Ionicons name="moon-outline" size={20} color="#8B5CF6" />
+            <Text style={[styles.shiftLabel, { color: theme.text }]}>Вечерняя смена</Text>
+          </View>
+          <View style={styles.timeInputGroup}>
+            <TextInput
+              style={[
+                styles.timeInput,
+                {
+                  backgroundColor: theme.input,
+                  borderColor: theme.inputBorder,
+                  color: theme.text,
+                },
+              ]}
+              placeholder="14:00"
+              placeholderTextColor={theme.inputPlaceholder}
+              value={eveningStart}
+              onChangeText={(text) => setEveningStart(formatTimeInput(text))}
+              keyboardType="numeric"
+              maxLength={5}
+            />
+            <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
+            <TextInput
+              style={[
+                styles.timeInput,
+                {
+                  backgroundColor: theme.input,
+                  borderColor: theme.inputBorder,
+                  color: theme.text,
+                },
+              ]}
+              placeholder="20:00"
+              placeholderTextColor={theme.inputPlaceholder}
+              value={eveningEnd}
+              onChangeText={(text) => setEveningEnd(formatTimeInput(text))}
+              keyboardType="numeric"
+              maxLength={5}
+            />
+          </View>
         </View>
       </View>
 
@@ -708,6 +846,39 @@ const styles = StyleSheet.create({
   },
   dateSeparator: {
     width: 16,
+  },
+  shiftCard: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  shiftHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  shiftLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  timeInputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timeInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  timeSeparator: {
+    marginHorizontal: 8,
+    fontSize: 16,
   },
   errorBanner: {
     flexDirection: 'row',

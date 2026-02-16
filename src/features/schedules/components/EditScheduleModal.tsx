@@ -68,11 +68,11 @@ const SCHEDULE_COLORS = [
 ];
 
 const SCHEDULE_TYPES: { value: ScheduleType; label: string; icon: string; description: string }[] = [
-  { value: 'work', label: 'Рабочий график', icon: 'briefcase-outline', description: 'Стандартный рабочий график сотрудников' },
   { value: 'paid_services', label: 'Платные услуги', icon: 'cash-outline', description: 'График платных услуг и приёмов' },
   { value: 'on_duty', label: 'Дежурства', icon: 'medical-outline', description: 'График дежурств персонала' },
   { value: 'vk', label: 'ВК', icon: 'document-text-outline', description: 'График ВК' },
   { value: 'trips', label: 'Выезды', icon: 'car-outline', description: 'График выездов' },
+  { value: 'work', label: 'Рабочий график', icon: 'briefcase-outline', description: 'Стандартный рабочий график сотрудников' },
 ];
 
 const VISIBILITY_OPTIONS: { value: ScheduleVisibility; label: string; icon: string; description: string }[] = [

@@ -73,11 +73,11 @@ const SCHEDULE_COLORS = [
 ];
 
 const SCHEDULE_TYPES: { value: ScheduleType; label: string; icon: string; description: string }[] = [
-  { value: 'work', label: 'Рабочий график', icon: 'briefcase-outline', description: 'Стандартный рабочий график сотрудников' },
   { value: 'paid_services', label: 'Платные услуги', icon: 'cash-outline', description: 'График платных услуг и приёмов' },
   { value: 'on_duty', label: 'Дежурства', icon: 'medical-outline', description: 'График дежурств персонала' },
   { value: 'vk', label: 'ВК', icon: 'document-text-outline', description: 'График ВК' },
   { value: 'trips', label: 'Выезды', icon: 'car-outline', description: 'График выездов' },
+  { value: 'work', label: 'Рабочий график', icon: 'briefcase-outline', description: 'Стандартный рабочий график сотрудников' },
 ];
 
 const VISIBILITY_OPTIONS: { value: ScheduleVisibility; label: string; icon: string; description: string }[] = [
@@ -117,17 +117,17 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   const [description, setDescription] = useState('');
 
   // Step 2: Type selection
-  const [scheduleType, setScheduleType] = useState<ScheduleType | null>(null);
+  const [scheduleType, setScheduleType] = useState<ScheduleType | null>('paid_services');
 
   // Step 3: Dates and Times
   const [startDate, setStartDate] = useState(() => startOfMonth(new Date()));
   const [endDate, setEndDate] = useState(() => endOfMonth(new Date()));
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [morningStart, setMorningStart] = useState('08:00');
+  const [morningStart, setMorningStart] = useState('10:00');
   const [morningEnd, setMorningEnd] = useState('14:00');
-  const [eveningStart, setEveningStart] = useState('14:00');
-  const [eveningEnd, setEveningEnd] = useState('20:00');
+  const [eveningStart, setEveningStart] = useState('14:30');
+  const [eveningEnd, setEveningEnd] = useState('18:00');
 
   // Step 4: Visibility, Color, and Mode
   const [visibility, setVisibility] = useState<ScheduleVisibility>('management');
@@ -262,8 +262,8 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     } else if (method === 'import') {
       setImportStep('select');
       // Set default type and color for import
-      setScheduleType('work');
-      setImportColor(DEFAULT_SCHEDULE_COLORS.work);
+      setScheduleType('paid_services');
+      setImportColor(DEFAULT_SCHEDULE_COLORS.paid_services);
     }
   };
 
@@ -444,9 +444,13 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       file_id: uploadedFileId,
       title,
       description,
-      type: scheduleType || 'work',
+      type: scheduleType || 'paid_services',
       start_date: startDateISO,
       end_date: endDateISO,
+      morning_start: morningStart,
+      morning_end: morningEnd,
+      evening_start: eveningStart,
+      evening_end: eveningEnd,
       color: importColor,
       preview: true,
     };
@@ -455,7 +459,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     if (previewResult) {
       setImportStep('preview');
     }
-  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, importColor, loadPreview]);
+  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, morningStart, morningEnd, eveningStart, eveningEnd, importColor, loadPreview]);
 
   const handleImport = useCallback(async () => {
     if (!uploadedFileId) return;
@@ -477,9 +481,13 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       file_id: uploadedFileId,
       title,
       description,
-      type: scheduleType || 'work',
+      type: scheduleType || 'paid_services',
       start_date: startDateISO,
       end_date: endDateISO,
+      morning_start: morningStart,
+      morning_end: morningEnd,
+      evening_start: eveningStart,
+      evening_end: eveningEnd,
       color: importColor,
       preview: false,
       user_mapping_overrides: overrides.length > 0 ? overrides : undefined,
@@ -495,7 +503,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     } else {
       setImportStep('preview');
     }
-  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, importColor, userMappingOverrides, executeImport, onScheduleCreated]);
+  }, [uploadedFileId, title, description, scheduleType, startDate, endDate, morningStart, morningEnd, eveningStart, eveningEnd, importColor, userMappingOverrides, executeImport, onScheduleCreated]);
 
   const handleImportBack = useCallback(() => {
     if (importStep === 'select') {
@@ -543,7 +551,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     setCreateMethod(null);
     setTitle('');
     setDescription('');
-    setScheduleType(null);
+    setScheduleType('paid_services');
     setStartDate(startOfMonth(new Date()));
     setEndDate(endOfMonth(new Date()));
     setMorningStart('08:00');
@@ -836,6 +844,67 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                     {format(endDate, 'dd.MM.yyyy')}
                   </Text>
                 </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Shift times */}
+            <View style={styles.inputSection}>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>Время смен</Text>
+
+              <View style={[styles.shiftCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.shiftHeader}>
+                  <Ionicons name="sunny-outline" size={20} color="#F59E0B" />
+                  <Text style={[styles.shiftLabel, { color: theme.text }]}>Утренняя смена</Text>
+                </View>
+                <View style={styles.timeInputGroup}>
+                  <TextInput
+                    style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                    placeholder="08:00"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={morningStart}
+                    onChangeText={(text) => setMorningStart(formatTimeInput(text))}
+                    keyboardType="numeric"
+                    maxLength={5}
+                  />
+                  <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
+                  <TextInput
+                    style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                    placeholder="14:00"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={morningEnd}
+                    onChangeText={(text) => setMorningEnd(formatTimeInput(text))}
+                    keyboardType="numeric"
+                    maxLength={5}
+                  />
+                </View>
+              </View>
+
+              <View style={[styles.shiftCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.shiftHeader}>
+                  <Ionicons name="moon-outline" size={20} color="#8B5CF6" />
+                  <Text style={[styles.shiftLabel, { color: theme.text }]}>Вечерняя смена</Text>
+                </View>
+                <View style={styles.timeInputGroup}>
+                  <TextInput
+                    style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                    placeholder="14:00"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={eveningStart}
+                    onChangeText={(text) => setEveningStart(formatTimeInput(text))}
+                    keyboardType="numeric"
+                    maxLength={5}
+                  />
+                  <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
+                  <TextInput
+                    style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
+                    placeholder="20:00"
+                    placeholderTextColor={theme.inputPlaceholder}
+                    value={eveningEnd}
+                    onChangeText={(text) => setEveningEnd(formatTimeInput(text))}
+                    keyboardType="numeric"
+                    maxLength={5}
+                  />
+                </View>
               </View>
             </View>
 

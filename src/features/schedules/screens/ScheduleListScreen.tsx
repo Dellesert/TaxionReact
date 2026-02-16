@@ -55,7 +55,7 @@ const getMonthRange = (date: Date): { start: string; end: string } => {
 };
 
 // Order of schedule types for display
-const SCHEDULE_TYPE_ORDER: ScheduleType[] = ['work', 'paid_services', 'on_duty', 'vk', 'trips'];
+const SCHEDULE_TYPE_ORDER: ScheduleType[] = ['paid_services', 'on_duty', 'vk', 'trips', 'work'];
 
 type NavigationProp = NativeStackNavigationProp<ScheduleStackParamList>;
 
