@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    height: '100%',
+    ...(Platform.OS === 'web' && { height: '100%' }),
   },
   userHeader: {
     flexDirection: 'row',

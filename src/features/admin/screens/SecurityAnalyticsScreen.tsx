@@ -220,7 +220,7 @@ const SecurityAnalyticsScreen: React.FC = () => {
       elevation: 3,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-      height: '100%',
+      ...(Platform.OS === 'web' && { height: '100%' }),
     },
     statsTitle: {
       fontSize: 18,
@@ -279,7 +279,7 @@ const SecurityAnalyticsScreen: React.FC = () => {
       shadowOpacity: isDark ? 0.2 : 0.08,
       shadowRadius: 6,
       elevation: 2,
-      height: '100%',
+      ...(Platform.OS === 'web' && { height: '100%' }),
     },
     activityHeader: {
       flexDirection: 'row',

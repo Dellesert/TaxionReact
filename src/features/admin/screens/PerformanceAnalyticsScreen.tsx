@@ -202,7 +202,7 @@ const PerformanceAnalyticsScreen: React.FC = () => {
       elevation: 3,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-      height: '100%',
+      ...(Platform.OS === 'web' && { height: '100%' }),
     },
     performerCardTop3: {
       borderWidth: 2,

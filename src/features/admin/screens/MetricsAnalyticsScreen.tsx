@@ -149,7 +149,7 @@ const MetricsAnalyticsScreen: React.FC = () => {
       shadowOpacity: isDark ? 0.2 : 0.08,
       shadowRadius: 4,
       elevation: 2,
-      height: '100%',
+      ...(Platform.OS === 'web' && { height: '100%' }),
     },
     metricHeader: {
       marginBottom: 12,
