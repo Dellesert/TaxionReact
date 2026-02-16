@@ -10,10 +10,10 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -70,6 +70,15 @@ export const ScheduleListScreen: React.FC = () => {
   const { canCreate } = useSchedulePermissions();
   const isDesktop = useIsWideScreen();
   const cardBgColor = isDark ? theme.card : '#FFFFFF';
+
+  // Reset status bar style when screen gains focus (fixes white status bar after visiting Profile)
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
 
   // Get initial month range for filters
   const initialMonthRange = getMonthRange(new Date());

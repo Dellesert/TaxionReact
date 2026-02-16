@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Poll, PollStatus } from '../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -33,6 +33,15 @@ const PollListScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const isDesktop = useIsWideScreen();
+
+  // Reset status bar style when screen gains focus (fixes white status bar after visiting Profile)
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
 
   // Local state
   const [showCreateModal, setShowCreateModal] = useState(false);
