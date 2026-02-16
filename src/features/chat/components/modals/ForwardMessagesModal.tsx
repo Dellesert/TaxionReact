@@ -132,7 +132,7 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={isDesktop ? "fade" : "slide"}
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
       transparent={isDesktop}
