@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -36,6 +36,7 @@ interface MessageBubbleProps {
   imageUrls: { [key: number]: string };
   currentUserId?: number;
   onLongPress?: () => void;
+  onRightClick?: (position: { x: number; y: number }) => void;
   onDoubleTap?: () => void;
   onPollPress?: (pollId: number) => void;
   onTaskPress?: (taskId: number) => void;
@@ -63,6 +64,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   imageUrls,
   currentUserId,
   onLongPress,
+  onRightClick,
   onDoubleTap,
   onPollPress,
   onTaskPress,
@@ -175,6 +177,25 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     });
   }, [message.attachments, message.is_deleted, messageContent, isCardMessage]);
 
+  // Right-click context menu for web/Electron
+  const handleContextMenu = useCallback((e: any) => {
+    e.preventDefault();
+    if (onRightClick) {
+      onRightClick({ x: e.pageX ?? e.nativeEvent?.pageX ?? 0, y: e.pageY ?? e.nativeEvent?.pageY ?? 0 });
+    }
+  }, [onRightClick]);
+
+  const bubbleRef = useRef<View>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && onRightClick && bubbleRef.current) {
+      const node = bubbleRef.current as unknown as HTMLElement;
+      node.addEventListener('contextmenu', handleContextMenu);
+      return () => node.removeEventListener('contextmenu', handleContextMenu);
+    }
+    return undefined;
+  }, [onRightClick, handleContextMenu]);
+
   // Double-tap detection
   const lastTapRef = useRef(0);
 
@@ -204,7 +225,10 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
 
   return (
     <TouchableOpacity
-      ref={messageBubbleRef}
+      ref={(node: any) => {
+        (messageBubbleRef as any).current = node;
+        (bubbleRef as any).current = node;
+      }}
       activeOpacity={0.9}
       onPress={handlePress}
       onLongPress={onLongPress}

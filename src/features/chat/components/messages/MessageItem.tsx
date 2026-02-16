@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, useWindowDimensions, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -215,6 +215,37 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     });
   };
 
+  // Правый клик (для Electron / web) — меню появляется у курсора
+  const handleRightClick = useCallback((position: { x: number; y: number }) => {
+    if (selectionMode) return;
+
+    const screenWidth = Dimensions.get('window').width;
+    const screenHeight = Dimensions.get('window').height;
+    const menuWidth = 250;
+    const menuHeight = 510;
+    const minTopMargin = 20;
+    const minBottomMargin = 20;
+
+    let left = position.x;
+    let top = position.y;
+
+    // Не даём меню выйти за правый край
+    if (left + menuWidth > screenWidth) {
+      left = screenWidth - menuWidth - 20;
+    }
+
+    // Не даём меню выйти за нижний край
+    if (top + menuHeight > screenHeight - minBottomMargin) {
+      top = screenHeight - menuHeight - minBottomMargin;
+    }
+
+    top = Math.max(minTopMargin, top);
+    left = Math.max(10, left);
+
+    setMenuPosition({ top, left });
+    setShowContextMenu(true);
+  }, [selectionMode]);
+
   const handleUserPress = () => {
     if (message.sender_id) {
       setShowProfileModal(true);
@@ -292,7 +323,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             replySender={replySender}
             imageUrls={imageUrls}
             currentUserId={currentUser?.id}
-            onLongPress={selectionMode ? undefined : handleLongPress}
+            onLongPress={selectionMode || Platform.OS === 'web' ? undefined : handleLongPress}
+            onRightClick={selectionMode ? undefined : handleRightClick}
             onDoubleTap={selectionMode ? undefined : handleDoubleTap}
             onPollPress={onPollPress}
             onTaskPress={onTaskPress}
