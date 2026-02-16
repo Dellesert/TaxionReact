@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Chat, TypingIndicator } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -226,6 +226,24 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     }
   };
 
+  // Правый клик для Electron / web
+  const chatItemRef = useRef<View>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && chatItemRef.current) {
+      const node = chatItemRef.current as unknown as HTMLElement;
+      const handler = (e: MouseEvent) => {
+        e.preventDefault();
+        if (!isEditMode) {
+          setShowContextMenu(true);
+        }
+      };
+      node.addEventListener('contextmenu', handler);
+      return () => node.removeEventListener('contextmenu', handler);
+    }
+    return undefined;
+  }, [isEditMode]);
+
   const handleMarkAsRead = () => {
     setShowContextMenu(false);
     onMarkAsRead?.(chat.id);
@@ -278,9 +296,10 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   return (
     <>
       <TouchableOpacity
+        ref={chatItemRef as any}
         style={[styles.container, dynamicStyles.container]}
         onPress={() => onPress(chat)}
-        onLongPress={handleLongPress}
+        onLongPress={Platform.OS === 'web' ? undefined : handleLongPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={0.7}
