@@ -35,9 +35,10 @@ export const SpoilerText: React.FC<SpoilerTextProps> = ({ children, style }) => 
         borderRadius: 6,
         overflow: 'hidden',
         marginHorizontal: 2,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
         backgroundColor: revealed ? revealedBg : hiddenBg,
+        flexShrink: 1,
+        maxWidth: '100%',
+        alignSelf: 'flex-start',
         ...(Platform.OS === 'web'
           ? { display: 'inline-flex' as any, verticalAlign: 'baseline' as any }
           : {}),
@@ -48,6 +49,10 @@ export const SpoilerText: React.FC<SpoilerTextProps> = ({ children, style }) => 
         style={[
           style,
           styles.base,
+          {
+            paddingHorizontal: 16,
+            paddingVertical: 4,
+          },
           !revealed && {
             color: 'transparent',
           },
