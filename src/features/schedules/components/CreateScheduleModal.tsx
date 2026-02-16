@@ -534,17 +534,33 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     []
   );
 
-  // Handler for schedule type change during import (auto-sets color)
+  const applyDefaultShiftTimes = useCallback((type: ScheduleType) => {
+    if (type === 'work' || type === 'on_duty') {
+      setMorningStart('09:00');
+      setMorningEnd('14:00');
+      setEveningStart('14:00');
+      setEveningEnd('20:00');
+    } else {
+      setMorningStart('10:00');
+      setMorningEnd('14:00');
+      setEveningStart('14:30');
+      setEveningEnd('18:00');
+    }
+  }, []);
+
+  // Handler for schedule type change during import (auto-sets color + shift times)
   const handleImportTypeChange = useCallback((type: ScheduleType) => {
     setScheduleType(type);
     setImportColor(DEFAULT_SCHEDULE_COLORS[type]);
-  }, []);
+    applyDefaultShiftTimes(type);
+  }, [applyDefaultShiftTimes]);
 
-  // Handler for schedule type change during manual creation (auto-sets color)
+  // Handler for schedule type change during manual creation (auto-sets color + shift times)
   const handleManualTypeChange = useCallback((type: ScheduleType) => {
     setScheduleType(type);
     setColor(DEFAULT_SCHEDULE_COLORS[type]);
-  }, []);
+    applyDefaultShiftTimes(type);
+  }, [applyDefaultShiftTimes]);
 
   const handleClose = () => {
     setCurrentStep(0);

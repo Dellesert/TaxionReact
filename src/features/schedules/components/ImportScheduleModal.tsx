@@ -115,6 +115,21 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
     []
   );
 
+  const handleScheduleTypeChange = useCallback((type: ScheduleType) => {
+    setScheduleType(type);
+    if (type === 'work' || type === 'on_duty') {
+      setMorningStart('09:00');
+      setMorningEnd('14:00');
+      setEveningStart('14:00');
+      setEveningEnd('20:00');
+    } else {
+      setMorningStart('10:00');
+      setMorningEnd('14:00');
+      setEveningStart('14:30');
+      setEveningEnd('18:00');
+    }
+  }, []);
+
   const formatTimeInput = (value: string): string => {
     const cleaned = value.replace(/[^\d:]/g, '');
     if (cleaned.length === 2 && !cleaned.includes(':')) {
@@ -410,7 +425,7 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
                     scheduleType === type ? theme.primary : theme.border,
                 },
               ]}
-              onPress={() => setScheduleType(type)}
+              onPress={() => handleScheduleTypeChange(type)}
             >
               <Text
                 style={[
