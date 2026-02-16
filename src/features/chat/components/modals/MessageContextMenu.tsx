@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Message } from '../../types/chat.types';
-import { formatTime } from '../../utils/message.utils';
+import { formatTime, isImageFile, isVideoFile } from '../../utils/message.utils';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 import { stripFormatting } from '../../utils/formatting';
 import { ReactionBar } from '../messages/ReactionBar';
@@ -87,27 +87,37 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
     const hasText = message.content && message.content.trim().length > 0;
     const hasAttachments = message.attachments && message.attachments.length > 0;
 
-    // Если есть и текст, и вложения
-    if (hasText && hasAttachments) {
+    // Вспомогательная функция: получить label для вложения
+    const getAttachmentLabel = (truncateLen: number): { label: string; icon: string } => {
       const attachment = message.attachments[0];
-      const icon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
+      const mt = attachment.mime_type || attachment.file_type || '';
+      const isImage = isImageFile(mt);
+      const isVideo = isVideoFile(mt);
 
-      // Обрезаем длинное название файла
-      let fileName = decodeFileName(attachment.file_name);
-      if (fileName.length > 30) {
-        const ext = fileName.split('.').pop();
-        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
-        fileName = nameWithoutExt.substring(0, 25) + '...' + (ext ? `.${ext}` : '');
+      if (isImage || isVideo) {
+        const mediaLabel = isImage ? 'Фото' : 'Видео';
+        const extra = message.attachments.length > 1 ? ` и ещё ${message.attachments.length - 1}` : '';
+        return { label: mediaLabel + extra, icon: isImage ? 'image-outline' : 'videocam-outline' };
       }
 
-      const attachmentText = message.attachments.length === 1
-        ? fileName
-        : `${fileName} и ещё ${message.attachments.length - 1}`;
+      const icon = getFileIcon(mt, attachment.file_name);
+      let fileName = decodeFileName(attachment.file_name);
+      if (fileName.length > truncateLen) {
+        const ext = fileName.split('.').pop();
+        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+        fileName = nameWithoutExt.substring(0, truncateLen - 5) + '...' + (ext ? `.${ext}` : '');
+      }
+      const extra = message.attachments.length > 1 ? ` и ещё ${message.attachments.length - 1}` : '';
+      return { label: fileName + extra, icon };
+    };
 
+    // Если есть и текст, и вложения
+    if (hasText && hasAttachments) {
+      const { label, icon } = getAttachmentLabel(30);
       return {
         text: message.content,
         icon,
-        attachmentText,
+        attachmentText: label,
       };
     }
 
@@ -118,25 +128,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 
     // Если только вложения
     if (hasAttachments) {
-      const attachment = message.attachments[0];
-      const icon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
-
-      // Обрезаем длинное название файла
-      let fileName = decodeFileName(attachment.file_name);
-      if (fileName.length > 40) {
-        const ext = fileName.split('.').pop();
-        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
-        fileName = nameWithoutExt.substring(0, 35) + '...' + (ext ? `.${ext}` : '');
-      }
-
-      if (message.attachments.length === 1) {
-        return { text: fileName, icon };
-      } else {
-        return {
-          text: `${fileName} и ещё ${message.attachments.length - 1}`,
-          icon
-        };
-      }
+      const { label, icon } = getAttachmentLabel(40);
+      return { text: label, icon };
     }
 
     // Если ни текста, ни вложений нет
