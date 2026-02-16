@@ -256,7 +256,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
 
     files.forEach((file, index) => {
       const mimeType = file instanceof File ? file.type : file.type;
-      if (mimeType.startsWith('video/') && onPendingVideoFiles) {
+      if ((mimeType.startsWith('video/') || mimeType.startsWith('image/')) && onPendingVideoFiles) {
         const asset = assets?.[index];
         videoFiles.push({
           localUri: file instanceof File ? URL.createObjectURL(file) : file.uri,

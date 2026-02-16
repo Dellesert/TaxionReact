@@ -76,13 +76,17 @@ export const useVideoUploadMessage = (chatId: number) => {
       file_name: file.fileName,
       file_size: file.fileSize,
       mime_type: file.mimeType,
-      file_type: 'video',
+      file_type: file.mimeType.startsWith('video/') ? 'video' : 'image',
       thumbnail_url: undefined,
       duration: file.duration,
       width: file.width,
       height: file.height,
       local_uri: file.localUri,
     }));
+
+    // Определяем тип сообщения: если есть хотя бы одно видео — 'video', иначе 'image'
+    const hasVideo = pendingFiles.some(f => f.mimeType.startsWith('video/'));
+    const messageType = hasVideo ? 'video' : 'image';
 
     return {
       id: tempId,
@@ -102,7 +106,7 @@ export const useVideoUploadMessage = (chatId: number) => {
       reply_to_id: replyToId,
       sending: true,
       sender: currentUser || undefined,
-      message_type: 'video',
+      message_type: messageType,
       upload_progress: 0,
       pending_video_files: pendingFiles,
     };
@@ -161,11 +165,18 @@ export const useVideoUploadMessage = (chatId: number) => {
   const replaceWithReal = useCallback((tempId: number, realMessage: Message) => {
     useChatStore.setState((state) => {
       const existingMessages = state.messages[chatId] || [];
-      const updatedMessages = existingMessages.map((msg) =>
-        msg.id === tempId
-          ? { ...realMessage, sending: false, upload_progress: undefined, pending_video_files: undefined }
-          : msg
-      );
+      // Replace optimistic message and remove any WS-delivered duplicate with the same real ID
+      const updatedMessages = existingMessages.reduce<Message[]>((acc, msg) => {
+        if (msg.id === tempId) {
+          // Replace optimistic message with real one
+          acc.push({ ...realMessage, sending: false, upload_progress: undefined, pending_video_files: undefined });
+        } else if (msg.id === realMessage.id) {
+          // Skip WebSocket-delivered duplicate (arrived before API response)
+        } else {
+          acc.push(msg);
+        }
+        return acc;
+      }, []);
 
       const updateChatWithMessage = (chat: any) => {
         if (chat.id === chatId) {
@@ -265,7 +276,12 @@ export const useVideoUploadMessage = (chatId: number) => {
     pendingFiles?: PendingVideoFile[],
     existingFileIds?: number[],
   ): Promise<void> => {
-    if (!pendingFiles || pendingFiles.length === 0) return;
+    if (!pendingFiles || pendingFiles.length === 0) {
+      console.warn('[VideoUpload] No pending files to upload, skipping');
+      return;
+    }
+
+    console.log(`[VideoUpload] Starting upload: ${pendingFiles.length} files`, pendingFiles.map(f => f.fileName));
 
     // 1. Создаём оптимистичное сообщение
     const optimisticMessage = createVideoOptimisticMessage(content, pendingFiles, replyToId);
@@ -305,6 +321,8 @@ export const useVideoUploadMessage = (chatId: number) => {
           type: file.mimeType,
         };
 
+        console.log(`[VideoUpload] Uploading file ${i + 1}/${pendingFiles.length}: ${file.fileName} (${file.mimeType})`);
+
         const uploaded = await fileApi.uploadFile(
           fileObj,
           undefined,
@@ -326,6 +344,7 @@ export const useVideoUploadMessage = (chatId: number) => {
           true, // isPublic
         );
 
+        console.log(`[VideoUpload] File ${i + 1}/${pendingFiles.length} uploaded, server id: ${uploaded.id}`);
         uploadedFileIds.push(uploaded.id);
       }
 
@@ -333,12 +352,16 @@ export const useVideoUploadMessage = (chatId: number) => {
       cleanupTimers(tempId);
       updateUploadProgress(tempId, 100);
 
+      console.log(`[VideoUpload] All files uploaded, sending message with file_ids:`, uploadedFileIds);
+
       // 6. Отправляем реальное сообщение
       const realMessage = await chatApi.sendMessage(chatId, {
         content: content.trim(),
         reply_to_id: replyToId,
         file_ids: uploadedFileIds,
       });
+
+      console.log(`[VideoUpload] Message sent, realMessage.id: ${realMessage.id}, attachments: ${realMessage.attachments?.length}`);
 
       // 7. Заменяем оптимистичное реальным
       replaceWithReal(tempId, realMessage);

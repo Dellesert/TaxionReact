@@ -155,10 +155,18 @@ export const useOptimisticMessage = (
     useChatStore.setState((state) => {
       const existingMessages = state.messages[chatId] || [];
 
-      // Находим и заменяем временное сообщение
-      const updatedMessages = existingMessages.map((msg) =>
-        msg.id === tempId ? { ...realMessage, sending: false } : msg
-      );
+      // Replace optimistic message and remove any WS-delivered duplicate with the same real ID
+      const updatedMessages = existingMessages.reduce<Message[]>((acc, msg) => {
+        if (msg.id === tempId) {
+          // Replace optimistic message with real one
+          acc.push({ ...realMessage, sending: false });
+        } else if (msg.id === realMessage.id) {
+          // Skip WebSocket-delivered duplicate (arrived before API response)
+        } else {
+          acc.push(msg);
+        }
+        return acc;
+      }, []);
 
       // Helper to update chat with real message
       const updateChatWithMessage = (chat: any) => {

@@ -263,17 +263,23 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
   const renderMediaItem = (attachment: Attachment, gridIndex: number, imageStyle?: object, showOverlay: boolean = false, showTimeOverlay: boolean = false) => {
     const mt = attachment.mime_type || attachment.file_type || '';
     const isVideo = isVideoFile(mt);
-    const thumbnailUri = attachment.thumbnail_url || attachment.file_url;
-    const imageUri = Platform.OS === 'web' && blobUrls[attachment.id]
-      ? blobUrls[attachment.id]
-      : replaceLocalhostWithIP(thumbnailUri);
-    const isPublicFile = imageUri.includes('/files/public/');
+    const isLocal = !!attachment.local_uri;
+    const thumbnailUri = isLocal
+      ? attachment.local_uri!
+      : (attachment.thumbnail_url || attachment.file_url);
+    const imageUri = isLocal
+      ? thumbnailUri
+      : (Platform.OS === 'web' && blobUrls[attachment.id]
+        ? blobUrls[attachment.id]
+        : replaceLocalhostWithIP(thumbnailUri));
+    const isPublicFile = !isLocal && imageUri.includes('/files/public/');
 
     return (
       <TouchableOpacity
         key={attachment.id || gridIndex}
         style={[styles.imageAttachment, imageStyle]}
         onPress={() => {
+          if (isUploading) return;
           if (isVideo) {
             onVideoPress?.(
               replaceLocalhostWithIP(attachment.file_url),
@@ -288,29 +294,37 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         }}
         onLongPress={onLongPress}
         delayLongPress={500}
+        disabled={isUploading}
       >
         <Image
-          source={Platform.OS === 'web' && blobUrls[attachment.id]
-            ? { uri: blobUrls[attachment.id] }
-            : {
-                uri: imageUri,
-                headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
-              }
+          source={isLocal
+            ? { uri: imageUri }
+            : (Platform.OS === 'web' && blobUrls[attachment.id]
+              ? { uri: blobUrls[attachment.id] }
+              : {
+                  uri: imageUri,
+                  headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
+                }
+            )
           }
           style={styles.imagePreview}
           contentFit="cover"
           contentPosition="center"
           transition={200}
-          cachePolicy="disk"
+          cachePolicy={isLocal ? "none" : "disk"}
           placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           placeholderContentFit="cover"
           priority={isVisible ? "high" : "low"}
-          recyclingKey={`attachment-${attachment.id}`}
+          recyclingKey={isLocal ? `media-local-${gridIndex}` : `attachment-${attachment.id}`}
           responsivePolicy="initial"
           allowDownscaling={true}
         />
-        {/* Video play button overlay */}
-        {isVideo && (
+        {/* Upload progress overlay */}
+        {isUploading && chatMessage?.upload_progress != null && (
+          renderUploadProgressOverlay(chatMessage.upload_progress)
+        )}
+        {/* Video play button overlay (only when not uploading) */}
+        {isVideo && !isUploading && (
           <View style={styles.videoPlayOverlay}>
             <View style={styles.videoPlayButton}>
               <Ionicons name="play" size={24} color="#FFFFFF" />

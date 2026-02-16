@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { getChatDisplayName } from '../utils/chatUtils';
@@ -20,6 +20,12 @@ export const useChatActions = (chatId: number) => {
   const [forwardingMessage, setForwardingMessage] = useState<any | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
   const [pendingVideoFiles, setPendingVideoFiles] = useState<PendingVideoFile[]>([]);
+
+  // Refs для доступа к актуальным значениям из useCallback без stale closure
+  const pendingVideoFilesRef = useRef<PendingVideoFile[]>(pendingVideoFiles);
+  const selectedFileIdsRef = useRef<number[]>(selectedFileIds);
+  useEffect(() => { pendingVideoFilesRef.current = pendingVideoFiles; }, [pendingVideoFiles]);
+  useEffect(() => { selectedFileIdsRef.current = selectedFileIds; }, [selectedFileIds]);
 
   // Оптимизация: извлекаем функции напрямую (они стабильны в Zustand)
   const sendMessage = useChatStore((state) => state.sendMessage);
@@ -66,9 +72,18 @@ export const useChatActions = (chatId: number) => {
   /**
    * Отправка сообщения с оптимистичным обновлением
    * Сообщение появляется мгновенно, затем подтверждается сервером
+   *
+   * ВАЖНО: Читаем pendingVideoFiles и selectedFileIds из ref,
+   * чтобы избежать stale closure при вызове из setTimeout в MessageInput
    */
   const handleSendMessage = useCallback(async (content: string, replyToId?: number) => {
-    if (!content.trim() && selectedFileIds.length === 0 && pendingVideoFiles.length === 0) {
+    // Читаем актуальные значения из ref (не из замыкания useCallback)
+    const currentPendingFiles = pendingVideoFilesRef.current;
+    const currentSelectedFileIds = selectedFileIdsRef.current;
+
+    console.log(`[ChatActions] handleSendMessage: pendingFiles=${currentPendingFiles.length}, selectedFileIds=${currentSelectedFileIds.length}, content="${content.substring(0, 30)}"`);
+
+    if (!content.trim() && currentSelectedFileIds.length === 0 && currentPendingFiles.length === 0) {
       setError({ error: 'Message content or files are required' });
       return;
     }
@@ -87,18 +102,18 @@ export const useChatActions = (chatId: number) => {
         const newContent = parts.slice(2).join(':');
         await updateMessage(messageId, newContent);
         setEditingMessage(null);
-      } else if (pendingVideoFiles.length > 0) {
-        // Видео-сообщение — оптимистичная загрузка в фоне
+      } else if (currentPendingFiles.length > 0) {
+        // Медиа-сообщение — оптимистичная загрузка в фоне
         // Захватываем данные в локальные переменные и очищаем state ДО await,
         // чтобы UI мгновенно обновился и нельзя было нажать "Отправить" повторно
-        const filesToUpload = [...pendingVideoFiles];
-        const fileIdsToSend = selectedFileIds.length > 0 ? [...selectedFileIds] : undefined;
+        const filesToUpload = [...currentPendingFiles];
+        const fileIdsToSend = currentSelectedFileIds.length > 0 ? [...currentSelectedFileIds] : undefined;
         setPendingVideoFiles([]);
         setSelectedFileIds([]);
         await sendMessageWithVideoUpload(content.trim(), replyToId, filesToUpload, fileIdsToSend);
       } else {
         // Обычное сообщение — стандартный оптимистичный flow
-        const fileIdsToSend = selectedFileIds.length > 0 ? selectedFileIds : undefined;
+        const fileIdsToSend = currentSelectedFileIds.length > 0 ? currentSelectedFileIds : undefined;
 
         // Отправляем с оптимистичным UI
         await sendMessageOptimistic(content.trim(), replyToId, fileIdsToSend);
@@ -110,7 +125,7 @@ export const useChatActions = (chatId: number) => {
       console.error('Failed to send/edit message:', error);
       // Ошибки обрабатываются в useOptimisticMessage / useVideoUploadMessage
     }
-  }, [chatId, selectedFileIds, pendingVideoFiles, getChatById, updateMessage, sendMessageOptimistic, sendMessageWithVideoUpload, setError]);
+  }, [chatId, getChatById, updateMessage, sendMessageOptimistic, sendMessageWithVideoUpload, setError]);
 
   const handleReply = (message: any) => {
     setReplyingToMessage(message);

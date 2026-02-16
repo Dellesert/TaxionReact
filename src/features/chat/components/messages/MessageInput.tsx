@@ -570,7 +570,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       {pendingVideoFiles.length > 0 && (
         <View style={[styles.selectedFilesContainer, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
           <View style={styles.selectedFilesInfo}>
-            <Ionicons name="videocam" size={16} color={theme.primary} />
+            <Ionicons name={pendingVideoFiles.some(f => f.mimeType.startsWith('video/')) ? "videocam" : "image"} size={16} color={theme.primary} />
             <Text style={[styles.selectedFilesText, { color: theme.text }]} numberOfLines={1}>
               {pendingVideoFiles.map(f => f.fileName).join(', ')}
             </Text>

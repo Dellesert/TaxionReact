@@ -1690,12 +1690,20 @@ export const useChatStore = create<ChatState>()(
       // Если сообщение уже существует
       if (messageExists) {
         if (isOwnMessage) {
-          // Обновляем существующее сообщение свежими данными (например, attachments с правильными URLs)
+          // Обновляем существующее сообщение свежими данными, но сохраняем вложения
+          // если входящее сообщение (из WebSocket) содержит меньше вложений чем существующее (из API)
           const updatedMessages = {
             ...state.messages,
-            [message.chat_id]: existingMessages.map(msg =>
-              msg.id === message.id ? { ...msg, ...message } : msg
-            ),
+            [message.chat_id]: existingMessages.map(msg => {
+              if (msg.id !== message.id) return msg;
+              const existingAttachments = msg.attachments || [];
+              const incomingAttachments = message.attachments || [];
+              // Сохраняем существующие вложения если их больше (API ответ полнее чем WS)
+              const mergedAttachments = incomingAttachments.length >= existingAttachments.length
+                ? incomingAttachments
+                : existingAttachments;
+              return { ...msg, ...message, attachments: mergedAttachments };
+            }),
           };
           return { ...state, messages: updatedMessages };
         }
