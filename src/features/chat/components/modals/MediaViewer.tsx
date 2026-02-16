@@ -16,7 +16,7 @@ import { getElectronCachedVideoUri, cacheElectronVideo, isElectronCacheUri } fro
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withSpring, // kept for zoom only
   withTiming,
   runOnJS,
   clamp,
@@ -594,7 +594,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const goToNext = () => {
     if (currentIndex < mediaItems.length - 1) {
       const newIndex = currentIndex + 1;
-      translateX.value = withSpring(-newIndex * screenWidth, { damping: 20, stiffness: 200 });
+      translateX.value = withTiming(-newIndex * screenWidth, { duration: 250 });
       baseTranslateX.value = -newIndex * screenWidth;
       updateIndex(newIndex);
     }
@@ -603,7 +603,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const goToPrevious = () => {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
-      translateX.value = withSpring(-newIndex * screenWidth, { damping: 20, stiffness: 200 });
+      translateX.value = withTiming(-newIndex * screenWidth, { duration: 250 });
       baseTranslateX.value = -newIndex * screenWidth;
       updateIndex(newIndex);
     }
@@ -612,7 +612,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const snapToIndex = (index: number) => {
     'worklet';
     const clampedIndex = clamp(index, 0, mediaItems.length - 1);
-    translateX.value = withSpring(-clampedIndex * screenWidth, { damping: 20, stiffness: 200 });
+    translateX.value = withTiming(-clampedIndex * screenWidth, { duration: 250 });
     baseTranslateX.value = -clampedIndex * screenWidth;
     runOnJS(updateIndex)(clampedIndex);
   };
@@ -730,15 +730,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             if (newIndex !== currentIndex) {
               snapToIndex(newIndex);
             } else {
-              translateX.value = withSpring(baseTranslateX.value, { damping: 20, stiffness: 200 });
+              translateX.value = withTiming(baseTranslateX.value, { duration: 200 });
             }
           } else {
-            translateX.value = withSpring(baseTranslateX.value, { damping: 20, stiffness: 200 });
+            translateX.value = withTiming(baseTranslateX.value, { duration: 200 });
           }
         } else if (swipeDownY.value > 100) {
           runOnJS(handleClose)();
         } else {
-          swipeDownY.value = withSpring(0);
+          swipeDownY.value = withTiming(0, { duration: 200 });
           swipeDownOpacity.value = withTiming(1);
         }
       }
