@@ -12,6 +12,8 @@ import * as Sharing from 'expo-sharing';
 import { Paths, File as ExpoFile } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { getCachedVideoUri, cacheVideo, isVideoCacheUri } from '@shared/utils/videoCache';
+import { isElectron } from '@shared/utils/platform';
+import { getElectronCachedVideoUri, cacheElectronVideo, isElectronCacheUri } from '@shared/utils/electronVideoCache';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -144,7 +146,49 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     if (Platform.OS === 'web') {
       const isPublicFile = item.url.includes('/files/public/');
 
-      if (!isPublicFile && currentSessionId) {
+      // Electron: check file cache first, background-cache on miss
+      if (isElectron()) {
+        const cachedUri = await getElectronCachedVideoUri(item.url);
+        if (cachedUri) {
+          player.replace({ uri: cachedUri });
+          player.play();
+          return;
+        }
+
+        // Cache miss — stream via blob for immediate playback, cache in background
+        if (!isPublicFile && currentSessionId) {
+          const controller = new AbortController();
+          webAbortControllerRef.current = controller;
+
+          try {
+            const response = await fetch(item.url, {
+              headers: { 'X-Session-ID': currentSessionId },
+              signal: controller.signal,
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const blob = await response.blob();
+            if (controller.signal.aborted) return;
+
+            const blobUrl = URL.createObjectURL(blob);
+            webBlobUrlRef.current = blobUrl;
+            player.replace({ uri: blobUrl });
+          } catch (error) {
+            if ((error as Error).name === 'AbortError') return;
+            console.error('[MediaViewer] Electron video load failed:', error);
+            setVideoLoading(false);
+            return;
+          }
+        } else {
+          player.replace({ uri: item.url });
+        }
+
+        // Background cache via main process (streams to disk, no renderer memory)
+        cacheElectronVideo(item.url, currentSessionId).catch((err) =>
+          console.warn('[MediaViewer] Electron background video cache failed:', err),
+        );
+      } else if (!isPublicFile && currentSessionId) {
+        // Regular web browser (non-Electron)
         const controller = new AbortController();
         webAbortControllerRef.current = controller;
 
@@ -655,9 +699,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   // === HELPER FUNCTIONS ===
 
   const downloadFileLocally = async (url: string, isVideo: boolean): Promise<string | null> => {
-    // Reuse cached video if available
-    if (isVideo) {
+    // Reuse cached video if available (mobile)
+    if (isVideo && Platform.OS !== 'web') {
       const cachedUri = getCachedVideoUri(url);
+      if (cachedUri) return cachedUri;
+    }
+
+    // Reuse cached video if available (Electron)
+    if (isVideo && isElectron()) {
+      const cachedUri = await getElectronCachedVideoUri(url);
       if (cachedUri) return cachedUri;
     }
 
@@ -727,7 +777,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     } finally {
       setIsSharing(false);
       // Don't delete cached video files — they should persist in cache
-      if (localUri && !isVideoCacheUri(localUri)) {
+      if (localUri && !isVideoCacheUri(localUri) && !isElectronCacheUri(localUri)) {
         try {
           const file = new ExpoFile(localUri);
           if (file.exists) {
@@ -769,7 +819,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     } finally {
       setIsSharing(false);
       // Don't delete cached video files — they should persist in cache
-      if (localUri && !isVideoCacheUri(localUri)) {
+      if (localUri && !isVideoCacheUri(localUri) && !isElectronCacheUri(localUri)) {
         try {
           const file = new ExpoFile(localUri);
           if (file.exists) {

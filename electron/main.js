@@ -631,12 +631,40 @@ function setupIPCHandlers() {
     }
   });
 
+  ipcMain.handle('cache:download', async (event, url, headers, mimeType) => {
+    try {
+      const filepath = await fileCache.downloadAndCache(url, headers || {}, mimeType);
+      return filepath;
+    } catch (error) {
+      console.error('[IPC] cache:download error:', error);
+      return null;
+    }
+  });
+
   ipcMain.handle('cache:stats', async () => {
     try {
       return await fileCache.getCacheStats();
     } catch (error) {
       console.error('[IPC] cache:stats error:', error);
       return null;
+    }
+  });
+
+  ipcMain.handle('cache:videoStats', async () => {
+    try {
+      return await fileCache.getStatsByMimePrefix('video/');
+    } catch (error) {
+      console.error('[IPC] cache:videoStats error:', error);
+      return { totalSize: 0, fileCount: 0 };
+    }
+  });
+
+  ipcMain.handle('cache:clearVideos', async () => {
+    try {
+      return await fileCache.clearByMimePrefix('video/');
+    } catch (error) {
+      console.error('[IPC] cache:clearVideos error:', error);
+      return { cleared: 0 };
     }
   });
 

@@ -15,7 +15,10 @@ contextBridge.exposeInMainWorld('electron', {
       const validChannels = [
         'cache:get',
         'cache:put',
+        'cache:download',
         'cache:stats',
+        'cache:videoStats',
+        'cache:clearVideos',
         'cache:clear',
         'secure-storage:set',
         'secure-storage:get',
@@ -82,7 +85,10 @@ contextBridge.exposeInMainWorld('electron', {
   cache: {
     get: (url) => ipcRenderer.invoke('cache:get', url),
     put: (url, buffer, mimeType) => ipcRenderer.invoke('cache:put', url, buffer, mimeType),
+    download: (url, headers, mimeType) => ipcRenderer.invoke('cache:download', url, headers, mimeType),
     stats: () => ipcRenderer.invoke('cache:stats'),
+    videoStats: () => ipcRenderer.invoke('cache:videoStats'),
+    clearVideos: () => ipcRenderer.invoke('cache:clearVideos'),
     clear: () => ipcRenderer.invoke('cache:clear'),
   },
 

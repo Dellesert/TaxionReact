@@ -42,7 +42,10 @@ interface ElectronAPI {
   cache: {
     get: (url: string) => Promise<string | null>;
     put: (url: string, buffer: ArrayBuffer, mimeType: string) => Promise<string>;
+    download: (url: string, headers?: Record<string, string>, mimeType?: string) => Promise<string | null>;
     stats: () => Promise<{ totalSize: number; fileCount: number }>;
+    videoStats: () => Promise<{ totalSize: number; fileCount: number }>;
+    clearVideos: () => Promise<{ cleared: number }>;
     clear: () => Promise<{ success: boolean }>;
   };
 
