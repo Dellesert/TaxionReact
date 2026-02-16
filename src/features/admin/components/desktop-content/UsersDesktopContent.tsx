@@ -31,7 +31,8 @@ const UsersDesktopContent: React.FC = () => {
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = windowWidth - SIDEBAR_WIDTH;
   const isNarrow = contentWidth < 600;
-  const gridColumns = isNarrow ? 1 : 2;
+  const isMedium = contentWidth >= 600 && contentWidth < 900;
+  const gridColumns = isNarrow ? 1 : isMedium ? 2 : 3;
   const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
   const horizontalPadding = isNarrow ? 16 : 32;
   const { user: currentUser } = useAuthStore();
@@ -61,7 +62,7 @@ const UsersDesktopContent: React.FC = () => {
       };
 
       const response = await userApi.getUsers(filters, { limit: 1000, offset: 0 });
-      setUsers(response.data);
+      setUsers(response.data || []);
     } catch (error: any) {
       showError('Не удалось загрузить список пользователей');
     } finally {
