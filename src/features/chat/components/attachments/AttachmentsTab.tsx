@@ -566,38 +566,42 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
         ) : (
           // Список файлов
           <View style={styles.filesList}>
-            {filteredAttachments.map((attachment, index) => (
-              <TouchableOpacity
-                key={attachment.id}
-                style={[styles.fileItem, dynamicStyles.fileItem]}
-                onPress={() => handleAttachmentPress(attachment, index)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.fileIconContainer}>
+            {filteredAttachments.map((attachment, index) => {
+              const decodedFileName = decodeFileName(attachment.file_name);
+
+              return (
+                <TouchableOpacity
+                  key={attachment.id}
+                  style={[styles.fileItem, dynamicStyles.fileItem]}
+                  onPress={() => handleAttachmentPress(attachment, index)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.fileIconContainer}>
+                    <Ionicons
+                      name={getFileIcon(attachment.mime_type) as any}
+                      size={32}
+                      color={theme.primary}
+                    />
+                  </View>
+                  <View style={styles.fileInfo}>
+                    <Text
+                      style={[styles.fileName, dynamicStyles.fileName]}
+                      numberOfLines={1}
+                    >
+                      {decodedFileName || 'Файл без имени'}
+                    </Text>
+                    <Text style={[styles.fileSize, dynamicStyles.fileSize]}>
+                      {formatFileSize(attachment.file_size)}
+                    </Text>
+                  </View>
                   <Ionicons
-                    name={getFileIcon(attachment.mime_type) as any}
-                    size={32}
-                    color={theme.primary}
+                    name="chevron-forward"
+                    size={20}
+                    color={theme.textTertiary}
                   />
-                </View>
-                <View style={styles.fileInfo}>
-                  <Text
-                    style={[styles.fileName, dynamicStyles.fileName]}
-                    numberOfLines={1}
-                  >
-                    {attachment.file_name}
-                  </Text>
-                  <Text style={[styles.fileSize, dynamicStyles.fileSize]}>
-                    {formatFileSize(attachment.file_size)}
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={theme.textTertiary}
-                />
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 

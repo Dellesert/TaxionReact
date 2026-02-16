@@ -624,6 +624,18 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     controlsOpacity.value = withTiming(newVisible ? 1 : 0, { duration: 200 });
   };
 
+  // Handle media click (for web/Electron platforms)
+  const handleMediaClick = useCallback((e: any) => {
+    if (Platform.OS === 'web') {
+      // Only toggle if clicking directly on media area, not on buttons
+      const target = e?.target || e?.nativeEvent?.target;
+      if (target && (target.tagName === 'BUTTON' || target.closest('button'))) {
+        return;
+      }
+      toggleControls();
+    }
+  }, [controlsVisible]);
+
   const handleClose = () => {
     clearAutoHideTimer();
     player.pause();
@@ -940,44 +952,52 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         <BlurView intensity={95} style={styles.blurOverlay} tint="dark" />
 
         {/* Media gallery */}
-        <GestureDetector gesture={composedGesture}>
-          <Animated.View style={[styles.galleryContainer, { height: screenHeight }, galleryStyle]}>
-            {mediaItems.map((item, index) => {
-              const isNearby = Math.abs(index - currentIndex) <= SLIDE_WINDOW;
+        <View
+          style={styles.galleryWrapper}
+          // @ts-ignore - Web-only click handler for controls toggle
+          onClick={Platform.OS === 'web' ? handleMediaClick : undefined}
+        >
+          <GestureDetector gesture={composedGesture}>
+            <Animated.View style={[styles.galleryContainer, { height: screenHeight }, galleryStyle]}>
+              {mediaItems.map((item, index) => {
+                const isNearby = Math.abs(index - currentIndex) <= SLIDE_WINDOW;
 
-              return (
-                <View key={`${index}-${item.url}`} style={[styles.imageSlide, { width: screenWidth, height: screenHeight }]}>
-                  {isNearby ? (
-                    <Animated.View
-                      style={[
-                        styles.imageContainer,
-                        { width: screenWidth, height: imageContainerHeight },
-                        imageZoomStyle,
-                      ]}
-                    >
-                      {item.type === 'image' ? (
-                        <ImageSlideContent source={imageSources[index]} />
-                      ) : (
-                        <VideoSlideContent
-                          item={item}
-                          isActive={index === currentIndex}
-                          sessionId={sessionId}
-                          player={player}
-                          videoLoading={videoLoading}
-                        />
-                      )}
-                    </Animated.View>
-                  ) : null}
-                </View>
-              );
-            })}
-          </Animated.View>
-        </GestureDetector>
+                return (
+                  <View key={`${index}-${item.url}`} style={[styles.imageSlide, { width: screenWidth, height: screenHeight }]}>
+                    {isNearby ? (
+                      <Animated.View
+                        style={[
+                          styles.imageContainer,
+                          { width: screenWidth, height: imageContainerHeight },
+                          imageZoomStyle,
+                        ]}
+                      >
+                        {item.type === 'image' ? (
+                          <ImageSlideContent source={imageSources[index]} />
+                        ) : (
+                          <VideoSlideContent
+                            item={item}
+                            isActive={index === currentIndex}
+                            sessionId={sessionId}
+                            player={player}
+                            videoLoading={videoLoading}
+                          />
+                        )}
+                      </Animated.View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </Animated.View>
+          </GestureDetector>
+        </View>
 
         {/* Header with counter */}
         <Animated.View
           style={[styles.header, { paddingTop: 15 + insets.top }, animatedControlsStyle]}
           pointerEvents={controlsVisible ? 'auto' : 'none'}
+          // @ts-ignore - Web-only: prevent clicks from bubbling to gallery
+          onClick={(e: any) => e?.stopPropagation?.()}
         >
           <TouchableOpacity
             style={styles.headerButton}
@@ -1018,6 +1038,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               <Animated.View
                 style={[styles.navButton, styles.navButtonLeft, animatedControlsStyle]}
                 pointerEvents={controlsVisible ? 'auto' : 'none'}
+                // @ts-ignore - Web-only: prevent clicks from bubbling to gallery
+                onClick={(e: any) => e?.stopPropagation?.()}
               >
                 <TouchableOpacity
                   onPress={goToPrevious}
@@ -1033,6 +1055,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               <Animated.View
                 style={[styles.navButton, styles.navButtonRight, animatedControlsStyle]}
                 pointerEvents={controlsVisible ? 'auto' : 'none'}
+                // @ts-ignore - Web-only: prevent clicks from bubbling to gallery
+                onClick={(e: any) => e?.stopPropagation?.()}
               >
                 <TouchableOpacity
                   onPress={goToNext}
@@ -1069,6 +1093,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         <Animated.View
           style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }, animatedControlsStyle]}
           pointerEvents={controlsVisible ? 'auto' : 'none'}
+          // @ts-ignore - Web-only: prevent clicks from bubbling to gallery
+          onClick={(e: any) => e?.stopPropagation?.()}
         >
           {/* Video progress bar (self-contained — manages its own playback state) */}
           {mediaItems[currentIndex]?.type === 'video' && (
@@ -1117,6 +1143,9 @@ const styles = StyleSheet.create({
   },
   blurOverlay: {
     ...StyleSheet.absoluteFillObject,
+  },
+  galleryWrapper: {
+    flex: 1,
   },
   header: {
     position: 'absolute',
