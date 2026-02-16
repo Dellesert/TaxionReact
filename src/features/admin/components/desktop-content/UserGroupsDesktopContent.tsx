@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -22,9 +23,18 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { getUserGroups, createUserGroup, deleteUserGroup } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
 
+const SIDEBAR_WIDTH = 320;
+
 const UserGroupsDesktopContent: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const contentWidth = windowWidth - SIDEBAR_WIDTH;
+  const isNarrow = contentWidth < 600;
+  const isMedium = contentWidth >= 600 && contentWidth < 900;
+  const gridColumns = isNarrow ? 1 : isMedium ? 2 : 3;
+  const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
+  const horizontalPadding = isNarrow ? 16 : 32;
   const { user } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
@@ -137,24 +147,24 @@ const UserGroupsDesktopContent: React.FC = () => {
       backgroundColor: theme.background,
     },
     header: {
-      paddingHorizontal: 32,
-      paddingTop: 32,
-      paddingBottom: 24,
+      paddingHorizontal: horizontalPadding,
+      paddingTop: isNarrow ? 20 : 32,
+      paddingBottom: isNarrow ? 16 : 24,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
     headerTop: {
-      flexDirection: 'row',
+      flexDirection: isNarrow ? 'column' : 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: 20,
-      gap: 24,
+      alignItems: isNarrow ? 'stretch' : 'flex-start',
+      marginBottom: isNarrow ? 12 : 20,
+      gap: isNarrow ? 12 : 24,
     },
     headerText: {
       flex: 1,
     },
     headerTitle: {
-      fontSize: 28,
+      fontSize: isNarrow ? 22 : 28,
       fontWeight: '700',
       color: theme.text,
       marginBottom: 6,
@@ -177,7 +187,8 @@ const UserGroupsDesktopContent: React.FC = () => {
       paddingHorizontal: 16,
       paddingVertical: 10,
       gap: 8,
-      maxWidth: 500,
+      maxWidth: isNarrow ? undefined : 500,
+      flex: isNarrow ? 1 : undefined,
       borderWidth: 1,
       borderColor: theme.border,
     },
@@ -226,14 +237,14 @@ const UserGroupsDesktopContent: React.FC = () => {
       color: theme.textSecondary,
     },
     groupList: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginHorizontal: -8,
+      flexDirection: isNarrow ? 'column' : 'row',
+      flexWrap: isNarrow ? undefined : 'wrap',
+      marginHorizontal: isNarrow ? 0 : -8,
     },
     groupCardWrapper: {
       width: '100%',
-      maxWidth: '33.333%',
-      paddingHorizontal: 8,
+      maxWidth: isNarrow ? '100%' : cardMaxWidth,
+      paddingHorizontal: isNarrow ? 0 : 8,
       marginBottom: 16,
     },
   });
@@ -439,7 +450,7 @@ const styles = StyleSheet.create({
     maxWidth: 1400,
     width: '100%',
     alignSelf: 'center',
-    padding: 32,
+    padding: 16,
   },
   centerContainer: {
     flex: 1,

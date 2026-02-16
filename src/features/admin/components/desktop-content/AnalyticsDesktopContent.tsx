@@ -4,14 +4,19 @@
  */
 
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNavigation } from '@react-navigation/native';
 
+const SIDEBAR_WIDTH = 320;
+
 const AnalyticsDesktopContent: React.FC = () => {
   const { theme, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const { width: windowWidth } = useWindowDimensions();
+  const contentWidth = windowWidth - SIDEBAR_WIDTH;
+  const isNarrow = contentWidth < 600;
 
   const handleNavigate = (route: string) => {
     // Navigate within Admin stack
@@ -63,16 +68,16 @@ const AnalyticsDesktopContent: React.FC = () => {
       alignSelf: 'center',
     },
     grid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: isNarrow ? 'column' : 'row',
+      flexWrap: isNarrow ? undefined : 'wrap',
       paddingBottom: 20,
-      marginHorizontal: -12,
+      marginHorizontal: isNarrow ? 0 : -12,
     },
     cardWrapper: {
-      width: '50%',
-      maxWidth: 600,
-      paddingHorizontal: 12,
-      marginBottom: 24,
+      width: isNarrow ? '100%' : '50%',
+      maxWidth: isNarrow ? undefined : 600,
+      paddingHorizontal: isNarrow ? 0 : 12,
+      marginBottom: isNarrow ? 16 : 24,
     },
     card: {
       backgroundColor: theme.backgroundSecondary,

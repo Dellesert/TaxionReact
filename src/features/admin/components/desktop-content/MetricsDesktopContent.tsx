@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -28,6 +29,11 @@ import {
 const MetricsDesktopContent: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const isNarrow = windowWidth < 700;
+  const isMedium = windowWidth >= 700 && windowWidth < 1000;
+  const gridColumns = isNarrow ? 1 : isMedium ? 2 : 3;
+  const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
   const { showError } = useNotification();
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
@@ -99,8 +105,9 @@ const MetricsDesktopContent: React.FC = () => {
     },
     periodSelector: {
       flexDirection: 'row',
-      gap: 12,
-      marginBottom: 24,
+      flexWrap: 'wrap',
+      gap: isNarrow ? 8 : 12,
+      marginBottom: isNarrow ? 16 : 24,
     },
     periodButton: {
       paddingVertical: 10,
@@ -123,19 +130,19 @@ const MetricsDesktopContent: React.FC = () => {
       color: '#FFFFFF',
     },
     metricsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginHorizontal: -10,
+      flexDirection: isNarrow ? 'column' : 'row',
+      flexWrap: isNarrow ? undefined : 'wrap',
+      marginHorizontal: isNarrow ? 0 : -10,
     },
     metricCardWrapper: {
-      width: '33.333%',
-      paddingHorizontal: 10,
-      marginBottom: 20,
+      width: isNarrow ? '100%' : cardMaxWidth,
+      paddingHorizontal: isNarrow ? 0 : 10,
+      marginBottom: isNarrow ? 12 : 20,
     },
     metricCardWrapperFull: {
       width: '100%',
-      paddingHorizontal: 10,
-      marginBottom: 20,
+      paddingHorizontal: isNarrow ? 0 : 10,
+      marginBottom: isNarrow ? 12 : 20,
     },
     metricCard: {
       backgroundColor: theme.backgroundSecondary,
@@ -176,7 +183,7 @@ const MetricsDesktopContent: React.FC = () => {
       letterSpacing: 0.3,
     },
     metricValue: {
-      fontSize: 32,
+      fontSize: isNarrow ? 24 : 32,
       fontWeight: '700',
       color: theme.text,
       marginBottom: 6,
@@ -245,11 +252,13 @@ const MetricsDesktopContent: React.FC = () => {
     },
     detailedStatsContainer: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       justifyContent: 'space-around',
       marginTop: 16,
       paddingTop: 16,
       borderTopWidth: 1,
       borderTopColor: theme.border,
+      gap: isNarrow ? 12 : 0,
     },
     detailedStatItem: {
       alignItems: 'center',

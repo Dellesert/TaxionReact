@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -23,8 +24,16 @@ import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
 
+const SIDEBAR_WIDTH = 320;
+
 const UsersDesktopContent: React.FC = () => {
   const { theme, isDark } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const contentWidth = windowWidth - SIDEBAR_WIDTH;
+  const isNarrow = contentWidth < 600;
+  const gridColumns = isNarrow ? 1 : 2;
+  const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
+  const horizontalPadding = isNarrow ? 16 : 32;
   const { user: currentUser } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showOptions, showConfirm } = useActionModal();
@@ -176,17 +185,17 @@ const UsersDesktopContent: React.FC = () => {
       backgroundColor: theme.background,
     },
     header: {
-      paddingHorizontal: 32,
-      paddingTop: 32,
-      paddingBottom: 24,
+      paddingHorizontal: horizontalPadding,
+      paddingTop: isNarrow ? 20 : 32,
+      paddingBottom: isNarrow ? 16 : 24,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
     headerTop: {
-      marginBottom: 20,
+      marginBottom: isNarrow ? 12 : 20,
     },
     headerTitle: {
-      fontSize: 28,
+      fontSize: isNarrow ? 22 : 28,
       fontWeight: '700',
       color: theme.text,
       marginBottom: 6,
@@ -198,8 +207,8 @@ const UsersDesktopContent: React.FC = () => {
       lineHeight: 22,
     },
     searchAndFilterRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: isNarrow ? 'column' : 'row',
+      alignItems: isNarrow ? 'stretch' : 'center',
       gap: 12,
     },
     searchContainer: {
@@ -210,8 +219,8 @@ const UsersDesktopContent: React.FC = () => {
       paddingHorizontal: 16,
       paddingVertical: 10,
       gap: 8,
-      flex: 1,
-      maxWidth: 500,
+      flex: isNarrow ? undefined : 1,
+      maxWidth: isNarrow ? undefined : 500,
       borderWidth: 1,
       borderColor: theme.border,
     },
@@ -223,6 +232,7 @@ const UsersDesktopContent: React.FC = () => {
     filterChips: {
       flexDirection: 'row',
       gap: 8,
+      flexWrap: isNarrow ? 'wrap' : undefined,
     },
     filterChip: {
       paddingHorizontal: 16,
@@ -242,14 +252,14 @@ const UsersDesktopContent: React.FC = () => {
       height: '100%',
     },
     usersList: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginHorizontal: -8,
+      flexDirection: isNarrow ? 'column' : 'row',
+      flexWrap: isNarrow ? undefined : 'wrap',
+      marginHorizontal: isNarrow ? 0 : -8,
     },
     userCardWrapper: {
       width: '100%',
-      maxWidth: '50%',
-      paddingHorizontal: 8,
+      maxWidth: isNarrow ? '100%' : cardMaxWidth,
+      paddingHorizontal: isNarrow ? 0 : 8,
       marginBottom: 16,
     },
   });
@@ -475,7 +485,7 @@ const styles = StyleSheet.create({
     maxWidth: 1400,
     width: '100%',
     alignSelf: 'center',
-    padding: 32,
+    padding: 16,
   },
   centerContainer: {
     flex: 1,

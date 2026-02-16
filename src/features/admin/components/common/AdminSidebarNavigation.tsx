@@ -24,6 +24,7 @@ interface AdminSidebarNavigationProps {
   activeSection: AdminSection;
   onSectionChange: (section: AdminSection) => void;
   userRole?: UserRole;
+  width?: number;
 }
 
 const ADMIN_SECTIONS: SidebarItem[] = [
@@ -65,6 +66,7 @@ export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
   activeSection,
   onSectionChange,
   userRole,
+  width: sidebarWidth,
 }) => {
   const { theme, isDark } = useTheme();
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
@@ -216,7 +218,7 @@ export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
   };
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
+    <View style={[styles.container, dynamicStyles.container, sidebarWidth ? { width: sidebarWidth, minWidth: sidebarWidth, maxWidth: sidebarWidth } : undefined]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={dynamicStyles.scrollContent}
