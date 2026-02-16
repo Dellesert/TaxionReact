@@ -5,6 +5,8 @@ import { getChatDisplayName } from '../utils/chatUtils';
 import { useOptimisticMessage } from '@shared/hooks/useOptimisticMessage';
 import { useVideoUploadMessage } from '@shared/hooks/useVideoUploadMessage';
 import { PendingVideoFile } from '../types/chat.types';
+import { FILE_UPLOAD } from '@shared/constants/app.constants';
+import { useInAppNotificationStore } from '@shared/store/inAppNotificationStore';
 
 /**
  * Хук для обработки действий с сообщениями в чате
@@ -38,6 +40,7 @@ export const useChatActions = (chatId: number) => {
   const getChatById = useChatStore((state) => state.getChatById);
   const setError = useChatStore((state) => state.set);
   const currentUser = useAuthStore((state) => state.user);
+  const showNotification = useInAppNotificationStore((state) => state.showNotification);
 
   // Оптимистичные сообщения для мгновенного UI response
   const {
@@ -59,7 +62,65 @@ export const useChatActions = (chatId: number) => {
    * Callback для FileAttachmentPicker — добавляет pending видео файлы
    */
   const handlePendingVideoFiles = useCallback((files: PendingVideoFile[]) => {
-    setPendingVideoFiles((prev) => [...prev, ...files]);
+    const currentTotal = selectedFileIdsRef.current.length + pendingVideoFilesRef.current.length;
+    const availableSlots = FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE - currentTotal;
+
+    if (availableSlots <= 0) {
+      showNotification({
+        type: 'error',
+        message: `Можно прикрепить не более ${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} файлов`,
+      });
+      return;
+    }
+
+    // Take only as many as we can
+    const filesToAdd = files.slice(0, availableSlots);
+
+    // Show warning if we had to truncate
+    if (filesToAdd.length < files.length) {
+      showNotification({
+        type: 'warning',
+        message: `Выбрано ${files.length} файлов, но прикреплено только ${filesToAdd.length}. Лимит: ${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} файлов.`,
+      });
+    }
+
+    setPendingVideoFiles((prev) => [...prev, ...filesToAdd]);
+  }, [showNotification]);
+
+  /**
+   * Callback для FileAttachmentPicker — добавляет обычные файлы (не видео)
+   */
+  const handleFilesSelected = useCallback((fileIds: number[]) => {
+    const currentTotal = selectedFileIdsRef.current.length + pendingVideoFilesRef.current.length;
+    const availableSlots = FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE - currentTotal;
+
+    if (availableSlots <= 0) {
+      showNotification({
+        type: 'error',
+        message: `Можно прикрепить не более ${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} файлов`,
+      });
+      return;
+    }
+
+    // Take only as many as we can
+    const idsToAdd = fileIds.slice(0, availableSlots);
+
+    // Show warning if we had to truncate
+    if (idsToAdd.length < fileIds.length) {
+      showNotification({
+        type: 'warning',
+        message: `Выбрано ${fileIds.length} файлов, но прикреплено только ${idsToAdd.length}. Лимит: ${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} файлов.`,
+      });
+    }
+
+    setSelectedFileIds((prev) => [...prev, ...idsToAdd]);
+  }, [showNotification]);
+
+  /**
+   * Удалить файл по ID
+   */
+  const removeFile = useCallback((fileId: number) => {
+    setSelectedFileIds((prev) => prev.filter((id) => id !== fileId));
   }, []);
 
   /**
@@ -291,10 +352,12 @@ export const useChatActions = (chatId: number) => {
     handleDiscardFailedMessage,
     isOptimisticMessage,
     getMessageStatus,
-    // Видео-загрузка
+    // Файлы и видео-загрузка
     pendingVideoFiles,
     setPendingVideoFiles,
     handlePendingVideoFiles,
     removePendingVideo,
+    handleFilesSelected,
+    removeFile,
   };
 };

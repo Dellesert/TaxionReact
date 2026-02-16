@@ -137,6 +137,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     pendingVideoFiles,
     handlePendingVideoFiles,
     removePendingVideo,
+    handleFilesSelected,
+    removeFile,
   } = useChatActions(chatIdNum);
 
   // Callback для сброса состояния непрочитанных при выходе из jump context
@@ -714,8 +716,8 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         replyingToMessage={replyingToMessage}
         onCancelReply={() => setReplyingToMessage(null)}
         selectedFileIds={selectedFileIds}
-        onFilesSelected={(fileIds) => setSelectedFileIds((prev) => [...prev, ...fileIds])}
-        onRemoveFile={(fileId) => setSelectedFileIds((prev) => prev.filter((id) => id !== fileId))}
+        onFilesSelected={handleFilesSelected}
+        onRemoveFile={removeFile}
         pendingVideoFiles={pendingVideoFiles}
         onPendingVideoFiles={handlePendingVideoFiles}
         onRemovePendingVideo={removePendingVideo}

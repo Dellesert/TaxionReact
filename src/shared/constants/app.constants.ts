@@ -166,6 +166,7 @@ export const DATE_FORMATS = {
 export const FILE_UPLOAD = {
   MAX_SIZE: 10 * 1024 * 1024, // 10 MB
   MAX_IMAGE_SIZE: 5 * 1024 * 1024, // 5 MB
+  MAX_ATTACHMENTS_PER_MESSAGE: 20, // Maximum attachments per chat message
   ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   ALLOWED_FILE_TYPES: [
     'application/pdf',

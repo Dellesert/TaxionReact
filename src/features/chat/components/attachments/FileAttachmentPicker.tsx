@@ -20,17 +20,20 @@ import { useInAppNotificationStore } from '@shared/store/inAppNotificationStore'
 import { formatFileUploadError } from '@shared/utils/errorUtils';
 import { ApiError } from '@types/common.types';
 import { PendingVideoFile } from '../../types/chat.types';
+import { FILE_UPLOAD } from '@shared/constants/app.constants';
 
 interface FileAttachmentPickerProps {
   onFilesSelected: (fileIds: number[]) => void;
   onPendingVideoFiles?: (files: PendingVideoFile[]) => void;
   onError?: (error: string) => void;
+  currentAttachmentCount?: number;
 }
 
 export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   onFilesSelected,
   onPendingVideoFiles,
   onError,
+  currentAttachmentCount = 0,
 }) => {
   const { theme } = useTheme();
   const { showOptions } = useActionModal();
@@ -250,11 +253,31 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   };
 
   const uploadFiles = async (files: (File | { uri: string; name: string; type: string })[], assets?: ImagePicker.ImagePickerAsset[]) => {
+    // Check attachment limit
+    const availableSlots = FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE - currentAttachmentCount;
+
+    if (availableSlots <= 0) {
+      showErrorToast(
+        null,
+        `Можно прикрепить не более ${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} файлов`
+      );
+      return;
+    }
+
+    // If user selected more than available slots, take only first N
+    let filesToProcess = files;
+    let showLimitWarning = false;
+
+    if (files.length > availableSlots) {
+      filesToProcess = files.slice(0, availableSlots);
+      showLimitWarning = true;
+    }
+
     // Separate video files from non-video files
     const videoFiles: PendingVideoFile[] = [];
     const nonVideoFiles: (File | { uri: string; name: string; type: string })[] = [];
 
-    files.forEach((file, index) => {
+    filesToProcess.forEach((file, index) => {
       const mimeType = file instanceof File ? file.type : file.type;
       if ((mimeType.startsWith('video/') || mimeType.startsWith('image/')) && onPendingVideoFiles) {
         const asset = assets?.[index];
@@ -315,6 +338,14 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         setProgress(0);
       }
     }
+
+    // Show warning if we truncated the selection
+    if (showLimitWarning) {
+      showErrorToast(
+        null,
+        `Выбрано ${files.length} файлов, но прикреплено только ${filesToProcess.length}. Лимит: ${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} файлов.`
+      );
+    }
   };
 
   if (uploading) {
@@ -354,6 +385,8 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   }
 
   // Одна кнопка с меню вложений на всех платформах
+  const isLimitReached = currentAttachmentCount >= FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE;
+
   return (
     <>
       {/* Модальное меню для веба */}
@@ -394,10 +427,22 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       )}
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.backgroundTertiary }]}
+        style={[
+          styles.button,
+          { backgroundColor: theme.backgroundTertiary },
+          isLimitReached && { opacity: 0.5 }
+        ]}
         onPress={() => {
+          if (isLimitReached) {
+            showErrorToast(
+              null,
+              `Достигнут лимит вложений (${FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE})`
+            );
+            return;
+          }
           showAttachmentMenu();
         }}
+        disabled={isLimitReached}
       >
         <Ionicons name="attach" size={24} color={theme.primary} />
       </TouchableOpacity>
