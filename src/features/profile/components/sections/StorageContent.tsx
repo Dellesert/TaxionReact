@@ -192,6 +192,13 @@ const StorageContent: React.FC = () => {
         getCacheUsagePercent(),
       ]);
 
+      // Calculate total including Electron media cache
+      const totalMediaSize = isElectron()
+        ? (electronMediaCache?.totalSize || 0) // Electron: all media is in FileCache (video stats are subset of total)
+        : imageCacheSize + videoCacheSize;
+      const totalCache = mmkvInfo.totalSize + totalMediaSize;
+      const finalUsagePercent = cacheLimit > 0 ? Math.min(100, (totalCache / cacheLimit) * 100) : usagePercent;
+
       setCacheInfo({
         mmkv: mmkvInfo,
         imageCache: imageCacheSize,
@@ -199,9 +206,9 @@ const StorageContent: React.FC = () => {
         videoCache: videoCacheSize,
         videoCacheFileCount,
         documentCache: documentCacheSize,
-        totalCache: mmkvInfo.totalSize + documentCacheSize + imageCacheSize + videoCacheSize,
+        totalCache,
         cacheLimit,
-        usagePercent,
+        usagePercent: finalUsagePercent,
         electronMediaCache,
         electronVideoCache,
       });
@@ -546,72 +553,22 @@ const StorageContent: React.FC = () => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {/* Data Cache Section */}
+        {/* Storage Section - like mobile */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Кэш данных</Text>
+          <Text style={styles.sectionTitle}>Хранилище</Text>
           <View style={styles.card}>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#3B82F620' }]}>
-                  <Ionicons name="chatbubbles" size={20} color="#3B82F6" />
+                  <Ionicons name="server-outline" size={20} color="#3B82F6" />
                 </View>
                 <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Чаты и сообщения</Text>
+                  <Text style={styles.rowTitle}>Данные</Text>
+                  <Text style={styles.rowSubtitle}>Чаты, задачи, календарь, опросы, профили</Text>
                 </View>
               </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.chatSize || 0)}</Text>
+              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.totalSize || 0)}</Text>
             </View>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: '#10B98120' }]}>
-                  <Ionicons name="checkbox" size={20} color="#10B981" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Задачи</Text>
-                </View>
-              </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.taskSize || 0)}</Text>
-            </View>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: '#8B5CF620' }]}>
-                  <Ionicons name="calendar" size={20} color="#8B5CF6" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Календарь</Text>
-                </View>
-              </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.calendarSize || 0)}</Text>
-            </View>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: '#EC489920' }]}>
-                  <Ionicons name="bar-chart" size={20} color="#EC4899" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Опросы</Text>
-                </View>
-              </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.pollSize || 0)}</Text>
-            </View>
-            <View style={[styles.row, styles.rowLast]}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: '#6366F120' }]}>
-                  <Ionicons name="people" size={20} color="#6366F1" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Профили</Text>
-                </View>
-              </View>
-              <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.userSize || 0)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Media Cache Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Медиа</Text>
-          <View style={styles.card}>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#F59E0B20' }]}>
@@ -621,11 +578,9 @@ const StorageContent: React.FC = () => {
                   <Text style={styles.rowTitle}>Изображения</Text>
                   <Text style={styles.rowSubtitle}>
                     {(() => {
-                      // Electron: use electronMediaCache
-                      if (cacheInfo?.electronMediaCache) {
+                      if (isElectron() && cacheInfo?.electronMediaCache) {
                         return `${cacheInfo.electronMediaCache.fileCount} файлов`;
                       }
-                      // Native: use imageCacheFileCount
                       if (isNative && cacheInfo?.imageCacheFileCount) {
                         return `${cacheInfo.imageCacheFileCount} файлов`;
                       }
@@ -636,15 +591,12 @@ const StorageContent: React.FC = () => {
               </View>
               <Text style={styles.rowValue}>
                 {(() => {
-                  // Electron: use electronMediaCache
                   if (isElectron() && cacheInfo?.electronMediaCache) {
                     return formatBytes(cacheInfo.electronMediaCache.totalSize);
                   }
-                  // Native: always show size (even if 0)
                   if (isNative) {
                     return formatBytes(cacheInfo?.imageCache || 0);
                   }
-                  // Web: browser manages cache
                   return 'Системный';
                 })()}
               </Text>
@@ -689,7 +641,7 @@ const StorageContent: React.FC = () => {
           <View style={styles.totalHeader}>
             <Text style={styles.totalLabel}>Использовано</Text>
             <Text style={styles.totalValue}>
-              {formatBytes(cacheInfo?.mmkv.totalSize || 0)} / {getCurrentLimitLabel()}
+              {formatBytes(cacheInfo?.totalCache || 0)} / {getCurrentLimitLabel()}
             </Text>
           </View>
           <View style={styles.progressBarContainer}>
