@@ -704,6 +704,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const panGesture = Gesture.Pan()
     .minPointers(1)
     .maxPointers(1)
+    .minDistance(5) // Require minimum distance to avoid conflicting with taps
     .onUpdate((event) => {
       if (scale.value > 1) {
         // Zoomed - pan with constraints
@@ -759,6 +760,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   // Single tap: toggle controls visibility (both images and videos)
   const singleTap = Gesture.Tap()
     .numberOfTaps(1)
+    .maxDistance(10) // Allow small movement for better Electron/web compatibility
     .onEnd(() => {
       runOnJS(toggleControls)();
     });
@@ -766,6 +768,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   // Double tap for zoom (images and videos)
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
+    .maxDistance(10) // Allow small movement for better Electron/web compatibility
     .onEnd((event) => {
       if (scale.value > 1) {
         scale.value = withSpring(1);

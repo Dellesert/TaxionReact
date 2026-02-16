@@ -20,6 +20,7 @@ import { Chat } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { getChatDisplayName, getChatDisplayAvatar } from '../../utils/chatUtils';
 import { stripFormatting } from '../../utils/formatting';
+import { isElectron } from '@shared/utils/platform';
 
 interface ForwardMessagesModalProps {
   visible: boolean;
@@ -45,6 +46,9 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [isForwarding, setIsForwarding] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Detect desktop platform (Electron or web)
+  const isDesktop = Platform.OS === 'web' || isElectron();
 
   const effectiveInsetsBottom = (Platform.OS === 'ios' && isKeyboardVisible) ? 0 : insets.bottom;
 
@@ -131,9 +135,15 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
       animationType="slide"
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
+      transparent={isDesktop}
     >
-      <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
-        {/* Header */}
+      <View style={[styles.modalWrapper, isDesktop && styles.modalWrapperDesktop]}>
+        <View style={[
+          styles.modalContainer,
+          { backgroundColor: theme.background },
+          isDesktop && styles.modalContainerDesktop
+        ]}>
+          {/* Header */}
         <View style={[styles.header, { borderBottomColor: theme.border, paddingTop: Platform.OS === 'android' ? 16 + insets.top : 16 }]}>
           <Text style={[styles.title, { color: theme.text }]}>Переслать сообщения</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -183,14 +193,35 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
             <ActivityIndicator size="large" color={theme.primary} />
           </View>
         )}
+        </View>
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalWrapper: {
+    flex: 1,
+  },
+  modalWrapperDesktop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalContainer: {
     flex: 1,
+  },
+  modalContainerDesktop: {
+    maxWidth: 600,
+    width: '100%',
+    maxHeight: '90%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   header: {
     flexDirection: 'row',

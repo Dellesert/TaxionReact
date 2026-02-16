@@ -20,6 +20,7 @@ import { Chat, Message } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { getChatDisplayName, getChatDisplayAvatar } from '../../utils/chatUtils';
 import { stripFormatting } from '../../utils/formatting';
+import { isElectron } from '@shared/utils/platform';
 
 const getMediaPreview = (message: Message): { icon: string; label: string } | null => {
   const attachments = (message as any).attachments;
@@ -55,6 +56,9 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [isForwarding, setIsForwarding] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Detect desktop platform (Electron or web)
+  const isDesktop = Platform.OS === 'web' || isElectron();
 
   // На iOS высота клавиатуры уже включает home indicator
   const effectiveInsetsBottom = (Platform.OS === 'ios' && isKeyboardVisible) ? 0 : insets.bottom;
@@ -138,8 +142,14 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
       animationType="slide"
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
+      transparent={isDesktop}
     >
-      <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+      <View style={[styles.modalWrapper, isDesktop && styles.modalWrapperDesktop]}>
+        <View style={[
+          styles.modalContainer,
+          { backgroundColor: theme.background },
+          isDesktop && styles.modalContainerDesktop
+        ]}>
           {/* Заголовок */}
           <View style={[styles.header, { borderBottomColor: theme.border, paddingTop: Platform.OS === 'android' ? 16 + insets.top : 16 }]}>
             <Text style={[styles.title, { color: theme.text }]}>Переслать сообщение</Text>
@@ -210,14 +220,35 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
               <ActivityIndicator size="large" color={theme.primary} />
             </View>
           )}
+        </View>
       </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalWrapper: {
+    flex: 1,
+  },
+  modalWrapperDesktop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalContainer: {
     flex: 1,
+  },
+  modalContainerDesktop: {
+    maxWidth: 600,
+    width: '100%',
+    maxHeight: '90%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
