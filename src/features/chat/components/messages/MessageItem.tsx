@@ -89,10 +89,17 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
   // На десктопе для сообщений с медиа задаём явную ширину (не только maxWidth),
   // чтобы процентные размеры дочерних элементов (width: '100%') корректно работали
-  const hasMedia = message.attachments?.some(a => {
-    const mt = a.mime_type || a.file_type || '';
-    return isImageFile(mt) || isVideoFile(mt);
-  });
+  const mediaAttachments = useMemo(() =>
+    message.attachments?.filter(a => {
+      const mt = a.mime_type || a.file_type || '';
+      return isImageFile(mt) || isVideoFile(mt);
+    }) || [],
+    [message.attachments]
+  );
+  const hasMedia = mediaAttachments.length > 0;
+  const hasMultipleMedia = mediaAttachments.length > 1;
+  // Для одиночного фото: уменьшаем ширину бабла (~65% от максимума)
+  const singleMediaWidth = Math.min(maxBubbleWidth * 0.65, 280);
   const currentUser = useAuthStore((state) => state.user);
   const { showError } = useNotification();
   const navigation = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
@@ -315,7 +322,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         )}
 
         {/* Пузырь сообщения */}
-        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth, ...(hasMedia && { width: maxBubbleWidth }) }}>
+        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth, ...(hasMultipleMedia && { width: maxBubbleWidth }), ...(hasMedia && !hasMultipleMedia && { width: singleMediaWidth }) }}>
           <MessageBubble
             message={message}
             isOwnMessage={isOwnMessage}

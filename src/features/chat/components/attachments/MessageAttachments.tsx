@@ -527,9 +527,15 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         // Одиночное видео — показываем с оригинальным соотношением сторон
         return renderVideoThumbnail(media[0], 0);
       }
+      // Одиночное фото — используем реальное соотношение сторон
+      const w = media[0].width;
+      const h = media[0].height;
+      const aspectRatio = (w && h)
+        ? Math.max(0.6, Math.min(1.5, w / h))
+        : 1;
       return (
         <View style={styles.imagesGrid}>
-          {renderMediaItem(media[0], 0, styles.imageSingle, false, showTimeOverlay)}
+          {renderMediaItem(media[0], 0, { width: '100%', aspectRatio }, false, showTimeOverlay)}
         </View>
       );
     }
