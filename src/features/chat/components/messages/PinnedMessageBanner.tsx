@@ -240,30 +240,46 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
             return (
               <>
                 {preview.thumbnailUrl ? (
-                  <Image
-                    source={{
-                      uri: preview.thumbnailUrl,
-                      headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-                    }}
-                    style={styles.thumbnail}
-                  />
-                ) : preview.icon ? (
-                  <Ionicons
-                    name={preview.icon as any}
-                    size={16}
-                    color={theme.primary}
-                    style={styles.fileIcon}
-                  />
-                ) : null}
-                {currentMessage.sender && (
-                  <Avatar
-                    name={currentMessage.sender.name}
-                    imageUrl={currentMessage.sender.avatar}
-                    thumbnailUrl={currentMessage.sender.avatar_thumbnail}
-                    userId={currentMessage.sender.id}
-                    size={22}
-                    style={styles.senderAvatar}
-                  />
+                  <View style={styles.thumbnailWrapper}>
+                    <Image
+                      source={{
+                        uri: preview.thumbnailUrl,
+                        headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+                      }}
+                      style={styles.thumbnail}
+                    />
+                    {currentMessage.sender && (
+                      <Avatar
+                        name={currentMessage.sender.name}
+                        imageUrl={currentMessage.sender.avatar}
+                        thumbnailUrl={currentMessage.sender.avatar_thumbnail}
+                        userId={currentMessage.sender.id}
+                        size={12}
+                        style={styles.avatarOnThumbnail}
+                      />
+                    )}
+                  </View>
+                ) : (
+                  <>
+                    {preview.icon ? (
+                      <Ionicons
+                        name={preview.icon as any}
+                        size={16}
+                        color={theme.primary}
+                        style={styles.fileIcon}
+                      />
+                    ) : null}
+                    {currentMessage.sender && (
+                      <Avatar
+                        name={currentMessage.sender.name}
+                        imageUrl={currentMessage.sender.avatar}
+                        thumbnailUrl={currentMessage.sender.avatar_thumbnail}
+                        userId={currentMessage.sender.id}
+                        size={22}
+                        style={styles.senderAvatar}
+                      />
+                    )}
+                  </>
                 )}
                 <Text
                   style={[styles.messageText, dynamicStyles.messageText]}
@@ -335,11 +351,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  thumbnailWrapper: {
+    position: 'relative',
+    marginRight: 8,
+  },
   thumbnail: {
     width: 28,
     height: 28,
     borderRadius: 4,
-    marginRight: 8,
+  },
+  avatarOnThumbnail: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    borderWidth: 1.5,
+    borderColor: 'white',
+    borderRadius: 8,
   },
   fileIcon: {
     marginRight: 6,
