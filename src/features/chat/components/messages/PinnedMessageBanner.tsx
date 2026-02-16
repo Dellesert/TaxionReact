@@ -233,53 +233,45 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
           <Ionicons name="pin" size={20} color={theme.primary} style={styles.icon} />
         )}
 
-        <View style={styles.textContainer}>
-          <View style={styles.header}>
-            <Text style={[styles.titleText, dynamicStyles.senderText]} numberOfLines={1}>
-              Закреплённое сообщение
-            </Text>
-            {hasMore && (
-              <TouchableOpacity onPress={handleNext} style={styles.counterButton}>
-                <Text style={[styles.counterText, dynamicStyles.counterText]}>
-                  {currentIndex + 1}/{sortedMessages.length}
+        <View style={styles.messageRow}>
+          {(() => {
+            const preview = getMessagePreview(currentMessage);
+            return (
+              <>
+                {preview.thumbnailUrl ? (
+                  <Image
+                    source={{
+                      uri: preview.thumbnailUrl,
+                      headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+                    }}
+                    style={styles.thumbnail}
+                  />
+                ) : preview.icon ? (
+                  <Ionicons
+                    name={preview.icon as any}
+                    size={16}
+                    color={theme.primary}
+                    style={styles.fileIcon}
+                  />
+                ) : null}
+                <Text
+                  style={[styles.messageText, dynamicStyles.messageText]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {currentMessage.sender?.name ? `${currentMessage.sender.name}: ` : ''}{preview.text}
                 </Text>
-                <Ionicons name="chevron-down" size={14} color={theme.textSecondary} style={styles.chevronIcon} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.messageRow}>
-            {(() => {
-              const preview = getMessagePreview(currentMessage);
-              return (
-                <>
-                  {preview.thumbnailUrl ? (
-                    <Image
-                      source={{
-                        uri: preview.thumbnailUrl,
-                        headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-                      }}
-                      style={styles.thumbnail}
-                    />
-                  ) : preview.icon ? (
-                    <Ionicons
-                      name={preview.icon as any}
-                      size={16}
-                      color={theme.primary}
-                      style={styles.fileIcon}
-                    />
-                  ) : null}
-                  <Text
-                    style={[styles.messageText, dynamicStyles.messageText]}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {currentMessage.sender?.name ? `${currentMessage.sender.name}: ` : ''}{preview.text}
-                  </Text>
-                </>
-              );
-            })()}
-          </View>
+              </>
+            );
+          })()}
+          {hasMore && (
+            <TouchableOpacity onPress={handleNext} style={styles.counterButton}>
+              <Text style={[styles.counterText, dynamicStyles.counterText]}>
+                {currentIndex + 1}/{sortedMessages.length}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={theme.textSecondary} style={styles.chevronIcon} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Кнопка открепления (только для пользователей с правами) */}
@@ -299,41 +291,26 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    minHeight: 60,
     zIndex: 10,
   },
   content: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   icon: {
-    marginRight: 12,
-    marginTop: 2,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  titleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    flex: 1,
+    marginRight: 8,
   },
   counterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: 12,
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    marginLeft: 8,
   },
   counterText: {
     fontSize: 12,
@@ -344,13 +321,12 @@ const styles = StyleSheet.create({
   },
   messageRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flex: 1,
-    minHeight: 44,
   },
   thumbnail: {
-    width: 36,
-    height: 36,
+    width: 28,
+    height: 28,
     borderRadius: 4,
     marginRight: 8,
   },
@@ -364,8 +340,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   unpinButton: {
-    marginLeft: 12,
+    marginLeft: 8,
     padding: 4,
-    marginTop: 2,
   },
 });
