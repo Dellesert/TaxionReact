@@ -8,14 +8,13 @@ import { View, StyleSheet, ScrollView, Platform, Text, TouchableOpacity, Activit
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAboutActions } from '../../hooks/useAboutActions';
+import { useElectronVersion } from '../../hooks/useElectronVersion';
 import { AboutLogo } from '../about/AboutLogo';
 import { AboutSection } from '../about/AboutSection';
 import { AboutInfoRow } from '../about/AboutInfoRow';
 import { AboutContactLink } from '../about/AboutContactLink';
 import { AboutFooter } from '../about/AboutFooter';
 import {
-  APP_VERSION,
-  APP_BUILD,
   APP_NAME,
   COMPANY_NAME,
   APP_DESCRIPTION,
@@ -31,6 +30,9 @@ const AboutContent: React.FC = () => {
   const { handleOpenWebsite, handleOpenEmail } = useAboutActions();
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+
+  // Get version from Electron or native
+  const { version: appVersion, build: appBuild } = useElectronVersion();
 
   const handleContactPress = (action: 'website' | 'email') => {
     if (action === 'website') {
@@ -74,7 +76,7 @@ const AboutContent: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Logo Section */}
-        <AboutLogo appName={APP_NAME} versionText={formatVersionText(APP_VERSION, APP_BUILD)} />
+        <AboutLogo appName={APP_NAME} versionText={formatVersionText(appVersion, appBuild)} />
 
         {/* Description Section */}
         <AboutSection title="О приложении">
@@ -83,8 +85,8 @@ const AboutContent: React.FC = () => {
 
         {/* App Info Section */}
         <AboutSection title="Информация">
-          <AboutInfoRow label="Версия" value={APP_VERSION} />
-          <AboutInfoRow label="Сборка" value={APP_BUILD} />
+          <AboutInfoRow label="Версия" value={appVersion} />
+          <AboutInfoRow label="Сборка" value={appBuild} />
           <AboutInfoRow label="Платформа" value={getPlatformName()} isLast={!isElectron} />
 
           {/* Update check button - only in Electron */}

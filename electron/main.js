@@ -4,7 +4,7 @@ const url = require('url');
 const fs = require('fs');
 const Store = require('electron-store');
 const FileCache = require('./FileCache');
-const { AppUpdater } = require('./updater');
+const { AppUpdater, getAppInfo } = require('./updater');
 
 const isDev = !app.isPackaged;
 
@@ -883,8 +883,11 @@ function setupIPCHandlers() {
 
   ipcMain.handle('updater:getStatus', async () => {
     if (!updater) {
+      // Get version from package.json even before updater is initialized
+      const appInfo = getAppInfo();
       return {
-        currentVersion: app.getVersion(),
+        currentVersion: appInfo.version,
+        currentBuildNumber: appInfo.buildNumber,
         lastCheckTime: null,
         autoCheckEnabled: false,
       };

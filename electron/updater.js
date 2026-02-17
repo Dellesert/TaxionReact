@@ -266,4 +266,4 @@ class AppUpdater {
   }
 }
 
-module.exports = { AppUpdater };
+module.exports = { AppUpdater, getAppInfo };
