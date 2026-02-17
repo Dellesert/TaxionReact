@@ -525,6 +525,19 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [chatIdNum]);
 
   const handleMediaViewerOpen = useCallback(async (attachmentId: number) => {
+    const buildItems = (attachments: Attachment[]): MediaItem[] =>
+      attachments
+        .filter((att: Attachment) => att.file_type === 'image' || att.file_type === 'video')
+        .map((att: Attachment) => ({
+          type: att.file_type === 'video' ? 'video' as const : 'image' as const,
+          url: replaceLocalhostWithIP(att.file_url),
+          thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
+          thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
+          attachmentId: att.id,
+          duration: att.duration,
+        }))
+        .reverse();
+
     try {
       let allAttachments = chatAttachmentsCacheRef.current;
 
@@ -534,23 +547,19 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         chatAttachmentsCacheRef.current = allAttachments;
       }
 
-      // Фильтруем только медиа (изображения + видео)
-      const mediaAttachments = allAttachments.filter(
-        (att: Attachment) => att.file_type === 'image' || att.file_type === 'video'
-      );
+      let items = buildItems(allAttachments);
+      let index = items.findIndex(item => item.attachmentId === attachmentId);
 
-      // Разворачиваем: API возвращает DESC (новые первые), а в галерее
-      // свайп вправо должен вести к более новым фото (как в чате)
-      const items: MediaItem[] = mediaAttachments.map((att: Attachment) => ({
-        type: att.file_type === 'video' ? 'video' as const : 'image' as const,
-        url: replaceLocalhostWithIP(att.file_url),
-        thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
-        thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
-        attachmentId: att.id,
-        duration: att.duration,
-      })).reverse();
-
-      const index = items.findIndex(item => item.attachmentId === attachmentId);
+      // Вложение не найдено в кеше — значит оно новое (только что загружено).
+      // Сбрасываем кеш и получаем свежий список.
+      if (index === -1) {
+        chatAttachmentsCacheRef.current = null;
+        const { attachments } = await chatApi.getChatAttachments(chatIdNum, 100, 0);
+        allAttachments = attachments || [];
+        chatAttachmentsCacheRef.current = allAttachments;
+        items = buildItems(allAttachments);
+        index = items.findIndex(item => item.attachmentId === attachmentId);
+      }
 
       setGlobalMediaItems(items);
       setGlobalMediaInitialIndex(index >= 0 ? index : 0);
