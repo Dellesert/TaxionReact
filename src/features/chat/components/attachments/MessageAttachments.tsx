@@ -628,7 +628,9 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
                 ]}
                 allowFontScaling={false}
               >
-                {(attachment.file_size / 1024).toFixed(2)} KB
+                {attachment.file_size < 1024 * 1024
+                  ? `${(attachment.file_size / 1024).toFixed(1)} KB`
+                  : `${(attachment.file_size / (1024 * 1024)).toFixed(1)} MB`}
               </Text>
             </View>
           </TouchableOpacity>
