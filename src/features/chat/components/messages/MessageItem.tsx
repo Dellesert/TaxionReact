@@ -100,6 +100,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   );
   const hasMedia = mediaAttachments.length > 0;
   const hasMultipleMedia = mediaAttachments.length > 1;
+  const hasLinkPreview = !!message.link_preview;
   // Для одиночного фото: уменьшаем ширину бабла (~65% от максимума)
   const singleMediaWidth = Math.min(maxBubbleWidth * 0.65, 280);
   const currentUser = useAuthStore((state) => state.user);
@@ -339,7 +340,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         )}
 
         {/* Пузырь сообщения */}
-        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth, ...(hasMultipleMedia && { width: maxBubbleWidth }), ...(hasMedia && !hasMultipleMedia && { width: singleMediaWidth }) }}>
+        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth, ...((hasMultipleMedia || hasLinkPreview) && { width: maxBubbleWidth }), ...(hasMedia && !hasMultipleMedia && !hasLinkPreview && { width: singleMediaWidth }) }}>
           <MessageBubble
             message={message}
             isOwnMessage={isOwnMessage}
