@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -87,6 +87,9 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   searchQuery,
 }) => {
   const { theme } = useTheme();
+
+  // Высота блока ответа — для абсолютного позиционирования (чтобы reply не расширял пузырь)
+  const [replyHeight, setReplyHeight] = useState(50);
 
   // Загружаем sessionId для авторизованных запросов к превью
   const [sessionId, setSessionId] = React.useState<string | null>(null);
@@ -304,72 +307,76 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         </Text>
       )}
 
-      {/* Цитируемое сообщение (если это ответ) */}
+      {/* Цитируемое сообщение (если это ответ) — абсолютное позиционирование,
+           чтобы reply не определял ширину пузыря */}
       {message.reply_to && (
-        <TouchableOpacity
-          style={[styles.replyContainer, { backgroundColor: isOwnMessage ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)', borderLeftColor: theme.primary }]}
-          onPress={() => onReplyPress?.(message.reply_to_id!)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.replyContentRow}>
-            <View style={styles.replyTextBlock}>
-              <Text style={[styles.replySender, { color: theme.primary }]} numberOfLines={1}>
-                {replySender?.name || message.reply_to.sender?.name || `User ${message.reply_to.sender_id}`}
-              </Text>
-              {message.reply_to.content && message.reply_to.content.trim().length > 0 ? (
-                <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={2}>
-                  {stripFormatting(message.reply_to.content)}
+        <View style={{ position: 'relative', minHeight: replyHeight, minWidth: 150, marginBottom: 8, overflow: 'hidden', borderRadius: 8 }}>
+          <TouchableOpacity
+            style={[styles.replyContainer, { position: 'absolute', top: 0, left: 0, right: 0, marginBottom: 0, backgroundColor: isOwnMessage ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)', borderLeftColor: theme.primary }]}
+            onLayout={(e) => setReplyHeight(e.nativeEvent.layout.height)}
+            onPress={() => onReplyPress?.(message.reply_to_id!)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.replyContentRow}>
+              <View style={styles.replyTextBlock}>
+                <Text style={[styles.replySender, { color: theme.primary }]} numberOfLines={1}>
+                  {replySender?.name || message.reply_to.sender?.name || `User ${message.reply_to.sender_id}`}
                 </Text>
-              ) : message.reply_to.attachments && message.reply_to.attachments.length > 0 ? (
-                <View style={styles.replyMediaLabel}>
-                  {(() => {
-                    const att = message.reply_to.attachments[0];
-                    const mt = att.mime_type || att.file_type || '';
-                    const isImage = isImageFile(mt);
-                    const isVideo = isVideoFile(mt);
-                    const count = message.reply_to.attachments.length;
-                    const label = isVideo ? 'Видео' : isImage ? 'Фото' : att.file_name;
-                    const extra = count > 1 ? ` и ещё ${count - 1}` : '';
-                    return (
-                      <>
-                        <Ionicons
-                          name={isVideo ? 'videocam' : isImage ? 'image' : 'document'}
-                          size={14}
-                          color={theme.textSecondary}
-                          style={{ marginRight: 4 }}
-                        />
-                        <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
-                          {label}{extra}
-                        </Text>
-                      </>
-                    );
-                  })()}
-                </View>
-              ) : (
-                <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
-                  Сообщение
-                </Text>
-              )}
+                {message.reply_to.content && message.reply_to.content.trim().length > 0 ? (
+                  <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={2}>
+                    {stripFormatting(message.reply_to.content)}
+                  </Text>
+                ) : message.reply_to.attachments && message.reply_to.attachments.length > 0 ? (
+                  <View style={styles.replyMediaLabel}>
+                    {(() => {
+                      const att = message.reply_to.attachments[0];
+                      const mt = att.mime_type || att.file_type || '';
+                      const isImage = isImageFile(mt);
+                      const isVideo = isVideoFile(mt);
+                      const count = message.reply_to.attachments.length;
+                      const label = isVideo ? 'Видео' : isImage ? 'Фото' : att.file_name;
+                      const extra = count > 1 ? ` и ещё ${count - 1}` : '';
+                      return (
+                        <>
+                          <Ionicons
+                            name={isVideo ? 'videocam' : isImage ? 'image' : 'document'}
+                            size={14}
+                            color={theme.textSecondary}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {label}{extra}
+                          </Text>
+                        </>
+                      );
+                    })()}
+                  </View>
+                ) : (
+                  <Text style={[styles.replyText, { color: theme.textSecondary }]} numberOfLines={1}>
+                    Сообщение
+                  </Text>
+                )}
+              </View>
+              {/* Превью фото/видео справа */}
+              {message.reply_to.attachments && message.reply_to.attachments.length > 0 && (() => {
+                const att = message.reply_to.attachments[0];
+                const mt = att.mime_type || att.file_type || '';
+                if (!isImageFile(mt) && !isVideoFile(mt)) return null;
+                const thumbUrl = replaceLocalhostWithIP(getThumbnailUrl(att, 'small'));
+                return (
+                  <Image
+                    source={{
+                      uri: thumbUrl,
+                      headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+                    }}
+                    style={styles.replyThumbnail}
+                    contentFit="cover"
+                  />
+                );
+              })()}
             </View>
-            {/* Превью фото/видео справа */}
-            {message.reply_to.attachments && message.reply_to.attachments.length > 0 && (() => {
-              const att = message.reply_to.attachments[0];
-              const mt = att.mime_type || att.file_type || '';
-              if (!isImageFile(mt) && !isVideoFile(mt)) return null;
-              const thumbUrl = replaceLocalhostWithIP(getThumbnailUrl(att, 'small'));
-              return (
-                <Image
-                  source={{
-                    uri: thumbUrl,
-                    headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-                  }}
-                  style={styles.replyThumbnail}
-                  contentFit="cover"
-                />
-              );
-            })()}
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Контент сообщения */}
