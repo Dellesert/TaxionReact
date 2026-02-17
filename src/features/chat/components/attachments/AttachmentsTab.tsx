@@ -31,6 +31,7 @@ import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { replaceLocalhostWithIP } from '../../utils/message.utils';
 import { decodeFileName } from '../../utils/file.utils';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
+import { useChatStore } from '@shared/store/chatStore';
 
 interface AttachmentsTabProps {
   chatId: number;
@@ -91,9 +92,16 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
     loadSessionId();
   }, []);
 
+  // Отслеживаем удаление сообщений для обновления списка вложений
+  const chatMessages = useChatStore((state) => state.messages[chatId]);
+  const deletedCount = useMemo(() => {
+    if (!chatMessages) return 0;
+    return chatMessages.filter(m => m.is_deleted).length;
+  }, [chatMessages]);
+
   useEffect(() => {
     loadAttachments();
-  }, [chatId]);
+  }, [chatId, deletedCount]);
 
   const loadAttachments = async () => {
     try {

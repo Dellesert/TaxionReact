@@ -496,7 +496,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const onBulkDelete = async (deleteFor: 'everyone' | 'me') => {
-    await handleBulkDelete(deleteFor, handleDelete);
+    await handleBulkDelete(deleteFor, handleDeleteWithCacheReset);
   };
 
   // Обертка для handleSendMessage с автоматическим скроллом вниз
@@ -523,6 +523,15 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   useEffect(() => {
     chatAttachmentsCacheRef.current = null;
   }, [chatIdNum]);
+
+  // Сброс кеша вложений при удалении сообщений (в т.ч. через WebSocket)
+  const deletedMessagesCount = useMemo(() => {
+    return messages.filter(m => m.is_deleted).length;
+  }, [messages]);
+
+  useEffect(() => {
+    chatAttachmentsCacheRef.current = null;
+  }, [deletedMessagesCount]);
 
   const handleMediaViewerOpen = useCallback(async (attachmentId: number) => {
     const buildItems = (attachments: Attachment[]): MediaItem[] =>
@@ -573,6 +582,17 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     setGlobalMediaViewerVisible(false);
     setGlobalMediaInitialIndex(0);
   }, []);
+
+  // Обёртки для удаления сообщений — сбрасывают кэш вложений
+  const handleDeleteWithCacheReset = useCallback((...args: Parameters<typeof handleDelete>) => {
+    chatAttachmentsCacheRef.current = null;
+    return handleDelete(...args);
+  }, [handleDelete]);
+
+  const handleDeletePermanentWithCacheReset = useCallback((...args: Parameters<typeof handleDeletePermanent>) => {
+    chatAttachmentsCacheRef.current = null;
+    return handleDeletePermanent(...args);
+  }, [handleDeletePermanent]);
 
   const handleGlobalMediaForward = useCallback((item: MediaItem) => {
     const allAttachments = chatAttachmentsCacheRef.current;
@@ -694,9 +714,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onLoadMore={handleLoadMore}
         onReply={handleReply}
         onEdit={handleEdit}
-        onDelete={handleDelete}
+        onDelete={handleDeleteWithCacheReset}
         onRestore={handleRestore}
-        onDeletePermanent={handleDeletePermanent}
+        onDeletePermanent={handleDeletePermanentWithCacheReset}
         onPin={handlePin}
         onUnpin={handleUnpin}
         onForward={handleForward}

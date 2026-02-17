@@ -1919,7 +1919,7 @@ export const useChatStore = create<ChatState>()(
   },
 
   handleMessageDelete: (messageId: number, chatId: number) => {
-    // Вместо удаления сообщения, помечаем его как удалённое И очищаем контент
+    // Вместо удаления сообщения, помечаем его как удалённое И очищаем контент и вложения
     set((state) => ({
       messages: {
         ...state.messages,
@@ -1929,6 +1929,7 @@ export const useChatStore = create<ChatState>()(
                 ...msg,
                 is_deleted: true,
                 content: '', // Очищаем контент для всех пользователей
+                attachments: [], // Очищаем вложения удалённого сообщения
                 deleted_at: new Date().toISOString()
               }
             : msg

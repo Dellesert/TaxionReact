@@ -517,12 +517,12 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
               id: message.data.id,
               chat_id: message.chat_id || message.data.chat_id,
               sender_id: message.data.sender_id,
-              content: message.data.content || '', // Should be empty from backend
+              content: '', // Always empty for deleted messages
               message_type: message.data.message_type || message.data.type || 'text',
               is_edited: message.data.is_edited || false,
               is_pinned: message.data.is_pinned || false,
               is_deleted: true, // Always true for delete event
-              attachments: message.data.attachments || [],
+              attachments: [], // Clear attachments for deleted messages
               reactions: message.data.reactions || [],
               read_by: message.data.read_by || [],
               read_receipts: message.data.read_receipts || [],
