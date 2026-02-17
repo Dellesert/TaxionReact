@@ -100,6 +100,7 @@ class AppUpdaterService {
       const latestBuildNumber = data.build_number ?? 0;
 
       console.log('[AppUpdater] Latest version:', latestVersion, 'build:', latestBuildNumber);
+      console.log('[AppUpdater] Server response download_url:', data.download_url);
       this.lastCheckTime = new Date();
 
       const isNewerVer = this.isNewerVersion(latestVersion, this.currentVersion);
@@ -163,9 +164,29 @@ class AppUpdaterService {
 
     buttons.push({
       text: 'Скачать',
-      onPress: () => {
+      onPress: async () => {
         console.log('[AppUpdater] User chose to download update');
-        Linking.openURL(downloadUrl);
+        console.log('[AppUpdater] Download URL:', downloadUrl);
+
+        try {
+          const canOpen = await Linking.canOpenURL(downloadUrl);
+          console.log('[AppUpdater] Can open URL:', canOpen);
+
+          if (canOpen) {
+            await Linking.openURL(downloadUrl);
+          } else {
+            Alert.alert(
+              'Ошибка',
+              `Не удалось открыть ссылку для скачивания.\nURL: ${downloadUrl}`,
+            );
+          }
+        } catch (error: any) {
+          console.error('[AppUpdater] Error opening URL:', error);
+          Alert.alert(
+            'Ошибка',
+            `Не удалось открыть ссылку: ${error.message}\nURL: ${downloadUrl}`,
+          );
+        }
       },
     });
 

@@ -13,7 +13,7 @@
     "generate:icons": "node scripts/generate-icons.js",
     "electron": "cross-env NODE_ENV=development electron ./electron/main.js",
     "electron:dev": "concurrently \"npm run start\" \"wait-on http://localhost:8093 && npm run electron\"",
-    "electron:prebuild": "npm run generate:icons && npm run build:web && node scripts/fix-electron-paths.js && cd electron && npm install && cd ..",
+    "electron:prebuild": "node scripts/sync-electron-version.js && npm run generate:icons && npm run build:web && node scripts/fix-electron-paths.js && cd electron && npm install && cd ..",
     "electron:build": "npm run electron:prebuild && electron-builder",
     "electron:build:win": "npm run electron:prebuild && electron-builder --win",
     "electron:build:mac": "npm run electron:prebuild && electron-builder --mac",

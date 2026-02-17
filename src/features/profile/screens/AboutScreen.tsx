@@ -12,6 +12,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 
 // Custom Hooks
 import { useAboutActions } from '../hooks/useAboutActions';
+import { useElectronVersion } from '../hooks/useElectronVersion';
 
 // Components
 import { AboutLogo } from '../components/about/AboutLogo';
@@ -22,8 +23,6 @@ import { AboutFooter } from '../components/about/AboutFooter';
 
 // Utils
 import {
-  APP_VERSION,
-  APP_BUILD,
   APP_NAME,
   COMPANY_NAME,
   APP_DESCRIPTION,
@@ -33,6 +32,7 @@ import { formatVersionText, formatCopyrightText, getPlatformName } from '../util
 import { appUpdaterService } from '@/services/appUpdater.service';
 
 const isAndroid = Platform.OS === 'android';
+const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!(window as any).electron;
 
 export default function AboutScreen() {
   const navigation = useNavigation();
@@ -41,12 +41,26 @@ export default function AboutScreen() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
 
+  // Use hook for Electron version, fallback to constants for other platforms
+  const electronVersion = useElectronVersion();
+  const appVersion = electronVersion.version;
+  const appBuild = electronVersion.build;
+
   const handleCheckUpdate = useCallback(async () => {
     setIsCheckingUpdate(true);
     setUpdateStatus(null);
 
     try {
-      const result = await appUpdaterService.checkForUpdates(false);
+      let result;
+
+      if (isElectron) {
+        // Use Electron updater
+        const electron = (window as any).electron;
+        result = await electron.updater.checkForUpdates(false);
+      } else {
+        // Use native updater service
+        result = await appUpdaterService.checkForUpdates(false);
+      }
 
       if (result.error) {
         setUpdateStatus('Ошибка проверки');
@@ -94,7 +108,7 @@ export default function AboutScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Logo Section */}
-        <AboutLogo appName={APP_NAME} versionText={formatVersionText(APP_VERSION, APP_BUILD)} />
+        <AboutLogo appName={APP_NAME} versionText={formatVersionText(appVersion, appBuild)} />
 
         {/* Description Section */}
         <AboutSection title="О приложении">
@@ -103,12 +117,12 @@ export default function AboutScreen() {
 
         {/* App Info Section */}
         <AboutSection title="Информация">
-          <AboutInfoRow label="Версия" value={APP_VERSION} />
-          <AboutInfoRow label="Сборка" value={APP_BUILD} />
-          <AboutInfoRow label="Платформа" value={getPlatformName()} isLast={!isAndroid} />
+          <AboutInfoRow label="Версия" value={appVersion} />
+          <AboutInfoRow label="Сборка" value={appBuild} />
+          <AboutInfoRow label="Платформа" value={getPlatformName()} isLast={!isAndroid && !isElectron} />
 
-          {/* Update check button - only on Android */}
-          {isAndroid && (
+          {/* Update check button - on Android and Electron */}
+          {(isAndroid || isElectron) && (
             <TouchableOpacity
               style={[
                 styles.updateButton,

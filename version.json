@@ -4,6 +4,9 @@
     "buildNumber": "28"
   },
   "android": {
-    "versionCode": 28
+    "versionCode": 29
+  },
+  "windows": {
+    "versionCode": 2
   }
 }
