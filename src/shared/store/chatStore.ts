@@ -1217,6 +1217,7 @@ export const useChatStore = create<ChatState>()(
                     id: Date.now(),
                     message_id: messageId,
                     user_id: userId,
+                    user: currentUser || undefined,
                     emoji,
                     created_at: new Date().toISOString(),
                   }],
