@@ -10,11 +10,63 @@
 - [x] Release signing config в `build.gradle` — `withAndroidSigningConfig.js`
 - [x] Passkey intent filters — `withAndroidPasskey.js`
 - [x] Dev/Prod environment switching (package name, icon) — `withDevEnvironment.js`
+- [x] Version и versionCode берутся из `version.json` — `app.config.js`
 
 **Ручные шаги:**
-- [ ] Поменять versionCode +1 в `app.json` (если нужна новая версия)
+- [ ] Обновить версию/сборку в `version.json` (см. раздел "Управление версиями")
 - [ ] Убедиться, что SHA-256 fingerprint добавлен в Firebase Console
 - [ ] Проверить наличие файла `assetlinks.json` на сервере (для Passkey)
+
+---
+
+## Управление версиями
+
+Версии управляются централизованно через `version.json`:
+
+```json
+{
+  "version": "1.0.1",
+  "ios": {
+    "buildNumber": "27"
+  },
+  "android": {
+    "versionCode": 18
+  }
+}
+```
+
+### Скрипт bump-version
+
+```bash
+# Увеличить build number для обеих платформ
+node scripts/bump-version.js
+
+# Только Android versionCode
+node scripts/bump-version.js --android
+
+# Только iOS buildNumber
+node scripts/bump-version.js --ios
+
+# Установить конкретную версию
+node scripts/bump-version.js --version 1.1.0
+
+# Увеличить семантическую версию
+node scripts/bump-version.js --patch   # 1.0.1 -> 1.0.2
+node scripts/bump-version.js --minor   # 1.0.1 -> 1.1.0
+node scripts/bump-version.js --major   # 1.0.1 -> 2.0.0
+
+# Комбинированно: новая версия + новые сборки
+node scripts/bump-version.js --minor --android --ios
+```
+
+### Как работает версионирование
+
+1. **version.json** — единый источник правды для версий
+2. **app.config.js** — читает version.json и передаёт в Expo
+3. **expo-application** — приложение получает версию из нативного бинарника
+4. **Экран "О приложении"** — показывает актуальную версию из нативного приложения
+
+> **Важно:** После изменения `version.json` нужно запустить `expo prebuild` чтобы обновить нативные проекты.
 
 ---
 
@@ -28,14 +80,14 @@
 
 ## Текущая конфигурация
 
-| Параметр | Значение |
-|----------|----------|
-| Package name (prod) | `com.dellesert.tachyonmessenger` |
-| Package name (dev) | `com.dellesert.tachyonmessenger.dev` |
-| Version | 1.0.1 |
-| Version code | 18 |
-| Min SDK | 24 |
-| Target SDK | 36 |
+| Параметр | Значение | Источник |
+|----------|----------|----------|
+| Package name (prod) | `com.dellesert.tachyonmessenger` | `app.config.js` |
+| Package name (dev) | `com.dellesert.tachyonmessenger.dev` | `withDevEnvironment.js` |
+| Version | см. `version.json` | `version.json` |
+| Version code | см. `version.json` | `version.json` |
+| Min SDK | 24 | `app.config.js` |
+| Target SDK | 36 | `app.config.js` |
 
 ## Окружения сборки
 
@@ -52,7 +104,7 @@
 
 ## Config Plugins (автоматизация)
 
-Все нативные настройки Android управляются через config plugins в `app.json`:
+Все нативные настройки Android управляются через config plugins в `app.config.js`:
 
 | Плагин | Что делает |
 |--------|-----------|
@@ -329,7 +381,7 @@ npx cross-env APP_ENV=production npx expo prebuild --platform android --clean
 
 Эта проблема решается автоматически плагином `withAndroidManifestFix.js`.
 
-Если всё ещё возникает ошибка, проверьте что плагин добавлен в `app.json`.
+Если всё ещё возникает ошибка, проверьте что плагин добавлен в `app.config.js`.
 
 ### 6. Java version mismatch
 
@@ -360,8 +412,12 @@ rm -rf .gradle build app/build app/.cxx
 
 ```
 TaxionReact/
+├── version.json                  # ✅ Версии приложения (iOS buildNumber, Android versionCode)
+├── app.config.js                 # ✅ Динамическая конфигурация Expo (читает version.json)
 ├── google-services.json          # Firebase config (копируется в android/app/)
 ├── release.keystore              # Release keystore (копируется в android/app/)
+├── scripts/
+│   └── bump-version.js           # Скрипт для обновления версий
 ├── plugins/
 │   ├── withDevEnvironment.js     # Переключение окружений (package, icon, google-services)
 │   ├── withAndroidLocalProperties.js  # Генерация local.properties

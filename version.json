@@ -1,0 +1,9 @@
+{
+  "version": "1.0.1",
+  "ios": {
+    "buildNumber": "27"
+  },
+  "android": {
+    "versionCode": 28
+  }
+}

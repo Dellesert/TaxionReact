@@ -1,0 +1,155 @@
+/**
+ * Dynamic Expo configuration
+ * Loads version info from version.json for centralized version management
+ */
+
+const versionConfig = require('./version.json');
+
+module.exports = {
+  expo: {
+    name: "Тахион",
+    slug: "tachyon-messenger",
+    version: versionConfig.version,
+    orientation: "portrait",
+    icon: "./assets/images/icon.png",
+    scheme: "tachyon",
+    userInterfaceStyle: "automatic",
+    newArchEnabled: true,
+    jsEngine: "hermes",
+    splash: {
+      image: "./assets/images/splash-icon.png",
+      resizeMode: "contain",
+      backgroundColor: "#E94444"
+    },
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: "com.dellesert.tachyon-messenger",
+      buildNumber: versionConfig.ios.buildNumber,
+      associatedDomains: [
+        "webcredentials:taxion.fusioninsight.cloud"
+      ],
+      icon: {
+        light: "./assets/images/icon.png",
+        dark: "./assets/images/icon-dark.png"
+      },
+      backgroundColor: "#E94444",
+      googleServicesFile: "./GoogleService-Info.plist",
+      infoPlist: {
+        NSPhotoLibraryUsageDescription: "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
+        NSCameraUsageDescription: "Tachyon нужен доступ к камере для съемки и отправки фотографий",
+        NSPhotoLibraryAddUsageDescription: "Tachyon нужен доступ для сохранения изображений в вашу галерею",
+        NSAppTransportSecurity: {
+          NSAllowsLocalNetworking: true,
+          NSAllowsArbitraryLoads: false,
+          NSExceptionDomains: {
+            localhost: {
+              NSExceptionAllowsInsecureHTTPLoads: true
+            }
+          }
+        },
+        ITSAppUsesNonExemptEncryption: false
+      }
+    },
+    android: {
+      splash: {
+        image: "./assets/images/splash-icon.png",
+        resizeMode: "contain",
+        backgroundColor: "#E94444"
+      },
+      adaptiveIcon: {
+        foregroundImage: "./assets/images/icon.png",
+        backgroundColor: "#E94444"
+      },
+      edgeToEdgeEnabled: true,
+      package: "com.dellesert.tachyonmessenger",
+      versionCode: versionConfig.android.versionCode,
+      googleServicesFile: "./google-services.json",
+      permissions: [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    web: {
+      bundler: "metro",
+      output: "single",
+      favicon: "./assets/images/favicon.png"
+    },
+    plugins: [
+      "./plugins/withDevEnvironment.js",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "./plugins/withPodfileModifications.js",
+      "./plugins/withPushNotificationDelegates.js",
+      "./plugins/withExportOptions.js",
+      "./plugins/withAndroidLocalProperties.js",
+      "./plugins/withAndroidKeystore.js",
+      "./plugins/withAndroidManifestFix.js",
+      "./plugins/withAndroidSigningConfig.js",
+      [
+        "./plugins/withAndroidPasskey.js",
+        {
+          domain: "taxion.fusioninsight.cloud"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
+          cameraPermission: "Tachyon нужен доступ к камере для съемки и отправки фотографий"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/images/icon.png",
+          color: "#E94444",
+          mode: "production"
+        }
+      ],
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      "./plugins/withShareExtensionConfig.js",
+      "./plugins/withCustomShareViewController.js",
+      [
+        "./plugins/withShareExtensionDisplayName.js",
+        {
+          displayName: "Отправить в Тахион"
+        }
+      ],
+      [
+        "expo-share-intent",
+        {
+          iosActivationRules: {
+            NSExtensionActivationSupportsText: true,
+            NSExtensionActivationSupportsWebURLWithMaxCount: 1,
+            NSExtensionActivationSupportsWebPageWithMaxCount: 1,
+            NSExtensionActivationSupportsImageWithMaxCount: 10,
+            NSExtensionActivationSupportsMovieWithMaxCount: 3,
+            NSExtensionActivationSupportsFileWithMaxCount: 5
+          },
+          androidIntentFilters: [
+            "text/*",
+            "image/*",
+            "video/*",
+            "*/*"
+          ],
+          androidMultiIntentFilters: [
+            "image/*",
+            "video/*",
+            "*/*"
+          ]
+        }
+      ],
+      "expo-video"
+    ],
+    extra: {
+      eas: {
+        projectId: "4df1283d-1e02-4e8e-9583-aa9ecac0dc74"
+      }
+    }
+  }
+};
