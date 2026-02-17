@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
@@ -28,7 +29,15 @@ type EditUserGroupRouteProp = RouteProp<AdminStackParamList, 'EditUserGroup'>;
 const EditUserGroupScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<EditUserGroupRouteProp>();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
   const { groupId } = route.params;

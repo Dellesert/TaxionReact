@@ -17,7 +17,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
@@ -36,6 +37,14 @@ const PerformanceAnalyticsScreen: React.FC = () => {
   // На экранах меньше 600px показываем одну карточку в ряд
   const isSmallScreen = width < 600;
   const { showError } = useNotification();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
   const [isLoading, setIsLoading] = useState(true);

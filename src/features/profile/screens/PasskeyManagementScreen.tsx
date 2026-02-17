@@ -3,11 +3,12 @@
  * Управление passkeys (биометрическая аутентификация)
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { usePasskeyData } from '../hooks/usePasskeyData';
 import { usePasskeyActions } from '../hooks/usePasskeyActions';
@@ -20,7 +21,15 @@ import { AddPasskeyButton } from '../components/passkeys/AddPasskeyButton';
 
 const PasskeyManagementScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
   const { passkeys, isLoading, passkeySupported, loadPasskeys } = usePasskeyData();
   const {
     isRegistering,
