@@ -289,16 +289,26 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           onCancelUpload={onCancelUpload}
         />
 
-        {Platform.OS !== 'web' && (
+        {Platform.OS === 'ios' && (
           <ScrollToBottomButton
             visible={showScrollToBottom}
             onPress={onScrollToBottom}
             unreadCount={newMessagesCount}
             keyboardHeight={keyboardHeight}
-            inputHeight={inputWrapperHeight}
           />
         )}
       </View>
+
+      {/* На Android и Web кнопка вынесена из flex контейнера, чтобы позиционироваться относительно всего экрана */}
+      {Platform.OS === 'android' && (
+        <ScrollToBottomButton
+          visible={showScrollToBottom}
+          onPress={onScrollToBottom}
+          unreadCount={newMessagesCount}
+          keyboardHeight={keyboardHeight}
+          inputHeight={inputWrapperHeight}
+        />
+      )}
 
       {Platform.OS === 'web' && (
         <ScrollToBottomButton
