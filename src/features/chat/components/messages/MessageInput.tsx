@@ -12,7 +12,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { FileAttachmentPicker } from '../attachments/FileAttachmentPicker';
-import { FILE_UPLOAD } from '@shared/constants/app.constants';
 import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
 import { FormattingToolbar, FormatMarker, FormatButtonType } from './FormattingToolbar';
 import { stripFormatting } from '../../utils/formatting';
@@ -585,7 +584,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           <View style={styles.selectedFilesInfo}>
             <Ionicons name="attach" size={16} color={theme.primary} />
             <Text style={[styles.selectedFilesText, { color: theme.text }]}>
-              {selectedFileIds.length} / {FILE_UPLOAD.MAX_ATTACHMENTS_PER_MESSAGE} {selectedFileIds.length === 1 ? 'файл' : 'файлов'}
+              {selectedFileIds.length === 1 ? `${selectedFileIds.length} файл` : `${selectedFileIds.length} файлов`}
             </Text>
           </View>
           <TouchableOpacity
