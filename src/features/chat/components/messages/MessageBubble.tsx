@@ -405,6 +405,23 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         ) : (
           <>
             <View style={[styles.messageContent, hasAttachments && styles.messageContentWithFiles]}>
+              {/* Render attachments (photos/videos) above text */}
+              {!!(message.attachments && message.attachments.length > 0) && (
+                <MessageAttachments
+                  attachments={message.attachments}
+                  imageUrls={imageUrls}
+                  onImagePress={onImagePress}
+                  onVideoPress={onVideoPress}
+                  onLongPress={onLongPress}
+                  isVisible={isVisible}
+                  isMediaOnly={isMediaOnly}
+                  chatMessage={message}
+                  isOwnMessage={isOwnMessage}
+                  currentUserId={currentUserId}
+                  onRetryMessage={onRetryMessage}
+                />
+              )}
+
               {messageContent && messageContent.length > 0 && (
                 <FormattedText
                   text={messageContent}
@@ -423,23 +440,6 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                 <LinkPreviewCard
                   linkPreview={message.link_preview}
                   isOwnMessage={isOwnMessage}
-                />
-              )}
-
-              {/* Render attachments below text */}
-              {!!(message.attachments && message.attachments.length > 0) && (
-                <MessageAttachments
-                  attachments={message.attachments}
-                  imageUrls={imageUrls}
-                  onImagePress={onImagePress}
-                  onVideoPress={onVideoPress}
-                  onLongPress={onLongPress}
-                  isVisible={isVisible}
-                  isMediaOnly={isMediaOnly}
-                  chatMessage={message}
-                  isOwnMessage={isOwnMessage}
-                  currentUserId={currentUserId}
-                  onRetryMessage={onRetryMessage}
                 />
               )}
             </View>
