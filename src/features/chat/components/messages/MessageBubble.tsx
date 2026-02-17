@@ -448,10 +448,10 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
       </View>
 
       {/* Footer: скрываем полностью для video-only без реакций */}
-      {(!isMediaOnly || (message.reactions && message.reactions.length > 0)) && (
+      {(!isMediaOnly || (!message.is_deleted && message.reactions && message.reactions.length > 0)) && (
         <View style={[styles.messageFooter, isCardMessage && styles.cardMessageFooter, isMediaOnly && { marginTop: 4 }]}>
           {/* Reactions on the left */}
-          {message.reactions && message.reactions.length > 0 && onReactionPress && (
+          {!message.is_deleted && message.reactions && message.reactions.length > 0 && onReactionPress && (
             <MessageReactions
               reactions={message.reactions}
               currentUserId={currentUserId}

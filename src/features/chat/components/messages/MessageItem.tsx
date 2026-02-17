@@ -181,9 +181,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   }, [message.id, message.reactions, currentUser?.id, addReaction, removeReaction, heartScale, heartOpacity]);
 
   const handleDoubleTap = useCallback(() => {
+    if (message.is_deleted) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     handleToggleReaction('👍');
-  }, [handleToggleReaction]);
+  }, [message.is_deleted, handleToggleReaction]);
 
   const handleLongPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
