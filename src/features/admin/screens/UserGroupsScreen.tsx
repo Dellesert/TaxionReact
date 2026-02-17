@@ -16,7 +16,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
-import { getUserGroups, createUserGroup } from '@api/user-group.api';
+import { getUserGroups, createUserGroup, reorderUserGroups } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
 
 const UserGroupsScreen: React.FC = () => {
@@ -101,10 +101,29 @@ const UserGroupsScreen: React.FC = () => {
     }
   };
 
+  const handleMoveGroup = async (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= groups.length) return;
+
+    const reordered = [...groups];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    setGroups(reordered);
+
+    try {
+      await reorderUserGroups({ group_ids: reordered.map((g) => g.id) });
+    } catch (error: any) {
+      console.error('Failed to reorder groups:', error);
+      showError('Не удалось изменить порядок');
+      loadGroups();
+    }
+  };
+
   const filteredGroups = groups.filter((group) =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (group.description && group.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const isSearching = searchQuery.trim().length > 0;
 
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -265,32 +284,52 @@ const UserGroupsScreen: React.FC = () => {
           >
             <View style={styles.contentInner}>
               {filteredGroups.map((group) => (
-                <TouchableOpacity
-                  key={group.id}
-                  style={dynamicStyles.groupCard}
-                  onPress={() => {
-                    (navigation as any).navigate('EditUserGroup', { groupId: group.id });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <Ionicons name="people-circle" size={20} color="#10B981" />
-                    <Text style={dynamicStyles.groupName}>
-                      {group.name}
-                    </Text>
-                  </View>
-                  {group.description ? (
-                    <Text style={dynamicStyles.groupDescription} numberOfLines={2}>
-                      {group.description}
-                    </Text>
-                  ) : null}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="people" size={16} color={theme.textSecondary} />
-                    <Text style={dynamicStyles.groupMembers}>
-                      {group.member_count || 0} участников
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                <View key={group.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {/* Reorder arrows (hidden during search) */}
+                  {!isSearching && (
+                    <View style={{ alignItems: 'center', gap: 2 }}>
+                      <TouchableOpacity
+                        onPress={() => handleMoveGroup(groups.indexOf(group), 'up')}
+                        disabled={groups.indexOf(group) === 0}
+                        style={{ padding: 4, opacity: groups.indexOf(group) === 0 ? 0.25 : 1 }}
+                      >
+                        <Ionicons name="chevron-up" size={22} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleMoveGroup(groups.indexOf(group), 'down')}
+                        disabled={groups.indexOf(group) === groups.length - 1}
+                        style={{ padding: 4, opacity: groups.indexOf(group) === groups.length - 1 ? 0.25 : 1 }}
+                      >
+                        <Ionicons name="chevron-down" size={22} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={[dynamicStyles.groupCard, { flex: 1 }]}
+                    onPress={() => {
+                      (navigation as any).navigate('EditUserGroup', { groupId: group.id });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <Ionicons name="people-circle" size={20} color="#10B981" />
+                      <Text style={dynamicStyles.groupName}>
+                        {group.name}
+                      </Text>
+                    </View>
+                    {group.description ? (
+                      <Text style={dynamicStyles.groupDescription} numberOfLines={2}>
+                        {group.description}
+                      </Text>
+                    ) : null}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="people" size={16} color={theme.textSecondary} />
+                      <Text style={dynamicStyles.groupMembers}>
+                        {group.member_count || 0} участников
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
           </ScrollView>

@@ -11,6 +11,7 @@ import {
   CreateUserGroupDto,
   UpdateUserGroupDto,
   UpdateUserGroupMembersDto,
+  ReorderUserGroupsDto,
 } from '../types/user.types';
 import { ApiResponse } from '../types/common.types';
 
@@ -97,4 +98,11 @@ export const addUserGroupMembers = async (id: number, data: UpdateUserGroupMembe
  */
 export const removeUserGroupMembers = async (id: number, data: UpdateUserGroupMembersDto): Promise<void> => {
   await api.delete(API_ENDPOINTS.USER_GROUP.MEMBERS(id), { data });
+};
+
+/**
+ * Reorder user groups by providing an ordered list of group IDs
+ */
+export const reorderUserGroups = async (data: ReorderUserGroupsDto): Promise<void> => {
+  await api.put(API_ENDPOINTS.USER_GROUP.REORDER, data);
 };

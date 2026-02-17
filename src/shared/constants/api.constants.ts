@@ -249,6 +249,7 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/user-groups/${id}`,
     DELETE: (id: number) => `/user-groups/${id}`,
     MEMBERS: (id: number) => `/user-groups/${id}/members`,
+    REORDER: '/user-groups/reorder',
   },
 } as const;
 

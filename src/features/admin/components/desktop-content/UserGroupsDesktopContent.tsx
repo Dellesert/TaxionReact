@@ -20,7 +20,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
-import { getUserGroups, createUserGroup, deleteUserGroup } from '@api/user-group.api';
+import { getUserGroups, createUserGroup, deleteUserGroup, reorderUserGroups } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
 
 const SIDEBAR_WIDTH = 320;
@@ -136,10 +136,29 @@ const UserGroupsDesktopContent: React.FC = () => {
     }
   };
 
+  const handleMoveGroup = async (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= groups.length) return;
+
+    const reordered = [...groups];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    setGroups(reordered);
+
+    try {
+      await reorderUserGroups({ group_ids: reordered.map((g) => g.id) });
+    } catch (error: any) {
+      console.error('Failed to reorder groups:', error);
+      showError('Не удалось изменить порядок');
+      loadGroups();
+    }
+  };
+
   const filteredGroups = groups.filter((group) =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (group.description && group.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const isSearching = searchQuery.trim().length > 0;
 
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -382,7 +401,31 @@ const UserGroupsDesktopContent: React.FC = () => {
                     <View style={styles.groupContent}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <Ionicons name="people-circle" size={20} color="#10B981" />
-                        <Text style={dynamicStyles.groupName}>{group.name}</Text>
+                        <Text style={[dynamicStyles.groupName, { flex: 1 }]}>{group.name}</Text>
+                        {!isSearching && (
+                          <View style={{ flexDirection: 'row', gap: 2 }}>
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleMoveGroup(groups.indexOf(group), 'up');
+                              }}
+                              disabled={groups.indexOf(group) === 0}
+                              style={{ padding: 4, opacity: groups.indexOf(group) === 0 ? 0.25 : 1 }}
+                            >
+                              <Ionicons name="chevron-up" size={20} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleMoveGroup(groups.indexOf(group), 'down');
+                              }}
+                              disabled={groups.indexOf(group) === groups.length - 1}
+                              style={{ padding: 4, opacity: groups.indexOf(group) === groups.length - 1 ? 0.25 : 1 }}
+                            >
+                              <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
                       </View>
                       {group.description ? (
                         <Text style={dynamicStyles.groupDescription} numberOfLines={2}>

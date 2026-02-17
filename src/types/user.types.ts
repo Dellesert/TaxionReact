@@ -291,6 +291,7 @@ export interface UserGroup {
   id: number;
   name: string;
   description?: string;
+  sort_order: number;
   creator_id: number;
   member_count: number;
   created_at: ISODateString;
@@ -304,12 +305,18 @@ export interface UserGroupWithMembers extends UserGroup {
 export interface CreateUserGroupDto {
   name: string;
   description?: string;
+  sort_order?: number;
   user_ids?: number[];
 }
 
 export interface UpdateUserGroupDto {
   name?: string;
   description?: string;
+  sort_order?: number;
+}
+
+export interface ReorderUserGroupsDto {
+  group_ids: number[];
 }
 
 export interface UpdateUserGroupMembersDto {
