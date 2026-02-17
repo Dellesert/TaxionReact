@@ -317,26 +317,39 @@ ninja: error: Stat(...): Filename longer than 260 characters
 > ⚠️ **Важно:** Настройки реестра `LongPathsEnabled` и Group Policy **НЕ помогают** — CMake/Ninja/NDK имеют внутренние ограничения на длину пути.
 
 ```powershell
-# Копировать весь проект в C:\T (включая .env файлы!)
+# 1. Копировать весь проект в C:\T (включая .env файлы!)
 xcopy /E /I /Y /H D:\Documents\GitHub\TaxionReact C:\T
 
-# Собрать из короткого пути
+# 2. Prebuild из короткого пути
+cd C:\T
+npx cross-env APP_ENV=production npx expo prebuild --clean --platform android
+
+# 3. Собрать APK
 cd C:\T\android
-.\gradlew clean
 .\gradlew assembleRelease
 
 # APK создан в: C:\T\android\app\build\outputs\apk\release\app-release.apk
 
-# Скопировать APK обратно
+# 4. Скопировать APK обратно
 copy C:\T\android\app\build\outputs\apk\release\app-release.apk D:\Documents\GitHub\TaxionReact\
 ```
 
 > ⚠️ **Важно:** Флаг `/H` копирует скрытые файлы (`.env`). Без него env переменные не попадут в сборку!
 
+> ⚠️ **Важно:** Если вы изменили `version.json` или `app.config.js` после копирования проекта, скопируйте их отдельно:
+> ```powershell
+> copy D:\Documents\GitHub\TaxionReact\version.json C:\T\
+> copy D:\Documents\GitHub\TaxionReact\app.config.js C:\T\
+> ```
+
 **Быстрая пересборка (без копирования node_modules заново):**
 ```powershell
-# Если проект уже в C:\T, просто обновите изменённые файлы:
-robocopy D:\Documents\GitHub\TaxionReact\src C:\T\src /E /XO
+# Если проект уже в C:\T, скопируйте изменённые файлы конфигурации:
+copy D:\Documents\GitHub\TaxionReact\version.json C:\T\
+copy D:\Documents\GitHub\TaxionReact\app.config.js C:\T\
+
+# Пересобрать prebuild и APK
+cd C:\T && npx cross-env APP_ENV=production npx expo prebuild --clean --platform android
 cd C:\T\android && .\gradlew assembleRelease
 ```
 

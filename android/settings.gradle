@@ -33,7 +33,6 @@ expoAutolinking.useExpoModules()
 
 rootProject.name = 'Тахион'
 
-
 expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
