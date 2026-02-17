@@ -396,18 +396,40 @@ npx cross-env APP_ENV=production npx expo prebuild --platform android --clean
 
 Если всё ещё возникает ошибка, проверьте что плагин добавлен в `app.config.js`.
 
-### 6. Java version mismatch
+### 6. Java version mismatch / Java not found
 
 **Ошибка:**
 ```
 Unsupported class file major version
 ```
+или
+```
+Unable to locate a Java Runtime
+```
+или
+```
+Value '...' given for org.gradle.java.home Gradle property is invalid
+```
+
+**Причина:** В `android/gradle.properties` прописан путь к Java, который не соответствует текущей ОС. При переключении между Windows и macOS путь нужно менять вручную.
 
 **Решение:**
 Установить правильную версию Java в `android/gradle.properties`:
+
 ```properties
+# Windows:
 org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
+
+# macOS:
+org.gradle.java.home=/Applications/Android Studio.app/Contents/jbr/Contents/Home
 ```
+
+> ⚠️ **Важно:** На macOS также нужно задать `JAVA_HOME` в терминале, иначе `gradlew` не сможет запуститься:
+> ```bash
+> export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+> export PATH="$JAVA_HOME/bin:$PATH"
+> ```
+> Для постоянного эффекта добавьте эти строки в `~/.zshrc` или `~/.bash_profile`.
 
 ---
 
