@@ -227,8 +227,9 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       transparent={false}
       onRequestClose={onClose}
       presentationStyle="fullScreen"
+      statusBarTranslucent
     >
-      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: insets.top }]}>
+      <View style={[styles.container, { backgroundColor: theme.card, paddingTop: Platform.OS === 'android' ? (insets.top || StatusBar.currentHeight || 0) : insets.top }]}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />
 
         {/* Header */}

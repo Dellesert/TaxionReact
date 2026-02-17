@@ -286,6 +286,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
+      statusBarTranslucent
     >
       <View style={[
         styles.modalOverlay,
@@ -295,7 +296,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         <View style={[
           styles.container,
           { backgroundColor: theme.card },
-          !isDesktop && { paddingTop: insets.top },
+          !isDesktop && { paddingTop: Platform.OS === 'android' ? (insets.top || StatusBar.currentHeight || 0) : insets.top },
           isDesktop && styles.containerDesktop
         ]}>
           <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.card} />

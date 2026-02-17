@@ -281,6 +281,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
+      statusBarTranslucent
     >
       <View style={[
         styles.modalOverlay,
@@ -291,7 +292,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
           style={[
             styles.container,
             { backgroundColor: theme.card },
-            !isDesktop && { paddingTop: insets.top },
+            !isDesktop && { paddingTop: Platform.OS === 'android' ? (insets.top || StatusBar.currentHeight || 0) : insets.top },
             isDesktop && styles.containerDesktop
           ]}
         >
