@@ -8,6 +8,7 @@ import {
   NativeSyntheticEvent,
   TextInputSelectionChangeEventData,
   TextStyle,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -169,6 +170,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [message, setMessage] = useState('');
   const [inputHeight, setInputHeight] = useState(42);
   const [hasSelection, setHasSelection] = useState(false);
+  const [attachmentsProcessing, setAttachmentsProcessing] = useState(false);
   const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
   const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -578,6 +580,18 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         </View>
       )}
 
+      {/* Attachments processing indicator */}
+      {attachmentsProcessing && (
+        <View style={[styles.selectedFilesContainer, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
+          <View style={styles.selectedFilesInfo}>
+            <ActivityIndicator size="small" color={theme.primary} />
+            <Text style={[styles.selectedFilesText, { color: theme.textSecondary }]}>
+              Обработка файлов...
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Selected files preview */}
       {selectedFileIds.length > 0 && (
         <View style={[styles.selectedFilesContainer, { backgroundColor: theme.backgroundTertiary, borderTopColor: theme.border }]}>
@@ -666,6 +680,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             onPendingVideoFiles={onPendingVideoFiles}
             onError={(error) => console.error('File upload error:', error)}
             currentAttachmentCount={selectedFileIds.length + pendingVideoFiles.length}
+            onProcessingChange={setAttachmentsProcessing}
           />
         )}
         {(!onFilesSelected || editingMessage) && (

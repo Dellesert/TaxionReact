@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -27,6 +27,7 @@ interface FileAttachmentPickerProps {
   onPendingVideoFiles?: (files: PendingVideoFile[]) => void;
   onError?: (error: string) => void;
   currentAttachmentCount?: number;
+  onProcessingChange?: (isProcessing: boolean) => void;
 }
 
 export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
@@ -34,6 +35,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   onPendingVideoFiles,
   onError,
   currentAttachmentCount = 0,
+  onProcessingChange,
 }) => {
   const { theme } = useTheme();
   const { showOptions } = useActionModal();
@@ -41,6 +43,11 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const [showMenu, setShowMenu] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    onProcessingChange?.(processing);
+  }, [processing, onProcessingChange]);
 
   /**
    * Helper function to show error notification
@@ -81,6 +88,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         return;
       }
 
+      setProcessing(true);
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         quality: 0.8,
@@ -109,8 +117,11 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         );
 
         await uploadFiles(fileObjects, result.assets);
+      } else {
+        setProcessing(false);
       }
     } catch (error) {
+      setProcessing(false);
       showErrorToast(error, 'Ошибка при съемке фото');
     }
   };
@@ -132,6 +143,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         allowsMultipleSelection: true, // Разрешаем выбор нескольких файлов
       };
 
+      setProcessing(true);
       const result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -156,8 +168,11 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         );
 
         await uploadFiles(fileObjects, result.assets);
+      } else {
+        setProcessing(false);
       }
     } catch (error) {
+      setProcessing(false);
       showErrorToast(error, 'Ошибка при выборе изображения');
     }
   };
@@ -213,12 +228,12 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
 
   const handleDocumentPick = async () => {
     try {
+      setProcessing(true);
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         multiple: true,
         copyToCacheDirectory: true,
       });
-
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const files = result.assets;
@@ -246,8 +261,11 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
           name: file.name,
           type: file.mimeType || 'application/octet-stream',
         })));
+      } else {
+        setProcessing(false);
       }
     } catch (error) {
+      setProcessing(false);
       showErrorToast(error, 'Ошибка при выборе документа');
     }
   };
@@ -319,6 +337,8 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
         setProgress(0);
       }
     }
+
+    setProcessing(false);
   };
 
   if (uploading) {
