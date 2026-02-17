@@ -19,7 +19,6 @@ import { TitleBarCalendarControls } from '../components/common/TitleBarCalendarC
 import { TitleBarViewSwitcher, ViewOption } from '@shared/components/common/TitleBarViewSwitcher';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
-import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useCalendarData } from '../hooks/useCalendarData';
@@ -207,7 +206,7 @@ const CalendarScreen: React.FC = () => {
 
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [mobileRefreshTrigger, setMobileRefreshTrigger] = useState(0);
 
   // Week display mode (lifted from CalendarDesktopView for TitleBar integration)
@@ -234,13 +233,6 @@ const CalendarScreen: React.FC = () => {
     }
   }, [route.params?.eventId, navigation]);
 
-  // Integrate with TitleBar search in Electron
-  useTitleBarSearchIntegration({
-    searchQuery,
-    onSearchChange: setSearchQuery,
-    placeholder: 'Поиск событий...',
-    enabled: true,
-  });
 
   // Custom hooks for desktop
   const {

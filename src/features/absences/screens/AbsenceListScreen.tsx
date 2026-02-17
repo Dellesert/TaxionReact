@@ -17,7 +17,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
-import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
@@ -243,13 +242,6 @@ export const AbsenceListScreen: React.FC = () => {
     setShowCreateModal(true);
   }, []);
 
-  // Integrate with TitleBar search in Electron
-  useTitleBarSearchIntegration({
-    searchQuery,
-    onSearchChange: setSearchQuery,
-    placeholder: 'Поиск нерабочих дней...',
-    enabled: true,
-  });
 
   // TitleBar left controls - year picker and view toggle
   const titleBarLeftControls = useMemo(() => {

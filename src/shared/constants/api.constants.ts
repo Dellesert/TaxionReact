@@ -251,6 +251,11 @@ export const API_ENDPOINTS = {
     MEMBERS: (id: number) => `/user-groups/${id}/members`,
     REORDER: '/user-groups/reorder',
   },
+
+  // Global Search
+  SEARCH: {
+    GLOBAL: '/search',
+  },
 } as const;
 
 // HTTP Status Codes
