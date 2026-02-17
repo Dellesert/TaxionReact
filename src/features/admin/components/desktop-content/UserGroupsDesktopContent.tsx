@@ -3,7 +3,7 @@
  * Desktop версия управления группами пользователей с поиском в header
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,10 +20,80 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { ActionMenu } from '@shared/components/common/ActionMenu';
 import { getUserGroups, createUserGroup, deleteUserGroup, reorderUserGroups } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
 
 const SIDEBAR_WIDTH = 320;
+
+/** Обёртка для drag-and-drop через HTML5 API (RN Web View не поддерживает drag-события напрямую) */
+const DraggableRow: React.FC<{
+  index: number;
+  isDragged: boolean;
+  onDragStartIndex: (index: number) => void;
+  onDragEnterIndex: (index: number) => void;
+  onDropAtIndex: (index: number) => void;
+  onDragEnd: () => void;
+  children: React.ReactNode;
+  style?: any;
+}> = ({ index, isDragged, onDragStartIndex, onDragEnterIndex, onDropAtIndex, onDragEnd, children, style }) => {
+  const ref = useRef<View>(null);
+
+  useEffect(() => {
+    const node = (ref.current as any);
+    if (!node) return;
+
+    // В RN Web ref.current — это DOM-элемент (div)
+    const el: HTMLElement = node instanceof HTMLElement ? node : node._nativeTag;
+    if (!el || !(el instanceof HTMLElement)) return;
+
+    el.setAttribute('draggable', 'true');
+    el.style.cursor = 'grab';
+
+    const handleDragStart = (e: DragEvent) => {
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(index));
+      }
+      onDragStartIndex(index);
+    };
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    };
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      onDragEnterIndex(index);
+    };
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      onDropAtIndex(index);
+    };
+    const handleDragEnd = () => {
+      onDragEnd();
+    };
+
+    el.addEventListener('dragstart', handleDragStart);
+    el.addEventListener('dragover', handleDragOver);
+    el.addEventListener('dragenter', handleDragEnter);
+    el.addEventListener('drop', handleDrop);
+    el.addEventListener('dragend', handleDragEnd);
+
+    return () => {
+      el.removeEventListener('dragstart', handleDragStart);
+      el.removeEventListener('dragover', handleDragOver);
+      el.removeEventListener('dragenter', handleDragEnter);
+      el.removeEventListener('drop', handleDrop);
+      el.removeEventListener('dragend', handleDragEnd);
+    };
+  }, [index, onDragStartIndex, onDragEnterIndex, onDropAtIndex, onDragEnd]);
+
+  return (
+    <View ref={ref} style={[style, { opacity: isDragged ? 0.5 : 1 }]}>
+      {children}
+    </View>
+  );
+};
 
 const UserGroupsDesktopContent: React.FC = () => {
   const navigation = useNavigation();
@@ -45,6 +115,14 @@ const UserGroupsDesktopContent: React.FC = () => {
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const menuButtonRef = useRef<any>(null);
+  const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
+
+  // HTML5 Drag and Drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Check access
   if (user?.role !== 'admin' && user?.role !== 'super_admin' && user?.role !== 'department_head') {
@@ -136,12 +214,12 @@ const UserGroupsDesktopContent: React.FC = () => {
     }
   };
 
-  const handleMoveGroup = async (index: number, direction: 'up' | 'down') => {
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= groups.length) return;
+  const handleDrop = useCallback(async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
 
     const reordered = [...groups];
-    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
     setGroups(reordered);
 
     try {
@@ -151,14 +229,23 @@ const UserGroupsDesktopContent: React.FC = () => {
       showError('Не удалось изменить порядок');
       loadGroups();
     }
+  }, [groups]);
+
+  const handleOpenActionMenu = () => {
+    if (menuButtonRef.current) {
+      menuButtonRef.current.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
+        setMenuButtonPosition({ x: pageX, y: pageY, width, height });
+        setShowActionMenu(true);
+      });
+    } else {
+      setShowActionMenu(true);
+    }
   };
 
   const filteredGroups = groups.filter((group) =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (group.description && group.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-
-  const isSearching = searchQuery.trim().length > 0;
 
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -238,6 +325,15 @@ const UserGroupsDesktopContent: React.FC = () => {
       borderColor: theme.border,
       height: '100%',
     },
+    groupCardReorder: {
+      backgroundColor: theme.backgroundSecondary,
+      borderRadius: 16,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: theme.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
     groupName: {
       fontSize: 18,
       fontWeight: '700',
@@ -268,6 +364,77 @@ const UserGroupsDesktopContent: React.FC = () => {
     },
   });
 
+  const handleDragStartIndex = useCallback((index: number) => {
+    setDraggedIndex(index);
+  }, []);
+
+  const handleDragEnterIndex = useCallback((index: number) => {
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDropAtIndex = useCallback((toIndex: number) => {
+    setDraggedIndex((prev) => {
+      if (prev !== null) {
+        handleDrop(prev, toIndex);
+      }
+      return null;
+    });
+    setDragOverIndex(null);
+  }, [handleDrop]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, []);
+
+  const renderReorderItem = (group: UserGroup, index: number) => (
+    <DraggableRow
+      key={group.id}
+      index={index}
+      isDragged={draggedIndex === index}
+
+      onDragStartIndex={handleDragStartIndex}
+      onDragEnterIndex={handleDragEnterIndex}
+      onDropAtIndex={handleDropAtIndex}
+      onDragEnd={handleDragEnd}
+      style={[
+        {
+          marginBottom: 8,
+          maxWidth: 700,
+        },
+        dragOverIndex === index && draggedIndex !== index && {
+          borderRadius: 16,
+          borderWidth: 2,
+          borderColor: theme.primary,
+          borderStyle: 'dashed' as any,
+        },
+      ]}
+    >
+      <View style={dynamicStyles.groupCardReorder}>
+        <View style={styles.dragHandle}>
+          <Ionicons name="reorder-three" size={24} color={theme.textSecondary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Ionicons name="people-circle" size={20} color="#10B981" />
+            <Text style={dynamicStyles.groupName}>{group.name}</Text>
+          </View>
+          {group.description ? (
+            <Text style={dynamicStyles.groupDescription} numberOfLines={1}>
+              {group.description}
+            </Text>
+          ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="people" size={16} color={theme.textSecondary} />
+            <Text style={dynamicStyles.groupMembers}>
+              {group.member_count || 0} участников
+            </Text>
+          </View>
+        </View>
+      </View>
+    </DraggableRow>
+  );
+
   return (
     <View style={dynamicStyles.container}>
       {/* Header */}
@@ -279,34 +446,61 @@ const UserGroupsDesktopContent: React.FC = () => {
               Создание и управление группами пользователей
             </Text>
           </View>
-          <TouchableOpacity
-            style={dynamicStyles.createButton}
-            onPress={() => setShowCreateModal(true)}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={dynamicStyles.createButtonText}>Создать группу</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Row */}
-        <View style={dynamicStyles.searchRow}>
-          <View style={dynamicStyles.searchContainer}>
-            <Ionicons name="search" size={18} color={theme.textSecondary} />
-            <TextInput
-              style={dynamicStyles.searchInput}
-              placeholder="Поиск групп..."
-              placeholderTextColor={theme.textTertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-              </TouchableOpacity>
-            )}
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={dynamicStyles.createButton}
+              onPress={() => setShowCreateModal(true)}
+            >
+              <Ionicons name="add" size={20} color="#FFFFFF" />
+              <Text style={dynamicStyles.createButtonText}>Создать группу</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              ref={menuButtonRef}
+              style={[styles.menuButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+              onPress={handleOpenActionMenu}
+            >
+              <Ionicons name="ellipsis-vertical" size={20} color={theme.text} />
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Search Row - hidden in reorder mode */}
+        {!isReorderMode && (
+          <View style={dynamicStyles.searchRow}>
+            <View style={dynamicStyles.searchContainer}>
+              <Ionicons name="search" size={18} color={theme.textSecondary} />
+              <TextInput
+                style={dynamicStyles.searchInput}
+                placeholder="Поиск групп..."
+                placeholderTextColor={theme.textTertiary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
       </View>
+
+      {/* Reorder mode banner */}
+      {isReorderMode && (
+        <View style={[styles.reorderBanner, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
+          <Ionicons name="swap-vertical" size={20} color={theme.primary} />
+          <Text style={[styles.reorderBannerText, { color: theme.textSecondary }]}>
+            Перетащите группы для изменения порядка
+          </Text>
+          <TouchableOpacity
+            style={[styles.reorderDoneButton, { backgroundColor: theme.primary }]}
+            onPress={() => setIsReorderMode(false)}
+          >
+            <Text style={styles.reorderDoneButtonText}>Готово</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -378,13 +572,19 @@ const UserGroupsDesktopContent: React.FC = () => {
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      ) : filteredGroups.length === 0 ? (
+      ) : (isReorderMode ? groups : filteredGroups).length === 0 ? (
         <View style={styles.centerContainer}>
           <Ionicons name="people-circle-outline" size={64} color={theme.textTertiary} />
           <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
             {searchQuery ? 'Группы не найдены' : 'Нет групп'}
           </Text>
         </View>
+      ) : isReorderMode ? (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={[styles.contentInner, { maxWidth: 900 }]}>
+            {groups.map((group, index) => renderReorderItem(group, index))}
+          </View>
+        </ScrollView>
       ) : (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.contentInner}>
@@ -402,30 +602,6 @@ const UserGroupsDesktopContent: React.FC = () => {
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <Ionicons name="people-circle" size={20} color="#10B981" />
                         <Text style={[dynamicStyles.groupName, { flex: 1 }]}>{group.name}</Text>
-                        {!isSearching && (
-                          <View style={{ flexDirection: 'row', gap: 2 }}>
-                            <TouchableOpacity
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                handleMoveGroup(groups.indexOf(group), 'up');
-                              }}
-                              disabled={groups.indexOf(group) === 0}
-                              style={{ padding: 4, opacity: groups.indexOf(group) === 0 ? 0.25 : 1 }}
-                            >
-                              <Ionicons name="chevron-up" size={20} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                handleMoveGroup(groups.indexOf(group), 'down');
-                              }}
-                              disabled={groups.indexOf(group) === groups.length - 1}
-                              style={{ padding: 4, opacity: groups.indexOf(group) === groups.length - 1 ? 0.25 : 1 }}
-                            >
-                              <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                          </View>
-                        )}
                       </View>
                       {group.description ? (
                         <Text style={dynamicStyles.groupDescription} numberOfLines={2}>
@@ -478,6 +654,25 @@ const UserGroupsDesktopContent: React.FC = () => {
           </View>
         </ScrollView>
       )}
+
+      <ActionMenu
+        visible={showActionMenu}
+        onClose={() => setShowActionMenu(false)}
+        isDesktop={true}
+        buttonPosition={menuButtonPosition}
+        items={[
+          {
+            key: 'reorder',
+            icon: isReorderMode ? 'checkmark-circle-outline' : 'swap-vertical-outline',
+            label: isReorderMode ? 'Завершить сортировку' : 'Изменить сортировку',
+            onPress: () => {
+              const entering = !isReorderMode;
+              setIsReorderMode(entering);
+              if (entering) setSearchQuery('');
+            },
+          },
+        ]}
+      />
     </View>
   );
 };
@@ -603,6 +798,37 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 22,
+  },
+  menuButton: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  reorderBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    gap: 10,
+    borderBottomWidth: 1,
+  },
+  reorderBannerText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  reorderDoneButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  reorderDoneButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dragHandle: {
+    marginRight: 16,
+    padding: 4,
   },
 });
 
