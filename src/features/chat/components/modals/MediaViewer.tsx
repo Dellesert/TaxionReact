@@ -75,35 +75,53 @@ const VideoSlideContent = React.memo<{
   sessionId: string | null;
   player: ReturnType<typeof useVideoPlayer>;
   videoLoading: boolean;
-}>(({ item, isActive, sessionId, player, videoLoading }) => (
-  <View style={styles.videoSlideContainer}>
-    {isActive ? (
-      <VideoView
-        player={player}
-        style={styles.fullscreenVideo}
-        contentFit="contain"
-        nativeControls={false}
-        allowsFullscreen={false}
-        pointerEvents="none"
-      />
-    ) : (
-      <Image
-        source={{
-          uri: item.thumbnailLargeUrl || item.thumbnailUrl || item.url,
-          headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
-        }}
-        style={styles.fullscreenImage}
-        contentFit="contain"
-        cachePolicy="disk"
-      />
-    )}
-    {isActive && videoLoading && (
-      <View style={styles.videoPlayOverlayCenter} pointerEvents="none">
-        <ActivityIndicator size="large" color="#FFFFFF" />
-      </View>
-    )}
-  </View>
-));
+}>(({ item, isActive, sessionId, player, videoLoading }) => {
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
+  const thumbnailUri = item.thumbnailLargeUrl || item.thumbnailUrl;
+  const onThumbnailLoad = useCallback(() => setThumbnailLoaded(true), []);
+
+  return (
+    <View style={styles.videoSlideContainer}>
+      {isActive && thumbnailUri && (
+        <Image
+          source={{
+            uri: thumbnailUri,
+            headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+          }}
+          style={[styles.fullscreenImage, StyleSheet.absoluteFillObject]}
+          contentFit="contain"
+          cachePolicy="disk"
+          onLoadEnd={onThumbnailLoad}
+        />
+      )}
+      {isActive ? (
+        <VideoView
+          player={player}
+          style={styles.fullscreenVideo}
+          contentFit="contain"
+          nativeControls={false}
+          allowsFullscreen={false}
+          pointerEvents="none"
+        />
+      ) : (
+        <Image
+          source={{
+            uri: thumbnailUri || item.url,
+            headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+          }}
+          style={styles.fullscreenImage}
+          contentFit="contain"
+          cachePolicy="disk"
+        />
+      )}
+      {isActive && videoLoading && !thumbnailLoaded && !thumbnailUri && (
+        <View style={styles.videoPlayOverlayCenter} pointerEvents="none">
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
+    </View>
+  );
+});
 
 const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
@@ -119,12 +137,14 @@ const VideoControlsBar = React.memo<{
 }>(({ player, showControls, startAutoHideTimer, clearAutoHideTimer }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
+  const [bufferedPosition, setBufferedPosition] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const progressBarWidthRef = useRef(0);
   const isSeekingRef = useRef(false);
 
   const progress = videoDuration > 0 ? (currentTime / videoDuration) * 100 : 0;
+  const bufferedProgress = videoDuration > 0 ? (bufferedPosition / videoDuration) * 100 : 0;
 
   // Sync initial state in case player is already playing when we mount
   useEffect(() => {
@@ -134,12 +154,15 @@ const VideoControlsBar = React.memo<{
 
   // Track time updates
   useEffect(() => {
-    const sub = player.addListener('timeUpdate', ({ currentTime: ct }: { currentTime: number }) => {
+    const sub = player.addListener('timeUpdate', ({ currentTime: ct, bufferedPosition: bp }: { currentTime: number; bufferedPosition: number }) => {
       if (!isSeekingRef.current) {
         setCurrentTime(ct);
         if (player.duration > 0) {
           setVideoDuration(player.duration);
         }
+      }
+      if (bp >= 0) {
+        setBufferedPosition(bp);
       }
     });
     return () => sub.remove();
@@ -238,6 +261,7 @@ const VideoControlsBar = React.memo<{
         onResponderTerminate={handleSeekEnd}
       >
         <View style={styles.progressTrackBar}>
+          <View style={[styles.progressBuffered, { width: `${Math.min(bufferedProgress, 100)}%` }]} />
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
         <View
@@ -1316,7 +1340,18 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
+  progressBuffered: {
+    position: 'absolute' as const,
+    left: 0,
+    top: 0,
+    height: '100%' as any,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
   progressFill: {
+    position: 'absolute' as const,
+    left: 0,
+    top: 0,
     height: '100%' as any,
     borderRadius: 1.5,
     backgroundColor: '#FFFFFF',
