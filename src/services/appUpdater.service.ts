@@ -5,6 +5,7 @@
  */
 
 import { Alert, Linking, Platform } from 'react-native';
+import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { API_BASE_URL } from '@shared/constants/api.constants';
 
@@ -33,10 +34,9 @@ class AppUpdaterService {
   private lastCheckTime: Date | null = null;
 
   constructor() {
-    this.currentVersion = Constants.expoConfig?.version ?? '1.0.0';
-    this.currentBuildNumber = Platform.OS === 'ios'
-      ? parseInt(Constants.expoConfig?.ios?.buildNumber ?? '0', 10)
-      : (Constants.expoConfig?.android?.versionCode ?? 0);
+    // Use native version from the built app (works correctly on both iOS and Android)
+    this.currentVersion = Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '1.0.0';
+    this.currentBuildNumber = parseInt(Application.nativeBuildVersion ?? '0', 10);
   }
 
   /**

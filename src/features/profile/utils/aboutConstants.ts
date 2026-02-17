@@ -3,12 +3,22 @@
  * Константы для экрана "О приложении"
  */
 
+import * as Application from 'expo-application';
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// Версия берется автоматически из app.json
-export const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
-// Build номер из нативных настроек (ios.buildNumber / android.versionCode)
-export const APP_BUILD = Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode ?? '1';
+// Версия берется из нативного приложения (android: versionName, ios: CFBundleShortVersionString)
+// Fallback на expo config для web
+export const APP_VERSION = Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '1.0.0';
+
+// Build номер из нативного приложения (android: versionCode, ios: CFBundleVersion)
+// Fallback на expo config для web
+export const APP_BUILD = (() => {
+  if (Platform.OS === 'web') {
+    return Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode ?? '1';
+  }
+  return Application.nativeBuildVersion ?? '1';
+})();
 export const APP_NAME = 'Tachyon Messenger';
 export const COMPANY_NAME = 'Tachyon Technologies';
 export const SUPPORT_EMAIL = 'mishajackson@inbox.ru';

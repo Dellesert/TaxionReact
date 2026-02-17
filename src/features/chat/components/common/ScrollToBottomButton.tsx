@@ -8,6 +8,7 @@ interface ScrollToBottomButtonProps {
   onPress: () => void;
   unreadCount?: number;
   keyboardHeight?: number;
+  inputHeight?: number;
 }
 
 /**
@@ -18,14 +19,21 @@ export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
   onPress,
   unreadCount = 0,
   keyboardHeight = 0,
+  inputHeight = 72,
 }) => {
   const { theme } = useTheme();
 
   if (!visible) return null;
 
   // Базовое положение - чуть выше поля ввода
-  // При открытой клавиатуре поднимаем кнопку на высоту клавиатуры
-  const baseBottom = Platform.OS === 'web' ? 90 : 10;
+  // На web кнопка позиционируется относительно всего экрана (fixed)
+  // На iOS используется KeyboardStickyView для инпута, кнопка внутри flex контейнера
+  // На Android инпут абсолютно позиционирован, нужно учитывать его высоту
+  const baseBottom = Platform.OS === 'web'
+    ? 90
+    : Platform.OS === 'android'
+      ? inputHeight + 16 // На Android учитываем высоту инпута + отступ
+      : 16; // На iOS достаточно небольшого отступа
   const bottom = keyboardHeight > 0 ? baseBottom + keyboardHeight : baseBottom;
 
   return (
