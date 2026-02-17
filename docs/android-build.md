@@ -1,10 +1,28 @@
-# Сборка Android APK
+# Android Build Guide
+
+## Чеклист перед сборкой
+
+**После `expo prebuild` всё генерируется автоматически через config plugins:**
+- [x] `local.properties` с путём к Android SDK — `withAndroidLocalProperties.js`
+- [x] `google-services.json` копируется в `android/app/` — `withDevEnvironment.js`
+- [x] `release.keystore` копируется в `android/app/` — `withAndroidKeystore.js`
+- [x] AndroidManifest.xml с `tools:replace` для Firebase — `withAndroidManifestFix.js`
+- [x] Release signing config в `build.gradle` — `withAndroidSigningConfig.js`
+- [x] Passkey intent filters — `withAndroidPasskey.js`
+- [x] Dev/Prod environment switching (package name, icon) — `withDevEnvironment.js`
+
+**Ручные шаги:**
+- [ ] Поменять versionCode +1 в `app.json` (если нужна новая версия)
+- [ ] Убедиться, что SHA-256 fingerprint добавлен в Firebase Console
+- [ ] Проверить наличие файла `assetlinks.json` на сервере (для Passkey)
+
+---
 
 ## Требования
 
-- macOS / Linux / Windows
+- Windows / macOS / Linux
 - Node.js 18+
-- Java JDK 17+ (рекомендуется использовать JBR из Android Studio)
+- Java JDK 17+ (рекомендуется JBR из Android Studio)
 - Android SDK с NDK 27.1.12297006
 - Установленные зависимости проекта (`npm install`)
 
@@ -12,7 +30,8 @@
 
 | Параметр | Значение |
 |----------|----------|
-| Package name | `com.dellesert.tachyonmessenger` |
+| Package name (prod) | `com.dellesert.tachyonmessenger` |
+| Package name (dev) | `com.dellesert.tachyonmessenger.dev` |
 | Version | 1.0.1 |
 | Version code | 18 |
 | Min SDK | 24 |
@@ -22,86 +41,122 @@
 
 Проект поддерживает два окружения:
 
-| Окружение | Название приложения | Bundle ID | Иконка |
-|-----------|---------------------|-----------|--------|
-| Development (по умолчанию) | Тахион Dev | com.dellesert.tachyon-messenger.dev | icon-dev.png |
-| Production | Тахион | com.dellesert.tachyonmessenger | icon.png |
+| Окружение | Название | Package | Иконка |
+|-----------|----------|---------|--------|
+| Development (по умолчанию) | Тахион Dev | `com.dellesert.tachyonmessenger.dev` | icon-dev.png |
+| Production | Тахион | `com.dellesert.tachyonmessenger` | icon.png |
 
 Окружение определяется переменной `APP_ENV`. Если не задана — используется Development.
 
 ---
 
-## Быстрая сборка Release APK (Windows)
+## Config Plugins (автоматизация)
 
-**Важно:** На Windows из-за ограничения длины путей (260 символов) сборка должна выполняться из короткого пути.
+Все нативные настройки Android управляются через config plugins в `app.json`:
 
-### Пошаговая инструкция
+| Плагин | Что делает |
+|--------|-----------|
+| `withDevEnvironment.js` | Переключает package name, иконку, google-services.json для dev/prod |
+| `withAndroidLocalProperties.js` | Генерирует `local.properties` с путём к SDK |
+| `withAndroidKeystore.js` | Копирует `release.keystore` в `android/app/` |
+| `withAndroidManifestFix.js` | Добавляет `tools:replace` для Firebase notification color |
+| `withAndroidSigningConfig.js` | Добавляет release signing config в `build.gradle` |
+| `withAndroidPasskey.js` | Добавляет intent filters для Digital Asset Links |
+| `@react-native-firebase/app` | Настройка Firebase |
+| `@react-native-firebase/messaging` | Настройка Firebase Messaging |
+| `expo-notifications` | Настройка push-уведомлений |
+| `expo-share-intent` | Share Intent для Android |
+
+---
+
+## Dev Client (Development)
+
+### 1. Prebuild
+
+```bash
+# Очистить и пересоздать Android проект для dev
+npx cross-env APP_ENV=development npx expo prebuild --clean --platform android
+```
+
+### 2. Собрать Debug APK
+
+```bash
+cd android && ./gradlew assembleDebug
+```
+
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+### 3. Установить на устройство
+
+```bash
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+---
+
+## Release (Production)
+
+### 1. Prebuild
+
+```bash
+# Windows (требуется cross-env)
+npx cross-env APP_ENV=production npx expo prebuild --clean --platform android
+
+# macOS / Linux
+APP_ENV=production npx expo prebuild --clean --platform android
+```
+
+### 2. Собрать Release APK
+
+```bash
+cd android && ./gradlew assembleRelease
+```
+
+APK: `android/app/build/outputs/apk/release/app-release.apk`
+
+### 3. Собрать AAB для Play Store
+
+```bash
+cd android && ./gradlew bundleRelease
+```
+
+AAB: `android/app/build/outputs/bundle/release/app-release.aab`
+
+---
+
+## Быстрые команды
+
+### Dev Client (одной командой) — Windows
 
 ```powershell
-# 1. Скопировать проект в короткий путь (один раз)
-xcopy /E /I /Y D:\Documents\GitHub\TaxionReact C:\TaxR
+npx cross-env APP_ENV=development npx expo prebuild --clean --platform android && cd android && .\gradlew assembleDebug && cd ..
+```
 
-# 2. Перейти в короткий путь
-cd C:\TaxR
+### Release APK (одной командой) — Windows
 
-# 3. Production prebuild (cross-env для Windows)
-npx cross-env APP_ENV=production npx expo prebuild --platform android --clean
+```powershell
+npx cross-env APP_ENV=production npx expo prebuild --clean --platform android && cd android && .\gradlew assembleRelease && cd ..
+```
 
-# 4. Создать local.properties с путём к SDK
-echo sdk.dir=C:\\Users\\user\\AppData\\Local\\Android\\Sdk > android\local.properties
+### Release APK (одной командой) — macOS/Linux
 
-# 5. Скопировать google-services.json
-copy google-services.json android\app\google-services.json
-
-# 6. Исправить AndroidManifest.xml (вручную или скриптом)
-# Добавить tools:replace="android:resource" к Firebase notification color
-
-# 7. Добавить release signing в build.gradle (если не добавлено)
-
-# 8. Собрать APK
-cd android && .\gradlew assembleRelease
-
-# 9. APK готов
-# C:\TaxR\android\app\build\outputs\apk\release\app-release.apk
+```bash
+APP_ENV=production npx expo prebuild --clean --platform android && \
+cd android && ./gradlew assembleRelease && cd ..
 ```
 
 ---
 
-## Конфигурация gradle.properties (Windows)
+## Release Keystore
 
-В файле `android/gradle.properties` должна быть указана Java из Android Studio:
+### Расположение файлов
 
-```properties
-# Путь к JBR из Android Studio (Windows)
-org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
-org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
-```
+| Файл | Путь | Описание |
+|------|------|----------|
+| `release.keystore` | `./release.keystore` (корень проекта) | Основной keystore, копируется в android/app/ при prebuild |
+| `release.keystore` | `android/app/release.keystore` | Копия, создаётся автоматически |
 
-**Важно:** Используйте двойные обратные слэши `\\` в путях на Windows.
-
----
-
-## Конфигурация local.properties
-
-Файл `android/local.properties` должен содержать путь к Android SDK:
-
-**Windows:**
-```properties
-sdk.dir=C:\\Users\\user\\AppData\\Local\\Android\\Sdk
-```
-
-**macOS:**
-```properties
-sdk.dir=/Users/username/Library/Android/sdk
-```
-
----
-
-## Release Keystore (Подпись APK)
-
-### Текущий release keystore
-
-Файл: `android/app/release.keystore`
+### Параметры keystore
 
 | Параметр | Значение |
 |----------|----------|
@@ -109,43 +164,35 @@ sdk.dir=/Users/username/Library/Android/sdk
 | Store Password | `TachyonRelease2024!` |
 | Key Password | `TachyonRelease2024!` |
 
-### Конфигурация в build.gradle
+### Переменные окружения для CI/CD
 
-В `android/app/build.gradle` должен быть настроен signingConfigs:
-
-```groovy
-signingConfigs {
-    debug {
-        storeFile file('debug.keystore')
-        storePassword 'android'
-        keyAlias 'androiddebugkey'
-        keyPassword 'android'
-    }
-    release {
-        storeFile file('release.keystore')
-        storePassword 'TachyonRelease2024!'
-        keyAlias 'tachyon-release'
-        keyPassword 'TachyonRelease2024!'
-    }
-}
-buildTypes {
-    debug {
-        signingConfig signingConfigs.debug
-    }
-    release {
-        signingConfig signingConfigs.release
-        // ... остальные настройки
-    }
-}
-```
-
-### Получить SHA-1 для Firebase (release keystore)
+Для безопасного использования в CI/CD установите переменные окружения:
 
 ```bash
-keytool -list -v -keystore android/app/release.keystore -alias tachyon-release -storepass TachyonRelease2024!
+ANDROID_KEYSTORE_BASE64=<base64-encoded keystore>
+ANDROID_KEYSTORE_PASSWORD=TachyonRelease2024!
+ANDROID_KEY_ALIAS=tachyon-release
+ANDROID_KEY_PASSWORD=TachyonRelease2024!
 ```
 
-**Важно:** Добавить SHA-1 от release keystore в Firebase Console для работы push-уведомлений и Passkey в production.
+Закодировать keystore в base64:
+```bash
+base64 -i release.keystore -o keystore.base64
+# или на Windows:
+certutil -encode release.keystore keystore.base64
+```
+
+### Получить SHA-1 / SHA-256 для Firebase
+
+```bash
+# Debug keystore
+keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android
+
+# Release keystore
+keytool -list -v -keystore release.keystore -alias tachyon-release -storepass TachyonRelease2024!
+```
+
+**Важно:** Добавить SHA-1 и SHA-256 от release keystore в Firebase Console для работы push-уведомлений и Passkey в production.
 
 ### Создать новый release keystore (если нужен)
 
@@ -161,13 +208,8 @@ keytool -genkeypair -v -storetype PKCS12 -keystore release.keystore -alias tachy
 
 ### 1. Добавить SHA-256 fingerprint в Firebase/Google Cloud
 
-Получить SHA-256:
 ```bash
-# Debug keystore
-keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android | grep SHA256
-
-# Release keystore
-keytool -list -v -keystore android/app/release.keystore -alias tachyon-release -storepass TachyonRelease2024! | grep SHA256
+keytool -list -v -keystore release.keystore -alias tachyon-release -storepass TachyonRelease2024! | grep SHA256
 ```
 
 ### 2. Настроить Digital Asset Links
@@ -188,67 +230,22 @@ keytool -list -v -keystore android/app/release.keystore -alias tachyon-release -
 }]
 ```
 
-### 3. Проверить связь
+### 3. Проверить файл
 
 ```bash
-# Проверить Digital Asset Links
-adb shell am start -a android.intent.action.VIEW -d "https://yourdomain.com/.well-known/assetlinks.json"
+curl https://taxion.fusioninsight.cloud/.well-known/assetlinks.json
 ```
 
 ---
 
-## Сборка Dev Client APK (для разработки)
+## Push-уведомления (FCM)
 
-```bash
-# 1. Подготовка нативного кода
-npx expo prebuild --platform android --clean
+### Добавить SHA-1 в Firebase
 
-# 2. Создать local.properties
-echo "sdk.dir=C:\\Users\\user\\AppData\\Local\\Android\\Sdk" > android/local.properties
-
-# 3. Скопировать google-services.json
-copy google-services.json android/app/google-services.json
-
-# 4. Сборка debug APK
-cd android && ./gradlew assembleDebug
-```
-
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`
-
----
-
-## Важно: после expo prebuild --clean
-
-После каждого запуска `expo prebuild --clean` необходимо:
-
-### 1. Создать local.properties
-
-**Windows:**
-```
-echo sdk.dir=C:\\Users\\user\\AppData\\Local\\Android\\Sdk > android\local.properties
-```
-
-### 2. Скопировать google-services.json
-
-```bash
-copy google-services.json android\app\google-services.json
-```
-
-### 3. Исправить AndroidManifest.xml
-
-В файле `android/app/src/main/AndroidManifest.xml` найти строку:
-```xml
-<meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_icon_color"/>
-```
-
-И заменить на:
-```xml
-<meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_icon_color" tools:replace="android:resource"/>
-```
-
-### 4. Добавить release signing в build.gradle
-
-Добавить секцию `release` в `signingConfigs` и изменить `buildTypes.release.signingConfig` на `signingConfigs.release` (см. раздел Release Keystore выше).
+1. Получить SHA-1 (см. раздел Keystore)
+2. Firebase Console → Project Settings → Your Android app → Add fingerprint
+3. Скачать обновлённый `google-services.json`
+4. Заменить файл в корне проекта
 
 ---
 
@@ -261,52 +258,31 @@ copy google-services.json android\app\google-services.json
 ninja: error: Stat(...): Filename longer than 260 characters
 ```
 
-**Причина:** Windows имеет ограничение на длину пути 260 символов. Длинные пути в node_modules превышают лимит.
+**Причина:** Windows имеет ограничение на длину пути 260 символов. Длинные пути в node_modules (особенно react-native-keyboard-controller) превышают лимит.
 
-**Решение:**
-1. Скопировать проект в короткий путь:
+**Решение 1: Скопировать проект в короткий путь (рекомендуется)**
 ```powershell
+# Копировать весь проект
 xcopy /E /I /Y D:\Documents\GitHub\TaxionReact C:\TaxR
+
+# Перейти и собрать (prebuild нужно делать заново!)
 cd C:\TaxR
+npm install
+npx cross-env APP_ENV=production npx expo prebuild --clean --platform android
+cd android && .\gradlew assembleRelease
+
+# Скопировать APK обратно
+copy C:\TaxR\android\app\build\outputs\apk\release\app-release.apk D:\Documents\GitHub\TaxionReact\
 ```
 
-2. Очистить кэш и собрать заново:
-```bash
-cd android
-rm -rf .gradle build app/build app/.cxx
-./gradlew assembleRelease
-```
-
-3. После сборки скопировать APK обратно:
+**Решение 2: Включить длинные пути в Windows (требует права администратора)**
 ```powershell
-copy C:\TaxR\android\app\build\outputs\apk\release\app-release.apk D:\Documents\GitHub\TaxionReact\android\app\build\outputs\apk\release\
+# Запустить PowerShell от имени администратора
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
 ```
+После этого перезагрузите компьютер и пересоберите проект.
 
-### 2. Error resolving plugin 'com.facebook.react.settings'
-
-**Ошибка:**
-```
-Error resolving plugin [id: 'com.facebook.react.settings']
-> 25.0.1
-```
-
-**Причина:** Проблема с путём к Java или кэшем gradle.
-
-**Решение:**
-1. Убедиться, что в `gradle.properties` указан правильный путь к Java:
-```properties
-org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
-```
-
-2. Остановить daemon и очистить кэш:
-```bash
-cd android
-./gradlew --stop
-rm -rf .gradle
-./gradlew assembleRelease
-```
-
-### 3. SDK location not found
+### 2. SDK location not found
 
 **Ошибка:**
 ```
@@ -314,22 +290,18 @@ SDK location not found. Define a valid SDK location with an ANDROID_HOME environ
 ```
 
 **Решение:**
-Создать `android/local.properties` с правильным путём к SDK:
+Установить переменную окружения ANDROID_HOME:
+```powershell
+# Windows (PowerShell)
+$env:ANDROID_HOME = "C:\Users\user\AppData\Local\Android\Sdk"
 
-```properties
-# Windows
-sdk.dir=C:\\Users\\user\\AppData\\Local\\Android\\Sdk
-
-# macOS
-sdk.dir=/Users/username/Library/Android/sdk
+# Windows (CMD)
+set ANDROID_HOME=C:\Users\user\AppData\Local\Android\Sdk
 ```
 
-### 4. APP_ENV не применяется на Windows
+Или плагин `withAndroidLocalProperties.js` автоматически определит путь, если SDK установлен в стандартное расположение.
 
-**Ошибка:**
-Сборка показывает "DEVELOPMENT" вместо "PRODUCTION"
-
-**Причина:** На Windows команда `APP_ENV=production` не работает напрямую.
+### 3. APP_ENV не применяется на Windows
 
 **Решение:**
 Использовать `cross-env`:
@@ -337,55 +309,69 @@ sdk.dir=/Users/username/Library/Android/sdk
 npx cross-env APP_ENV=production npx expo prebuild --platform android --clean
 ```
 
-### 5. Manifest merger failed (notification_color)
+### 4. release.keystore не найден
 
 **Ошибка:**
 ```
-Attribute meta-data#com.google.firebase.messaging.default_notification_color@resource is also present at [:react-native-firebase_messaging]
+⚠️ [Android] release.keystore not found
 ```
 
 **Решение:**
-В `android/app/src/main/AndroidManifest.xml` добавить `tools:replace="android:resource"`:
-```xml
-<meta-data
-    android:name="com.google.firebase.messaging.default_notification_color"
-    android:resource="@color/notification_icon_color"
-    tools:replace="android:resource"/>
+Поместить `release.keystore` в корень проекта. Плагин `withAndroidKeystore.js` автоматически скопирует его в `android/app/`.
+
+### 5. Manifest merger failed (notification_color)
+
+Эта проблема решается автоматически плагином `withAndroidManifestFix.js`.
+
+Если всё ещё возникает ошибка, проверьте что плагин добавлен в `app.json`.
+
+### 6. Java version mismatch
+
+**Ошибка:**
+```
+Unsupported class file major version
 ```
 
-### 6. Release APK подписан debug keystore
-
-**Симптом:** APK собирается, но Passkey и некоторые функции не работают.
-
-**Причина:** В `build.gradle` release использует `signingConfigs.debug`.
-
 **Решение:**
-1. Убедиться, что `release.keystore` находится в `android/app/`
-2. Добавить release signing config в `build.gradle`
-3. Изменить `buildTypes.release.signingConfig` на `signingConfigs.release`
+Установить правильную версию Java в `android/gradle.properties`:
+```properties
+org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
+```
 
 ---
 
-## Push-уведомления (FCM)
+## Очистка кэша сборки
 
-### Добавить SHA-1 в Firebase
-
-1. Получить SHA-1:
 ```bash
-# Debug
-keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android
-
-# Release
-keytool -list -v -keystore android/app/release.keystore -alias tachyon-release -storepass TachyonRelease2024!
+cd android
+./gradlew clean
+rm -rf .gradle build app/build app/.cxx
 ```
 
-2. Firebase Console → Project Settings → Your Android app → Add fingerprint
+---
 
-3. Скачать обновлённый `google-services.json`
+## Структура файлов
 
-4. Скопировать в проект:
-```bash
-copy google-services.json android\app\google-services.json
+```
+TaxionReact/
+├── google-services.json          # Firebase config (копируется в android/app/)
+├── release.keystore              # Release keystore (копируется в android/app/)
+├── plugins/
+│   ├── withDevEnvironment.js     # Переключение окружений (package, icon, google-services)
+│   ├── withAndroidLocalProperties.js  # Генерация local.properties
+│   ├── withAndroidKeystore.js    # Копирование release.keystore
+│   ├── withAndroidManifestFix.js # Исправление AndroidManifest.xml
+│   ├── withAndroidSigningConfig.js   # Настройка release signing
+│   └── withAndroidPasskey.js     # Intent filters для Passkey
+├── android/
+│   ├── local.properties          # ✅ Генерируется автоматически
+│   ├── gradle.properties         # Настройки Gradle
+│   └── app/
+│       ├── release.keystore      # ✅ Копируется автоматически
+│       ├── google-services.json  # ✅ Копируется автоматически
+│       ├── build.gradle          # ✅ Signing config добавляется автоматически
+│       └── src/main/
+│           └── AndroidManifest.xml  # ✅ tools:replace добавляется автоматически
 ```
 
 ---
@@ -394,7 +380,6 @@ copy google-services.json android\app\google-services.json
 
 | Версия | Code | Дата | Изменения |
 |--------|------|------|-----------|
-| 1.0.1 | 18 | 2025-02-12 | Release keystore, исправлены проблемы сборки Windows |
-| 1.0.1 | 17 | - | iOS build |
+| 1.0.1 | 18 | 2025-02-17 | Автоматизация сборки через config plugins |
+| 1.0.1 | 17 | 2025-02-12 | Release keystore, исправлены проблемы сборки Windows |
 | 1.0.1 | 16 | - | Предыдущая сборка |
-| 1.0.1 | 2 | 2025-01-10 | Исправлен package name для FCM, добавлен SHA-1 |

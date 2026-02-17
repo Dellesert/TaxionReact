@@ -77,6 +77,16 @@
       "./plugins/withPodfileModifications.js",
       "./plugins/withPushNotificationDelegates.js",
       "./plugins/withExportOptions.js",
+      "./plugins/withAndroidLocalProperties.js",
+      "./plugins/withAndroidKeystore.js",
+      "./plugins/withAndroidManifestFix.js",
+      "./plugins/withAndroidSigningConfig.js",
+      [
+        "./plugins/withAndroidPasskey.js",
+        {
+          "domain": "taxion.fusioninsight.cloud"
+        }
+      ],
       [
         "expo-image-picker",
         {
