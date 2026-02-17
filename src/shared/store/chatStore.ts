@@ -161,7 +161,7 @@ interface ChatState {
   handleUserLeave: (chatId: number, userId?: number) => void;
   handleUserPresence: (presence: any) => void;
   handleMessageRead: (chatId: number, messageId: number, userId?: number) => void;
-  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number, action?: string) => void;
+  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number, action?: string, user?: any) => void;
   clearError: () => void;
   getChatById: (chatId: number) => Chat | undefined;
   /** Merge updated chats (for differential sync) */
@@ -2245,7 +2245,7 @@ export const useChatStore = create<ChatState>()(
     });
   },
 
-  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number, action?: string) => {
+  handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number, action?: string, user?: any) => {
     // Update reactions array in message
     set((state) => ({
       messages: {
@@ -2275,6 +2275,7 @@ export const useChatStore = create<ChatState>()(
                   id: Date.now(), // temporary ID
                   message_id: messageId,
                   user_id: userId || 0,
+                  user: user || undefined,
                   emoji,
                   created_at: new Date().toISOString(),
                 },
