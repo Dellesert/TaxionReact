@@ -415,6 +415,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
       transparent={isDesktop}
       onRequestClose={onClose}
       presentationStyle={isDesktop ? 'overFullScreen' : 'fullScreen'}
+      statusBarTranslucent
     >
       <View
         style={[
@@ -427,7 +428,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
           style={[
             styles.container,
             { backgroundColor: theme.card },
-            !isDesktop && { paddingTop: insets.top },
+            !isDesktop && { paddingTop: Platform.OS === 'android' ? (insets.top || StatusBar.currentHeight || 0) : insets.top },
             isDesktop && styles.containerDesktop,
           ]}
         >

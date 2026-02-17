@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
@@ -25,6 +26,14 @@ const UserGroupsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
   const { showError, showSuccess } = useNotification();
   const [groups, setGroups] = useState<UserGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);

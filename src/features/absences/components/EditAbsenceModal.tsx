@@ -171,7 +171,8 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
       animationType={isDesktop ? 'fade' : 'slide'}
       transparent={isDesktop}
       onRequestClose={onClose}
-      presentationStyle={isDesktop ? 'overFullScreen' : 'pageSheet'}
+      presentationStyle={isDesktop ? 'overFullScreen' : 'fullScreen'}
+      statusBarTranslucent
     >
       <View
         style={[
@@ -184,6 +185,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
           style={[
             styles.container,
             { backgroundColor: theme.card },
+            !isDesktop && { paddingTop: Platform.OS === 'android' ? (insets.top || StatusBar.currentHeight || 0) : insets.top },
             isDesktop && styles.containerDesktop,
           ]}
         >

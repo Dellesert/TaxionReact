@@ -3,7 +3,7 @@
  * Экран изменения пароля из профиля
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,11 @@ import {
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { usePasswordPolicy } from '@shared/hooks/usePasswordPolicy';
@@ -29,7 +30,15 @@ type NavigationProp = NativeStackNavigationProp<any>;
 
 const ChangePasswordScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
   const { showSuccess, showError } = useNotification();
   const { validatePassword, getPasswordHint } = usePasswordPolicy();
 

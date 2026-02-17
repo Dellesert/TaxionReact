@@ -8,7 +8,6 @@ import { Poll, PollStatus } from '../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
-import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { usePollListData } from '../hooks/usePollListData';
 import { usePollListFilters } from '../hooks/usePollListFilters';
@@ -89,13 +88,6 @@ const PollListScreen: React.FC = () => {
     setShowCreateModal(true);
   }, []);
 
-  // Integrate with TitleBar search in Electron
-  useTitleBarSearchIntegration({
-    searchQuery,
-    onSearchChange: setSearchQuery,
-    placeholder: 'Поиск опросов...',
-    enabled: true,
-  });
 
   // View options for TitleBar switcher
   const pollViewOptions: ViewOption<PollViewMode>[] = useMemo(() => [

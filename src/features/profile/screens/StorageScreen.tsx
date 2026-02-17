@@ -14,8 +14,9 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
@@ -99,6 +100,14 @@ const formatBytes = (bytes: number): string => {
 export default function StorageScreen() {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
   const [cacheInfo, setCacheInfo] = useState<CacheInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);

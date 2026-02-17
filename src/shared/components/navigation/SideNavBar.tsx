@@ -4,7 +4,7 @@
  * Поддерживает сложенный (только иконки) и расширенный (иконка + название) режимы
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, TouchableOpacity, Text, TextInput, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -13,7 +13,10 @@ import { useNotificationStore } from '@shared/store/notificationStore';
 import { Avatar } from '@shared/components/common/Avatar';
 import { AccountSwitcherModal } from '@shared/components/account/AccountSwitcherModal';
 import { useSidebar } from '@shared/contexts/SidebarContext';
-import { useTitleBarSearch } from '@shared/contexts/TitleBarSearchContext';
+import { useGlobalSearch } from '@shared/hooks/useGlobalSearch';
+import { useGlobalSearchShortcut } from '@shared/hooks/useGlobalSearchShortcut';
+import { GlobalSearchDropdown } from '@shared/components/common/GlobalSearchDropdown';
+import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import * as accountManager from '@services/accountManager';
@@ -108,7 +111,57 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   const unreadNotificationCount = useNotificationStore((state) => state.unreadCount);
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const { isCollapsed } = useSidebar();
-  const { searchQuery, isVisible: isSearchVisible, setSearchQuery, clearSearch } = useTitleBarSearch();
+  const { navigateToTab } = useDesktopNavigation();
+
+  // Global search
+  const {
+    query: globalQuery,
+    setQuery: setGlobalQuery,
+    results: searchResults,
+    totalCount: searchTotalCount,
+    isLoading: isSearchLoading,
+    isLoadingMore: isSearchLoadingMore,
+    error: searchError,
+    isOpen: isSearchDropdownOpen,
+    setIsOpen: setSearchDropdownOpen,
+    loadMore: searchLoadMore,
+    clearSearch: clearGlobalSearch,
+  } = useGlobalSearch({ debounceMs: 300 });
+
+  const searchInputRef = useRef<TextInput>(null);
+  const searchContainerRef = useRef<View>(null);
+  const [searchAnchorPosition, setSearchAnchorPosition] = useState({ x: 0, y: 0 });
+
+  // Keyboard shortcut: Ctrl+K / Cmd+K
+  const handleSearchShortcut = useCallback(() => {
+    if (!isCollapsed && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isCollapsed]);
+  useGlobalSearchShortcut(handleSearchShortcut, !isCollapsed);
+
+  // Handle search input change
+  const handleSearchChange = useCallback((text: string) => {
+    setGlobalQuery(text);
+  }, [setGlobalQuery]);
+
+  // Handle clear search
+  const handleClearSearch = useCallback(() => {
+    clearGlobalSearch();
+  }, [clearGlobalSearch]);
+
+  // Calculate anchor position for dropdown
+  const updateAnchorPosition = useCallback(() => {
+    if (Platform.OS === 'web' && searchContainerRef.current) {
+      try {
+        // @ts-ignore - Web-only method
+        const rect = searchContainerRef.current.getBoundingClientRect?.();
+        if (rect) {
+          setSearchAnchorPosition({ x: rect.left, y: rect.bottom });
+        }
+      } catch {}
+    }
+  }, []);
 
   // Check if user is admin or super_admin
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
@@ -189,27 +242,47 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
         borderRightColor: theme.border,
       }
     ]}>
-      {/* Search - always render container when expanded to prevent layout shift */}
+      {/* Search - global search input */}
       {!isCollapsed && (
-        <View style={[styles.searchContainer, !isSearchVisible && styles.searchContainerHidden]}>
+        <View
+          // @ts-ignore - ref type
+          ref={searchContainerRef}
+          style={styles.searchContainer}
+        >
           <View style={[styles.searchInputContainer, { backgroundColor: theme.input, borderColor: theme.inputBorder }]}>
             <Ionicons name="search" size={16} color={theme.textSecondary} style={styles.searchIcon} />
             <TextInput
+              ref={searchInputRef}
               style={[styles.searchInput, { color: theme.text, outlineStyle: 'none' } as any]}
               placeholder="Поиск..."
               placeholderTextColor={theme.inputPlaceholder}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              editable={isSearchVisible}
+              value={globalQuery}
+              onChangeText={handleSearchChange}
+              onFocus={updateAnchorPosition}
             />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+            {globalQuery.length > 0 && (
+              <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
                 <Ionicons name="close-circle" size={14} color={theme.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
         </View>
       )}
+
+      {/* Global Search Dropdown */}
+      <GlobalSearchDropdown
+        visible={isSearchDropdownOpen}
+        onClose={() => setSearchDropdownOpen(false)}
+        results={searchResults}
+        totalCount={searchTotalCount}
+        isLoading={isSearchLoading}
+        isLoadingMore={isSearchLoadingMore}
+        error={searchError}
+        query={globalQuery}
+        onLoadMore={searchLoadMore}
+        anchorPosition={searchAnchorPosition}
+        desktopNavigateToTab={navigateToTab}
+      />
 
       {/* Navigation Items */}
       {visibleItems.map((item) => {

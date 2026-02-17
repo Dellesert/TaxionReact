@@ -27,7 +27,7 @@ import {
   getNavigationParams,
 } from '@/features/notifications/utils/notificationFormatters';
 import { CustomTitleBar } from '@shared/components/common/CustomTitleBar';
-import { TitleBarSearchProvider } from '@shared/contexts/TitleBarSearchContext';
+
 import { TitleBarControlsProvider } from '@shared/contexts/TitleBarControlsContext';
 import { DesktopNavigationProvider, navigateToTabGlobal } from '@shared/contexts/DesktopNavigationContext';
 import { SidebarProvider } from '@shared/contexts/SidebarContext';
@@ -722,21 +722,19 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SidebarProvider>
         <DesktopNavigationProvider>
-          <TitleBarSearchProvider>
-            <TitleBarControlsProvider>
-              <CustomTitleBar navigationRef={navigationRef} isAuthenticated={isAuthenticated} />
-              <NotificationProvider>
-                <ActionModalProvider>
-                  <ShareIntentHandler>
-                    <NetworkSyncProvider enabled={isAuthenticated}>
-                      <AppNavigator ref={navigationRef} />
-                      <OfflineBanner />
-                    </NetworkSyncProvider>
-                  </ShareIntentHandler>
-                </ActionModalProvider>
-              </NotificationProvider>
-            </TitleBarControlsProvider>
-          </TitleBarSearchProvider>
+          <TitleBarControlsProvider>
+            <CustomTitleBar navigationRef={navigationRef} isAuthenticated={isAuthenticated} />
+            <NotificationProvider>
+              <ActionModalProvider>
+                <ShareIntentHandler>
+                  <NetworkSyncProvider enabled={isAuthenticated}>
+                    <AppNavigator ref={navigationRef} />
+                    <OfflineBanner />
+                  </NetworkSyncProvider>
+                </ShareIntentHandler>
+              </ActionModalProvider>
+            </NotificationProvider>
+          </TitleBarControlsProvider>
         </DesktopNavigationProvider>
       </SidebarProvider>
     </GestureHandlerRootView>

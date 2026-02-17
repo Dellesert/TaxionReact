@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotificationSettings } from '@/features/notifications/hooks/useNotificationSettings';
 import { ProfileMenuSection } from '../components/common/ProfileMenuSection';
@@ -14,6 +15,15 @@ import { formatHour, getPriorityLabel } from '@/features/notifications/utils/not
 const NotificationSettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
+
   const {
     loading,
     saving,

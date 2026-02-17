@@ -8,7 +8,6 @@ import type { Task } from '../types/task.types';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
-import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { TaskStackParamList } from '@navigation/types';
 import CreateTaskModal from '../components/modals/CreateTaskModal';
@@ -114,13 +113,6 @@ const TaskListScreen: React.FC = () => {
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
-  // Integrate with TitleBar search in Electron
-  useTitleBarSearchIntegration({
-    searchQuery,
-    onSearchChange: setSearchQuery,
-    placeholder: 'Поиск задач...',
-    enabled: true,
-  });
 
   // Store the actual filter change handler in ref (inside useEffect to avoid setState during render)
   useEffect(() => {

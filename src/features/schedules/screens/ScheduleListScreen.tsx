@@ -19,7 +19,6 @@ import { useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
-import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useSchedules } from '../hooks/useSchedules';
@@ -130,13 +129,6 @@ export const ScheduleListScreen: React.FC = () => {
     updateFilters({ start_date: start, end_date: end });
   }, [updateFilters]);
 
-  // Integrate with TitleBar search in Electron
-  useTitleBarSearchIntegration({
-    searchQuery,
-    onSearchChange: setSearchQuery,
-    placeholder: 'Поиск графиков...',
-    enabled: true,
-  });
 
   // TitleBar left controls - no longer used (month picker moved to content area)
   const titleBarLeftControls = useMemo(() => {

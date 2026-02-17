@@ -355,6 +355,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}
+      statusBarTranslucent
     >
       <View style={[
         styles.modalOverlay,
@@ -365,7 +366,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
           style={[
             styles.container,
             { backgroundColor: theme.card },
-            !isDesktop && { paddingTop: insets.top },
+            !isDesktop && { paddingTop: Platform.OS === 'android' ? (insets.top || StatusBar.currentHeight || 0) : insets.top },
             isDesktop && styles.containerDesktop
           ]}
         >

@@ -103,7 +103,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const hasMedia = mediaAttachments.length > 0;
   const hasMultipleMedia = mediaAttachments.length > 1;
   const hasLinkPreview = !!message.link_preview;
-  // Для одиночного фото: уменьшаем ширину бабла (~65% от максимума)
+  // Есть ли текст в сообщении (не считая удалённые и task-карточки)
+  const hasTextContent = useMemo(() => {
+    if (message.is_deleted) return false;
+    const content = message.content?.trim() || '';
+    if (!content) return false;
+    if (/^\[TASK_DATA\].*\[\/TASK_DATA\]$/s.test(content)) return false;
+    return true;
+  }, [message.content, message.is_deleted]);
+  // Для одиночного медиа без текста: уменьшаем ширину бабла (~65% от максимума)
   const singleMediaWidth = Math.min(maxBubbleWidth * 0.65, 280);
   const currentUser = useAuthStore((state) => state.user);
   const { showError } = useNotification();
@@ -342,7 +350,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         )}
 
         {/* Пузырь сообщения */}
-        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth, ...((hasMultipleMedia || hasLinkPreview) && { width: maxBubbleWidth }), ...(hasMedia && !hasMultipleMedia && !hasLinkPreview && { width: singleMediaWidth }) }}>
+        <View style={{ position: 'relative', maxWidth: maxBubbleWidth, minWidth: minBubbleWidth, ...((hasMultipleMedia || hasLinkPreview) && { width: maxBubbleWidth }), ...(hasMedia && !hasMultipleMedia && !hasLinkPreview && !hasTextContent && { width: singleMediaWidth }) }}>
           <MessageBubble
             message={message}
             isOwnMessage={isOwnMessage}

@@ -15,7 +15,6 @@ import { useChatSelection } from '@shared/contexts/ChatSelectionContext';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
-import { useTitleBarSearchIntegration } from '@shared/hooks/useTitleBarSearchIntegration';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { Chat, ChatType } from '../types/chat.types';
 import { TitleBarChatControls } from '../components/common/TitleBarChatControls';
@@ -106,13 +105,6 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
   // Get refreshing state from store
   const isRefreshingChats = useChatStore((state) => state.isRefreshingChats);
 
-  // Integrate with TitleBar search in Electron
-  useTitleBarSearchIntegration({
-    searchQuery,
-    onSearchChange: setSearchQuery,
-    placeholder: 'Поиск чатов...',
-    enabled: true,
-  });
 
   const {
     handleDeleteChat,

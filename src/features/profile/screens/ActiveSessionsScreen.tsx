@@ -3,7 +3,7 @@
  * Экран управления активными сессиями (устройствами)
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,9 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useActiveSessionsData } from '../hooks/useActiveSessionsData';
@@ -26,7 +27,15 @@ import type { ActiveSession } from '../../../types/user.types';
 
 export default function ActiveSessionsScreen() {
   const navigation = useNavigation();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'ios') {
+        setStatusBarStyle(isDark ? 'light' : 'dark');
+      }
+    }, [isDark])
+  );
   const { sessions, currentSessionId, loading, refreshing, handleRefresh, loadSessions } =
     useActiveSessionsData();
   const { handleDeleteSession, handleDeleteAllOther, handleRenameSession } = useActiveSessionsActions(
