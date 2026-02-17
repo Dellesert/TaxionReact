@@ -21,7 +21,10 @@
       "associatedDomains": [
         "webcredentials:taxion.fusioninsight.cloud"
       ],
-      "icon": "./assets/images/icon.png",
+      "icon": {
+        "light": "./assets/images/icon.png",
+        "dark": "./assets/images/icon-dark.png"
+      },
       "backgroundColor": "#E94444",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
