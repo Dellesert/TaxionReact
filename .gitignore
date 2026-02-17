@@ -68,3 +68,4 @@ electron/resources/icon.ico
 *.dmg
 *.AppImage
 *.deb
+*.apk

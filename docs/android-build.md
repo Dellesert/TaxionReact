@@ -258,29 +258,35 @@ curl https://taxion.fusioninsight.cloud/.well-known/assetlinks.json
 ninja: error: Stat(...): Filename longer than 260 characters
 ```
 
-**Причина:** Windows имеет ограничение на длину пути 260 символов. Длинные пути в node_modules (особенно react-native-keyboard-controller) превышают лимит.
+**Причина:** Windows имеет ограничение на длину пути 260 символов. CMake/Ninja/NDK не поддерживают длинные пути даже если включён `LongPathsEnabled` в реестре.
 
-**Решение 1: Скопировать проект в короткий путь (рекомендуется)**
+**Решение: Скопировать проект в короткий путь (единственный надёжный способ)**
+
+> ⚠️ **Важно:** Настройки реестра `LongPathsEnabled` и Group Policy **НЕ помогают** — CMake/Ninja/NDK имеют внутренние ограничения на длину пути.
+
 ```powershell
-# Копировать весь проект
-xcopy /E /I /Y D:\Documents\GitHub\TaxionReact C:\TaxR
+# Копировать весь проект в C:\T (включая .env файлы!)
+xcopy /E /I /Y /H D:\Documents\GitHub\TaxionReact C:\T
 
-# Перейти и собрать (prebuild нужно делать заново!)
-cd C:\TaxR
-npm install
-npx cross-env APP_ENV=production npx expo prebuild --clean --platform android
-cd android && .\gradlew assembleRelease
+# Собрать из короткого пути
+cd C:\T\android
+.\gradlew clean
+.\gradlew assembleRelease
+
+# APK создан в: C:\T\android\app\build\outputs\apk\release\app-release.apk
 
 # Скопировать APK обратно
-copy C:\TaxR\android\app\build\outputs\apk\release\app-release.apk D:\Documents\GitHub\TaxionReact\
+copy C:\T\android\app\build\outputs\apk\release\app-release.apk D:\Documents\GitHub\TaxionReact\
 ```
 
-**Решение 2: Включить длинные пути в Windows (требует права администратора)**
+> ⚠️ **Важно:** Флаг `/H` копирует скрытые файлы (`.env`). Без него env переменные не попадут в сборку!
+
+**Быстрая пересборка (без копирования node_modules заново):**
 ```powershell
-# Запустить PowerShell от имени администратора
-New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+# Если проект уже в C:\T, просто обновите изменённые файлы:
+robocopy D:\Documents\GitHub\TaxionReact\src C:\T\src /E /XO
+cd C:\T\android && .\gradlew assembleRelease
 ```
-После этого перезагрузите компьютер и пересоберите проект.
 
 ### 2. SDK location not found
 
