@@ -139,6 +139,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     removePendingVideo,
     handleFilesSelected,
     removeFile,
+    handleCancelUpload,
   } = useChatActions(chatIdNum);
 
   // Callback для сброса состояния непрочитанных при выходе из jump context
@@ -765,6 +766,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         onNavigateNext={navigateToNext}
         activeSearchQuery={isSearchVisible && searchQuery ? searchQuery : undefined}
         onMediaViewerOpen={handleMediaViewerOpen}
+        onCancelUpload={handleCancelUpload}
       />
 
       <ChatModals

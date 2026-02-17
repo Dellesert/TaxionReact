@@ -41,6 +41,10 @@ export const useVideoUploadMessage = (chatId: number) => {
   const realProgressRef = useRef<Map<number, number>>(new Map());
   // Хранит текущий отображаемый прогресс trickle для каждого tempId
   const trickleProgressRef = useRef<Map<number, number>>(new Map());
+  // Хранит ссылки на XHR для отмены загрузки
+  const xhrRefsRef = useRef<Map<number, XMLHttpRequest>>(new Map());
+  // Множество отменённых загрузок — чтобы не отправлять сообщение после завершения XHR
+  const cancelledUploadsRef = useRef<Set<number>>(new Set());
 
   /**
    * Обновить прогресс загрузки на оптимистичном сообщении
@@ -424,10 +428,24 @@ export const useVideoUploadMessage = (chatId: number) => {
             }
           },
           true, // isPublic
+          (xhr) => { xhrRefsRef.current.set(tempId, xhr); },
         );
+
+        // Проверяем, не была ли загрузка отменена пока шёл upload
+        if (cancelledUploadsRef.current.has(tempId)) {
+          console.log(`[VideoUpload] Upload cancelled for tempId: ${tempId}, stopping`);
+          return;
+        }
 
         console.log(`[VideoUpload] File ${i + 1}/${pendingFiles.length} uploaded, server id: ${uploaded.id}`);
         uploadedFileIds.push(uploaded.id);
+      }
+
+      // Проверяем отмену перед отправкой сообщения
+      if (cancelledUploadsRef.current.has(tempId)) {
+        console.log(`[VideoUpload] Upload cancelled for tempId: ${tempId}, not sending message`);
+        cancelledUploadsRef.current.delete(tempId);
+        return;
       }
 
       // Все файлы загружены и сконвертированы — сервер вернул ответ
@@ -449,6 +467,11 @@ export const useVideoUploadMessage = (chatId: number) => {
       replaceWithReal(tempId, realMessage);
 
     } catch (error: any) {
+      // Если загрузка была отменена — не помечаем как failed (сообщение уже удалено)
+      if (cancelledUploadsRef.current.has(tempId)) {
+        cancelledUploadsRef.current.delete(tempId);
+        return;
+      }
       console.error('[VideoUpload] Failed:', error);
       markFailed(tempId, error);
     }
@@ -528,9 +551,20 @@ export const useVideoUploadMessage = (chatId: number) => {
             }
           },
           true,
+          (xhr) => { xhrRefsRef.current.set(tempId, xhr); },
         );
 
+        if (cancelledUploadsRef.current.has(tempId)) {
+          cancelledUploadsRef.current.delete(tempId);
+          return;
+        }
+
         uploadedFileIds.push(uploaded.id);
+      }
+
+      if (cancelledUploadsRef.current.has(tempId)) {
+        cancelledUploadsRef.current.delete(tempId);
+        return;
       }
 
       cleanupTimers(tempId);
@@ -544,6 +578,10 @@ export const useVideoUploadMessage = (chatId: number) => {
 
       replaceWithReal(tempId, realMessage);
     } catch (error: any) {
+      if (cancelledUploadsRef.current.has(tempId)) {
+        cancelledUploadsRef.current.delete(tempId);
+        return;
+      }
       console.error('[VideoUpload] Retry failed:', error);
       markFailed(tempId, error);
     }
@@ -553,6 +591,15 @@ export const useVideoUploadMessage = (chatId: number) => {
    * Отменить загрузку и удалить сообщение
    */
   const cancelVideoUpload = useCallback((tempId: number) => {
+    // Прерываем XHR если загрузка ещё идёт
+    const xhr = xhrRefsRef.current.get(tempId);
+    if (xhr) {
+      xhr.abort();
+      xhrRefsRef.current.delete(tempId);
+    }
+    // Помечаем как отменённый, чтобы async flow не продолжал отправку
+    cancelledUploadsRef.current.add(tempId);
+
     cleanupTimers(tempId);
     pendingVideoUploads.delete(tempId);
 

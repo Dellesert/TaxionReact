@@ -52,7 +52,8 @@ class FileApi {
     file: File | { uri: string; name: string; type: string },
     fileType?: string,
     onProgress?: UploadProgressCallback,
-    isPublic?: boolean
+    isPublic?: boolean,
+    onXhrCreated?: (xhr: XMLHttpRequest) => void,
   ): Promise<FileUploadResponse> {
     const sessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
     if (!sessionId) {
@@ -179,6 +180,7 @@ class FileApi {
 
       xhr.open('POST', `${this.baseUrl}/upload`);
       xhr.setRequestHeader('X-Session-ID', sessionId);
+      onXhrCreated?.(xhr);
       xhr.send(formData);
     });
   }

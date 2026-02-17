@@ -312,6 +312,13 @@ export const useChatActions = (chatId: number) => {
   }, [chatId, retryMessage, retryVideoUpload]);
 
   /**
+   * Отмена загрузки медиа (по нажатию крестика в лоадере)
+   */
+  const handleCancelUpload = useCallback((messageId: number) => {
+    cancelVideoUpload(messageId);
+  }, [cancelVideoUpload]);
+
+  /**
    * Удаление неудачного сообщения
    */
   const handleDiscardFailedMessage = useCallback((messageId: number) => {
@@ -350,6 +357,7 @@ export const useChatActions = (chatId: number) => {
     // Оптимистичные сообщения
     handleRetryMessage,
     handleDiscardFailedMessage,
+    handleCancelUpload,
     isOptimisticMessage,
     getMessageStatus,
     // Файлы и видео-загрузка

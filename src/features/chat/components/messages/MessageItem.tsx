@@ -45,6 +45,7 @@ interface MessageItemProps {
   onEnterSelectionMode?: (messageId: number) => void;
   onToggleSelection?: (messageId: number) => void;
   onRetryMessage?: (messageId: number) => void;
+  onCancelUpload?: (messageId: number) => void;
   isVisible?: boolean; // Добавляем флаг видимости для ленивой загрузки
   searchQuery?: string; // Поисковый запрос для подсветки текста
   onMediaViewerOpen?: (attachmentId: number) => void; // Открытие глобального просмотра медиа (по всем вложениям чата)
@@ -77,6 +78,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onEnterSelectionMode,
   onToggleSelection,
   onRetryMessage,
+  onCancelUpload,
   isVisible = true, // По умолчанию видим
   searchQuery,
   onMediaViewerOpen,
@@ -359,6 +361,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             onVideoPress={handleVideoPress}
             messageBubbleRef={messageBubbleRef}
             onRetryMessage={onRetryMessage}
+            onCancelUpload={onCancelUpload}
             onReactionPress={handleToggleReaction}
             isVisible={isVisible}
             isSavedChat={isSavedChat}

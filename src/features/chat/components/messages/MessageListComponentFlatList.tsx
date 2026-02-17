@@ -59,6 +59,7 @@ interface MessageListComponentProps {
   isPositionReady?: boolean;
   searchQuery?: string;
   onMediaViewerOpen?: (attachmentId: number) => void;
+  onCancelUpload?: (messageId: number) => void;
 }
 
 
@@ -125,6 +126,7 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
   isPositionReady = true,
   searchQuery,
   onMediaViewerOpen,
+  onCancelUpload,
 }) => {
   useTheme(); // Хук используется для ре-рендера при смене темы
   const { scrollbarRef } = useCustomScrollbarStyle();
@@ -324,6 +326,7 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
           isVisible={viewableIndices.has(index)}
           searchQuery={searchQuery}
           onMediaViewerOpen={onMediaViewerOpen}
+          onCancelUpload={onCancelUpload}
         />
         {shouldShowNewMessageBanner && <UnreadMessagesBanner unreadCount={newMessagesCount} />}
         {shouldShowUnreadBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
@@ -356,6 +359,7 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
     onEnterSelectionMode,
     onToggleMessageSelection,
     onMediaViewerOpen,
+    onCancelUpload,
   ]);
 
   const keyExtractor = React.useCallback((item: MessageListItem, index: number) =>

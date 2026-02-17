@@ -50,6 +50,7 @@ interface MessageBubbleProps {
   onVideoPress?: (videoUrl: string, thumbnailUrl?: string) => void;
   messageBubbleRef: React.RefObject<View>;
   onRetryMessage?: (messageId: number) => void;
+  onCancelUpload?: (messageId: number) => void;
   onReactionPress?: (emoji: string) => void;
   isVisible?: boolean;
   isSavedChat?: boolean;
@@ -78,6 +79,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   onVideoPress,
   messageBubbleRef,
   onRetryMessage,
+  onCancelUpload,
   onReactionPress,
   isVisible = true,
   isSavedChat = false,
@@ -419,6 +421,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                   isOwnMessage={isOwnMessage}
                   currentUserId={currentUserId}
                   onRetryMessage={onRetryMessage}
+                  onCancelUpload={onCancelUpload}
                 />
               )}
 

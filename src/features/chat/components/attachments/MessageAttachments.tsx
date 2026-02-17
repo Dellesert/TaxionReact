@@ -45,6 +45,7 @@ interface MessageAttachmentsProps {
   isOwnMessage?: boolean;
   currentUserId?: number;
   onRetryMessage?: (messageId: number) => void;
+  onCancelUpload?: (messageId: number) => void;
 }
 
 /**
@@ -61,6 +62,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
   isOwnMessage,
   currentUserId,
   onRetryMessage,
+  onCancelUpload,
 }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
@@ -370,7 +372,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
   // Проверяем, загружается ли видео (оптимистичное сообщение с прогрессом)
   const isUploading = chatMessage?.upload_progress != null && chatMessage.upload_progress < 100 && chatMessage.sending;
 
-  // Рендер кругового прогресса загрузки видео
+  // Рендер кругового прогресса загрузки видео с кнопкой отмены
   const renderUploadProgressOverlay = (progress: number) => {
     const size = 56;
     const strokeWidth = 3;
@@ -380,30 +382,36 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
 
     return (
       <View style={styles.videoUploadOverlay}>
-        <Svg width={size} height={size}>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="rgba(255, 255, 255, 0.3)"
-            strokeWidth={strokeWidth}
-            fill="none"
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="#FFFFFF"
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            rotation="-90"
-            origin={`${size / 2}, ${size / 2}`}
-          />
-        </Svg>
-        <Text style={styles.uploadProgressText}>{Math.round(progress)}%</Text>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => chatMessage && onCancelUpload?.(chatMessage.id)}
+          style={styles.uploadCancelButton}
+        >
+          <Svg width={size} height={size}>
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke="rgba(255, 255, 255, 0.3)"
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke="#FFFFFF"
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              rotation="-90"
+              origin={`${size / 2}, ${size / 2}`}
+            />
+          </Svg>
+          <Ionicons name="close" size={20} color="#FFFFFF" style={styles.uploadCancelIcon} />
+        </TouchableOpacity>
       </View>
     );
   };
@@ -776,6 +784,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  uploadCancelButton: {
+    width: 56,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadCancelIcon: {
+    position: 'absolute',
+  },
 });
 
 // Мемоизация компонента для предотвращения лишних ре-рендеров
@@ -801,7 +818,8 @@ export const MessageAttachments = React.memo(MessageAttachmentsComponent, (prevP
   // Сравниваем функции (обычно это стабильные ссылки)
   if (prevProps.onImagePress !== nextProps.onImagePress ||
       prevProps.onVideoPress !== nextProps.onVideoPress ||
-      prevProps.onLongPress !== nextProps.onLongPress) {
+      prevProps.onLongPress !== nextProps.onLongPress ||
+      prevProps.onCancelUpload !== nextProps.onCancelUpload) {
     return false;
   }
 
