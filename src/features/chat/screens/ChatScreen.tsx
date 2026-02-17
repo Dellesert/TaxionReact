@@ -502,16 +502,25 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Обертка для handleSendMessage с автоматическим скроллом вниз
   const handleSendMessage = async (content: string, replyToId?: number) => {
-    await originalHandleSendMessage(content, replyToId);
-
-    // После отправки сообщения скроллим вниз и скрываем баннер (пользователь активно участвует в диалоге)
+    // Скрываем баннер сразу — пользователь активно участвует в диалоге
     if (showUnreadBanner) {
       setShowUnreadBanner(false);
-      setFirstUnreadMessageId(null); // Сбрасываем фиксированный ID
+      setFirstUnreadMessageId(null);
     }
+
+    // Запускаем отправку БЕЗ await — sendMessageWithVideoUpload добавляет
+    // оптимистичное сообщение в store синхронно, а загрузка идёт в фоне.
+    // Если ждать await — скролл произойдёт только после полной загрузки файла.
+    originalHandleSendMessage(content, replyToId);
+
+    // Скроллим вниз сразу после добавления оптимистичного сообщения
+    // Задержка 300ms даёт React время обработать обновление store и отрендерить новое сообщение
     setTimeout(() => {
-      handleScrollToBottom();
-    }, 100);
+      listRef.current?.scrollToOffset({
+        offset: Platform.OS === 'ios' ? -(keyboardHeight || 0) : 0,
+        animated: true,
+      });
+    }, 300);
   };
 
   // === Глобальный просмотр медиа (по всем вложениям чата) ===
