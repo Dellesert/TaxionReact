@@ -708,7 +708,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             {
               backgroundColor: theme.card,
               borderTopColor: theme.border,
-              paddingBottom: isKeyboardVisible ? 8 : (isDesktop ? 20 : Math.max(insets.bottom, 16))
+              paddingBottom: isKeyboardVisible ? 8 : (isDesktop ? 20 : Math.max(insets.bottom, Platform.OS === 'android' ? 74 : 16))
             }
           ]}>
             {currentStep > 1 ? (

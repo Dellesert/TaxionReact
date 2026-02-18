@@ -374,7 +374,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
               {
                 backgroundColor: theme.card,
                 borderTopColor: theme.border,
-                paddingBottom: isDesktop ? 20 : Math.max(insets.bottom, 16),
+                paddingBottom: isDesktop ? 20 : Math.max(insets.bottom, Platform.OS === 'android' ? 74 : 16),
               },
             ]}
           >
