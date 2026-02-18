@@ -27,7 +27,7 @@ interface ShareIntentModalProps {
   visible: boolean;
   shareIntent: ShareIntent | null;
   onClose: () => void;
-  onSent: () => void;
+  onSent: (chatId: number, chatName: string) => void;
 }
 
 export const ShareIntentModal: React.FC<ShareIntentModalProps> = ({
@@ -119,8 +119,11 @@ export const ShareIntentModal: React.FC<ShareIntentModalProps> = ({
     return null;
   }, [shareIntent]);
 
-  const handleSendToChat = async (chatId: number) => {
+  const handleSendToChat = async (chat: Chat) => {
     if (!shareIntent || isSending) return;
+
+    const chatId = chat.id;
+    const chatName = getChatDisplayName(chat, currentUser?.id);
 
     setIsSending(true);
     try {
@@ -159,7 +162,7 @@ export const ShareIntentModal: React.FC<ShareIntentModalProps> = ({
       // Send message
       await sendMessage(chatId, content, undefined, fileIds.length > 0 ? fileIds : undefined);
 
-      onSent();
+      onSent(chatId, chatName);
     } catch (error) {
       console.error('[ShareIntent] Failed to send:', error);
       setIsSending(false);
@@ -176,7 +179,7 @@ export const ShareIntentModal: React.FC<ShareIntentModalProps> = ({
     return (
       <TouchableOpacity
         style={[styles.chatItem, { backgroundColor: theme.backgroundSecondary }]}
-        onPress={() => handleSendToChat(item.id)}
+        onPress={() => handleSendToChat(item)}
         disabled={isSending}
       >
         {isSavedChat ? (
