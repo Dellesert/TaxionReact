@@ -62,7 +62,7 @@ export const useChatScroll = (
   const [isJumpingToPinned, setIsJumpingToPinned] = useState<boolean>(false); // State для UI индикатора загрузки
   const isScrollingToUnread = useRef<boolean>(false); // Флаг скролла к непрочитанным (по кнопке)
   const isInitialScrollComplete = useRef<boolean>(false); // Флаг что FlashList завершил начальный скролл
-  const [isPositionReady, setIsPositionReady] = useState<boolean>(false); // Флаг что позиция скролла готова для показа списка
+  const isPositionReady = true; // Список показывается мгновенно, позиция задаётся через initialScrollIndex
   const isJumpInProgress = useRef<boolean>(false); // Флаг что идёт jump к сообщению (замена массива)
   const keyboardHeightRef = useRef<number>(0); // Текущая высота клавиатуры (ref для использования в callbacks)
   keyboardHeightRef.current = keyboardHeight || 0;
@@ -117,11 +117,10 @@ export const useChatScroll = (
     }
 
     // ПРИОРИТЕТ 2: Скроллим к последнему сообщению (вниз)
-    // Для inverted FlatList: не передаём initialScrollIndex, чтобы показать начало
-    // Начало inverted списка = визуально низ экрана (новые сообщения)
-    // После рендера вызовем scrollToOffset(0) для гарантии позиционирования
+    // Для inverted списка: index 0 = самое новое сообщение = визуально низ экрана
+    // На Android FlashList без явного initialScrollIndex может позиционироваться не внизу
     setHasReachedBottom(true);
-    return undefined; // undefined = FlashList начинает с начала = низ для inverted
+    return 0;
   }, [messages.length, firstUnreadIndex, unreadCount]);
 
   // Оптимизация: функции в Zustand стабильны и не меняются
@@ -150,8 +149,8 @@ export const useChatScroll = (
   const handleLoadMoreRef = useRef<(() => Promise<void>) | null>(null);
 
   // Ref для хранения актуальных значений для handleFlashListLoad
+  const scrollPositionAdjusted = useRef(false); // Флаг что начальная корректировка скролла выполнена
   const scrollPositionDataRef = useRef({
-    isPositionReady: false,
     messagesLength: 0,
     firstUnreadIndex: -1,
     unreadCount: 0,
@@ -159,15 +158,13 @@ export const useChatScroll = (
 
   // Обновляем ref при изменении значений
   scrollPositionDataRef.current = {
-    isPositionReady,
     messagesLength: messages.length,
     firstUnreadIndex,
     unreadCount,
   };
 
   // Callback когда FlashList завершает загрузку и начальное позиционирование
-  // ВСЯ логика позиционирования теперь здесь, потому что listRef гарантированно готов
-  // Используем ref чтобы иметь актуальные значения без пересоздания callback
+  // Корректирует позицию скролла (центрирование непрочитанных) после рендера
   const handleFlashListLoad = useCallback(() => {
     // onLoad может вызываться слишком рано, поэтому используем задержку
     setTimeout(() => {
@@ -176,13 +173,13 @@ export const useChatScroll = (
       // Перечитываем актуальные данные после timeout
       const currentData = scrollPositionDataRef.current;
 
-      // Пропускаем если позиция уже готова
-      if (currentData.isPositionReady) {
+      // Пропускаем если корректировка уже выполнена
+      if (scrollPositionAdjusted.current) {
         return;
       }
+      scrollPositionAdjusted.current = true;
 
       if (currentData.messagesLength === 0) {
-        setIsPositionReady(true);
         return;
       }
 
@@ -198,7 +195,6 @@ export const useChatScroll = (
             viewOffset: -30,
           });
         }
-        setIsPositionReady(true);
         return;
       }
 
@@ -207,7 +203,6 @@ export const useChatScroll = (
       if (listRef.current) {
         listRef.current.scrollToOffset({ offset: getBottomOffset(), animated: false });
       }
-      setIsPositionReady(true);
     }, 100);
   }, []); // Пустые зависимости - используем ref для актуальных данных
 
@@ -1066,7 +1061,7 @@ export const useChatScroll = (
     isScrollingToUnread.current = false; // ✅ Сбрасываем флаг скролла к непрочитанным
     isKeyboardAnimating.current = false; // ✅ Сбрасываем флаг анимации клавиатуры
     isInitialScrollComplete.current = false; // ✅ Сбрасываем флаг завершения начального скролла
-    setIsPositionReady(false); // ✅ Сбрасываем флаг готовности позиции
+    scrollPositionAdjusted.current = false; // ✅ Сбрасываем флаг корректировки позиции
     isJumpInProgress.current = false; // ✅ Сбрасываем флаг jump операции
     isScrollToBottomAnimating.current = false; // ✅ Сбрасываем флаг анимации скролла к низу
     scrollAnimationPhase.current = 'done'; // ✅ Сбрасываем фазу анимации

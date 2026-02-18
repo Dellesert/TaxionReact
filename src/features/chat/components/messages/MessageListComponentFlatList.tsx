@@ -131,31 +131,7 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
   useTheme(); // Хук используется для ре-рендера при смене темы
   const { scrollbarRef } = useCustomScrollbarStyle();
 
-  // State to control list opacity - prevents showing partially rendered list
-  const [listOpacity] = React.useState(new Animated.Value(0));
-  const [hasRendered, setHasRendered] = React.useState(false);
-
-  // Show list with fade-in after initial render is complete AND position is ready
-  React.useEffect(() => {
-    if (messageListItems.length > 0 && !hasRendered && isPositionReady) {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setHasRendered(true);
-          Animated.timing(listOpacity, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }).start();
-        });
-      });
-    }
-  }, [messageListItems.length, hasRendered, listOpacity, isPositionReady]);
-
-  // Reset opacity when chat changes
-  React.useEffect(() => {
-    setHasRendered(false);
-    listOpacity.setValue(0);
-  }, [scrollSessionKey, listOpacity]);
+  // Список показывается мгновенно — initialScrollIndex уже позиционирует правильно
 
   // Отслеживаем видимые элементы для ленивой загрузки изображений
   const [viewableIndices, setViewableIndices] = React.useState<Set<number>>(() => {
@@ -431,7 +407,6 @@ export const MessageListComponentFlatList: React.FC<MessageListComponentProps> =
       <Animated.View
         style={{
           flex: 1,
-          opacity: listOpacity,
           transform: [{ translateY: animatedTranslateY }],
         }}
         onLayout={handleLayout}

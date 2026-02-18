@@ -59,6 +59,8 @@ interface MessageListComponentProps {
   onFlashListLoad?: () => void;
   isPositionReady?: boolean; // Флаг готовности позиции скролла для показа списка
   searchQuery?: string; // Поисковый запрос для подсветки текста в сообщениях
+  onMediaViewerOpen?: (attachmentId: number) => void;
+  onCancelUpload?: (messageId: number) => void;
 }
 
 /**
@@ -110,37 +112,13 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
   onFlashListLoad,
   isPositionReady = true, // По умолчанию true для обратной совместимости
   searchQuery,
+  onMediaViewerOpen,
+  onCancelUpload,
 }) => {
   const { theme } = useTheme();
   const { scrollbarRef } = useCustomScrollbarStyle();
 
-  // State to control list opacity - prevents showing partially rendered list
-  const [listOpacity] = React.useState(new Animated.Value(0));
-  const [hasRendered, setHasRendered] = React.useState(false);
-
-  // Show list with fade-in after initial render is complete AND position is ready
-  // isPositionReady гарантирует что скролл к непрочитанным завершён
-  React.useEffect(() => {
-    if (messageListItems.length > 0 && !hasRendered && isPositionReady) {
-      // Give FlashList time to render and position scroll (two frames)
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setHasRendered(true);
-          Animated.timing(listOpacity, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }).start();
-        });
-      });
-    }
-  }, [messageListItems.length, hasRendered, listOpacity, isPositionReady]);
-
-  // Reset opacity when chat changes
-  React.useEffect(() => {
-    setHasRendered(false);
-    listOpacity.setValue(0);
-  }, [scrollSessionKey, listOpacity]);
+  // Список показывается мгновенно — initialScrollIndex уже позиционирует правильно
 
   // Функция для определения типа элемента (помогает FlashList оптимизировать рендеринг)
   const getItemType = React.useCallback((item: MessageListItem) => {
@@ -289,8 +267,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
     <Animated.View
       style={{
         flex: 1,
-        opacity: listOpacity,
-        // Теперь без LayoutAnimation - используем translateY для поднятия списка
         transform: [{ translateY: animatedTranslateY }],
       }}
       onLayout={handleLayout}
@@ -404,6 +380,8 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
                 onToggleSelection={onToggleMessageSelection}
                 isVisible={viewableIndices.has(index)}
                 searchQuery={searchQuery}
+                onMediaViewerOpen={onMediaViewerOpen}
+                onCancelUpload={onCancelUpload}
               />
               {shouldShowNewMessageBanner && <UnreadMessagesBanner unreadCount={newMessagesCount} />}
               {shouldShowUnreadBanner && <UnreadMessagesBanner unreadCount={unreadCount} />}
