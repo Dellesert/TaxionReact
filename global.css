@@ -4,6 +4,14 @@
   -ms-overflow-style: none; /* IE/Edge */
 }
 
+/* Disable Chromium default focus outline (yellow border) in Electron */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: none;
+}
+
 *::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera, Electron */
 }
