@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "378420589940",
+    "project_id": "taxion-476e8",
+    "storage_bucket": "taxion-476e8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:378420589940:android:0f2d637a74aaaec2d0e821",
+        "android_client_info": {
+          "package_name": "com.dellesert.tachyonmessenger.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD56zvFFRBLOLFt-dZ1cMkqGFNE2g9YA84"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
