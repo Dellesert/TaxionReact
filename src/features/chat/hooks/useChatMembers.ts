@@ -109,7 +109,7 @@ export const useChatMembers = (chatId: number, chatType: string | undefined): Us
 
   // Загрузка участников для групповых чатов
   useEffect(() => {
-    if (chatType === 'group') {
+    if (chatType === 'group' || chatType === 'channel') {
       loadMembers();
     }
   }, [chatType, loadMembers]);
