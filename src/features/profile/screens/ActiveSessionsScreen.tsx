@@ -16,6 +16,8 @@ import {
 import { setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { ProfileStackParamList } from '@/navigation/ProfileNavigator';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useActiveSessionsData } from '../hooks/useActiveSessionsData';
@@ -26,7 +28,7 @@ import { LogoutAllButton } from '../components/sessions/LogoutAllButton';
 import type { ActiveSession } from '../../../types/user.types';
 
 export default function ActiveSessionsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const { theme, isDark } = useTheme();
 
   useFocusEffect(
@@ -61,7 +63,16 @@ export default function ActiveSessionsScreen() {
             <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Активные сессии</Text>
-          <View style={styles.headerRight} />
+          {Platform.OS !== 'web' ? (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('QRScanner')}
+              style={styles.headerRightButton}
+            >
+              <Ionicons name="qr-code-outline" size={22} color={theme.primary} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.headerRight} />
+          )}
         </View>
       </SafeAreaView>
 
@@ -101,6 +112,9 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 40,
+  },
+  headerRightButton: {
+    padding: 8,
   },
   listContent: {
     padding: 16,

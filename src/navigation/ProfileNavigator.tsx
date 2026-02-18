@@ -25,6 +25,7 @@ import EditDepartmentScreen from '@/features/admin/screens/EditDepartmentScreen'
 import UsersScreen from '@/features/admin/screens/UsersScreen';
 import UserGroupsScreen from '@/features/admin/screens/UserGroupsScreen';
 import EditUserGroupScreen from '@/features/admin/screens/EditUserGroupScreen';
+import QRScannerScreen from '@/features/auth/screens/QRScannerScreen';
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
@@ -45,6 +46,7 @@ export type ProfileStackParamList = {
   Users: undefined;
   UserGroups: undefined;
   EditUserGroup: { groupId: number };
+  QRScanner: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -97,6 +99,7 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Screen name="Users" component={UsersScreen} />
       <Stack.Screen name="UserGroups" component={UserGroupsScreen} />
       <Stack.Screen name="EditUserGroup" component={EditUserGroupScreen} />
+      <Stack.Screen name="QRScanner" component={QRScannerScreen} />
     </Stack.Navigator>
   );
 };

@@ -35,6 +35,10 @@ export const API_ENDPOINTS = {
     PASSKEY_LIST: '/auth/passkey',
     PASSKEY_DELETE: (id: number) => `/auth/passkey/${id}`,
     PASSKEY_UPDATE: (id: number) => `/auth/passkey/${id}`,
+    // QR login endpoints
+    QR_GENERATE: '/auth/qr/generate',
+    QR_STATUS: (token: string) => `/auth/qr/status/${token}`,
+    QR_CONFIRM: '/auth/qr/confirm',
   },
 
   // Settings (public)
