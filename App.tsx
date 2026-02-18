@@ -726,7 +726,7 @@ export default function App() {
             <CustomTitleBar navigationRef={navigationRef} isAuthenticated={isAuthenticated} />
             <NotificationProvider>
               <ActionModalProvider>
-                <ShareIntentHandler>
+                <ShareIntentHandler navigationRef={navigationRef}>
                   <NetworkSyncProvider enabled={isAuthenticated}>
                     <AppNavigator ref={navigationRef} />
                     <OfflineBanner />
