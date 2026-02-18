@@ -397,7 +397,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
                 onPress={() => handleMenuOption('gallery')}
               >
                 <Ionicons name="image-outline" size={24} color={theme.primary} />
-                <Text style={[styles.menuText, { color: theme.text }]}>Галерея</Text>
+                <Text style={[styles.menuText, { color: theme.text }]}>Фото/видео</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
