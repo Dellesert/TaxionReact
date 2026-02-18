@@ -375,6 +375,12 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
           <View style={styles.content}>
           <View style={styles.header}>
+            {chat.type === 'group' && (
+              <Ionicons name="people" size={16} color={theme.textTertiary} style={styles.chatTypeIcon} />
+            )}
+            {chat.type === 'channel' && (
+              <Ionicons name="megaphone" size={16} color={theme.textTertiary} style={styles.chatTypeIcon} />
+            )}
             <Text style={[styles.name, dynamicStyles.name]} numberOfLines={1}>
               {getChatName()}
             </Text>
@@ -763,6 +769,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  chatTypeIcon: {
+    marginRight: 4,
   },
   name: {
     fontSize: 16,
