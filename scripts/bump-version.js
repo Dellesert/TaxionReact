@@ -135,6 +135,17 @@ Android versionCode: ${config.android.versionCode}
     console.log(`   Version: ${config.version}`);
     console.log(`   iOS build: ${config.ios.buildNumber}`);
     console.log(`   Android code: ${config.android.versionCode}`);
+
+    // Auto-sync iOS Info.plist if ios directory exists
+    const infoPlistPath = path.join(__dirname, '..', 'ios', 'Tahion', 'Info.plist');
+    if (fs.existsSync(infoPlistPath)) {
+      try {
+        require('./sync-ios-version.js');
+      } catch (e) {
+        console.log(`\n⚠️  Could not auto-sync iOS Info.plist: ${e.message}`);
+        console.log('   Run manually: node scripts/sync-ios-version.js');
+      }
+    }
   } else {
     console.log('No changes made.');
   }

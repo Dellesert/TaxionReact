@@ -61,6 +61,9 @@ jobs:
       - name: Setup Expo
         run: npx expo prebuild --platform ios --clean
 
+      - name: Sync iOS version
+        run: node scripts/sync-ios-version.js
+
       - name: Install CocoaPods dependencies
         run: |
           cd ios
