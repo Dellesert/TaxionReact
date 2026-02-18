@@ -50,6 +50,34 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   // State to control delayed loader visibility
   const [showLoader, setShowLoader] = useState(false);
 
+  // Минимальное время показа баннера непрочитанных (мс)
+  const BANNER_MIN_DISPLAY_MS = 3500;
+  const bannerShownAtRef = useRef<number>(Date.now());
+  const bannerHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Безопасное скрытие баннера — не раньше чем через BANNER_MIN_DISPLAY_MS
+  const hideBannerSafe = useCallback(() => {
+    const elapsed = Date.now() - bannerShownAtRef.current;
+    if (elapsed >= BANNER_MIN_DISPLAY_MS) {
+      setShowUnreadBanner(false);
+      setFirstUnreadMessageId(null);
+    } else {
+      // Откладываем скрытие на оставшееся время
+      if (bannerHideTimerRef.current) clearTimeout(bannerHideTimerRef.current);
+      bannerHideTimerRef.current = setTimeout(() => {
+        setShowUnreadBanner(false);
+        setFirstUnreadMessageId(null);
+      }, BANNER_MIN_DISPLAY_MS - elapsed);
+    }
+  }, []);
+
+  // Очистка таймера при размонтировании
+  useEffect(() => {
+    return () => {
+      if (bannerHideTimerRef.current) clearTimeout(bannerHideTimerRef.current);
+    };
+  }, []);
+
   // Custom hooks for state management
   const {
     membersModalVisible,
@@ -440,8 +468,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       setInitialUnreadCount(0);
       // Скрываем баннер при открытии клавиатуры (пользователь начал печатать = прочитал сообщения)
       if (keyboardHeight > 0 && showUnreadBanner) {
-        setShowUnreadBanner(false);
-        setFirstUnreadMessageId(null); // Сбрасываем фиксированный ID
+        hideBannerSafe();
       }
     }
   }, [initialScrolled, ignoreReadReceipts, userScrolledToBottom, keyboardHeight, showUnreadBanner]);
@@ -455,8 +482,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         try {
           await markChatAsRead(chatIdNum);
           if (showUnreadBanner) {
-            setShowUnreadBanner(false);
-            setFirstUnreadMessageId(null); // Сбрасываем фиксированный ID
+            hideBannerSafe();
           }
         } catch (error: any) {
           // Игнорируем ошибки 403 - пользователь может не иметь доступа
@@ -502,10 +528,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Обертка для handleSendMessage с автоматическим скроллом вниз
   const handleSendMessage = async (content: string, replyToId?: number) => {
-    // Скрываем баннер сразу — пользователь активно участвует в диалоге
+    // Скрываем баннер — пользователь активно участвует в диалоге
     if (showUnreadBanner) {
-      setShowUnreadBanner(false);
-      setFirstUnreadMessageId(null);
+      hideBannerSafe();
     }
 
     // Запускаем отправку БЕЗ await — sendMessageWithVideoUpload добавляет
