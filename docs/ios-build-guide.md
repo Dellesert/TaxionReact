@@ -13,12 +13,11 @@
 - [x] ExportOptions plist файлы — `withExportOptions.js`
 
 **Версия и номер сборки:**
-- [x] Версия и buildNumber берутся из `version.json` → `app.config.js` → `expo prebuild`
-- [x] После prebuild скрипт `sync-ios-version.js` синхронизирует `Info.plist` с `version.json`
-- [x] `bump-version.js` автоматически обновляет `Info.plist` при изменении версии
+- [x] Версия и buildNumber берутся из `version.json` → `app.config.js` → `expo prebuild` → `Info.plist` (автоматически)
+- [x] `bump-version.js` увеличивает buildNumber в `version.json`
 
 **Ручные шаги:**
-- [ ] Перед релизом: `node scripts/bump-version.js --ios` (увеличит buildNumber в `version.json` и `Info.plist`)
+- [ ] Перед релизом: `node scripts/bump-version.js --ios` (увеличит buildNumber в `version.json`)
 - [ ] Для Production: убедиться, что Associated Domains и App Groups включены в Apple Developer Console
 - [ ] Проверить наличие файла `apple-app-site-association` на сервере
 
@@ -61,8 +60,7 @@
 
 | Скрипт | Что делает |
 |--------|-----------|
-| `scripts/sync-ios-version.js` | Синхронизирует `version` и `buildNumber` из `version.json` в `ios/*/Info.plist` |
-| `scripts/bump-version.js` | Увеличивает версию/buildNumber в `version.json` и автоматически вызывает `sync-ios-version.js` |
+| `scripts/bump-version.js` | Увеличивает версию/buildNumber в `version.json` |
 
 **Expo Module `modules/share-data/`** — синхронизирует список чатов, сессию и API URL из React Native в App Group UserDefaults. Share Extension читает эти данные для отображения чатов и отправки сообщений напрямую. App group идентификатор читается динамически из `Info.plist` (`AppGroupIdentifier`), что обеспечивает корректную работу в dev и production окружениях.
 
@@ -79,21 +77,15 @@
 APP_ENV=development npx expo prebuild --clean --platform ios
 ```
 
-### 2. Синхронизировать версию
-
-```bash
-node scripts/sync-ios-version.js
-```
-
-### 3. Установить pods
+### 2. Установить pods
 
 ```bash
 cd ios && LANG=en_US.UTF-8 pod install && cd ..
 ```
 
-### 4. Проверить (опционально)
+### 3. Проверить (опционально)
 
-После prebuild убедитесь, что автоматически сгенерировано:
+После prebuild убедитесь что автоматически сгенерировано:
 
 **`ios/Dev/AppDelegate.swift`** должен содержать:
 - `import FirebaseMessaging` и `import UserNotifications`
@@ -123,7 +115,7 @@ cd ios && LANG=en_US.UTF-8 pod install && cd ..
 }
 ```
 
-### 5. Собрать архив
+### 4. Собрать архив
 
 ```bash
 xcodebuild -workspace ios/Dev.xcworkspace \
@@ -137,7 +129,7 @@ xcodebuild -workspace ios/Dev.xcworkspace \
   -allowProvisioningUpdates
 ```
 
-### 6. Экспортировать IPA
+### 5. Экспортировать IPA
 
 `ios/build/ExportOptions.plist` генерируется автоматически плагином `withExportOptions.js`.
 
@@ -148,7 +140,7 @@ xcodebuild -exportArchive \
   -exportOptionsPlist ios/build/ExportOptions.plist
 ```
 
-### 7. Установить на устройство
+### 6. Установить на устройство
 
 ```bash
 # Посмотреть доступные устройства
@@ -169,21 +161,15 @@ xcrun devicectl device install app --device DEVICE_ID ios/build/ipa-dev/Dev.ipa
 APP_ENV=production npx expo prebuild --clean --platform ios
 ```
 
-### 2. Синхронизировать версию
-
-```bash
-node scripts/sync-ios-version.js
-```
-
-### 3. Установить pods
+### 2. Установить pods
 
 ```bash
 cd ios && LANG=en_US.UTF-8 pod install && cd ..
 ```
 
-### 4. Проверить (опционально)
+### 3. Проверить (опционально)
 
-После prebuild убедитесь, что автоматически сгенерировано:
+После prebuild убедитесь что автоматически сгенерировано:
 
 **`ios/Tahion/AppDelegate.swift`** должен содержать:
 - `import FirebaseMessaging` и `import UserNotifications`
@@ -225,7 +211,7 @@ cd ios && LANG=en_US.UTF-8 pod install && cd ..
 ```
 - Файл должен отдаваться с заголовком `Content-Type: application/json`
 
-### 5. Собрать архив (Release)
+### 4. Собрать архив (Release)
 
 ```bash
 xcodebuild -workspace ios/Tahion.xcworkspace \
@@ -239,7 +225,7 @@ xcodebuild -workspace ios/Tahion.xcworkspace \
   -allowProvisioningUpdates
 ```
 
-### 6. Экспортировать для App Store / TestFlight
+### 5. Экспортировать для App Store / TestFlight
 
 `ios/build/ExportOptions-AppStore.plist` генерируется автоматически плагином `withExportOptions.js`.
 
@@ -250,7 +236,7 @@ xcodebuild -exportArchive \
   -exportOptionsPlist ios/build/ExportOptions-AppStore.plist
 ```
 
-### 7. Загрузить в App Store Connect
+### 6. Загрузить в App Store Connect
 Пользователь сам загружает через Transporter.app
 
 
@@ -271,7 +257,6 @@ xcrun altool --upload-app \
 # Полная сборка dev client
 rm -rf ios && \
 APP_ENV=development npx expo prebuild --platform ios && \
-node scripts/sync-ios-version.js && \
 cd ios && LANG=en_US.UTF-8 pod install && cd .. && \
 xcodebuild -workspace ios/Dev.xcworkspace -scheme Dev -configuration Debug -sdk iphoneos \
   -archivePath ios/build/Dev.xcarchive archive \
@@ -286,7 +271,6 @@ xcodebuild -exportArchive -archivePath ios/build/Dev.xcarchive \
 # Полная сборка release
 rm -rf ios && \
 APP_ENV=production npx expo prebuild --platform ios && \
-node scripts/sync-ios-version.js && \
 cd ios && LANG=en_US.UTF-8 pod install && cd .. && \
 xcodebuild -workspace ios/Tahion.xcworkspace -scheme Tahion -configuration Release -sdk iphoneos \
   -archivePath ios/build/Tahion.xcarchive archive \
@@ -437,8 +421,7 @@ TaxionReact/
 ├── GoogleService-Info.plist      # Production Firebase config
 ├── GoogleService-Info-Dev.plist  # Development Firebase config
 ├── scripts/
-│   ├── sync-ios-version.js       # Синхронизация version.json → Info.plist
-│   └── bump-version.js           # Увеличение версии/buildNumber
+│   └── bump-version.js           # Увеличение версии/buildNumber в version.json
 ├── plugins/
 │   ├── withDevEnvironment.js     # Переключение окружений (Bundle ID, иконка, GoogleService)
 │   ├── withPodfileModifications.js  # Firebase modular headers
