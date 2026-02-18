@@ -93,6 +93,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
     const tabKeys = ['all', 'private', 'group', 'channel'] as const;
     for (const key of tabKeys) {
       const tab = state.tabs[key];
+      if (!tab) continue;
       for (const chat of [...tab.pinnedChats, ...tab.regularChats]) {
         if (chat.members) {
           for (const m of chat.members) {
@@ -180,7 +181,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
    */
   const renderFilterContent = useCallback(
     (filterKey: ChatFilter) => {
-      const tabData = tabs[filterKey];
+      const tabData = tabs[filterKey] || { pinnedChats: [], regularChats: [], loaded: false, hasMore: true };
       const tabChatsFromStore = combineTabChats(tabData.pinnedChats, tabData.regularChats);
 
 

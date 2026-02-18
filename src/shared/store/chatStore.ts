@@ -2318,9 +2318,19 @@ export const useChatStore = create<ChatState>()(
         totalUnreadCount: state.totalUnreadCount,
         selectedChatId: state.selectedChatId, // Desktop mode: persist selected chat
       }),
+      merge: (persistedState: any, currentState: ChatState) => ({
+        ...currentState,
+        ...persistedState,
+        // Deep-merge tabs so new tab keys (e.g. 'channel') are always present
+        tabs: {
+          ...initialTabsState,
+          ...currentState.tabs,
+          ...(persistedState?.tabs || {}),
+        },
+      }),
       // На web пропускаем гидратацию (storage = no-op)
       skipHydration: !isNative,
-      version: 3, // Incremented to clear old cache (added selectedChatId)
+      version: 3,
     }
   )
 );
