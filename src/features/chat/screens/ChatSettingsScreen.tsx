@@ -95,11 +95,13 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
   const isOwner = currentUserRole === 'owner';
   const canManageMembers = canUserManageMembers(currentUserRole);
 
+  const isGroupOrChannel = chat?.type === 'group' || chat?.type === 'channel';
+
   // Set initial tab based on chat type
   useEffect(() => {
     if (chat?.type === 'private') {
       setActiveTab('attachments');
-    } else if (chat?.type === 'group') {
+    } else if (isGroupOrChannel) {
       setActiveTab('participants');
     }
   }, [chat?.type]);
@@ -281,8 +283,8 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
           />
         )}
 
-        {/* Group chat info */}
-        {chat?.type === 'group' && (
+        {/* Group / Channel chat info */}
+        {isGroupOrChannel && (
           <GroupChatInfo
             chatName={chatName || ''}
             chatAvatar={chat?.avatar}
@@ -298,11 +300,11 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         <ChatDetailTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          showParticipants={chat?.type === 'group'}
+          showParticipants={isGroupOrChannel}
         />
 
         {/* Tab Content */}
-        {activeTab === 'participants' && chat?.type === 'group' && (
+        {activeTab === 'participants' && isGroupOrChannel && (
           <ParticipantsTab
             members={members}
             isLoading={isLoadingMembers}
@@ -384,8 +386,8 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* Leave Dialog */}
       <ConfirmDialog
         visible={showLeaveDialog}
-        title="Покинуть чат"
-        message={`Вы уверены, что хотите покинуть чат "${chatName}"?`}
+        title={chat?.type === 'channel' ? 'Покинуть канал' : 'Покинуть чат'}
+        message={chat?.type === 'channel' ? `Вы уверены, что хотите покинуть канал "${chatName}"?` : `Вы уверены, что хотите покинуть чат "${chatName}"?`}
         confirmText="Покинуть"
         cancelText="Отмена"
         onConfirm={() => leaveChat()}
@@ -396,7 +398,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* Rename Dialog */}
       <InputDialog
         visible={showRenameDialog}
-        title="Переименовать чат"
+        title={chat?.type === 'channel' ? 'Переименовать канал' : 'Переименовать чат'}
         placeholder="Введите новое название"
         initialValue={chatName || ''}
         confirmText="Сохранить"
@@ -464,11 +466,13 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* Delete Modal */}
       <ActionModal
         visible={showDeleteModal}
-        title={chat?.type === 'private' ? 'Удалить чат' : 'Удалить чат для всех'}
+        title={chat?.type === 'private' ? 'Удалить чат' : chat?.type === 'channel' ? 'Удалить канал для всех' : 'Удалить чат для всех'}
         message={
           chat?.type === 'private'
             ? 'Вы уверены, что хотите удалить этот чат?'
-            : 'Вы уверены, что хотите удалить чат для всех участников?'
+            : chat?.type === 'channel'
+              ? 'Вы уверены, что хотите удалить канал для всех подписчиков?'
+              : 'Вы уверены, что хотите удалить чат для всех участников?'
         }
         checkbox={{
           label: 'Также удалить историю сообщений',
