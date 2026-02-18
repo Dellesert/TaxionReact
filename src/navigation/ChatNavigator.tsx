@@ -71,7 +71,9 @@ const ChatNavigator: React.FC = () => {
         presentation: 'card',
         // Enable gestures for smooth swipe back
         gestureEnabled: true,
-        fullScreenGestureEnabled: true,
+        // fullScreenGestureEnabled on Android conflicts with scrollable content (FlashList)
+        // which captures horizontal touches. Use edge-only swipe on Android.
+        fullScreenGestureEnabled: Platform.OS === 'ios',
       }}
     >
       <Stack.Screen
