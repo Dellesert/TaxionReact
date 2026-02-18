@@ -50,6 +50,7 @@ const PollListScreen: React.FC = () => {
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const viewModeInitialized = useRef(false);
   const isFirstRender = useRef(true);
 
   // Custom hooks
@@ -79,6 +80,24 @@ const PollListScreen: React.FC = () => {
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
+  // Load saved view mode from localStorage (Electron only)
+  useEffect(() => {
+    if (isElectron && typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('poll_view_mode');
+      if (saved === 'grid' || saved === 'table') {
+        setViewMode(saved);
+      }
+      viewModeInitialized.current = true;
+    }
+  }, [isElectron]);
+
+  // Save view mode to localStorage when it changes (Electron only)
+  useEffect(() => {
+    if (isElectron && viewModeInitialized.current && typeof localStorage !== 'undefined') {
+      localStorage.setItem('poll_view_mode', viewMode);
+    }
+  }, [isElectron, viewMode]);
 
   // Check if filter is active (not default 'all')
   const hasActiveFilters = filter !== 'all';

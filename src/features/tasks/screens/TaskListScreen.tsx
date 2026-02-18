@@ -54,6 +54,7 @@ const TaskListScreen: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   const [viewMode, setViewMode] = useState<ViewMode>('board');
+  const viewModeInitialized = useRef(false);
 
   // Advanced filters state
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedTaskFilters>({
@@ -113,6 +114,23 @@ const TaskListScreen: React.FC = () => {
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
+  // Load saved view mode from localStorage (Electron only)
+  useEffect(() => {
+    if (isElectron && typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('task_view_mode');
+      if (saved === 'board' || saved === 'table') {
+        setViewMode(saved);
+      }
+      viewModeInitialized.current = true;
+    }
+  }, [isElectron]);
+
+  // Save view mode to localStorage when it changes (Electron only)
+  useEffect(() => {
+    if (isElectron && viewModeInitialized.current && typeof localStorage !== 'undefined') {
+      localStorage.setItem('task_view_mode', viewMode);
+    }
+  }, [isElectron, viewMode]);
 
   // Store the actual filter change handler in ref (inside useEffect to avoid setState during render)
   useEffect(() => {
