@@ -78,6 +78,18 @@ node scripts/bump-version.js --minor --android --ios
 - Android SDK с NDK 27.1.12297006
 - Установленные зависимости проекта (`npm install`)
 
+### Настройка окружения на macOS
+
+Перед сборкой нужно задать `JAVA_HOME` и `ANDROID_HOME`. Добавьте в `~/.zshrc`:
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
+```
+
+После изменения выполните `source ~/.zshrc` или перезапустите терминал.
+
 ## Текущая конфигурация
 
 | Параметр | Значение | Источник |
