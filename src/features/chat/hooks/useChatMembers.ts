@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChatMember } from '@/types/user.types';
+import { ChatMember } from '../types/chat.types';
 import * as chatApi from '../api/chat.api';
 import * as userApi from '@api/user.api';
 import { useNotification } from '@shared/contexts/NotificationContext';
@@ -30,19 +30,30 @@ export const useChatMembers = (chatId: number, chatType: string | undefined): Us
       setIsLoadingMembers(true);
       const chatMembers = await chatApi.getChatMembers(chatId);
 
-      // Загружаем информацию о пользователях
       if (chatMembers && chatMembers.length > 0) {
-        const userIds = chatMembers.map((m) => m.user_id);
-        const usersData = await userApi.getUsers({ ids: userIds }, { limit: 100, offset: 0 });
-        const users = usersData.data || [];
+        // Проверяем, есть ли участники без данных пользователя (user)
+        const membersWithoutUser = chatMembers.filter((m) => !m.user);
 
-        // Объединяем данные участников с данными пользователей
-        const membersWithUsers = chatMembers.map((member) => ({
-          ...member,
-          user: users.find((u) => u.id === member.user_id),
-        }));
+        if (membersWithoutUser.length > 0) {
+          // Догружаем информацию о пользователях только для тех, у кого нет user
+          try {
+            const usersData = await userApi.getUsers({ is_active: true }, { limit: 100, offset: 0 });
+            const users = usersData.data || [];
 
-        setMembers(membersWithUsers);
+            const enrichedMembers = chatMembers.map((member) => ({
+              ...member,
+              user: member.user || users.find((u) => u.id === member.user_id),
+            }));
+
+            setMembers(enrichedMembers);
+          } catch {
+            // Если не удалось загрузить пользователей, используем данные из API как есть
+            setMembers(chatMembers);
+          }
+        } else {
+          // Все участники уже имеют данные пользователя из API
+          setMembers(chatMembers);
+        }
       } else {
         setMembers([]);
       }
