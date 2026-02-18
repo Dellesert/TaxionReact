@@ -4,9 +4,10 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { AdminSidebarNavigation, AdminSection } from '../components/common/AdminSidebarNavigation';
 import { AdminContentArea } from '../components/common/AdminContentArea';
 
