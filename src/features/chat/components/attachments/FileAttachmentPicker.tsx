@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   TouchableOpacity,
-  Text,
   StyleSheet,
   Platform,
   ActionSheetIOS,
-  Modal,
-  Pressable,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +18,7 @@ import { formatFileUploadError } from '@shared/utils/errorUtils';
 import { ApiError } from '@types/common.types';
 import { PendingVideoFile } from '../../types/chat.types';
 import { FILE_UPLOAD } from '@shared/constants/app.constants';
+import { ContextMenu } from '@shared/components/common/ContextMenu';
 
 interface FileAttachmentPickerProps {
   onFilesSelected: (fileIds: number[]) => void;
@@ -44,6 +42,7 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
   const [progress, setProgress] = useState<number>(0);
   const [showMenu, setShowMenu] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const buttonRef = useRef<View>(null);
 
   useEffect(() => {
     onProcessingChange?.(processing);
@@ -211,21 +210,6 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
     }
   };
 
-  const handleMenuOption = (option: 'gallery' | 'camera' | 'document') => {
-    setShowMenu(false);
-
-    // Небольшая задержка чтобы модалка успела закрыться
-    setTimeout(() => {
-      if (option === 'gallery') {
-        handleImagePick();
-      } else if (option === 'camera') {
-        handleCameraPick();
-      } else if (option === 'document') {
-        handleDocumentPick();
-      }
-    }, 100);
-  };
-
   const handleDocumentPick = async () => {
     try {
       setProcessing(true);
@@ -382,44 +366,20 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
 
   return (
     <>
-      {/* Модальное меню для веба */}
       {Platform.OS === 'web' && (
-        <Modal
+        <ContextMenu
           visible={showMenu}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowMenu(false)}
-        >
-          <Pressable style={styles.modalOverlay} onPress={() => setShowMenu(false)}>
-            <View style={[styles.menuContainer, { backgroundColor: theme.backgroundSecondary }]}>
-              <TouchableOpacity
-                style={[styles.menuItem, { borderBottomColor: theme.border }]}
-                onPress={() => handleMenuOption('gallery')}
-              >
-                <Ionicons name="image-outline" size={24} color={theme.primary} />
-                <Text style={[styles.menuText, { color: theme.text }]}>Фото/видео</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.menuItem, { borderBottomWidth: 0 }]}
-                onPress={() => handleMenuOption('document')}
-              >
-                <Ionicons name="document-attach-outline" size={24} color={theme.primary} />
-                <Text style={[styles.menuText, { color: theme.text }]}>Документы</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.cancelButton, { backgroundColor: theme.backgroundTertiary, marginTop: 8 }]}
-                onPress={() => setShowMenu(false)}
-              >
-                <Text style={[styles.cancelText, { color: theme.textSecondary }]}>Отмена</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Modal>
+          options={[
+            { key: 'gallery', icon: 'image-outline', label: 'Фото/видео', onPress: handleImagePick },
+            { key: 'document', icon: 'document-attach-outline', label: 'Документы', onPress: handleDocumentPick },
+          ]}
+          onClose={() => setShowMenu(false)}
+          anchorRef={buttonRef}
+        />
       )}
 
       <TouchableOpacity
+        ref={buttonRef}
         style={[
           styles.button,
           { backgroundColor: theme.backgroundTertiary },
@@ -462,42 +422,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 42,
     height: 42,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  menuContainer: {
-    width: '100%',
-    maxWidth: 300,
-    borderRadius: 12,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    gap: 12,
-  },
-  menuText: {
-    fontSize: 16,
-  },
-  cancelButton: {
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
