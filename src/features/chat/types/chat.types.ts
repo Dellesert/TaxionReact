@@ -142,6 +142,10 @@ export interface Message {
   original_sender_id?: number; // ID оригинального отправителя
   original_sender?: User; // Данные оригинального отправителя
   is_forwarded?: boolean; // Флаг пересланного сообщения
+  // Thread-related fields (for channel comments)
+  thread_root_id?: number; // ID корневого поста (если это комментарий в треде)
+  thread_reply_count?: number; // Количество комментариев в треде
+  thread_last_reply_at?: ISODateString; // Время последнего комментария
 }
 
 // Chat Member Interface
@@ -215,6 +219,8 @@ export interface SendMessageDto {
   poll_data?: any;  // Poll data object for backend
   // Forward-related field
   forward_from_message_id?: number; // ID сообщения для пересылки
+  // Thread-related field
+  thread_root_id?: number; // ID корневого поста для комментария в треде
 }
 
 // Update Message DTO
@@ -294,6 +300,14 @@ export interface MarkChatAsReadResponse {
   marked_count: number; // Количество помеченных сообщений
 }
 
+// Thread Messages Response (for channel post comments)
+export interface GetThreadMessagesResponse {
+  messages: Message[]; // Комментарии в хронологическом порядке
+  total: number; // Всего комментариев
+  has_older: boolean; // Есть ли более старые комментарии?
+  root_message?: Message; // Корневой пост
+}
+
 // Chat List Filters
 export interface ChatListFilters {
   type?: ChatType;
@@ -342,4 +356,16 @@ export interface WsUserStatusPayload {
   user_id: number;
   status: 'online' | 'offline' | 'busy' | 'away';
   last_seen?: ISODateString;
+}
+
+// Thread WebSocket Events
+export interface WsThreadMessagePayload {
+  message: Message; // Новый комментарий в треде
+  is_latest: boolean;
+}
+
+export interface WsThreadUpdatePayload {
+  id: number;
+  thread_reply_count: number;
+  thread_last_reply_at?: ISODateString;
 }

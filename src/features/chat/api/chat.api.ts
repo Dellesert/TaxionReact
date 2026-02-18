@@ -24,6 +24,7 @@ import {
   GetMessageContextParams,
   GetMessageContextResponse,
   MarkChatAsReadResponse,
+  GetThreadMessagesResponse,
 } from '../types/chat.types';
 import { ApiResponse, PaginatedResponse } from '../../../types/common.types';
 
@@ -799,6 +800,33 @@ export const searchMessagesInChat = async (
   return {
     ...response.data,
     messages: normalizedMessages,
+  };
+};
+
+// ============= Thread (Channel Comments) =============
+
+/**
+ * Get thread messages (comments on a channel post)
+ */
+export const getThreadMessages = async (
+  chatId: number,
+  messageId: number,
+  params?: { limit?: number; before?: number }
+): Promise<GetThreadMessagesResponse> => {
+  const response = await api.get<GetThreadMessagesResponse>(
+    API_ENDPOINTS.CHAT.THREAD(chatId, messageId),
+    { params }
+  );
+
+  const normalizedMessages = (response.data.messages || []).map(msg => normalizeMessage(msg));
+  const rootMessage = response.data.root_message
+    ? normalizeMessage(response.data.root_message)
+    : undefined;
+
+  return {
+    ...response.data,
+    messages: normalizedMessages,
+    root_message: rootMessage,
   };
 };
 

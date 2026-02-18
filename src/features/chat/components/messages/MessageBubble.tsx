@@ -48,7 +48,7 @@ interface MessageBubbleProps {
   onReplyPress?: (messageId: number) => void;
   onImagePress: (imageUrl: string) => void;
   onVideoPress?: (videoUrl: string, thumbnailUrl?: string) => void;
-  messageBubbleRef: React.RefObject<View>;
+  messageBubbleRef?: React.RefObject<View>;
   onRetryMessage?: (messageId: number) => void;
   onCancelUpload?: (messageId: number) => void;
   onReactionPress?: (emoji: string) => void;
@@ -56,6 +56,8 @@ interface MessageBubbleProps {
   isSavedChat?: boolean;
   isForwarded?: boolean;
   searchQuery?: string;
+  onThreadPress?: (messageId: number) => void;
+  isChannel?: boolean;
 }
 
 /**
@@ -85,6 +87,8 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   isSavedChat = false,
   isForwarded = false,
   searchQuery,
+  onThreadPress,
+  isChannel = false,
 }) => {
   const { theme } = useTheme();
 
@@ -266,7 +270,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   const bubble = (
     <TouchableOpacity
       ref={(node: any) => {
-        (messageBubbleRef as any).current = node;
+        if (messageBubbleRef) (messageBubbleRef as any).current = node;
         (bubbleRef as any).current = node;
       }}
       activeOpacity={0.9}
@@ -504,6 +508,22 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
           )}
         </View>
       )}
+
+      {/* Thread comment badge for channel root posts */}
+      {isChannel && !message.thread_root_id && !message.is_deleted && onThreadPress && (
+        <TouchableOpacity
+          style={styles.threadBadge}
+          activeOpacity={0.7}
+          onPress={() => onThreadPress(message.id)}
+        >
+          <Ionicons name="chatbubble-outline" size={16} color={theme.primary} style={{ marginRight: 6 }} />
+          <Text style={[styles.threadBadgeText, { color: theme.primary }]}>
+            {message.thread_reply_count && message.thread_reply_count > 0
+              ? `${message.thread_reply_count} комментариев`
+              : 'Комментировать'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 
@@ -668,6 +688,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
   },
+  threadBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(128, 128, 128, 0.2)',
+  },
+  threadBadgeText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
 });
 
 // Мемоизация MessageBubble для оптимизации производительности
@@ -685,7 +717,11 @@ export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, next
     prevProps.isSavedChat !== nextProps.isSavedChat ||
     prevProps.isForwarded !== nextProps.isForwarded ||
     prevProps.searchQuery !== nextProps.searchQuery ||
-    prevProps.message.link_preview?.url !== nextProps.message.link_preview?.url
+    prevProps.message.link_preview?.url !== nextProps.message.link_preview?.url ||
+    prevProps.message.thread_reply_count !== nextProps.message.thread_reply_count ||
+    prevProps.message.thread_root_id !== nextProps.message.thread_root_id ||
+    prevProps.isChannel !== nextProps.isChannel ||
+    prevProps.onThreadPress !== nextProps.onThreadPress
   ) {
     return false;
   }

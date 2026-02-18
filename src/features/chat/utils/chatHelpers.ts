@@ -1,12 +1,12 @@
 import { Chat } from '../types/chat.types';
 import { getChatDisplayName } from './chatUtils';
 
-export type ChatFilter = 'all' | 'group' | 'private' | 'favorite';
+export type ChatFilter = 'all' | 'group' | 'private' | 'channel';
 
 /**
  * Filter tabs order for swipe navigation
  */
-export const FILTER_TABS_ORDER: ChatFilter[] = ['all', 'private', 'group', 'favorite'];
+export const FILTER_TABS_ORDER: ChatFilter[] = ['all', 'private', 'group', 'channel'];
 
 /**
  * Filter chats by search query

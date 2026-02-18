@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { PinnedMessageBanner } from '../messages/PinnedMessageBanner';
 import { FloatingDateHeader } from '../common/FloatingDateHeader';
@@ -195,6 +195,9 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
 }) => {
   const { isDark, theme } = useTheme();
 
+  // Disable input for non-admin/non-owner users in channels
+  const isChannelInputDisabled = chatType === 'channel' && userRole !== 'owner' && userRole !== 'admin';
+
   // На iOS высота клавиатуры уже включает home indicator,
   // поэтому когда клавиатура открыта, не нужно добавлять insetsBottom
   const isKeyboardVisible = keyboardHeight > 0;
@@ -342,6 +345,12 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                 onForward={onBulkForward}
                 canDeleteForEveryone={canDeleteForEveryone}
               />
+            ) : isChannelInputDisabled ? (
+              <View style={styles.channelDisabledBanner}>
+                <Text style={[styles.channelDisabledText, { color: theme.textSecondary }]}>
+                  Только администраторы могут публиковать
+                </Text>
+              </View>
             ) : (
               <MessageInput
                 onSend={onSendMessage}
@@ -402,6 +411,12 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                   onForward={onBulkForward}
                   canDeleteForEveryone={canDeleteForEveryone}
                 />
+              ) : isChannelInputDisabled ? (
+                <View style={styles.channelDisabledBanner}>
+                  <Text style={[styles.channelDisabledText, { color: theme.textSecondary }]}>
+                    Только администраторы могут публиковать
+                  </Text>
+                </View>
               ) : (
                 <MessageInput
                   onSend={onSendMessage}
@@ -447,6 +462,12 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                   onForward={onBulkForward}
                   canDeleteForEveryone={canDeleteForEveryone}
                 />
+              ) : isChannelInputDisabled ? (
+                <View style={styles.channelDisabledBanner}>
+                  <Text style={[styles.channelDisabledText, { color: theme.textSecondary }]}>
+                    Только администраторы могут публиковать
+                  </Text>
+                </View>
               ) : (
                 <MessageInput
                   onSend={onSendMessage}
@@ -496,5 +517,15 @@ const styles = StyleSheet.create({
   },
   blurContentWeb: {
     overflow: 'visible' as const,
+  },
+  channelDisabledBanner: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  channelDisabledText: {
+    fontSize: 14,
+    textAlign: 'center' as const,
   },
 });

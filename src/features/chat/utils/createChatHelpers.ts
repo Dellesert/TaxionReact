@@ -37,7 +37,7 @@ export const filterUsersBySearch = (users: User[], searchQuery: string): User[] 
  * Check if user can be selected based on chat type
  */
 export const canSelectUser = (
-  chatType: 'private' | 'group',
+  chatType: 'private' | 'group' | 'channel',
   selectedUsers: number[],
   userId: number
 ): boolean => {
@@ -93,14 +93,14 @@ export const areSomeUsersSelected = (userIds: number[], selectedUserIds: number[
  * Validate chat creation
  */
 export const validateChatCreation = (
-  chatType: 'private' | 'group',
+  chatType: 'private' | 'group' | 'channel',
   chatName: string,
   selectedUsers: number[]
 ): { isValid: boolean; error?: string } => {
-  // Валидация для группового чата
-  if (chatType === 'group') {
+  // Валидация для группового чата или канала
+  if (chatType === 'group' || chatType === 'channel') {
     if (!chatName.trim()) {
-      return { isValid: false, error: 'Введите название группового чата' };
+      return { isValid: false, error: chatType === 'channel' ? 'Введите название канала' : 'Введите название группового чата' };
     }
   }
 
@@ -119,7 +119,7 @@ export const validateChatCreation = (
 /**
  * Get final chat name based on chat type
  */
-export const getFinalChatName = (chatType: 'private' | 'group', chatName: string): string => {
+export const getFinalChatName = (chatType: 'private' | 'group' | 'channel', chatName: string): string => {
   return chatType === 'private' ? '' : chatName.trim();
 };
 
@@ -127,7 +127,7 @@ export const getFinalChatName = (chatType: 'private' | 'group', chatName: string
  * Check if chat can be created
  */
 export const canCreateChat = (
-  chatType: 'private' | 'group',
+  chatType: 'private' | 'group' | 'channel',
   chatName: string,
   selectedUsers: number[]
 ): boolean => {

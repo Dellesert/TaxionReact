@@ -24,6 +24,11 @@ export type ChatStackParamList = {
     chatId: number;
     chatName?: string;
   };
+  Thread: {
+    chatId: number;
+    messageId: number;
+    chatName?: string;
+  };
 };
 
 // Task Stack

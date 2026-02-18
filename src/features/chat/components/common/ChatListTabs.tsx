@@ -97,15 +97,15 @@ export const ChatListTabs: React.FC<ChatListTabsProps> = ({
 
       <TouchableOpacity
         style={styles.filterTab}
-        onPress={() => onFilterChange('favorite')}
+        onPress={() => onFilterChange('channel')}
       >
         <Text
           style={[
             styles.filterText,
-            { color: activeFilter === 'favorite' ? theme.primary : theme.textSecondary },
+            { color: activeFilter === 'channel' ? theme.primary : theme.textSecondary },
           ]}
         >
-          Избранное
+          Каналы
         </Text>
       </TouchableOpacity>
 

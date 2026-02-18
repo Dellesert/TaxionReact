@@ -93,7 +93,7 @@ interface TabData {
   loaded: boolean;
 }
 
-type TabName = 'all' | 'private' | 'group' | 'favorite';
+type TabName = 'all' | 'private' | 'group' | 'channel';
 
 interface ChatState {
   chats: Chat[]; // Combined list for current tab (for compatibility)
@@ -121,7 +121,7 @@ interface ChatState {
   loadUnreadCount: () => Promise<void>;
   // Legacy support - keeping for backward compatibility but will use new tab logic
   loadChats: (append?: boolean, filters?: { type?: 'private' | 'group'; is_favorite?: boolean; is_pinned?: boolean }) => Promise<void>;
-  createChat: (name: string, memberIds: number[], type?: 'private' | 'group') => Promise<Chat>;
+  createChat: (name: string, memberIds: number[], type?: 'private' | 'group' | 'channel') => Promise<Chat>;
   updateChat: (chatId: number, data: { name?: string; avatar?: string; avatar_thumbnail?: string; description?: string }) => Promise<void>;
   deleteChat: (chatId: number, clearHistory?: boolean) => Promise<void>;
   leaveChat: (chatId: number) => Promise<void>;
@@ -203,7 +203,7 @@ const initialTabsState: Record<TabName, TabData> = {
   all: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
   private: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
   group: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
-  favorite: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
+  channel: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
 };
 
 // Pre-load unread count from storage on web for instant display
@@ -257,24 +257,18 @@ export const useChatStore = create<ChatState>()(
 
     try {
       // Determine filters based on tab
-      const typeMap: Record<TabName, 'private' | 'group' | undefined> = {
+      const typeMap: Record<TabName, 'private' | 'group' | 'channel' | undefined> = {
         all: undefined,
         private: 'private',
         group: 'group',
-        favorite: undefined,
+        channel: 'channel',
       };
 
       const type = typeMap[tabName];
-      const isFavorite = tabName === 'favorite';
 
       // 1. Load all pinned chats for this tab
       const pinnedResponse = await chatApi.getPinnedChats(type);
       let pinnedChats = pinnedResponse.chats;
-
-      // Filter favorites if needed
-      if (isFavorite) {
-        pinnedChats = pinnedChats.filter(c => c.is_favorite);
-      }
 
       // Enrich pinned chats with user data
       pinnedChats = await Promise.all(pinnedChats.map(enrichChatWithUsers));
@@ -283,7 +277,6 @@ export const useChatStore = create<ChatState>()(
       const limit = 15;
       const filters: any = {};
       if (type) filters.type = type;
-      if (isFavorite) filters.is_favorite = true;
 
       const regularResponse = await chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined);
 
@@ -394,24 +387,18 @@ export const useChatStore = create<ChatState>()(
 
     try {
       // Determine filters based on tab
-      const typeMap: Record<TabName, 'private' | 'group' | undefined> = {
+      const typeMap: Record<TabName, 'private' | 'group' | 'channel' | undefined> = {
         all: undefined,
         private: 'private',
         group: 'group',
-        favorite: undefined,
+        channel: 'channel',
       };
 
       const type = typeMap[currentTab];
-      const isFavorite = currentTab === 'favorite';
 
       // 1. Load all pinned chats for this tab
       const pinnedResponse = await chatApi.getPinnedChats(type);
       let pinnedChats = pinnedResponse.chats;
-
-      // Filter favorites if needed
-      if (isFavorite) {
-        pinnedChats = pinnedChats.filter(c => c.is_favorite);
-      }
 
       // Enrich pinned chats with user data
       pinnedChats = await Promise.all(pinnedChats.map(enrichChatWithUsers));
@@ -420,7 +407,6 @@ export const useChatStore = create<ChatState>()(
       const limit = 15;
       const filters: any = {};
       if (type) filters.type = type;
-      if (isFavorite) filters.is_favorite = true;
 
       const regularResponse = await chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined);
 
@@ -538,20 +524,18 @@ export const useChatStore = create<ChatState>()(
 
     try {
       // Determine filters based on current tab
-      const typeMap: Record<TabName, 'private' | 'group' | undefined> = {
+      const typeMap: Record<TabName, 'private' | 'group' | 'channel' | undefined> = {
         all: undefined,
         private: 'private',
         group: 'group',
-        favorite: undefined,
+        channel: 'channel',
       };
 
       const type = typeMap[currentTab];
-      const isFavorite = currentTab === 'favorite';
 
       const limit = 15;
       const filters: any = {};
       if (type) filters.type = type;
-      if (isFavorite) filters.is_favorite = true;
 
       const response = await chatApi.getChats(
         limit,
@@ -607,7 +591,7 @@ export const useChatStore = create<ChatState>()(
     }
   },
 
-  createChat: async (name: string, memberIds: number[], type: 'private' | 'group' = 'group') => {
+  createChat: async (name: string, memberIds: number[], type: 'private' | 'group' | 'channel' = 'group') => {
     try {
       set({ isLoading: true, error: null });
 
@@ -1479,66 +1463,12 @@ export const useChatStore = create<ChatState>()(
           const tab = updatedTabs[tabKey as TabName];
           if (!tab.loaded) return;
 
-          // Для таба 'favorite' нужно добавить/удалить чат
-          if (tabKey === 'favorite') {
-            if (newFavoriteStatus) {
-              // Добавляем в favorite, если там ещё нет
-              const chatInPinned = tab.pinnedChats.find(c => c.id === chatId);
-              const chatInRegular = tab.regularChats.find(c => c.id === chatId);
-
-              if (!chatInPinned && !chatInRegular) {
-                // Нужно загрузить чат и добавить его
-                // Для упрощения, ищем чат в других табах
-                const foundChat = Object.keys(state.tabs).find(otherTabKey => {
-                  const otherTab = state.tabs[otherTabKey as TabName];
-                  return otherTab.pinnedChats.find(c => c.id === chatId) ||
-                         otherTab.regularChats.find(c => c.id === chatId);
-                });
-
-                if (foundChat) {
-                  const otherTab = state.tabs[foundChat as TabName];
-                  const chatData = otherTab.pinnedChats.find(c => c.id === chatId) ||
-                                   otherTab.regularChats.find(c => c.id === chatId);
-
-                  if (chatData) {
-                    const updatedChat = { ...chatData, is_favorite: true };
-                    if (updatedChat.is_pinned) {
-                      updatedTabs.favorite = {
-                        ...tab,
-                        pinnedChats: [updatedChat, ...tab.pinnedChats],
-                      };
-                    } else {
-                      updatedTabs.favorite = {
-                        ...tab,
-                        regularChats: [updatedChat, ...tab.regularChats],
-                      };
-                    }
-                  }
-                }
-              } else {
-                // Чат уже в favorite, просто обновляем флаг
-                updatedTabs.favorite = {
-                  ...tab,
-                  pinnedChats: tab.pinnedChats.map(updateChatFavorite),
-                  regularChats: tab.regularChats.map(updateChatFavorite),
-                };
-              }
-            } else {
-              // Удаляем из favorite
-              updatedTabs.favorite = {
-                ...tab,
-                pinnedChats: tab.pinnedChats.filter(c => c.id !== chatId),
-                regularChats: tab.regularChats.filter(c => c.id !== chatId),
-              };
-            }
-          } else {
-            // Для остальных табов просто обновляем флаг
-            updatedTabs[tabKey as TabName] = {
-              ...tab,
-              pinnedChats: tab.pinnedChats.map(updateChatFavorite),
-              regularChats: tab.regularChats.map(updateChatFavorite),
-            };
-          }
+          // Обновляем флаг favorite во всех табах
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(updateChatFavorite),
+            regularChats: tab.regularChats.map(updateChatFavorite),
+          };
         });
 
         // Обновляем chats для текущего таба
@@ -1620,10 +1550,10 @@ export const useChatStore = create<ChatState>()(
           // Определяем в какой таб добавить чат
           const updatedTabs = { ...state.tabs };
           const chatType = fetchedChat.type || 'private'; // Default to private if type is missing
-          const isFavorite = fetchedChat.is_favorite || false;
 
           // Добавляем в соответствующие табы
-          ['all', chatType === 'private' ? 'private' : chatType === 'group' ? 'group' : null, isFavorite ? 'favorite' : null]
+          const typeTabMap: Record<string, TabName | null> = { private: 'private', group: 'group', channel: 'channel' };
+          ['all', typeTabMap[chatType] || null]
             .filter(Boolean)
             .forEach(tabKey => {
               const tab = updatedTabs[tabKey as TabName];

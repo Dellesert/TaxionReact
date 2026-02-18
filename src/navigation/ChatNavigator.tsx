@@ -13,6 +13,7 @@ import ChatListScreen from '@/features/chat/screens/ChatListScreen';
 import CreateChatScreen from '@/features/chat/screens/CreateChatScreen';
 import ChatScreen from '@/features/chat/screens/ChatScreen';
 import ChatSettingsScreen from '@/features/chat/screens/ChatSettingsScreen';
+import ThreadScreen from '@/features/chat/screens/ThreadScreen';
 import ChatSplitView from '@/features/chat/screens/ChatSplitView';
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
@@ -106,6 +107,13 @@ const ChatNavigator: React.FC = () => {
       <Stack.Screen
         name="ChatSettings"
         component={ChatSettingsScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Thread"
+        component={ThreadScreen}
         options={{
           headerShown: false,
         }}

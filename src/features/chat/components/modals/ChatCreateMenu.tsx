@@ -66,6 +66,16 @@ export const ChatCreateMenu: React.FC<ChatCreateMenuProps> = ({
             <Ionicons name="people" size={24} color={theme.primary} />
             <Text style={[styles.menuItemText, { color: theme.text }]}>Групповой чат</Text>
           </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => onCreateChatType('channel')}
+          >
+            <Ionicons name="megaphone" size={24} color={theme.primary} />
+            <Text style={[styles.menuItemText, { color: theme.text }]}>Создать канал</Text>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     </Modal>

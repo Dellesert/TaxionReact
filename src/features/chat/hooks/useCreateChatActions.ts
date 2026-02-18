@@ -87,7 +87,7 @@ export const useCreateChatActions = (
   const createChat = useCallback(
     async (type: ChatType, name: string) => {
       // Validate
-      const validation = validateChatCreation(type as 'group' | 'private', name, selectedUsers);
+      const validation = validateChatCreation(type as 'group' | 'private' | 'channel', name, selectedUsers);
       if (!validation.isValid) {
         showError(validation.error || 'Ошибка валидации');
         return;
@@ -97,9 +97,9 @@ export const useCreateChatActions = (
         setIsCreating(true);
 
         // Get final chat name
-        const finalChatName = getFinalChatName(type as 'group' | 'private', name);
+        const finalChatName = getFinalChatName(type as 'group' | 'private' | 'channel', name);
 
-        const newChat = await createChatAction(finalChatName, selectedUsers, type as 'group' | 'private');
+        const newChat = await createChatAction(finalChatName, selectedUsers, type as 'group' | 'private' | 'channel');
 
         // Validate chat ID
         if (!newChat || !newChat.id || isNaN(newChat.id)) {

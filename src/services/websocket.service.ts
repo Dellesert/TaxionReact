@@ -18,6 +18,7 @@ type WSMessageType =
   // Messages
   | 'new_message' | 'message_edit' | 'message_delete'
   | 'message_read' | 'typing' | 'reaction'
+  | 'new_thread_message' | 'thread_update'
   // Chats
   | 'chat_create' | 'chat_update' | 'chat_delete'
   // Members
@@ -594,15 +595,15 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             const state = useChatStore.getState();
             const updatedTabs = { ...state.tabs };
             const chatType = newChat.type || 'private';
-            const isFavorite = newChat.is_favorite || false;
+            const typeTabMap: Record<string, string | null> = { private: 'private', group: 'group', channel: 'channel' };
 
             // Add to appropriate tabs
-            ['all', chatType === 'private' ? 'private' : chatType === 'group' ? 'group' : null, isFavorite ? 'favorite' : null]
+            ['all', typeTabMap[chatType] || null]
               .filter(Boolean)
               .forEach(tabKey => {
-                const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+                const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'];
                 if (tab && tab.loaded) {
-                  updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+                  updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'] = {
                     ...tab,
                     regularChats: [newChat, ...tab.regularChats],
                   };
@@ -638,10 +639,10 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             // Update all tabs
             const updatedTabs = { ...state.tabs };
             Object.keys(updatedTabs).forEach(tabKey => {
-              const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+              const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'];
               if (!tab.loaded) return;
 
-              updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+              updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'] = {
                 ...tab,
                 pinnedChats: updateChatInArray(tab.pinnedChats),
                 regularChats: updateChatInArray(tab.regularChats),
@@ -678,10 +679,10 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
               // Update all tabs
               const updatedTabs = { ...state.tabs };
               Object.keys(updatedTabs).forEach(tabKey => {
-                const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+                const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'];
                 if (!tab.loaded) return;
 
-                updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+                updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'] = {
                   ...tab,
                   pinnedChats: updateChatInArray(tab.pinnedChats),
                   regularChats: updateChatInArray(tab.regularChats),
@@ -718,10 +719,10 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             // Update all tabs
             const updatedTabs = { ...state.tabs };
             Object.keys(updatedTabs).forEach(tabKey => {
-              const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'];
+              const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'];
               if (!tab.loaded) return;
 
-              updatedTabs[tabKey as 'all' | 'private' | 'group' | 'favorite'] = {
+              updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'] = {
                 ...tab,
                 pinnedChats: updateChatInArray(tab.pinnedChats),
                 regularChats: updateChatInArray(tab.regularChats),
@@ -820,6 +821,29 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             await authStore.logout({ skipApi: true });
           } catch (e) {
             console.error('[WS] Auto-logout on session_revoked failed:', e);
+          }
+          break;
+
+        case 'new_thread_message':
+          // New comment in a thread — no action needed in the main feed
+          // The thread_update event handles updating root message counters
+          break;
+
+        case 'thread_update':
+          // Root message thread counters updated — update it in the messages list
+          if (message.data) {
+            const threadState = useChatStore.getState();
+            const rootMsgId = message.data.id;
+            if (rootMsgId && threadState.messages[message.chat_id]) {
+              const updatedMessages = threadState.messages[message.chat_id].map(msg =>
+                msg.id === rootMsgId
+                  ? { ...msg, thread_reply_count: message.data.thread_reply_count, thread_last_reply_at: message.data.thread_last_reply_at }
+                  : msg
+              );
+              useChatStore.setState(prev => ({
+                messages: { ...prev.messages, [message.chat_id]: updatedMessages },
+              }));
+            }
           }
           break;
 
