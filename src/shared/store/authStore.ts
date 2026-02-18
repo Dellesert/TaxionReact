@@ -86,14 +86,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             });
             // Sync auth to iOS Share Extension
             syncAuthToShareExtension(sessionId, currentUser.id, API_BASE_URL);
-          } catch (error) {
-            // Mark session as invalid in multi-account store
-            if (user?.id) {
-              await accountManager.markAccountSessionInvalid(user.id);
+          } catch (error: any) {
+            // Distinguish network errors from auth errors (401)
+            // Network errors have no response status (no server reply)
+            const isNetworkError = !error.status && (
+              error.code === 'ERR_NETWORK' ||
+              error.code === 'ECONNABORTED' ||
+              error.message?.includes('Network Error') ||
+              error.message?.includes('timeout')
+            );
+
+            if (isNetworkError) {
+              // Network is unavailable — use cached user data, keep session
+              console.log('[Auth] Network unavailable during init, using cached user data');
+              set({
+                user,
+                sessionId,
+                isAuthenticated: true,
+                isInitializing: false,
+              });
+              // Sync auth to iOS Share Extension with cached data
+              syncAuthToShareExtension(sessionId, user.id, API_BASE_URL);
+            } else {
+              // Server responded with error (401 or other) — session is invalid
+              if (user?.id) {
+                await accountManager.markAccountSessionInvalid(user.id);
+              }
+              await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
+              await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+              set({ sessionId: null, isInitializing: false });
             }
-            await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
-            await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
-            set({ sessionId: null, isInitializing: false });
           }
         } else {
           // Clear session ID if user data is missing
