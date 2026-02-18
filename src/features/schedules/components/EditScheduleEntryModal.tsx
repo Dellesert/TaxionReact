@@ -461,7 +461,7 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
 
           <KeyboardAvoidingView
             style={styles.keyboardAvoidingView}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior="padding"
             keyboardVerticalOffset={0}
           >
             <ScrollView

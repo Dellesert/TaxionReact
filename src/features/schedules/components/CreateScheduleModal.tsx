@@ -1070,7 +1070,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
 
           <KeyboardAvoidingView
             style={styles.keyboardAvoidingView}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior="padding"
             keyboardVerticalOffset={0}
           >
             {/* Content */}

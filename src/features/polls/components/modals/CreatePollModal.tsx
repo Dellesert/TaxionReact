@@ -349,7 +349,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
 
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
           keyboardVerticalOffset={0}
         >
           {/* Multi-step Content */}

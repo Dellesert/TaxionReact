@@ -400,7 +400,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
           keyboardVerticalOffset={0}
         >
           {/* Content */}
