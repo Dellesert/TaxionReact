@@ -90,7 +90,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
   // This forces re-render when presence updates happen
   const tabsVersion = useChatStore((state) => {
     let hash = '';
-    const tabKeys = ['all', 'private', 'group', 'favorite'] as const;
+    const tabKeys = ['all', 'private', 'group', 'channel'] as const;
     for (const key of tabKeys) {
       const tab = state.tabs[key];
       for (const chat of [...tab.pinnedChats, ...tab.regularChats]) {
@@ -112,7 +112,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
     all: null,
     private: null,
     group: null,
-    favorite: null,
+    channel: null,
   });
 
   // Scroll to top helper
@@ -274,7 +274,7 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
     transform: [{ translateX: translateX.value }],
   }));
 
-  const filterTabsOrder: ChatFilter[] = ['all', 'private', 'group', 'favorite'];
+  const filterTabsOrder: ChatFilter[] = ['all', 'private', 'group', 'channel'];
 
   // Handle container layout to get actual width
   const handleContainerLayout = useCallback((event: LayoutChangeEvent) => {

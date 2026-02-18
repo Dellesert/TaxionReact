@@ -10,7 +10,6 @@ import { isMockMode, mockGetUsers } from '@shared/utils/mockData';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useDebounce } from '@shared/hooks/useDebounce';
 import { getLoadUsersErrorMessage } from '../utils/createChatFormatters';
-import { useAuthStore } from '@shared/store/authStore';
 
 interface UseCreateChatDataReturn {
   users: User[];
@@ -23,14 +22,10 @@ interface UseCreateChatDataReturn {
 
 export const useCreateChatData = (): UseCreateChatDataReturn => {
   const { showError } = useNotification();
-  const currentUserRole = useAuthStore((state) => state.user?.role);
 
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Check if current user is an admin
-  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'super_admin';
 
   // Debounce search query for backend search (300ms delay)
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -52,9 +47,7 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
         const filters: any = {
           is_active: true,
           exclude_me: true, // Exclude current user on backend
-          // Exclude only super admins for non-admin users
-          // Admins can see other admins when creating chats
-          ...(isAdmin ? {} : { exclude_roles: 'super_admin' }),
+          exclude_roles: 'super_admin', // Exclude only super admins
 
           // Backend search (debounced)
           search: searchTerm || undefined,
@@ -99,7 +92,7 @@ export const useCreateChatData = (): UseCreateChatDataReturn => {
         setIsLoading(false);
       }
     }
-  }, [showError, isAdmin]);
+  }, [showError]);
 
   // Load users on mount
   useEffect(() => {

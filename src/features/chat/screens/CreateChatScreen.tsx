@@ -212,7 +212,7 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
     navigation.goBack();
   };
 
-  const canCreate = canCreateChat(chatType as 'group' | 'private', chatName, selectedUsers);
+  const canCreate = canCreateChat(chatType as 'group' | 'private' | 'channel', chatName, selectedUsers);
 
   // Render section header
   const renderSectionHeader = React.useCallback(({ section }: { section: { title: string; data: User[] } }) => {
@@ -222,7 +222,7 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
     const realData = realSection?.data || section.data;
     const userCount = realData.length;
 
-    if (chatType === 'group') {
+    if (chatType === 'group' || chatType === 'channel') {
       const departmentUserIds = realData.map((u) => u.id);
       const allSelected = areAllUsersSelected(departmentUserIds, selectedUsers);
       const someSelected = areSomeUsersSelected(departmentUserIds, selectedUsers);
@@ -363,13 +363,13 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
         isCreating={isCreating}
       />
 
-      {/* Chat Name Input - only for group chats */}
-      {chatType === 'group' && (
+      {/* Chat Name Input - for group chats and channels */}
+      {(chatType === 'group' || chatType === 'channel') && (
         <ChatNameInput chatName={chatName} onChangeText={setChatName} />
       )}
 
       {/* Selected Users Count */}
-      {chatType === 'group' && <SelectedUsersCounter count={selectedUsers.length} />}
+      {(chatType === 'group' || chatType === 'channel') && <SelectedUsersCounter count={selectedUsers.length} />}
 
       {/* Search */}
       <CreateChatSearchBar

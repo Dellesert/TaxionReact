@@ -22,7 +22,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { User, UserGroupWithMembers } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import { getUserGroups } from '@api/user-group.api';
-import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useDebounce } from '@shared/hooks/useDebounce';
 import Avatar from '@shared/components/common/Avatar';
@@ -75,6 +74,12 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   // Debounce search query for backend search (300ms delay)
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Use refs for values that shouldn't trigger loadUsers recreation
+  const excludeUserIdsRef = useRef(excludeUserIds);
+  excludeUserIdsRef.current = excludeUserIds;
+  const includeCurrentUserRef = useRef(includeCurrentUser);
+  includeCurrentUserRef.current = includeCurrentUser;
+
   const loadUsers = React.useCallback(async (searchTerm?: string, isInitialLoad = false) => {
     try {
       // Only show loading spinner on initial load, not during search
@@ -82,12 +87,10 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         setIsLoading(true);
       }
 
-      const currentUser = useAuthStore.getState().user;
-
       // Use server-side filtering, sorting, and search
       let filters: any = {
         is_active: true,
-        exclude_me: !includeCurrentUser, // Exclude current user on backend (unless includeCurrentUser is true)
+        exclude_me: !includeCurrentUserRef.current, // Exclude current user on backend (unless includeCurrentUser is true)
         exclude_roles: 'super_admin', // Exclude only super admins
 
         // Backend search (debounced)
@@ -115,11 +118,10 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
       }
 
       // Client-side only: filter out excludeUserIds (passed as prop)
-      const filteredUsers = usersList.filter((user) => {
-        // Исключаем переданных пользователей (excludeUserIds prop)
-        if (excludeUserIds.includes(user.id)) return false;
-        return true;
-      });
+      const currentExcludeIds = excludeUserIdsRef.current;
+      const filteredUsers = currentExcludeIds.length > 0
+        ? usersList.filter((user) => !currentExcludeIds.includes(user.id))
+        : usersList;
 
       // Backend now handles all filtering, sorting, and search
       setUsers(filteredUsers);
@@ -130,7 +132,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
         setIsLoading(false);
       }
     }
-  }, [filterForTaskAssignment, excludeUserIds]);
+  }, [filterForTaskAssignment]);
 
   // Load user groups
   const loadGroups = React.useCallback(async () => {

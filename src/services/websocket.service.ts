@@ -640,7 +640,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             const updatedTabs = { ...state.tabs };
             Object.keys(updatedTabs).forEach(tabKey => {
               const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'];
-              if (!tab.loaded) return;
+              if (!tab || !tab.loaded) return;
 
               updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'] = {
                 ...tab,
@@ -651,7 +651,9 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
             // Reconstruct chats from current tab
             const currentTabData = updatedTabs[state.currentTab];
-            const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+            const updatedChats = currentTabData
+              ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
+              : state.chats;
 
             chatStore.set({
               chats: updatedChats,
@@ -680,7 +682,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
               const updatedTabs = { ...state.tabs };
               Object.keys(updatedTabs).forEach(tabKey => {
                 const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'];
-                if (!tab.loaded) return;
+                if (!tab || !tab.loaded) return;
 
                 updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'] = {
                   ...tab,
@@ -691,7 +693,9 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
               // Reconstruct chats from current tab
               const currentTabData = updatedTabs[state.currentTab];
-              const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+              const updatedChats = currentTabData
+                ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
+                : state.chats;
 
               chatStore.set({
                 chats: updatedChats,
@@ -720,7 +724,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             const updatedTabs = { ...state.tabs };
             Object.keys(updatedTabs).forEach(tabKey => {
               const tab = updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'];
-              if (!tab.loaded) return;
+              if (!tab || !tab.loaded) return;
 
               updatedTabs[tabKey as 'all' | 'private' | 'group' | 'channel'] = {
                 ...tab,
@@ -731,7 +735,9 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
             // Reconstruct chats from current tab
             const currentTabData = updatedTabs[state.currentTab];
-            const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+            const updatedChats = currentTabData
+              ? [...currentTabData.pinnedChats, ...currentTabData.regularChats]
+              : state.chats;
 
             chatStore.set({
               chats: updatedChats,

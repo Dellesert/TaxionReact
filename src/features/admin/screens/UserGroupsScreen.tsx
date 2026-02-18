@@ -19,8 +19,9 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { ActionMenu } from '@shared/components/common/ActionMenu';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
-import { getUserGroups, createUserGroup, reorderUserGroups } from '@api/user-group.api';
+import { getUserGroups, createUserGroup, updateUserGroupMembers, reorderUserGroups } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
+import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 
 const UserGroupsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -43,6 +44,8 @@ const UserGroupsScreen: React.FC = () => {
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isReorderMode, setIsReorderMode] = useState(false);
+  const [showUserSelector, setShowUserSelector] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const menuButtonRef = useRef<any>(null);
   const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
@@ -100,13 +103,24 @@ const UserGroupsScreen: React.FC = () => {
 
     try {
       setIsCreating(true);
-      await createUserGroup({
+      const group = await createUserGroup({
         name: newGroupName.trim(),
         description: newGroupDescription.trim() || undefined,
+        user_ids: selectedUserIds.length > 0 ? selectedUserIds : undefined,
       });
+
+      // If user_ids not supported by backend on create, add members separately
+      if (selectedUserIds.length > 0 && group?.id) {
+        try {
+          await updateUserGroupMembers(group.id, { user_ids: selectedUserIds });
+        } catch {
+          // Members will need to be added manually via edit screen
+        }
+      }
 
       setNewGroupName('');
       setNewGroupDescription('');
+      setSelectedUserIds([]);
       setShowCreateModal(false);
       showSuccess('Группа создана');
       loadGroups();
@@ -347,6 +361,20 @@ const UserGroupsScreen: React.FC = () => {
                 numberOfLines={3}
               />
 
+              {/* User Selector */}
+              <TouchableOpacity
+                style={[styles.userSelectorButton, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+                onPress={() => setShowUserSelector(true)}
+              >
+                <Ionicons name="people" size={20} color={theme.primary} />
+                <Text style={[styles.userSelectorButtonText, { color: selectedUserIds.length > 0 ? theme.text : theme.textTertiary }]}>
+                  {selectedUserIds.length > 0
+                    ? `Выбрано участников: ${selectedUserIds.length}`
+                    : 'Добавить участников'}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              </TouchableOpacity>
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: theme.backgroundSecondary }]}
@@ -354,6 +382,7 @@ const UserGroupsScreen: React.FC = () => {
                     setShowCreateModal(false);
                     setNewGroupName('');
                     setNewGroupDescription('');
+                    setSelectedUserIds([]);
                   }}
                 >
                   <Text style={[styles.modalButtonText, { color: theme.text }]}>Отмена</Text>
@@ -405,6 +434,17 @@ const UserGroupsScreen: React.FC = () => {
           </ScrollView>
         )}
       </View>
+
+      {/* User Selector Modal for create group */}
+      <UserSelectorModal
+        visible={showUserSelector}
+        onClose={() => setShowUserSelector(false)}
+        selectedUserIds={selectedUserIds}
+        onSelectionChange={setSelectedUserIds}
+        title="Добавить участников"
+        multiSelect={true}
+        includeCurrentUser={true}
+      />
 
       <ActionMenu
         visible={showActionMenu}
@@ -572,6 +612,19 @@ const styles = StyleSheet.create({
   dragHandle: {
     marginRight: 12,
     padding: 4,
+  },
+  userSelectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    gap: 10,
+  },
+  userSelectorButtonText: {
+    flex: 1,
+    fontSize: 16,
   },
 });
 
