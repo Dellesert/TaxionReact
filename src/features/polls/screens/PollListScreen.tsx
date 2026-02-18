@@ -36,9 +36,7 @@ const PollListScreen: React.FC = () => {
   // Reset status bar style when screen gains focus (fixes white status bar after visiting Profile)
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS === 'ios') {
-        setStatusBarStyle(isDark ? 'light' : 'dark');
-      }
+      setStatusBarStyle(isDark ? 'light' : 'dark');
     }, [isDark])
   );
 
@@ -233,7 +231,7 @@ const PollListScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.card }]}
       edges={['left', 'right']}
     >
-      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       {/* Header - скрываем для Electron desktop, так как контролы уже в TitleBar */}
       {!(isElectron && isDesktop) && (
         <PollListHeader

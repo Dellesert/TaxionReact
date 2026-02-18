@@ -138,10 +138,8 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
   // Smart scroll: scroll to top only if user sent a new message
   useFocusEffect(
     useCallback(() => {
-      // Set status bar style when screen gains focus (iOS only)
-      if (Platform.OS === 'ios') {
-        setStatusBarStyle(isDark ? 'light' : 'dark');
-      }
+      // Set status bar style when screen gains focus
+      setStatusBarStyle(isDark ? 'light' : 'dark');
 
       const checkAndScroll = async () => {
         // Refresh chat list and unread count
@@ -403,7 +401,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
         style={[styles.container, { backgroundColor: theme.background }]}
         edges={['top', 'left', 'right']}
       >
-        {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <ScreenHeader title="Чаты" />
         <ChatErrorState error={error} onRetry={handleRetry} />
       </SafeAreaView>
@@ -415,7 +413,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
       style={[styles.container, { backgroundColor: theme.card }]}
       edges={['left', 'right']}
     >
-      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScreenHeader
         title="Чаты"
         customContent={

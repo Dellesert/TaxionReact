@@ -40,9 +40,7 @@ const PerformanceAnalyticsScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS === 'ios') {
-        setStatusBarStyle(isDark ? 'light' : 'dark');
-      }
+      setStatusBarStyle(isDark ? 'light' : 'dark');
     }, [isDark])
   );
 

@@ -41,9 +41,7 @@ export default function AboutScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS === 'ios') {
-        setStatusBarStyle(isDark ? 'light' : 'dark');
-      }
+      setStatusBarStyle(isDark ? 'light' : 'dark');
     }, [isDark])
   );
   const { handleOpenWebsite, handleOpenEmail } = useAboutActions();

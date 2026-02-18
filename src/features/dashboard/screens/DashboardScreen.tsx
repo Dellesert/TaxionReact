@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,9 +30,7 @@ export const DashboardScreen: React.FC = () => {
   // Set status bar style when screen gains focus (iOS only)
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS === 'ios') {
-        setStatusBarStyle(isDark ? 'light' : 'dark');
-      }
+      setStatusBarStyle(isDark ? 'light' : 'dark');
       // Тихое обновление данных при возврате на экран (без дёргания ScrollView)
       refresh(true);
     }, [refresh, isDark])
@@ -68,7 +66,7 @@ export const DashboardScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#FFFFFF' }]}>
-      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}

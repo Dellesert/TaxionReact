@@ -24,9 +24,7 @@ const ProfileScreen: React.FC = () => {
   // Set status bar style when screen gains focus (iOS only)
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS === 'ios') {
-        setStatusBarStyle('light');
-      }
+      setStatusBarStyle('light');
     }, [])
   );
 
@@ -105,7 +103,7 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      {Platform.OS === 'ios' && <StatusBar style="light" />}
+      <StatusBar style="light" />
       {/* Верхняя часть фона - primary */}
       <View style={[dynamicStyles.topBackground, { backgroundColor: theme.primary }]} />
       {/* Нижняя часть фона для bounce-скролла - цвет карточки */}

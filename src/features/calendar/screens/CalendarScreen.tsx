@@ -215,9 +215,7 @@ const CalendarScreen: React.FC = () => {
   // Set status bar style when screen gains focus (iOS only)
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS === 'ios') {
-        setStatusBarStyle(isDark ? 'light' : 'dark');
-      }
+      setStatusBarStyle(isDark ? 'light' : 'dark');
     }, [isDark])
   );
 
@@ -348,7 +346,7 @@ const CalendarScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['left', 'right']}>
-      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       {/* Content container with background */}
       <View style={[styles.content, { backgroundColor: theme.background }]}>
         {isWideScreen ? (

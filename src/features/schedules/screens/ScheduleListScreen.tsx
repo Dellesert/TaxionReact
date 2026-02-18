@@ -73,9 +73,7 @@ export const ScheduleListScreen: React.FC = () => {
   // Reset status bar style when screen gains focus (fixes white status bar after visiting Profile)
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS === 'ios') {
-        setStatusBarStyle(isDark ? 'light' : 'dark');
-      }
+      setStatusBarStyle(isDark ? 'light' : 'dark');
     }, [isDark])
   );
 
@@ -274,7 +272,7 @@ export const ScheduleListScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: (isElectron && isDesktop) ? theme.background : (isDesktop ? theme.card : theme.background) }]} edges={['left', 'right']}>
-      {Platform.OS === 'ios' && <StatusBar style={isDark ? 'light' : 'dark'} />}
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Header - hide on Electron desktop since controls are in TitleBar */}
       {!(isElectron && isDesktop) && (
