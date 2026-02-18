@@ -294,8 +294,9 @@ const styles = StyleSheet.create({
   desktopCard: {
     flexDirection: 'row',
     width: '100%',
-    maxWidth: 1000,
-    height: 600,
+    maxWidth: 1100,
+    minHeight: 650,
+    maxHeight: '92%',
     borderRadius: 24,
     overflow: 'hidden',
   },
@@ -310,10 +311,10 @@ const styles = StyleSheet.create({
     minWidth: 400,
   },
   desktopFormContent: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 60,
-    paddingVertical: 40,
+    paddingHorizontal: 48,
+    paddingVertical: 32,
   },
   // QR Login styles
   qrLoginButton: {
