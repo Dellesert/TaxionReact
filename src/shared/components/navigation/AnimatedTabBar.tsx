@@ -65,7 +65,7 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
           styles.blurContainer,
           {
             backgroundColor: Platform.OS === 'android'
-              ? (isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(245, 245, 245, 0.15)')
+              ? (isDark ? 'rgba(30, 30, 30, 0.98)' : 'rgba(245, 245, 245, 0.97)')
               : (isDark ? 'rgba(30, 30, 30, 0.7)' : 'rgba(245, 245, 245, 0.15)'),
             borderWidth: isDark ? 0 : 1,
             borderColor: isDark ? 'transparent' : 'rgba(0, 0, 0, 0.08)',
