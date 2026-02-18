@@ -8,7 +8,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { getDeviceInfo, getDeviceIcon, isCurrentSession } from '../../utils/activeSessionsHelpers';
-import { formatSessionDate } from '../../utils/activeSessionsFormatters';
+import { formatSessionDate, formatSessionTimeAgo } from '../../utils/activeSessionsFormatters';
 import type { ActiveSession } from '../../../../types/user.types';
 
 interface SessionCardProps {
@@ -140,7 +140,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
               IP: {session.ip_address}
             </Text>
             <Text style={[styles.sessionMeta, { color: theme.textSecondary }]}>
-              Активность: {formatSessionDate(session.last_active_at)}
+              Активность: {formatSessionTimeAgo(session.last_active_at)}
             </Text>
             <Text style={[styles.sessionMeta, { color: theme.textTertiary }]}>
               Создана: {formatSessionDate(session.created_at)}

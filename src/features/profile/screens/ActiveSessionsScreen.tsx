@@ -3,12 +3,12 @@
  * Экран управления активными сессиями (устройствами)
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   RefreshControl,
   Platform,
@@ -23,8 +23,6 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useActiveSessionsData } from '../hooks/useActiveSessionsData';
 import { useActiveSessionsActions } from '../hooks/useActiveSessionsActions';
 import { SessionCard } from '../components/sessions/SessionCard';
-import { SessionsEmptyState } from '../components/sessions/SessionsEmptyState';
-import { LogoutAllButton } from '../components/sessions/LogoutAllButton';
 import type { ActiveSession } from '../../../types/user.types';
 
 export default function ActiveSessionsScreen() {
@@ -38,6 +36,7 @@ export default function ActiveSessionsScreen() {
       }
     }, [isDark])
   );
+
   const { sessions, currentSessionId, loading, refreshing, handleRefresh, loadSessions } =
     useActiveSessionsData();
   const { handleDeleteSession, handleDeleteAllOther, handleRenameSession } = useActiveSessionsActions(
@@ -46,8 +45,19 @@ export default function ActiveSessionsScreen() {
     loadSessions
   );
 
-  const renderSession = ({ item }: { item: ActiveSession }) => (
+  const currentSession = useMemo(
+    () => sessions.find((s) => s.session_id === currentSessionId),
+    [sessions, currentSessionId]
+  );
+
+  const otherSessions = useMemo(
+    () => sessions.filter((s) => s.session_id !== currentSessionId),
+    [sessions, currentSessionId]
+  );
+
+  const renderSession = (item: ActiveSession) => (
     <SessionCard
+      key={item.session_id}
       session={item}
       currentSessionId={currentSessionId}
       onDelete={handleDeleteSession}
@@ -62,30 +72,78 @@ export default function ActiveSessionsScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={theme.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Активные сессии</Text>
-          {Platform.OS !== 'web' ? (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('QRScanner')}
-              style={styles.headerRightButton}
-            >
-              <Ionicons name="qr-code-outline" size={22} color={theme.primary} />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.headerRight} />
-          )}
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Устройства</Text>
+          <View style={styles.headerRight} />
         </View>
       </SafeAreaView>
 
-      <LogoutAllButton onPress={handleDeleteAllOther} visible={!loading && sessions.length > 1} />
-
-      <FlatList
-        data={sessions}
-        renderItem={renderSession}
-        keyExtractor={(item) => item.session_id}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        ListEmptyComponent={<SessionsEmptyState loading={loading} />}
-      />
+      >
+        {/* QR section */}
+        {Platform.OS !== 'web' && (
+          <View style={[styles.qrSection, { backgroundColor: theme.card }]}>
+            <View style={[styles.qrImageContainer, { backgroundColor: theme.primary + '10' }]}>
+              <Ionicons name="laptop-outline" size={56} color={theme.primary} />
+              <View style={styles.qrIconOverlay}>
+                <Ionicons name="qr-code-outline" size={24} color={theme.primary} />
+              </View>
+            </View>
+            <Text style={[styles.qrTitle, { color: theme.text }]}>
+              Вы можете зайти в приложение Тахион для компьютера с помощью QR-кода
+            </Text>
+            <TouchableOpacity
+              style={[styles.connectButton, { backgroundColor: theme.primary }]}
+              onPress={() => navigation.navigate('QRScanner')}
+            >
+              <Ionicons name="qr-code-outline" size={20} color="#FFF" />
+              <Text style={styles.connectButtonText}>Подключить устройство</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Current device section */}
+        {currentSession && (
+          <>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              ЭТО УСТРОЙСТВО
+            </Text>
+            {renderSession(currentSession)}
+            {otherSessions.length > 0 && (
+              <TouchableOpacity
+                style={[styles.terminateButton, { borderColor: theme.error }]}
+                onPress={handleDeleteAllOther}
+              >
+                <Text style={[styles.terminateButtonText, { color: theme.error }]}>
+                  Завершить другие сеансы
+                </Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+
+        {/* Other sessions section */}
+        {otherSessions.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary, marginTop: 24 }]}>
+              АКТИВНЫЕ СЕАНСЫ
+            </Text>
+            {otherSessions.map(renderSession)}
+          </>
+        )}
+
+        {/* Empty state */}
+        {!loading && sessions.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="phone-portrait-outline" size={64} color={theme.textTertiary} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              Нет активных сессий
+            </Text>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -113,11 +171,88 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 40,
   },
-  headerRightButton: {
-    padding: 8,
+  scrollView: {
+    flex: 1,
   },
-  listContent: {
+  scrollContent: {
     padding: 16,
     paddingBottom: Platform.OS === 'web' ? 100 : 140,
+  },
+  // QR Section
+  qrSection: {
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  qrImageContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  qrIconOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrTitle: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  connectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    gap: 8,
+  },
+  connectButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // Section
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  // Terminate button
+  terminateButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  terminateButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Empty
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
   },
 });

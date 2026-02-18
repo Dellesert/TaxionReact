@@ -3,7 +3,7 @@
  * Форматирование данных для активных сессий
  */
 
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { getDeviceInfo, getOtherSessionsCount, getDeviceCountText } from './activeSessionsHelpers';
 import type { ActiveSession } from '../../../types/user.types';
@@ -15,6 +15,14 @@ export const formatSessionDate = (dateString: string): string => {
   try {
     const date = new Date(dateString);
     return format(date, 'd MMM yyyy, HH:mm', { locale: ru });
+  } catch {
+    return dateString;
+  }
+};
+
+export const formatSessionTimeAgo = (dateString: string): string => {
+  try {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: ru });
   } catch {
     return dateString;
   }
