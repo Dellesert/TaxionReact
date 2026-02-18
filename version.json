@@ -1,10 +1,10 @@
 {
   "version": "1.0.1",
   "ios": {
-    "buildNumber": "31"
+    "buildNumber": "32"
   },
   "android": {
-    "versionCode": 31
+    "versionCode": 32
   },
   "windows": {
     "versionCode": 3
