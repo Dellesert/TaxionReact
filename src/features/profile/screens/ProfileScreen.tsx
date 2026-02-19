@@ -243,6 +243,14 @@ const ProfileScreen: React.FC = () => {
               value={getThemeLabel(mode)}
               onPress={handleThemePress}
             />
+            {Platform.OS === 'android' && (
+              <ProfileMenuItem
+                icon="flash-outline"
+                iconColor="#F59E0B"
+                text="Быстродействие"
+                onPress={() => navigation.navigate('Performance')}
+              />
+            )}
             <ProfileMenuItem
               icon="server-outline"
               iconColor="#10B981"

@@ -1,10 +1,10 @@
 /**
  * Animation Settings Content
- * Контент для настройки уменьшения анимаций (Electron)
+ * Контент для настройки уменьшения анимаций
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAnimationStore } from '@shared/store/animationStore';
@@ -19,23 +19,6 @@ interface AnimationOption {
 const AnimationSettingsContent: React.FC = () => {
   const { theme } = useTheme();
   const { reduceAnimations, setReduceAnimations } = useAnimationStore();
-
-  // Only available in Electron
-  const isElectron = Platform.OS === 'web' && (window as any).electron;
-
-  if (!isElectron) {
-    return (
-      <View style={[styles.notAvailableContainer, { backgroundColor: theme.card }]}>
-        <Ionicons name="desktop-outline" size={48} color={theme.textSecondary} />
-        <Text style={[styles.notAvailableTitle, { color: theme.text }]}>
-          Недоступно
-        </Text>
-        <Text style={[styles.notAvailableText, { color: theme.textSecondary }]}>
-          Эта настройка доступна только в десктопной версии приложения
-        </Text>
-      </View>
-    );
-  }
 
   const animationOptions: AnimationOption[] = [
     {
@@ -149,25 +132,5 @@ const AnimationSettingsContent: React.FC = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  notAvailableContainer: {
-    padding: 40,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  notAvailableTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  notAvailableText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});
 
 export default AnimationSettingsContent;
