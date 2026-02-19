@@ -25,7 +25,7 @@ import { MediaViewer, MediaItem } from '../components/modals/MediaViewer';
 import { useAuthStore } from '@shared/store/authStore';
 import { useChatStore } from '@shared/store/chatStore';
 import { Avatar } from '@shared/components/common/Avatar';
-import { formatTime, isImageFile, isVideoFile, replaceLocalhostWithIP } from '../utils/message.utils';
+import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../utils/message.utils';
 import { useImageLoader } from '@shared/hooks/useImageLoader';
 
 function getCommentsLabel(count: number): string {
@@ -417,10 +417,8 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const ref = rootMessageBubbleRef.current;
     if (ref) {
-      ref.measureInWindow((_x: number, y: number, _width: number, _height: number) => {
-        const screenWidth = Dimensions.get('window').width;
+      ref.measureInWindow((_x: number, y: number) => {
         const screenHeight = Dimensions.get('window').height;
-        const menuWidth = 250;
         const menuHeight = 510;
         const minTopMargin = 160;
         const minBottomMargin = 20;
@@ -447,7 +445,6 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
     const menuWidth = 250;
-    const menuHeight = 510;
     let left = position.x;
     let top = position.y;
     if (left + menuWidth > screenWidth) left = screenWidth - menuWidth - 20;
@@ -868,13 +865,6 @@ const styles = StyleSheet.create({
   },
   inputWrapperInner: {
     flex: 1,
-  },
-  expandButton: {
-    marginTop: 6,
-  },
-  expandButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   heartOverlay: {
     position: 'absolute',
