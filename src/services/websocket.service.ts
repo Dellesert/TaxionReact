@@ -775,39 +775,27 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
         case 'notification:new':
           // Handle new notification in real-time
-          console.log('[WS DEBUG] notification:new received, data:', JSON.stringify(message.data));
           const notificationStore = useNotificationStore.getState();
           const inAppNotificationStore = useInAppNotificationStore.getState();
 
           if (message.data) {
-            // Add notification to the beginning of the list
             notificationStore.handleNewNotification(message.data);
 
             // Show notification based on platform
             try {
-              console.log('[WS DEBUG] isElectron():', isElectron());
               if (isElectron()) {
-                const title = message.data.title || 'Tachyon Messenger';
-                const body = message.data.message || message.data.body || '';
-                console.log('[WS DEBUG] Calling electronPushNotificationService.showNotification:', { title, body, dataKeys: Object.keys(message.data) });
-                // Electron: Show native system notification
-                // Pass the complete notification data for proper navigation
                 electronPushNotificationService.showNotification(
-                  title,
-                  body,
-                  message.data // Pass full data object including type, chat_id, task_id, etc.
+                  message.data.title || 'Tachyon Messenger',
+                  message.data.message || message.data.body || '',
+                  message.data
                 );
               } else {
-                // Web/Mobile: Show in-app toast notification
                 inAppNotificationStore.showNotification(message.data);
               }
             } catch (error) {
-              console.error('[WS DEBUG] Error showing notification:', error);
-              // Fallback to in-app notification if Electron notification fails
+              console.error('[Push Electron] Error showing notification:', error);
               inAppNotificationStore.showNotification(message.data);
             }
-          } else {
-            console.warn('[WS DEBUG] notification:new received but message.data is empty');
           }
           break;
 
