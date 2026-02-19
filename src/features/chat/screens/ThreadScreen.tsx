@@ -161,8 +161,7 @@ const ThreadScreen: React.FC = () => {
   // Send comment in thread
   const handleSend = useCallback(async (content: string) => {
     try {
-      await chatApi.sendMessage({
-        chat_id: chatId,
+      await chatApi.sendMessage(chatId, {
         content,
         thread_root_id: messageId,
       });
