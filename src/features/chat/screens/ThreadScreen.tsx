@@ -18,6 +18,7 @@ import * as chatApi from '../api/chat.api';
 import { MessageBubble } from '../components/messages/MessageBubble';
 import { MessageInput } from '../components/messages/MessageInput';
 import { useAuthStore } from '@shared/store/authStore';
+import { useChatStore } from '@shared/store/chatStore';
 import { Avatar } from '@shared/components/common/Avatar';
 import { formatTime } from '../utils/message.utils';
 
@@ -46,14 +47,21 @@ const ThreadScreen: React.FC = () => {
   const currentUser = useAuthStore((s) => s.user);
   const currentUserId = currentUser?.id;
 
+  // Store-based thread messages for real-time WS updates
+  const storeThreadMessages = useChatStore((s) => s.threadMessages[messageId]);
+  const setThreadMessages = useChatStore((s) => s.setThreadMessages);
+  const clearThreadMessages = useChatStore((s) => s.clearThreadMessages);
+
   const [rootMessage, setRootMessage] = useState<Message | null>(null);
-  const [comments, setComments] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [isPostExpanded, setIsPostExpanded] = useState(false);
   const [isPostTruncated, setIsPostTruncated] = useState(false);
+
+  // Comments derived from store (updated by both API loads and WS events)
+  const comments = storeThreadMessages || [];
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -125,7 +133,7 @@ const ThreadScreen: React.FC = () => {
       setIsLoading(true);
       const response = await getThreadMessages(chatId, messageId, { limit: 30 });
       setRootMessage(response.root_message || null);
-      setComments(response.messages || []);
+      setThreadMessages(messageId, response.messages || []);
       setTotalCount(response.total || 0);
       setHasMore((response.messages || []).length < (response.total || 0));
     } catch (error) {
@@ -133,7 +141,7 @@ const ThreadScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [chatId, messageId]);
+  }, [chatId, messageId, setThreadMessages]);
 
   // Load more (older) comments
   const loadMore = useCallback(async () => {
@@ -153,18 +161,32 @@ const ThreadScreen: React.FC = () => {
       if (newMessages.length === 0) {
         setHasMore(false);
       } else {
-        setComments(prev => [...newMessages, ...prev]);
+        setThreadMessages(messageId, [...newMessages, ...comments]);
       }
     } catch (error) {
       console.error('Failed to load more thread messages:', error);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [chatId, messageId, isLoadingMore, hasMore, comments]);
+  }, [chatId, messageId, isLoadingMore, hasMore, comments, setThreadMessages]);
 
   useEffect(() => {
     loadThread();
-  }, [loadThread]);
+    return () => {
+      clearThreadMessages(messageId);
+    };
+  }, [loadThread, messageId, clearThreadMessages]);
+
+  // Auto-scroll when new WS comment arrives
+  const prevCommentsLength = useRef(comments.length);
+  useEffect(() => {
+    if (comments.length > prevCommentsLength.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+    prevCommentsLength.current = comments.length;
+  }, [comments.length]);
 
   // Send comment in thread
   const handleSend = useCallback(async (content: string) => {
@@ -174,9 +196,9 @@ const ThreadScreen: React.FC = () => {
         thread_root_id: messageId,
       });
 
-      // Reload thread to get the new message
+      // Reload thread to get the new message with full data
       const response = await getThreadMessages(chatId, messageId, { limit: 30 });
-      setComments(response.messages || []);
+      setThreadMessages(messageId, response.messages || []);
       setTotalCount(response.total || 0);
 
       // Scroll to bottom
@@ -186,7 +208,7 @@ const ThreadScreen: React.FC = () => {
     } catch (error) {
       console.error('Failed to send thread message:', error);
     }
-  }, [chatId, messageId]);
+  }, [chatId, messageId, setThreadMessages]);
 
   // Render list header: root message (post) + "Начало обсуждения" divider
   const renderListHeader = () => {

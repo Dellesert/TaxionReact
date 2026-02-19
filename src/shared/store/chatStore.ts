@@ -104,6 +104,7 @@ interface ChatState {
   activeChat: Chat | null;
   messages: Record<number, Message[]>;
   pinnedMessages: Record<number, Message[]>; // Закрепленные сообщения по chatId
+  threadMessages: Record<number, Message[]>; // Комментарии треда по threadRootId
   isLoading: boolean;
   isLoadingMore: boolean;
   isRefreshingChats: boolean;
@@ -164,6 +165,10 @@ interface ChatState {
   handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number, action?: string, user?: any) => void;
   clearError: () => void;
   getChatById: (chatId: number) => Chat | undefined;
+  /** Thread messages (channel post comments) */
+  handleNewThreadMessage: (threadRootId: number, chatId: number, message: Message) => void;
+  setThreadMessages: (threadRootId: number, messages: Message[], total?: number) => void;
+  clearThreadMessages: (threadRootId: number) => void;
   /** Merge updated chats (for differential sync) */
   mergeChats: (chats: Chat[]) => void;
   /** Remove deleted chats by IDs (for differential sync) */
@@ -234,6 +239,7 @@ export const useChatStore = create<ChatState>()(
       activeChat: null,
       messages: {},
       pinnedMessages: {},
+      threadMessages: {},
       isLoading: false,
       isLoadingMore: false,
       isRefreshingChats: false,
@@ -2226,6 +2232,38 @@ export const useChatStore = create<ChatState>()(
 
   getChatById: (chatId: number) => {
     return get().chats.find((chat) => chat.id === chatId);
+  },
+
+  // Thread messages (channel post comments)
+  handleNewThreadMessage: (threadRootId: number, chatId: number, message: Message) => {
+    set((state) => {
+      const existing = state.threadMessages[threadRootId] || [];
+      // Deduplicate
+      if (existing.some(m => m.id === message.id)) return state;
+      return {
+        threadMessages: {
+          ...state.threadMessages,
+          [threadRootId]: [...existing, message],
+        },
+      };
+    });
+  },
+
+  setThreadMessages: (threadRootId: number, messages: Message[]) => {
+    set((state) => ({
+      threadMessages: {
+        ...state.threadMessages,
+        [threadRootId]: messages,
+      },
+    }));
+  },
+
+  clearThreadMessages: (threadRootId: number) => {
+    set((state) => {
+      const updated = { ...state.threadMessages };
+      delete updated[threadRootId];
+      return { threadMessages: updated };
+    });
   },
 
   mergeChats: (updatedChats: Chat[]) => {

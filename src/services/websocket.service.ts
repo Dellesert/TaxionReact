@@ -830,10 +830,38 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           }
           break;
 
-        case 'new_thread_message':
-          // New comment in a thread — no action needed in the main feed
-          // The thread_update event handles updating root message counters
+        case 'new_thread_message': {
+          // New comment in a thread — push to threadMessages store for real-time updates
+          const threadMsgData = message.data?.message || message.data;
+          if (threadMsgData && threadMsgData.thread_root_id) {
+            const threadMsg = {
+              id: threadMsgData.id,
+              chat_id: message.chat_id || threadMsgData.chat_id,
+              sender_id: threadMsgData.sender_id,
+              content: threadMsgData.content || '',
+              message_type: threadMsgData.message_type || threadMsgData.type || 'text',
+              is_edited: threadMsgData.is_edited || false,
+              is_pinned: threadMsgData.is_pinned || false,
+              is_deleted: threadMsgData.is_deleted || false,
+              attachments: threadMsgData.attachments || [],
+              reactions: threadMsgData.reactions || [],
+              read_by: threadMsgData.read_by || [],
+              read_receipts: threadMsgData.read_receipts || [],
+              created_at: message.timestamp || threadMsgData.created_at || new Date().toISOString(),
+              updated_at: threadMsgData.updated_at || message.timestamp || new Date().toISOString(),
+              reply_to_id: threadMsgData.reply_to_id,
+              reply_to: threadMsgData.reply_to,
+              sender: threadMsgData.sender,
+              thread_root_id: threadMsgData.thread_root_id,
+            };
+            chatStore.handleNewThreadMessage(
+              threadMsgData.thread_root_id,
+              message.chat_id || threadMsgData.chat_id,
+              threadMsg as any,
+            );
+          }
           break;
+        }
 
         case 'thread_update':
           // Root message thread counters updated — update it in the messages list
