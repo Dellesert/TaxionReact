@@ -134,7 +134,7 @@ export const ProfileSplitView: React.FC = () => {
       case 'animations':
         return (
           <ProfileContentArea
-            title="Анимации"
+            title="Быстродействие"
             description="Уменьшение анимаций для повышения производительности"
           >
             <AnimationSettingsContent />
