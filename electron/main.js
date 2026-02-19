@@ -8,6 +8,9 @@ const { AppUpdater, getAppInfo } = require('./updater');
 
 const isDev = !app.isPackaged;
 
+// Allow video autoplay without user gesture (Chromium blocks it by default)
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 // Set AppUserModelId for Windows notifications
 // This is required for notifications to work properly on Windows
 if (process.platform === 'win32') {

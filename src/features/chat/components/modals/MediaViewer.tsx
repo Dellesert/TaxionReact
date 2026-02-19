@@ -142,7 +142,7 @@ const VideoControlsBar = React.memo<{
   const [videoDuration, setVideoDuration] = useState(0);
   const [bufferedPosition, setBufferedPosition] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => player.muted ?? false);
   const progressBarWidthRef = useRef(0);
   const isSeekingRef = useRef(false);
 
@@ -176,7 +176,10 @@ const VideoControlsBar = React.memo<{
     const sub = player.addListener('statusChange', ({ status }: { status: string }) => {
       if (status === 'readyToPlay') {
         setVideoDuration(player.duration || 0);
-        if (!player.playing) player.play();
+        // Always call play() — expo-video's web replace() sets playing=true
+        // even when the actual video.play() promise is rejected (video not loaded yet),
+        // so checking !player.playing would skip the play call.
+        player.play();
         setIsPlaying(true);
         showControls();
         startAutoHideTimer();
@@ -392,6 +395,13 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
     if (Platform.OS === 'web') {
       const isPublicFile = item.url.includes('/files/public/');
+
+      // Web browsers (non-Electron) require user gesture for autoplay with audio.
+      // Since we fetch the video async (losing gesture context), start muted
+      // so autoplay succeeds. User can unmute via the controls button.
+      if (!isElectron()) {
+        player.muted = true;
+      }
 
       // Electron: check file cache first, background-cache on miss
       if (isElectron()) {
@@ -1328,6 +1338,8 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 12,
     overflow: 'hidden',
+    position: 'relative' as const, // Stack above the absolute-positioned thumbnail on web
+    zIndex: 1,
   },
   videoPlayOverlayCenter: {
     ...StyleSheet.absoluteFillObject,
