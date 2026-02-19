@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('electron', {
         'updater:getStatus',
         'tray:getCloseBehavior',
         'tray:setCloseBehavior',
+        'file:save',
       ];
 
       if (validChannels.includes(channel)) {

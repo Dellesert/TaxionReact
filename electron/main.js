@@ -670,6 +670,26 @@ function setupIPCHandlers() {
     }
   });
 
+  // File save handler - allows saving a cached file to user-chosen location
+  ipcMain.handle('file:save', async (event, sourcePath, defaultFilename) => {
+    try {
+      const ext = path.extname(defaultFilename).replace('.', '').toLowerCase();
+      const filterName = { jpg: 'Images', jpeg: 'Images', png: 'Images', gif: 'Images', webp: 'Images', mp4: 'Videos', mov: 'Videos', avi: 'Videos' }[ext] || 'Files';
+      const result = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: defaultFilename,
+        filters: [{ name: filterName, extensions: [ext] }],
+      });
+      if (result.canceled || !result.filePath) {
+        return { success: false, canceled: true };
+      }
+      await fs.promises.copyFile(sourcePath, result.filePath);
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      console.error('[IPC] file:save error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Secure storage handlers (using safeStorage API)
   ipcMain.handle('secure-storage:set', async (event, key, value) => {
     try {

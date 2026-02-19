@@ -9,9 +9,10 @@ import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { GestureDetector, GestureHandlerRootView, Gesture } from 'react-native-gesture-handler';
 import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
 import { Paths, File as ExpoFile } from 'expo-file-system';
 import { getCachedVideoUri, cacheVideo, isVideoCacheUri } from '@shared/utils/videoCache';
-import { isElectron } from '@shared/utils/platform';
+import { isElectron, getElectronAPI } from '@shared/utils/platform';
 import { getElectronCachedVideoUri, cacheElectronVideo, isElectronCacheUri } from '@shared/utils/electronVideoCache';
 import Animated, {
   useSharedValue,
@@ -301,6 +302,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isSharing, setIsSharing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
 
   // Refs
@@ -949,6 +951,61 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   };
 
+  const showSaveButton = Platform.OS === 'android' || isElectron();
+
+  const handleSave = async () => {
+    if (isSaving) return;
+
+    const currentItem = mediaItems[currentIndex];
+    if (!currentItem) return;
+
+    const isVideo = currentItem.type === 'video';
+
+    setIsSaving(true);
+    let localUri: string | null = null;
+    try {
+      localUri = await downloadFileLocally(currentItem.url, isVideo);
+      if (!localUri) {
+        Alert.alert('Ошибка', `Не удалось загрузить ${isVideo ? 'видео' : 'изображение'}`);
+        return;
+      }
+
+      if (isElectron()) {
+        const ext = isVideo ? 'mp4' : 'jpg';
+        const filename = `${isVideo ? 'video' : 'image'}_${Date.now()}.${ext}`;
+        const electronAPI = getElectronAPI();
+        // Convert file:// URI to filesystem path for Electron
+        const filePath = localUri.startsWith('file://') ? localUri.replace('file://', '') : localUri;
+        const result = await electronAPI.ipc.invoke('file:save', filePath, filename);
+        if (result?.error) {
+          Alert.alert('Ошибка', `Не удалось сохранить файл`);
+        }
+      } else {
+        // Android - save to media library
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Ошибка', 'Необходимо разрешение для сохранения в галерею');
+          return;
+        }
+        await MediaLibrary.saveToLibraryAsync(localUri);
+        Alert.alert('Готово', `${isVideo ? 'Видео' : 'Изображение'} сохранено в галерею`);
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      Alert.alert('Ошибка', `Не удалось сохранить ${isVideo ? 'видео' : 'изображение'}`);
+    } finally {
+      setIsSaving(false);
+      if (localUri && !isVideoCacheUri(localUri) && !isElectronCacheUri(localUri)) {
+        try {
+          const file = new ExpoFile(localUri);
+          if (file.exists) {
+            file.delete();
+          }
+        } catch {}
+      }
+    }
+  };
+
   const handleForward = () => {
     const currentItem = mediaItems[currentIndex];
     if (currentItem && onForward) {
@@ -1041,6 +1098,21 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               </Text>
             )}
           </View>
+          {showSaveButton && (
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleSave}
+              activeOpacity={0.7}
+              disabled={isSaving}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="download-outline" size={26} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          )}
           {!isElectron() && (
             <TouchableOpacity
               style={styles.headerButton}
