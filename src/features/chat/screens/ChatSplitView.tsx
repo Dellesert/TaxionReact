@@ -15,6 +15,7 @@ import { ChatStackParamList } from '@navigation/types';
 import { Chat } from '../types/chat.types';
 import ChatListScreen from './ChatListScreen';
 import ChatScreen from './ChatScreen';
+import ThreadScreen from './ThreadScreen';
 import { ChatEmptyPlaceholder } from '../components/states/ChatEmptyPlaceholder';
 import { ChatDesktopHeader } from '../components/headers/ChatDesktopHeader';
 import { ChatSettingsModal } from '../components/modals/ChatSettingsModal';
@@ -35,6 +36,9 @@ export const ChatSplitView: React.FC = () => {
 
   // State for settings modal
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // State for inline thread view
+  const [threadInfo, setThreadInfo] = useState<{ messageId: number; chatId: number; chatName?: string } | null>(null);
 
   // Force remount counter to ensure ChatScreen reloads when coming back from other tabs
   const [mountKey, setMountKey] = useState(0);
@@ -99,6 +103,7 @@ export const ChatSplitView: React.FC = () => {
 
   const handleChatSelect = useCallback((chat: Chat) => {
     setSelectedChatId(chat.id);
+    setThreadInfo(null);
   }, [setSelectedChatId]);
 
   const handleSettingsPress = useCallback(() => {
@@ -106,6 +111,14 @@ export const ChatSplitView: React.FC = () => {
       setShowSettingsModal(true);
     }
   }, [selectedChatId]);
+
+  const handleThreadPress = useCallback((messageId: number, chatId: number, chatName?: string) => {
+    setThreadInfo({ messageId, chatId, chatName });
+  }, []);
+
+  const handleThreadBack = useCallback(() => {
+    setThreadInfo(null);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -126,21 +139,32 @@ export const ChatSplitView: React.FC = () => {
               onSettingsPress={handleSettingsPress}
             />
 
-            {/* Chat content */}
+            {/* Chat content or Thread */}
             <View style={styles.chatContent}>
-              <ChatScreen
-                key={`chat-${selectedChatId}-mount-${mountKey}`}
-                route={{
-                  key: `chat-${selectedChatId}`,
-                  name: 'Chat',
-                  params: {
-                    chatId: selectedChatId,
-                    chatName: displayName,
-                    unreadCount: selectedChat?.unread_count || 0,
-                  },
-                } as any}
-                navigation={navigation as any}
-              />
+              {threadInfo ? (
+                <ThreadScreen
+                  key={`thread-${threadInfo.messageId}`}
+                  chatId={threadInfo.chatId}
+                  messageId={threadInfo.messageId}
+                  chatName={threadInfo.chatName}
+                  onBack={handleThreadBack}
+                />
+              ) : (
+                <ChatScreen
+                  key={`chat-${selectedChatId}-mount-${mountKey}`}
+                  route={{
+                    key: `chat-${selectedChatId}`,
+                    name: 'Chat',
+                    params: {
+                      chatId: selectedChatId,
+                      chatName: displayName,
+                      unreadCount: selectedChat?.unread_count || 0,
+                    },
+                  } as any}
+                  navigation={navigation as any}
+                  onThreadPress={handleThreadPress}
+                />
+              )}
             </View>
           </>
         ) : (

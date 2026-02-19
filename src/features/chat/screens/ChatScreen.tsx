@@ -31,12 +31,14 @@ import {
   getTypingUserNames,
 } from '../utils/chatScreenHelpers';
 
-type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
+type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'> & {
+  onThreadPress?: (messageId: number, chatId: number, chatName?: string) => void;
+};
 
 /**
  * Refactored Chat Screen - Clean and modular
  */
-export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
+export const ChatScreen: React.FC<Props> = ({ route, navigation, onThreadPress: onThreadPressOverride }) => {
   const { chatId, chatName, unreadCount: routeUnreadCount, openSearch: shouldOpenSearch } = route.params;
   const chatIdNum = useMemo(() => Number(chatId), [chatId]);
   const { theme } = useTheme();
@@ -515,12 +517,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleThreadPress = useCallback((messageId: number) => {
+    if (onThreadPressOverride) {
+      onThreadPressOverride(messageId, chatIdNum, chatName);
+      return;
+    }
     navigation.navigate('Thread', {
       chatId: chatIdNum,
       messageId,
       chatName,
     });
-  }, [chatIdNum, chatName, navigation]);
+  }, [chatIdNum, chatName, navigation, onThreadPressOverride]);
 
   const handleReplyPressWithHighlight = (messageId: number) => {
     scrollToMessage(messageId, setHighlightedMessageId);

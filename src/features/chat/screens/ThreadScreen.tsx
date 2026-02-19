@@ -30,19 +30,23 @@ function getCommentsLabel(count: number): string {
   return 'комментариев';
 }
 
-type ThreadScreenRouteProp = {
-  chatId: number;
-  messageId: number;
+type ThreadScreenProps = {
+  chatId?: number;
+  messageId?: number;
   chatName?: string;
+  onBack?: () => void;
 };
 
-const ThreadScreen: React.FC = () => {
+const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   const route = useRoute();
   const navigation = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const params = route.params as ThreadScreenRouteProp;
-  const { chatId, messageId, chatName } = params;
+  const routeParams = (route.params || {}) as Partial<ThreadScreenProps>;
+  const chatId = props.chatId ?? routeParams.chatId!;
+  const messageId = props.messageId ?? routeParams.messageId!;
+  const chatName = props.chatName ?? routeParams.chatName;
+  const handleBack = props.onBack ?? (() => navigation.goBack());
 
   const currentUser = useAuthStore((s) => s.user);
   const currentUserId = currentUser?.id;
@@ -338,7 +342,7 @@ const ThreadScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.backgroundSecondary, paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
