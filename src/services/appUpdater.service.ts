@@ -158,18 +158,8 @@ class AppUpdaterService {
     buttons.push({
       text: 'Скачать',
       onPress: async () => {
-
         try {
-          const canOpen = await Linking.canOpenURL(downloadUrl);
-
-          if (canOpen) {
-            await Linking.openURL(downloadUrl);
-          } else {
-            Alert.alert(
-              'Ошибка',
-              `Не удалось открыть ссылку для скачивания.\nURL: ${downloadUrl}`,
-            );
-          }
+          await Linking.openURL(downloadUrl);
         } catch (error: any) {
           console.error('[AppUpdater] Error opening URL:', error);
           Alert.alert(
