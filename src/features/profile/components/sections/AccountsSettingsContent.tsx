@@ -143,9 +143,15 @@ const AccountsSettingsContent: React.FC = () => {
               userId={currentUser.id}
             />
             <View style={styles.currentAccountInfo}>
-              <Text style={[styles.currentAccountName, { color: theme.text }]} numberOfLines={1}>
-                {currentUser.name || currentUser.email}
-              </Text>
+              <View style={styles.nameWithBadge}>
+                <Text style={[styles.currentAccountName, { color: theme.text }]} numberOfLines={1}>
+                  {currentUser.name || currentUser.email}
+                </Text>
+                <View style={[styles.activeBadge, { backgroundColor: theme.primary + '20' }]}>
+                  <View style={[styles.activeDot, { backgroundColor: theme.primary }]} />
+                  <Text style={[styles.activeBadgeText, { color: theme.primary }]}>Активен</Text>
+                </View>
+              </View>
               {currentUser.name && (
                 <Text style={[styles.currentAccountEmail, { color: theme.textSecondary }]} numberOfLines={1}>
                   {currentUser.email}
@@ -157,20 +163,14 @@ const AccountsSettingsContent: React.FC = () => {
                  currentUser.role === 'super_admin' ? 'Суперадмин' : 'Сотрудник'}
               </Text>
             </View>
-            <View style={styles.currentAccountActions}>
-              <View style={[styles.activeBadge, { backgroundColor: theme.primary + '20' }]}>
-                <View style={[styles.activeDot, { backgroundColor: theme.primary }]} />
-                <Text style={[styles.activeBadgeText, { color: theme.primary }]}>Активен</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.deleteOwnBtn, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
-                onPress={handleDeleteOwnAccount}
-                disabled={isSwitching}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="trash-outline" size={16} color="#EF4444" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[styles.deleteOwnBtn, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
+              onPress={handleDeleteOwnAccount}
+              disabled={isSwitching}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -368,9 +368,16 @@ const styles = StyleSheet.create({
     marginLeft: 14,
     marginRight: 8,
   },
+  nameWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   currentAccountName: {
     fontSize: 16,
     fontWeight: '600',
+    flexShrink: 1,
   },
   currentAccountEmail: {
     fontSize: 13,
@@ -379,10 +386,6 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 12,
     marginTop: 3,
-  },
-  currentAccountActions: {
-    alignItems: 'flex-end',
-    gap: 8,
   },
   deleteOwnBtn: {
     width: 34,

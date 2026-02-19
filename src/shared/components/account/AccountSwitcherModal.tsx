@@ -197,30 +197,30 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
                     userId={currentUser.id}
                   />
                   <View style={styles.currentAccountInfo}>
-                    <Text style={[styles.currentAccountName, dynamicStyles.accountName]} numberOfLines={1}>
-                      {currentUser.name || currentUser.email}
-                    </Text>
+                    <View style={styles.nameWithBadge}>
+                      <Text style={[styles.currentAccountName, dynamicStyles.accountName]} numberOfLines={1}>
+                        {currentUser.name || currentUser.email}
+                      </Text>
+                      <View style={[styles.currentBadge, { backgroundColor: theme.primary + '20' }]}>
+                        <Text style={[styles.currentBadgeText, { color: theme.primary }]}>
+                          Текущий
+                        </Text>
+                      </View>
+                    </View>
                     {currentUser.name && (
                       <Text style={[styles.currentAccountEmail, dynamicStyles.accountEmail]} numberOfLines={1}>
                         {currentUser.email}
                       </Text>
                     )}
                   </View>
-                  <View style={styles.currentAccountActions}>
-                    <View style={[styles.currentBadge, { backgroundColor: theme.primary + '20' }]}>
-                      <Text style={[styles.currentBadgeText, { color: theme.primary }]}>
-                        Текущий
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.deleteOwnButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
-                      onPress={handleDeleteOwnAccount}
-                      disabled={isSwitching}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.deleteOwnButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                    onPress={handleDeleteOwnAccount}
+                    disabled={isSwitching}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                  </TouchableOpacity>
                 </View>
               </View>
             )}
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    width: 360,
+    width: 520,
     maxHeight: '80%',
     borderRadius: 16,
     padding: 20,
@@ -431,17 +431,20 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     marginRight: 8,
   },
+  nameWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   currentAccountName: {
     fontSize: 16,
     fontWeight: '600',
+    flexShrink: 1,
   },
   currentAccountEmail: {
     fontSize: 13,
     marginTop: 2,
-  },
-  currentAccountActions: {
-    alignItems: 'flex-end',
-    gap: 6,
   },
   deleteOwnButton: {
     width: 32,
