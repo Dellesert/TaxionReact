@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
@@ -37,6 +38,7 @@ const SharePollModal: React.FC<SharePollModalProps> = ({
   onShare,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('slide');
   const { showSuccess, showError } = useNotification();
   const { chats, loadChats } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
@@ -253,7 +255,7 @@ const SharePollModal: React.FC<SharePollModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={animationType}
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
     >

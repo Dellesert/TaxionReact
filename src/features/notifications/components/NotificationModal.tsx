@@ -23,6 +23,7 @@ import { useUniversalNavigation } from '@shared/hooks/useUniversalNavigation';
 import NotificationItem from '@shared/components/common/NotificationItem';
 import { Notification } from '../../../types/notification.types';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import {
   getNavigationScreenByType,
   getNavigationParams,
@@ -38,6 +39,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
+  const animationType = useAnimationType(isWideScreen ? 'fade' : 'slide');
 
   const {
     notifications,
@@ -247,7 +249,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ visible, o
   return (
     <Modal
       visible={visible}
-      animationType={isWideScreen ? 'fade' : 'slide'}
+      animationType={animationType}
       onRequestClose={onClose}
       presentationStyle={isWideScreen ? 'overFullScreen' : 'fullScreen'}
       transparent={isWideScreen}

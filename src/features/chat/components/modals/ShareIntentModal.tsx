@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { Chat } from '../../types/chat.types';
@@ -37,6 +38,7 @@ export const ShareIntentModal: React.FC<ShareIntentModalProps> = ({
   onSent,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('slide');
   const insets = useSafeAreaInsets();
   const chats = useChatStore((state) => state.chats);
   const sendMessage = useChatStore((state) => state.sendMessage);
@@ -207,7 +209,7 @@ export const ShareIntentModal: React.FC<ShareIntentModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={animationType}
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
     >

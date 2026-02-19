@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { Chat } from '../../types/chat.types';
@@ -49,6 +50,7 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
 
   // Detect desktop platform (Electron or web)
   const isDesktop = Platform.OS === 'web' || isElectron();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
 
   const effectiveInsetsBottom = (Platform.OS === 'ios' && isKeyboardVisible) ? 0 : insets.bottom;
 
@@ -132,7 +134,7 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={isDesktop ? "fade" : "slide"}
+      animationType={animationType}
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
       transparent={isDesktop}

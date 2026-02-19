@@ -32,3 +32,13 @@ html.electron-app.theme-light {
 html.electron-app.theme-dark {
   border-color: rgba(255, 255, 255, 0.1);
 }
+
+/* Reduce animations mode - disables CSS transitions/animations globally for Electron */
+html.electron-app.reduce-animations *,
+html.electron-app.reduce-animations *::before,
+html.electron-app.reduce-animations *::after {
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}

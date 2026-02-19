@@ -8,6 +8,7 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIn
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { Avatar } from '@shared/components/common/Avatar';
 import { User } from '@/types/user.types';
 import { getUserById } from '@api/user.api';
@@ -35,6 +36,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onBlock,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
   const [user, setUser] = useState<User | null>(null);
@@ -344,7 +346,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     <Modal
       visible={visible}
       transparent={isDesktop}
-      animationType={isDesktop ? 'fade' : 'slide'}
+      animationType={animationType}
       onRequestClose={onClose}
       presentationStyle={isDesktop ? 'overFullScreen' : 'fullScreen'}
     >

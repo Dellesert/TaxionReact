@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format, parseISO, addMonths, startOfMonth, endOfMonth, subMonths } from 'date-fns';
@@ -98,6 +99,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
 
@@ -405,7 +407,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={isDesktop ? 'fade' : 'slide'}
+      animationType={animationType}
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? 'overFullScreen' : 'fullScreen'}

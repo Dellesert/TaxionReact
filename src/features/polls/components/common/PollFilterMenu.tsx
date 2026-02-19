@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { PollFilter, getFilterOptions } from '../../utils/pollListHelpers';
 
 interface PollFilterMenuProps {
@@ -22,6 +23,7 @@ export const PollFilterMenu: React.FC<PollFilterMenuProps> = ({
   buttonPosition,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
   const { width: windowWidth } = useWindowDimensions();
   const filterOptions = getFilterOptions();
 
@@ -66,7 +68,7 @@ export const PollFilterMenu: React.FC<PollFilterMenuProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType={animationType}
       transparent={true}
       onRequestClose={onClose}
     >

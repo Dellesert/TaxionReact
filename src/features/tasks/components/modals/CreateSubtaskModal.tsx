@@ -28,6 +28,7 @@ import UserSelector from '@shared/components/common/UserSelector';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -49,6 +50,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
 
@@ -333,7 +335,7 @@ export const CreateSubtaskModal: React.FC<CreateSubtaskModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={isDesktop ? "fade" : "slide"}
+      animationType={animationType}
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}

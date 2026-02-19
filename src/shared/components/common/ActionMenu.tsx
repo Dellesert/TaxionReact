@@ -8,6 +8,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Ea
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 
 export interface ActionMenuItem {
   key: string;
@@ -34,6 +35,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
   buttonPosition,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
   const insets = useSafeAreaInsets();
 
   // Animation values
@@ -157,7 +159,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
       <Modal
         visible={isModalVisible}
         transparent
-        animationType="fade"
+        animationType={animationType}
         onRequestClose={onClose}
       >
         <TouchableOpacity

@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Task, TaskPriority, TaskChecklist } from '../../types/task.types';
 import * as taskApi from '../../api/task.api';
@@ -41,6 +42,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   onTaskUpdated,
 }) => {
   const { theme, isDark } = useTheme();
+  const animationType = useAnimationType('slide');
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
 
@@ -230,7 +232,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={animationType}
       transparent={false}
       onRequestClose={onClose}
       presentationStyle="fullScreen"

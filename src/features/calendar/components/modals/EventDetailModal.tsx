@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { FormattedText } from '@features/chat/components/common/FormattedText';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
@@ -171,6 +172,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   onEventUpdated,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('slide');
   const { showError } = useNotification();
   const { showConfirm } = useActionModal();
   const { user } = useAuthStore();
@@ -306,7 +308,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={animationType}
       onRequestClose={onClose}
       transparent={false}
       presentationStyle="fullScreen"

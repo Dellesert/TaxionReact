@@ -21,6 +21,7 @@ import PasskeyManagementContent from '../components/sections/PasskeyManagementCo
 import NotificationSettingsContent from '../components/sections/NotificationSettingsContent';
 import ThemeSettingsContent from '../components/sections/ThemeSettingsContent';
 import TraySettingsContent from '../components/sections/TraySettingsContent';
+import AnimationSettingsContent from '../components/sections/AnimationSettingsContent';
 import StorageContent from '../components/sections/StorageContent';
 import AboutContent from '../components/sections/AboutContent';
 import AccountsSettingsContent from '../components/sections/AccountsSettingsContent';
@@ -127,6 +128,16 @@ export const ProfileSplitView: React.FC = () => {
             description="Настройте поведение при закрытии окна"
           >
             <TraySettingsContent />
+          </ProfileContentArea>
+        );
+
+      case 'animations':
+        return (
+          <ProfileContentArea
+            title="Анимации"
+            description="Уменьшение анимаций для повышения производительности"
+          >
+            <AnimationSettingsContent />
           </ProfileContentArea>
         );
 

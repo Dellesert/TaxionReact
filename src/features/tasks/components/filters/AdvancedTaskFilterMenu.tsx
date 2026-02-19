@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import type { AdvancedTaskFilters } from '../../utils/taskListHelpers';
 import { FILTER_CHIPS, STATUS_TABS } from '../../utils/taskListHelpers';
 import type { TaskPriority, TaskStatus } from '../../types/task.types';
@@ -44,6 +45,7 @@ export const AdvancedTaskFilterMenu: React.FC<AdvancedTaskFilterMenuProps> = ({
   isDesktop = false,
 }) => {
   const { theme, isDark } = useTheme();
+  const animationType = useAnimationType('fade');
   const { width: windowWidth } = useWindowDimensions();
   const [tempFilters, setTempFilters] = useState<AdvancedTaskFilters>(currentFilters);
 
@@ -126,7 +128,7 @@ export const AdvancedTaskFilterMenu: React.FC<AdvancedTaskFilterMenuProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType={animationType}
       transparent={true}
       onRequestClose={onClose}
     >

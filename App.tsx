@@ -13,6 +13,7 @@ import { NavigationContainerRef } from '@react-navigation/native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from '@shared/store/authStore';
 import { useThemeStore } from '@shared/store/themeStore';
+import { useAnimationStore } from '@shared/store/animationStore';
 import { useChatStore } from '@shared/store/chatStore';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { websocketService } from './src/services/websocket.service';
@@ -132,6 +133,9 @@ export default function App() {
   const loadTheme = useThemeStore((state) => state.loadTheme);
   const initSystemThemeListener = useThemeStore((state) => state.initSystemThemeListener);
 
+  const reduceAnimations = useAnimationStore((state) => state.reduceAnimations);
+  const loadAnimationPreference = useAnimationStore((state) => state.loadAnimationPreference);
+
   const loadUnreadCount = useNotificationStore((state) => state.loadUnreadCount);
 
   // Navigation ref for push notification navigation
@@ -155,10 +159,23 @@ export default function App() {
     }
   }, [theme.isDark]);
 
+  // Toggle reduce-animations CSS class for Electron
+  useEffect(() => {
+    if (Platform.OS === 'web' && isElectron() && typeof document !== 'undefined') {
+      const html = document.documentElement;
+      if (reduceAnimations) {
+        html.classList.add('reduce-animations');
+      } else {
+        html.classList.remove('reduce-animations');
+      }
+    }
+  }, [reduceAnimations]);
+
   useEffect(() => {
     // Initialize auth state and theme on app start
     initialize();
     loadTheme();
+    loadAnimationPreference();
 
     // Initialize system theme listener
     const subscription = initSystemThemeListener();

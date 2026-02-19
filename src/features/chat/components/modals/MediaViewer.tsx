@@ -13,6 +13,8 @@ import * as MediaLibrary from 'expo-media-library';
 import { Paths, File as ExpoFile } from 'expo-file-system';
 import { getCachedVideoUri, cacheVideo, isVideoCacheUri } from '@shared/utils/videoCache';
 import { isElectron, getElectronAPI } from '@shared/utils/platform';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
+import { useAnimationStore } from '@shared/store/animationStore';
 import { getElectronCachedVideoUri, cacheElectronVideo, isElectronCacheUri } from '@shared/utils/electronVideoCache';
 import Animated, {
   useSharedValue,
@@ -295,6 +297,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   onDelete,
 }) => {
   const insets = useSafeAreaInsets();
+  const animationType = useAnimationType('fade');
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const swipeThreshold = screenWidth * 0.25;
   const imageContainerHeight = screenHeight * 0.8;
@@ -1040,12 +1044,16 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onClose}
       statusBarTranslucent
     >
       <GestureHandlerRootView style={styles.container}>
-        <BlurView intensity={95} style={styles.blurOverlay} tint="dark" />
+        {reduceAnimations ? (
+          <View style={[styles.blurOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.9)' }]} />
+        ) : (
+          <BlurView intensity={95} style={styles.blurOverlay} tint="dark" />
+        )}
 
         {/* Media gallery */}
         <View

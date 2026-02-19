@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
@@ -50,6 +51,7 @@ export const AddSubstitutionModal: React.FC<AddSubstitutionModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
 
@@ -175,7 +177,7 @@ export const AddSubstitutionModal: React.FC<AddSubstitutionModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={isDesktop ? 'fade' : 'slide'}
+      animationType={animationType}
       transparent={isDesktop}
       onRequestClose={onClose}
       presentationStyle={isDesktop ? 'overFullScreen' : 'pageSheet'}

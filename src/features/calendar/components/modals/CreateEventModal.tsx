@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useAuthStore } from '@shared/store/authStore';
 import { CreateEventDto, Event, EventType } from '../../types/calendar.types';
@@ -67,6 +68,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
@@ -351,7 +353,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={isDesktop ? "fade" : "slide"}
+      animationType={animationType}
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}

@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
@@ -58,6 +59,7 @@ type RouteProps = RouteProp<ScheduleStackParamList, 'ScheduleDetail'>;
 
 export const ScheduleDetailScreen: React.FC = () => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
   const navigation = useNavigation();
   const route = useRoute<RouteProps>();
   const { scheduleId } = route.params;
@@ -1023,7 +1025,7 @@ export const ScheduleDetailScreen: React.FC = () => {
       <Modal
         visible={showUserFilterPicker}
         transparent
-        animationType="fade"
+        animationType={animationType}
         onRequestClose={() => setShowUserFilterPicker(false)}
       >
         <TouchableOpacity

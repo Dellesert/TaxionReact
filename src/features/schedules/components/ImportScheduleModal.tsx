@@ -14,6 +14,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { format, addMonths } from 'date-fns';
 import { fileApi } from '@api/fileApi';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { useScheduleImport } from '../hooks/useScheduleImport';
 import { ImportPreview } from './ImportPreview';
@@ -38,6 +39,7 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
   onSuccess,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('slide');
   const {
     isLoading,
     preview,
@@ -680,7 +682,7 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={animationType}
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >

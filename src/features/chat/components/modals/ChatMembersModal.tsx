@@ -20,6 +20,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { User } from '../../../../types/user.types';
 import { ChatMember } from '../../types/chat.types';
@@ -48,6 +49,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   creatorId,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('slide');
   const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
@@ -625,7 +627,7 @@ export const ChatMembersModal: React.FC<ChatMembersModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={animationType}
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >

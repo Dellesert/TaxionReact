@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
@@ -69,6 +70,7 @@ export const AbsenceListScreen: React.FC = () => {
   const navigation = useNavigation();
   const filterButtonRef = useRef<View>(null);
   const isDesktop = useIsWideScreen();
+  const animationType = useAnimationType('fade');
 
   // Reset status bar style when screen gains focus (fixes white status bar after visiting Profile)
   useFocusEffect(
@@ -595,7 +597,7 @@ export const AbsenceListScreen: React.FC = () => {
       {/* Filter Menu Modal */}
       <Modal
         visible={showFilterMenu}
-        animationType="fade"
+        animationType={animationType}
         transparent={true}
         onRequestClose={() => setShowFilterMenu(false)}
       >

@@ -25,6 +25,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import * as taskApi from '../../api/task.api';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { TaskPriority, TaskType, CreateTaskDto } from '../../types/task.types';
 import UserSelector from '@shared/components/common/UserSelector';
@@ -48,6 +49,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const insets = useSafeAreaInsets();
   const { user: currentUser } = useAuthStore();
   const { showSuccess, showError } = useNotification();
@@ -331,7 +333,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={isDesktop ? "fade" : "slide"}
+      animationType={animationType}
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}

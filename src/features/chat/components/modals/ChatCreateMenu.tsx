@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, Text, StyleSheet, Platform, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { ChatType } from '../../types/chat.types';
 
 interface ChatCreateMenuProps {
@@ -18,6 +19,7 @@ export const ChatCreateMenu: React.FC<ChatCreateMenuProps> = ({
   isDesktopMode = false,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
 
   // In desktop mode, align menu to the right edge of chat list
   // Chat list: starts at 80px (SideNavBar), width 420px, ends at 500px
@@ -40,7 +42,7 @@ export const ChatCreateMenu: React.FC<ChatCreateMenuProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onClose}
     >
       <TouchableOpacity

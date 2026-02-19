@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/components/ui/AutoCorrectedTextInput';
 
 interface InputDialogProps {
@@ -27,6 +28,7 @@ export const InputDialog: React.FC<InputDialogProps> = ({
   onCancel,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<AutoCorrectedTextInputRef>(null);
 
@@ -93,7 +95,7 @@ export const InputDialog: React.FC<InputDialogProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onCancel}
     >
       <View style={[styles.overlay, dynamicStyles.overlay]}>

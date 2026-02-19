@@ -23,6 +23,7 @@ import { User, UserGroupWithMembers } from '@/types/user.types';
 import { getUsers } from '@api/user.api';
 import { getUserGroups } from '@api/user-group.api';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useDebounce } from '@shared/hooks/useDebounce';
 import Avatar from '@shared/components/common/Avatar';
 
@@ -62,6 +63,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
   showGroupView = true,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -897,7 +899,7 @@ const UserSelectorModal: React.FC<UserSelectorModalProps> = ({
     <Modal
       visible={visible}
       transparent={isDesktop}
-      animationType={isDesktop ? 'fade' : 'slide'}
+      animationType={animationType}
       presentationStyle={isDesktop ? 'overFullScreen' : Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
     >

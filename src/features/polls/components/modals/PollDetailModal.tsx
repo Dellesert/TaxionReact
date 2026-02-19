@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import PollDetailScreen from '../../screens/PollDetailScreen';
 import { NavigationContext } from '@react-navigation/native';
 // @ts-ignore - internal API
@@ -27,6 +28,7 @@ interface PollDetailModalProps {
 
 const PollDetailModal: React.FC<PollDetailModalProps> = ({ visible, pollId, onClose }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('slide');
   const [headerOptions, setHeaderOptions] = React.useState<any>({});
 
   // Create a minimal navigation state
@@ -74,7 +76,7 @@ const PollDetailModal: React.FC<PollDetailModalProps> = ({ visible, pollId, onCl
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={animationType}
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >

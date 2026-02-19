@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TextInput, Modal, TouchableOpacity } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 
 interface PasskeyNameModalProps {
   visible: boolean;
@@ -25,9 +26,10 @@ export const PasskeyNameModal: React.FC<PasskeyNameModalProps> = ({
   onConfirm,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible={visible} transparent animationType={animationType} onRequestClose={onCancel}>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
           <Text style={[styles.modalTitle, { color: theme.text }]}>

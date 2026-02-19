@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 
 export interface ActionSheetOption {
   label: string;
@@ -23,6 +24,7 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
   onCancel,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
   const insets = useSafeAreaInsets();
 
   const dynamicStyles = StyleSheet.create({
@@ -57,7 +59,7 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onCancel}
       presentationStyle="overFullScreen"
       statusBarTranslucent

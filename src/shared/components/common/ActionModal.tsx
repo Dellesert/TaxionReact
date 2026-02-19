@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { Ionicons } from '@expo/vector-icons';
 import { ActionModalProps, ActionModalButton } from '@types/modal.types';
 
@@ -29,6 +30,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   checkbox,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleDismiss = () => {
@@ -84,7 +86,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={handleDismiss}
       statusBarTranslucent
     >

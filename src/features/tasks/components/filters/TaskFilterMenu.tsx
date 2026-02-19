@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import type { TaskFilter } from '../../utils/taskListHelpers';
 import { FILTER_CHIPS } from '../../utils/taskListHelpers';
 
@@ -21,6 +22,7 @@ export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
   buttonPosition,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
 
   const handleFilterSelect = (filter: TaskFilter) => {
     onFilterChange(filter);
@@ -35,7 +37,7 @@ export const TaskFilterMenu: React.FC<TaskFilterMenuProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType={animationType}
       transparent={true}
       onRequestClose={onClose}
     >

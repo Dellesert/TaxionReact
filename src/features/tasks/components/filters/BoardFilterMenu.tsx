@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import type { AdvancedTaskFilters } from '../../utils/taskListHelpers';
 import { FILTER_CHIPS } from '../../utils/taskListHelpers';
 import type { TaskPriority } from '../../types/task.types';
@@ -44,6 +45,7 @@ export const BoardFilterMenu: React.FC<BoardFilterMenuProps> = ({
   isDesktop = false,
 }) => {
   const { theme, isDark } = useTheme();
+  const animationType = useAnimationType('fade');
   const { width: windowWidth } = useWindowDimensions();
   const [tempFilters, setTempFilters] = useState<AdvancedTaskFilters>(currentFilters);
 
@@ -124,7 +126,7 @@ export const BoardFilterMenu: React.FC<BoardFilterMenuProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType={animationType}
       transparent={true}
       onRequestClose={onClose}
     >

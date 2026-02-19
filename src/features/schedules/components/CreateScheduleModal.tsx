@@ -29,6 +29,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { fileApi } from '@api/fileApi';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format, addMonths, startOfMonth, endOfMonth, subMonths } from 'date-fns';
@@ -102,6 +103,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
 
@@ -988,7 +990,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={isDesktop ? "fade" : "slide"}
+      animationType={animationType}
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}

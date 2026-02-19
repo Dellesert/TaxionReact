@@ -26,3 +26,6 @@ export { useOptimisticEvent, clearAllPendingEventOperations } from './useOptimis
 
 // Password policy
 export { usePasswordPolicy, prefetchPasswordPolicy, clearPasswordPolicyCache } from './usePasswordPolicy';
+
+// Animation
+export { useAnimationType } from './useAnimationType';

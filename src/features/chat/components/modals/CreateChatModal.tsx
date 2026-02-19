@@ -6,6 +6,7 @@
 import React from 'react';
 import { Modal, View, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import CreateChatScreen from '../../screens/CreateChatScreen';
 import { ChatType, Chat } from '../../types/chat.types';
 
@@ -23,6 +24,7 @@ export const CreateChatModal: React.FC<CreateChatModalProps> = ({
   onChatCreated,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
 
   if (!visible) return null;
 
@@ -43,7 +45,7 @@ export const CreateChatModal: React.FC<CreateChatModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onClose}
       presentationStyle="overFullScreen"
       transparent

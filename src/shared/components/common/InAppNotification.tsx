@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationStore } from '@shared/store/animationStore';
 import { Notification, NotificationType } from '@types/notification.types';
 import { Avatar } from '@shared/components/common/Avatar';
 
@@ -81,24 +82,31 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Анимация появления
-    Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 10,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (reduceAnimations) {
+      // Без анимации — показываем мгновенно
+      slideAnim.setValue(0);
+      opacityAnim.setValue(1);
+    } else {
+      // Анимация появления
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 10,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
 
     // Автоматическое скрытие через заданное время
     const timer = setTimeout(() => {
@@ -109,6 +117,10 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
   }, []);
 
   const dismiss = () => {
+    if (reduceAnimations) {
+      onDismiss();
+      return;
+    }
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: -100,

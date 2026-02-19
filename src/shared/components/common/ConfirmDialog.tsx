@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 
 interface ConfirmDialogProps {
   visible: boolean;
@@ -24,6 +25,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   destructive = false,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
 
   const dynamicStyles = StyleSheet.create({
     overlay: {
@@ -62,7 +64,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onCancel}
     >
       <View style={[styles.overlay, dynamicStyles.overlay]}>

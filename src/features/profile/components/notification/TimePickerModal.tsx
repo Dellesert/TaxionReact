@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { formatHour, getHourOptions } from '@/features/notifications/utils/notificationHelpers';
 
 interface TimePickerModalProps {
@@ -23,6 +24,7 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
   onClose,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
 
   const dynamicStyles = StyleSheet.create({
     modalOverlay: {
@@ -77,7 +79,7 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
   const hours = getHourOptions();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType={animationType} onRequestClose={onClose}>
       <Pressable style={dynamicStyles.modalOverlay} onPress={onClose}>
         <Pressable style={dynamicStyles.modalContent} onPress={(e) => e.stopPropagation()}>
           <View style={dynamicStyles.modalHeader}>

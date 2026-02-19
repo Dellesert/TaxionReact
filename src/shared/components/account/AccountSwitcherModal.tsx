@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useAuthStore } from '@shared/store/authStore';
 import { useAccountStore } from '@shared/store/accountStore';
 import { isElectron } from '@shared/utils/platform';
@@ -38,6 +39,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   onAddAccount,
 }) => {
   const { theme, isDark } = useTheme();
+  const animationType = useAnimationType('fade');
   const currentUser = useAuthStore(s => s.user);
   const { logout } = useAuthStore();
   const {
@@ -168,7 +170,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onClose}
     >
       <Pressable style={styles.overlay} onPress={onClose}>

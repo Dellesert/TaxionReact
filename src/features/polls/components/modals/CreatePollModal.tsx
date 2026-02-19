@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import * as pollApi from '../../api/poll.api';
@@ -47,6 +48,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
   const { showSuccess, showError } = useNotification();
@@ -277,7 +279,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={isDesktop ? "fade" : "slide"}
+      animationType={animationType}
       transparent={isDesktop}
       onRequestClose={handleClose}
       presentationStyle={isDesktop ? "overFullScreen" : "fullScreen"}

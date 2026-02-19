@@ -35,6 +35,7 @@ import { User } from '@/types/user.types';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useDebounce } from '@shared/hooks/useDebounce';
 import Avatar from '@shared/components/common/Avatar';
 
@@ -56,6 +57,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
   onDelegated,
 }) => {
   const { theme, isDark } = useTheme();
+  const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const { showError } = useNotification();
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
@@ -384,7 +386,7 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
     <Modal
       visible={visible}
       transparent={isDesktop}
-      animationType={isDesktop ? 'fade' : 'slide'}
+      animationType={animationType}
       presentationStyle={isDesktop ? 'overFullScreen' : Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
     >

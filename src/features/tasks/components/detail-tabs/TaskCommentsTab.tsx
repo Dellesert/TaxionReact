@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TaskComment } from '../../types/task.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { getUserDisplayName } from '../../utils/taskHelpers';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -88,13 +89,14 @@ const CommentActionMenu: React.FC<{
   onDelete: () => void;
   theme: any;
 }> = ({ visible, position, onClose, onEdit, onDelete, theme }) => {
+  const animationType = useAnimationType('fade');
   if (!position) return null;
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onClose}
     >
       <Pressable style={styles.menuOverlay} onPress={onClose}>

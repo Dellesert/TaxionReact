@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, Platform, TouchableWithoutFeedback, Animated, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 
 // Динамический импорт для веба
 let ReactDatePicker: any = null;
@@ -45,6 +46,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
   mode = 'datetime',
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -240,7 +242,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
     return (
       <Modal
         transparent
-        animationType="fade"
+        animationType={animationType}
         visible={visible}
         onRequestClose={onClose}
       >

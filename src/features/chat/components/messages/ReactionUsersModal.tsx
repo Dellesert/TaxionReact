@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { Reaction } from '../../types/chat.types';
 
 interface ReactionUsersModalProps {
@@ -29,6 +30,7 @@ const ReactionUsersModalComponent: React.FC<ReactionUsersModalProps> = ({
   clickPosition,
 }) => {
   const { theme } = useTheme();
+  const animationType = useAnimationType('fade');
 
   // Фильтруем реакции только для выбранного эмодзи
   const usersWithReaction = reactions.filter((r) => r.emoji === emoji);
@@ -77,7 +79,7 @@ const ReactionUsersModalComponent: React.FC<ReactionUsersModalProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onClose}
     >
       <TouchableOpacity
