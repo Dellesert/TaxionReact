@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuthStore } from '@shared/store/authStore';
+import { useAccountStore } from '@shared/store/accountStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
@@ -9,33 +10,51 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
  */
 export const useProfileActions = () => {
   const { logout } = useAuthStore();
+  const { switchToLogin } = useAccountStore();
   const { setTheme } = useTheme();
   const { showError } = useNotification();
   const { showConfirm, showOptions } = useActionModal();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   /**
-   * Handle user logout with confirmation
+   * Handle user logout with choice: switch account or full logout
    */
   const handleLogout = useCallback(() => {
-    showConfirm(
+    showOptions(
       'Выход',
-      'Вы уверены, что хотите выйти?',
-      async () => {
-        try {
-          setIsLoggingOut(true);
-          await logout();
-        } catch (error) {
-          console.error('Ошибка при выходе:', error);
-          showError('Не удалось выйти из аккаунта');
-        } finally {
-          setIsLoggingOut(false);
-        }
-      },
-      undefined,
-      { confirmText: 'Выйти', cancelText: 'Отмена', destructive: true }
+      [
+        {
+          text: 'Сменить аккаунт',
+          icon: 'swap-horizontal-outline',
+          onPress: async () => {
+            try {
+              await switchToLogin();
+            } catch (error) {
+              console.error('Ошибка при смене аккаунта:', error);
+              showError('Не удалось перейти к экрану входа');
+            }
+          },
+        },
+        {
+          text: 'Выйти полностью',
+          icon: 'log-out-outline',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoggingOut(true);
+              await logout();
+            } catch (error) {
+              console.error('Ошибка при выходе:', error);
+              showError('Не удалось выйти из аккаунта');
+            } finally {
+              setIsLoggingOut(false);
+            }
+          },
+        },
+      ],
+      'Выберите способ выхода из аккаунта',
     );
-  }, [logout, showConfirm, showError]);
+  }, [logout, switchToLogin, showOptions, showError]);
 
   /**
    * Handle theme selection
