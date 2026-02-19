@@ -5,6 +5,7 @@ import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { ConnectionStatus } from '@shared/components/common/ConnectionStatus';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useAnimationStore } from '@shared/store/animationStore';
 
 interface ChatListHeaderProps {
   isEditMode: boolean;
@@ -32,10 +33,15 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
   const isElectronDesktop = isElectron && isWideScreen;
 
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
+
   // Простая анимация fade для кнопок в header
   const buttonOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    if (reduceAnimations) {
+      return;
+    }
     // Простая плавная анимация без bounce и scale
     Animated.sequence([
       // Сначала скрываем текущие кнопки
