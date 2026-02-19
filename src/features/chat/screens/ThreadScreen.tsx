@@ -52,6 +52,8 @@ const ThreadScreen: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [isPostExpanded, setIsPostExpanded] = useState(false);
+  const [isPostTruncated, setIsPostTruncated] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -211,9 +213,28 @@ const ThreadScreen: React.FC = () => {
                   {rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
                 </Text>
               </View>
-              <Text style={[styles.rootMessageText, { color: theme.text }]} numberOfLines={10}>
+              <Text
+                style={[styles.rootMessageText, { color: theme.text }]}
+                numberOfLines={isPostExpanded ? undefined : 10}
+                onTextLayout={(e) => {
+                  if (!isPostExpanded && e.nativeEvent.lines.length >= 10) {
+                    setIsPostTruncated(true);
+                  }
+                }}
+              >
                 {rootMessage.content}
               </Text>
+              {isPostTruncated && (
+                <TouchableOpacity
+                  onPress={() => setIsPostExpanded(prev => !prev)}
+                  style={styles.expandButton}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.expandButtonText, { color: theme.primary }]}>
+                    {isPostExpanded ? 'Скрыть' : 'Развернуть'}
+                  </Text>
+                </TouchableOpacity>
+              )}
               <Text style={[styles.rootMessageTime, { color: theme.textTertiary }]}>
                 {formatTime(rootMessage.created_at)}
               </Text>
@@ -503,6 +524,13 @@ const styles = StyleSheet.create({
   },
   inputWrapperInner: {
     flex: 1,
+  },
+  expandButton: {
+    marginTop: 6,
+  },
+  expandButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
