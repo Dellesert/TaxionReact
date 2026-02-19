@@ -128,14 +128,36 @@ class ElectronPushNotificationService {
    */
   async showNotification(title: string, body: string, data?: NotificationData): Promise<void> {
     try {
+      // Use Web Notification API (works reliably in both dev and production Electron)
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          const notification = new Notification(title, {
+            body,
+            icon: '/favicon.ico',
+          });
+
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+            if (this.navigationCallback && data) {
+              this.navigationCallback(data);
+            }
+          };
+          return;
+        } else if (Notification.permission !== 'denied') {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            return this.showNotification(title, body, data);
+          }
+        }
+      }
+
+      // Fallback to Electron IPC notification
       if (!this.isElectronAvailable()) {
-        console.warn('[Push Electron] Cannot show notification - Electron API not available');
         return;
       }
 
-
       const result = await window.electron!.notification.show(title, body, data);
-
       if (!result.success) {
         console.error('[Push Electron] Failed to show notification:', result.error);
       }

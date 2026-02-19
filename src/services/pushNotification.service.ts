@@ -14,16 +14,18 @@ import { iosPushNotificationService } from './pushNotificationIOS.service';
 import { isElectron } from '@shared/utils/platform';
 import { electronPushNotificationService } from './pushNotificationElectron.service';
 
-// Настройка обработки уведомлений
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Настройка обработки уведомлений (не для Electron - там нет expo-notifications)
+if (!isElectron()) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 /**
  * Создание Android Notification Channels

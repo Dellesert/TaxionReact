@@ -38,7 +38,7 @@ export const useChatData = () => {
     // Load other tabs in background for instant switching
     setTimeout(() => loadTabData('private'), 100);
     setTimeout(() => loadTabData('group'), 200);
-    setTimeout(() => loadTabData('favorite'), 300);
+    setTimeout(() => loadTabData('channel'), 300);
   }, [loadTabData]);
 
   /**

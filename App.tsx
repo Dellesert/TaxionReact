@@ -466,6 +466,8 @@ export default function App() {
       );
 
       // Check for last notification response (when app was opened from notification)
+      // Skip on Electron - expo-notifications has no native implementation there
+      if (!isElectron()) {
       import('expo-notifications').then(({ default: Notifications }) => {
         Notifications.getLastNotificationResponseAsync().then((response) => {
           if (response) {
@@ -568,6 +570,7 @@ export default function App() {
           }
         });
       });
+      }
     } else {
       websocketService.disconnect();
       pushNotificationService.removeNotificationListeners();

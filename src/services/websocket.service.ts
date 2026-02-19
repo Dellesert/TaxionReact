@@ -775,6 +775,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
         case 'notification:new':
           // Handle new notification in real-time
+          console.log('[WS DEBUG] notification:new received, data:', JSON.stringify(message.data));
           const notificationStore = useNotificationStore.getState();
           const inAppNotificationStore = useInAppNotificationStore.getState();
 
@@ -784,12 +785,16 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
             // Show notification based on platform
             try {
+              console.log('[WS DEBUG] isElectron():', isElectron());
               if (isElectron()) {
+                const title = message.data.title || 'Tachyon Messenger';
+                const body = message.data.message || message.data.body || '';
+                console.log('[WS DEBUG] Calling electronPushNotificationService.showNotification:', { title, body, dataKeys: Object.keys(message.data) });
                 // Electron: Show native system notification
                 // Pass the complete notification data for proper navigation
                 electronPushNotificationService.showNotification(
-                  message.data.title || 'Tachyon Messenger',
-                  message.data.message || message.data.body || '',
+                  title,
+                  body,
                   message.data // Pass full data object including type, chat_id, task_id, etc.
                 );
               } else {
@@ -797,10 +802,12 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
                 inAppNotificationStore.showNotification(message.data);
               }
             } catch (error) {
-              console.error('[WS] Error showing notification:', error);
+              console.error('[WS DEBUG] Error showing notification:', error);
               // Fallback to in-app notification if Electron notification fails
               inAppNotificationStore.showNotification(message.data);
             }
+          } else {
+            console.warn('[WS DEBUG] notification:new received but message.data is empty');
           }
           break;
 
@@ -810,6 +817,20 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             const notifStore = useNotificationStore.getState();
             // Replace the updated notification in the local list
             notifStore.handleNotificationUpdate(message.data);
+
+            // Electron: Also show native notification for grouped updates
+            // (on iOS/Android this is handled by FCM push, but Electron has no FCM)
+            if (isElectron()) {
+              try {
+                electronPushNotificationService.showNotification(
+                  message.data.title || 'Tachyon Messenger',
+                  message.data.message || message.data.body || '',
+                  message.data
+                );
+              } catch (error) {
+                console.error('[WS] Error showing Electron notification for update:', error);
+              }
+            }
           }
           break;
 
