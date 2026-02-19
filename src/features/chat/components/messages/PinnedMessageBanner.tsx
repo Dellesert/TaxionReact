@@ -10,7 +10,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { Message } from '../../types/chat.types';
-import { getFileIcon } from '../../utils/file.utils';
+import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 import Avatar from '@shared/components/common/Avatar';
@@ -202,7 +202,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
 
       // Для остальных файлов — иконка и имя файла
       const icon = getFileIcon(mt, attachment.file_name);
-      let fileName = attachment.file_name;
+      let fileName = decodeFileName(attachment.file_name);
       if (fileName.length > 30) {
         const ext = fileName.split('.').pop();
         const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));

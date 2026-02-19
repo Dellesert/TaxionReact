@@ -49,6 +49,7 @@ interface MessageItemProps {
   isVisible?: boolean; // Добавляем флаг видимости для ленивой загрузки
   searchQuery?: string; // Поисковый запрос для подсветки текста
   onMediaViewerOpen?: (attachmentId: number) => void; // Открытие глобального просмотра медиа (по всем вложениям чата)
+  onThreadPress?: (messageId: number) => void; // Открытие треда (комментарии к посту в канале)
 }
 
 /**
@@ -82,6 +83,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   isVisible = true, // По умолчанию видим
   searchQuery,
   onMediaViewerOpen,
+  onThreadPress,
 }) => {
   const { theme } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
@@ -375,6 +377,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             isSavedChat={isSavedChat}
             isForwarded={isForwarded}
             searchQuery={searchQuery}
+            onThreadPress={onThreadPress}
+            isChannel={chatType === 'channel'}
           />
           {/* Heart animation overlay */}
           <Animated.View
@@ -590,6 +594,8 @@ export default React.memo(MessageItem, (prevProps, nextProps) => {
     prevProps.isSelected !== nextProps.isSelected ||
     prevProps.isSavedChat !== nextProps.isSavedChat ||
     prevProps.searchQuery !== nextProps.searchQuery ||
+    // Thread reply count (для обновления бейджа комментариев)
+    prevProps.message.thread_reply_count !== nextProps.message.thread_reply_count ||
     // Оптимистичные обновления - проверяем статус отправки и прогресс загрузки
     (prevProps.message as any).sending !== (nextProps.message as any).sending ||
     (prevProps.message as any).failed !== (nextProps.message as any).failed ||

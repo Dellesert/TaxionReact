@@ -514,6 +514,14 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  const handleThreadPress = useCallback((messageId: number) => {
+    navigation.navigate('Thread', {
+      chatId: chatIdNum,
+      messageId,
+      chatName,
+    });
+  }, [chatIdNum, chatName, navigation]);
+
   const handleReplyPressWithHighlight = (messageId: number) => {
     scrollToMessage(messageId, setHighlightedMessageId);
   };
@@ -801,6 +809,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         activeSearchQuery={isSearchVisible && searchQuery ? searchQuery : undefined}
         onMediaViewerOpen={handleMediaViewerOpen}
         onCancelUpload={handleCancelUpload}
+        onThreadPress={chat?.type === 'channel' ? handleThreadPress : undefined}
       />
 
       <ChatModals

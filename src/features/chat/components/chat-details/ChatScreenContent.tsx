@@ -111,6 +111,7 @@ interface ChatScreenContentProps {
   activeSearchQuery?: string;
   onMediaViewerOpen?: (attachmentId: number) => void;
   onCancelUpload?: (messageId: number) => void;
+  onThreadPress?: (messageId: number) => void;
 }
 
 export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
@@ -192,6 +193,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   activeSearchQuery,
   onMediaViewerOpen,
   onCancelUpload,
+  onThreadPress,
 }) => {
   const { isDark, theme } = useTheme();
 
@@ -290,6 +292,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
           searchQuery={activeSearchQuery}
           onMediaViewerOpen={onMediaViewerOpen}
           onCancelUpload={onCancelUpload}
+          onThreadPress={onThreadPress}
         />
 
         {Platform.OS === 'ios' && (

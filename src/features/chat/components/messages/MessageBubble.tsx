@@ -12,6 +12,7 @@ import { MessageStatus } from '../common/MessageStatus';
 import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName, isVideoFile, isImageFile, replaceLocalhostWithIP } from '../../utils/message.utils';
 import { FormattedText } from '../common/FormattedText';
 import { stripFormatting } from '../../utils/formatting';
+import { decodeFileName } from '../../utils/file.utils';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import { MessageReactions } from './MessageReactions';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
@@ -28,6 +29,14 @@ function isSingleEmoji(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length === 0 || trimmed.length > 20) return false;
   return SINGLE_EMOJI_REGEX.test(trimmed);
+}
+
+function getCommentsLabel(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'комментарий';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'комментария';
+  return 'комментариев';
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -338,7 +347,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                       const isImage = isImageFile(mt);
                       const isVideo = isVideoFile(mt);
                       const count = message.reply_to.attachments.length;
-                      const label = isVideo ? 'Видео' : isImage ? 'Фото' : att.file_name;
+                      const label = isVideo ? 'Видео' : isImage ? 'Фото' : decodeFileName(att.file_name);
                       const extra = count > 1 ? ` и ещё ${count - 1}` : '';
                       return (
                         <>
@@ -518,9 +527,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         >
           <Ionicons name="chatbubble-outline" size={16} color={theme.primary} style={{ marginRight: 6 }} />
           <Text style={[styles.threadBadgeText, { color: theme.primary }]}>
-            {message.thread_reply_count && message.thread_reply_count > 0
-              ? `${message.thread_reply_count} комментариев`
-              : 'Комментировать'}
+            {`${message.thread_reply_count || 0} ${getCommentsLabel(message.thread_reply_count || 0)}`}
           </Text>
         </TouchableOpacity>
       )}

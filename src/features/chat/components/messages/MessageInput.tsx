@@ -17,6 +17,7 @@ import { AutoCorrectedTextInput, AutoCorrectedTextInputRef } from '@shared/compo
 import { FormattingToolbar, FormatMarker, FormatButtonType } from './FormattingToolbar';
 import { stripFormatting } from '../../utils/formatting';
 import { isImageFile, isVideoFile } from '../../utils/message.utils';
+import { decodeFileName } from '../../utils/file.utils';
 import {
   parseFormatting,
   preProcessEscapes,
@@ -550,7 +551,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                     const isImage = isImageFile(mt);
                     const isVideo = isVideoFile(mt);
                     const count = replyingToMessage.attachments.length;
-                    const label = isVideo ? 'Видео' : isImage ? 'Фото' : att.file_name;
+                    const label = isVideo ? 'Видео' : isImage ? 'Фото' : decodeFileName(att.file_name);
                     const extra = count > 1 ? ` и ещё ${count - 1}` : '';
                     return (
                       <>
