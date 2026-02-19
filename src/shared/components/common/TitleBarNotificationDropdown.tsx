@@ -23,6 +23,7 @@ import { DesktopNavigationParams } from '@shared/contexts/DesktopNavigationConte
 import NotificationItem from '@shared/components/common/NotificationItem';
 import { Notification } from '../../../types/notification.types';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationStore } from '@shared/store/animationStore';
 import {
   getNavigationScreenByType,
   getNavigationParams,
@@ -46,6 +47,7 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
   desktopNavigateToTab,
 }) => {
   const { theme } = useTheme();
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
@@ -65,34 +67,44 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
   useEffect(() => {
     if (visible) {
       loadNotifications();
-      // Анимация появления
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 100,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      if (reduceAnimations) {
+        fadeAnim.setValue(1);
+        scaleAnim.setValue(1);
+      } else {
+        // Анимация появления
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            tension: 100,
+            friction: 8,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
     } else {
-      // Анимация исчезновения
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 0.95,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      if (reduceAnimations) {
+        fadeAnim.setValue(0);
+        scaleAnim.setValue(0.95);
+      } else {
+        // Анимация исчезновения
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 0.95,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
     }
   }, [visible]);
 
