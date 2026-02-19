@@ -1192,32 +1192,55 @@ export const useChatStore = create<ChatState>()(
         }
       }
 
-      // Optimistic update
-      if (chatId !== undefined) {
-        set((state) => ({
-          messages: {
+      const newReaction = {
+        id: Date.now(),
+        message_id: messageId,
+        user_id: userId,
+        user: currentUser || undefined,
+        emoji,
+        created_at: new Date().toISOString(),
+      };
+
+      // Optimistic update for messages and threadMessages
+      set((state) => {
+        const updates: any = {};
+
+        // Update messages
+        if (chatId !== undefined) {
+          updates.messages = {
             ...state.messages,
             [chatId!]: (state.messages[chatId!] || []).map((msg) => {
               if (msg.id === messageId) {
                 const exists = msg.reactions?.some(r => r.emoji === emoji && r.user_id === userId);
                 if (exists) return msg;
-                return {
-                  ...msg,
-                  reactions: [...(msg.reactions || []), {
-                    id: Date.now(),
-                    message_id: messageId,
-                    user_id: userId,
-                    user: currentUser || undefined,
-                    emoji,
-                    created_at: new Date().toISOString(),
-                  }],
-                };
+                return { ...msg, reactions: [...(msg.reactions || []), newReaction] };
               }
               return msg;
             }),
-          },
-        }));
-      }
+          };
+        }
+
+        // Update threadMessages
+        const updatedThreadMessages = { ...state.threadMessages };
+        let threadUpdated = false;
+        for (const [rootId, msgs] of Object.entries(updatedThreadMessages)) {
+          const idx = msgs.findIndex(m => m.id === messageId);
+          if (idx !== -1) {
+            const msg = msgs[idx];
+            const exists = msg.reactions?.some(r => r.emoji === emoji && r.user_id === userId);
+            if (!exists) {
+              updatedThreadMessages[Number(rootId)] = msgs.map((m, i) =>
+                i === idx ? { ...m, reactions: [...(m.reactions || []), newReaction] } : m
+              );
+              threadUpdated = true;
+            }
+            break;
+          }
+        }
+        if (threadUpdated) updates.threadMessages = updatedThreadMessages;
+
+        return updates;
+      });
 
       await chatApi.addReaction(messageId, { emoji });
     } catch (error: any) {
@@ -1240,10 +1263,13 @@ export const useChatStore = create<ChatState>()(
         }
       }
 
-      // Optimistic update
-      if (chatId !== undefined) {
-        set((state) => ({
-          messages: {
+      // Optimistic update for messages and threadMessages
+      set((state) => {
+        const updates: any = {};
+
+        // Update messages
+        if (chatId !== undefined) {
+          updates.messages = {
             ...state.messages,
             [chatId!]: (state.messages[chatId!] || []).map((msg) => {
               if (msg.id === messageId) {
@@ -1256,9 +1282,26 @@ export const useChatStore = create<ChatState>()(
               }
               return msg;
             }),
-          },
-        }));
-      }
+          };
+        }
+
+        // Update threadMessages
+        const updatedThreadMessages = { ...state.threadMessages };
+        let threadUpdated = false;
+        for (const [rootId, msgs] of Object.entries(updatedThreadMessages)) {
+          const idx = msgs.findIndex(m => m.id === messageId);
+          if (idx !== -1) {
+            updatedThreadMessages[Number(rootId)] = msgs.map((m, i) =>
+              i === idx ? { ...m, reactions: (m.reactions || []).filter((r) => !(r.emoji === emoji && r.user_id === userId)) } : m
+            );
+            threadUpdated = true;
+            break;
+          }
+        }
+        if (threadUpdated) updates.threadMessages = updatedThreadMessages;
+
+        return updates;
+      });
 
       await chatApi.removeReaction(messageId, emoji);
     } catch (error: any) {
@@ -2184,46 +2227,40 @@ export const useChatStore = create<ChatState>()(
   },
 
   handleReaction: (chatId: number, messageId: number, emoji: string, userId?: number, action?: string, user?: any) => {
-    // Update reactions array in message
-    set((state) => ({
-      messages: {
-        ...state.messages,
-        [chatId]: (state.messages[chatId] || []).map((msg) => {
-          if (msg.id === messageId) {
-            if (action === 'removed') {
-              return {
-                ...msg,
-                reactions: msg.reactions.filter(
-                  (r) => !(r.emoji === emoji && r.user_id === userId)
-                ),
-              };
-            }
-            // Default: add reaction
-            const existingReaction = msg.reactions.find(
-              (r) => r.emoji === emoji && r.user_id === userId
-            );
-            if (existingReaction) {
-              return msg; // Reaction already exists
-            }
-            return {
-              ...msg,
-              reactions: [
-                ...msg.reactions,
-                {
-                  id: Date.now(), // temporary ID
-                  message_id: messageId,
-                  user_id: userId || 0,
-                  user: user || undefined,
-                  emoji,
-                  created_at: new Date().toISOString(),
-                },
-              ],
-            };
-          }
-          return msg;
-        }),
-      },
-    }));
+    const applyReaction = (msg: Message): Message => {
+      if (msg.id !== messageId) return msg;
+      if (action === 'removed') {
+        return { ...msg, reactions: msg.reactions.filter((r) => !(r.emoji === emoji && r.user_id === userId)) };
+      }
+      if (msg.reactions.find((r) => r.emoji === emoji && r.user_id === userId)) return msg;
+      return {
+        ...msg,
+        reactions: [...msg.reactions, { id: Date.now(), message_id: messageId, user_id: userId || 0, user: user || undefined, emoji, created_at: new Date().toISOString() }],
+      };
+    };
+
+    set((state) => {
+      const updates: any = {
+        messages: {
+          ...state.messages,
+          [chatId]: (state.messages[chatId] || []).map(applyReaction),
+        },
+      };
+
+      // Also update threadMessages
+      const updatedThreadMessages = { ...state.threadMessages };
+      let threadUpdated = false;
+      for (const [rootId, msgs] of Object.entries(updatedThreadMessages)) {
+        if (msgs.some(m => m.id === messageId)) {
+          updatedThreadMessages[Number(rootId)] = msgs.map(applyReaction);
+          threadUpdated = true;
+          break;
+        }
+      }
+      if (threadUpdated) updates.threadMessages = updatedThreadMessages;
+
+      return updates;
+    });
   },
 
   clearError: () => {

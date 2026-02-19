@@ -4,12 +4,15 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, Keyboard, Platform } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, Keyboard, Platform, Dimensions } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming } from 'react-native-reanimated';
+import RNAnimated from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ChatStackParamList } from '@navigation/types';
 import { Message } from '../types/chat.types';
@@ -17,6 +20,7 @@ import { getThreadMessages } from '../api/chat.api';
 import * as chatApi from '../api/chat.api';
 import { MessageBubble } from '../components/messages/MessageBubble';
 import { MessageInput } from '../components/messages/MessageInput';
+import { MessageContextMenu } from '../components/modals/MessageContextMenu';
 import { useAuthStore } from '@shared/store/authStore';
 import { useChatStore } from '@shared/store/chatStore';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -55,6 +59,8 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   const storeThreadMessages = useChatStore((s) => s.threadMessages[messageId]);
   const setThreadMessages = useChatStore((s) => s.setThreadMessages);
   const clearThreadMessages = useChatStore((s) => s.clearThreadMessages);
+  const addReaction = useChatStore((s) => s.addReaction);
+  const removeReaction = useChatStore((s) => s.removeReaction);
 
   const [rootMessage, setRootMessage] = useState<Message | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +69,21 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   const [totalCount, setTotalCount] = useState(0);
   const [isPostExpanded, setIsPostExpanded] = useState(false);
   const [isPostTruncated, setIsPostTruncated] = useState(false);
+
+  // Context menu state
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+
+  // Reaction animation
+  const [animatedEmoji, setAnimatedEmoji] = useState('👍');
+  const heartScale = useSharedValue(0);
+  const heartOpacity = useSharedValue(0);
+  const heartAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartScale.value }],
+    opacity: heartOpacity.value,
+  }));
+  const [animatingMessageId, setAnimatingMessageId] = useState<number | null>(null);
 
   // Comments derived from store (updated by both API loads and WS events)
   const comments = storeThreadMessages || [];
@@ -232,6 +253,89 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     }
   }, [chatId, messageId]);
 
+  // --- Reaction handlers (mirrored from MessageItem.tsx) ---
+
+  const messageBubbleRefs = useRef<Record<number, View | null>>({});
+
+  const handleToggleReaction = useCallback((msgId: number, emoji: string) => {
+    if (!currentUserId) return;
+    const msg = comments.find(m => m.id === msgId);
+    const hasReacted = msg?.reactions?.some(r => r.emoji === emoji && r.user_id === currentUserId);
+    if (hasReacted) {
+      removeReaction(msgId, emoji);
+    } else {
+      addReaction(msgId, emoji);
+      // Animate
+      setAnimatedEmoji(emoji);
+      setAnimatingMessageId(msgId);
+      heartScale.value = 0;
+      heartOpacity.value = 1;
+      heartScale.value = withSpring(1, { damping: 8, stiffness: 200 });
+      heartOpacity.value = withDelay(400, withTiming(0, { duration: 300 }));
+    }
+  }, [comments, currentUserId, addReaction, removeReaction, heartScale, heartOpacity]);
+
+  const handleDoubleTap = useCallback((msgId: number) => {
+    const msg = comments.find(m => m.id === msgId);
+    if (msg?.is_deleted) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    handleToggleReaction(msgId, '👍');
+  }, [comments, handleToggleReaction]);
+
+  const handleLongPress = useCallback((msgId: number) => {
+    const msg = comments.find(m => m.id === msgId);
+    if (!msg) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const ref = messageBubbleRefs.current[msgId];
+    if (ref) {
+      ref.measureInWindow((x, y, width, height) => {
+        const screenWidth = Dimensions.get('window').width;
+        const screenHeight = Dimensions.get('window').height;
+        const menuWidth = 250;
+        const menuHeight = 510;
+        const minTopMargin = 160;
+        const minBottomMargin = 20;
+        const isOwn = msg.sender_id === currentUserId;
+
+        const left = isOwn ? screenWidth - menuWidth - 20 : 20;
+        const messageVisibleTop = Math.max(y, minTopMargin);
+        let top = messageVisibleTop;
+        if (top + menuHeight > screenHeight - minBottomMargin) {
+          if (messageVisibleTop - menuHeight >= minTopMargin) {
+            top = messageVisibleTop - menuHeight;
+          } else {
+            top = Math.max(minTopMargin, screenHeight - menuHeight - minBottomMargin);
+          }
+        }
+        top = Math.max(minTopMargin, Math.min(top, screenHeight - menuHeight - minBottomMargin));
+
+        setMenuPosition({ top, left });
+        setSelectedMessage(msg);
+        setShowContextMenu(true);
+      });
+    }
+  }, [comments, currentUserId]);
+
+  const handleRightClick = useCallback((msgId: number, position: { x: number; y: number }) => {
+    const msg = comments.find(m => m.id === msgId);
+    if (!msg) return;
+    const screenWidth = Dimensions.get('window').width;
+    const screenHeight = Dimensions.get('window').height;
+    const menuWidth = 250;
+    const menuHeight = 510;
+
+    let left = position.x;
+    let top = position.y;
+    if (left + menuWidth > screenWidth) left = screenWidth - menuWidth - 20;
+    if (top + menuHeight > screenHeight - 20) top = screenHeight - menuHeight - 20;
+    top = Math.max(20, top);
+    left = Math.max(10, left);
+
+    setMenuPosition({ top, left });
+    setSelectedMessage(msg);
+    setShowContextMenu(true);
+  }, [comments]);
+
   // Render list header: root message (post) + "Начало обсуждения" divider
   const renderListHeader = () => {
     return (
@@ -316,6 +420,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   // Render comment item
   const renderComment = useCallback(({ item }: { item: Message }) => {
     const isOwn = item.sender_id === currentUserId;
+    const msgId = item.id;
 
     return (
       <View style={[styles.commentRow, isOwn && styles.commentRowOwn]}>
@@ -329,7 +434,10 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
             style={styles.commentAvatar}
           />
         )}
-        <View style={[styles.commentItem, isOwn && styles.commentItemOwn]}>
+        <View
+          ref={(node) => { messageBubbleRefs.current[msgId] = node; }}
+          style={[styles.commentItem, isOwn && styles.commentItemOwn, { position: 'relative' }]}
+        >
           <MessageBubble
             message={item}
             isOwnMessage={isOwn}
@@ -339,11 +447,24 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
             imageUrls={[]}
             currentUserId={currentUserId}
             onImagePress={() => {}}
+            onReactionPress={(emoji) => handleToggleReaction(msgId, emoji)}
+            onLongPress={Platform.OS === 'web' ? undefined : () => handleLongPress(msgId)}
+            onRightClick={(position) => handleRightClick(msgId, position)}
+            onDoubleTap={() => handleDoubleTap(msgId)}
           />
+          {/* Reaction animation overlay */}
+          {animatingMessageId === msgId && (
+            <RNAnimated.View
+              pointerEvents="none"
+              style={[styles.heartOverlay, heartAnimStyle]}
+            >
+              <Text style={styles.heartEmoji}>{animatedEmoji}</Text>
+            </RNAnimated.View>
+          )}
         </View>
       </View>
     );
-  }, [currentUserId]);
+  }, [currentUserId, handleToggleReaction, handleDoubleTap, handleLongPress, handleRightClick, animatingMessageId, animatedEmoji, heartAnimStyle]);
 
   if (isLoading) {
     return (
@@ -443,6 +564,25 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
             {inputContent}
           </View>
         </Animated.View>
+      )}
+
+      {/* Context menu for reactions */}
+      {selectedMessage && (
+        <MessageContextMenu
+          visible={showContextMenu}
+          message={selectedMessage}
+          menuPosition={menuPosition}
+          isOwnMessage={selectedMessage.sender_id === currentUserId}
+          isAdmin={false}
+          isForwardedMessage={false}
+          chatType="channel"
+          onClose={() => {
+            setShowContextMenu(false);
+            setSelectedMessage(null);
+          }}
+          onReaction={(emoji) => handleToggleReaction(selectedMessage.id, emoji)}
+          currentUserId={currentUserId}
+        />
       )}
     </View>
   );
@@ -587,6 +727,18 @@ const styles = StyleSheet.create({
   expandButtonText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  heartOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heartEmoji: {
+    fontSize: 48,
   },
 });
 
