@@ -964,24 +964,36 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     setIsSaving(true);
     let localUri: string | null = null;
     try {
-      localUri = await downloadFileLocally(currentItem.url, isVideo);
-      if (!localUri) {
-        Alert.alert('Ошибка', `Не удалось загрузить ${isVideo ? 'видео' : 'изображение'}`);
-        return;
-      }
-
       if (isElectron()) {
+        // Electron: download via main process cache, then show native save dialog
+        const electronAPI = getElectronAPI();
+        const headers: Record<string, string> = {};
+        if (sessionId) headers['X-Session-ID'] = sessionId;
+
+        // Check cache first, then download
+        let filePath = await electronAPI.cache.get(currentItem.url);
+        if (!filePath) {
+          filePath = await electronAPI.cache.download(currentItem.url, headers);
+        }
+        if (!filePath) {
+          Alert.alert('Ошибка', `Не удалось загрузить ${isVideo ? 'видео' : 'изображение'}`);
+          return;
+        }
+
         const ext = isVideo ? 'mp4' : 'jpg';
         const filename = `${isVideo ? 'video' : 'image'}_${Date.now()}.${ext}`;
-        const electronAPI = getElectronAPI();
-        // Convert file:// URI to filesystem path for Electron
-        const filePath = localUri.startsWith('file://') ? localUri.replace('file://', '') : localUri;
         const result = await electronAPI.ipc.invoke('file:save', filePath, filename);
         if (result?.error) {
           Alert.alert('Ошибка', `Не удалось сохранить файл`);
         }
       } else {
-        // Android - save to media library
+        // Android - download locally, then save to media library
+        localUri = await downloadFileLocally(currentItem.url, isVideo);
+        if (!localUri) {
+          Alert.alert('Ошибка', `Не удалось загрузить ${isVideo ? 'видео' : 'изображение'}`);
+          return;
+        }
+
         const { status } = await MediaLibrary.requestPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Ошибка', 'Необходимо разрешение для сохранения в галерею');
