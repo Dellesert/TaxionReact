@@ -175,6 +175,11 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     ]).start(() => setShowGroupPicker(false));
   }, [groupPickerOverlayAnim, groupPickerSlideAnim]);
 
+  const [showMorningStartPicker, setShowMorningStartPicker] = useState(false);
+  const [showMorningEndPicker, setShowMorningEndPicker] = useState(false);
+  const [showEveningStartPicker, setShowEveningStartPicker] = useState(false);
+  const [showEveningEndPicker, setShowEveningEndPicker] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
@@ -304,21 +309,17 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     }
   };
 
-  const formatTimeInput = (value: string): string => {
-    const cleaned = value.replace(/[^\d:]/g, '');
-    if (cleaned.length === 2 && !cleaned.includes(':')) {
-      return cleaned + ':';
-    }
-    const match = cleaned.match(/^(\d{0,2}):?(\d{0,2})/);
-    if (match) {
-      const [, hours, minutes] = match;
-      if (hours && minutes) {
-        return `${hours}:${minutes}`;
-      } else if (hours) {
-        return cleaned.includes(':') ? `${hours}:` : hours;
-      }
-    }
-    return cleaned.slice(0, 5);
+  const parseTimeToDate = (timeStr: string): Date => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours || 0, minutes || 0, 0, 0);
+    return date;
+  };
+
+  const formatDateToTime = (date: Date): string => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   const handleSave = async () => {
@@ -638,25 +639,19 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                             <Text style={[styles.shiftLabel, { color: theme.text }]}>Утренняя смена</Text>
                           </View>
                           <View style={styles.timeInputGroup}>
-                            <TextInput
-                              style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-                              placeholder="08:00"
-                              placeholderTextColor={theme.inputPlaceholder}
-                              value={morningStart}
-                              onChangeText={(text) => setMorningStart(formatTimeInput(text))}
-                              keyboardType="numeric"
-                              maxLength={5}
-                            />
+                            <TouchableOpacity
+                              style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                              onPress={() => setShowMorningStartPicker(true)}
+                            >
+                              <Text style={[styles.timeInputText, { color: theme.text }]}>{morningStart}</Text>
+                            </TouchableOpacity>
                             <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
-                            <TextInput
-                              style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-                              placeholder="14:00"
-                              placeholderTextColor={theme.inputPlaceholder}
-                              value={morningEnd}
-                              onChangeText={(text) => setMorningEnd(formatTimeInput(text))}
-                              keyboardType="numeric"
-                              maxLength={5}
-                            />
+                            <TouchableOpacity
+                              style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                              onPress={() => setShowMorningEndPicker(true)}
+                            >
+                              <Text style={[styles.timeInputText, { color: theme.text }]}>{morningEnd}</Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
 
@@ -666,25 +661,19 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                             <Text style={[styles.shiftLabel, { color: theme.text }]}>Вечерняя смена</Text>
                           </View>
                           <View style={styles.timeInputGroup}>
-                            <TextInput
-                              style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-                              placeholder="14:00"
-                              placeholderTextColor={theme.inputPlaceholder}
-                              value={eveningStart}
-                              onChangeText={(text) => setEveningStart(formatTimeInput(text))}
-                              keyboardType="numeric"
-                              maxLength={5}
-                            />
+                            <TouchableOpacity
+                              style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                              onPress={() => setShowEveningStartPicker(true)}
+                            >
+                              <Text style={[styles.timeInputText, { color: theme.text }]}>{eveningStart}</Text>
+                            </TouchableOpacity>
                             <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
-                            <TextInput
-                              style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, color: theme.text }]}
-                              placeholder="20:00"
-                              placeholderTextColor={theme.inputPlaceholder}
-                              value={eveningEnd}
-                              onChangeText={(text) => setEveningEnd(formatTimeInput(text))}
-                              keyboardType="numeric"
-                              maxLength={5}
-                            />
+                            <TouchableOpacity
+                              style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                              onPress={() => setShowEveningEndPicker(true)}
+                            >
+                              <Text style={[styles.timeInputText, { color: theme.text }]}>{eveningEnd}</Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
                       </View>
@@ -1095,6 +1084,52 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
             />
           )}
 
+          {/* Time Pickers */}
+          {showMorningStartPicker && (
+            <DatePickerModal
+              visible={showMorningStartPicker}
+              value={parseTimeToDate(morningStart)}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) setMorningStart(formatDateToTime(selectedDate));
+              }}
+              onClose={() => setShowMorningStartPicker(false)}
+              mode="time"
+            />
+          )}
+          {showMorningEndPicker && (
+            <DatePickerModal
+              visible={showMorningEndPicker}
+              value={parseTimeToDate(morningEnd)}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) setMorningEnd(formatDateToTime(selectedDate));
+              }}
+              onClose={() => setShowMorningEndPicker(false)}
+              mode="time"
+            />
+          )}
+          {showEveningStartPicker && (
+            <DatePickerModal
+              visible={showEveningStartPicker}
+              value={parseTimeToDate(eveningStart)}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) setEveningStart(formatDateToTime(selectedDate));
+              }}
+              onClose={() => setShowEveningStartPicker(false)}
+              mode="time"
+            />
+          )}
+          {showEveningEndPicker && (
+            <DatePickerModal
+              visible={showEveningEndPicker}
+              value={parseTimeToDate(eveningEnd)}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) setEveningEnd(formatDateToTime(selectedDate));
+              }}
+              onClose={() => setShowEveningEndPicker(false)}
+              mode="time"
+            />
+          )}
+
           {/* User Selector Modals */}
           <UserSelectorModal
             visible={showViewerSelector}
@@ -1365,12 +1400,16 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     flex: 1,
-    fontSize: 16,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    textAlign: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  timeInputText: {
+    fontSize: 16,
+    textAlign: 'center' as const,
   },
   timeSeparator: {
     fontSize: 16,

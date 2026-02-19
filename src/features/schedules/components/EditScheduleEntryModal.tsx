@@ -7,7 +7,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
@@ -102,6 +101,8 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -383,27 +384,17 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
     }
   };
 
-  const formatTimeInput = (value: string): string => {
-    // Remove non-numeric characters except ':'
-    const cleaned = value.replace(/[^\d:]/g, '');
+  const parseTimeToDate = (timeStr: string): Date => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours || 0, minutes || 0, 0, 0);
+    return date;
+  };
 
-    // Auto-format as HH:MM
-    if (cleaned.length === 2 && !cleaned.includes(':')) {
-      return cleaned + ':';
-    }
-
-    // Limit to HH:MM format
-    const match = cleaned.match(/^(\d{0,2}):?(\d{0,2})/);
-    if (match) {
-      const [, hours, minutes] = match;
-      if (hours && minutes) {
-        return `${hours}:${minutes}`;
-      } else if (hours) {
-        return cleaned.includes(':') ? `${hours}:` : hours;
-      }
-    }
-
-    return cleaned.slice(0, 5);
+  const formatDateToTime = (date: Date): string => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   if (!schedule) return null;
@@ -607,28 +598,26 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
                     <View style={styles.timeRow}>
                       <View style={styles.timeInputWrapper}>
                         <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>Начало</Text>
-                        <TextInput
-                          style={[styles.timeInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                          placeholder="10:00"
-                          placeholderTextColor={theme.inputPlaceholder}
-                          value={startTime}
-                          onChangeText={(text) => setStartTime(formatTimeInput(text))}
-                          keyboardType="numeric"
-                          maxLength={5}
-                        />
+                        <TouchableOpacity
+                          style={[styles.timeInput, { backgroundColor: theme.card, borderColor: theme.border }]}
+                          onPress={() => setShowStartTimePicker(true)}
+                        >
+                          <Text style={[styles.timeInputText, { color: startTime ? theme.text : theme.inputPlaceholder }]}>
+                            {startTime || '10:00'}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                       <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
                       <View style={styles.timeInputWrapper}>
                         <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>Конец</Text>
-                        <TextInput
-                          style={[styles.timeInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                          placeholder="18:00"
-                          placeholderTextColor={theme.inputPlaceholder}
-                          value={endTime}
-                          onChangeText={(text) => setEndTime(formatTimeInput(text))}
-                          keyboardType="numeric"
-                          maxLength={5}
-                        />
+                        <TouchableOpacity
+                          style={[styles.timeInput, { backgroundColor: theme.card, borderColor: theme.border }]}
+                          onPress={() => setShowEndTimePicker(true)}
+                        >
+                          <Text style={[styles.timeInputText, { color: endTime ? theme.text : theme.inputPlaceholder }]}>
+                            {endTime || '18:00'}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
                   </View>
@@ -721,6 +710,34 @@ export const EditScheduleEntryModal: React.FC<EditScheduleEntryModalProps> = ({
               minimumDate={schedule ? parseISO(schedule.start_date) : undefined}
               maximumDate={schedule ? parseISO(schedule.end_date) : undefined}
               mode="date"
+            />
+          )}
+
+          {/* Time Pickers */}
+          {showStartTimePicker && (
+            <DatePickerModal
+              visible={showStartTimePicker}
+              value={parseTimeToDate(startTime || '10:00')}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) {
+                  setStartTime(formatDateToTime(selectedDate));
+                }
+              }}
+              onClose={() => setShowStartTimePicker(false)}
+              mode="time"
+            />
+          )}
+          {showEndTimePicker && (
+            <DatePickerModal
+              visible={showEndTimePicker}
+              value={parseTimeToDate(endTime || '18:00')}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) {
+                  setEndTime(formatDateToTime(selectedDate));
+                }
+              }}
+              onClose={() => setShowEndTimePicker(false)}
+              mode="time"
             />
           )}
         </View>
@@ -895,12 +912,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   timeInput: {
-    fontSize: 15,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    textAlign: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  timeInputText: {
+    fontSize: 15,
+    textAlign: 'center' as const,
   },
   timeSeparator: {
     fontSize: 16,
