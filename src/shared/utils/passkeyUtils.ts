@@ -61,7 +61,7 @@ export async function isPasskeySupported(): Promise<boolean> {
     // На мобильных используем react-native-passkey
     try {
       // Проверяем что библиотека доступна
-      if (!Passkey || typeof Passkey.isSupported !== 'function') {
+      if (!Passkey || !Passkey.isSupported) {
         console.warn('react-native-passkey not properly configured');
         return false;
       }
