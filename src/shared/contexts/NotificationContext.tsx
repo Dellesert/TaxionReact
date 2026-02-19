@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import Toast, { ToastType, ToastProps } from '@shared/components/ui/Toast';
 import { ApiError } from '@types/common.types';
 import { formatApiError, extractRequestId } from '@shared/utils/errorUtils';
@@ -133,7 +133,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           {notifications.map((notification, index) => (
             <View
               key={notification.id}
-              style={[styles.toastWrapper, { bottom: (isDesktop ? 1 : 100) + index * 90 }]}
+              style={[styles.toastWrapper, { bottom: (isDesktop ? 1 : Platform.OS === 'android' ? 140 : 100) + index * 90 }]}
             >
               <Toast
                 {...notification}
