@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationStore } from '@shared/store/animationStore';
 import { Message } from '../../types/chat.types';
 import { User } from '../../../../types/user.types';
 import { MessageAttachments } from '../attachments/MessageAttachments';
@@ -100,6 +101,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   isChannel = false,
 }) => {
   const { theme } = useTheme();
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
 
   // Высота блока ответа — для абсолютного позиционирования (чтобы reply не расширял пузырь)
   const [replyHeight, setReplyHeight] = useState(50);
@@ -209,12 +211,16 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
 
   useEffect(() => {
     if (isMediaHighlight) {
-      highlightProgress.value = withSequence(
-        withTiming(1, { duration: 250 }),
-        withTiming(0.2, { duration: 250 }),
-        withTiming(0.8, { duration: 200 }),
-        withTiming(0, { duration: 500 }),
-      );
+      if (reduceAnimations) {
+        highlightProgress.value = 0;
+      } else {
+        highlightProgress.value = withSequence(
+          withTiming(1, { duration: 250 }),
+          withTiming(0.2, { duration: 250 }),
+          withTiming(0.8, { duration: 200 }),
+          withTiming(0, { duration: 500 }),
+        );
+      }
     } else {
       highlightProgress.value = 0;
     }

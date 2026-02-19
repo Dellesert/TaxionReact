@@ -318,6 +318,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const translateX = useSharedValue(0);
   const baseTranslateX = useSharedValue(0);
   const currentIndexShared = useSharedValue(initialIndex);
+  const reduceAnimationsShared = useSharedValue(reduceAnimations);
 
   // Shared values for image zoom
   const scale = useSharedValue(1);
@@ -361,14 +362,14 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
     autoHideTimerRef.current = setTimeout(() => {
       setControlsVisible(false);
-      controlsOpacity.value = withTiming(0, { duration: 300 });
+      controlsOpacity.value = reduceAnimations ? 0 : withTiming(0, { duration: 300 });
     }, 3000);
-  }, []);
+  }, [reduceAnimations]);
 
   const showControls = useCallback(() => {
     setControlsVisible(true);
-    controlsOpacity.value = withTiming(1, { duration: 200 });
-  }, []);
+    controlsOpacity.value = reduceAnimations ? 1 : withTiming(1, { duration: 200 });
+  }, [reduceAnimations]);
 
   // Cleanup web blob URL to avoid memory leaks
   const cleanupWebBlobUrl = () => {
@@ -624,8 +625,9 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const goToNext = () => {
     if (currentIndex < mediaItems.length - 1) {
       const newIndex = currentIndex + 1;
-      translateX.value = withTiming(-newIndex * screenWidth, { duration: 250 });
-      baseTranslateX.value = -newIndex * screenWidth;
+      const target = -newIndex * screenWidth;
+      translateX.value = reduceAnimations ? target : withTiming(target, { duration: 250 });
+      baseTranslateX.value = target;
       updateIndex(newIndex);
     }
   };
@@ -633,8 +635,9 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const goToPrevious = () => {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
-      translateX.value = withTiming(-newIndex * screenWidth, { duration: 250 });
-      baseTranslateX.value = -newIndex * screenWidth;
+      const target = -newIndex * screenWidth;
+      translateX.value = reduceAnimations ? target : withTiming(target, { duration: 250 });
+      baseTranslateX.value = target;
       updateIndex(newIndex);
     }
   };
@@ -642,8 +645,9 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const snapToIndex = (index: number) => {
     'worklet';
     const clampedIndex = clamp(index, 0, mediaItems.length - 1);
-    translateX.value = withTiming(-clampedIndex * screenWidth, { duration: 250 });
-    baseTranslateX.value = -clampedIndex * screenWidth;
+    const target = -clampedIndex * screenWidth;
+    translateX.value = reduceAnimationsShared.value ? target : withTiming(target, { duration: 250 });
+    baseTranslateX.value = target;
     runOnJS(updateIndex)(clampedIndex);
   };
 
@@ -651,7 +655,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const toggleControls = () => {
     const newVisible = !controlsVisible;
     setControlsVisible(newVisible);
-    controlsOpacity.value = withTiming(newVisible ? 1 : 0, { duration: 200 });
+    controlsOpacity.value = reduceAnimations ? (newVisible ? 1 : 0) : withTiming(newVisible ? 1 : 0, { duration: 200 });
   };
 
   // Handle media click (for web/Electron platforms)
@@ -773,16 +777,16 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             if (newIndex !== currentIndex) {
               snapToIndex(newIndex);
             } else {
-              translateX.value = withTiming(baseTranslateX.value, { duration: 200 });
+              translateX.value = reduceAnimationsShared.value ? baseTranslateX.value : withTiming(baseTranslateX.value, { duration: 200 });
             }
           } else {
-            translateX.value = withTiming(baseTranslateX.value, { duration: 200 });
+            translateX.value = reduceAnimationsShared.value ? baseTranslateX.value : withTiming(baseTranslateX.value, { duration: 200 });
           }
         } else if (swipeDownY.value > 100) {
           runOnJS(handleClose)();
         } else {
-          swipeDownY.value = withTiming(0, { duration: 200 });
-          swipeDownOpacity.value = withTiming(1);
+          swipeDownY.value = reduceAnimationsShared.value ? 0 : withTiming(0, { duration: 200 });
+          swipeDownOpacity.value = reduceAnimationsShared.value ? 1 : withTiming(1);
         }
       }
     });

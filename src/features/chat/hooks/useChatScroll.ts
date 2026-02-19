@@ -2,16 +2,14 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { FlatList, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useChatStore } from '@shared/store/chatStore';
+import { useAnimationStore } from '@shared/store/animationStore';
 import { getDateLabel } from '@shared/utils/dateHelpers';
 
-// Флаг для отключения анимаций скролла на Android
-// Android Go и бюджетные устройства плохо справляются с JS-анимациями scrollToIndex
-// Можно переключить на true для тестирования или через настройки
-let reduceScrollAnimations = Platform.OS === 'android';
-
-// Экспортируем функцию для настройки (можно вызвать из настроек приложения)
-export const setReduceScrollAnimations = (value: boolean) => {
-  reduceScrollAnimations = value;
+// Флаг для отключения анимаций скролла на Android (по умолчанию)
+// или через настройку "Уменьшить анимации" на любой платформе
+const getReduceScrollAnimations = () => {
+  const storeValue = useAnimationStore.getState().reduceAnimations;
+  return storeValue || Platform.OS === 'android';
 };
 
 /**
@@ -646,7 +644,7 @@ export const useChatScroll = (
               // Для inverted FlatList с contentInset на iOS: низ = -keyboardHeight
               listRef.current.scrollToOffset({
                 offset: getBottomOffset(),
-                animated: true,
+                animated: !getReduceScrollAnimations(),
               });
             }
           }, 100);
@@ -805,7 +803,7 @@ export const useChatScroll = (
 
         listRef.current?.scrollToIndex({
           index: actualFirstUnreadIndex,
-          animated: true,
+          animated: !getReduceScrollAnimations(),
           viewPosition: 0.5,
           viewOffset: -30,
         });
@@ -817,7 +815,7 @@ export const useChatScroll = (
         }, 1500); // 1.5 секунды защиты чтобы handleScroll не скрыл плашку
       } else {
         // Нет непрочитанных - скроллим в самый низ
-        listRef.current?.scrollToOffset({ offset: getBottomOffset(), animated: true });
+        listRef.current?.scrollToOffset({ offset: getBottomOffset(), animated: !getReduceScrollAnimations() });
 
         // Финализация после анимации
         setTimeout(() => {
@@ -845,7 +843,7 @@ export const useChatScroll = (
       // viewOffset: -30 сдвигает чуть выше чтобы плашка "Новые сообщения" была видна
       listRef.current?.scrollToIndex({
         index: firstNewMessageIndex,
-        animated: true,
+        animated: !getReduceScrollAnimations(),
         viewPosition: 0.5,
         viewOffset: -30,
       });
@@ -865,7 +863,7 @@ export const useChatScroll = (
 
       listRef.current?.scrollToIndex({
         index: firstUnreadIndex,
-        animated: true,
+        animated: !getReduceScrollAnimations(),
         viewPosition: 0.5,
         viewOffset: -30,
       });
@@ -877,7 +875,7 @@ export const useChatScroll = (
       // Просто скроллим в самый низ (для inverted FlatList с contentInset на iOS: низ = -keyboardHeight)
       listRef.current?.scrollToOffset({
         offset: getBottomOffset(),
-        animated: true,
+        animated: !getReduceScrollAnimations(),
       });
       setHasReachedBottom(true);
       setUserScrolledToBottom(true);
@@ -911,7 +909,7 @@ export const useChatScroll = (
     // СЛУЧАЙ 1: Сообщение уже в текущем массиве
     if (messageIndex !== -1) {
       // На Android - без анимации для производительности
-      scrollAndHighlight(messageIndex, !reduceScrollAnimations);
+      scrollAndHighlight(messageIndex, !getReduceScrollAnimations());
       return;
     }
 
@@ -966,13 +964,13 @@ export const useChatScroll = (
 
       if (targetIndex !== -1) {
         // Небольшая задержка для стабилизации FlatList после замены массива
-        const stabilizationDelay = Platform.OS === 'ios' ? 100 : (reduceScrollAnimations ? 30 : 80);
+        const stabilizationDelay = Platform.OS === 'ios' ? 100 : (getReduceScrollAnimations() ? 30 : 80);
         await new Promise<void>(resolve => setTimeout(resolve, stabilizationDelay));
 
         if (!isAnimatingToPin.current) return;
 
         // Скроллим к цели с подсветкой
-        scrollAndHighlight(targetIndex, !reduceScrollAnimations);
+        scrollAndHighlight(targetIndex, !getReduceScrollAnimations());
       } else {
         console.error('[handleReplyPress] Target not found after jump');
       }
