@@ -593,19 +593,6 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         const fileIcon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
         const decodedFileName = decodeFileName(attachment.file_name);
 
-        // Debug logging for iOS
-        if (Platform.OS === 'ios') {
-          console.log(`📄 [iOS] File attachment #${index}:`, {
-            id: attachment.id,
-            raw_file_name: attachment.file_name,
-            decoded_file_name: decodedFileName,
-            file_size: attachment.file_size,
-            mime_type: attachment.mime_type,
-            has_file_name: !!attachment.file_name,
-            file_name_length: attachment.file_name?.length || 0,
-          });
-        }
-
         return (
           <TouchableOpacity
             key={attachment.id || index}

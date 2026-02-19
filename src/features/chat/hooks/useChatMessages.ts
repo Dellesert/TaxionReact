@@ -44,17 +44,6 @@ export const useChatMessages = (
     const key = messages.map(m =>
       `${m.id}-${m.read_by?.length || 0}-${m.read_receipts?.length || 0}-${m.delivered_to?.length || 0}`
     ).join(',');
-    // DEBUG: Логируем изменения messagesKey для отладки read status
-    // В обратном массиве [новые → старые]: первые 3 = самые новые
-    if (__DEV__) {
-      console.log('[useChatMessages] messagesKey updated, newest 3 messages status:',
-        messages.slice(0, 3).map(m => ({
-          id: m.id,
-          read_by: m.read_by?.length || 0,
-          read_receipts: m.read_receipts?.length || 0
-        }))
-      );
-    }
     return key;
   }, [messages]);
 

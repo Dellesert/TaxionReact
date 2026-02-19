@@ -70,15 +70,6 @@ const CreateChatScreen: React.FC<CreateChatScreenProps> = ({ route: routeProp, n
   const [chatName, setChatName] = useState('');
   const onChatCreated = route?.params?.onChatCreated;
 
-  console.log('🎯 CreateChatScreen rendered with:', {
-    hasRouteProp: !!routeProp,
-    hasNavigationProp: !!navigationProp,
-    routeParams: route?.params,
-    initialChatType: route?.params?.initialChatType,
-    hasOnChatCreated: !!onChatCreated,
-    onChatCreatedType: typeof onChatCreated,
-  });
-
   // Custom Hooks
   const { filteredUsers, isLoading, searchQuery, setSearchQuery } = useCreateChatData();
 

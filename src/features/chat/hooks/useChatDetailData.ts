@@ -55,12 +55,10 @@ export const useChatDetailData = (chatId: number): UseChatDetailDataReturn => {
     }
 
     // Join chat room when component mounts
-    console.log(`🔵 Joining chat room ${chatId}`);
     websocketService.joinChat(chatId);
 
     // Leave chat room when component unmounts
     return () => {
-      console.log(`🔴 Leaving chat room ${chatId}`);
       websocketService.leaveChat(chatId);
       // Clear typing indicators to prevent stale "typing..." state
       clearTypingUsers(chatId);

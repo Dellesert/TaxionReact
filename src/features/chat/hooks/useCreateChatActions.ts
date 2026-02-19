@@ -107,16 +107,11 @@ export const useCreateChatActions = (
           throw new Error('Сервер вернул невалидный ID чата');
         }
 
-        console.log('✅ Chat created successfully:', newChat);
-        console.log('🔍 onChatCreated callback exists:', !!onChatCreated);
-
         // If custom callback provided (desktop mode), use it
         if (onChatCreated) {
-          console.log('📱 Desktop mode: using onChatCreated callback');
           onChatCreated(newChat);
         } else {
           // Otherwise, navigate normally (mobile mode)
-          console.log('📱 Mobile mode: navigating to chat');
           navigation.replace('Chat', {
             chatId: newChat.id,
             chatName: newChat.name,

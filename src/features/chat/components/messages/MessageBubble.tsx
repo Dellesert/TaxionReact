@@ -112,11 +112,6 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     }
   }, [message.reply_to?.attachments]);
 
-  // DEBUG: проверяем link_preview в компоненте
-  if (message.link_preview || (message as any).link_preview) {
-    console.log('🔗 [DEBUG] MessageBubble link_preview:', message.link_preview, 'raw:', JSON.stringify((message as any).link_preview));
-  }
-
   // ⚠️ ВАЖНО: Фильтруем контент удалённых сообщений!
   // Бэкенд больше НЕ фильтрует контент в WebSocket
   const displayContent = getDisplayContent(message, currentUserId);

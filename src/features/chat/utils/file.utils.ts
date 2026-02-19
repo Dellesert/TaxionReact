@@ -52,7 +52,6 @@ export const decodeFileName = (fileName: string): string => {
   try {
     return decodeURIComponent(fileName);
   } catch (e) {
-    console.log('Failed to decode filename:', fileName);
     return fileName;
   }
 };

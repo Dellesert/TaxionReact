@@ -241,7 +241,6 @@ export const useChatScroll = (
     // Период охлаждения - после завершения анимации игнорируем изменения некоторое время
     // Но при этом принудительно возвращаем к целевой позиции если она сбилась
     if (scrollCooldownUntil.current > now) {
-      console.log('[ScrollToBottom] Cooldown active, forcing scroll to target');
       scrollToTarget(false);
       return;
     }
@@ -251,11 +250,8 @@ export const useChatScroll = (
     if (scrollAnimationPhase.current === 'done') return;
 
     const elapsed = now - scrollToBottomStartTime.current;
-    console.log('[ScrollToBottom] messagesKey changed, phase:', scrollAnimationPhase.current, 'elapsed:', elapsed, 'targetIndex:', scrollTargetIndex.current);
-
     // Таймаут - форсируем финальный скролл без анимации
     if (elapsed > SCROLL_ANIMATION_MAX_DURATION) {
-      console.log('[ScrollToBottom] Timeout reached, forcing final scroll');
       const wasScrollingToUnread = scrollTargetIndex.current !== null;
       scrollToTarget(false);
       isScrollToBottomAnimating.current = false;
@@ -286,7 +282,6 @@ export const useChatScroll = (
       if (!isScrollToBottomAnimating.current) return;
 
       if (scrollAnimationPhase.current === 'waiting') {
-        console.log('[ScrollToBottom] Stabilized! Starting animated scroll, targetIndex:', scrollTargetIndex.current);
         // messagesKey стабилен 200мс - запускаем плавную анимацию
         scrollAnimationPhase.current = 'animating';
 
@@ -299,7 +294,6 @@ export const useChatScroll = (
 
         // Через 400мс (время анимации iOS) - финализируем
         setTimeout(() => {
-          console.log('[ScrollToBottom] Animation complete, finalizing');
           const wasScrollingToUnread = scrollTargetIndex.current !== null;
           // Гарантируем финальную позицию (на случай прерывания анимации re-render'ом)
           scrollToTarget(false);
@@ -720,7 +714,6 @@ export const useChatScroll = (
     // Это важно потому что в jump context загружен только частичный массив,
     // и новые сообщения от WebSocket могут не отображаться корректно
     const wasInJumpContext = isInJumpContext.current;
-    console.log('[ScrollToBottom] handleScrollToBottom called, wasInJumpContext:', wasInJumpContext);
     if (wasInJumpContext) {
       // Сбрасываем флаги jump context
       isInJumpContext.current = false;
@@ -786,12 +779,8 @@ export const useChatScroll = (
         }
       }
 
-      console.log('[ScrollToBottom] After loadMessages - actualFirstUnreadIndex:', actualFirstUnreadIndex, 'actualUnreadCount:', actualUnreadCount);
-
       // Если есть непрочитанные - скроллим к плашке непрочитанных
       if (actualFirstUnreadIndex !== -1 && actualUnreadCount >= 1) {
-        console.log('[ScrollToBottom] Scrolling to unread banner at index:', actualFirstUnreadIndex);
-
         isScrollingToUnread.current = true;
 
         // ВАЖНО: Сбрасываем флаги чтобы useEffect в ChatScreen не скрыл плашку
@@ -825,12 +814,9 @@ export const useChatScroll = (
         setTimeout(() => {
           isScrollingToUnread.current = false;
           // Не сбрасываем showScrollToBottom - кнопка остаётся видимой
-          console.log('[ScrollToBottom] Animation to unread complete');
         }, 1500); // 1.5 секунды защиты чтобы handleScroll не скрыл плашку
       } else {
         // Нет непрочитанных - скроллим в самый низ
-        console.log('[ScrollToBottom] No unread, scrolling to offset 0 (bottom)');
-
         listRef.current?.scrollToOffset({ offset: getBottomOffset(), animated: true });
 
         // Финализация после анимации
@@ -842,7 +828,6 @@ export const useChatScroll = (
           setNewMessagesCount(0);
           setFirstNewMessageIndex(-1);
           setShowScrollToBottom(false);
-          console.log('[ScrollToBottom] Animation complete, finalized at bottom');
         }, 400);
       }
 

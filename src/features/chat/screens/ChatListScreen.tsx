@@ -160,25 +160,12 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
           const hasNewMessage = currentLastMessage?.id !== lastMessageId;
           const userSentMessage = currentLastMessage?.sender_id === currentUser.id;
 
-          console.log('🔍 Smart scroll check:', {
-            chatId: id,
-            oldMessageId: lastMessageId,
-            newMessageId: currentLastMessage?.id,
-            messageAuthor: currentLastMessage?.sender_id,
-            currentUserId: currentUser.id,
-            hasNewMessage,
-            userSentMessage,
-          });
-
           // Only scroll if user sent a new message
           if (hasNewMessage && userSentMessage) {
-            console.log('✅ User sent message - scrolling to top');
             // Small delay to let chat list reorder, then smooth scroll
             setTimeout(() => {
               chatListRef.current?.scrollToTop();
             }, 100);
-          } else {
-            console.log('⏭️ No new message from user - preserving scroll position');
           }
 
           // Reset the tracking
@@ -255,12 +242,6 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
           id: chat.id,
           lastMessageId: chat.last_message?.id || null,
         };
-
-        console.log('💾 Saved chat state for smart scroll:', {
-          chatId: chat.id,
-          chatName: chat.name,
-          lastMessageId: chat.last_message?.id,
-        });
 
         // Desktop mode: call onChatSelect callback
         if (isDesktopMode && onChatSelect) {
@@ -495,7 +476,6 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
           onClose={() => setShowCreateChatModal(false)}
           initialChatType={createChatType}
           onChatCreated={(chat) => {
-            console.log('🎯 ChatListScreen: onChatCreated called with:', chat);
             // Close modal and select the new chat in split view
             setShowCreateChatModal(false);
             selectChat(chat.id, chat.name || '', 0);

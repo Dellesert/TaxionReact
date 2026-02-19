@@ -69,11 +69,11 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 if (screen === 'ChatList') {
                   onClose();
                 } else {
-                  console.log('🚫 Navigation blocked in desktop modal');
+                  // Navigation blocked in desktop modal
                 }
               },
               replace: () => {
-                console.log('🚫 Navigation.replace blocked in desktop modal');
+                // Navigation.replace blocked in desktop modal
               },
               setOptions: () => {},
             } as any}

@@ -460,9 +460,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         onClose={() => setShowProfileModal(false)}
         onOpenChat={async (userId) => {
           try {
-            console.log('💬 Opening chat with user:', userId);
             const chat = await getOrCreateDirectChat(userId);
-            console.log('✅ Got chat:', chat.id);
             setShowProfileModal(false);
             navigation.navigate('Chat', {
               chatId: chat.id,
@@ -476,12 +474,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         }}
         onAddToFavorites={(userId) => {
           // TODO: Add to favorites
-          console.log('Add to favorites:', userId);
           showError('Функция добавления в избранное будет реализована позже');
         }}
         onBlock={(userId) => {
           // TODO: Block user
-          console.log('Block user:', userId);
           showError('Функция блокировки будет реализована позже');
         }}
       />

@@ -420,7 +420,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation, onThreadPress: 
         await connectWebSocket();
 
         // Join chat room for presence tracking
-        console.log(`🔵 Joining chat room ${chatIdNum}`);
         websocketService.joinChat(chatIdNum);
       } catch (error) {
         console.error(`Failed to initialize chat ${chatIdNum}:`, error);
@@ -447,7 +446,6 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation, onThreadPress: 
       }
       setActiveChat(null);
       // Leave chat room when component unmounts
-      console.log(`🔴 Leaving chat room ${chatIdNum}`);
       websocketService.leaveChat(chatIdNum);
     };
   }, [chatIdNum, connectWebSocket]); // Значительно уменьшен массив зависимостей!

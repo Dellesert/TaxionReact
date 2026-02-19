@@ -111,13 +111,6 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
     const actualMessage = sortedMessages[actualIndex] || sortedMessages[0];
     const messageIdToScrollTo = actualMessage.id;
 
-    console.log('[PinnedBanner] Press:', {
-      actualIndex,
-      messageIdToScrollTo,
-      sortedMessagesIds: sortedMessages.map(m => m.id),
-      currentIndexRef: currentIndexRef.current,
-    });
-
     // Устанавливаем флаг блокировки
     isScrolling.current = true;
 

@@ -78,8 +78,6 @@ export const useSelectionMode = () => {
 
         const result = await bulkForwardMessages(messageIds, targetChatId);
 
-        console.log(`✅ Forwarded ${result.total_forwarded} messages, ${result.total_failed} failed`);
-
         handleCloseForwardModal();
         handleExitSelectionMode();
 

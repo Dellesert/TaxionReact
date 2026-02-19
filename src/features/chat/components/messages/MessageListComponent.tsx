@@ -422,8 +422,6 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
         onScrollToIndexFailed={(info: any) => {
           // ✅ ОПТИМИЗАЦИЯ: Минимальный fallback - просто логируем для отладки
           // Основную логику плавного скролла обрабатывает handleReplyPress
-          console.log('📍 ScrollToIndexFailed:', info.index, 'out of', messageListItems.length);
-
           // Простой fallback: скроллим к приблизительной позиции
           const wait = new Promise((resolve) => setTimeout(resolve, 50));
           wait.then(() => {

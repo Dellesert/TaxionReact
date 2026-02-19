@@ -142,8 +142,6 @@ export const useChatActions = (chatId: number) => {
     const currentPendingFiles = pendingVideoFilesRef.current;
     const currentSelectedFileIds = selectedFileIdsRef.current;
 
-    console.log(`[ChatActions] handleSendMessage: pendingFiles=${currentPendingFiles.length}, selectedFileIds=${currentSelectedFileIds.length}, content="${content.substring(0, 30)}"`);
-
     if (!content.trim() && currentSelectedFileIds.length === 0 && currentPendingFiles.length === 0) {
       setError({ error: 'Message content or files are required' });
       return;
