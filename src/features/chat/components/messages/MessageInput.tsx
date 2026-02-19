@@ -675,7 +675,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       )}
 
       <View style={[styles.container, dynamicStyles.container]}>
-        {onFilesSelected && !editingMessage && (
+        {onFilesSelected && !editingMessage ? (
           <FileAttachmentPicker
             onFilesSelected={onFilesSelected}
             onPendingVideoFiles={onPendingVideoFiles}
@@ -683,12 +683,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             currentAttachmentCount={selectedFileIds.length + pendingVideoFiles.length}
             onProcessingChange={setAttachmentsProcessing}
           />
-        )}
-        {(!onFilesSelected || editingMessage) && (
+        ) : editingMessage ? (
           <TouchableOpacity style={[styles.attachButton, dynamicStyles.attachButton]} disabled={true}>
             <Ionicons name="attach" size={26} color={theme.textTertiary} />
           </TouchableOpacity>
-        )}
+        ) : null}
 
         <View style={styles.inputWrapper}>
           <AutoCorrectedTextInput
