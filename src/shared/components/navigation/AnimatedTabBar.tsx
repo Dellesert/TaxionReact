@@ -36,8 +36,8 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
     const routeIndex = currentRoute.state?.index;
     const routeName = routeIndex !== undefined ? currentRoute.state?.routes?.[routeIndex]?.name : undefined;
 
-    // Скрываем tab bar на экранах Chat и ChatSettings
-    if (routeName === 'Chat' || routeName === 'ChatSettings') {
+    // Скрываем tab bar на экранах Chat, ChatSettings и Thread
+    if (routeName === 'Chat' || routeName === 'ChatSettings' || routeName === 'Thread') {
       Animated.timing(translateY, {
         toValue: hideDistance,
         duration: 250,
