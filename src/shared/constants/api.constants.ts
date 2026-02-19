@@ -52,6 +52,7 @@ export const API_ENDPOINTS = {
     PROFILE_BY_ID: (id: number) => `/profile/${id}`,
     UPDATE_PASSWORD: '/profile/password',
     UPDATE_STATUS: '/profile/status',
+    DELETE_SELF: '/profile',
     // User list (доступен всем авторизованным пользователям)
     LIST: '/users',
     BY_ID: (id: number) => `/users/${id}`,

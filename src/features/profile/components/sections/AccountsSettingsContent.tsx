@@ -3,7 +3,7 @@
  * Desktop-контент для управления аккаунтами в Profile Split View.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useAccountStore } from '@shared/store/accountStore';
 import { Avatar } from '@shared/components/common/Avatar';
 import { SavedAccount } from '@/types/account.types';
+import { ConfirmDialog } from '@shared/components/common/ConfirmDialog';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import * as accountManager from '@services/accountManager';
@@ -38,9 +39,33 @@ const AccountsSettingsContent: React.FC = () => {
     quickSwitch,
     secureSwitch,
     removeAccount,
+    deleteOwnAccount,
   } = useAccountStore();
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accountToRemove, setAccountToRemove] = useState<SavedAccount | null>(null);
+
   const otherAccounts = savedAccounts.filter(a => a.userId !== currentUser?.id);
+
+  const handleDeleteOwnAccount = useCallback(() => {
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const confirmDeleteOwnAccount = useCallback(async () => {
+    setShowDeleteConfirm(false);
+    await deleteOwnAccount();
+  }, [deleteOwnAccount]);
+
+  const handleRemoveAccount = useCallback((account: SavedAccount) => {
+    setAccountToRemove(account);
+  }, []);
+
+  const confirmRemoveAccount = useCallback(async () => {
+    if (accountToRemove) {
+      await removeAccount(accountToRemove.userId);
+      setAccountToRemove(null);
+    }
+  }, [accountToRemove, removeAccount]);
 
   const handleAddAccount = useCallback(async () => {
     const user = useAuthStore.getState().user;
@@ -132,9 +157,19 @@ const AccountsSettingsContent: React.FC = () => {
                  currentUser.role === 'super_admin' ? 'Суперадмин' : 'Сотрудник'}
               </Text>
             </View>
-            <View style={[styles.activeBadge, { backgroundColor: theme.primary + '20' }]}>
-              <View style={[styles.activeDot, { backgroundColor: theme.primary }]} />
-              <Text style={[styles.activeBadgeText, { color: theme.primary }]}>Активен</Text>
+            <View style={styles.currentAccountActions}>
+              <View style={[styles.activeBadge, { backgroundColor: theme.primary + '20' }]}>
+                <View style={[styles.activeDot, { backgroundColor: theme.primary }]} />
+                <Text style={[styles.activeBadgeText, { color: theme.primary }]}>Активен</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.deleteOwnBtn, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
+                onPress={handleDeleteOwnAccount}
+                disabled={isSwitching}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -235,7 +270,7 @@ const AccountsSettingsContent: React.FC = () => {
                 )}
                 <TouchableOpacity
                   style={[styles.removeBtn, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
-                  onPress={() => removeAccount(account.userId)}
+                  onPress={() => handleRemoveAccount(account)}
                   disabled={isSwitching}
                   activeOpacity={0.7}
                 >
@@ -266,6 +301,28 @@ const AccountsSettingsContent: React.FC = () => {
           Переключение с выходом уничтожает текущую сессию — потребуется повторный ввод пароля.
         </Text>
       </View>
+
+      <ConfirmDialog
+        visible={showDeleteConfirm}
+        title="Удалить аккаунт"
+        message="Вы уверены, что хотите полностью удалить свой аккаунт? Это действие необратимо."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmDeleteOwnAccount}
+        onCancel={() => setShowDeleteConfirm(false)}
+        destructive
+      />
+
+      <ConfirmDialog
+        visible={!!accountToRemove}
+        title="Удалить сохранённый аккаунт"
+        message={`Удалить аккаунт ${accountToRemove?.name || accountToRemove?.email || ''} из списка сохранённых?`}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmRemoveAccount}
+        onCancel={() => setAccountToRemove(null)}
+        destructive
+      />
     </View>
   );
 };
@@ -322,6 +379,17 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 12,
     marginTop: 3,
+  },
+  currentAccountActions: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  deleteOwnBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   activeBadge: {
     flexDirection: 'row',

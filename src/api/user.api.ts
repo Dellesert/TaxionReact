@@ -61,6 +61,13 @@ export const updateProfile = async (data: UpdateProfileDto): Promise<User> => {
 };
 
 /**
+ * Delete own account (self-delete)
+ */
+export const deleteSelfAccount = async (): Promise<void> => {
+  await api.delete(API_ENDPOINTS.USER.DELETE_SELF);
+};
+
+/**
  * Update password
  */
 export const updatePassword = async (data: UpdatePasswordDto): Promise<void> => {

@@ -5,7 +5,7 @@
  * quick switch / secure switch, кнопку добавления и выхода.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,8 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useAccountStore } from '@shared/store/accountStore';
 import { Avatar } from '@shared/components/common/Avatar';
 import { SavedAccount } from '@/types/account.types';
+import { ConfirmDialog } from '@shared/components/common/ConfirmDialog';
+import { ActionModal } from '@shared/components/common/ActionModal';
 
 interface AccountSwitcherModalProps {
   visible: boolean;
@@ -43,8 +45,13 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
     quickSwitch,
     secureSwitch,
     removeAccount,
+    deleteOwnAccount,
     loadAccounts,
   } = useAccountStore();
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accountToRemove, setAccountToRemove] = useState<SavedAccount | null>(null);
+  const [showLogoutOptions, setShowLogoutOptions] = useState(false);
 
   const otherAccounts = savedAccounts.filter(a => a.userId !== currentUser?.id);
 
@@ -70,13 +77,41 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
     onClose();
   };
 
-  const handleRemove = async (account: SavedAccount) => {
-    await removeAccount(account.userId);
+  const handleRemove = (account: SavedAccount) => {
+    setAccountToRemove(account);
   };
 
-  const handleLogout = async () => {
+  const confirmRemoveAccount = async () => {
+    if (accountToRemove) {
+      await removeAccount(accountToRemove.userId);
+      setAccountToRemove(null);
+    }
+  };
+
+  const handleDeleteOwnAccount = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteOwnAccount = async () => {
+    setShowDeleteConfirm(false);
+    onClose();
+    await deleteOwnAccount();
+  };
+
+  const handleLogoutPress = () => {
+    setShowLogoutOptions(true);
+  };
+
+  const handleFullLogout = async () => {
+    setShowLogoutOptions(false);
     onClose();
     await logout();
+  };
+
+  const handleGoToLogin = () => {
+    setShowLogoutOptions(false);
+    onClose();
+    onAddAccount();
   };
 
   const handleAddAccount = () => {
@@ -171,10 +206,20 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
                       </Text>
                     )}
                   </View>
-                  <View style={[styles.currentBadge, { backgroundColor: theme.primary + '20' }]}>
-                    <Text style={[styles.currentBadgeText, { color: theme.primary }]}>
-                      Текущий
-                    </Text>
+                  <View style={styles.currentAccountActions}>
+                    <View style={[styles.currentBadge, { backgroundColor: theme.primary + '20' }]}>
+                      <Text style={[styles.currentBadgeText, { color: theme.primary }]}>
+                        Текущий
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.deleteOwnButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                      onPress={handleDeleteOwnAccount}
+                      disabled={isSwitching}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -264,7 +309,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
             {/* Logout */}
             <TouchableOpacity
               style={styles.logoutButton}
-              onPress={handleLogout}
+              onPress={handleLogoutPress}
               disabled={isSwitching}
               activeOpacity={0.7}
             >
@@ -285,6 +330,54 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           </ScrollView>
         </View>
       </Pressable>
+
+      <ConfirmDialog
+        visible={showDeleteConfirm}
+        title="Удалить аккаунт"
+        message="Вы уверены, что хотите полностью удалить свой аккаунт? Это действие необратимо."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmDeleteOwnAccount}
+        onCancel={() => setShowDeleteConfirm(false)}
+        destructive
+      />
+
+      <ConfirmDialog
+        visible={!!accountToRemove}
+        title="Удалить сохранённый аккаунт"
+        message={`Удалить аккаунт ${accountToRemove?.name || accountToRemove?.email || ''} из списка сохранённых?`}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmRemoveAccount}
+        onCancel={() => setAccountToRemove(null)}
+        destructive
+      />
+
+      <ActionModal
+        visible={showLogoutOptions}
+        title="Выход"
+        message="Выберите способ выхода из аккаунта"
+        actions={[
+          {
+            text: 'Сменить аккаунт',
+            icon: 'swap-horizontal-outline',
+            style: 'primary',
+            onPress: handleGoToLogin,
+          },
+          {
+            text: 'Выйти полностью',
+            icon: 'log-out-outline',
+            style: 'destructive',
+            onPress: handleFullLogout,
+          },
+          {
+            text: 'Отмена',
+            style: 'cancel',
+            onPress: () => setShowLogoutOptions(false),
+          },
+        ]}
+        onDismiss={() => setShowLogoutOptions(false)}
+      />
     </Modal>
   );
 };
@@ -345,6 +438,17 @@ const styles = StyleSheet.create({
   currentAccountEmail: {
     fontSize: 13,
     marginTop: 2,
+  },
+  currentAccountActions: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  deleteOwnButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   currentBadge: {
     paddingHorizontal: 8,

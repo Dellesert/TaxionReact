@@ -34,6 +34,7 @@ interface AccountStoreState {
   secureSwitch: (userId: number) => Promise<void>;
   addCurrentAccount: () => Promise<void>;
   removeAccount: (userId: number) => Promise<void>;
+  deleteOwnAccount: () => Promise<void>;
   clearSwitchError: () => void;
 }
 
@@ -278,6 +279,50 @@ export const useAccountStore = create<AccountStoreState>((set, get) => ({
     }
     await accountManager.removeAccount(userId);
     await get().loadAccounts();
+  },
+
+  /**
+   * Удалить свой аккаунт полностью (с сервера).
+   */
+  deleteOwnAccount: async () => {
+    try {
+      set({ isSwitching: true, switchError: null });
+
+      const currentUser = useAuthStore.getState().user;
+
+      // 1. Удалить аккаунт на сервере
+      await userApi.deleteSelfAccount();
+
+      // 2. Отключить WebSocket
+      websocketService.disconnect();
+
+      // 3. Удалить из сохранённых аккаунтов
+      if (currentUser) {
+        await accountManager.removeAccount(currentUser.id);
+      }
+
+      // 4. Очистить все кеши и stores
+      await clearAllInMemoryStores();
+
+      // 5. Очистить auth данные
+      await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
+      await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+
+      useAuthStore.setState({
+        user: null,
+        sessionId: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+
+      // 6. Обновить список аккаунтов
+      await get().loadAccounts();
+      set({ isSwitching: false });
+    } catch (error: any) {
+      console.error('[AccountStore] Delete own account failed:', error);
+      set({ isSwitching: false, switchError: error.message || 'Delete failed' });
+    }
   },
 
   clearSwitchError: () => set({ switchError: null }),
