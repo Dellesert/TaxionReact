@@ -1,4 +1,4 @@
-import type { Chat, Message } from '../types/chat.types';
+import type { Chat, Message, TypingAction } from '../types/chat.types';
 
 /**
  * Check if user can delete selected messages for everyone
@@ -52,36 +52,53 @@ export const isUserAdmin = (role: string): boolean => {
   return role === 'owner' || role === 'admin';
 };
 
+export interface TypingUserInfo {
+  name: string;
+  action: TypingAction | undefined;
+}
+
 /**
  * Get typing user names for display
  */
 export const getTypingUserNames = (
-  typingUsers: Array<{ user_id: number; user?: { name?: string; email?: string } }>,
+  typingUsers: Array<{ user_id: number; user?: { name?: string; email?: string }; action?: TypingAction }>,
   currentUserId: number | undefined
-): string[] => {
+): TypingUserInfo[] => {
   return typingUsers
     .filter((t) => t.user_id !== currentUserId)
-    .map((t) => t.user?.name || t.user?.email?.split('@')[0] || `User ${t.user_id}`);
+    .map((t) => ({
+      name: t.user?.name || t.user?.email?.split('@')[0] || `User ${t.user_id}`,
+      action: t.action,
+    }));
+};
+
+const ACTION_LABELS: Record<string, { single: string; plural: string }> = {
+  typing: { single: 'печатает...', plural: 'печатают...' },
+  uploading_photo: { single: 'отправляет фото...', plural: 'отправляют фото...' },
+  uploading_video: { single: 'отправляет видео...', plural: 'отправляют видео...' },
 };
 
 /**
  * Format typing text for header
  */
 export const formatTypingText = (
-  typingUserNames: string[],
+  typingUserNames: TypingUserInfo[],
   isPrivateChat: boolean
 ): string => {
   if (typingUserNames.length === 0) return '';
 
+  const action = typingUserNames[0].action || 'typing';
+  const labels = ACTION_LABELS[action] || ACTION_LABELS.typing;
+
   if (isPrivateChat) {
-    return 'печатает...';
+    return labels.single;
   }
 
   if (typingUserNames.length === 1) {
-    return `${typingUserNames[0]} печатает...`;
+    return `${typingUserNames[0].name} ${labels.single}`;
   }
 
-  return `${typingUserNames[0]} и ещё ${typingUserNames.length - 1} печатают...`;
+  return `${typingUserNames[0].name} и ещё ${typingUserNames.length - 1} ${labels.plural}`;
 };
 
 /**

@@ -8,14 +8,14 @@ import {
   getPersonalChatCompanion,
   getUserStatusText,
 } from '../utils/chatUtils';
-import { formatTypingText, getMembersText } from '../utils/chatScreenHelpers';
+import { formatTypingText, getMembersText, TypingUserInfo } from '../utils/chatScreenHelpers';
 
 interface UseChatNavigationProps {
   chatId: number;
   chatName: string | undefined;
   chat: Chat | null | undefined;
   currentUserId: number | undefined;
-  typingUserNames: string[];
+  typingUserNames: TypingUserInfo[];
   isConnected: boolean;
   onSearchPress?: () => void;
 }

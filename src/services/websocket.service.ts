@@ -237,12 +237,13 @@ class WebSocketService {
 
   /**
    * Send typing indicator
+   * @param action - 'typing' | 'uploading_photo' | 'uploading_video'
    */
-  sendTyping(chatId: number, isTyping: boolean): void {
+  sendTyping(chatId: number, isTyping: boolean, action?: string): void {
     this.send({
       type: 'typing',
       chat_id: chatId,
-      data: { is_typing: isTyping },
+      data: { is_typing: isTyping, ...(action && action !== 'typing' ? { action } : {}) },
     });
   }
 

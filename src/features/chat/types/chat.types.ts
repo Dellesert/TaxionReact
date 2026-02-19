@@ -316,10 +316,13 @@ export interface ChatListFilters {
 }
 
 // Typing Indicator
+export type TypingAction = 'typing' | 'uploading_photo' | 'uploading_video';
+
 export interface TypingIndicator {
   chat_id: number;
   user_id: number;
   user?: User;
+  action?: TypingAction;
   timestamp: number;
 }
 

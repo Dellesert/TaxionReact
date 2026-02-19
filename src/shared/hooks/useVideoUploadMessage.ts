@@ -9,6 +9,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { Message, PendingVideoFile } from '@/features/chat/types/chat.types';
 import { fileApi } from '@api/fileApi';
 import * as chatApi from '@/features/chat/api/chat.api';
+import { websocketService } from '@services/websocket.service';
 
 // Счётчик для генерации временных ID (отрицательные, чтобы не конфликтовать с серверными)
 let videoTempIdCounter = -1000;
@@ -45,6 +46,8 @@ export const useVideoUploadMessage = (chatId: number) => {
   const xhrRefsRef = useRef<Map<number, XMLHttpRequest>>(new Map());
   // Множество отменённых загрузок — чтобы не отправлять сообщение после завершения XHR
   const cancelledUploadsRef = useRef<Set<number>>(new Set());
+  // Интервалы повторной отправки typing-индикатора при загрузке (чтобы не исчез по таймауту 5 сек)
+  const typingIntervalsRef = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
 
   /**
    * Обновить прогресс загрузки на оптимистичном сообщении
@@ -263,6 +266,11 @@ export const useVideoUploadMessage = (chatId: number) => {
       clearInterval(trickle);
       trickleIntervalsRef.current.delete(tempId);
     }
+    const typingInterval = typingIntervalsRef.current.get(tempId);
+    if (typingInterval) {
+      clearInterval(typingInterval);
+      typingIntervalsRef.current.delete(tempId);
+    }
     realProgressRef.current.delete(tempId);
     trickleProgressRef.current.delete(tempId);
   }, []);
@@ -381,6 +389,15 @@ export const useVideoUploadMessage = (chatId: number) => {
     // 3. Добавляем в store (мгновенный UI)
     addToStore(optimisticMessage);
 
+    // 3.5. Отправляем индикатор "отправляет фото/видео" и повторяем каждые 3 сек
+    const hasVideo = pendingFiles.some(f => f.mimeType.startsWith('video/'));
+    const uploadAction = hasVideo ? 'uploading_video' : 'uploading_photo';
+    websocketService.sendTyping(chatId, true, uploadAction);
+    const typingInterval = setInterval(() => {
+      websocketService.sendTyping(chatId, true, uploadAction);
+    }, 3000);
+    typingIntervalsRef.current.set(tempId, typingInterval);
+
     // 4. Запускаем trickle-анимацию (плавный прогресс как fallback, если XHR events не приходят)
     startTrickleAnimation(tempId);
 
@@ -446,6 +463,7 @@ export const useVideoUploadMessage = (chatId: number) => {
       // Все файлы загружены и сконвертированы — сервер вернул ответ
       cleanupTimers(tempId);
       updateUploadProgress(tempId, 100);
+      websocketService.sendTyping(chatId, false);
 
 
       // 6. Отправляем реальное сообщение
@@ -466,6 +484,7 @@ export const useVideoUploadMessage = (chatId: number) => {
         return;
       }
       console.error('[VideoUpload] Failed:', error);
+      websocketService.sendTyping(chatId, false);
       markFailed(tempId, error);
     }
   }, [chatId, createVideoOptimisticMessage, addToStore, markFailed, cleanupTimers, updateRealProgress, startTrickleAnimation, startProcessingAnimation, replaceWithReal]);
@@ -592,6 +611,7 @@ export const useVideoUploadMessage = (chatId: number) => {
     }
     // Помечаем как отменённый, чтобы async flow не продолжал отправку
     cancelledUploadsRef.current.add(tempId);
+    websocketService.sendTyping(chatId, false);
 
     cleanupTimers(tempId);
     pendingVideoUploads.delete(tempId);

@@ -1981,9 +1981,20 @@ export const useChatStore = create<ChatState>()(
 
     set((state) => {
       const currentTyping = state.typingUsers[chatId] || [];
-      const alreadyTyping = currentTyping.some((t) => t.user_id === typing.user_id);
-      if (alreadyTyping) {
-        return state;
+      const existingIndex = currentTyping.findIndex((t) => t.user_id === typing.user_id);
+      if (existingIndex >= 0) {
+        // Update action if changed (e.g. typing -> uploading_photo)
+        if (currentTyping[existingIndex].action === typing.action) {
+          return state;
+        }
+        const updated = [...currentTyping];
+        updated[existingIndex] = { ...updated[existingIndex], action: typing.action };
+        return {
+          typingUsers: {
+            ...state.typingUsers,
+            [chatId]: updated,
+          },
+        };
       }
       return {
         typingUsers: {
