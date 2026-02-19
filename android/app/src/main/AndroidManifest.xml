@@ -58,6 +58,22 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="https" android:host="taxion.fusioninsight.cloud"/>
+        <data android:pathPrefix="/home"/>
+        <data android:pathPrefix="/chats"/>
+        <data android:pathPrefix="/task"/>
+        <data android:pathPrefix="/calendar"/>
+        <data android:pathPrefix="/poll"/>
+        <data android:pathPrefix="/profile"/>
+        <data android:pathPrefix="/event/"/>
+        <data android:pathPrefix="/notifications"/>
+        <data android:pathPrefix="/sessions"/>
+        <data android:pathPrefix="/passkeys"/>
+        <data android:pathPrefix="/about"/>
+        <data android:pathPrefix="/login"/>
+        <data android:pathPrefix="/two-factor"/>
+        <data android:pathPrefix="/invite/"/>
+        <data android:pathPrefix="/reset-password/"/>
+        <data android:pathPrefix="/forgot-password"/>
       </intent-filter>
     </activity>
   </application>

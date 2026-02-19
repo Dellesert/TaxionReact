@@ -123,7 +123,16 @@ const withPasskeyManifest = (config, options = {}) => {
       return config;
     }
 
+    // Deep link path prefixes that the app actually handles
+    // IMPORTANT: Do NOT add /downloads or /api — those must open in the browser
+    const deepLinkPaths = [
+      '/home', '/chats', '/task', '/calendar', '/poll', '/profile',
+      '/event/', '/notifications', '/sessions', '/passkeys', '/about',
+      '/login', '/two-factor', '/invite/', '/reset-password/', '/forgot-password',
+    ];
+
     // Add intent filter for Digital Asset Links (used by Credential Manager/Passkey)
+    // Path prefixes restrict which URLs the app intercepts (autoVerify works at domain level)
     const passkeyIntentFilter = {
       $: {
         'android:autoVerify': 'true',
@@ -154,6 +163,11 @@ const withPasskeyManifest = (config, options = {}) => {
             'android:host': domain,
           },
         },
+        ...deepLinkPaths.map((path) => ({
+          $: {
+            'android:pathPrefix': path,
+          },
+        })),
       ],
     };
 

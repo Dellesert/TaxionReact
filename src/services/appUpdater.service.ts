@@ -4,7 +4,8 @@
  * Аналог electron/updater.js для нативной платформы
  */
 
-import { Alert, Linking, Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { API_BASE_URL } from '@shared/constants/api.constants';
@@ -159,7 +160,7 @@ class AppUpdaterService {
       text: 'Скачать',
       onPress: async () => {
         try {
-          await Linking.openURL(downloadUrl);
+          await WebBrowser.openBrowserAsync(downloadUrl);
         } catch (error: any) {
           console.error('[AppUpdater] Error opening URL:', error);
           Alert.alert(
