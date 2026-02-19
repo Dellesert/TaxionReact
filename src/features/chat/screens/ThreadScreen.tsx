@@ -70,6 +70,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   const flatListRef = useRef<FlatList>(null);
   const isNearBottom = useRef(false);
   const scrollOffset = useRef(0);
+  const isPaginationLoad = useRef(false);
 
   // Keyboard state — same approach as ChatScreen
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -172,6 +173,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
       if (newMessages.length === 0) {
         setHasMore(false);
       } else {
+        isPaginationLoad.current = true;
         setThreadMessages(messageId, [...comments, ...newMessages]);
         setHasMore(response.has_more);
         setTotalCount(response.total || 0);
@@ -202,9 +204,13 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
       return;
     }
     if (comments.length > prevCommentsLength.current) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      if (isPaginationLoad.current) {
+        isPaginationLoad.current = false;
+      } else if (isNearBottom.current) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
     }
     prevCommentsLength.current = comments.length;
   }, [comments.length]);
