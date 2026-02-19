@@ -445,6 +445,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
     const menuWidth = 250;
+    const menuHeight = 510;
     let left = position.x;
     let top = position.y;
     if (left + menuWidth > screenWidth) left = screenWidth - menuWidth - 20;
