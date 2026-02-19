@@ -24,6 +24,12 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
   // Анимированное значение для скрытия/показа tab bar (используем обычный Animated API)
   const translateY = useRef(new Animated.Value(0)).current;
 
+  // Высота tab bar зависит от insets.bottom (системная навигация Android)
+  // blurContainer: paddingTop(10) + paddingBottom(10) + tab content(~58) = ~78
+  // outerContainer.paddingBottom: insets.bottom или 16/12
+  const bottomPadding = Platform.OS === 'ios' ? 12 : (insets.bottom > 0 ? insets.bottom : 16);
+  const hideDistance = 78 + bottomPadding + 10; // +10 запас чтобы точно скрылся
+
   useEffect(() => {
     // Проверяем текущий route
     const currentRoute = state.routes[state.index];
@@ -33,7 +39,7 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
     // Скрываем tab bar на экранах Chat и ChatSettings
     if (routeName === 'Chat' || routeName === 'ChatSettings') {
       Animated.timing(translateY, {
-        toValue: 100,
+        toValue: hideDistance,
         duration: 250,
         useNativeDriver: true,
       }).start();
@@ -44,7 +50,7 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [state, translateY]);
+  }, [state, translateY, hideDistance]);
 
   const isDark = theme.background === '#000000' || theme.background === '#121212' || theme.background.toLowerCase().startsWith('#0') || theme.background.toLowerCase().startsWith('#1');
 
