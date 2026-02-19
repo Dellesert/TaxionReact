@@ -18,6 +18,7 @@ import * as chatApi from '../api/chat.api';
 import { MessageBubble } from '../components/messages/MessageBubble';
 import { MessageInput } from '../components/messages/MessageInput';
 import { useAuthStore } from '@shared/store/authStore';
+import { Avatar } from '@shared/components/common/Avatar';
 import { formatTime } from '../utils/message.utils';
 
 function getCommentsLabel(count: number): string {
@@ -69,6 +70,11 @@ const ThreadScreen: React.FC = () => {
           duration: Platform.OS === 'ios' ? 200 : 120,
           useNativeDriver: true,
         }).start();
+
+        // Scroll to bottom so latest comments stay visible
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 150);
       }
     );
 
@@ -193,9 +199,18 @@ const ThreadScreen: React.FC = () => {
               </Text>
             </View>
             <View style={styles.rootMessageContent}>
-              <Text style={[styles.rootSenderName, { color: theme.primary }]}>
-                {rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
-              </Text>
+              <View style={styles.rootSenderRow}>
+                <Avatar
+                  imageUrl={rootMessage.sender?.avatar}
+                  thumbnailUrl={rootMessage.sender?.avatar_thumbnail}
+                  name={rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
+                  size={28}
+                  userId={rootMessage.sender?.id}
+                />
+                <Text style={[styles.rootSenderName, { color: theme.primary }]}>
+                  {rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
+                </Text>
+              </View>
               <Text style={[styles.rootMessageText, { color: theme.text }]} numberOfLines={10}>
                 {rootMessage.content}
               </Text>
@@ -234,16 +249,29 @@ const ThreadScreen: React.FC = () => {
     const isOwn = item.sender_id === currentUserId;
 
     return (
-      <View style={[styles.commentItem, isOwn && styles.commentItemOwn]}>
-        <MessageBubble
-          message={item}
-          isOwnMessage={isOwn}
-          isHighlighted={false}
-          sender={item.sender}
-          replySender={undefined}
-          imageUrls={[]}
-          currentUserId={currentUserId}
-        />
+      <View style={[styles.commentRow, isOwn && styles.commentRowOwn]}>
+        {!isOwn && (
+          <Avatar
+            imageUrl={item.sender?.avatar}
+            thumbnailUrl={item.sender?.avatar_thumbnail}
+            name={item.sender?.name || `User ${item.sender_id}`}
+            size={28}
+            userId={item.sender?.id}
+            style={styles.commentAvatar}
+          />
+        )}
+        <View style={[styles.commentItem, isOwn && styles.commentItemOwn]}>
+          <MessageBubble
+            message={item}
+            isOwnMessage={isOwn}
+            isHighlighted={false}
+            sender={item.sender ?? null}
+            replySender={null}
+            imageUrls={[]}
+            currentUserId={currentUserId}
+            onImagePress={() => {}}
+          />
+        </View>
       </View>
     );
   }, [currentUserId]);
@@ -292,8 +320,12 @@ const ThreadScreen: React.FC = () => {
           renderItem={renderComment}
           contentContainerStyle={[
             styles.commentsList,
-            { paddingBottom: Platform.OS === 'ios' ? 8 : inputWrapperHeight + 8 },
+            {
+              paddingBottom: inputWrapperHeight + (isKeyboardVisible ? keyboardHeight : 0) + 8,
+            },
           ]}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           ListHeaderComponent={renderListHeader}
@@ -389,10 +421,15 @@ const styles = StyleSheet.create({
   rootMessageContent: {
     marginBottom: 8,
   },
+  rootSenderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   rootSenderName: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 4,
   },
   rootMessageText: {
     fontSize: 15,
@@ -416,13 +453,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
-  commentItem: {
+  commentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     marginVertical: 4,
+  },
+  commentRowOwn: {
+    justifyContent: 'flex-end',
+  },
+  commentAvatar: {
+    marginRight: 8,
+  },
+  commentItem: {
     maxWidth: '80%',
-    alignSelf: 'flex-start',
+    flexShrink: 1,
   },
   commentItemOwn: {
-    alignSelf: 'flex-end',
+    marginLeft: 'auto',
   },
   emptyContainer: {
     paddingVertical: 40,
