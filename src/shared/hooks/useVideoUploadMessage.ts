@@ -363,7 +363,6 @@ export const useVideoUploadMessage = (chatId: number) => {
       return;
     }
 
-    console.log(`[VideoUpload] Starting upload: ${pendingFiles.length} files`, pendingFiles.map(f => f.fileName));
 
     // 1. Создаём оптимистичное сообщение
     const optimisticMessage = createVideoOptimisticMessage(content, pendingFiles, replyToId);
@@ -406,7 +405,6 @@ export const useVideoUploadMessage = (chatId: number) => {
           type: file.mimeType,
         };
 
-        console.log(`[VideoUpload] Uploading file ${i + 1}/${pendingFiles.length}: ${file.fileName} (${file.mimeType})`);
 
         const uploaded = await fileApi.uploadFile(
           fileObj,
@@ -433,17 +431,14 @@ export const useVideoUploadMessage = (chatId: number) => {
 
         // Проверяем, не была ли загрузка отменена пока шёл upload
         if (cancelledUploadsRef.current.has(tempId)) {
-          console.log(`[VideoUpload] Upload cancelled for tempId: ${tempId}, stopping`);
           return;
         }
 
-        console.log(`[VideoUpload] File ${i + 1}/${pendingFiles.length} uploaded, server id: ${uploaded.id}`);
         uploadedFileIds.push(uploaded.id);
       }
 
       // Проверяем отмену перед отправкой сообщения
       if (cancelledUploadsRef.current.has(tempId)) {
-        console.log(`[VideoUpload] Upload cancelled for tempId: ${tempId}, not sending message`);
         cancelledUploadsRef.current.delete(tempId);
         return;
       }
@@ -452,7 +447,6 @@ export const useVideoUploadMessage = (chatId: number) => {
       cleanupTimers(tempId);
       updateUploadProgress(tempId, 100);
 
-      console.log(`[VideoUpload] All files uploaded, sending message with file_ids:`, uploadedFileIds);
 
       // 6. Отправляем реальное сообщение
       const realMessage = await chatApi.sendMessage(chatId, {
@@ -461,7 +455,6 @@ export const useVideoUploadMessage = (chatId: number) => {
         file_ids: uploadedFileIds,
       });
 
-      console.log(`[VideoUpload] Message sent, realMessage.id: ${realMessage.id}, attachments: ${realMessage.attachments?.length}`);
 
       // 7. Заменяем оптимистичное реальным
       replaceWithReal(tempId, realMessage);

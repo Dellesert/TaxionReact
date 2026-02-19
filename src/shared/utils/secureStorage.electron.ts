@@ -17,7 +17,6 @@ export const setItemAsync = async (key: string, value: string): Promise<void> =>
   try {
     const electron = getElectron();
     await electron.secureStorage.set(key, value);
-    console.log(`[SecureStorage] Saved: ${key}`);
   } catch (error) {
     console.error(`[SecureStorage] Failed to save ${key}:`, error);
     throw error;
@@ -29,7 +28,6 @@ export const getItemAsync = async (key: string): Promise<string | null> => {
     const electron = getElectron();
     const value = await electron.secureStorage.get(key);
     if (value) {
-      console.log(`[SecureStorage] Retrieved: ${key}`);
     }
     return value;
   } catch (error) {
@@ -42,7 +40,6 @@ export const deleteItemAsync = async (key: string): Promise<void> => {
   try {
     const electron = getElectron();
     await electron.secureStorage.delete(key);
-    console.log(`[SecureStorage] Deleted: ${key}`);
   } catch (error) {
     console.error(`[SecureStorage] Failed to delete ${key}:`, error);
     throw error;

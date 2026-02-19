@@ -115,26 +115,7 @@ export const buildAdvancedTaskFilters = (
     filters.sort_order = advancedFilters.sortDirection;
   }
 
-  // Debug log
-  if (__DEV__) {
-    console.log('🔍 Advanced Filters Applied:', {
-      advancedFilters,
-      searchQuery,
-      userId,
-      resultFilters: filters,
-    });
 
-    // Additional detailed logging
-    if (filters.priority) {
-      console.log('📊 Priority filter:', filters.priority);
-    }
-    if (filters.status) {
-      console.log('📊 Status filter:', filters.status);
-    }
-    if (filters.sort_by || filters.sort_order) {
-      console.log('🔄 Sorting:', { sort_by: filters.sort_by, sort_order: filters.sort_order });
-    }
-  }
 
   return filters;
 };

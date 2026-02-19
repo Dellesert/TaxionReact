@@ -127,7 +127,6 @@ async function setupAndroidNotificationChannels(): Promise<void> {
       showBadge: true,
     });
 
-    console.log('[Push] Android notification channels created successfully');
   } catch (error) {
     console.error('[Push] Error creating notification channels:', error);
   }
@@ -159,17 +158,14 @@ class PushNotificationService {
    * Запросить разрешение и зарегистрировать устройство для push-уведомлений
    */
   async registerForPushNotifications(): Promise<string | null> {
-    console.log('[Push] registerForPushNotifications called, platform:', Platform.OS);
 
     // Для Electron используем специальный сервис с нативными уведомлениями
     if (isElectron()) {
-      console.log('[Push] Using Electron push notification service');
       return electronPushNotificationService.registerForPushNotifications();
     }
 
     // Для iOS используем специальный сервис с поддержкой Firebase FCM
     if (Platform.OS === 'ios') {
-      console.log('[Push] Using iOS-specific push notification service');
       return iosPushNotificationService.registerForPushNotifications();
     }
 
@@ -179,45 +175,35 @@ class PushNotificationService {
     }
 
     // Для Android используем стандартный Expo Notifications (FCM токен)
-    console.log('[Push] Using Android push notification service');
 
     // Создаем Android Notification Channels перед регистрацией
     await setupAndroidNotificationChannels();
 
     // Проверяем, что это физическое устройство
-    console.log('[Push] Device.isDevice:', Device.isDevice);
     if (!Device.isDevice) {
-      console.log('[Push] Push notifications require a physical device');
       return null;
     }
 
     // Проверяем текущие разрешения
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    console.log('[Push] Existing permission status:', existingStatus);
     let finalStatus = existingStatus;
 
     // Если разрешения нет, запрашиваем
     if (existingStatus !== 'granted') {
-      console.log('[Push] Requesting permissions...');
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
-      console.log('[Push] New permission status:', finalStatus);
     }
 
     if (finalStatus !== 'granted') {
-      console.log('[Push] Push notification permission denied');
       return null;
     }
 
     try {
-      console.log('[Push] Getting device push token...');
       // Получаем Device Push Token (FCM token для Android)
       const tokenData = await Notifications.getDevicePushTokenAsync();
-      console.log('[Push] Token data received:', JSON.stringify(tokenData));
       const token = tokenData.data as string;
       this.devicePushToken = token;
 
-      console.log('[Push] Device Push Token:', token);
 
       // Отправляем токен на бэкенд
       await this.sendTokenToBackend(token);
@@ -237,7 +223,6 @@ class PushNotificationService {
       // Запрашиваем разрешение на уведомления
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        console.log('Web push notification permission denied');
         return null;
       }
 
@@ -249,7 +234,6 @@ class PushNotificationService {
 
       // Регистрируем service worker
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-      console.log('Service Worker registered:', registration);
 
       // Получаем FCM токен
       const vapidKey = process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY;
@@ -260,14 +244,12 @@ class PushNotificationService {
 
       if (token) {
         this.devicePushToken = token;
-        console.log('Web FCM Token:', token);
 
         // Отправляем токен на бэкенд
         await this.sendTokenToBackend(token);
 
         return token;
       } else {
-        console.log('No FCM token available');
         return null;
       }
     } catch (error) {
@@ -291,7 +273,6 @@ class PushNotificationService {
         this.deviceId = response.data.id;
       }
 
-      console.log('Push token registered successfully');
     } catch (error) {
       console.error('Error sending push token to backend:', error);
     }
@@ -304,11 +285,9 @@ class PushNotificationService {
     onNotificationReceived?: (notification: Notifications.Notification) => void,
     onNotificationResponse?: (response: Notifications.NotificationResponse) => void
   ): void {
-    console.log('[Push] Setting up notification listeners for platform:', Platform.OS);
 
     // Для iOS используем специальный сервис
     if (Platform.OS === 'ios') {
-      console.log('[Push] Using iOS-specific notification listeners');
       iosPushNotificationService.setupNotificationListeners(
         onNotificationReceived,
         onNotificationResponse
@@ -318,42 +297,26 @@ class PushNotificationService {
 
     // Для web используем Firebase onMessage
     if (Platform.OS === 'web') {
-      console.log('[Push] Using web notification listeners (Firebase)');
       this.setupWebNotificationListeners(onNotificationReceived);
       return;
     }
 
     // Для Android используем стандартные Expo Notifications listeners
-    console.log('[Push] Using Android notification listeners');
 
     // Listener для входящих уведомлений (когда приложение открыто)
-    console.log('[Push] Registering notification received listener');
     this.notificationListener = Notifications.addNotificationReceivedListener(
       (notification) => {
-        console.log('[Push] ✅ Notification received while app is OPEN (foreground):');
-        console.log('[Push] Title:', notification.request.content.title);
-        console.log('[Push] Body:', notification.request.content.body);
-        console.log('[Push] Data:', JSON.stringify(notification.request.content.data));
-        console.log('[Push] Full notification:', JSON.stringify(notification));
         onNotificationReceived?.(notification);
       }
     );
 
     // Listener для нажатий на уведомления
-    console.log('[Push] Registering notification response listener');
     this.responseListener = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        console.log('[Push] ✅ Notification tapped/responded:');
-        console.log('[Push] Action:', response.actionIdentifier);
-        console.log('[Push] Title:', response.notification.request.content.title);
-        console.log('[Push] Body:', response.notification.request.content.body);
-        console.log('[Push] Data:', JSON.stringify(response.notification.request.content.data));
-        console.log('[Push] Full response:', JSON.stringify(response));
         onNotificationResponse?.(response);
       }
     );
 
-    console.log('[Push] Notification listeners registered successfully');
   }
 
   /**
@@ -366,7 +329,6 @@ class PushNotificationService {
     if (!messaging) return;
 
     this.webMessageUnsubscribe = onMessage(messaging, (payload) => {
-      console.log('Web notification received:', payload);
 
       // Показываем нативное уведомление браузера (для foreground)
       if (payload.notification && Notification.permission === 'granted') {
@@ -396,7 +358,6 @@ class PushNotificationService {
               }
             };
 
-            console.log('Browser notification shown');
           } catch (error) {
             console.error('Error showing notification:', error);
           }
@@ -506,7 +467,6 @@ class PushNotificationService {
 
       this.devicePushToken = null;
       this.deviceId = null;
-      console.log('Device unregistered from push notifications');
     } catch (error) {
       console.error('Error unregistering device:', error);
     }

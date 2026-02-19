@@ -223,7 +223,6 @@ const CalendarScreen: React.FC = () => {
   useEffect(() => {
     const eventId = route.params?.eventId;
     if (eventId) {
-      console.log('[Calendar] Opening event from notification:', eventId);
       // Navigate to event detail immediately
       setTimeout(() => {
         navigation.navigate('EventDetail', { eventId });

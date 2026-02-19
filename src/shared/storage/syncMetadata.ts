@@ -118,7 +118,6 @@ export const clearSyncMetadata = async (): Promise<void> => {
     } else {
       await AsyncStorage.removeItem(SYNC_METADATA_KEY);
     }
-    console.log('[SyncMetadata] Cleared all sync metadata');
   } catch (e) {
     console.warn('[SyncMetadata] Failed to clear metadata:', e);
   }

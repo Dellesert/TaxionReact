@@ -26,12 +26,6 @@ export const InAppNotificationContainer: React.FC = () => {
   }
 
   const handlePress = () => {
-    console.log('🔔 [InAppNotification] Pressed notification:', {
-      id: currentNotification.id,
-      type: currentNotification.type,
-      data: currentNotification.data,
-    });
-
     // Mark as read
     if (!currentNotification.is_read) {
       markAsRead(currentNotification.id);
@@ -42,11 +36,6 @@ export const InAppNotificationContainer: React.FC = () => {
     const params = currentNotification.data
       ? getNavigationParams(currentNotification.type, currentNotification.data)
       : null;
-
-    console.log('🔔 [InAppNotification] Navigation:', {
-      screenName,
-      params
-    });
 
     if (screenName && params) {
       navigate(screenName, params);

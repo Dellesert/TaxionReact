@@ -24,20 +24,13 @@ const TaskNavigator: React.FC = () => {
 
   // Handle navigation params from desktop navigation context
   useEffect(() => {
-    console.log('[TaskNavigator] Navigation params changed:', {
-      isWideScreen,
-      navigationParams: desktopNav.navigationParams
-    });
-
     if (isWideScreen && desktopNav.navigationParams?.taskId) {
       const taskId = desktopNav.navigationParams.taskId;
-      console.log('[TaskNavigator] Task ID found:', taskId);
 
       if (typeof taskId === 'number') {
         // Wait for navigation to be ready, then navigate
         const task = InteractionManager.runAfterInteractions(() => {
           setTimeout(() => {
-            console.log('[TaskNavigator] Navigating to TaskDetail with taskId:', taskId);
             // @ts-ignore
             navigation.navigate('TaskDetail', { taskId });
           }, 100);

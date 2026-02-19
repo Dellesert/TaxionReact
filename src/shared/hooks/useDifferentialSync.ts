@@ -82,9 +82,6 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
         : Date.now();
       await setLastSyncTime('chats', serverTime);
 
-      console.log(`[DiffSync] Chats: ${isFullSync ? 'full' : 'diff'} sync, ` +
-        `updated=${chats.length}, deleted=${syncData.deleted_ids?.length || 0}`);
-
       return {
         feature: 'chats',
         success: true,
@@ -156,9 +153,6 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
       // Сохраняем время синхронизации
       await setLastSyncTime('tasks', serverTime);
 
-      console.log(`[DiffSync] Tasks: ${isFullSync ? 'full' : 'diff'} sync, ` +
-        `updated=${totalUpdated}, deleted=${totalDeleted}`);
-
       return {
         feature: 'tasks',
         success: true,
@@ -216,9 +210,6 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
         : Date.now();
       await setLastSyncTime('polls', serverTime);
 
-      console.log(`[DiffSync] Polls: ${isFullSync ? 'full' : 'diff'} sync, ` +
-        `updated=${polls.length}, deleted=${syncData.deleted_ids?.length || 0}`);
-
       return {
         feature: 'polls',
         success: true,
@@ -252,7 +243,6 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
     isSyncingRef.current = true;
     resultsRef.current = [];
 
-    console.log('[DiffSync] Starting differential sync...');
     const startTime = Date.now();
 
     try {
@@ -270,10 +260,6 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
       const totalUpdated = results.reduce((sum, r) => sum + r.updated, 0);
       const totalDeleted = results.reduce((sum, r) => sum + r.deleted, 0);
 
-      console.log(`[DiffSync] Completed in ${totalDuration}ms`);
-      console.log(`[DiffSync] Success: ${successCount}/${results.length}, ` +
-        `Updated: ${totalUpdated}, Deleted: ${totalDeleted}`);
-
       onComplete?.(results);
       return results;
     } catch (error) {
@@ -289,7 +275,6 @@ export const useDifferentialSync = (options: UseDifferentialSyncOptions = {}) =>
    */
   const resetSync = useCallback(async () => {
     await clearSyncMetadata();
-    console.log('[DiffSync] Sync metadata cleared, next sync will be full');
   }, []);
 
   return {

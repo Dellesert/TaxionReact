@@ -98,7 +98,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             if (isNetworkError) {
               // Network is unavailable — use cached user data, keep session
-              console.log('[Auth] Network unavailable during init, using cached user data');
               set({
                 user,
                 sessionId,
@@ -246,7 +245,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           console.error('Logout API call failed:', error);
         }
       } else if (isMockMode()) {
-        console.log('🔧 Mock logout - skipping API call');
       }
 
       // Mark session as invalid in multi-account store
@@ -285,7 +283,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       useCalendarStore.getState().clearCache();
       useUserStore.getState().clearCache();
 
-      console.log('[Auth] All caches cleared on logout');
 
       // Refresh accounts list
       const { useAccountStore } = require('./accountStore');

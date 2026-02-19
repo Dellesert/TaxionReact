@@ -39,7 +39,6 @@ export const usePasswordAuth = (): UsePasswordAuthReturn => {
       onError: (error: ApiError | string) => void,
       onSuccess?: (message: string) => void
     ) => {
-      console.log('Login button clicked!', { email });
 
       Keyboard.dismiss();
 
@@ -52,43 +51,36 @@ export const usePasswordAuth = (): UsePasswordAuthReturn => {
 
       setIsPasswordLoading(true);
       try {
-        console.log('Calling login...');
         const authApi = await import('../api/auth.api');
 
         // Try to send 2FA code first
         try {
           const response = await authApi.send2FACode({ email, password });
-          console.log('✅ 2FA code sent successfully:', response);
           onSuccess?.('Код подтверждения отправлен на ваш email');
           onNavigateTo2FA(email);
           return;
         } catch (twoFAError: any) {
-          console.log('⚠️ 2FA error:', twoFAError);
 
           const errorCode = extractErrorCode(twoFAError);
 
           // Handle specific error codes
           if (errorCode) {
             if (is2FARequiredError(twoFAError)) {
-              console.log('🔐 2FA is required');
               try {
                 await authApi.send2FACode({ email, password });
                 onSuccess?.('Код подтверждения отправлен на ваш email');
               } catch (sendError) {
-                console.log('⚠️ Error sending code:', sendError);
               }
               onNavigateTo2FA(email);
               return;
             }
 
             if (isSuperAdminWebOnlyError(twoFAError)) {
-              console.log('🚫 Super admin access blocked');
               onError('Супер-администратор может входить только через веб-панель');
               return;
             }
 
             if (isPasskeyOnlyError(twoFAError)) {
-              console.log('🔑 Passkey only');
               onError('Для этого аккаунта доступен только вход через Passkey');
               return;
             }
@@ -100,9 +92,7 @@ export const usePasswordAuth = (): UsePasswordAuthReturn => {
 
             // 2FA not enabled - do regular login
             if (is2FANotEnabledError(twoFAError)) {
-              console.log('🔓 2FA not enabled, doing regular login...');
               await login({ email, password });
-              console.log('✅ Regular login successful!');
               return;
             }
 
@@ -113,26 +103,21 @@ export const usePasswordAuth = (): UsePasswordAuthReturn => {
 
           // Fallback: check by message/status
           if (isSuperAdminWebOnlyError(twoFAError)) {
-            console.log('🚫 Super admin access blocked');
             onError('Супер-администратор может входить только через веб-панель');
             return;
           }
 
           if (is2FARequiredError(twoFAError)) {
-            console.log('🔐 2FA globally required');
             try {
               await authApi.send2FACode({ email, password });
             } catch (sendError) {
-              console.log('⚠️ Code already sent or error:', sendError);
             }
             onNavigateTo2FA(email);
             return;
           }
 
           if (is2FANotEnabledError(twoFAError)) {
-            console.log('🔓 2FA not enabled, doing regular login...');
             await login({ email, password });
-            console.log('✅ Regular login successful!');
           } else {
             console.error('❌ Unexpected error:', twoFAError);
             onError(twoFAError);

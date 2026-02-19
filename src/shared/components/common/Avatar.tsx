@@ -147,7 +147,6 @@ const AvatarComponent: React.FC<AvatarProps> = ({
             responsivePolicy="initial"
             allowDownscaling={true}
             onError={(error) => {
-              console.log('❌ Avatar load error:', imageUrl, error);
               setImageError(true);
             }}
           />

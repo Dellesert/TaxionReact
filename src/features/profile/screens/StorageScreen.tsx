@@ -75,7 +75,6 @@ const getDirectorySize = async (dirPath: string): Promise<{ size: number; fileCo
 
     return { size: totalSize, fileCount: totalFiles };
   } catch (e) {
-    console.log('[Storage] getDirectorySize error:', dirPath, e);
     return { size: 0, fileCount: 0 };
   }
 };
@@ -112,7 +111,6 @@ export default function StorageScreen() {
 
   const loadCacheInfo = useCallback(async () => {
     setIsLoading(true);
-    console.log('[Storage] loadCacheInfo called, isNative:', isNative, 'Platform:', Platform.OS);
     try {
       const mmkvInfo = await getStorageSize();
       let documentCacheSize = 0;
@@ -121,10 +119,8 @@ export default function StorageScreen() {
 
       // Get cache directory from legacy expo-file-system
       const cacheDir = FileSystem.cacheDirectory;
-      console.log('[Storage] cacheDir:', cacheDir);
 
       if (isNative && cacheDir) {
-        console.log('[Storage] Cache directory:', cacheDir);
 
         // Known image cache directory names used by expo-image/SDWebImage/Coil
         const imageCacheDirs = [
@@ -139,7 +135,6 @@ export default function StorageScreen() {
         // Scan cacheDirectory
         try {
           const allFiles = await FileSystem.readDirectoryAsync(cacheDir);
-          console.log('[Storage] Cache contents:', allFiles);
 
           for (const file of allFiles) {
             const filePath = `${cacheDir}${file}`;
@@ -148,7 +143,6 @@ export default function StorageScreen() {
             );
 
             const stats = await getDirectorySize(filePath);
-            console.log('[Storage] Item:', file, 'isImage:', isImageCache, stats);
 
             if (isImageCache) {
               imageCacheSize += stats.size;
@@ -158,16 +152,13 @@ export default function StorageScreen() {
             }
           }
         } catch (e) {
-          console.log('[Storage] Error reading cache directory:', e);
         }
 
         // Also check documentDirectory for Android Coil cache
         const docDir = FileSystem.documentDirectory;
         if (docDir) {
-          console.log('[Storage] Document directory:', docDir);
           try {
             const docFiles = await FileSystem.readDirectoryAsync(docDir);
-            console.log('[Storage] Document contents:', docFiles);
 
             for (const file of docFiles) {
               const isImageCache = imageCacheDirs.some(
@@ -178,7 +169,6 @@ export default function StorageScreen() {
                 const stats = await getDirectorySize(filePath);
                 imageCacheSize += stats.size;
                 imageCacheFileCount += stats.fileCount;
-                console.log('[Storage] Image cache in docs:', file, stats);
               }
             }
           } catch (e) {
@@ -196,7 +186,6 @@ export default function StorageScreen() {
           videoCacheSize = videoStats.totalSize;
           videoCacheFileCount = videoStats.fileCount;
         } catch (e) {
-          console.log('[Storage] Error getting video cache size:', e);
         }
       }
 

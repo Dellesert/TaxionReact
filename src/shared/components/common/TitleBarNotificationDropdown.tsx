@@ -63,7 +63,6 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
   } = useNotificationStore();
 
   useEffect(() => {
-    console.log('[TitleBarNotificationDropdown] Visibility changed:', visible);
     if (visible) {
       loadNotifications();
       // Анимация появления
@@ -122,16 +121,6 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
         ? getNavigationParams(notification.type, notification.data)
         : null;
 
-      console.log('[TitleBarNotificationDropdown] Navigation:', {
-        notificationType: notification.type,
-        notificationData: notification.data,
-        screenName,
-        params,
-        isWideScreen,
-        hasDesktopNavigateToTab: !!desktopNavigateToTab,
-        hasNavigationRef: !!navigationRef,
-      });
-
       if (!screenName || !params) {
         console.warn('[TitleBarNotificationDropdown] No screen or params');
         return;
@@ -140,7 +129,6 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
       // Desktop navigation - use function passed via prop
       if (isWideScreen && desktopNavigateToTab) {
         setTimeout(() => {
-          console.log('[TitleBarNotificationDropdown] Using desktop navigation');
 
           // Extract actual params from nested structure
           let navigationParams: Record<string, unknown> = { ...params };
@@ -155,7 +143,6 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
             const firstTaskId = taskIds[0];
             if (typeof firstTaskId === 'number') {
               navigationParams = { taskId: firstTaskId };
-              console.log('[TitleBarNotificationDropdown] Converted taskIds to taskId:', firstTaskId);
             }
           }
 
@@ -165,7 +152,6 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
             const firstPollId = pollIds[0];
             if (typeof firstPollId === 'number') {
               navigationParams = { pollId: firstPollId };
-              console.log('[TitleBarNotificationDropdown] Converted pollIds to pollId:', firstPollId);
             }
           }
 
@@ -182,7 +168,6 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
           };
 
           const tab = screenToTabMap[screenName] || screenName;
-          console.log('[TitleBarNotificationDropdown] Navigating to tab:', tab, 'with params:', navigationParams);
 
           desktopNavigateToTab(tab, navigationParams);
         }, 300);
@@ -190,7 +175,6 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
       // Mobile navigation - use navigationRef
       else if (navigationRef?.current?.isReady()) {
         setTimeout(() => {
-          console.log('[TitleBarNotificationDropdown] Using mobile navigation');
 
           if (screenName === 'Tasks' && params.taskId) {
             // @ts-ignore

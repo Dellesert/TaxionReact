@@ -47,13 +47,6 @@ export const useNotificationListActions = (
   // Notification press handler
   const handleNotificationPress = useCallback(
     (notification: Notification) => {
-      console.log('[Notification] Press:', {
-        id: notification.id,
-        type: notification.type,
-        title: notification.title,
-        data: notification.data
-      });
-
       // Mark as read if unread
       if (!notification.is_read) {
         markAsRead(notification.id);
@@ -64,11 +57,6 @@ export const useNotificationListActions = (
       const params = notification.data
         ? getNavigationParams(notification.type, notification.data)
         : null;
-
-      console.log('[Notification] Navigation:', {
-        screenName,
-        params
-      });
 
       if (screenName && params) {
         navigate(screenName, params);

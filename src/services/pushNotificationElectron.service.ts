@@ -34,7 +34,6 @@ class ElectronPushNotificationService {
         return null;
       }
 
-      console.log('[Push Electron] Registering for push notifications...');
 
       // Get device ID from Electron main process
       const result = await window.electron!.notification.register();
@@ -47,8 +46,6 @@ class ElectronPushNotificationService {
       this.deviceId = result.deviceId;
       const platform = result.platform || 'electron';
 
-      console.log('[Push Electron] Device ID:', this.deviceId);
-      console.log('[Push Electron] Platform:', platform);
 
       // Register device with backend
       try {
@@ -60,7 +57,6 @@ class ElectronPushNotificationService {
         if (response.data?.id) {
           // Store backend device ID for later unregistration
           this.deviceId = response.data.id;
-          console.log('[Push Electron] Device registered with backend:', this.deviceId);
         }
       } catch (error) {
         console.error('[Push Electron] Failed to register with backend:', error);
@@ -82,24 +78,19 @@ class ElectronPushNotificationService {
    */
   private setupNotificationListeners(): void {
     if (!this.isElectronAvailable()) {
-      console.log('[Push Electron] Electron not available, skipping listener setup');
       return;
     }
 
     // Remove existing listener if any
     if (this.unsubscribeClickHandler) {
-      console.log('[Push Electron] Removing existing listener');
       this.unsubscribeClickHandler();
     }
 
     // Listen for notification clicks
-    console.log('[Push Electron] Setting up notification click listener');
     this.unsubscribeClickHandler = window.electron!.notification.onClicked((data) => {
-      console.log('[Push Electron] Notification clicked (in listener):', data);
 
       // Call navigation callback if set
       if (this.navigationCallback) {
-        console.log('[Push Electron] Calling navigation callback');
         this.navigationCallback(data);
       } else {
         console.warn('[Push Electron] Navigation callback not set!');
@@ -109,7 +100,6 @@ class ElectronPushNotificationService {
       this.handleNotificationNavigation(data);
     });
 
-    console.log('[Push Electron] Notification listeners registered successfully');
   }
 
   /**
@@ -120,7 +110,6 @@ class ElectronPushNotificationService {
       return;
     }
 
-    console.log('[Push Electron] Navigating to:', data.screen, data);
 
     // The actual navigation will be handled by the callback set via setNavigationCallback
     // or by the component that integrates this service
@@ -130,7 +119,6 @@ class ElectronPushNotificationService {
    * Set callback for handling navigation
    */
   setNavigationCallback(callback: (data: NotificationData) => void): void {
-    console.log('[Push Electron] Navigation callback set');
     this.navigationCallback = callback;
   }
 
@@ -145,7 +133,6 @@ class ElectronPushNotificationService {
         return;
       }
 
-      console.log('[Push Electron] Showing notification:', title);
 
       const result = await window.electron!.notification.show(title, body, data);
 
@@ -182,13 +169,11 @@ class ElectronPushNotificationService {
         return;
       }
 
-      console.log('[Push Electron] Unregistering device...');
 
       // Unregister from backend if we have a device ID
       if (this.deviceId) {
         try {
           await axios.delete(API_ENDPOINTS.DEVICES.UNREGISTER(this.deviceId));
-          console.log('[Push Electron] Device unregistered from backend');
         } catch (error) {
           console.error('[Push Electron] Failed to unregister from backend:', error);
         }
@@ -205,7 +190,6 @@ class ElectronPushNotificationService {
       this.deviceId = null;
       this.navigationCallback = null;
 
-      console.log('[Push Electron] Unregistered successfully');
     } catch (error) {
       console.error('[Push Electron] Error during unregistration:', error);
     }

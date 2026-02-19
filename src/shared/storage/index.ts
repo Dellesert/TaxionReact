@@ -41,7 +41,6 @@ const initializeMMKV = () => {
     });
 
     isMMKVInitialized = true;
-    console.log('[Storage] MMKV initialized successfully');
   } catch (e) {
     console.warn('[Storage] MMKV not available:', e);
   }
@@ -128,7 +127,6 @@ export const clearAllStorages = async (): Promise<void> => {
     // MMKV: synchronous
     try {
       Object.values(mmkvInstances).forEach((mmkv) => mmkv.clearAll());
-      console.log('[Storage] All MMKV storages cleared');
     } catch (e) {
       console.warn('[Storage] Failed to clear MMKV storages:', e);
     }
@@ -140,7 +138,6 @@ export const clearAllStorages = async (): Promise<void> => {
         Object.values(STORAGE_IDS).some((id) => key.startsWith(`${id}:`))
       );
       await AsyncStorage.multiRemove(storageKeys);
-      console.log('[Storage] All AsyncStorage storages cleared');
     } catch (e) {
       console.warn('[Storage] Failed to clear AsyncStorage:', e);
     }
@@ -277,7 +274,6 @@ export const setCacheLimit = async (bytes: number): Promise<void> => {
     } else {
       await AsyncStorage.setItem(CACHE_LIMIT_KEY, bytes.toString());
     }
-    console.log('[Storage] Cache limit set to', formatBytesInternal(bytes));
   } catch (e) {
     console.warn('[Storage] Failed to set cache limit:', e);
   }
@@ -311,8 +307,6 @@ export const enforceCacheLimit = async (): Promise<boolean> => {
     return false; // Limit not exceeded
   }
 
-  console.log('[Storage] Cache limit exceeded, cleaning up...');
-  console.log('[Storage] Current size:', formatBytesInternal(storageInfo.totalSize), '/ Limit:', formatBytesInternal(limit));
 
   try {
     // Cleanup order: least important data first
@@ -330,7 +324,6 @@ export const enforceCacheLimit = async (): Promise<boolean> => {
       if (currentSize <= limit) break;
 
       if (storage.size > 0) {
-        console.log(`[Storage] Clearing ${storage.name} cache (${formatBytesInternal(storage.size)})`);
 
         if (isNative) {
           const mmkv = mmkvInstances[storage.id];
@@ -345,7 +338,6 @@ export const enforceCacheLimit = async (): Promise<boolean> => {
       }
     }
 
-    console.log('[Storage] Cleanup completed. New size:', formatBytesInternal(currentSize));
     return true;
   } catch (e) {
     console.warn('[Storage] Failed to enforce cache limit:', e);

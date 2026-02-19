@@ -78,7 +78,6 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
         const hasChats = chatTabs.all.pinnedChats.length > 0 || chatTabs.all.regularChats.length > 0;
         const needsWarm = !hasChats;
         if (!needsWarm) {
-          console.log(`[CacheWarming] chats: skipped (has ${chatTabs.all.pinnedChats.length + chatTabs.all.regularChats.length} chats in cache)`);
         }
         return needsWarm;
       }
@@ -88,14 +87,12 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
         const hasTasks = Object.values(tasksByStatus || {}).some(arr => arr && arr.length > 0);
         const needsWarm = !hasTasks;
         if (!needsWarm) {
-          console.log(`[CacheWarming] tasks: skipped (${taskCounts.join(', ')})`);
         }
         return needsWarm;
       }
       case 'polls': {
         const needsWarm = !polls || polls.length === 0;
         if (!needsWarm) {
-          console.log(`[CacheWarming] polls: skipped (has ${polls?.length || 0} polls in cache)`);
         }
         return needsWarm;
       }
@@ -216,7 +213,6 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
     isWarmingRef.current = true;
     resultsRef.current = [];
 
-    console.log('[CacheWarming] Starting cache warming...');
     const startTime = Date.now();
 
     // Определяем какие фичи нужно прогреть
@@ -242,14 +238,10 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
     featuresToWarm.sort((a, b) => WARM_PRIORITY[a.feature] - WARM_PRIORITY[b.feature]);
 
     if (featuresToWarm.length === 0) {
-      console.log('[CacheWarming] All data already cached, skipping');
       hasWarmedRef.current = true;
       isWarmingRef.current = false;
       return;
     }
-
-    console.log(`[CacheWarming] Warming ${featuresToWarm.length} features:`,
-      featuresToWarm.map(f => f.feature).join(', '));
 
     try {
       let results: WarmingResult[];
@@ -272,8 +264,6 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
       const successCount = results.filter(r => r.success).length;
       const totalItems = results.reduce((sum, r) => sum + (r.itemsLoaded || 0), 0);
 
-      console.log(`[CacheWarming] Completed in ${totalDuration}ms`);
-      console.log(`[CacheWarming] Success: ${successCount}/${results.length}, Items loaded: ${totalItems}`);
 
       hasWarmedRef.current = true;
       onComplete?.(results);
@@ -346,13 +336,11 @@ export const useCacheWarmingOnAuth = (isAuthenticated: boolean) => {
   useEffect(() => {
     // Запускаем прогрев когда пользователь авторизовался
     if (isAuthenticated && !prevAuthRef.current) {
-      console.log('[CacheWarming] User authenticated, starting cache warming');
       startWarming();
     }
 
     // Сбрасываем при выходе
     if (!isAuthenticated && prevAuthRef.current) {
-      console.log('[CacheWarming] User logged out, resetting cache warming');
       resetWarming();
     }
 

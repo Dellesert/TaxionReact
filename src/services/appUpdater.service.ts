@@ -82,9 +82,6 @@ class AppUpdaterService {
       const platform = this.getPlatformKey();
       const checkUrl = `${API_URL}/api/v1/app-versions/latest/${platform}`;
 
-      console.log('[AppUpdater] Checking for updates...');
-      console.log('[AppUpdater] Current version:', this.currentVersion, 'build:', this.currentBuildNumber);
-      console.log('[AppUpdater] API URL:', checkUrl);
 
       const response = await fetch(checkUrl, {
         method: 'GET',
@@ -99,19 +96,15 @@ class AppUpdaterService {
       const latestVersion = data.version;
       const latestBuildNumber = data.build_number ?? 0;
 
-      console.log('[AppUpdater] Latest version:', latestVersion, 'build:', latestBuildNumber);
-      console.log('[AppUpdater] Server response download_url:', data.download_url);
       this.lastCheckTime = new Date();
 
       const isNewerVer = this.isNewerVersion(latestVersion, this.currentVersion);
       const isSameVerNewerBuild = latestVersion === this.currentVersion && latestBuildNumber > this.currentBuildNumber;
 
       if (isNewerVer || isSameVerNewerBuild) {
-        console.log('[AppUpdater] Update available!', isNewerVer ? 'newer version' : 'newer build');
         this.showUpdateDialog(data);
         return { hasUpdate: true, version: latestVersion };
       } else {
-        console.log('[AppUpdater] No update available');
         if (!silent) {
           this.showNoUpdateDialog();
         }
@@ -165,12 +158,9 @@ class AppUpdaterService {
     buttons.push({
       text: 'Скачать',
       onPress: async () => {
-        console.log('[AppUpdater] User chose to download update');
-        console.log('[AppUpdater] Download URL:', downloadUrl);
 
         try {
           const canOpen = await Linking.canOpenURL(downloadUrl);
-          console.log('[AppUpdater] Can open URL:', canOpen);
 
           if (canOpen) {
             await Linking.openURL(downloadUrl);
@@ -222,7 +212,6 @@ class AppUpdaterService {
       this.checkForUpdates(true);
     }, CHECK_INTERVAL);
 
-    console.log('[AppUpdater] Auto-check started');
   }
 
   /**
@@ -232,7 +221,6 @@ class AppUpdaterService {
     if (this.checkIntervalId) {
       clearInterval(this.checkIntervalId);
       this.checkIntervalId = null;
-      console.log('[AppUpdater] Auto-check stopped');
     }
   }
 

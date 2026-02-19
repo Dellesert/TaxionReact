@@ -40,8 +40,6 @@ export const useNetworkSync = (options: UseNetworkSyncOptions = {}) => {
     onComplete: (results) => {
       const totalUpdated = results.reduce((sum, r) => sum + r.updated, 0);
       const totalDeleted = results.reduce((sum, r) => sum + r.deleted, 0);
-      console.log(`[NetworkSync] Differential sync completed: ` +
-        `${totalUpdated} updated, ${totalDeleted} deleted`);
     },
     onError: (error, feature) => {
       console.warn(`[NetworkSync] Failed to sync ${feature}:`, error);
@@ -49,13 +47,11 @@ export const useNetworkSync = (options: UseNetworkSyncOptions = {}) => {
   });
 
   const syncData = useCallback(async () => {
-    console.log('[NetworkSync] Starting differential sync after network restore...');
     setIsSyncing(true);
 
     try {
       // Use differential sync instead of clearing caches
       await syncAll();
-      console.log('[NetworkSync] Differential sync completed');
     } catch (e) {
       console.warn('[NetworkSync] Error during sync:', e);
     } finally {
@@ -78,7 +74,6 @@ export const useNetworkSync = (options: UseNetworkSyncOptions = {}) => {
       }
     } else if (wasOfflineRef.current) {
       // Сеть восстановлена - запускаем синхронизацию с задержкой
-      console.log('[NetworkSync] Network restored, scheduling differential sync in', delay, 'ms');
 
       syncTimeoutRef.current = setTimeout(() => {
         syncData();

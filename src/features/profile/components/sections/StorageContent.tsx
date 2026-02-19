@@ -81,7 +81,6 @@ const getDirectorySize = async (dirPath: string): Promise<{ size: number; fileCo
 
     return { size: totalSize, fileCount: totalFiles };
   } catch (e) {
-    console.log('[Storage] getDirectorySize error:', dirPath, e);
     return { size: 0, fileCount: 0 };
   }
 };
@@ -121,12 +120,10 @@ const StorageContent: React.FC = () => {
       const cacheDir = FileSystem.cacheDirectory;
 
       if (isNative && cacheDir) {
-        console.log('[Storage] Cache directory:', cacheDir);
 
         // List all cache directories to find image cache
         try {
           const allFiles = await FileSystem.readDirectoryAsync(cacheDir);
-          console.log('[Storage] Cache contents:', allFiles);
 
           // Known image cache directory names used by expo-image/SDWebImage/Glide
           const imageCacheDirs = [
@@ -148,13 +145,11 @@ const StorageContent: React.FC = () => {
             if (isImageCache) {
               imageCacheSize += stats.size;
               imageCacheFileCount += stats.fileCount;
-              console.log('[Storage] Image cache found:', file, stats);
             } else {
               documentCacheSize += stats.size;
             }
           }
         } catch (e) {
-          console.log('[Storage] Error reading cache directory:', e);
         }
       }
 
@@ -167,7 +162,6 @@ const StorageContent: React.FC = () => {
           videoCacheSize = videoStats.totalSize;
           videoCacheFileCount = videoStats.fileCount;
         } catch (e) {
-          console.log('[Storage] Error getting video cache size:', e);
         }
       }
 

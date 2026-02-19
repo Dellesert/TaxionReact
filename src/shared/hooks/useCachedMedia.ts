@@ -44,7 +44,6 @@ export function useCachedMedia(url: string | null | undefined): CachedMediaResul
 
       if (!filepath) {
         // Download and cache
-        console.log('[useCachedMedia] Downloading:', mediaUrl);
         const response = await fetch(mediaUrl);
 
         if (!response.ok) {
@@ -55,9 +54,7 @@ export function useCachedMedia(url: string | null | undefined): CachedMediaResul
         const mimeType = response.headers.get('content-type') || 'application/octet-stream';
 
         filepath = await electron.cache.put(mediaUrl, buffer, mimeType);
-        console.log('[useCachedMedia] Cached:', filepath);
       } else {
-        console.log('[useCachedMedia] Cache hit:', filepath);
       }
 
       if (mountedRef.current) {

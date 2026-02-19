@@ -48,7 +48,6 @@ export const setGlobalNavigateToTab = (fn: typeof globalNavigateToTab) => {
  */
 export const navigateToTabGlobal = (tab: string, params?: DesktopNavigationParams): boolean => {
   if (globalNavigateToTab) {
-    console.log('[DesktopNavigation] navigateToTabGlobal:', tab, params);
     globalNavigateToTab(tab, params);
     return true;
   }
@@ -65,7 +64,6 @@ export const DesktopNavigationProvider: React.FC<DesktopNavigationProviderProps>
   const [navigationParams, setNavigationParams] = useState<DesktopNavigationParams | null>(null);
 
   const navigateToTab = useCallback((tab: string, params?: DesktopNavigationParams) => {
-    console.log('[DesktopNavigation] navigateToTab:', tab, params);
     setActiveTab(tab);
     if (params) {
       setNavigationParams(params);

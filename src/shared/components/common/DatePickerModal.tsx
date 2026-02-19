@@ -203,7 +203,6 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
           });
         }
       } catch (error) {
-        console.log('[DatePicker] Android imperative API error:', error);
         onClose();
       }
     };

@@ -28,7 +28,6 @@ export const usePasskeyAuth = (
     try {
       const supported = await isPasskeySupported();
       setPasskeySupported(supported);
-      console.log('Passkey supported:', supported);
     } catch (error) {
       console.error('Error checking passkey support:', error);
       setPasskeySupported(false);
@@ -36,32 +35,26 @@ export const usePasskeyAuth = (
   };
 
   const handlePasskeyLogin = useCallback(async () => {
-    console.log('👆 Passkey button clicked!');
     setIsPasskeyLoading(true);
 
     try {
-      console.log('🔐 Starting discoverable passkey login');
 
       const authApi = await import('../api/auth.api');
 
       // 1. Get challenge from server
       const beginResponse = await authApi.beginDiscoverablePasskeyLogin();
-      console.log('✅ Got passkey challenge:', beginResponse);
 
       // 2. Authenticate with device
       const credential = await authenticateWithPasskey(
         beginResponse.publicKey.challenge,
         { publicKey: beginResponse.publicKey }
       );
-      console.log('✅ Got credential from device:', credential);
 
       // 3. Verify credential on server
       const loginResponse = await authApi.finishPasskeyLogin(credential);
-      console.log('✅ Passkey login successful:', loginResponse);
 
       // 4. Block super admin access
       if (loginResponse.user.role === 'super_admin') {
-        console.log('🚫 Super admin access blocked');
         onError('Super admin доступ ограничен веб-панелью. Используйте админ-панель.');
         return;
       }
@@ -71,7 +64,6 @@ export const usePasskeyAuth = (
       const { STORAGE_KEYS } = await import('@shared/constants/app.constants');
 
       if (loginResponse.session?.session_id) {
-        console.log('💾 Saving session ID to storage...');
         await secureStorage.setItemAsync(
           STORAGE_KEYS.SESSION_ID,
           loginResponse.session.session_id
@@ -83,7 +75,6 @@ export const usePasskeyAuth = (
         JSON.stringify(loginResponse.user)
       );
 
-      console.log('✅ Session data saved successfully!');
 
       // 6. Update auth state
       setUser(loginResponse.user);

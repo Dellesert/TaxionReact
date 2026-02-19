@@ -26,7 +26,6 @@ export const NetworkSyncProvider: React.FC<NetworkSyncProviderProps> = ({
     enabled,
     delay: 1500, // Небольшая задержка для стабилизации соединения
     onSync: () => {
-      console.log('[NetworkSyncProvider] Auto-sync completed');
     },
   });
 

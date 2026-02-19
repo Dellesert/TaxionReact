@@ -180,26 +180,12 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   const canManage = isCreator || (user && (user.role === 'admin' || user.role === 'super_admin'));
   const isScheduleEvent = event.type === 'schedule';
 
-  // Debug logs
-  console.log('🔍 EventDetailsPanel render:', {
-    userId: user?.id,
-    createdBy: event.created_by,
-    isCreator,
-    myParticipation,
-    participantsCount: event.participants?.length,
-    showButtons: myParticipation && !isCreator,
-  });
-
   // Load full event details with participants when panel opens
   React.useEffect(() => {
     const loadEventDetails = async () => {
       // Always load full details to get participants
       try {
         const fullEvent = await calendarApi.getEvent(initialEvent.id);
-        console.log('📅 Loaded full event details:', fullEvent);
-        console.log('👥 Participants:', fullEvent.participants);
-        console.log('👤 Current user:', user?.id);
-        console.log('🎯 My participation:', fullEvent.participants?.find(p => p.user_id === user?.id));
         setEvent(fullEvent);
       } catch (error) {
         console.error('Failed to load event details:', error);

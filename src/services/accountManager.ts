@@ -182,7 +182,6 @@ export async function migrateToMultiAccount(): Promise<void> {
   try {
     const user: User = JSON.parse(userDataRaw);
     await saveAccountAfterLogin(user, sessionId);
-    console.log('[AccountManager] Migrated single account to multi-account scheme');
   } catch (e) {
     console.error('[AccountManager] Migration failed:', e);
   }

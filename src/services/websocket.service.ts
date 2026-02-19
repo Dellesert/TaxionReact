@@ -314,11 +314,9 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
    */
   sendPresence(status: 'online' | 'offline' | 'away'): void {
     if (!this.isConnected()) {
-      console.log('[WS] Cannot send presence - not connected');
       return;
     }
 
-    console.log('[WS] Sending presence:', status);
     this.send({
       type: 'user_presence',
       chat_id: 0, // Global presence, not chat-specific
@@ -481,8 +479,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
         case 'message_edit':
           // Handle message edit/restore - backend sends full message object in data
-          console.log('🔗 [DEBUG] message_edit raw data:', JSON.stringify(message.data, null, 2));
-          console.log('🔗 [DEBUG] link_preview in data:', message.data?.link_preview, 'type:', typeof message.data?.link_preview);
           const editedMessage = {
             id: message.data?.id || message.data?.message_id,
             chat_id: message.chat_id || message.data?.chat_id,
@@ -762,10 +758,8 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           const now = Date.now();
           const lastUpdate = this.lastPresenceUpdate.get(presenceUserId) || 0;
 
-          console.log('[WS] user_presence received:', message.data);
 
           if (now - lastUpdate < this.presenceDebounceMs) {
-            console.log('[WS] user_presence debounced for user:', presenceUserId);
             // Skip this duplicate update
             break;
           }
@@ -821,7 +815,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
         case 'session_revoked':
           // Session was revoked (device removed from active sessions)
-          console.log('[WS] Session revoked by server, logging out...');
           this.isIntentionalClose = true; // Prevent reconnection attempts
           try {
             await authStore.logout({ skipApi: true });
@@ -921,7 +914,6 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
 
     // Session revoked via close code (backend closed connection with 4001)
     if (event.code === WS_CLOSE_SESSION_REVOKED) {
-      console.log('[WS] Connection closed with session_revoked code, logging out...');
       this.isIntentionalClose = true;
       try {
         await useAuthStore.getState().logout({ skipApi: true });

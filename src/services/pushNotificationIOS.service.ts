@@ -26,7 +26,6 @@ async function initFirebaseMessaging() {
     // Динамически импортируем @react-native-firebase/messaging
     const messaging = require('@react-native-firebase/messaging').default;
     firebaseMessaging = messaging;
-    console.log('[PushIOS] ✅ Firebase Messaging module loaded successfully');
     return messaging;
   } catch (error) {
     console.warn('[PushIOS] ⚠️ Firebase Messaging module not available:', error);
@@ -72,18 +71,14 @@ class IOSPushNotificationService {
    * Запросить разрешение и зарегистрировать устройство для push-уведомлений
    */
   async registerForPushNotifications(): Promise<string | null> {
-    console.log('[PushIOS] registerForPushNotifications called');
 
     // Проверяем, что это iOS устройство
     if (Platform.OS !== 'ios') {
-      console.log('[PushIOS] Not iOS platform, skipping');
       return null;
     }
 
     // Проверяем, что это физическое устройство
-    console.log('[PushIOS] Device.isDevice:', Device.isDevice);
     if (!Device.isDevice) {
-      console.log('[PushIOS] Push notifications require a physical device');
       return null;
     }
 
@@ -92,7 +87,6 @@ class IOSPushNotificationService {
       const messaging = await initFirebaseMessaging();
 
       if (messaging) {
-        console.log('[PushIOS] Firebase Messaging initialized');
 
         // Шаг 2: Запросить разрешения через Firebase
         const authStatus = await messaging().requestPermission();
@@ -100,10 +94,8 @@ class IOSPushNotificationService {
           authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
           authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-        console.log('[PushIOS] Firebase authorization status:', authStatus, 'enabled:', enabled);
 
         if (!enabled) {
-          console.log('[PushIOS] ❌ Push notification permission denied');
           return null;
         }
 
@@ -113,7 +105,6 @@ class IOSPushNotificationService {
 
         // Если токен еще не готов, ждем с ретраями
         if (!apnsToken) {
-          console.log('[PushIOS] ⏳ Waiting for APNS token...');
           for (let i = 0; i < 10; i++) {
             await new Promise(resolve => setTimeout(resolve, 500));
             apnsToken = await messaging().getAPNSToken();
@@ -122,7 +113,6 @@ class IOSPushNotificationService {
         }
 
         if (!apnsToken) {
-          console.log('[PushIOS] ❌ Failed to get APNS token after retries');
           // Пробуем принудительно зарегистрировать в APNs
           await messaging().registerDeviceForRemoteMessages();
           apnsToken = await messaging().getAPNSToken();
@@ -130,7 +120,6 @@ class IOSPushNotificationService {
 
         if (apnsToken) {
           this.apnsToken = apnsToken;
-          console.log('[PushIOS] 📱 APNs Token:', apnsToken.substring(0, 20) + '...');
         } else {
           console.error('[PushIOS] ❌ Could not obtain APNS token');
           return null;
@@ -139,11 +128,9 @@ class IOSPushNotificationService {
         // Шаг 4: Получить FCM токен (теперь когда APNS токен есть)
         const fcmToken = await messaging().getToken();
         this.fcmToken = fcmToken;
-        console.log('[PushIOS] 📬 FCM Token:', fcmToken.substring(0, 20) + '...');
 
         // Шаг 5: Настроить listener для обновления токена
         this.tokenRefreshUnsubscribe = messaging().onTokenRefresh(async (newToken) => {
-          console.log('[PushIOS] 🔄 FCM Token refreshed:', newToken.substring(0, 20) + '...');
           this.fcmToken = newToken;
           await this.sendTokenToBackend(newToken);
         });
@@ -154,7 +141,6 @@ class IOSPushNotificationService {
         return fcmToken;
       } else {
         // Fallback на expo-notifications если Firebase недоступен
-        console.log('[PushIOS] ⚠️ Firebase Messaging not available, falling back to expo-notifications');
 
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
@@ -165,13 +151,11 @@ class IOSPushNotificationService {
         }
 
         if (finalStatus !== 'granted') {
-          console.log('[PushIOS] ❌ Push notification permission denied');
           return null;
         }
 
         const apnsTokenData = await Notifications.getDevicePushTokenAsync();
         this.apnsToken = apnsTokenData.data as string;
-        console.log('[PushIOS] 📱 APNs Token (fallback):', this.apnsToken.substring(0, 20) + '...');
 
         await this.sendTokenToBackend(this.apnsToken);
         return this.apnsToken;
@@ -198,7 +182,6 @@ class IOSPushNotificationService {
         this.deviceId = response.data.id;
       }
 
-      console.log('[PushIOS] ✅ Token registered successfully on backend');
     } catch (error) {
       console.error('[PushIOS] ❌ Error sending token to backend:', error);
     }
@@ -318,7 +301,6 @@ class IOSPushNotificationService {
       this.tokenRefreshUnsubscribe();
       this.tokenRefreshUnsubscribe = null;
     }
-    console.log('[PushIOS] Notification listeners removed');
   }
 
   /**
@@ -368,7 +350,6 @@ class IOSPushNotificationService {
    */
   async unregisterDevice(): Promise<void> {
     if (!this.deviceId) {
-      console.log('[PushIOS] No device ID, skipping unregister');
       return;
     }
 
@@ -383,7 +364,6 @@ class IOSPushNotificationService {
       this.fcmToken = null;
       this.apnsToken = null;
       this.deviceId = null;
-      console.log('[PushIOS] ✅ Device unregistered successfully');
     } catch (error) {
       console.error('[PushIOS] ❌ Error unregistering device:', error);
     }

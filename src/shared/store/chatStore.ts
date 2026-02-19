@@ -441,7 +441,6 @@ export const useChatStore = create<ChatState>()(
         isRefreshingChats: false,
       }));
 
-      console.log('[ChatStore] Silent refresh completed for tab:', currentTab);
     } catch (error: any) {
       // Silent fail - don't update error state, just log
       console.error('[ChatStore] Silent refresh failed:', error);
@@ -749,7 +748,6 @@ export const useChatStore = create<ChatState>()(
         if (response.unread_info &&
             response.unread_info.unread_count > 10 &&
             response.unread_info.first_unread_id) {
-          console.log(`📬 Many unread messages (${response.unread_info.unread_count}), loading context around first unread...`);
 
           const contextResponse = await chatApi.getMessageContext(
             chatId,
@@ -1809,7 +1807,6 @@ export const useChatStore = create<ChatState>()(
   },
 
   handleMessageUpdate: (message: Message) => {
-    console.log('🔗 [DEBUG] handleMessageUpdate called, link_preview:', (message as any).link_preview, 'type:', typeof (message as any).link_preview);
     // Parse poll_data if it's a JSON string (comes from WebSocket)
     // Create updated message object and explicitly preserve message_type
     const updatedMessage: any = {
@@ -2041,7 +2038,6 @@ export const useChatStore = create<ChatState>()(
     // Update user status in all chats where user is a member
     const { user_id, status, last_seen, last_active_at } = presence;
 
-    console.log('[Presence] Received:', { user_id, status, last_seen, last_active_at });
 
     // Use last_active_at if available (from API), otherwise fall back to last_seen
     const lastActiveTime = last_active_at || last_seen;
@@ -2064,11 +2060,9 @@ export const useChatStore = create<ChatState>()(
 
       // Debug: Check if member.user exists
       if (!member.user) {
-        console.log(`[Presence] Chat ${chat.id}: member ${user_id} has no user object, skipping`);
         return chat;
       }
 
-      console.log(`[Presence] Updating chat ${chat.id}: user ${user_id} status ${member.user.status} -> ${status}`);
       updatedCount++;
 
       // Update the member's user status
@@ -2107,7 +2101,6 @@ export const useChatStore = create<ChatState>()(
         };
       });
 
-      console.log(`[Presence] Updated ${updatedCount} chats for user ${user_id} to status: ${status}`);
 
       return {
         chats: updatedChats,
