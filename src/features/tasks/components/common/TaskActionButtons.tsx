@@ -22,6 +22,11 @@ interface TaskActionButtonsProps {
   onTaskAction?: () => void;
   onStatusChange?: (status: Task['status']) => void;
   bottomInset: number;
+  // Group task props
+  isGroupTask?: boolean;
+  isGroupAssigneeDone?: boolean;
+  onMarkGroupDone?: () => void;
+  onUnmarkGroupDone?: () => void;
 }
 
 export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
@@ -39,6 +44,10 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
   onTaskAction,
   onStatusChange,
   bottomInset,
+  isGroupTask,
+  isGroupAssigneeDone,
+  onMarkGroupDone,
+  onUnmarkGroupDone,
 }) => {
   const { theme } = useTheme();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -109,6 +118,55 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
             />
           )}
         </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Overview tab: group task assignee buttons
+  if (
+    activeTab === 'overview' &&
+    !isDelegatedByMe &&
+    task.status !== 'done' &&
+    isGroupTask &&
+    !isCreator
+  ) {
+    return (
+      <View style={[styles.fixedActionsContainer, { bottom: bottomInset + 80 }]}>
+        {isGroupAssigneeDone ? (
+          <TouchableOpacity
+            style={[
+              styles.fixedActionButton,
+              styles.secondaryFixedButton,
+              {
+                backgroundColor: theme.backgroundSecondary,
+                borderColor: theme.border,
+              },
+            ]}
+            onPress={onUnmarkGroupDone}
+          >
+            <Ionicons name="close-circle-outline" size={20} color={theme.text} />
+            <Text style={[styles.fixedActionButtonText, { color: theme.text }]}>
+              Отменить выполнение
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.fixedActionButton,
+              styles.primaryFixedButton,
+              {
+                backgroundColor: '#10B981',
+                shadowColor: '#10B981',
+              },
+            ]}
+            onPress={onMarkGroupDone}
+          >
+            <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
+            <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
+              Отметить выполненным
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }

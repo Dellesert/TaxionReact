@@ -53,6 +53,10 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [assigneeId, setAssigneeId] = useState<number | undefined>(
     task.assignees && task.assignees.length > 0 ? task.assignees[0].id : undefined
   );
+  const [assigneeIds, setAssigneeIds] = useState<number[]>(
+    task.assignees ? task.assignees.map(a => a.id) : []
+  );
+  const isGroupTask = task.task_type === 'group';
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -77,6 +81,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       setPriority(task.priority);
       setDueDate(task.due_date ? new Date(task.due_date) : undefined);
       setAssigneeId(task.assignees && task.assignees.length > 0 ? task.assignees[0].id : undefined);
+      setAssigneeIds(task.assignees ? task.assignees.map(a => a.id) : []);
 
       // Track initial state
       setHasInitialDescription(!!task.description);
@@ -160,7 +165,9 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         description: description.trim() || undefined,
         priority,
         due_date: dueDate?.toISOString(),
-        assignee_ids: assigneeId ? [assigneeId] : undefined,
+        assignee_ids: isGroupTask
+          ? (assigneeIds.length > 0 ? assigneeIds : undefined)
+          : (assigneeId ? [assigneeId] : undefined),
       };
 
       const updatedTask = await taskApi.updateTask(task.id, updateData);
@@ -473,15 +480,30 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
 
             {/* Assignee */}
             <View style={styles.field}>
-              <Text style={[styles.label, { color: theme.textSecondary }]}>Исполнитель</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>
+                {isGroupTask ? 'Исполнители' : 'Исполнитель'}
+              </Text>
+              {isGroupTask && (
+                <View style={[styles.infoBox, { backgroundColor: theme.backgroundSecondary }]}>
+                  <Ionicons name="people-outline" size={18} color="#8B5CF6" />
+                  <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                    Групповая задача (минимум 2 исполнителя)
+                  </Text>
+                </View>
+              )}
               <UserSelector
-                selectedUserIds={assigneeId ? [assigneeId] : []}
-                onSelectionChange={(ids) => setAssigneeId(ids[0])}
-                multiSelect={false}
-                placeholder="Не назначен"
-                modalTitle="Выбрать исполнителя"
+                selectedUserIds={isGroupTask ? assigneeIds : (assigneeId ? [assigneeId] : [])}
+                onSelectionChange={isGroupTask ? setAssigneeIds : (ids) => setAssigneeId(ids[0])}
+                multiSelect={isGroupTask}
+                placeholder={isGroupTask ? 'Выберите исполнителей' : 'Не назначен'}
+                modalTitle={isGroupTask ? 'Выбрать исполнителей' : 'Выбрать исполнителя'}
                 filterForTaskAssignment={true}
               />
+              {isGroupTask && assigneeIds.length > 0 && assigneeIds.length < 2 && (
+                <Text style={{ color: '#EF4444', fontSize: 13, marginTop: 4 }}>
+                  Выберите ещё {2 - assigneeIds.length} исполнител{assigneeIds.length === 1 ? 'я' : 'ей'}
+                </Text>
+              )}
             </View>
           </View>
         </ScrollView>

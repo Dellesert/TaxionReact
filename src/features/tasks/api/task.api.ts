@@ -30,6 +30,7 @@ import {
   UpdateChecklistItemDto,
   DelegateTaskDto,
   UpdateTaskProgressDto,
+  UpdateAssigneeStatusDto,
 } from '../types/task.types';
 import { ApiResponse, PaginatedResponse, PaginationParams } from '../../../types/common.types';
 
@@ -431,6 +432,27 @@ export const updateTaskProgress = async (
     data
   );
   return response.data.data || response.data.task || (response.data as any);
+};
+
+// ============= Group Task Operations =============
+
+/**
+ * Update assignee status for a group task
+ */
+export const updateAssigneeStatus = async (
+  taskId: number,
+  data: UpdateAssigneeStatusDto
+): Promise<Task> => {
+  const response = await api.patch<ApiResponse<Task>>(
+    `/tasks/${taskId}/assignee-status`,
+    data
+  );
+  if (response.data.data) {
+    return response.data.data;
+  } else if (response.data.task) {
+    return response.data.task;
+  }
+  return response.data as any;
 };
 
 // ============= Task Activities =============

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task, TaskPermissions } from '../../types/task.types';
+import type { GroupAssigneeInfo } from '../../types/task.types';
 import { TaskChecklistsView } from '../task-details/TaskChecklistsView';
 import { TaskSubtasksList } from '../task-details/TaskSubtasksList';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -222,6 +223,94 @@ export const TaskOverviewTab: React.FC<TaskOverviewTabProps> = ({
         </View>
       )}
 
+      {/* Group Task Progress Section */}
+      {task.task_type === 'group' && task.group_assignees && task.group_assignees.length > 0 && (
+        <View
+          style={[
+            styles.groupProgressSection,
+            {
+              backgroundColor: theme.backgroundSecondary,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.groupProgressHeader}>
+            <View style={styles.groupProgressHeaderLeft}>
+              <Ionicons name="people-outline" size={18} color={isDark ? '#c4b5fd' : '#8B5CF6'} />
+              <Text style={[styles.groupProgressTitle, { color: theme.text }]}>
+                Прогресс группы
+              </Text>
+            </View>
+            <Text style={[styles.groupProgressCount, { color: isDark ? '#c4b5fd' : '#8B5CF6' }]}>
+              {task.group_completed_count ?? 0} / {task.group_total_count ?? task.group_assignees.length}
+            </Text>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={[styles.groupProgressBarBg, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : '#f3e8ff' }]}>
+            <View
+              style={[
+                styles.groupProgressBarFill,
+                {
+                  backgroundColor: '#8B5CF6',
+                  width: `${task.group_total_count ? ((task.group_completed_count ?? 0) / task.group_total_count) * 100 : 0}%`,
+                },
+              ]}
+            />
+          </View>
+
+          {/* Assignee List */}
+          <View style={styles.groupAssigneeList}>
+            {task.group_assignees.map((assignee: GroupAssigneeInfo) => (
+              <TouchableOpacity
+                key={assignee.user_id}
+                style={[styles.groupAssigneeRow, { borderBottomColor: theme.border }]}
+                onPress={() => onUserPress(assignee.user_id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.groupAssigneeLeft}>
+                  <Avatar
+                    name={assignee.user?.name || `User ${assignee.user_id}`}
+                    imageUrl={assignee.user?.avatar}
+                    size={32}
+                  />
+                  <Text style={[styles.groupAssigneeName, { color: theme.text }]}>
+                    {assignee.user
+                      ? getUserDisplayName(assignee.user.name, assignee.user_id, currentUserId)
+                      : `User ${assignee.user_id}`}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.groupAssigneeStatusBadge,
+                    {
+                      backgroundColor: assignee.status === 'done'
+                        ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5')
+                        : (isDark ? 'rgba(156, 163, 175, 0.15)' : '#f3f4f6'),
+                    },
+                  ]}
+                >
+                  {assignee.status === 'done' && (
+                    <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                  )}
+                  <Text
+                    style={[
+                      styles.groupAssigneeStatusText,
+                      {
+                        color: assignee.status === 'done' ? '#10B981' : theme.textSecondary,
+                      },
+                    ]}
+                  >
+                    {assignee.status === 'done' ? 'Готово' : 'Ожидает'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* Completion Badge - shown when task is done */}
       {task.status === 'done' && (
         <View style={styles.completionBadge}>
@@ -412,5 +501,76 @@ const styles = StyleSheet.create({
   },
   subtasksSection: {
     marginBottom: 16,
+  },
+  groupProgressSection: {
+    marginBottom: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  groupProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  groupProgressHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  groupProgressTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  groupProgressCount: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  groupProgressBarBg: {
+    height: 6,
+    borderRadius: 3,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  groupProgressBarFill: {
+    height: 6,
+    borderRadius: 3,
+    minWidth: 6,
+  },
+  groupAssigneeList: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  groupAssigneeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  groupAssigneeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  groupAssigneeName: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  groupAssigneeStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  groupAssigneeStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

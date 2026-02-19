@@ -12,18 +12,25 @@ export type TaskStatus = 'new' | 'viewed' | 'in_progress' | 'review' | 'done' | 
 // Task Priority
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 
+// Task Type
+export type TaskType = 'regular' | 'group';
+
+// Assignee Status (for group tasks)
+export type AssigneeStatus = 'pending' | 'done';
+
 // Task Permissions
 export interface TaskPermissions {
-  can_view: boolean;                // Просмотр задачи
-  can_view_subtasks: boolean;       // Просмотр всех подзадач
-  can_edit: boolean;                // Редактирование задачи
-  can_change_status: boolean;       // Изменение статуса
-  can_check_items: boolean;         // Отмечание чеклистов
-  can_create_subtasks: boolean;     // Создание подзадач
-  can_delegate: boolean;            // Делегирование задачи
-  can_emergency_complete: boolean;  // Аварийное завершение
-  can_assign_users: boolean;        // Назначение исполнителей
-  can_delete: boolean;              // Удаление задачи
+  can_view: boolean;                   // Просмотр задачи
+  can_view_subtasks: boolean;          // Просмотр всех подзадач
+  can_edit: boolean;                   // Редактирование задачи
+  can_change_status: boolean;          // Изменение статуса
+  can_check_items: boolean;            // Отмечание чеклистов
+  can_create_subtasks: boolean;        // Создание подзадач
+  can_delegate: boolean;               // Делегирование задачи
+  can_emergency_complete: boolean;     // Аварийное завершение
+  can_assign_users: boolean;           // Назначение исполнителей
+  can_delete: boolean;                 // Удаление задачи
+  can_update_assignee_status: boolean; // Обновление статуса исполнителя (групповые задачи)
 }
 
 // Task Activity Action Types
@@ -47,7 +54,17 @@ export type TaskActivityAction =
   | 'subtask_status_changed'
   | 'progress_updated'
   | 'task_deleted'
-  | 'task_emergency_completed';
+  | 'task_emergency_completed'
+  | 'assignee_status_changed';
+
+// Group Assignee Info (for group tasks)
+export interface GroupAssigneeInfo {
+  user_id: number;
+  user?: TaskUserInfo;
+  status: AssigneeStatus;
+  completed_at?: ISODateString;
+  assigned_at?: ISODateString;
+}
 
 // Task Comment Interface
 export interface TaskComment {
@@ -172,6 +189,12 @@ export interface Task {
   attachments?: TaskAttachment[];
   checklists?: TaskChecklist[];
 
+  // Group task fields
+  task_type?: TaskType;
+  group_assignees?: GroupAssigneeInfo[];
+  group_completed_count?: number;
+  group_total_count?: number;
+
   // Permissions for current user
   permissions?: TaskPermissions;
 
@@ -218,6 +241,7 @@ export interface CreateTaskDto {
   tags?: string[];
   checklists?: CreateTaskChecklistDto[]; // Checklists to create with task
   parent_attachment_ids?: number[]; // IDs of parent task attachments to copy
+  task_type?: TaskType; // 'regular' (default) or 'group'
 }
 
 // Update Task DTO
@@ -310,6 +334,11 @@ export interface DelegateTaskDto {
 // Update Task Progress DTO
 export interface UpdateTaskProgressDto {
   progress: number; // 0-100
+}
+
+// Update Assignee Status DTO (for group tasks)
+export interface UpdateAssigneeStatusDto {
+  status: AssigneeStatus;
 }
 
 // Create Checklist DTO

@@ -26,7 +26,7 @@ import * as taskApi from '../../api/task.api';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useNotification } from '@shared/contexts/NotificationContext';
-import { TaskPriority, CreateTaskDto } from '../../types/task.types';
+import { TaskPriority, TaskType, CreateTaskDto } from '../../types/task.types';
 import UserSelector from '@shared/components/common/UserSelector';
 import DatePickerModal from '@shared/components/common/DatePickerModal';
 import { format } from 'date-fns';
@@ -39,7 +39,7 @@ interface CreateTaskModalProps {
 }
 
 type TaskContentType = 'checklist' | 'description' | 'none';
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   visible,
@@ -61,19 +61,21 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   // Step 1: Title
   const [title, setTitle] = useState('');
 
-  // Step 2: Content type selection
+  // Step 3: Content type selection
   const [contentType, setContentType] = useState<TaskContentType | null>(null);
 
-  // Step 3: Content (checklist or description)
+  // Step 4: Content (checklist or description)
   const [description, setDescription] = useState('');
   const [checklistItems, setChecklistItems] = useState<string[]>([]);
   const [newItemText, setNewItemText] = useState('');
 
-  // Step 4: Priority, Date, Assignee
+  // Step 5: Priority, Date, Assignee
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [assigneeId, setAssigneeId] = useState<number | undefined>(undefined);
+  const [taskType, setTaskType] = useState<TaskType>('group');
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
 
   const [isCreating, setIsCreating] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -119,28 +121,44 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   // Navigation handlers
   const goToNextStep = () => {
     if (currentStep === 1 && !title.trim()) {
-      // Не показываем уведомление, пользователь сам видит что поле пустое
       return;
     }
 
-    if (currentStep === 2 && !contentType) {
-      // Не показываем уведомление, пользователь сам видит что ничего не выбрано
+    if (currentStep === 3 && !contentType) {
       return;
     }
 
-    // Skip step 3 if content type is 'none'
-    if (currentStep === 2 && contentType === 'none') {
-      setCurrentStep(4);
-    } else if (currentStep < 4) {
+    // Skip step 2 (task type) for employees — they always have regular tasks
+    if (currentStep === 1 && isEmployee) {
+      setCurrentStep(3);
+      return;
+    }
+
+    // Skip step 4 (content input) if content type is 'none'
+    if (currentStep === 3 && contentType === 'none') {
+      setCurrentStep(5);
+      return;
+    }
+
+    if (currentStep < 5) {
       setCurrentStep((currentStep + 1) as Step);
     }
   };
 
   const goToPreviousStep = () => {
-    // Skip step 3 if going back and content type is 'none'
-    if (currentStep === 4 && contentType === 'none') {
-      setCurrentStep(2);
-    } else if (currentStep > 1) {
+    // Skip step 4 going back if content type is 'none'
+    if (currentStep === 5 && contentType === 'none') {
+      setCurrentStep(3);
+      return;
+    }
+
+    // Skip step 2 for employees
+    if (currentStep === 3 && isEmployee) {
+      setCurrentStep(1);
+      return;
+    }
+
+    if (currentStep > 1) {
       setCurrentStep((currentStep - 1) as Step);
     }
   };
@@ -154,17 +172,24 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   const handleCreateTask = async () => {
     if (!title.trim()) {
-      return; // Не должно произойти, т.к. кнопка на 4 шаге
+      return; // Не должно произойти, т.к. кнопка на 5 шаге
     }
 
     try {
       setIsCreating(true);
 
-      const finalAssigneeIds = isEmployee && currentUser?.id
-        ? [currentUser.id]
-        : assigneeId
-          ? [assigneeId]
-          : undefined;
+      let finalAssigneeIds: number[] | undefined;
+      if (isEmployee && currentUser?.id) {
+        finalAssigneeIds = [currentUser.id];
+      } else if (taskType === 'group') {
+        if (assigneeIds.length < 2) {
+          showError('Для групповой задачи нужно выбрать минимум 2 исполнителей');
+          return;
+        }
+        finalAssigneeIds = assigneeIds;
+      } else {
+        finalAssigneeIds = assigneeId ? [assigneeId] : undefined;
+      }
 
       const taskData: CreateTaskDto = {
         title: title.trim(),
@@ -172,6 +197,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         priority,
         due_date: dueDate?.toISOString(),
         assignee_ids: finalAssigneeIds,
+        task_type: taskType !== 'regular' ? taskType : undefined,
         checklists: contentType === 'checklist' && checklistItems.length > 0
           ? [{ title: 'Checklist', items: checklistItems }]
           : undefined,
@@ -221,6 +247,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     setPriority('medium');
     setDueDate(undefined);
     setAssigneeId(undefined);
+    setTaskType('group');
+    setAssigneeIds([]);
     setChecklistItems([]);
     setNewItemText('');
     slideAnim.setValue(0);
@@ -242,21 +270,42 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return 'Название задачи';
-      case 2: return 'Тип содержимого';
-      case 3: return contentType === 'checklist' ? 'Чек-лист' : 'Описание';
-      case 4: return 'Детали задачи';
+      case 2: return 'Тип задачи';
+      case 3: return 'Тип содержимого';
+      case 4: return contentType === 'checklist' ? 'Чек-лист' : 'Описание';
+      case 5: return 'Детали задачи';
       default: return '';
     }
   };
 
   const getTotalSteps = () => {
-    return contentType === 'none' ? 3 : 4;
+    let total = 5;
+    if (isEmployee) total--;           // skip step 2 (task type)
+    if (contentType === 'none') total--; // skip step 4 (content input)
+    return total;
   };
 
   const getDisplayStep = () => {
-    if (contentType === 'none' && currentStep === 4) return 3;
-    return currentStep;
+    let display = currentStep;
+    if (isEmployee && currentStep >= 3) display--;           // step 2 skipped
+    if (contentType === 'none' && currentStep >= 5) display--; // step 4 skipped
+    return display;
   };
+
+  const taskTypes = [
+    {
+      type: 'group' as TaskType,
+      icon: 'people-outline',
+      title: 'Групповая задача',
+      description: 'Задача для нескольких исполнителей. Каждый отмечает выполнение независимо',
+    },
+    {
+      type: 'regular' as TaskType,
+      icon: 'person-outline',
+      title: 'Обычная задача',
+      description: 'Стандартная задача для одного исполнителя',
+    },
+  ];
 
   const contentTypes = [
     {
@@ -334,7 +383,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         {!isKeyboardVisible && (
           <View style={[styles.progressContainer, { backgroundColor: theme.card }]}>
             <View style={styles.progressBar}>
-              {[1, 2, 3, 4].slice(0, getTotalSteps()).map((step) => (
+              {[1, 2, 3, 4, 5].slice(0, getTotalSteps()).map((step) => (
                 <View
                   key={step}
                   style={[
@@ -396,8 +445,64 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   </View>
                 )}
 
-                {/* Step 2: Content Type Selection */}
+                {/* Step 2: Task Type Selection */}
                 {currentStep === 2 && (
+                  <View style={styles.stepContent}>
+                    <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
+                      Выберите тип задачи в зависимости от количества исполнителей
+                    </Text>
+                    {taskTypes.map((item) => (
+                      <TouchableOpacity
+                        key={item.type}
+                        onPress={() => {
+                          setTaskType(item.type);
+                          if (item.type === 'regular') {
+                            setAssigneeIds([]);
+                          } else {
+                            setAssigneeId(undefined);
+                          }
+                        }}
+                        style={[
+                          styles.contentTypeCard,
+                          { backgroundColor: theme.card, borderColor: theme.border },
+                          taskType === item.type && {
+                            borderColor: item.type === 'group' ? '#8B5CF6' : theme.primary,
+                            borderWidth: 2,
+                          },
+                        ]}
+                      >
+                        <View style={[
+                          styles.contentTypeIcon,
+                          {
+                            backgroundColor: taskType === item.type
+                              ? (item.type === 'group' ? '#8B5CF6' : theme.primary)
+                              : theme.backgroundSecondary,
+                          },
+                        ]}>
+                          <Ionicons
+                            name={item.icon as any}
+                            size={28}
+                            color={taskType === item.type ? '#FFFFFF' : theme.primary}
+                          />
+                        </View>
+                        <View style={styles.contentTypeInfo}>
+                          <Text style={[styles.contentTypeTitle, { color: theme.text }]}>{item.title}</Text>
+                          <Text style={[styles.contentTypeDescription, { color: theme.textSecondary }]}>{item.description}</Text>
+                        </View>
+                        {taskType === item.type && (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={24}
+                            color={item.type === 'group' ? '#8B5CF6' : theme.primary}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Step 3: Content Type Selection */}
+                {currentStep === 3 && (
                   <View style={styles.stepContent}>
                     <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
                       Выберите, как вы хотите структурировать задачу
@@ -427,8 +532,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   </View>
                 )}
 
-                {/* Step 3: Content Input (Checklist or Description) */}
-                {currentStep === 3 && contentType === 'checklist' && (
+                {/* Step 4: Content Input (Checklist or Description) */}
+                {currentStep === 4 && contentType === 'checklist' && (
                   <View style={styles.stepContent}>
                     <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
                       Добавьте пункты в чек-лист для отслеживания прогресса выполнения
@@ -483,7 +588,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   </View>
                 )}
 
-                {currentStep === 3 && contentType === 'description' && (
+                {currentStep === 4 && contentType === 'description' && (
                   <View style={styles.stepContent}>
                     <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
                       Опишите детали задачи, требования или любую другую важную информацию
@@ -505,8 +610,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   </View>
                 )}
 
-                {/* Step 4: Details (Priority, Date, Assignee) */}
-                {currentStep === 4 && (
+                {/* Step 5: Details (Priority, Date, Assignee) */}
+                {currentStep === 5 && (
                   <View style={styles.stepContent}>
                     <Text style={[styles.stepDescription, { color: theme.textSecondary }]}>
                       Укажите приоритет, срок выполнения и исполнителя
@@ -565,7 +670,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     </View>
 
                     {/* Assignee */}
-                    {!isEmployee && (
+                    {!isEmployee && taskType === 'regular' && (
                       <View style={styles.detailSection}>
                         <Text style={[styles.detailLabel, { color: theme.text }]}>Исполнитель (необязательно)</Text>
                         <UserSelector
@@ -576,6 +681,28 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                           modalTitle="Выбрать исполнителя"
                           filterForTaskAssignment={true}
                         />
+                      </View>
+                    )}
+
+                    {/* Group task assignees */}
+                    {!isEmployee && taskType === 'group' && (
+                      <View style={styles.detailSection}>
+                        <Text style={[styles.detailLabel, { color: theme.text }]}>
+                          Исполнители (минимум 2)
+                        </Text>
+                        <UserSelector
+                          selectedUserIds={assigneeIds}
+                          onSelectionChange={setAssigneeIds}
+                          multiSelect={true}
+                          placeholder="Выберите исполнителей"
+                          modalTitle="Выбрать исполнителей"
+                          filterForTaskAssignment={true}
+                        />
+                        {assigneeIds.length > 0 && assigneeIds.length < 2 && (
+                          <Text style={{ color: '#EF4444', fontSize: 13, marginTop: 4 }}>
+                            Выберите ещё {2 - assigneeIds.length} исполнител{assigneeIds.length === 1 ? 'я' : 'ей'}
+                          </Text>
+                        )}
                       </View>
                     )}
 
@@ -620,7 +747,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               <View style={[styles.navButton, isKeyboardVisible && styles.navButtonCompact]} />
             )}
 
-            {currentStep < 4 ? (
+            {currentStep < 5 ? (
               <TouchableOpacity
                 onPress={goToNextStep}
                 style={[

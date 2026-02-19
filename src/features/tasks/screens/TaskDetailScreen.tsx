@@ -36,6 +36,7 @@ import { useTaskActions } from '../hooks/useTaskActions';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import * as DocumentPicker from 'expo-document-picker';
 import { isDelegatedByUser, areAllSubtasksCompleted, areAllChecklistItemsCompleted } from '../utils/taskHelpers';
+import * as taskApi from '../api/task.api';
 
 type TaskDetailRouteParams = {
   taskId: string;
@@ -130,6 +131,13 @@ const TaskDetailScreen: React.FC = () => {
   const isCreator = user?.id === task?.created_by;
   const allSubtasksCompleted = areAllSubtasksCompleted(subtasks);
   const allChecklistItemsCompleted = areAllChecklistItemsCompleted(task);
+
+  // Group task state
+  const isGroupTask = task?.task_type === 'group';
+  const myGroupAssignee = isGroupTask && task?.group_assignees
+    ? task.group_assignees.find(a => a.user_id === user?.id)
+    : undefined;
+  const isGroupAssigneeDone = myGroupAssignee?.status === 'done';
 
   // Task actions hook
   const { handleStatusChange, handleEmergencyComplete, handleDeleteTask } = useTaskActions(
@@ -309,6 +317,31 @@ const TaskDetailScreen: React.FC = () => {
     }
   };
 
+  // Group task handlers
+  const handleMarkGroupDone = async () => {
+    if (!task) return;
+    try {
+      await taskApi.updateAssigneeStatus(task.id, { status: 'done' });
+      showSuccess('Вы отметили задачу как выполненную');
+      loadTaskSilently();
+      loadActivitiesSilently();
+    } catch (error: any) {
+      showError(error.message || 'Не удалось обновить статус');
+    }
+  };
+
+  const handleUnmarkGroupDone = async () => {
+    if (!task) return;
+    try {
+      await taskApi.updateAssigneeStatus(task.id, { status: 'pending' });
+      showSuccess('Выполнение отменено');
+      loadTaskSilently();
+      loadActivitiesSilently();
+    } catch (error: any) {
+      showError(error.message || 'Не удалось обновить статус');
+    }
+  };
+
   const handleEmergencyCompleteConfirm = () => {
     showConfirm(
       'Аварийное завершение',
@@ -439,8 +472,33 @@ const TaskDetailScreen: React.FC = () => {
                     <Text style={[styles.headerTitle, { color: theme.text }]}>Задача</Text>
                   </View>
 
+                  {/* Desktop Group Task Button */}
+                  {isDesktop && task && isGroupTask && !isCreator && !isDelegatedByMe && task.status !== 'done' && (
+                    <View style={styles.headerActions}>
+                      {isGroupAssigneeDone ? (
+                        <TouchableOpacity
+                          style={[styles.statusButton, styles.statusButtonSecondary, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                          onPress={handleUnmarkGroupDone}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="close-circle-outline" size={18} color={theme.text} />
+                          <Text style={[styles.statusButtonText, { color: theme.text }]}>Отменить</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.statusButton, { backgroundColor: '#10B981' }]}
+                          onPress={handleMarkGroupDone}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.statusButtonText}>Выполнено</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+
                   {/* Desktop Status Action Buttons */}
-                  {isDesktop && task && permissions.can_change_status && !isDelegatedByMe && task.status !== 'done' && (
+                  {isDesktop && task && permissions.can_change_status && !isDelegatedByMe && task.status !== 'done' && !isGroupTask && (
                     <View style={styles.headerActions}>
                       {task.status === 'new' && (
                         <TouchableOpacity
@@ -700,6 +758,10 @@ const TaskDetailScreen: React.FC = () => {
             onTaskAction={handleTaskAction}
             onStatusChange={handleStatusChange}
             bottomInset={insets.bottom}
+            isGroupTask={isGroupTask}
+            isGroupAssigneeDone={isGroupAssigneeDone}
+            onMarkGroupDone={handleMarkGroupDone}
+            onUnmarkGroupDone={handleUnmarkGroupDone}
           />
         )}
 
