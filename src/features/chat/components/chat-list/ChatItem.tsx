@@ -13,6 +13,7 @@ import { ActionModal } from '@shared/components/common/ActionModal';
 import { useChatPrefetch } from '@shared/hooks/usePrefetch';
 import { getTypingUserNames, formatTypingText } from '../../utils/chatScreenHelpers';
 import { stripFormatting } from '../../utils/formatting';
+import { useAnimationStore } from '@shared/store/animationStore';
 import * as Haptics from 'expo-haptics';
 
 interface ChatItemProps {
@@ -42,6 +43,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   // Prefetch hook for preloading chat messages
   const { prefetchChatDelayed, cancelPrefetch } = useChatPrefetch();
 
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
+
   // Простая плавная анимация без bounce эффекта
   const checkboxAnimation = useRef(new Animated.Value(isEditMode ? 1 : 0)).current;
 
@@ -63,11 +66,15 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
   // Запускаем плавную анимацию при изменении isEditMode
   useEffect(() => {
-    Animated.timing(checkboxAnimation, {
-      toValue: isEditMode ? 1 : 0,
-      duration: 250, // Плавная анимация 250ms
-      useNativeDriver: true,
-    }).start();
+    if (reduceAnimations) {
+      checkboxAnimation.setValue(isEditMode ? 1 : 0);
+    } else {
+      Animated.timing(checkboxAnimation, {
+        toValue: isEditMode ? 1 : 0,
+        duration: 250, // Плавная анимация 250ms
+        useNativeDriver: true,
+      }).start();
+    }
   }, [isEditMode, checkboxAnimation]);
 
   const getChatName = () => {
