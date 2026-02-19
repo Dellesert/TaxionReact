@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
@@ -20,7 +20,6 @@ import { LoginForm } from '../components/login/LoginForm';
 import { AlternativeLoginMethods } from '../components/login/AlternativeLoginMethods';
 import { SavedAccountsList } from '../components/login/SavedAccountsList';
 import { QRLoginModal } from '../components/login/QRLoginModal';
-import { Ionicons } from '@expo/vector-icons';
 import { useAccountStore } from '@shared/store/accountStore';
 import type { ApiError } from '../../../types/common.types';
 import type { SavedAccount } from '@/types/account.types';
@@ -175,6 +174,7 @@ const LoginScreen: React.FC = () => {
               isLoading={isLoginLoading}
               onPasskeyLogin={handlePasskeyLogin}
               onAcceptInvitation={handleAcceptInvitation}
+              onQRLogin={Platform.OS === 'web' ? () => setShowQRLogin(true) : undefined}
             />
 
             <SavedAccountsList
@@ -183,19 +183,6 @@ const LoginScreen: React.FC = () => {
               onQuickSwitch={handleQuickSwitch}
               onSelectAccount={handleSelectAccount}
             />
-
-            {/* QR Login Button (Desktop/Electron only) */}
-            {Platform.OS === 'web' && (
-              <TouchableOpacity
-                style={[styles.qrLoginButton, { borderColor: theme.border }]}
-                onPress={() => setShowQRLogin(true)}
-              >
-                <Ionicons name="qr-code-outline" size={22} color={theme.primary} />
-                <Text style={[styles.qrLoginButtonText, { color: theme.text }]}>
-                  Войти по QR-коду
-                </Text>
-              </TouchableOpacity>
-            )}
           </ScrollView>
         </View>
 
@@ -315,21 +302,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 48,
     paddingVertical: 32,
-  },
-  // QR Login styles
-  qrLoginButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 16,
-    gap: 10,
-  },
-  qrLoginButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
   },
 });
 

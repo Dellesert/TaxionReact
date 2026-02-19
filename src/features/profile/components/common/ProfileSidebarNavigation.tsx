@@ -41,6 +41,8 @@ interface ProfileSidebarNavigationProps {
   isLoggingOut: boolean;
 }
 
+const isElectronApp = Platform.OS === 'web' && typeof window !== 'undefined' && !!(window as any).electron?.isElectron;
+
 const getSidebarStructure = (): SidebarGroup[] => {
   return [
     {
@@ -60,7 +62,7 @@ const getSidebarStructure = (): SidebarGroup[] => {
       items: [
         { id: 'change-password', label: 'Пароль', icon: 'lock-closed-outline', iconColor: '#F59E0B' },
         { id: 'active-sessions', label: 'Устройства', icon: 'phone-portrait-outline', iconColor: '#44e9a2ff' },
-        { id: 'passkey', label: 'Ключ входа', icon: 'key-outline', iconColor: '#6366F1' },
+        ...(!isElectronApp ? [{ id: 'passkey' as ProfileSection, label: 'Ключ входа', icon: 'key-outline' as keyof typeof Ionicons.glyphMap, iconColor: '#6366F1' }] : []),
       ],
     },
     {

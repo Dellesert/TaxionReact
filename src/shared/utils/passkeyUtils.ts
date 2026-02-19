@@ -5,6 +5,7 @@
 
 import { Platform } from 'react-native';
 import { Passkey } from 'react-native-passkey';
+import { isElectron } from './platform';
 
 /**
  * Helper functions для конвертации между base64 и ArrayBuffer
@@ -50,6 +51,11 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
  */
 export async function isPasskeySupported(): Promise<boolean> {
   if (Platform.OS === 'web') {
+    // В Electron passkey не используется — вход по QR-коду
+    if (isElectron()) {
+      return false;
+    }
+
     // Проверяем поддержку WebAuthn API в браузере
     return !!(
       window.PublicKeyCredential &&

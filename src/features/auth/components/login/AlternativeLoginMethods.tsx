@@ -8,6 +8,7 @@ interface AlternativeLoginMethodsProps {
   isLoading: boolean;
   onPasskeyLogin: () => void;
   onAcceptInvitation: () => void;
+  onQRLogin?: () => void;
 }
 
 export const AlternativeLoginMethods: React.FC<AlternativeLoginMethodsProps> = ({
@@ -16,6 +17,7 @@ export const AlternativeLoginMethods: React.FC<AlternativeLoginMethodsProps> = (
   isLoading,
   onPasskeyLogin,
   onAcceptInvitation,
+  onQRLogin,
 }) => {
   const { theme } = useTheme();
 
@@ -33,6 +35,17 @@ export const AlternativeLoginMethods: React.FC<AlternativeLoginMethodsProps> = (
           ) : (
             <Text style={[styles.text, { color: theme.textSecondary }]}>🔑 Быстрый вход</Text>
           )}
+        </TouchableOpacity>
+      )}
+
+      {!passkeySupported && onQRLogin && (
+        <TouchableOpacity
+          style={styles.link}
+          onPress={onQRLogin}
+          disabled={isLoading}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.text, { color: theme.textSecondary }]}>📱 Войти по QR-коду</Text>
         </TouchableOpacity>
       )}
 
