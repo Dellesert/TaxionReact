@@ -811,7 +811,7 @@ export const searchMessagesInChat = async (
 export const getThreadMessages = async (
   chatId: number,
   messageId: number,
-  params?: { limit?: number; before?: number }
+  params?: { limit?: number; after?: number }
 ): Promise<GetThreadMessagesResponse> => {
   const response = await api.get<GetThreadMessagesResponse>(
     API_ENDPOINTS.CHAT.THREAD(chatId, messageId),

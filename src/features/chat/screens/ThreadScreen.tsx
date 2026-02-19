@@ -138,15 +138,15 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     };
   }, [keyboardHeightAnim]);
 
-  // Load thread messages
+  // Load thread messages (first page — oldest 25 comments)
   const loadThread = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await getThreadMessages(chatId, messageId, { limit: 30 });
+      const response = await getThreadMessages(chatId, messageId, { limit: 25 });
       setRootMessage(response.root_message || null);
       setThreadMessages(messageId, response.messages || []);
       setTotalCount(response.total || 0);
-      setHasMore((response.messages || []).length < (response.total || 0));
+      setHasMore(response.has_more);
     } catch (error) {
       console.error('Failed to load thread:', error);
     } finally {
@@ -154,25 +154,27 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     }
   }, [chatId, messageId, setThreadMessages]);
 
-  // Load more (older) comments
+  // Load more (newer) comments — forward pagination by scrolling down
   const loadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore || comments.length === 0) return;
 
     try {
       setIsLoadingMore(true);
-      const oldestId = comments[0]?.id;
-      if (!oldestId) return;
+      const newestId = comments[comments.length - 1]?.id;
+      if (!newestId) return;
 
       const response = await getThreadMessages(chatId, messageId, {
-        limit: 30,
-        before: oldestId,
+        limit: 25,
+        after: newestId,
       });
 
       const newMessages = response.messages || [];
       if (newMessages.length === 0) {
         setHasMore(false);
       } else {
-        setThreadMessages(messageId, [...newMessages, ...comments]);
+        setThreadMessages(messageId, [...comments, ...newMessages]);
+        setHasMore(response.has_more);
+        setTotalCount(response.total || 0);
       }
     } catch (error) {
       console.error('Failed to load more thread messages:', error);
@@ -207,27 +209,22 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     prevCommentsLength.current = comments.length;
   }, [comments.length]);
 
-  // Send comment in thread
+  // Send comment in thread — WS will append the new message via handleNewThreadMessage
   const handleSend = useCallback(async (content: string) => {
     try {
       await chatApi.sendMessage(chatId, {
         content,
         thread_root_id: messageId,
       });
-
-      // Reload thread to get the new message with full data
-      const response = await getThreadMessages(chatId, messageId, { limit: 30 });
-      setThreadMessages(messageId, response.messages || []);
-      setTotalCount(response.total || 0);
-
-      // Scroll to bottom
+      setTotalCount(prev => prev + 1);
+      // Scroll to bottom after WS delivers the message
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      }, 300);
     } catch (error) {
       console.error('Failed to send thread message:', error);
     }
-  }, [chatId, messageId, setThreadMessages]);
+  }, [chatId, messageId]);
 
   // Render list header: root message (post) + "Начало обсуждения" divider
   const renderListHeader = () => {
@@ -298,11 +295,15 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
           <View style={[styles.discussionDividerLine, { backgroundColor: theme.border }]} />
         </View>
 
-        {/* Loading more indicator */}
-        {isLoadingMore && (
-          <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 8 }} />
-        )}
       </View>
+    );
+  };
+
+  // Render footer: loading indicator when fetching next page
+  const renderListFooter = () => {
+    if (!isLoadingMore) return null;
+    return (
+      <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 12 }} />
     );
   };
 
@@ -398,6 +399,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
           }}
           scrollEventThrottle={100}
           ListHeaderComponent={renderListHeader}
+          ListFooterComponent={renderListFooter}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: theme.textSecondary }]}>

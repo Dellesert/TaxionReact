@@ -304,7 +304,7 @@ export interface MarkChatAsReadResponse {
 export interface GetThreadMessagesResponse {
   messages: Message[]; // Комментарии в хронологическом порядке
   total: number; // Всего комментариев
-  has_older: boolean; // Есть ли более старые комментарии?
+  has_more: boolean; // Есть ли ещё комментарии для подгрузки?
   root_message?: Message; // Корневой пост
 }
 
