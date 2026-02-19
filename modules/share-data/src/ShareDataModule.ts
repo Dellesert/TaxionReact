@@ -34,7 +34,6 @@ export function syncAuthToShareExtension(
   try {
     const ShareData = getShareDataModule();
     ShareData.syncAuth(sessionId, userId, apiBaseUrl);
-    console.log('[ShareData] syncAuth called — userId:', userId, 'apiBaseUrl:', apiBaseUrl);
   } catch (e) {
     console.error('[ShareData] Failed to sync auth:', e);
     // TODO: убрать после отладки

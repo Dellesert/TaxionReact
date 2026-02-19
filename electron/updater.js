@@ -28,7 +28,6 @@ function getAppInfo() {
     if (fs.existsSync(packagePath)) {
       const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
       if (packageJson.version) {
-        console.log('[Updater] Got version from package.json:', packageJson.version, 'build:', packageJson.buildNumber ?? 0);
         return {
           version: packageJson.version,
           buildNumber: packageJson.buildNumber ?? 0,
@@ -41,7 +40,6 @@ function getAppInfo() {
 
   // Fallback to app.getVersion() (works correctly in production)
   const version = app.getVersion();
-  console.log('[Updater] Fallback to app.getVersion():', version);
   return { version, buildNumber: 0 };
 }
 
@@ -89,9 +87,6 @@ class AppUpdater {
    */
   async checkForUpdates(silent = false) {
     try {
-      console.log('[Updater] Checking for updates...');
-      console.log('[Updater] Current version:', this.currentVersion, 'build:', this.currentBuildNumber);
-      console.log('[Updater] API URL:', UPDATE_CHECK_URL);
 
       const response = await fetch(UPDATE_CHECK_URL, {
         method: 'GET',
@@ -100,20 +95,16 @@ class AppUpdater {
         },
       });
 
-      console.log('[Updater] Response status:', response.status);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('[Updater] API response:', JSON.stringify(data, null, 2));
 
       const latestVersion = data.version;
       const latestBuildNumber = data.build_number ?? 0;
 
-      console.log('[Updater] Latest version from API:', latestVersion, 'build:', latestBuildNumber);
-      console.log('[Updater] Comparing:', latestVersion, 'vs', this.currentVersion);
 
       this.lastCheckTime = new Date();
 
@@ -121,11 +112,9 @@ class AppUpdater {
       const isSameVerNewerBuild = latestVersion === this.currentVersion && latestBuildNumber > this.currentBuildNumber;
 
       if (isNewerVer || isSameVerNewerBuild) {
-        console.log('[Updater] Update available!', isNewerVer ? 'newer version' : 'newer build');
         await this.showUpdateDialog(data);
         return { hasUpdate: true, version: latestVersion };
       } else {
-        console.log('[Updater] No update available');
         if (!silent) {
           this.showNoUpdateDialog();
         }
@@ -186,10 +175,8 @@ class AppUpdater {
     });
 
     if (result.response === 0) {
-      console.log('[Updater] User chose to download update');
       shell.openExternal(DOWNLOAD_URL);
     } else {
-      console.log('[Updater] User chose to skip update');
     }
   }
 
@@ -239,7 +226,6 @@ class AppUpdater {
       this.checkForUpdates(true);
     }, CHECK_INTERVAL);
 
-    console.log('[Updater] Auto-check started');
   }
 
   /**
@@ -249,7 +235,6 @@ class AppUpdater {
     if (this.checkIntervalId) {
       clearInterval(this.checkIntervalId);
       this.checkIntervalId = null;
-      console.log('[Updater] Auto-check stopped');
     }
   }
 

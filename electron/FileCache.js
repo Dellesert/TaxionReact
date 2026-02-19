@@ -26,7 +26,6 @@ class FileCache {
         for (const file of files) {
           if (file.endsWith('.downloading')) {
             await fs.unlink(path.join(this.cacheDir, file));
-            console.log('[FileCache] Cleaned up partial download:', file);
           }
         }
       } catch (cleanupErr) {
@@ -34,9 +33,6 @@ class FileCache {
       }
 
       this.initialized = true;
-      console.log('[FileCache] Initialized successfully');
-      console.log('[FileCache] Cache directory:', this.cacheDir);
-      console.log('[FileCache] Max size:', this.formatBytes(this.maxSize));
     } catch (error) {
       console.error('[FileCache] Initialization failed:', error);
       throw error;
@@ -109,7 +105,6 @@ class FileCache {
       this.metadata.set(key, metadata);
       await this.saveMetadata();
 
-      console.log('[FileCache] Cached file:', filename, this.formatBytes(buffer.length));
       return filepath;
     } catch (error) {
       console.error('[FileCache] Failed to cache file:', error);
@@ -194,7 +189,6 @@ class FileCache {
             this.metadata.set(key, metadata);
             await this.saveMetadata();
 
-            console.log('[FileCache] Downloaded and cached:', finalFilename, this.formatBytes(downloadedSize));
             resolve(finalFilepath);
           } catch (err) {
             try { await fs.unlink(tempFilepath); } catch {}
@@ -245,11 +239,9 @@ class FileCache {
       this.metadata.set(key, meta);
       await this.saveMetadata();
 
-      console.log('[FileCache] Cache hit:', meta.filename);
       return filepath;
     } catch {
       // File doesn't exist - remove from metadata
-      console.log('[FileCache] Cache miss (file deleted):', meta.filename);
       this.metadata.delete(key);
       await this.saveMetadata();
       return null;
@@ -264,10 +256,6 @@ class FileCache {
       return; // Space available
     }
 
-    console.log('[FileCache] Enforcing size limit...');
-    console.log('[FileCache] Current:', this.formatBytes(currentSize));
-    console.log('[FileCache] New file:', this.formatBytes(newFileSize));
-    console.log('[FileCache] Max:', this.formatBytes(this.maxSize));
 
     // Sort by access time (oldest first)
     const entries = Array.from(this.metadata.entries())
@@ -285,14 +273,12 @@ class FileCache {
         await fs.unlink(filepath);
         freedSpace += meta.size;
         this.metadata.delete(key);
-        console.log('[FileCache] Evicted:', meta.filename, this.formatBytes(meta.size));
       } catch (err) {
         console.error('[FileCache] Failed to delete file:', err);
       }
     }
 
     await this.saveMetadata();
-    console.log('[FileCache] Freed:', this.formatBytes(freedSpace));
   }
 
   async getTotalSize() {
@@ -308,11 +294,9 @@ class FileCache {
       const data = await fs.readFile(this.metadataFile, 'utf8');
       const parsed = JSON.parse(data);
       this.metadata = new Map(Object.entries(parsed));
-      console.log('[FileCache] Loaded metadata:', this.metadata.size, 'entries');
     } catch (error) {
       // File doesn't exist or is corrupted - start fresh
       this.metadata = new Map();
-      console.log('[FileCache] Starting with empty metadata');
     }
   }
 
@@ -341,7 +325,6 @@ class FileCache {
       this.metadata.clear();
       await this.saveMetadata();
 
-      console.log('[FileCache] Cache cleared successfully');
     } catch (error) {
       console.error('[FileCache] Failed to clear cache:', error);
       throw error;
@@ -395,7 +378,6 @@ class FileCache {
 
     if (cleared > 0) {
       await this.saveMetadata();
-      console.log('[FileCache] Cleared', cleared, 'files with prefix:', prefix);
     }
 
     return { cleared };

@@ -159,8 +159,3 @@ contextBridge.exposeInMainWorld('electron', {
     setCloseBehavior: (behavior) => ipcRenderer.invoke('tray:setCloseBehavior', behavior),
   },
 });
-
-// Log preload script loaded
-console.log('[Preload] Preload script loaded successfully');
-console.log('[Preload] Platform:', process.platform);
-console.log('[Preload] Electron APIs exposed to renderer');

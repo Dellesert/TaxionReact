@@ -110,7 +110,6 @@ function getTrayIcon() {
       if (fs.existsSync(iconPath)) {
         const icon = nativeImage.createFromPath(iconPath);
         if (!icon.isEmpty()) {
-          console.log('[Tray] Using white tray icon from:', iconPath);
           return icon;
         }
       }
@@ -120,7 +119,6 @@ function getTrayIcon() {
   }
 
   // Fallback to regular icon
-  console.log('[Tray] White icon not found, using regular icon');
   return nativeImage.createFromPath(getIconPath());
 }
 
@@ -181,7 +179,6 @@ function createTray() {
     }
   });
 
-  console.log('[Tray] System tray created');
 }
 
 // Show dialog asking user what to do on close
@@ -347,7 +344,6 @@ function createWindow() {
       // User chose to minimize to tray
       event.preventDefault();
       mainWindow.hide();
-      console.log('[Electron] Window hidden to tray');
     } else if (closeBehavior === 'quit') {
       // User chose to quit - allow normal close
       isQuitting = true;
@@ -368,7 +364,6 @@ function createWindow() {
 
       if (result.action === 'minimize') {
         mainWindow.hide();
-        console.log('[Electron] Window hidden to tray (first time)');
       } else {
         isQuitting = true;
         mainWindow.close();
@@ -381,7 +376,6 @@ function createWindow() {
     // Development: load from Expo dev server
     const devUrl = process.env.EXPO_DEV_SERVER_URL || 'http://localhost:8093';
 
-    console.log('[Electron] Loading URL:', devUrl);
 
     mainWindow.loadURL(devUrl).catch(err => {
       console.error('[Electron] Failed to load URL:', err);
@@ -396,7 +390,6 @@ function createWindow() {
     });
   } else {
     // Production: load using app:// protocol
-    console.log('[Electron] Loading production with app:// protocol');
 
     mainWindow.loadURL('app://local/index.html').catch(err => {
       console.error('[Electron] Failed to load:', err);
@@ -588,7 +581,6 @@ app.on('window-all-closed', () => {
 // Handle app quit
 app.on('before-quit', () => {
   isQuitting = true;
-  console.log('[Electron] App is quitting...');
 
   // Destroy tray on quit
   if (tray) {
@@ -780,7 +772,6 @@ function setupIPCHandlers() {
 
       // Handle notification click
       notification.on('click', () => {
-        console.log('[Notification] Notification clicked:', data);
 
         // Focus the main window
         if (mainWindow) {
@@ -796,7 +787,6 @@ function setupIPCHandlers() {
 
       // Handle notification close
       notification.on('close', () => {
-        console.log('[Notification] Notification closed');
       });
 
       // Show the notification
@@ -824,7 +814,6 @@ function setupIPCHandlers() {
         deviceId = `electron-${randomUUID()}`;
       }
 
-      console.log('[Notification] Registering device:', deviceId);
 
       return {
         success: true,
@@ -839,7 +828,6 @@ function setupIPCHandlers() {
 
   ipcMain.handle('notification:unregister', async (event) => {
     try {
-      console.log('[Notification] Unregistering device');
       // Cleanup logic if needed
       return { success: true };
     } catch (error) {
@@ -853,11 +841,9 @@ function setupIPCHandlers() {
       if (process.platform === 'darwin') {
         // macOS supports badge count
         app.setBadgeCount(count);
-        console.log('[Notification] Badge count set to:', count);
       } else if (process.platform === 'win32') {
         // Windows: Set overlay icon (optional)
         // You can implement overlay icon for Windows if needed
-        console.log('[Notification] Badge count not supported on Windows');
       }
       return { success: true };
     } catch (error) {
@@ -906,7 +892,6 @@ function setupIPCHandlers() {
         throw new Error('Invalid close behavior');
       }
       setCloseBehavior(behavior);
-      console.log('[Tray] Close behavior set to:', behavior);
       return { success: true, behavior };
     } catch (error) {
       console.error('[Tray] Error setting close behavior:', error);
@@ -914,11 +899,6 @@ function setupIPCHandlers() {
     }
   });
 
-  console.log('[IPC] Handlers registered successfully');
 }
 
 // Log version info
-console.log(`[Electron] Electron v${process.versions.electron}`);
-console.log(`[Electron] Node v${process.versions.node}`);
-console.log(`[Electron] Chrome v${process.versions.chrome}`);
-console.log(`[Electron] Environment: ${isDev ? 'development' : 'production'}`);

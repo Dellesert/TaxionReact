@@ -84,7 +84,6 @@ if (Platform.OS === 'android') {
 
     if (isDismissError) {
       // Логируем для отладки, но не показываем как ошибку
-      console.log('[DatePicker] Suppressed dismiss error (harmless)');
       return;
     }
     originalConsoleError(...args);
@@ -104,7 +103,6 @@ if (Platform.OS === 'android') {
     );
 
     if (isDismissError) {
-      console.log('[DatePicker] Suppressed dismiss error (harmless)');
       return; // Не передаём дальше - предотвращаем crash
     }
 
@@ -120,7 +118,6 @@ if (Platform.OS === 'android') {
       const errorMessage = event?.reason?.message || event?.reason?.toString() || '';
       if (errorMessage.includes('dismiss')) {
         event.preventDefault?.();
-        console.log('[DatePicker] Suppressed unhandled rejection (harmless)');
       }
     });
   }
@@ -255,7 +252,6 @@ export default function App() {
       // Electron: Setup navigation callback for notification clicks
       if (isElectron()) {
         electronPushNotificationService.setNavigationCallback((notificationData) => {
-          console.log('[App Electron] Push notification clicked:', notificationData);
 
           if (!notificationData) {
             return;
@@ -274,7 +270,6 @@ export default function App() {
           const screenName = getNavigationScreenByType(type, flattenedData);
           const params = getNavigationParams(type, flattenedData);
 
-          console.log('[App Electron] Navigation info:', { type, screenName, params });
 
           if (!screenName || !params) {
             console.warn('[App Electron] No screen or params for navigation');
@@ -320,14 +315,12 @@ export default function App() {
                 }
               }
 
-              console.log('[App Electron] Using desktop navigation:', tab, navigationParams);
 
               // Try desktop navigation first (for wide screens)
               const desktopNavUsed = navigateToTabGlobal(tab, navigationParams);
 
               if (!desktopNavUsed && navigationRef.current?.isReady()) {
                 // Fallback to mobile navigation if desktop navigation is not available
-                console.log('[App Electron] Fallback to mobile navigation');
                 if (screenName === 'Tasks' && p.taskId) {
                   // @ts-ignore
                   navigationRef.current?.navigate('Tasks', {
@@ -373,7 +366,6 @@ export default function App() {
           loadUnreadCount();
         },
         (response) => {
-          console.log('[App] 🔔 Notification clicked!');
           let notificationData = response.notification.request.content.data || {};
 
           // iOS иногда отправляет данные как строки - проверяем и парсим
@@ -385,28 +377,23 @@ export default function App() {
             }
           }
 
-          console.log('[App] Notification data:', JSON.stringify(notificationData));
 
           // Navigate using the same logic as in-app notifications
           const type = notificationData.type as string;
           const action = notificationData.action as string;
 
-          console.log('[App] Type:', type, 'Action:', action);
 
           const screenName = getNavigationScreenByType(type, notificationData);
           const params = getNavigationParams(type, notificationData);
 
-          console.log('[App] Screen:', screenName, 'Params:', JSON.stringify(params));
 
           if (!screenName || !params) {
-            console.log('[App] ⚠️ No screen or params for navigation');
             return;
           }
 
           // Navigate with retry mechanism for background->foreground transition
           const attemptNavigation = (retries = 0) => {
               if (navigationRef.current?.isReady()) {
-                console.log('[App] ✅ Navigation ready, navigating to:', screenName);
 
                 if (screenName === 'Tasks' && params.taskId) {
                   // Navigate to specific task
@@ -446,7 +433,6 @@ export default function App() {
                 } else if (screenName === 'Calendar') {
                   // Navigate to calendar (with event if available)
                   if (params.eventId) {
-                    console.log('[App] Navigating to Calendar with eventId:', params.eventId);
                     // Navigate to Calendar tab first, then to CalendarMain with eventId
                     // @ts-ignore
                     navigationRef.current.navigate('Calendar', {
@@ -455,7 +441,6 @@ export default function App() {
                       initial: false,
                     });
                   } else {
-                    console.log('[App] Navigating to Calendar without eventId');
                     // @ts-ignore
                     navigationRef.current.navigate('Calendar');
                   }
@@ -469,7 +454,6 @@ export default function App() {
                   navigationRef.current.navigate(screenName, params);
                 }
               } else if (retries < 10) {
-                console.log(`[App] ⏳ Navigation not ready, retry ${retries + 1}/10`);
                 setTimeout(() => attemptNavigation(retries + 1), 300);
               } else {
                 console.error('[App] ❌ Failed to navigate after 10 retries');
@@ -485,7 +469,6 @@ export default function App() {
       import('expo-notifications').then(({ default: Notifications }) => {
         Notifications.getLastNotificationResponseAsync().then((response) => {
           if (response) {
-            console.log('[App] 🚀 App opened from notification (cold start)');
             // Navigate to the appropriate screen
             let notificationData = response.notification.request.content.data || {};
 
@@ -498,23 +481,19 @@ export default function App() {
               }
             }
 
-            console.log('[App] Cold start notification data:', JSON.stringify(notificationData));
 
             const type = notificationData.type as string;
             const action = notificationData.action as string;
 
-            console.log('[App] Type:', type, 'Action:', action);
 
             const screenName = getNavigationScreenByType(type, notificationData);
             const params = getNavigationParams(type, notificationData);
 
-            console.log('[App] Screen:', screenName, 'Params:', JSON.stringify(params));
 
             if (screenName && params) {
               // Wait for navigation to be ready (cold start may need more time)
               const attemptNavigation = (retries = 0) => {
                 if (navigationRef.current?.isReady()) {
-                  console.log('[App] ✅ Navigation ready (cold start), navigating to:', screenName);
 
                   if (screenName === 'Tasks' && params.taskId) {
                     // Navigate to specific task
@@ -554,7 +533,6 @@ export default function App() {
                   } else if (screenName === 'Calendar') {
                     // Navigate to calendar (with event if available)
                     if (params.eventId) {
-                      console.log('[App] Navigating to Calendar with eventId (cold start):', params.eventId);
                       // Navigate to Calendar tab first, then to CalendarMain with eventId
                       // @ts-ignore
                       navigationRef.current.navigate('Calendar', {
@@ -563,7 +541,6 @@ export default function App() {
                         initial: false,
                       });
                     } else {
-                      console.log('[App] Navigating to Calendar without eventId (cold start)');
                       // @ts-ignore
                       navigationRef.current.navigate('Calendar');
                     }
@@ -578,7 +555,6 @@ export default function App() {
                   }
                 } else if (retries < 10) {
                   // Retry up to 10 times with 300ms delay (3 seconds total)
-                  console.log(`[App] ⏳ Navigation not ready (cold start), retry ${retries + 1}/10`);
                   setTimeout(() => attemptNavigation(retries + 1), 300);
                 } else {
                   console.error('[App] ❌ Failed to navigate after 10 retries (cold start)');
@@ -588,7 +564,6 @@ export default function App() {
               // Start navigation attempt after a small delay
               setTimeout(() => attemptNavigation(), 500);
             } else {
-              console.log('[App] ⚠️ No screen or params for cold start navigation');
             }
           }
         });
