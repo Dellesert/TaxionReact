@@ -21,10 +21,12 @@ import * as chatApi from '../api/chat.api';
 import { MessageBubble } from '../components/messages/MessageBubble';
 import { MessageInput } from '../components/messages/MessageInput';
 import { MessageContextMenu } from '../components/modals/MessageContextMenu';
+import { MediaViewer, MediaItem } from '../components/modals/MediaViewer';
 import { useAuthStore } from '@shared/store/authStore';
 import { useChatStore } from '@shared/store/chatStore';
 import { Avatar } from '@shared/components/common/Avatar';
-import { formatTime } from '../utils/message.utils';
+import { formatTime, isImageFile, isVideoFile, replaceLocalhostWithIP } from '../utils/message.utils';
+import { useImageLoader } from '@shared/hooks/useImageLoader';
 
 function getCommentsLabel(count: number): string {
   const mod10 = count % 10;
@@ -67,8 +69,8 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [isPostExpanded, setIsPostExpanded] = useState(false);
-  const [isPostTruncated, setIsPostTruncated] = useState(false);
+  const [showMediaViewer, setShowMediaViewer] = useState(false);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
 
   // Context menu state
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -88,10 +90,33 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   // Comments derived from store (updated by both API loads and WS events)
   const comments = storeThreadMessages || [];
 
+  // Root message media data
+  const rootImageUrls = useImageLoader(rootMessage?.attachments);
+  const rootMediaItems: MediaItem[] = useMemo(() => {
+    if (!rootMessage?.attachments || rootMessage.attachments.length === 0) return [];
+    return rootMessage.attachments
+      .filter(att => {
+        const mt = att.mime_type || att.file_type || '';
+        return isImageFile(mt) || isVideoFile(mt);
+      })
+      .map(att => {
+        const mt = att.mime_type || att.file_type || '';
+        return {
+          type: isVideoFile(mt) ? 'video' as const : 'image' as const,
+          url: replaceLocalhostWithIP(att.file_url),
+          thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
+          thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
+          attachmentId: att.id,
+          duration: att.duration,
+        };
+      });
+  }, [rootMessage?.attachments]);
+
   const flatListRef = useRef<FlatList>(null);
   const isNearBottom = useRef(false);
   const scrollOffset = useRef(0);
   const isPaginationLoad = useRef(false);
+  const rootMessageBubbleRef = useRef<View>(null);
 
   // Keyboard state — same approach as ChatScreen
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -212,6 +237,16 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
       clearThreadMessages(messageId);
     };
   }, [loadThread, messageId, clearThreadMessages]);
+
+  // Sync root message reactions from store (WS updates land in messages[chatId])
+  const storeMessages = useChatStore((s) => s.messages[chatId]);
+  useEffect(() => {
+    if (!rootMessage || !storeMessages) return;
+    const storeRoot = storeMessages.find(m => m.id === rootMessage.id);
+    if (storeRoot && storeRoot.reactions !== rootMessage.reactions) {
+      setRootMessage(prev => prev ? { ...prev, reactions: storeRoot.reactions } : prev);
+    }
+  }, [storeMessages, rootMessage?.id]);
 
   // Auto-scroll when new WS comment arrives (skip initial load)
   const prevCommentsLength = useRef(comments.length);
@@ -336,6 +371,106 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     setShowContextMenu(true);
   }, [comments]);
 
+  // --- Root message handlers (reactions, media, context menu) ---
+
+  const handleRootToggleReaction = useCallback((emoji: string) => {
+    if (!currentUserId || !rootMessage) return;
+    const hasReacted = rootMessage.reactions?.some(
+      r => r.emoji === emoji && r.user_id === currentUserId
+    );
+    if (hasReacted) {
+      removeReaction(rootMessage.id, emoji);
+      setRootMessage(prev => prev ? {
+        ...prev,
+        reactions: (prev.reactions || []).filter(r => !(r.emoji === emoji && r.user_id === currentUserId))
+      } : prev);
+    } else {
+      addReaction(rootMessage.id, emoji);
+      setRootMessage(prev => prev ? {
+        ...prev,
+        reactions: [...(prev.reactions || []), {
+          id: Date.now(),
+          message_id: prev.id,
+          user_id: currentUserId!,
+          user: currentUser || undefined,
+          emoji,
+          created_at: new Date().toISOString(),
+        } as any]
+      } : prev);
+      setAnimatedEmoji(emoji);
+      setAnimatingMessageId(rootMessage.id);
+      heartScale.value = 0;
+      heartOpacity.value = 1;
+      heartScale.value = withSpring(1, { damping: 8, stiffness: 200 });
+      heartOpacity.value = withDelay(400, withTiming(0, { duration: 300 }));
+    }
+  }, [rootMessage, currentUserId, currentUser, addReaction, removeReaction, heartScale, heartOpacity]);
+
+  const handleRootDoubleTap = useCallback(() => {
+    if (!rootMessage || rootMessage.is_deleted) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    handleRootToggleReaction('👍');
+  }, [rootMessage, handleRootToggleReaction]);
+
+  const handleRootLongPress = useCallback(() => {
+    if (!rootMessage) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const ref = rootMessageBubbleRef.current;
+    if (ref) {
+      ref.measureInWindow((_x: number, y: number, _width: number, _height: number) => {
+        const screenWidth = Dimensions.get('window').width;
+        const screenHeight = Dimensions.get('window').height;
+        const menuWidth = 250;
+        const menuHeight = 510;
+        const minTopMargin = 160;
+        const minBottomMargin = 20;
+        const left = 20;
+        const messageVisibleTop = Math.max(y, minTopMargin);
+        let top = messageVisibleTop;
+        if (top + menuHeight > screenHeight - minBottomMargin) {
+          if (messageVisibleTop - menuHeight >= minTopMargin) {
+            top = messageVisibleTop - menuHeight;
+          } else {
+            top = Math.max(minTopMargin, screenHeight - menuHeight - minBottomMargin);
+          }
+        }
+        top = Math.max(minTopMargin, Math.min(top, screenHeight - menuHeight - minBottomMargin));
+        setMenuPosition({ top, left });
+        setSelectedMessage(rootMessage);
+        setShowContextMenu(true);
+      });
+    }
+  }, [rootMessage]);
+
+  const handleRootRightClick = useCallback((position: { x: number; y: number }) => {
+    if (!rootMessage) return;
+    const screenWidth = Dimensions.get('window').width;
+    const screenHeight = Dimensions.get('window').height;
+    const menuWidth = 250;
+    const menuHeight = 510;
+    let left = position.x;
+    let top = position.y;
+    if (left + menuWidth > screenWidth) left = screenWidth - menuWidth - 20;
+    if (top + menuHeight > screenHeight - 20) top = screenHeight - menuHeight - 20;
+    top = Math.max(20, top);
+    left = Math.max(10, left);
+    setMenuPosition({ top, left });
+    setSelectedMessage(rootMessage);
+    setShowContextMenu(true);
+  }, [rootMessage]);
+
+  const handleRootImagePress = useCallback((imageUrl: string) => {
+    const index = rootMediaItems.findIndex(item => item.url === imageUrl);
+    setSelectedMediaIndex(index >= 0 ? index : 0);
+    setShowMediaViewer(true);
+  }, [rootMediaItems]);
+
+  const handleRootVideoPress = useCallback((videoUrl: string, _thumbnailUrl?: string) => {
+    const index = rootMediaItems.findIndex(item => item.url === videoUrl);
+    setSelectedMediaIndex(index >= 0 ? index : 0);
+    setShowMediaViewer(true);
+  }, [rootMediaItems]);
+
   // Render list header: root message (post) + "Начало обсуждения" divider
   const renderListHeader = () => {
     return (
@@ -348,45 +483,49 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
                 Пост в канале
               </Text>
             </View>
-            <View style={styles.rootMessageContent}>
-              <View style={styles.rootSenderRow}>
-                <Avatar
-                  imageUrl={rootMessage.sender?.avatar}
-                  thumbnailUrl={rootMessage.sender?.avatar_thumbnail}
-                  name={rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
-                  size={28}
-                  userId={rootMessage.sender?.id}
-                />
-                <Text style={[styles.rootSenderName, { color: theme.primary }]}>
-                  {rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
-                </Text>
-              </View>
-              <Text
-                style={[styles.rootMessageText, { color: theme.text }]}
-                numberOfLines={isPostExpanded ? undefined : 10}
-                onTextLayout={(e) => {
-                  if (!isPostExpanded && e.nativeEvent.lines.length >= 10) {
-                    setIsPostTruncated(true);
-                  }
-                }}
+
+            {/* Root message rendered as MessageBubble (like in regular chat) */}
+            <View style={styles.rootBubbleRow}>
+              <Avatar
+                imageUrl={rootMessage.sender?.avatar}
+                thumbnailUrl={rootMessage.sender?.avatar_thumbnail}
+                name={rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
+                size={28}
+                userId={rootMessage.sender?.id}
+                style={styles.rootBubbleAvatar}
+              />
+              <View
+                ref={rootMessageBubbleRef}
+                style={[styles.rootBubbleWrapper, { position: 'relative' as const }]}
               >
-                {rootMessage.content}
-              </Text>
-              {isPostTruncated && (
-                <TouchableOpacity
-                  onPress={() => setIsPostExpanded(prev => !prev)}
-                  style={styles.expandButton}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.expandButtonText, { color: theme.primary }]}>
-                    {isPostExpanded ? 'Скрыть' : 'Развернуть'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              <Text style={[styles.rootMessageTime, { color: theme.textTertiary }]}>
-                {formatTime(rootMessage.created_at)}
-              </Text>
+                <MessageBubble
+                  message={rootMessage}
+                  isOwnMessage={false}
+                  isHighlighted={false}
+                  sender={rootMessage.sender ?? null}
+                  replySender={rootMessage.reply_to?.sender ?? null}
+                  imageUrls={rootImageUrls}
+                  currentUserId={currentUserId}
+                  onImagePress={handleRootImagePress}
+                  onVideoPress={handleRootVideoPress}
+                  onReactionPress={handleRootToggleReaction}
+                  onLongPress={Platform.OS === 'web' ? undefined : handleRootLongPress}
+                  onRightClick={handleRootRightClick}
+                  onDoubleTap={handleRootDoubleTap}
+                  isChannel={false}
+                />
+                {/* Reaction animation overlay */}
+                {animatingMessageId === rootMessage.id && (
+                  <RNAnimated.View
+                    pointerEvents="none"
+                    style={[styles.heartOverlay, heartAnimStyle]}
+                  >
+                    <Text style={styles.heartEmoji}>{animatedEmoji}</Text>
+                  </RNAnimated.View>
+                )}
+              </View>
             </View>
+
             <View style={[styles.commentCountBar, { borderTopColor: theme.border }]}>
               <Ionicons name="chatbubble-outline" size={14} color={theme.textSecondary} />
               <Text style={[styles.commentCountText, { color: theme.textSecondary }]}>
@@ -580,10 +719,27 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
             setShowContextMenu(false);
             setSelectedMessage(null);
           }}
-          onReaction={(emoji) => handleToggleReaction(selectedMessage.id, emoji)}
+          onReaction={(emoji) => {
+            if (selectedMessage.id === rootMessage?.id) {
+              handleRootToggleReaction(emoji);
+            } else {
+              handleToggleReaction(selectedMessage.id, emoji);
+            }
+          }}
           currentUserId={currentUserId}
         />
       )}
+
+      {/* MediaViewer for root message media */}
+      <MediaViewer
+        visible={showMediaViewer}
+        mediaItems={rootMediaItems}
+        initialIndex={selectedMediaIndex}
+        onClose={() => {
+          setShowMediaViewer(false);
+          setSelectedMediaIndex(0);
+        }}
+      />
     </View>
   );
 };
@@ -635,26 +791,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
   },
-  rootMessageContent: {
+  rootBubbleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: 8,
     marginBottom: 8,
   },
-  rootSenderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+  rootBubbleAvatar: {
+    marginRight: 8,
   },
-  rootSenderName: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  rootMessageText: {
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  rootMessageTime: {
-    fontSize: 11,
-    marginTop: 4,
+  rootBubbleWrapper: {
+    maxWidth: '80%',
+    flexShrink: 1,
   },
   commentCountBar: {
     flexDirection: 'row',
