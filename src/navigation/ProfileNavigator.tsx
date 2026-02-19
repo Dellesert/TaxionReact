@@ -25,6 +25,7 @@ import EditDepartmentScreen from '@/features/admin/screens/EditDepartmentScreen'
 import UsersScreen from '@/features/admin/screens/UsersScreen';
 import UserGroupsScreen from '@/features/admin/screens/UserGroupsScreen';
 import EditUserGroupScreen from '@/features/admin/screens/EditUserGroupScreen';
+import PerformanceScreen from '@/features/profile/screens/PerformanceScreen';
 import QRScannerScreen from '@/features/auth/screens/QRScannerScreen';
 
 export type ProfileStackParamList = {
@@ -35,6 +36,7 @@ export type ProfileStackParamList = {
   ActiveSessions: undefined;
   PasskeyManagement: undefined;
   About: undefined;
+  Performance: undefined;
   Storage: undefined;
   Analytics: undefined;
   MetricsAnalytics: undefined;
@@ -88,6 +90,7 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Screen name="ActiveSessions" component={ActiveSessionsScreen} />
       <Stack.Screen name="PasskeyManagement" component={PasskeyManagementScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
+      <Stack.Screen name="Performance" component={PerformanceScreen} />
       <Stack.Screen name="Storage" component={StorageScreen} />
       <Stack.Screen name="Analytics" component={AnalyticsHubScreen} />
       <Stack.Screen name="MetricsAnalytics" component={MetricsAnalyticsScreen} />
