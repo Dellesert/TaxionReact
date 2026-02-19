@@ -68,6 +68,8 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   const comments = storeThreadMessages || [];
 
   const flatListRef = useRef<FlatList>(null);
+  const isNearBottom = useRef(false);
+  const scrollOffset = useRef(0);
 
   // Keyboard state — same approach as ChatScreen
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -85,10 +87,15 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
           useNativeDriver: true,
         }).start();
 
-        // Scroll to bottom so latest comments stay visible
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 150);
+        // Lift content by keyboard height only if user is at the bottom
+        if (isNearBottom.current) {
+          setTimeout(() => {
+            flatListRef.current?.scrollToOffset({
+              offset: scrollOffset.current + height,
+              animated: true,
+            });
+          }, 150);
+        }
       }
     );
 
@@ -181,9 +188,17 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     };
   }, [loadThread, messageId, clearThreadMessages]);
 
-  // Auto-scroll when new WS comment arrives
+  // Auto-scroll when new WS comment arrives (skip initial load)
   const prevCommentsLength = useRef(comments.length);
+  const initialLoadDone = useRef(false);
   useEffect(() => {
+    if (!initialLoadDone.current) {
+      if (comments.length > 0) {
+        initialLoadDone.current = true;
+      }
+      prevCommentsLength.current = comments.length;
+      return;
+    }
     if (comments.length > prevCommentsLength.current) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
@@ -375,6 +390,13 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
           keyboardShouldPersistTaps="handled"
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
+          onScroll={(e) => {
+            const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+            scrollOffset.current = contentOffset.y;
+            const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+            isNearBottom.current = distanceFromBottom < 150;
+          }}
+          scrollEventThrottle={100}
           ListHeaderComponent={renderListHeader}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
