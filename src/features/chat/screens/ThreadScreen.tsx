@@ -341,7 +341,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.backgroundSecondary, paddingTop: insets.top }]}>
+      <View style={[styles.header, { backgroundColor: theme.backgroundSecondary, paddingTop: Math.max(insets.top, 12) }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
