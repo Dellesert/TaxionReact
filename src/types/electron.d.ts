@@ -64,6 +64,8 @@ interface ElectronAPI {
   maximize: () => void;
   close: () => void;
   isMaximized: () => Promise<boolean>;
+  setFullScreen: (isFullScreen: boolean) => void;
+  isFullScreen: () => Promise<boolean>;
 
   // Notification API
   notification: {

@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('electron', {
         'secure-storage:get',
         'secure-storage:delete',
         'window:isMaximized',
+        'window:isFullScreen',
         'app:version',
         'notification:show',
         'notification:register',
@@ -51,6 +52,7 @@ contextBridge.exposeInMainWorld('electron', {
         'window:minimize',
         'window:maximize',
         'window:close',
+        'window:setFullScreen',
       ];
 
       if (validChannels.includes(channel)) {
@@ -110,6 +112,8 @@ contextBridge.exposeInMainWorld('electron', {
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  setFullScreen: (isFullScreen) => ipcRenderer.send('window:setFullScreen', isFullScreen),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
 
   // Notification API
   notification: {

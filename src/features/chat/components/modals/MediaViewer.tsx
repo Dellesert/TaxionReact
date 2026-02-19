@@ -100,7 +100,13 @@ const VideoSlideContent = React.memo<{
       {isActive ? (
         <VideoView
           player={player}
-          style={styles.fullscreenVideo}
+          style={[
+            styles.fullscreenVideo,
+            // On web/Electron the thumbnail Image has position:absolute which
+            // paints ABOVE the static-positioned <video>. Make video positioned
+            // with z-index so it renders on top of the thumbnail.
+            Platform.OS === 'web' && { position: 'relative' as any, zIndex: 1 },
+          ]}
           contentFit="contain"
           nativeControls={false}
           allowsFullscreen={false}
@@ -137,7 +143,9 @@ const VideoControlsBar = React.memo<{
   showControls: () => void;
   startAutoHideTimer: () => void;
   clearAutoHideTimer: () => void;
-}>(({ player, showControls, startAutoHideTimer, clearAutoHideTimer }) => {
+  onToggleFullScreen?: () => void;
+  isFullScreen?: boolean;
+}>(({ player, showControls, startAutoHideTimer, clearAutoHideTimer, onToggleFullScreen, isFullScreen }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [bufferedPosition, setBufferedPosition] = useState(0);
@@ -285,6 +293,15 @@ const VideoControlsBar = React.memo<{
       >
         <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#FFFFFF" />
       </TouchableOpacity>
+      {onToggleFullScreen && (
+        <TouchableOpacity
+          onPress={onToggleFullScreen}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name={isFullScreen ? 'contract-outline' : 'expand-outline'} size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 });
@@ -311,6 +328,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [isSharing, setIsSharing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Refs
   const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -550,6 +568,11 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       clearAutoHideTimer();
       webAbortControllerRef.current?.abort();
       cleanupWebBlobUrl();
+      // Exit fullscreen if it was active
+      if (isElectron()) {
+        getElectronAPI().setFullScreen(false);
+        setIsFullScreen(false);
+      }
     }
   }, [visible, initialIndex, mediaItems.length]);
 
@@ -585,12 +608,18 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       } else if (e.key === 'ArrowRight') {
         goToNext();
       } else if (e.key === 'Escape') {
-        onClose();
+        if (isFullScreen && isElectron()) {
+          const electronAPI = getElectronAPI();
+          electronAPI.setFullScreen(false);
+          setIsFullScreen(false);
+        } else {
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [visible, currentIndex, mediaItems.length]);
+  }, [visible, currentIndex, mediaItems.length, isFullScreen]);
 
   // Track video loading state (playback state moved to VideoControlsBar)
   useEffect(() => {
@@ -680,9 +709,23 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   }, [controlsVisible]);
 
+  const toggleFullScreen = useCallback(() => {
+    if (!isElectron()) return;
+    const electronAPI = getElectronAPI();
+    const newState = !isFullScreen;
+    electronAPI.setFullScreen(newState);
+    setIsFullScreen(newState);
+  }, [isFullScreen]);
+
   const handleClose = () => {
     clearAutoHideTimer();
     player.pause();
+    // Exit fullscreen when closing the viewer
+    if (isFullScreen && isElectron()) {
+      const electronAPI = getElectronAPI();
+      electronAPI.setFullScreen(false);
+      setIsFullScreen(false);
+    }
     onClose();
   };
 
@@ -1237,6 +1280,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               showControls={showControls}
               startAutoHideTimer={startAutoHideTimer}
               clearAutoHideTimer={clearAutoHideTimer}
+              onToggleFullScreen={isElectron() ? toggleFullScreen : undefined}
+              isFullScreen={isFullScreen}
             />
           )}
           <View style={styles.bottomButtonsRow}>

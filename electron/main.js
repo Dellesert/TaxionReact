@@ -776,6 +776,16 @@ function setupIPCHandlers() {
     return mainWindow ? mainWindow.isMaximized() : false;
   });
 
+  ipcMain.on('window:setFullScreen', (event, isFullScreen) => {
+    if (mainWindow) {
+      mainWindow.setFullScreen(!!isFullScreen);
+    }
+  });
+
+  ipcMain.handle('window:isFullScreen', () => {
+    return mainWindow ? mainWindow.isFullScreen() : false;
+  });
+
   // Notification handlers
   ipcMain.handle('notification:show', async (event, { title, body, data }) => {
     try {
