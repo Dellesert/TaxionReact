@@ -288,7 +288,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const ref = messageBubbleRefs.current[msgId];
     if (ref) {
-      ref.measureInWindow((x, y, width, height) => {
+      ref.measureInWindow((_x, y, _width, _height) => {
         const screenWidth = Dimensions.get('window').width;
         const screenHeight = Dimensions.get('window').height;
         const menuWidth = 250;
