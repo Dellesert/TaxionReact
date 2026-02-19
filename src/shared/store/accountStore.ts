@@ -35,6 +35,7 @@ interface AccountStoreState {
   addCurrentAccount: () => Promise<void>;
   removeAccount: (userId: number) => Promise<void>;
   deleteOwnAccount: () => Promise<void>;
+  switchToLogin: () => Promise<void>;
   clearSwitchError: () => void;
 }
 
@@ -322,6 +323,41 @@ export const useAccountStore = create<AccountStoreState>((set, get) => ({
     } catch (error: any) {
       console.error('[AccountStore] Delete own account failed:', error);
       set({ isSwitching: false, switchError: error.message || 'Delete failed' });
+    }
+  },
+
+  /**
+   * Сохранить текущий аккаунт и перейти на экран логина (мягкий выход).
+   */
+  switchToLogin: async () => {
+    try {
+      const currentUser = useAuthStore.getState().user;
+      const currentSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
+
+      // 1. Сохранить текущий аккаунт
+      if (currentUser && currentSessionId) {
+        await accountManager.saveAccountAfterLogin(currentUser, currentSessionId);
+      }
+
+      // 2. Отключить WebSocket
+      websocketService.disconnect();
+
+      // 3. Очистить все кеши и stores
+      await clearAllInMemoryStores();
+
+      // 4. Очистить auth данные
+      await secureStorage.deleteItemAsync(STORAGE_KEYS.SESSION_ID);
+      await secureStorage.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+
+      useAuthStore.setState({
+        user: null,
+        sessionId: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error: any) {
+      console.error('[AccountStore] Switch to login failed:', error);
     }
   },
 
