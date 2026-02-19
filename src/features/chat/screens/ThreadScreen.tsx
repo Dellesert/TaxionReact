@@ -180,34 +180,51 @@ const ThreadScreen: React.FC = () => {
     }
   }, [chatId, messageId]);
 
-  // Render root message (post)
-  const renderRootMessage = () => {
-    if (!rootMessage) return null;
-
+  // Render list header: root message (post) + "Начало обсуждения" divider
+  const renderListHeader = () => {
     return (
-      <View style={[styles.rootMessageContainer, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
-        <View style={styles.rootMessageHeader}>
-          <Text style={[styles.rootMessageLabel, { color: theme.textSecondary }]}>
-            Пост в канале
+      <View>
+        {/* Root message (post) */}
+        {rootMessage && (
+          <View style={[styles.rootMessageContainer, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
+            <View style={styles.rootMessageHeader}>
+              <Text style={[styles.rootMessageLabel, { color: theme.textSecondary }]}>
+                Пост в канале
+              </Text>
+            </View>
+            <View style={styles.rootMessageContent}>
+              <Text style={[styles.rootSenderName, { color: theme.primary }]}>
+                {rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
+              </Text>
+              <Text style={[styles.rootMessageText, { color: theme.text }]} numberOfLines={10}>
+                {rootMessage.content}
+              </Text>
+              <Text style={[styles.rootMessageTime, { color: theme.textTertiary }]}>
+                {formatTime(rootMessage.created_at)}
+              </Text>
+            </View>
+            <View style={[styles.commentCountBar, { borderTopColor: theme.border }]}>
+              <Ionicons name="chatbubble-outline" size={14} color={theme.textSecondary} />
+              <Text style={[styles.commentCountText, { color: theme.textSecondary }]}>
+                {totalCount} {getCommentsLabel(totalCount)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Divider: Начало обсуждения */}
+        <View style={styles.discussionDivider}>
+          <View style={[styles.discussionDividerLine, { backgroundColor: theme.border }]} />
+          <Text style={[styles.discussionDividerText, { color: theme.textSecondary }]}>
+            Начало обсуждения
           </Text>
+          <View style={[styles.discussionDividerLine, { backgroundColor: theme.border }]} />
         </View>
-        <View style={styles.rootMessageContent}>
-          <Text style={[styles.rootSenderName, { color: theme.primary }]}>
-            {rootMessage.sender?.name || `User ${rootMessage.sender_id}`}
-          </Text>
-          <Text style={[styles.rootMessageText, { color: theme.text }]} numberOfLines={10}>
-            {rootMessage.content}
-          </Text>
-          <Text style={[styles.rootMessageTime, { color: theme.textTertiary }]}>
-            {formatTime(rootMessage.created_at)}
-          </Text>
-        </View>
-        <View style={[styles.commentCountBar, { borderTopColor: theme.border }]}>
-          <Ionicons name="chatbubble-outline" size={14} color={theme.textSecondary} />
-          <Text style={[styles.commentCountText, { color: theme.textSecondary }]}>
-            {totalCount} {getCommentsLabel(totalCount)}
-          </Text>
-        </View>
+
+        {/* Loading more indicator */}
+        {isLoadingMore && (
+          <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 8 }} />
+        )}
       </View>
     );
   };
@@ -265,9 +282,6 @@ const ThreadScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Root message */}
-      {renderRootMessage()}
-
       {/* Comments list */}
       <View style={[styles.flex1, Platform.OS === 'web' && { marginBottom: inputWrapperHeight }]}>
         <FlatList
@@ -282,11 +296,7 @@ const ThreadScreen: React.FC = () => {
           ]}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
-          ListHeaderComponent={
-            isLoadingMore ? (
-              <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 8 }} />
-            ) : null
-          }
+          ListHeaderComponent={renderListHeader}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
@@ -421,6 +431,21 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  discussionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  discussionDividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  discussionDividerText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   inputWrapper: {
     position: 'absolute',
