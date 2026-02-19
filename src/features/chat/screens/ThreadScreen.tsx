@@ -3,8 +3,9 @@
  * Экран комментариев к посту в канале (тред)
  */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, Keyboard, Platform } from 'react-native';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -52,6 +53,63 @@ const ThreadScreen: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
+
+  // Keyboard state — same approach as ChatScreen
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const keyboardShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event) => {
+        const height = event.endCoordinates.height;
+        setKeyboardHeight(height);
+        Animated.timing(keyboardHeightAnim, {
+          toValue: height,
+          duration: Platform.OS === 'ios' ? 200 : 120,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+
+    const keyboardHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        Animated.timing(keyboardHeightAnim, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? 200 : 120,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardShowListener.remove();
+      keyboardHideListener.remove();
+    };
+  }, [keyboardHeightAnim]);
+
+  // На iOS высота клавиатуры уже включает home indicator
+  const isKeyboardVisible = keyboardHeight > 0;
+  const effectiveInsetsBottom = (Platform.OS === 'ios' && isKeyboardVisible) ? 0 : insets.bottom;
+
+  const inputWrapperHeight = useMemo(() => {
+    return 72 + effectiveInsetsBottom;
+  }, [effectiveInsetsBottom]);
+
+  const inputWrapperAnimatedStyle = useMemo(() => {
+    return {
+      transform: [
+        {
+          translateY: keyboardHeightAnim.interpolate({
+            inputRange: [0, 1000],
+            outputRange: [0, -1000],
+          }),
+        },
+      ],
+    };
+  }, [keyboardHeightAnim]);
 
   // Load thread messages
   const loadThread = useCallback(async () => {
@@ -182,11 +240,15 @@ const ThreadScreen: React.FC = () => {
     );
   }
 
+  const inputContent = (
+    <MessageInput
+      onSend={(content) => handleSend(content)}
+      onTyping={() => {}}
+    />
+  );
+
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.backgroundSecondary, paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -208,37 +270,63 @@ const ThreadScreen: React.FC = () => {
       {renderRootMessage()}
 
       {/* Comments list */}
-      <FlatList
-        ref={flatListRef}
-        style={styles.flex1}
-        data={comments}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderComment}
-        contentContainerStyle={[styles.commentsList, { paddingBottom: 8 }]}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.3}
-        ListHeaderComponent={
-          isLoadingMore ? (
-            <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 8 }} />
-          ) : null
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              Нет комментариев. Будьте первым!
-            </Text>
-          </View>
-        }
-      />
-
-      {/* Input */}
-      <View style={{ paddingBottom: insets.bottom }}>
-        <MessageInput
-          onSend={(content) => handleSend(content)}
-          onTyping={() => {}}
+      <View style={[styles.flex1, Platform.OS === 'web' && { marginBottom: inputWrapperHeight }]}>
+        <FlatList
+          ref={flatListRef}
+          style={styles.flex1}
+          data={comments}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderComment}
+          contentContainerStyle={[
+            styles.commentsList,
+            { paddingBottom: Platform.OS === 'ios' ? 8 : inputWrapperHeight + 8 },
+          ]}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListHeaderComponent={
+            isLoadingMore ? (
+              <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 8 }} />
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                Нет комментариев. Будьте первым!
+              </Text>
+            </View>
+          }
         />
       </View>
-    </KeyboardAvoidingView>
+
+      {/* Input — platform-specific, same as ChatScreenContent */}
+      {Platform.OS === 'ios' ? (
+        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+          <View style={{ backgroundColor: theme.background, paddingBottom: insets.bottom }}>
+            {inputContent}
+          </View>
+        </KeyboardStickyView>
+      ) : (
+        <Animated.View
+          style={[
+            styles.inputWrapper,
+            { height: inputWrapperHeight },
+            inputWrapperAnimatedStyle,
+          ]}
+        >
+          <View
+            style={[
+              styles.inputWrapperInner,
+              {
+                paddingBottom: effectiveInsetsBottom,
+                backgroundColor: theme.background,
+              },
+            ]}
+          >
+            {inputContent}
+          </View>
+        </Animated.View>
+      )}
+    </View>
   );
 };
 
@@ -334,6 +422,16 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  inputWrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  inputWrapperInner: {
+    flex: 1,
   },
 });
 
