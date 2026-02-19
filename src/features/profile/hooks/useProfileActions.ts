@@ -4,6 +4,7 @@ import { useAccountStore } from '@shared/store/accountStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { isElectron } from '@shared/utils/platform';
 
 /**
  * Hook for managing profile actions (logout, theme change, etc.)
@@ -19,7 +20,20 @@ export const useProfileActions = () => {
   /**
    * Handle user logout with choice: switch account or full logout
    */
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    if (!isElectron()) {
+      try {
+        setIsLoggingOut(true);
+        await logout();
+      } catch (error) {
+        console.error('Ошибка при выходе:', error);
+        showError('Не удалось выйти из аккаунта');
+      } finally {
+        setIsLoggingOut(false);
+      }
+      return;
+    }
+
     showOptions(
       'Выход',
       [

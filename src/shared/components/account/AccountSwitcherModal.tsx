@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useAccountStore } from '@shared/store/accountStore';
+import { isElectron } from '@shared/utils/platform';
 import { Avatar } from '@shared/components/common/Avatar';
 import { SavedAccount } from '@/types/account.types';
 import { ConfirmDialog } from '@shared/components/common/ConfirmDialog';
@@ -98,7 +99,12 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
     await deleteOwnAccount();
   };
 
-  const handleLogoutPress = () => {
+  const handleLogoutPress = async () => {
+    if (!isElectron()) {
+      onClose();
+      await logout();
+      return;
+    }
     setShowLogoutOptions(true);
   };
 
