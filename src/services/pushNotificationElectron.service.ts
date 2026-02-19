@@ -128,6 +128,11 @@ class ElectronPushNotificationService {
    */
   async showNotification(title: string, body: string, data?: NotificationData): Promise<void> {
     try {
+      // Don't show push notifications when the window is active and focused
+      if (document.hasFocus()) {
+        return;
+      }
+
       // Use Web Notification API (works reliably in both dev and production Electron)
       if ('Notification' in window) {
         if (Notification.permission === 'granted') {
