@@ -19,15 +19,17 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
   const { prefetchEventDelayed, cancelPrefetch } = useEventPrefetch();
   const [isHovered, setIsHovered] = useState(false);
 
-  // Предзагрузка при касании (до нажатия)
+  const isBirthday = event.type === 'birthday';
+
+  // Предзагрузка при касании (до нажатия) — не для birthday
   const handlePressIn = useCallback(() => {
-    prefetchEventDelayed(event.id);
-  }, [event.id, prefetchEventDelayed]);
+    if (!isBirthday) prefetchEventDelayed(event.id);
+  }, [event.id, isBirthday, prefetchEventDelayed]);
 
   // Отмена предзагрузки при отмене касания
   const handlePressOut = useCallback(() => {
-    cancelPrefetch();
-  }, [cancelPrefetch]);
+    if (!isBirthday) cancelPrefetch();
+  }, [isBirthday, cancelPrefetch]);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -78,20 +80,24 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
       <View style={[styles.colorIndicator, { backgroundColor: event.color }]} />
 
       <View style={styles.content}>
-        {/* Title with status badge */}
+        {/* Title with status badge or birthday icon */}
         <View style={styles.titleRow}>
           <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
             {event.title}
           </Text>
-          {statusBadge && (
+          {isBirthday ? (
+            <View style={[styles.statusBadge, { backgroundColor: '#E91E6320' }]}>
+              <Ionicons name="gift-outline" size={16} color="#E91E63" />
+            </View>
+          ) : statusBadge ? (
             <View style={[styles.statusBadge, { backgroundColor: statusBadge.color + '20' }]}>
               <Ionicons name={statusBadge.icon as any} size={16} color={statusBadge.color} />
             </View>
-          )}
+          ) : null}
         </View>
 
-        {/* Description - limited to 100 characters */}
-        {event.description && (
+        {/* Description - limited to 100 characters (hidden for birthday events) */}
+        {!isBirthday && event.description && (
           <FormattedText
             text={event.description.length > 100
               ? `${event.description.substring(0, 100)}...`
@@ -134,8 +140,8 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
               </View>
             )}
 
-            {/* Participants count */}
-            {(event.participant_count || event.participants_count || 0) > 0 && (
+            {/* Participants count (hidden for birthday events) */}
+            {!isBirthday && (event.participant_count || event.participants_count || 0) > 0 && (
               <View style={styles.metaItem}>
                 <Ionicons name="people-outline" size={14} color={theme.primary} />
                 <Text style={[styles.metaText, { color: theme.text }]}>
@@ -145,8 +151,8 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
             )}
           </View>
 
-          {/* Creator Avatar - on the right (hidden for schedule events) */}
-          {event.creator && event.type !== 'schedule' && (
+          {/* Creator Avatar - on the right (hidden for schedule and birthday events) */}
+          {event.creator && event.type !== 'schedule' && event.type !== 'birthday' && (
             <Avatar
               name={event.creator.name || event.creator.email}
               imageUrl={event.creator.avatar}

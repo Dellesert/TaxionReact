@@ -17,6 +17,7 @@ import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
 import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
 import { TitleBarCalendarControls } from '../components/common/TitleBarCalendarControls';
 import { TitleBarViewSwitcher, ViewOption } from '@shared/components/common/TitleBarViewSwitcher';
+import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
@@ -29,6 +30,7 @@ import { useWeekDisplayMode } from '../hooks/useWeekDisplayMode';
 import { groupEventsByDate } from '../utils/calendarHelpers';
 import { HolidayBanner } from '../components/common/HolidayBanner';
 import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
+import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 
 type CalendarStackParamList = {
   CalendarMain: {
@@ -216,6 +218,8 @@ const CalendarScreen: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery] = useState('');
   const [mobileRefreshTrigger, setMobileRefreshTrigger] = useState(0);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileUserId, setProfileUserId] = useState<number | null>(null);
 
   // Week display mode (lifted from CalendarDesktopView for TitleBar integration)
   const { weekDisplayMode, setWeekDisplayMode } = useWeekDisplayMode();
@@ -260,7 +264,11 @@ const CalendarScreen: React.FC = () => {
 
   // Handlers
   const handleEventPress = (event: Event) => {
-    // Navigate to event detail screen
+    if (event.type === 'birthday') {
+      setProfileUserId(event.created_by);
+      setShowProfileModal(true);
+      return;
+    }
     navigation.navigate('EventDetail', { eventId: event.id });
   };
 
@@ -391,6 +399,32 @@ const CalendarScreen: React.FC = () => {
         visible={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onEventCreated={handleEventCreated}
+      />
+
+      {/* Birthday Profile Modal */}
+      <UserProfileModal
+        visible={showProfileModal}
+        userId={profileUserId}
+        onClose={() => {
+          setShowProfileModal(false);
+          setProfileUserId(null);
+        }}
+        onOpenChat={async (userId) => {
+          try {
+            const chat = await getOrCreateDirectChat(userId);
+            setShowProfileModal(false);
+            setProfileUserId(null);
+            const rootNavigation = navigation.getParent();
+            if (rootNavigation) {
+              rootNavigation.navigate('Chats', {
+                screen: 'Chat',
+                params: { chatId: chat.id },
+              });
+            }
+          } catch (error: any) {
+            showError(error.message || 'Не удалось открыть чат');
+          }
+        }}
       />
     </SafeAreaView>
   );

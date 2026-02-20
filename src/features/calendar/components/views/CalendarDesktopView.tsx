@@ -17,6 +17,10 @@ import { WeekTimelineView } from './WeekTimelineView';
 import { UpcomingEventsCard } from '../panels/UpcomingEventsCard';
 import { HolidayBanner } from '../common/HolidayBanner';
 import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
+import { UserProfileModal } from '@shared/components/common/UserProfileModal';
+import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
+import { useNavigation } from '@react-navigation/native';
+import { useNotification } from '@shared/contexts/NotificationContext';
 
 interface CalendarDesktopViewProps {
   selectedDate: Date;
@@ -57,9 +61,13 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   hideToolbar = false,
 }) => {
   const { theme, isDark } = useTheme();
+  const navigation = useNavigation();
+  const { showError } = useNotification();
   // Card background - white for light mode to stand out from gray background
   const cardBgColor = isDark ? theme.card : '#FFFFFF';
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileUserId, setProfileUserId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<CalendarView>(initialView);
   // Use external weekDisplayMode if provided (from TitleBar), otherwise use internal state
   const [internalWeekDisplayMode, setInternalWeekDisplayMode] = useState<WeekDisplayMode>('timeline');
@@ -90,6 +98,11 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   };
 
   const handleEventPress = (event: Event) => {
+    if (event.type === 'birthday') {
+      setProfileUserId(event.created_by);
+      setShowProfileModal(true);
+      return;
+    }
     // На десктопе открываем только панель справа, без навигации на полноэкранный детальный экран
     setSelectedEvent(event);
   };
@@ -250,6 +263,32 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
           </View>
         )}
       </View>
+
+      {/* Birthday Profile Modal */}
+      <UserProfileModal
+        visible={showProfileModal}
+        userId={profileUserId}
+        onClose={() => {
+          setShowProfileModal(false);
+          setProfileUserId(null);
+        }}
+        onOpenChat={async (userId) => {
+          try {
+            const chat = await getOrCreateDirectChat(userId);
+            setShowProfileModal(false);
+            setProfileUserId(null);
+            const rootNavigation = navigation.getParent();
+            if (rootNavigation) {
+              rootNavigation.navigate('Chats' as never, {
+                screen: 'Chat',
+                params: { chatId: chat.id },
+              } as never);
+            }
+          } catch (error: any) {
+            showError(error.message || 'Не удалось открыть чат');
+          }
+        }}
+      />
     </View>
   );
 };
