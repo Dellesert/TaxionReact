@@ -579,7 +579,12 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
             </View>
           </Pressable>
         ) : (
-        <BlurView intensity={80} style={styles.blurOverlay} tint="dark">
+        <View style={styles.blurOverlay}>
+          {reduceAnimations ? (
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]} />
+          ) : (
+            <BlurView intensity={80} style={StyleSheet.absoluteFillObject} tint="dark" />
+          )}
           <Pressable
             style={styles.modalOverlay}
             onPress={() => setShowContextMenu(false)}
@@ -665,7 +670,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
               )}
             </View>
           </Pressable>
-        </BlurView>
+        </View>
         )}
       </Modal>
 

@@ -41,4 +41,6 @@ html.electron-app.reduce-animations *::after {
   transition-delay: 0s !important;
   animation-duration: 0s !important;
   animation-delay: 0s !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }

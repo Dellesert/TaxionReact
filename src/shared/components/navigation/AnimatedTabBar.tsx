@@ -11,6 +11,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useChatStore } from '@shared/store/chatStore';
+import { useAnimationStore } from '@shared/store/animationStore';
 
 export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
   state,
@@ -20,6 +21,7 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const totalUnreadCount = useChatStore((state) => state.totalUnreadCount);
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
 
   // Анимированное значение для скрытия/показа tab bar (используем обычный Animated API)
   const translateY = useRef(new Animated.Value(0)).current;
@@ -54,6 +56,96 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
 
   const isDark = theme.background === '#000000' || theme.background === '#121212' || theme.background.toLowerCase().startsWith('#0') || theme.background.toLowerCase().startsWith('#1');
 
+  const tabContent = state.routes.map((route, index) => {
+    // Skip Admin route (hidden from tab bar)
+    if (route.name === 'Admin') {
+      return null;
+    }
+
+    const { options } = descriptors[route.key];
+    const label = options.tabBarLabel ?? options.title ?? route.name;
+    const isFocused = state.index === index;
+
+    const onPress = () => {
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+      });
+
+      if (!isFocused && !event.defaultPrevented) {
+        navigation.navigate(route.name);
+      }
+    };
+
+    // Получаем имя иконки в зависимости от роута
+    let iconName = 'help-outline';
+    if (route.name === 'Dashboard') {
+      iconName = isFocused ? 'grid' : 'grid-outline';
+    } else if (route.name === 'Chats') {
+      iconName = isFocused ? 'chatbubbles' : 'chatbubbles-outline';
+    } else if (route.name === 'Tasks') {
+      iconName = isFocused ? 'checkbox' : 'checkbox-outline';
+    } else if (route.name === 'Polls') {
+      iconName = isFocused ? 'bar-chart' : 'bar-chart-outline';
+    } else if (route.name === 'Calendar') {
+      iconName = isFocused ? 'calendar' : 'calendar-outline';
+    } else if (route.name === 'Profile') {
+      iconName = isFocused ? 'settings' : 'settings-outline';
+    }
+
+    // Показываем бейдж для чатов
+    const showBadge = route.name === 'Chats' && totalUnreadCount > 0;
+
+    return (
+      <TouchableOpacity
+        key={route.key}
+        accessibilityRole="button"
+        accessibilityState={isFocused ? { selected: true } : {}}
+        accessibilityLabel={options.tabBarAccessibilityLabel}
+        onPress={onPress}
+        style={styles.tab}
+      >
+        <View style={styles.iconContainer}>
+          <Ionicons
+            name={iconName as any}
+            size={26}
+            color={isFocused ? theme.primary : theme.textTertiary}
+          />
+          {showBadge && (
+            <View style={[
+              styles.badge,
+              { backgroundColor: theme.error || '#FF3B30', borderColor: theme.backgroundSecondary },
+              totalUnreadCount > 99 && styles.badgeLarge,
+            ]}>
+              <Text style={styles.badgeText}>
+                {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text
+          style={[
+            styles.label,
+            {
+              color: isFocused ? theme.primary : theme.textTertiary,
+            },
+          ]}
+        >
+          {label as string}
+        </Text>
+      </TouchableOpacity>
+    );
+  });
+
+  const containerStyle = [
+    styles.blurContainer,
+    {
+      borderWidth: isDark ? 0 : 1,
+      borderColor: isDark ? 'transparent' : 'rgba(0, 0, 0, 0.08)',
+    },
+  ];
+
   return (
     <Animated.View
       style={[
@@ -64,102 +156,31 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
         },
       ]}
     >
-      <BlurView
-        intensity={80}
-        tint={isDark ? 'dark' : 'light'}
-        style={[
-          styles.blurContainer,
-          {
-            backgroundColor: Platform.OS === 'android'
-              ? (isDark ? 'rgba(30, 30, 30, 0.98)' : 'rgba(245, 245, 245, 0.97)')
-              : (isDark ? 'rgba(30, 30, 30, 0.7)' : 'rgba(245, 245, 245, 0.15)'),
-            borderWidth: isDark ? 0 : 1,
-            borderColor: isDark ? 'transparent' : 'rgba(0, 0, 0, 0.08)',
-          },
-        ]}
-      >
-      {state.routes.map((route, index) => {
-        // Skip Admin route (hidden from tab bar)
-        if (route.name === 'Admin') {
-          return null;
-        }
-
-        const { options } = descriptors[route.key];
-        const label = options.tabBarLabel ?? options.title ?? route.name;
-        const isFocused = state.index === index;
-
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
-
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
-          }
-        };
-
-        // Получаем имя иконки в зависимости от роута
-        let iconName = 'help-outline';
-        if (route.name === 'Dashboard') {
-          iconName = isFocused ? 'grid' : 'grid-outline';
-        } else if (route.name === 'Chats') {
-          iconName = isFocused ? 'chatbubbles' : 'chatbubbles-outline';
-        } else if (route.name === 'Tasks') {
-          iconName = isFocused ? 'checkbox' : 'checkbox-outline';
-        } else if (route.name === 'Polls') {
-          iconName = isFocused ? 'bar-chart' : 'bar-chart-outline';
-        } else if (route.name === 'Calendar') {
-          iconName = isFocused ? 'calendar' : 'calendar-outline';
-        } else if (route.name === 'Profile') {
-          iconName = isFocused ? 'settings' : 'settings-outline';
-        }
-
-        // Показываем бейдж для чатов
-        const showBadge = route.name === 'Chats' && totalUnreadCount > 0;
-
-        return (
-          <TouchableOpacity
-            key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            onPress={onPress}
-            style={styles.tab}
-          >
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name={iconName as any}
-                size={26}
-                color={isFocused ? theme.primary : theme.textTertiary}
-              />
-              {showBadge && (
-                <View style={[
-                  styles.badge,
-                  { backgroundColor: theme.error || '#FF3B30', borderColor: theme.backgroundSecondary },
-                  totalUnreadCount > 99 && styles.badgeLarge,
-                ]}>
-                  <Text style={styles.badgeText}>
-                    {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text
-              style={[
-                styles.label,
-                {
-                  color: isFocused ? theme.primary : theme.textTertiary,
-                },
-              ]}
-            >
-              {label as string}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-      </BlurView>
+      {reduceAnimations ? (
+        <View
+          style={[
+            ...containerStyle,
+            { backgroundColor: isDark ? 'rgba(30, 30, 30, 0.98)' : 'rgba(245, 245, 245, 0.97)' },
+          ]}
+        >
+          {tabContent}
+        </View>
+      ) : (
+        <BlurView
+          intensity={80}
+          tint={isDark ? 'dark' : 'light'}
+          style={[
+            ...containerStyle,
+            {
+              backgroundColor: Platform.OS === 'android'
+                ? (isDark ? 'rgba(30, 30, 30, 0.98)' : 'rgba(245, 245, 245, 0.97)')
+                : (isDark ? 'rgba(30, 30, 30, 0.7)' : 'rgba(245, 245, 245, 0.15)'),
+            },
+          ]}
+        >
+          {tabContent}
+        </BlurView>
+      )}
     </Animated.View>
   );
 };

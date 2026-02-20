@@ -11,6 +11,7 @@ import { MessageInput } from '../messages/MessageInput';
 import { SelectionModeToolbar } from '../common/SelectionModeToolbar';
 import { SearchNavigationBar } from '../search/SearchNavigationBar';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationStore } from '@shared/store/animationStore';
 import type { Message, Chat } from '../../types/chat.types';
 
 interface ChatScreenContentProps {
@@ -110,7 +111,7 @@ interface ChatScreenContentProps {
   // Search highlight - активный поисковый запрос для подсветки текста
   activeSearchQuery?: string;
   onMediaViewerOpen?: (attachmentId: number) => void;
-  onCancelUpload?: (messageId: number) => void;
+  onCancelUpload?: (messageId: number, attachmentIndex: number) => void;
   onThreadPress?: (messageId: number) => void;
 }
 
@@ -196,6 +197,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
   onThreadPress,
 }) => {
   const { isDark, theme } = useTheme();
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
 
   // Disable input for non-admin/non-owner users in channels
   const isChannelInputDisabled = chatType === 'channel' && userRole !== 'owner' && userRole !== 'admin';
@@ -391,8 +393,7 @@ export const ChatScreenContent: React.FC<ChatScreenContentProps> = ({
                 {
                   paddingBottom: effectiveInsetsBottom,
                   // @ts-ignore - backdrop-filter поддерживается на web
-                  backdropFilter: 'blur(20px)',
-                  WebkitBackdropFilter: 'blur(20px)',
+                  ...(reduceAnimations ? {} : { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }),
                 },
               ]}
             >

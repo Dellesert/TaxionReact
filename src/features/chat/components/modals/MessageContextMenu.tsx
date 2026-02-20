@@ -11,6 +11,7 @@ import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 import { stripFormatting } from '../../utils/formatting';
 import { ReactionBar } from '../messages/ReactionBar';
 import { FormattedText } from '../common/FormattedText';
+import { useAnimationStore } from '@shared/store/animationStore';
 
 interface MessageContextMenuProps {
   visible: boolean;
@@ -60,6 +61,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
 
   const userReactionEmojis = React.useMemo(() => {
     if (!currentUserId) return [];
@@ -367,7 +369,12 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
           </View>
         </Pressable>
       ) : (
-        <BlurView intensity={80} style={styles.blurOverlay} tint="dark">
+        <View style={styles.blurOverlay}>
+          {reduceAnimations ? (
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]} />
+          ) : (
+            <BlurView intensity={80} style={StyleSheet.absoluteFillObject} tint="dark" />
+          )}
           <Pressable
             style={styles.modalOverlay}
             onPress={onClose}
@@ -569,7 +576,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
               )}
             </View>
           </Pressable>
-        </BlurView>
+        </View>
       )}
     </Modal>
   );

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Text, View, StyleSheet, StyleProp, TextStyle, Animated, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationStore } from '@shared/store/animationStore';
 
 interface SpoilerTextProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ interface SpoilerTextProps {
 export const SpoilerText: React.FC<SpoilerTextProps> = ({ children, style }) => {
   const [revealed, setRevealed] = useState(false);
   const { theme, isDark } = useTheme();
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -64,12 +66,19 @@ export const SpoilerText: React.FC<SpoilerTextProps> = ({ children, style }) => 
         {children}
       </Text>
       {!revealed && (
-        <BlurView
-          intensity={isDark ? 30 : 25}
-          tint={isDark ? 'light' : 'dark'}
-          style={styles.hiddenOverlay}
-          pointerEvents="none"
-        />
+        reduceAnimations ? (
+          <View
+            style={[styles.hiddenOverlay, { backgroundColor: isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(200, 200, 200, 0.95)' }]}
+            pointerEvents="none"
+          />
+        ) : (
+          <BlurView
+            intensity={isDark ? 30 : 25}
+            tint={isDark ? 'light' : 'dark'}
+            style={styles.hiddenOverlay}
+            pointerEvents="none"
+          />
+        )
       )}
     </View>
   );
