@@ -279,6 +279,45 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
         thread_root_id: messageId,
       });
       setTotalCount(prev => prev + 1);
+
+      // If not all comments were loaded (user didn't scroll through all pages),
+      // load remaining pages so the list is complete before scrolling to the new message
+      if (hasMore) {
+        const currentComments = useChatStore.getState().threadMessages[messageId] || [];
+        let lastId = currentComments[currentComments.length - 1]?.id;
+        let additionalMessages: Message[] = [];
+        let moreToLoad = true;
+
+        while (moreToLoad && lastId) {
+          const response = await getThreadMessages(chatId, messageId, {
+            limit: 100,
+            after: lastId,
+          });
+          const newMsgs = response.messages || [];
+          if (newMsgs.length === 0) break;
+          additionalMessages = [...additionalMessages, ...newMsgs];
+          lastId = newMsgs[newMsgs.length - 1]?.id;
+          moreToLoad = response.has_more;
+          setTotalCount(response.total || 0);
+        }
+
+        if (additionalMessages.length > 0) {
+          // Re-read store to include any WS-delivered message that arrived in the meantime
+          const latestComments = useChatStore.getState().threadMessages[messageId] || [];
+          const existingIds = new Set(latestComments.map(m => m.id));
+          const merged = [...latestComments];
+          for (const msg of additionalMessages) {
+            if (!existingIds.has(msg.id)) {
+              merged.push(msg);
+              existingIds.add(msg.id);
+            }
+          }
+          merged.sort((a, b) => a.id - b.id);
+          setThreadMessages(messageId, merged);
+        }
+        setHasMore(false);
+      }
+
       // Scroll to bottom after WS delivers the message
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
@@ -286,7 +325,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     } catch (error) {
       console.error('Failed to send thread message:', error);
     }
-  }, [chatId, messageId]);
+  }, [chatId, messageId, hasMore, setThreadMessages]);
 
   // --- Reaction handlers (mirrored from MessageItem.tsx) ---
 
