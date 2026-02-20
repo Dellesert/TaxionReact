@@ -475,7 +475,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
       <View>
         {/* Root message (post) */}
         {rootMessage && (
-          <View style={[styles.rootMessageContainer, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
+          <View style={[styles.rootMessageContainer, { borderBottomColor: theme.border }]}>
             <View style={styles.rootMessageHeader}>
               <Text style={[styles.rootMessageLabel, { color: theme.textSecondary }]}>
                 Пост в канале
