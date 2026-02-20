@@ -11,17 +11,23 @@ const path = require('path');
  *    - ANDROID_KEY_ALIAS
  *    - ANDROID_KEY_PASSWORD
  * 2. Plugin options (for local development - not recommended for production)
- * 3. Default values (for backward compatibility)
+ * 3. Без credentials — signing config не добавляется (с предупреждением)
  */
 
 const withAndroidSigningConfig = (config, options = {}) => {
   return withAppBuildGradle(config, (config) => {
     let contents = config.modResults.contents;
 
-    // Get credentials from environment or options
-    const keystorePassword = process.env.ANDROID_KEYSTORE_PASSWORD || options.storePassword || 'TachyonRelease2024!';
+    // Get credentials from environment or options (NO hardcoded fallbacks)
+    const keystorePassword = process.env.ANDROID_KEYSTORE_PASSWORD || options.storePassword;
     const keyAlias = process.env.ANDROID_KEY_ALIAS || options.keyAlias || 'tachyon-release';
-    const keyPassword = process.env.ANDROID_KEY_PASSWORD || options.keyPassword || 'TachyonRelease2024!';
+    const keyPassword = process.env.ANDROID_KEY_PASSWORD || options.keyPassword;
+
+    if (!keystorePassword || !keyPassword) {
+      console.warn('⚠️ [Android] Release signing credentials not provided. '
+        + 'Set ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_PASSWORD env vars for release builds.');
+      return config;
+    }
 
     // Check if release signing config already exists in signingConfigs block
     // Look for "signingConfigs" followed by "release" with storeFile

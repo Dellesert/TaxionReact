@@ -3,9 +3,25 @@
  * Константы для работы с API бэкенда
  */
 
-// Base URLs
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
-export const WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:8080';
+// Base URLs — localhost fallback только в dev режиме
+const DEV_API_URL = 'http://localhost:8080/api/v1';
+const DEV_WS_URL = 'ws://localhost:8080';
+
+export const API_BASE_URL: string = (() => {
+  const url = process.env.EXPO_PUBLIC_API_BASE_URL;
+  if (url) return url;
+  if (__DEV__) return DEV_API_URL;
+  console.error('[API] EXPO_PUBLIC_API_BASE_URL не установлен в production!');
+  return '';
+})();
+
+export const WS_URL: string = (() => {
+  const url = process.env.EXPO_PUBLIC_WS_URL;
+  if (url) return url;
+  if (__DEV__) return DEV_WS_URL;
+  console.error('[WS] EXPO_PUBLIC_WS_URL не установлен в production!');
+  return '';
+})();
 
 // Microservices Ports (for reference)
 export const MICROSERVICES = {

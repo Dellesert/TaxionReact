@@ -36,6 +36,7 @@ import { isElectron } from '@shared/utils/platform';
 import { electronPushNotificationService } from '@/services/pushNotificationElectron.service';
 import { appUpdaterService } from '@/services/appUpdater.service';
 import { ShareIntentHandler } from '@/features/chat/components/ShareIntentHandler';
+import { ErrorBoundary } from '@shared/components/common/ErrorBoundary';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -66,62 +67,66 @@ LogBox.ignoreLogs([
 // ВАЖНО: LogBox.ignoreAllLogs() удален для отслеживания реальных ошибок в разработке
 // В production используйте условие: if (!__DEV__) LogBox.ignoreAllLogs();
 
-// Подавление ошибки dismiss в Android DateTimePicker
-// Это известная проблема в библиотеке @react-native-community/datetimepicker
-// Ошибка безвредна и не влияет на функциональность
-if (Platform.OS === 'android') {
-  // Перехватываем console.error
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    const errorMessage = args[0]?.toString() || '';
-    const errorStack = args[1]?.stack?.toString() || '';
+// === Глобальные обработчики ошибок для всех платформ ===
 
-    // Подавляем ошибку dismiss из DateTimePicker
-    // Это известная проблема в библиотеке - ошибка безвредна
-    const isDismissError = (
-      errorMessage.includes('Cannot read property \'dismiss\'') ||
-      errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')')
-    );
+// Хелпер: проверка на известную безвредную ошибку DateTimePicker (Android)
+const isDismissError = (message: string): boolean =>
+  message.includes('Cannot read property \'dismiss\'') ||
+  message.includes('Cannot read properties of undefined (reading \'dismiss\')');
 
-    if (isDismissError) {
-      // Логируем для отладки, но не показываем как ошибку
-      return;
-    }
-    originalConsoleError(...args);
-  };
-
-  // Перехватываем глобальные ошибки
+// iOS + Android: глобальный обработчик ошибок React Native
+if (Platform.OS !== 'web') {
   const originalErrorHandler = ErrorUtils.getGlobalHandler();
   ErrorUtils.setGlobalHandler((error, isFatal) => {
     const errorMessage = error?.message || error?.toString() || '';
-    const errorStack = error?.stack || '';
 
-    // Подавляем ошибку dismiss из DateTimePicker
-    // Это известная проблема в библиотеке - ошибка безвредна и не влияет на работу
-    const isDismissError = (
-      errorMessage.includes('Cannot read property \'dismiss\'') ||
-      errorMessage.includes('Cannot read properties of undefined (reading \'dismiss\')')
-    );
-
-    if (isDismissError) {
-      return; // Не передаём дальше - предотвращаем crash
+    // Android: подавляем безвредную ошибку dismiss из DateTimePicker
+    if (Platform.OS === 'android' && isDismissError(errorMessage)) {
+      return;
     }
 
-    // Все остальные ошибки обрабатываются как обычно
+    // TODO: отправка в Sentry после установки
+    // captureException(error, { isFatal });
+
     if (originalErrorHandler) {
       originalErrorHandler(error, isFatal);
     }
   });
+}
 
-  // Дополнительно: перехватываем необработанные Promise rejection
-  if (typeof (global as any).addEventListener === 'function') {
-    (global as any).addEventListener?.('unhandledrejection', (event: any) => {
-      const errorMessage = event?.reason?.message || event?.reason?.toString() || '';
-      if (errorMessage.includes('dismiss')) {
-        event.preventDefault?.();
-      }
-    });
-  }
+// Все платформы (native): перехват необработанных Promise rejection
+if (Platform.OS !== 'web' && typeof (global as any).addEventListener === 'function') {
+  (global as any).addEventListener?.('unhandledrejection', (event: any) => {
+    const errorMessage = event?.reason?.message || event?.reason?.toString() || '';
+    if (Platform.OS === 'android' && isDismissError(errorMessage)) {
+      event.preventDefault?.();
+    }
+    // TODO: отправка в Sentry после установки
+  });
+}
+
+// Web/Electron: глобальные обработчики ошибок
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  window.addEventListener('error', (event: ErrorEvent) => {
+    // TODO: отправка в Sentry после установки
+    // captureException(event.error || new Error(event.message));
+  });
+
+  window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+    // TODO: отправка в Sentry после установки
+    // const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+    // captureException(error);
+  });
+}
+
+// Android: подавление console.error для DateTimePicker dismiss
+if (Platform.OS === 'android') {
+  const originalConsoleError = console.error;
+  console.error = (...args: any[]) => {
+    const errorMessage = args[0]?.toString() || '';
+    if (isDismissError(errorMessage)) return;
+    originalConsoleError(...args);
+  };
 }
 
 export default function App() {
@@ -712,28 +717,30 @@ export default function App() {
   }, [isAuthenticated]);
 
   return (
-    <SafeAreaProvider>
-    <KeyboardProvider>
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SidebarProvider>
-        <DesktopNavigationProvider>
-          <TitleBarControlsProvider>
-            <CustomTitleBar navigationRef={navigationRef} isAuthenticated={isAuthenticated} />
-            <NotificationProvider>
-              <ActionModalProvider>
-                <ShareIntentHandler navigationRef={navigationRef}>
-                  <NetworkSyncProvider enabled={isAuthenticated}>
-                    <AppNavigator ref={navigationRef} />
-                    <OfflineBanner />
-                  </NetworkSyncProvider>
-                </ShareIntentHandler>
-              </ActionModalProvider>
-            </NotificationProvider>
-          </TitleBarControlsProvider>
-        </DesktopNavigationProvider>
-      </SidebarProvider>
-    </GestureHandlerRootView>
-    </KeyboardProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+      <KeyboardProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SidebarProvider>
+          <DesktopNavigationProvider>
+            <TitleBarControlsProvider>
+              <CustomTitleBar navigationRef={navigationRef} isAuthenticated={isAuthenticated} />
+              <NotificationProvider>
+                <ActionModalProvider>
+                  <ShareIntentHandler navigationRef={navigationRef}>
+                    <NetworkSyncProvider enabled={isAuthenticated}>
+                      <AppNavigator ref={navigationRef} />
+                      <OfflineBanner />
+                    </NetworkSyncProvider>
+                  </ShareIntentHandler>
+                </ActionModalProvider>
+              </NotificationProvider>
+            </TitleBarControlsProvider>
+          </DesktopNavigationProvider>
+        </SidebarProvider>
+      </GestureHandlerRootView>
+      </KeyboardProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

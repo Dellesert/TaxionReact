@@ -3,8 +3,8 @@
  * Главная навигация с bottom tabs для авторизованных пользователей
  */
 
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { Suspense, useMemo, useState, lazy } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,16 +14,21 @@ import { useChatStore } from '@shared/store/chatStore';
 import { ChatSelectionProvider } from '@shared/contexts/ChatSelectionContext';
 import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { MainTabParamList } from './types';
+
+// ChatNavigator загружается сразу (начальный экран)
 import ChatNavigator from './ChatNavigator';
-import TaskNavigator from './TaskNavigator';
-import PollNavigator from './PollNavigator';
-import DashboardNavigator from './DashboardNavigator';
-import AdminNavigator from './AdminNavigator';
-import ProfileNavigator from './ProfileNavigator';
-import NotificationNavigator from './NotificationNavigator';
-import CalendarNavigator from './CalendarNavigator';
-import ScheduleNavigator from '@features/schedules/navigation/ScheduleNavigator';
-import AbsenceNavigator from '@features/absences/navigation/AbsenceNavigator';
+
+// Lazy-загрузка остальных навигаторов (для web/Electron — реальное code splitting)
+const TaskNavigator = lazy(() => import('./TaskNavigator'));
+const PollNavigator = lazy(() => import('./PollNavigator'));
+const DashboardNavigator = lazy(() => import('./DashboardNavigator'));
+const AdminNavigator = lazy(() => import('./AdminNavigator'));
+const ProfileNavigator = lazy(() => import('./ProfileNavigator'));
+const NotificationNavigator = lazy(() => import('./NotificationNavigator'));
+const CalendarNavigator = lazy(() => import('./CalendarNavigator'));
+const ScheduleNavigator = lazy(() => import('@features/schedules/navigation/ScheduleNavigator'));
+const AbsenceNavigator = lazy(() => import('@features/absences/navigation/AbsenceNavigator'));
+
 import { AnimatedTabBar } from '@shared/components/navigation/AnimatedTabBar';
 import { SideNavBar } from '@shared/components/navigation/SideNavBar';
 
@@ -78,7 +83,13 @@ const MainNavigatorContent: React.FC = () => {
           totalUnreadCount={totalUnreadCount}
         />
         <View style={styles.desktopContent}>
-          {renderContent()}
+          <Suspense fallback={
+            <View style={styles.lazyFallback}>
+              <ActivityIndicator size="large" color={theme.primary} />
+            </View>
+          }>
+            {renderContent()}
+          </Suspense>
         </View>
       </View>
     );
@@ -94,6 +105,7 @@ const MainNavigatorContent: React.FC = () => {
       tabBar={(props) => <AnimatedTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
+        lazy: true,
         tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
@@ -217,6 +229,11 @@ const styles = StyleSheet.create({
   },
   desktopContent: {
     flex: 1,
+  },
+  lazyFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   badge: {
     position: 'absolute',

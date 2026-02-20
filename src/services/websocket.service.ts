@@ -13,6 +13,7 @@ import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import * as chatApi from '@/features/chat/api/chat.api';
 import { isElectron } from '@shared/utils/platform';
 import { electronPushNotificationService } from './pushNotificationElectron.service';
+import { WS_URL } from '@shared/constants/api.constants';
 
 type WSMessageType =
   // Messages
@@ -88,9 +89,8 @@ class WebSocketService {
         return;
       }
 
-      // WebSocket URL from env (chat service on port 8082)
-      const wsBaseUrl = process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:8082';
-      const wsUrl = `${wsBaseUrl}/api/v1/ws?session_id=${encodeURIComponent(sessionId)}`;
+      // WebSocket URL из централизованной константы
+      const wsUrl = `${WS_URL}/api/v1/ws?session_id=${encodeURIComponent(sessionId)}`;
 
 
       this.ws = new WebSocket(wsUrl);

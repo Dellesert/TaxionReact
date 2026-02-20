@@ -52,13 +52,18 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# env
+# env - все env файлы кроме example
 .env
-nul
-/.claude
-/.claude
-/.claude
+.env.*
+!.env.example
 .env.back
+nul
+
+# Keystores (signing credentials)
+*.keystore
+!android/app/debug.keystore
+
+/.claude
 /build
 
 # Electron
