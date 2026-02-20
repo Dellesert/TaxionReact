@@ -5,6 +5,7 @@ import { Avatar } from '@shared/components/common/Avatar';
 import type { Schedule, ScheduleEntry, ScheduleUser, ShiftType } from '../types/schedule.types';
 import { SHIFT_TYPE_LABELS } from '../types/schedule.types';
 import { ShiftQuickPicker } from './ShiftQuickPicker';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 interface CellInfo {
   userId: number;
@@ -300,6 +301,8 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
             {dates.map((date, index) => {
               const weekend = isWeekend(date);
               const today = isToday(date);
+              const holiday = getHoliday(date) !== null;
+              const isRedDay = weekend || holiday;
 
               return (
                 <View
@@ -314,7 +317,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                   <Text style={[
                     styles.dayNumber,
                     { color: theme.text },
-                    weekend && { color: theme.error },
+                    isRedDay && { color: theme.error },
                     today && { color: theme.primary, fontWeight: '700' },
                   ]}>
                     {formatDayNumber(date)}
@@ -322,7 +325,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                   <Text style={[
                     styles.weekday,
                     { color: theme.textTertiary },
-                    weekend && { color: theme.error + '80' },
+                    isRedDay && { color: theme.error + '80' },
                   ]}>
                     {formatWeekday(date)}
                   </Text>

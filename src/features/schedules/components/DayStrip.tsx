@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 interface DayStripProps {
   selectedDate: Date;
@@ -87,6 +88,8 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
             const selected = isSameDay(day, selectedDate);
             const today = isToday(day);
             const weekend = isWeekend(index);
+            const holiday = getHoliday(day) !== null;
+            const isRedDay = weekend || holiday;
 
             return (
               <TouchableOpacity
@@ -102,7 +105,7 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
                 <Text
                   style={[
                     styles.dayName,
-                    { color: selected ? '#FFFFFF' : weekend ? theme.error : theme.textSecondary },
+                    { color: selected ? '#FFFFFF' : isRedDay ? theme.error : theme.textSecondary },
                   ]}
                 >
                   {DAY_NAMES[index]}
@@ -110,7 +113,7 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
                 <Text
                   style={[
                     styles.dayNumber,
-                    { color: selected ? '#FFFFFF' : weekend ? theme.error : theme.text },
+                    { color: selected ? '#FFFFFF' : isRedDay ? theme.error : theme.text },
                   ]}
                 >
                   {day.getDate()}

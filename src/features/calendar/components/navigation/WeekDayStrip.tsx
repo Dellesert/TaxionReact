@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { areSameDay } from '../../utils/calendarHelpers';
 import { Event } from '../../types/calendar.types';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 500;
@@ -178,6 +179,10 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
               const dayEvents = getEventsForDate(date);
               const dayOfWeek = format(date, 'EEEEEE', { locale: ru });
               const dayNumber = format(date, 'd');
+              const dayOfWeekNum = date.getDay();
+              const isWeekend = dayOfWeekNum === 0 || dayOfWeekNum === 6;
+              const isHoliday = getHoliday(date) !== null;
+              const isRedDay = isWeekend || isHoliday;
 
               // Get unique colors from events (max 3 dots)
               const eventColors = [...new Set(dayEvents.map(e => e.color))].slice(0, 3);
@@ -232,7 +237,7 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
                   <Text
                     style={[
                       styles.dayOfWeek,
-                      { color: isSelected ? theme.primary : theme.textSecondary },
+                      { color: isSelected ? theme.primary : isRedDay ? theme.error : theme.textSecondary },
                     ]}
                   >
                     {dayOfWeek}
@@ -247,7 +252,7 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
                     <Text
                       style={[
                         styles.dayNumber,
-                        { color: isSelected ? '#FFFFFF' : isTodayDate ? theme.primary : theme.text },
+                        { color: isSelected ? '#FFFFFF' : isTodayDate ? theme.primary : isRedDay ? theme.error : theme.text },
                         isSelected && styles.dayNumberSelected,
                       ]}
                     >
