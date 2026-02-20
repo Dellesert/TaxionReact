@@ -351,8 +351,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   </TouchableOpacity>
                 )}
 
-                {/* Удалить */}
-                {onDelete && !message.is_deleted && (
+                {/* Удалить — в каналах только для админов/владельцев */}
+                {onDelete && !message.is_deleted && (chatType !== 'channel' || isAdmin || currentUserRole === 'owner') && (
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={() => {
@@ -560,7 +560,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                     </TouchableOpacity>
                   )}
 
-                  {onDelete && !message.is_deleted && (
+                  {/* Удалить — в каналах только для админов/владельцев */}
+                  {onDelete && !message.is_deleted && (chatType !== 'channel' || isAdmin || currentUserRole === 'owner') && (
                     <TouchableOpacity
                       style={styles.menuItem}
                       onPress={() => {

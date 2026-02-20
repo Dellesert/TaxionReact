@@ -1807,6 +1807,13 @@ export const useChatStore = create<ChatState>()(
   },
 
   handleMessageUpdate: (message: Message) => {
+    // Для каналов: удалённые root-посты полностью убираем из UI
+    const chatForUpdate = get().chats.find(c => c.id === message.chat_id);
+    if (chatForUpdate?.type === 'channel' && message.is_deleted && !(message as any).thread_root_id) {
+      get().handleMessageDelete(message.id, message.chat_id);
+      return;
+    }
+
     // Parse poll_data if it's a JSON string (comes from WebSocket)
     // Create updated message object and explicitly preserve message_type
     const updatedMessage: any = {
@@ -1895,7 +1902,53 @@ export const useChatStore = create<ChatState>()(
   },
 
   handleMessageDelete: (messageId: number, chatId: number) => {
-    // Вместо удаления сообщения, помечаем его как удалённое И очищаем контент и вложения
+    const chat = get().chats.find(c => c.id === chatId);
+
+    // Для каналов: полностью убираем пост из UI (без плейсхолдера «Сообщение удалено»)
+    if (chat?.type === 'channel') {
+      set((state) => {
+        const updatedChatMessages = (state.messages[chatId] || []).filter(
+          msg => msg.id !== messageId
+        );
+
+        // Обновляем last_message если удалённый пост был последним
+        const needsLastMessageUpdate = chat.last_message?.id === messageId;
+        const newLastMessage = needsLastMessageUpdate
+          ? updatedChatMessages[updatedChatMessages.length - 1] || undefined
+          : undefined;
+
+        const updateChat = (c: Chat): Chat => {
+          if (c.id === chatId && needsLastMessageUpdate) {
+            return { ...c, last_message: newLastMessage };
+          }
+          return c;
+        };
+
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (tab.loaded) {
+            updatedTabs[tabKey as TabName] = {
+              ...tab,
+              pinnedChats: tab.pinnedChats.map(updateChat),
+              regularChats: tab.regularChats.map(updateChat),
+            };
+          }
+        });
+
+        const currentTabData = updatedTabs[state.currentTab];
+        const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+        return {
+          messages: { ...state.messages, [chatId]: updatedChatMessages },
+          tabs: updatedTabs,
+          chats: updatedChats,
+        };
+      });
+      return;
+    }
+
+    // Для остальных типов чатов: помечаем как удалённое с плейсхолдером
     set((state) => ({
       messages: {
         ...state.messages,

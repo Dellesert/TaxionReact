@@ -419,10 +419,26 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         title="Удалить сообщение"
         message={message.content.length > 100 ? `${message.content.substring(0, 100)}...` : message.content}
         onDismiss={() => setShowDeleteModal(false)}
-        actions={[
-          // "Удалить для всех"
-          // Для личных чатов: только свои сообщения
-          // Для групповых: свои сообщения ИЛИ если пользователь админ/владелец
+        actions={chatType === 'channel' ? [
+          // Каналы: простое подтверждение, всегда удаление для всех
+          {
+            text: 'Удалить',
+            icon: 'trash-outline' as const,
+            style: 'destructive' as const,
+            onPress: async () => {
+              setShowDeleteModal(false);
+              onDelete?.(message.id, 'everyone');
+            },
+          },
+          {
+            text: 'Отмена',
+            style: 'cancel' as const,
+            onPress: async () => {
+              setShowDeleteModal(false);
+            },
+          },
+        ] : [
+          // Остальные чаты: выбор «для всех» / «для меня»
           ...((chatType === 'private' ? isOwnMessage : (isOwnMessage || isAdmin)) ? [{
             text: 'Удалить для всех',
             icon: 'trash-outline' as const,
@@ -432,7 +448,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               onDelete?.(message.id, 'everyone');
             },
           }] : []),
-          // "Удалить для меня" - всегда доступно
           {
             text: 'Удалить для меня',
             icon: 'trash-outline' as const,
@@ -442,7 +457,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               onDelete?.(message.id, 'me');
             },
           },
-          // Отмена
           {
             text: 'Отмена',
             style: 'cancel' as const,

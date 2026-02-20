@@ -27,8 +27,13 @@ export const useChatMessages = (
   // Поэтому новые сообщения должны быть в начале массива (index 0)
   const messages = useMemo(() => {
     if (!chatMessages) return [];
-    return [...chatMessages].reverse(); // Обратный порядок: новые → старые
-  }, [chatMessages]);
+    let filtered = chatMessages;
+    // В каналах скрываем удалённые root-посты (без плейсхолдера «Сообщение удалено»)
+    if (chat?.type === 'channel') {
+      filtered = chatMessages.filter(m => !m.is_deleted || m.thread_root_id);
+    }
+    return [...filtered].reverse(); // Обратный порядок: новые → старые
+  }, [chatMessages, chat?.type]);
 
   // Создаем список элементов для отображения (только сообщения)
   const messageListItems = useMemo(() => {
