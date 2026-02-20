@@ -37,6 +37,7 @@ import { electronPushNotificationService } from '@/services/pushNotificationElec
 import { appUpdaterService } from '@/services/appUpdater.service';
 import { ShareIntentHandler } from '@/features/chat/components/ShareIntentHandler';
 import { ErrorBoundary } from '@shared/components/common/ErrorBoundary';
+import { initSentry, captureException } from '@shared/utils/sentry';
 
 // Отключаем строгий режим Reanimated для уменьшения количества warnings
 if (typeof global !== 'undefined') {
@@ -85,8 +86,7 @@ if (Platform.OS !== 'web') {
       return;
     }
 
-    // TODO: отправка в Sentry после установки
-    // captureException(error, { isFatal });
+    captureException(error, { isFatal });
 
     if (originalErrorHandler) {
       originalErrorHandler(error, isFatal);
@@ -101,21 +101,18 @@ if (Platform.OS !== 'web' && typeof (global as any).addEventListener === 'functi
     if (Platform.OS === 'android' && isDismissError(errorMessage)) {
       event.preventDefault?.();
     }
-    // TODO: отправка в Sentry после установки
   });
 }
 
 // Web/Electron: глобальные обработчики ошибок
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   window.addEventListener('error', (event: ErrorEvent) => {
-    // TODO: отправка в Sentry после установки
-    // captureException(event.error || new Error(event.message));
+    captureException(event.error || new Error(event.message));
   });
 
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
-    // TODO: отправка в Sentry после установки
-    // const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
-    // captureException(error);
+    const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+    captureException(error);
   });
 }
 
@@ -177,6 +174,9 @@ export default function App() {
   }, [reduceAnimations]);
 
   useEffect(() => {
+    // Initialize Sentry error tracking
+    initSentry();
+
     // Initialize auth state and theme on app start
     initialize();
     loadTheme();

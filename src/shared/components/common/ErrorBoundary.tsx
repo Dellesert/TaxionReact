@@ -6,6 +6,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { captureException } from '@shared/utils/sentry';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -33,8 +34,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     this.setState({ errorInfo });
     this.props.onError?.(error, errorInfo);
 
-    // Sentry интеграция (раскомментировать после установки @sentry/react-native)
-    // captureException(error, { componentStack: errorInfo.componentStack });
+    captureException(error, { componentStack: errorInfo.componentStack });
   }
 
   handleReset = (): void => {
