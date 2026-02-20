@@ -56,6 +56,7 @@ export const useChatActions = (chatId: number) => {
     sendMessageWithVideoUpload,
     retryVideoUpload,
     cancelVideoUpload,
+    cancelSingleFileUpload,
   } = useVideoUploadMessage(chatId);
 
   /**
@@ -310,11 +311,23 @@ export const useChatActions = (chatId: number) => {
   }, [chatId, retryMessage, retryVideoUpload]);
 
   /**
-   * Отмена загрузки медиа (по нажатию крестика в лоадере)
+   * Отмена загрузки конкретного файла (по нажатию крестика в лоадере).
+   * Если в сообщении несколько вложений — отменяется только указанный файл.
    */
-  const handleCancelUpload = useCallback((messageId: number) => {
-    cancelVideoUpload(messageId);
-  }, [cancelVideoUpload]);
+  const handleCancelUpload = useCallback((messageId: number, attachmentIndex: number) => {
+    // Проверяем, сколько вложений осталось у этого сообщения
+    const messages = useChatStore.getState().messages[chatId] || [];
+    const msg = messages.find((m) => m.id === messageId);
+    const totalAttachments = msg?.pending_video_files?.length ?? msg?.attachments?.length ?? 0;
+
+    if (totalAttachments <= 1) {
+      // Одно вложение — отменяем сообщение целиком
+      cancelVideoUpload(messageId);
+    } else {
+      // Несколько вложений — отменяем только конкретный файл
+      cancelSingleFileUpload(messageId, attachmentIndex);
+    }
+  }, [chatId, cancelVideoUpload, cancelSingleFileUpload]);
 
   /**
    * Удаление неудачного сообщения

@@ -45,7 +45,7 @@ interface MessageItemProps {
   onEnterSelectionMode?: (messageId: number) => void;
   onToggleSelection?: (messageId: number) => void;
   onRetryMessage?: (messageId: number) => void;
-  onCancelUpload?: (messageId: number) => void;
+  onCancelUpload?: (messageId: number, attachmentIndex: number) => void;
   isVisible?: boolean; // Добавляем флаг видимости для ленивой загрузки
   searchQuery?: string; // Поисковый запрос для подсветки текста
   onMediaViewerOpen?: (attachmentId: number) => void; // Открытие глобального просмотра медиа (по всем вложениям чата)

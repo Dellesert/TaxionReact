@@ -59,7 +59,7 @@ interface MessageListComponentProps {
   isPositionReady?: boolean;
   searchQuery?: string;
   onMediaViewerOpen?: (attachmentId: number) => void;
-  onCancelUpload?: (messageId: number) => void;
+  onCancelUpload?: (messageId: number, attachmentIndex: number) => void;
   onThreadPress?: (messageId: number) => void;
 }
 

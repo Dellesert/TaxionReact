@@ -45,7 +45,7 @@ interface MessageAttachmentsProps {
   isOwnMessage?: boolean;
   currentUserId?: number;
   onRetryMessage?: (messageId: number) => void;
-  onCancelUpload?: (messageId: number) => void;
+  onCancelUpload?: (messageId: number, attachmentIndex: number) => void;
 }
 
 /**
@@ -324,7 +324,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         />
         {/* Upload progress overlay */}
         {isUploading && chatMessage?.upload_progress != null && (
-          renderUploadProgressOverlay(chatMessage.upload_progress)
+          renderUploadProgressOverlay(chatMessage.upload_progress, gridIndex)
         )}
         {/* Video play button overlay (only when not uploading) */}
         {isVideo && !isUploading && (
@@ -373,7 +373,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
   const isUploading = chatMessage?.upload_progress != null && chatMessage.upload_progress < 100 && chatMessage.sending;
 
   // Рендер кругового прогресса загрузки видео с кнопкой отмены
-  const renderUploadProgressOverlay = (progress: number) => {
+  const renderUploadProgressOverlay = (progress: number, attachmentIndex: number) => {
     const size = 56;
     const strokeWidth = 3;
     const radius = (size - strokeWidth) / 2;
@@ -384,7 +384,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
       <View style={styles.videoUploadOverlay}>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => chatMessage && onCancelUpload?.(chatMessage.id)}
+          onPress={() => chatMessage && onCancelUpload?.(chatMessage.id, attachmentIndex)}
           style={styles.uploadCancelButton}
         >
           <Svg width={size} height={size}>
@@ -481,7 +481,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         />
         {/* Upload progress overlay OR play button */}
         {isUploading && chatMessage?.upload_progress != null ? (
-          renderUploadProgressOverlay(chatMessage.upload_progress)
+          renderUploadProgressOverlay(chatMessage.upload_progress, index)
         ) : (
           <View style={styles.videoPlayOverlay}>
             <View style={styles.videoPlayButton}>

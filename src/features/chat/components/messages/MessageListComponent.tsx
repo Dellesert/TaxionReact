@@ -60,7 +60,7 @@ interface MessageListComponentProps {
   isPositionReady?: boolean; // Флаг готовности позиции скролла для показа списка
   searchQuery?: string; // Поисковый запрос для подсветки текста в сообщениях
   onMediaViewerOpen?: (attachmentId: number) => void;
-  onCancelUpload?: (messageId: number) => void;
+  onCancelUpload?: (messageId: number, attachmentIndex: number) => void;
 }
 
 /**

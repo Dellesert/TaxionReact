@@ -42,10 +42,12 @@ export const useVideoUploadMessage = (chatId: number) => {
   const realProgressRef = useRef<Map<number, number>>(new Map());
   // Хранит текущий отображаемый прогресс trickle для каждого tempId
   const trickleProgressRef = useRef<Map<number, number>>(new Map());
-  // Хранит ссылки на XHR для отмены загрузки
-  const xhrRefsRef = useRef<Map<number, XMLHttpRequest>>(new Map());
+  // Хранит ссылки на XHR для отмены загрузки (ключ: "tempId_fileIndex")
+  const xhrRefsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
   // Множество отменённых загрузок — чтобы не отправлять сообщение после завершения XHR
   const cancelledUploadsRef = useRef<Set<number>>(new Set());
+  // Индексы отменённых файлов внутри конкретного сообщения (для поштучной отмены)
+  const cancelledFileIndicesRef = useRef<Map<number, Set<number>>>(new Map());
   // Интервалы повторной отправки typing-индикатора при загрузке (чтобы не исчез по таймауту 5 сек)
   const typingIntervalsRef = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
 
@@ -414,7 +416,23 @@ export const useVideoUploadMessage = (chatId: number) => {
       const uploadedFileIds: number[] = [...(existingFileIds || [])];
       let uploadBytesComplete = false;
 
+      // Количество не-отменённых файлов (для расчёта прогресса)
+      const activeFileCount = () => {
+        const cancelled = cancelledFileIndicesRef.current.get(tempId);
+        return cancelled ? pendingFiles.length - cancelled.size : pendingFiles.length;
+      };
+
       for (let i = 0; i < pendingFiles.length; i++) {
+        // Пропускаем файлы, отменённые поштучно
+        if (cancelledFileIndicesRef.current.get(tempId)?.has(i)) {
+          continue;
+        }
+
+        // Проверяем полную отмену сообщения
+        if (cancelledUploadsRef.current.has(tempId)) {
+          return;
+        }
+
         const file = pendingFiles[i];
         const fileObj = {
           uri: file.localUri,
@@ -422,41 +440,93 @@ export const useVideoUploadMessage = (chatId: number) => {
           type: file.mimeType,
         };
 
+        const xhrKey = `${tempId}_${i}`;
 
-        const uploaded = await fileApi.uploadFile(
-          fileObj,
-          undefined,
-          (fileProgress) => {
-            // Маппим прогресс загрузки в 0-80%
-            const fileWeight = 1 / pendingFiles.length;
-            const baseProgress = (i / pendingFiles.length) * UPLOAD_PROGRESS_WEIGHT * 100;
-            const currentFileProgress = (fileProgress / 100) * fileWeight * UPLOAD_PROGRESS_WEIGHT * 100;
-            const totalProgress = baseProgress + currentFileProgress;
+        try {
+          const uploaded = await fileApi.uploadFile(
+            fileObj,
+            undefined,
+            (fileProgress) => {
+              // Маппим прогресс загрузки в 0-80%
+              const total = activeFileCount();
+              const fileWeight = 1 / total;
+              const completedBefore = uploadedFileIds.length - (existingFileIds || []).length;
+              const baseProgress = (completedBefore / total) * UPLOAD_PROGRESS_WEIGHT * 100;
+              const currentFileProgress = (fileProgress / 100) * fileWeight * UPLOAD_PROGRESS_WEIGHT * 100;
+              const totalProgress = baseProgress + currentFileProgress;
 
-            // Если прогресс достиг ~80% (все байты отправлены), запускаем анимацию конвертации
-            if (fileProgress >= 100 && i === pendingFiles.length - 1 && !uploadBytesComplete) {
-              uploadBytesComplete = true;
-              startProcessingAnimation(tempId);
-            } else if (!uploadBytesComplete) {
-              // Используем updateRealProgress — он сам сравнит с trickle и покажет бОльшее значение
-              updateRealProgress(tempId, totalProgress);
-            }
-          },
-          true, // isPublic
-          (xhr) => { xhrRefsRef.current.set(tempId, xhr); },
-        );
+              // Если прогресс достиг ~80% (все байты отправлены) и это последний активный файл, запускаем анимацию конвертации
+              const isLastActiveFile = (() => {
+                const cancelled = cancelledFileIndicesRef.current.get(tempId);
+                for (let j = i + 1; j < pendingFiles.length; j++) {
+                  if (!cancelled?.has(j)) return false;
+                }
+                return true;
+              })();
 
-        // Проверяем, не была ли загрузка отменена пока шёл upload
-        if (cancelledUploadsRef.current.has(tempId)) {
-          return;
+              if (fileProgress >= 100 && isLastActiveFile && !uploadBytesComplete) {
+                uploadBytesComplete = true;
+                startProcessingAnimation(tempId);
+              } else if (!uploadBytesComplete) {
+                // Используем updateRealProgress — он сам сравнит с trickle и покажет бОльшее значение
+                updateRealProgress(tempId, totalProgress);
+              }
+            },
+            true, // isPublic
+            (xhr) => { xhrRefsRef.current.set(xhrKey, xhr); },
+          );
+
+          xhrRefsRef.current.delete(xhrKey);
+
+          // Проверяем, не была ли загрузка отменена целиком пока шёл upload
+          if (cancelledUploadsRef.current.has(tempId)) {
+            return;
+          }
+
+          // Проверяем, не был ли этот конкретный файл отменён во время загрузки
+          if (cancelledFileIndicesRef.current.get(tempId)?.has(i)) {
+            continue;
+          }
+
+          uploadedFileIds.push(uploaded.id);
+        } catch (fileError: any) {
+          xhrRefsRef.current.delete(xhrKey);
+
+          // Если загрузка целиком отменена — выходим
+          if (cancelledUploadsRef.current.has(tempId)) {
+            return;
+          }
+
+          // Если этот конкретный файл был отменён — пропускаем, продолжаем остальные
+          if (cancelledFileIndicesRef.current.get(tempId)?.has(i)) {
+            continue;
+          }
+
+          // Реальная ошибка загрузки — пробрасываем наверх
+          throw fileError;
         }
-
-        uploadedFileIds.push(uploaded.id);
       }
 
       // Проверяем отмену перед отправкой сообщения
       if (cancelledUploadsRef.current.has(tempId)) {
         cancelledUploadsRef.current.delete(tempId);
+        return;
+      }
+
+      // Если все файлы были отменены поштучно — очищаем сообщение
+      const existingOnly = (existingFileIds || []).length;
+      if (uploadedFileIds.length <= existingOnly) {
+        cancelledUploadsRef.current.add(tempId);
+        cleanupTimers(tempId);
+        pendingVideoUploads.delete(tempId);
+        websocketService.sendTyping(chatId, false);
+        // Удаляем оптимистичное сообщение
+        useChatStore.setState((state) => ({
+          messages: {
+            ...state.messages,
+            [chatId]: (state.messages[chatId] || []).filter((msg) => msg.id !== tempId),
+          },
+        }));
         return;
       }
 
@@ -546,6 +616,8 @@ export const useVideoUploadMessage = (chatId: number) => {
           type: file.mimeType,
         };
 
+        const xhrKey = `${tempId}_${i}`;
+
         const uploaded = await fileApi.uploadFile(
           fileObj,
           undefined,
@@ -563,8 +635,10 @@ export const useVideoUploadMessage = (chatId: number) => {
             }
           },
           true,
-          (xhr) => { xhrRefsRef.current.set(tempId, xhr); },
+          (xhr) => { xhrRefsRef.current.set(xhrKey, xhr); },
         );
+
+        xhrRefsRef.current.delete(xhrKey);
 
         if (cancelledUploadsRef.current.has(tempId)) {
           cancelledUploadsRef.current.delete(tempId);
@@ -600,17 +674,19 @@ export const useVideoUploadMessage = (chatId: number) => {
   }, [chatId, markFailed, cleanupTimers, updateUploadProgress, updateRealProgress, startTrickleAnimation, startProcessingAnimation, replaceWithReal]);
 
   /**
-   * Отменить загрузку и удалить сообщение
+   * Отменить загрузку и удалить сообщение целиком
    */
   const cancelVideoUpload = useCallback((tempId: number) => {
-    // Прерываем XHR если загрузка ещё идёт
-    const xhr = xhrRefsRef.current.get(tempId);
-    if (xhr) {
-      xhr.abort();
-      xhrRefsRef.current.delete(tempId);
+    // Прерываем все XHR для этого сообщения
+    for (const [key, xhr] of xhrRefsRef.current.entries()) {
+      if (key.startsWith(`${tempId}_`)) {
+        xhr.abort();
+        xhrRefsRef.current.delete(key);
+      }
     }
     // Помечаем как отменённый, чтобы async flow не продолжал отправку
     cancelledUploadsRef.current.add(tempId);
+    cancelledFileIndicesRef.current.delete(tempId);
     websocketService.sendTyping(chatId, false);
 
     cleanupTimers(tempId);
@@ -657,10 +733,63 @@ export const useVideoUploadMessage = (chatId: number) => {
     });
   }, [chatId, cleanupTimers]);
 
+  /**
+   * Отменить загрузку конкретного файла (по индексу) внутри сообщения.
+   * Если после отмены не осталось активных файлов — удаляет сообщение целиком.
+   */
+  const cancelSingleFileUpload = useCallback((tempId: number, fileIndex: number) => {
+    // Запоминаем индекс отменённого файла
+    if (!cancelledFileIndicesRef.current.has(tempId)) {
+      cancelledFileIndicesRef.current.set(tempId, new Set());
+    }
+    cancelledFileIndicesRef.current.get(tempId)!.add(fileIndex);
+
+    // Прерываем XHR этого конкретного файла
+    const xhrKey = `${tempId}_${fileIndex}`;
+    const xhr = xhrRefsRef.current.get(xhrKey);
+    if (xhr) {
+      xhr.abort();
+      xhrRefsRef.current.delete(xhrKey);
+    }
+
+    // Проверяем, есть ли ещё активные файлы в этом сообщении
+    const uploadData = pendingVideoUploads.get(tempId);
+    const totalFiles = uploadData?.pendingFiles.length ?? 0;
+    const cancelledCount = cancelledFileIndicesRef.current.get(tempId)?.size ?? 0;
+
+    if (cancelledCount >= totalFiles) {
+      // Все файлы отменены — удаляем сообщение целиком
+      cancelVideoUpload(tempId);
+      return;
+    }
+
+    // Удаляем только этот файл из оптимистичного сообщения в store
+    useChatStore.setState((state) => {
+      const existingMessages = state.messages[chatId] || [];
+      const updatedMessages = existingMessages.map((msg) => {
+        if (msg.id !== tempId) return msg;
+        const updatedAttachments = (msg.attachments || []).filter((_, idx) => idx !== fileIndex);
+        const updatedPendingFiles = (msg.pending_video_files || []).filter((_, idx) => idx !== fileIndex);
+        return {
+          ...msg,
+          attachments: updatedAttachments,
+          pending_video_files: updatedPendingFiles,
+        };
+      });
+      return {
+        messages: {
+          ...state.messages,
+          [chatId]: updatedMessages,
+        },
+      };
+    });
+  }, [chatId, cancelVideoUpload]);
+
   return {
     sendMessageWithVideoUpload,
     retryVideoUpload,
     cancelVideoUpload,
+    cancelSingleFileUpload,
   };
 };
 
