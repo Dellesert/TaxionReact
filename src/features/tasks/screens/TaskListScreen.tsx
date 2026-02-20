@@ -67,6 +67,7 @@ const TaskListScreen: React.FC = () => {
   });
 
   const isFirstRender = useRef(true);
+  const navigatedToDetail = useRef(false);
 
   // Custom hooks
   const {
@@ -145,11 +146,16 @@ const TaskListScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reload when screen focused (skip first render)
+  // Reload when screen focused (skip first render and return from detail)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (isFirstRender.current) {
         isFirstRender.current = false;
+        return;
+      }
+      // When returning from TaskDetail, keep cached data and scroll position
+      if (navigatedToDetail.current) {
+        navigatedToDetail.current = false;
         return;
       }
       const apiFilters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
@@ -192,6 +198,7 @@ const TaskListScreen: React.FC = () => {
   }, [tasks, totals, advancedFilters, searchQuery, user?.id]);
 
   const handleTaskPress = useCallback((task: Task) => {
+    navigatedToDetail.current = true;
     navigation.navigate('TaskDetail', { taskId: task.id });
   }, [navigation]);
 
