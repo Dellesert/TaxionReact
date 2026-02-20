@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, SectionList, RefreshControl } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Event } from '../../types/calendar.types';
 import { EventSection } from '../../utils/calendarHelpers';
 import { EventItem } from './EventItem';
 import { useTheme } from '@shared/hooks/useTheme';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 interface CalendarEventsListProps {
   sections: EventSection[];
@@ -26,11 +28,25 @@ export const CalendarEventsList: React.FC<CalendarEventsListProps> = ({
         sections={sections}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => <EventItem event={item} onPress={onEventPress} />}
-        renderSectionHeader={({ section: { title } }) => (
-          <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
-          </View>
-        )}
+        renderSectionHeader={({ section: { title, data } }) => {
+          // Try to get holiday name from the first event's date in this section
+          const sectionDate = data.length > 0 ? new Date(data[0].start_time) : null;
+          const holiday = sectionDate ? getHoliday(sectionDate) : null;
+
+          return (
+            <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
+              {holiday && (
+                <View style={[styles.holidayTag, { backgroundColor: theme.error + '12' }]} pointerEvents="none">
+                  <Ionicons name="gift-outline" size={10} color={theme.error} />
+                  <Text style={[styles.holidayTagText, { color: theme.error }]} numberOfLines={1}>
+                    {holiday.name}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        }}
         style={styles.list}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -64,5 +80,19 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 4,
     paddingBottom: 100,
+  },
+  holidayTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  holidayTagText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

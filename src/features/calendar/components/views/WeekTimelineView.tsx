@@ -13,6 +13,7 @@ import {
   getHours,
   getMinutes,
 } from 'date-fns';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 interface WeekTimelineViewProps {
   selectedDate: Date;
@@ -39,6 +40,13 @@ export const WeekTimelineView: React.FC<WeekTimelineViewProps> = ({
     const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 }); // End on Sunday
     return eachDayOfInterval({ start: weekStart, end: weekEnd });
   }, [selectedDate]);
+
+  // Check if any day in the week has a holiday (for consistent header height)
+  const hasAnyHoliday = useMemo(() => {
+    return weekDays.some(day => getHoliday(day) !== null);
+  }, [weekDays]);
+
+  const headerHeight = hasAnyHoliday ? 76 : 60;
 
   // Group events by day and calculate positions
   const eventsByDay = useMemo(() => {
@@ -80,7 +88,7 @@ export const WeekTimelineView: React.FC<WeekTimelineViewProps> = ({
 
   const renderTimeLabels = () => (
     <View style={[styles.timeColumn, { backgroundColor: theme.card, borderRightColor: theme.border }]}>
-      <View style={styles.timeColumnHeader} />
+      <View style={[styles.timeColumnHeader, { height: headerHeight }]} />
       {HOURS.map((hour) => (
         <View key={hour} style={[styles.timeSlot, { height: HOUR_HEIGHT, borderBottomColor: theme.border }]}>
           <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>
@@ -96,6 +104,7 @@ export const WeekTimelineView: React.FC<WeekTimelineViewProps> = ({
     const dayEvents = eventsByDay[dateKey] || [];
     const isTodayDate = isToday(day);
     const isWeekend = day.getDay() === 0 || day.getDay() === 6; // Saturday or Sunday
+    const holiday = getHoliday(day);
 
     // Get 2-letter day name
     const getDayName = (date: Date) => {
@@ -104,10 +113,10 @@ export const WeekTimelineView: React.FC<WeekTimelineViewProps> = ({
     };
 
     return (
-      <View key={dateKey} style={styles.dayColumn}>
+      <View key={dateKey} style={[styles.dayColumn, { minHeight: HOUR_HEIGHT * 24 + headerHeight }]}>
         {/* Day Header */}
-        <View style={[styles.dayHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <Text style={[styles.dayName, { color: isWeekend ? theme.primary : theme.textSecondary }]}>
+        <View style={[styles.dayHeader, { height: headerHeight, backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <Text style={[styles.dayName, { color: isWeekend ? theme.primary : theme.textSecondary }, holiday && { color: theme.error }]}>
             {getDayName(day)}
           </Text>
           <View
@@ -122,11 +131,17 @@ export const WeekTimelineView: React.FC<WeekTimelineViewProps> = ({
                 { color: theme.text },
                 isTodayDate && styles.dayNumberTextToday,
                 isWeekend && !isTodayDate && { color: theme.primary },
+                holiday && !isTodayDate && { color: theme.error },
               ]}
             >
               {format(day, 'd')}
             </Text>
           </View>
+          {holiday && (
+            <Text style={[styles.holidayLabel, { color: theme.error }]} numberOfLines={1}>
+              {holiday.name}
+            </Text>
+          )}
         </View>
 
         {/* Time Grid */}
@@ -201,7 +216,7 @@ export const WeekTimelineView: React.FC<WeekTimelineViewProps> = ({
             nestedScrollEnabled={true}
           >
             {renderTimeLabels()}
-            <View style={styles.weekGrid}>
+            <View style={[styles.weekGrid, { minHeight: HOUR_HEIGHT * 24 + headerHeight }]}>
               {weekDays.map((day) => renderDayColumn(day))}
             </View>
           </ScrollView>
@@ -243,25 +258,24 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
   },
   timeColumnHeader: {
-    height: 60,
+    // height set dynamically based on hasAnyHoliday
   },
   weekGrid: {
     flexDirection: 'row',
     flex: 1,
-    minHeight: HOUR_HEIGHT * 24 + 60, // 24 hours + header
+    // minHeight set dynamically based on headerHeight
   },
   dayColumn: {
     flex: 1,
     minWidth: 100,
-    minHeight: HOUR_HEIGHT * 24 + 60,
+    // minHeight set dynamically based on headerHeight
   },
   dayHeader: {
-    height: 60,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 1,
-    paddingVertical: 8,
-    gap: 4,
+    paddingVertical: 6,
+    gap: 2,
   },
   dayName: {
     fontSize: 11,
@@ -290,6 +304,13 @@ const styles = StyleSheet.create({
   dayNumberTextToday: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  holidayLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    textAlign: 'center',
+    paddingHorizontal: 4,
+    opacity: 0.8,
   },
   dayGrid: {
     position: 'relative',

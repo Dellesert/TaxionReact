@@ -15,6 +15,8 @@ import { CompactCalendarToolbar } from '../navigation/CompactCalendarToolbar';
 import { MonthNavigator } from '../navigation/MonthNavigator';
 import { WeekTimelineView } from './WeekTimelineView';
 import { UpcomingEventsCard } from '../panels/UpcomingEventsCard';
+import { HolidayBanner } from '../common/HolidayBanner';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 interface CalendarDesktopViewProps {
   selectedDate: Date;
@@ -183,6 +185,12 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
 
         {/* Center Panel - Main Calendar View */}
         <View style={[styles.centerPanel, { backgroundColor: theme.background }]}>
+          {/* Holiday banner for day view */}
+          {viewMode === 'day' && (() => {
+            const holiday = getHoliday(selectedDate);
+            return holiday ? <HolidayBanner holidayName={holiday.name} /> : null;
+          })()}
+
           {isLoading ? (
             <EventListSkeleton />
           ) : viewMode === 'week' ? (

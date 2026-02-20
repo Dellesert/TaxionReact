@@ -27,6 +27,8 @@ import { useMobileCalendarState } from '../hooks/useMobileCalendarState';
 import { useMobileCalendarData } from '../hooks/useMobileCalendarData';
 import { useWeekDisplayMode } from '../hooks/useWeekDisplayMode';
 import { groupEventsByDate } from '../utils/calendarHelpers';
+import { HolidayBanner } from '../components/common/HolidayBanner';
+import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 
 type CalendarStackParamList = {
   CalendarMain: {
@@ -165,6 +167,12 @@ const MobileCalendarContent: React.FC<MobileCalendarContentProps> = ({
           onSwipeRight={handlePrevWeek}
         />
       )}
+
+      {/* Holiday banner for week day view */}
+      {viewMode === 'week' && selectedDate && (() => {
+        const holiday = getHoliday(selectedDate);
+        return holiday ? <HolidayBanner holidayName={holiday.name} /> : null;
+      })()}
 
       {/* Content: Month calendar or Events list */}
       {viewMode === 'month' ? (
