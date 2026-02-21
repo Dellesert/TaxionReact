@@ -529,6 +529,8 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                     const entry = userRow.entriesByDate.get(dateKey);
                     const weekend = isWeekend(date);
                     const today = isToday(date);
+                    const holiday = getHoliday(date) !== null;
+                    const isRedDay = weekend || holiday;
                     const cellKey = `${userRow.userId}-${dateKey}`;
                     const isHovered = hoveredCell === cellKey;
 
@@ -587,10 +589,8 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           { width: CELL_WIDTH, borderColor: theme.border },
                           weekend && { backgroundColor: theme.backgroundSecondary + '50' },
                           today && { backgroundColor: theme.primary + '10' },
-                          hasAbsence && { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] + '15' },
                           canEdit && styles.entryCellClickable,
-                          canEdit && isHovered && !hasAbsence && { backgroundColor: theme.primary + '15' },
-                          canEdit && isHovered && hasAbsence && { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] + '25' },
+                          canEdit && isHovered && { backgroundColor: (isRedDay ? theme.error : theme.textSecondary) + '15' },
                           isPending && styles.pendingCell,
                           isPending && { borderColor: theme.primary + '60' },
                           hasAbsence && isSpanLabelCell && spanLength > 1 && Platform.OS === 'web' && { overflow: 'visible' as any, zIndex: 2 },
