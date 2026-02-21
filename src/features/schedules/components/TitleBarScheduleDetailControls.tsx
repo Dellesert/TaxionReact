@@ -1,11 +1,11 @@
 /**
  * TitleBarScheduleDetailControls
  * Компактные контролы для деталей графика в Electron TitleBar
- * Переключатель видов (list/grid/shifts) и кнопка меню
+ * Переключатель видов (list/grid/shifts), кнопка меню, кнопки Сохранить/Отменить
  */
 
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
@@ -22,6 +22,14 @@ interface TitleBarScheduleDetailControlsProps {
   showViewSwitcherOnly?: boolean;
   /** Show only menu button (for right controls) */
   showMenuOnly?: boolean;
+  /** Number of pending changes (shows Save/Discard buttons when > 0) */
+  pendingChangesCount?: number;
+  /** Callback when Save button is pressed */
+  onSavePendingChanges?: () => void;
+  /** Callback when Discard button is pressed */
+  onDiscardPendingChanges?: () => void;
+  /** Whether batch save is in progress */
+  isSavingChanges?: boolean;
 }
 
 // Иконки для видов
@@ -40,6 +48,10 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
   onMenuButtonLayout,
   showViewSwitcherOnly = false,
   showMenuOnly = false,
+  pendingChangesCount = 0,
+  onSavePendingChanges,
+  onDiscardPendingChanges,
+  isSavingChanges = false,
 }) => {
   const { theme } = useTheme();
   const menuButtonRef = useRef<View>(null);
@@ -115,6 +127,59 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
     </View>
   );
 
+  // Render pending changes Save/Discard controls
+  const renderPendingChangesControls = () => {
+    if (!pendingChangesCount || pendingChangesCount === 0) return null;
+
+    return (
+      <View style={styles.pendingControls}>
+        {/* Discard button */}
+        <View
+          style={[styles.discardButton, { borderColor: theme.border }]}
+          // @ts-ignore - Web-only
+          onClick={onDiscardPendingChanges}
+          title="Отменить изменения"
+          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
+          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = 'transparent')}
+        >
+          <Ionicons name="close" size={14} color={theme.textSecondary} />
+        </View>
+
+        {/* Save button with counter */}
+        <View
+          style={[
+            styles.saveButton,
+            { backgroundColor: isSavingChanges ? theme.primary + '80' : theme.primary },
+          ]}
+          // @ts-ignore - Web-only
+          onClick={isSavingChanges ? undefined : onSavePendingChanges}
+          title={`Сохранить ${pendingChangesCount} изменений`}
+          onMouseEnter={(e: any) => {
+            if (!isSavingChanges && e.currentTarget?.style) {
+              e.currentTarget.style.opacity = '0.85';
+            }
+          }}
+          onMouseLeave={(e: any) => {
+            if (e.currentTarget?.style) {
+              e.currentTarget.style.opacity = '1';
+            }
+          }}
+        >
+          {isSavingChanges ? (
+            <ActivityIndicator size={12} color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+              <Text style={styles.saveButtonText}>
+                Сохранить ({pendingChangesCount})
+              </Text>
+            </>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   // Show only view switcher (for left controls)
   if (showViewSwitcherOnly) {
     return (
@@ -128,6 +193,7 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
   if (showMenuOnly) {
     return (
       <View style={styles.container}>
+        {renderPendingChangesControls()}
         {canEdit && onOpenMenu && renderMenuButton()}
       </View>
     );
@@ -138,6 +204,9 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
     <View style={styles.container}>
       {/* View Switcher - only for monthly mode */}
       {showViewSwitcher && renderViewSwitcher()}
+
+      {/* Pending changes controls */}
+      {renderPendingChangesControls()}
 
       {/* Menu Button - only for users who can edit */}
       {canEdit && onOpenMenu && renderMenuButton()}
@@ -188,5 +257,35 @@ const styles = StyleSheet.create({
   buttonLabel: {
     fontSize: 13,
     fontWeight: '500',
+  } as any,
+  pendingControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  } as any,
+  discardButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+  } as any,
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    cursor: 'pointer',
+    transition: 'opacity 0.15s ease',
+  } as any,
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   } as any,
 });

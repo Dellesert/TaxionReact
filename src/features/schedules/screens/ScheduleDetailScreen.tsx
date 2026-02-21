@@ -53,6 +53,7 @@ import {
   type ShiftType,
 } from '../types/schedule.types';
 import { templateApi, scheduleApi } from '../api/schedule.api';
+import { usePendingChanges, executeBatchSave } from '../hooks/usePendingChanges';
 import type { ScheduleStackParamList } from '../navigation/types';
 
 type RouteProps = RouteProp<ScheduleStackParamList, 'ScheduleDetail'>;
@@ -64,13 +65,27 @@ export const ScheduleDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const { scheduleId } = route.params;
   const isWideScreen = useIsWideScreen();
-  const { showConfirm } = useActionModal();
+  const { showConfirm, showOptions } = useActionModal();
   const { showSuccess, showError } = useNotification();
   const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
   const updateSchedule = useScheduleStore((state) => state.updateSchedule);
   const createEntry = useScheduleStore((state) => state.createEntry);
   const updateEntry = useScheduleStore((state) => state.updateEntry);
   const deleteEntry = useScheduleStore((state) => state.deleteEntry);
+
+  // Pending changes for batch mode in Grid View
+  const {
+    changes: pendingChanges,
+    pendingCount,
+    hasPendingChanges,
+    isSaving: isSavingPending,
+    setIsSaving: setIsSavingPending,
+    setSaveErrors,
+    addChange: addPendingChange,
+    addDelete: addPendingDelete,
+    removeSucceeded,
+    discardAll: discardPendingChanges,
+  } = usePendingChanges();
 
   const { schedule, entries, isLoading, isLoadingEntries, error, refresh } =
     useScheduleDetails(scheduleId);
@@ -192,6 +207,80 @@ export const ScheduleDetailScreen: React.FC = () => {
     setMenuButtonPosition(layout);
   }, []);
 
+  // Handler for batch saving all pending changes in Grid View
+  const handleSavePendingChanges = useCallback(async () => {
+    if (!schedule || pendingChanges.size === 0) return;
+
+    setIsSavingPending(true);
+    setSaveErrors([]);
+
+    try {
+      const { succeeded, failed } = await executeBatchSave(
+        schedule.id,
+        pendingChanges,
+        { createEntry, updateEntry, deleteEntry },
+      );
+
+      if (failed.length > 0) {
+        removeSucceeded(succeeded);
+        setSaveErrors(failed);
+        showError(`${failed.length} из ${succeeded.length + failed.length} изменений не сохранено`);
+      } else {
+        discardPendingChanges();
+        showSuccess(`Сохранено ${succeeded.length} изменений`);
+      }
+    } catch (err) {
+      showError('Не удалось сохранить изменения');
+    } finally {
+      setIsSavingPending(false);
+      refresh();
+    }
+  }, [schedule, pendingChanges, createEntry, updateEntry, deleteEntry, removeSucceeded, discardPendingChanges, refresh, showSuccess, showError, setIsSavingPending, setSaveErrors]);
+
+  // Handler for discarding all pending changes with confirmation
+  const handleDiscardPendingChanges = useCallback(() => {
+    if (!hasPendingChanges) return;
+    showConfirm(
+      'Отменить изменения?',
+      `Вы потеряете ${pendingCount} несохранённых изменений.`,
+      () => {
+        discardPendingChanges();
+      },
+      undefined,
+      { confirmText: 'Отменить', cancelText: 'Назад', destructive: true },
+    );
+  }, [hasPendingChanges, pendingCount, discardPendingChanges, showConfirm]);
+
+  // Guard view mode switching when there are pending changes
+  const handleViewModeChange = useCallback((newMode: ScheduleViewMode) => {
+    if (viewMode === 'grid' && newMode !== 'grid' && hasPendingChanges) {
+      showOptions(
+        'Несохранённые изменения',
+        [
+          {
+            text: `Сохранить (${pendingCount})`,
+            onPress: async () => {
+              await handleSavePendingChanges();
+              setViewMode(newMode);
+            },
+            style: 'primary',
+          },
+          {
+            text: 'Не сохранять',
+            onPress: () => {
+              discardPendingChanges();
+              setViewMode(newMode);
+            },
+            style: 'destructive',
+          },
+        ],
+        `У вас ${pendingCount} несохранённых изменений.`,
+      );
+      return;
+    }
+    setViewMode(newMode);
+  }, [viewMode, hasPendingChanges, pendingCount, handleSavePendingChanges, discardPendingChanges, showOptions]);
+
   // TitleBar left controls - back button + view switcher
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron || !isWideScreen) return null;
@@ -201,30 +290,34 @@ export const ScheduleDetailScreen: React.FC = () => {
         {schedule && (
           <TitleBarScheduleDetailControls
             viewMode={viewMode}
-            onViewModeChange={setViewMode}
+            onViewModeChange={handleViewModeChange}
             showViewSwitcher={schedule.mode === 'monthly'}
             showViewSwitcherOnly
           />
         )}
       </View>
     );
-  }, [isElectron, isWideScreen, handleGoBack, schedule, viewMode]);
+  }, [isElectron, isWideScreen, handleGoBack, schedule, viewMode, handleViewModeChange]);
 
-  // TitleBar right controls - menu button only
+  // TitleBar right controls - menu button + pending changes controls
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isWideScreen || !schedule) return null;
     return (
       <TitleBarScheduleDetailControls
         viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        onViewModeChange={handleViewModeChange}
         showViewSwitcher={false}
         canEdit={canEdit}
         onOpenMenu={handleOpenMenu}
         onMenuButtonLayout={handleMenuButtonLayout}
         showMenuOnly
+        pendingChangesCount={viewMode === 'grid' ? pendingCount : 0}
+        onSavePendingChanges={handleSavePendingChanges}
+        onDiscardPendingChanges={handleDiscardPendingChanges}
+        isSavingChanges={isSavingPending}
       />
     );
-  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu, handleMenuButtonLayout]);
+  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu, handleMenuButtonLayout, handleViewModeChange, pendingCount, handleSavePendingChanges, handleDiscardPendingChanges, isSavingPending]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -233,6 +326,59 @@ export const ScheduleDetailScreen: React.FC = () => {
     rightControls: titleBarRightControls,
     enabled: isElectron && isWideScreen,
   });
+
+  // Navigation guard: prevent navigating away with unsaved pending changes
+  useEffect(() => {
+    if (!hasPendingChanges) return;
+
+    const unsubscribe = navigation.addListener('beforeRemove' as any, (e: any) => {
+      e.preventDefault();
+
+      showOptions(
+        'Несохранённые изменения',
+        [
+          {
+            text: `Сохранить (${pendingCount})`,
+            onPress: async () => {
+              await handleSavePendingChanges();
+              navigation.dispatch(e.data.action);
+            },
+            style: 'primary',
+          },
+          {
+            text: 'Не сохранять',
+            onPress: () => {
+              discardPendingChanges();
+              navigation.dispatch(e.data.action);
+            },
+            style: 'destructive',
+          },
+        ],
+        `У вас ${pendingCount} несохранённых изменений в графике.`,
+      );
+    });
+
+    return unsubscribe;
+  }, [hasPendingChanges, pendingCount, navigation, handleSavePendingChanges, discardPendingChanges, showOptions]);
+
+  // Keyboard shortcuts (Electron): Ctrl/Cmd+S to save, Escape to discard
+  useEffect(() => {
+    if (!isElectron || viewMode !== 'grid') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && hasPendingChanges) {
+        e.preventDefault();
+        handleSavePendingChanges();
+      }
+      if (e.key === 'Escape' && hasPendingChanges) {
+        e.preventDefault();
+        handleDiscardPendingChanges();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isElectron, viewMode, hasPendingChanges, handleSavePendingChanges, handleDiscardPendingChanges]);
 
   const handleEditSchedule = useCallback(() => {
     setShowActionMenu(false);
@@ -340,39 +486,6 @@ export const ScheduleDetailScreen: React.FC = () => {
     setFilterUserId(userId);
     setFilterUserName(userName);
   }, []);
-
-  // Handler for quick shift selection in Grid View
-  // Note: No refresh() needed - store updates entries optimistically
-  const handleGridShiftSelect = useCallback(async (
-    userId: number,
-    dateKey: string, // YYYY-MM-DD
-    shiftType: ShiftType,
-    existingEntry: ScheduleEntry | null
-  ) => {
-    if (!schedule) return;
-
-    if (existingEntry) {
-      // Update existing entry
-      await updateEntry(schedule.id, existingEntry.id, { shift_type: shiftType });
-    } else {
-      // Create new entry
-      const createData: CreateScheduleEntryRequest = {
-        user_id: userId,
-        date: `${dateKey}T00:00:00Z`,
-        shift_type: shiftType,
-      };
-      await createEntry(schedule.id, createData);
-    }
-    // Store updates entries optimistically, no refresh needed
-  }, [schedule, createEntry, updateEntry]);
-
-  // Handler for entry deletion from Grid View
-  // Note: No refresh() needed - store updates entries optimistically
-  const handleGridEntryDelete = useCallback(async (entryId: number) => {
-    if (!schedule) return;
-    await deleteEntry(schedule.id, entryId);
-    // Store updates entries optimistically, no refresh needed
-  }, [schedule, deleteEntry]);
 
   // Handler for adding entry from Shifts View
   const handleShiftsAddEntry = useCallback(async (
@@ -498,6 +611,30 @@ export const ScheduleDetailScreen: React.FC = () => {
               </Text>
 
               <View style={styles.headerRight}>
+                {/* Pending changes Save/Discard buttons (non-Electron) */}
+                {hasPendingChanges && viewMode === 'grid' && (
+                  <View style={styles.pendingHeaderControls}>
+                    <TouchableOpacity
+                      onPress={handleDiscardPendingChanges}
+                      style={styles.headerDiscardButton}
+                    >
+                      <Ionicons name="close-circle-outline" size={22} color={theme.error} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleSavePendingChanges}
+                      disabled={isSavingPending}
+                      style={[styles.headerSaveButton, { backgroundColor: theme.primary }]}
+                    >
+                      {isSavingPending ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.headerSaveText}>
+                          Сохранить ({pendingCount})
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
                 {/* View mode switcher - only on desktop for monthly mode */}
                 {isWideScreen && schedule.mode === 'monthly' && (
                   <View style={[styles.viewSwitcher, { backgroundColor: theme.backgroundSecondary }]}>
@@ -506,7 +643,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                         styles.viewButton,
                         viewMode === 'list' && { backgroundColor: theme.primary },
                       ]}
-                      onPress={() => setViewMode('list')}
+                      onPress={() => handleViewModeChange('list')}
                     >
                       <Ionicons
                         name="list-outline"
@@ -519,7 +656,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                         styles.viewButton,
                         viewMode === 'grid' && { backgroundColor: theme.primary },
                       ]}
-                      onPress={() => setViewMode('grid')}
+                      onPress={() => handleViewModeChange('grid')}
                     >
                       <Ionicons
                         name="grid-outline"
@@ -532,7 +669,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                         styles.viewButton,
                         viewMode === 'shifts' && { backgroundColor: theme.primary },
                       ]}
-                      onPress={() => setViewMode('shifts')}
+                      onPress={() => handleViewModeChange('shifts')}
                     >
                       <Ionicons
                         name="calendar-outline"
@@ -607,8 +744,9 @@ export const ScheduleDetailScreen: React.FC = () => {
                       entries={entries}
                       groupMembers={groupMembers}
                       canEdit={canManageEntries}
-                      onShiftSelect={handleGridShiftSelect}
-                      onEntryDelete={handleGridEntryDelete}
+                      pendingChanges={pendingChanges}
+                      onPendingShiftSelect={addPendingChange}
+                      onPendingEntryDelete={addPendingDelete}
                     />
                   )}
                 </View>
@@ -1160,6 +1298,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  pendingHeaderControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerDiscardButton: {
+    padding: 4,
+  },
+  headerSaveButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  headerSaveText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
   },
   content: {
     flex: 1,

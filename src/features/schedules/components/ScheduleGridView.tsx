@@ -6,6 +6,7 @@ import type { Schedule, ScheduleEntry, ScheduleUser, ShiftType } from '../types/
 import { SHIFT_TYPE_LABELS } from '../types/schedule.types';
 import { ShiftQuickPicker } from './ShiftQuickPicker';
 import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
+import type { PendingChange } from '../hooks/usePendingChanges';
 
 interface CellInfo {
   userId: number;
@@ -20,8 +21,13 @@ interface ScheduleGridViewProps {
   entries: ScheduleEntry[];
   canEdit?: boolean;
   groupMembers?: ScheduleUser[];
+  // Immediate mode (legacy) - saves to API on each action
   onShiftSelect?: (userId: number, date: string, shiftType: ShiftType, existingEntry: ScheduleEntry | null) => Promise<void>;
   onEntryDelete?: (entryId: number) => Promise<void>;
+  // Batch mode - buffers changes locally
+  pendingChanges?: Map<string, PendingChange>;
+  onPendingShiftSelect?: (userId: number, dateKey: string, shiftType: ShiftType, existingEntry: ScheduleEntry | null) => void;
+  onPendingEntryDelete?: (userId: number, dateKey: string, entry: ScheduleEntry) => void;
 }
 
 interface UserRow {
@@ -118,17 +124,23 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   groupMembers,
   onShiftSelect,
   onEntryDelete,
+  pendingChanges,
+  onPendingShiftSelect,
+  onPendingEntryDelete,
 }) => {
   const { theme } = useTheme();
+
+  // Batch mode: when pendingChanges map is provided
+  const isBatchMode = !!pendingChanges;
 
   // Quick picker state
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
   const [selectedCell, setSelectedCell] = useState<CellInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const [hoveredCell, setHoveredCell] = useState<string | null>(null); // "userId-dateKey"
 
-  // Optimistic updates - temporary local state for instant feedback
+  // Optimistic updates - only used in immediate mode (not batch mode)
   const [optimisticUpdates, setOptimisticUpdates] = useState<Map<string, ShiftType | 'deleted'>>(new Map());
 
   // Generate dates for the schedule period
@@ -188,15 +200,59 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   ) => {
     if (!canEdit) return;
 
+    // In batch mode, if there's a pending change for this cell, use its state for the picker
+    if (isBatchMode && pendingChanges) {
+      const cellKey = `${cellInfo.userId}-${cellInfo.dateKey}`;
+      const pending = pendingChanges.get(cellKey);
+      if (pending) {
+        // If the cell has a pending delete, treat it as if the cell is empty
+        if (pending.type === 'delete') {
+          cellInfo = { ...cellInfo, entry: null };
+        }
+        // If pending create/update, create a synthetic entry to show delete option in picker
+        if (pending.type === 'create' && pending.shiftType) {
+          cellInfo = {
+            ...cellInfo,
+            entry: {
+              id: -1, // Synthetic - not yet saved
+              schedule_id: schedule.id,
+              user_id: cellInfo.userId,
+              date: `${cellInfo.dateKey}T00:00:00Z`,
+              shift_type: pending.shiftType,
+              start_time: '',
+              end_time: '',
+              is_confirmed: false,
+            } as ScheduleEntry,
+          };
+        }
+      }
+    }
+
     const { pageX, pageY } = event.nativeEvent;
     setPickerPosition({ x: pageX, y: pageY });
     setSelectedCell(cellInfo);
     setPickerVisible(true);
-  }, [canEdit]);
+  }, [canEdit, isBatchMode, pendingChanges, schedule.id]);
 
-  // Handle shift selection from picker with optimistic update
+  // Handle shift selection from picker
   const handleShiftSelect = useCallback(async (shiftType: ShiftType) => {
-    if (!selectedCell || !onShiftSelect) return;
+    if (!selectedCell) return;
+
+    if (isBatchMode && onPendingShiftSelect) {
+      // Batch mode: buffer the change locally (synchronous)
+      onPendingShiftSelect(
+        selectedCell.userId,
+        selectedCell.dateKey,
+        shiftType,
+        selectedCell.entry,
+      );
+      setPickerVisible(false);
+      setSelectedCell(null);
+      return;
+    }
+
+    // Immediate mode: existing behavior with optimistic updates
+    if (!onShiftSelect) return;
 
     const cellKey = `${selectedCell.userId}-${selectedCell.dateKey}`;
 
@@ -236,11 +292,28 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
         });
       }, 100);
     }
-  }, [selectedCell, onShiftSelect]);
+  }, [selectedCell, isBatchMode, onPendingShiftSelect, onShiftSelect]);
 
-  // Handle entry deletion with optimistic update
+  // Handle entry deletion
   const handleDelete = useCallback(async () => {
-    if (!selectedCell?.entry || !onEntryDelete) return;
+    if (!selectedCell?.entry) return;
+
+    if (isBatchMode && onPendingEntryDelete) {
+      // Batch mode: buffer the delete locally
+      // For pending creates (synthetic entry with id=-1), the hook will just remove the pending create
+      if (selectedCell.entry.id === -1) {
+        // This is a synthetic entry from a pending create - just remove the pending change
+        onPendingEntryDelete(selectedCell.userId, selectedCell.dateKey, selectedCell.entry);
+      } else {
+        onPendingEntryDelete(selectedCell.userId, selectedCell.dateKey, selectedCell.entry);
+      }
+      setPickerVisible(false);
+      setSelectedCell(null);
+      return;
+    }
+
+    // Immediate mode: existing behavior
+    if (!onEntryDelete) return;
 
     const cellKey = `${selectedCell.userId}-${selectedCell.dateKey}`;
 
@@ -276,7 +349,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
         });
       }, 100);
     }
-  }, [selectedCell, onEntryDelete]);
+  }, [selectedCell, isBatchMode, onPendingEntryDelete, onEntryDelete]);
 
   // Close picker
   const handleClosePicker = useCallback(() => {
@@ -366,13 +439,33 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                     const cellKey = `${userRow.userId}-${dateKey}`;
                     const isHovered = hoveredCell === cellKey;
 
-                    // Check for optimistic update
-                    const optimisticValue = optimisticUpdates.get(cellKey);
-                    const isOptimisticDelete = optimisticValue === 'deleted';
-                    const optimisticShiftType = optimisticValue && optimisticValue !== 'deleted' ? optimisticValue : null;
+                    // Determine display based on mode
+                    let displayShiftType: ShiftType | null = null;
+                    let isPending = false;
+                    let pendingType: PendingChange['type'] | null = null;
 
-                    // Determine what to display: optimistic update takes priority
-                    const displayShiftType = optimisticShiftType || (entry && !isOptimisticDelete ? entry.shift_type : null);
+                    if (isBatchMode && pendingChanges) {
+                      // Batch mode: check pending changes
+                      const pending = pendingChanges.get(cellKey);
+                      if (pending) {
+                        isPending = true;
+                        pendingType = pending.type;
+                        if (pending.type === 'delete') {
+                          displayShiftType = null;
+                        } else {
+                          displayShiftType = pending.shiftType || null;
+                        }
+                      } else {
+                        // No pending change — show original entry
+                        displayShiftType = entry ? entry.shift_type : null;
+                      }
+                    } else {
+                      // Immediate mode: check optimistic updates
+                      const optimisticValue = optimisticUpdates.get(cellKey);
+                      const isOptimisticDelete = optimisticValue === 'deleted';
+                      const optimisticShiftType = optimisticValue && optimisticValue !== 'deleted' ? optimisticValue : null;
+                      displayShiftType = optimisticShiftType || (entry && !isOptimisticDelete ? entry.shift_type : null);
+                    }
 
                     const cellInfo: CellInfo = {
                       userId: userRow.userId,
@@ -392,6 +485,8 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           today && { backgroundColor: theme.primary + '10' },
                           canEdit && styles.entryCellClickable,
                           canEdit && isHovered && { backgroundColor: theme.primary + '15' },
+                          isPending && styles.pendingCell,
+                          isPending && { borderColor: theme.primary + '60' },
                         ]}
                         onPress={(e) => handleCellPress(e, cellInfo)}
                         onHoverIn={() => canEdit && setHoveredCell(cellKey)}
@@ -412,6 +507,13 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                             <Text style={[styles.addHintText, { color: theme.primary }]}>+</Text>
                           </View>
                         ) : null}
+                        {/* Pending change indicator dot */}
+                        {isPending && (
+                          <View style={[
+                            styles.pendingDot,
+                            { backgroundColor: pendingType === 'delete' ? '#EF4444' : theme.primary },
+                          ]} />
+                        )}
                       </Pressable>
                     );
                   })}
@@ -602,5 +704,21 @@ const styles = StyleSheet.create({
   addHintText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  pendingCell: {
+    ...Platform.select({
+      web: {
+        borderStyle: 'dashed',
+      },
+    }),
+    borderWidth: 1,
+  } as any,
+  pendingDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 });
