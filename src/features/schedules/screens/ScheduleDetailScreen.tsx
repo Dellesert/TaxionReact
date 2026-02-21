@@ -54,6 +54,8 @@ import {
 } from '../types/schedule.types';
 import { templateApi, scheduleApi } from '../api/schedule.api';
 import { usePendingChanges, executeBatchSave } from '../hooks/usePendingChanges';
+import { useScheduleAbsences } from '../hooks/useScheduleAbsences';
+import type { AbsenceType } from '@features/absences/types/absence.types';
 import type { ScheduleStackParamList } from '../navigation/types';
 
 type RouteProps = RouteProp<ScheduleStackParamList, 'ScheduleDetail'>;
@@ -149,6 +151,19 @@ export const ScheduleDetailScreen: React.FC = () => {
       setGroupMembers([]);
     }
   }, [schedule?.id, schedule?.user_group_id]);
+
+  // Fetch absences for all grid users in the schedule date range
+  const gridUserIds = useMemo(
+    () => groupMembers.map((m) => m.id),
+    [groupMembers],
+  );
+
+  const { absenceMap } = useScheduleAbsences({
+    userIds: gridUserIds,
+    startDate: schedule?.start_date || '',
+    endDate: schedule?.end_date || '',
+    enabled: !!schedule && gridUserIds.length > 0 && viewMode === 'grid',
+  });
 
   const handleCreatorPress = useCallback(() => {
     if (schedule?.creator?.id) {
@@ -518,6 +533,29 @@ export const ScheduleDetailScreen: React.FC = () => {
     // Store updates entries optimistically, no refresh needed
   }, [schedule, deleteEntry]);
 
+  // Handler for absence confirmation dialog in Grid View
+  const handleAbsenceShiftConfirm = useCallback(async (
+    _userId: number,
+    dateKey: string,
+    _absenceType: AbsenceType,
+    absenceLabel: string,
+    userName: string,
+  ): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      showConfirm(
+        'Сотрудник отсутствует',
+        `${userName} — ${absenceLabel} (${dateKey}).\nВы уверены, что хотите назначить смену?`,
+        () => resolve(true),
+        () => resolve(false),
+        {
+          confirmText: 'Назначить',
+          cancelText: 'Отмена',
+          destructive: false,
+        },
+      );
+    });
+  }, [showConfirm]);
+
   const handleDeleteSchedule = useCallback(() => {
     if (!schedule) return;
     showConfirm(
@@ -747,6 +785,8 @@ export const ScheduleDetailScreen: React.FC = () => {
                       pendingChanges={pendingChanges}
                       onPendingShiftSelect={addPendingChange}
                       onPendingEntryDelete={addPendingDelete}
+                      absenceMap={absenceMap}
+                      onAbsenceShiftConfirm={handleAbsenceShiftConfirm}
                     />
                   )}
                 </View>

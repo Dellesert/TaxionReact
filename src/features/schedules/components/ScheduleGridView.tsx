@@ -7,6 +7,9 @@ import { SHIFT_TYPE_LABELS } from '../types/schedule.types';
 import { ShiftQuickPicker } from './ShiftQuickPicker';
 import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
 import type { PendingChange } from '../hooks/usePendingChanges';
+import type { AbsenceLookupEntry } from '../hooks/useScheduleAbsences';
+import type { AbsenceType } from '@features/absences/types/absence.types';
+import { ABSENCE_TYPE_COLORS, ABSENCE_TYPE_LABELS } from '@features/absences/types/absence.types';
 
 interface CellInfo {
   userId: number;
@@ -28,6 +31,15 @@ interface ScheduleGridViewProps {
   pendingChanges?: Map<string, PendingChange>;
   onPendingShiftSelect?: (userId: number, dateKey: string, shiftType: ShiftType, existingEntry: ScheduleEntry | null) => void;
   onPendingEntryDelete?: (userId: number, dateKey: string, entry: ScheduleEntry) => void;
+  // Absence indicators
+  absenceMap?: Map<string, AbsenceLookupEntry>;
+  onAbsenceShiftConfirm?: (
+    userId: number,
+    dateKey: string,
+    absenceType: AbsenceType,
+    absenceLabel: string,
+    userName: string,
+  ) => Promise<boolean>;
 }
 
 interface UserRow {
@@ -48,6 +60,24 @@ const getShiftShortLabel = (shiftType: ShiftType): string => {
       return 'Д'; // День (полный)
     case 'custom':
       return 'О'; // Особый
+    default:
+      return '';
+  }
+};
+
+// Get short absence label for cell display
+const getAbsenceShortLabel = (type: AbsenceType): string => {
+  switch (type) {
+    case 'vacation':
+      return 'ОТ'; // Отпуск
+    case 'sick_leave':
+      return 'Б'; // Больничный
+    case 'day_off':
+      return 'ОГ'; // Отгул
+    case 'business_trip':
+      return 'К'; // Командировка
+    case 'study_leave':
+      return 'УО'; // Учебный отпуск
     default:
       return '';
   }
@@ -127,6 +157,8 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   pendingChanges,
   onPendingShiftSelect,
   onPendingEntryDelete,
+  absenceMap,
+  onAbsenceShiftConfirm,
 }) => {
   const { theme } = useTheme();
 
@@ -194,15 +226,28 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   const NAME_COLUMN_WIDTH = 180;
 
   // Handle cell press - open quick picker
-  const handleCellPress = useCallback((
+  const handleCellPress = useCallback(async (
     event: GestureResponderEvent,
     cellInfo: CellInfo
   ) => {
     if (!canEdit) return;
 
+    // Check if the cell has an absence — show warning before opening picker
+    const cellKey = `${cellInfo.userId}-${cellInfo.dateKey}`;
+    const absenceEntry = absenceMap?.get(cellKey);
+    if (absenceEntry && onAbsenceShiftConfirm) {
+      const confirmed = await onAbsenceShiftConfirm(
+        cellInfo.userId,
+        cellInfo.dateKey,
+        absenceEntry.type,
+        ABSENCE_TYPE_LABELS[absenceEntry.type],
+        cellInfo.userName,
+      );
+      if (!confirmed) return;
+    }
+
     // In batch mode, if there's a pending change for this cell, use its state for the picker
     if (isBatchMode && pendingChanges) {
-      const cellKey = `${cellInfo.userId}-${cellInfo.dateKey}`;
       const pending = pendingChanges.get(cellKey);
       if (pending) {
         // If the cell has a pending delete, treat it as if the cell is empty
@@ -232,7 +277,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
     setPickerPosition({ x: pageX, y: pageY });
     setSelectedCell(cellInfo);
     setPickerVisible(true);
-  }, [canEdit, isBatchMode, pendingChanges, schedule.id]);
+  }, [canEdit, isBatchMode, pendingChanges, schedule.id, absenceMap, onAbsenceShiftConfirm]);
 
   // Handle shift selection from picker
   const handleShiftSelect = useCallback(async (shiftType: ShiftType) => {
@@ -467,6 +512,10 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                       displayShiftType = optimisticShiftType || (entry && !isOptimisticDelete ? entry.shift_type : null);
                     }
 
+                    // Check absence for this cell
+                    const absenceLookup = absenceMap?.get(cellKey) || null;
+                    const hasAbsence = !!absenceLookup;
+
                     const cellInfo: CellInfo = {
                       userId: userRow.userId,
                       userName: userRow.userName,
@@ -483,8 +532,10 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           { width: CELL_WIDTH, borderColor: theme.border },
                           weekend && { backgroundColor: theme.backgroundSecondary + '50' },
                           today && { backgroundColor: theme.primary + '10' },
+                          hasAbsence && { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] + '15' },
                           canEdit && styles.entryCellClickable,
-                          canEdit && isHovered && { backgroundColor: theme.primary + '15' },
+                          canEdit && isHovered && !hasAbsence && { backgroundColor: theme.primary + '15' },
+                          canEdit && isHovered && hasAbsence && { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] + '25' },
                           isPending && styles.pendingCell,
                           isPending && { borderColor: theme.primary + '60' },
                         ]}
@@ -502,11 +553,30 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                               {getShiftShortLabel(displayShiftType)}
                             </Text>
                           </View>
+                        ) : hasAbsence ? (
+                          <View style={[
+                            styles.absenceBadge,
+                            { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] + '30' },
+                          ]}>
+                            <Text style={[
+                              styles.absenceText,
+                              { color: ABSENCE_TYPE_COLORS[absenceLookup!.type] },
+                            ]}>
+                              {getAbsenceShortLabel(absenceLookup!.type)}
+                            </Text>
+                          </View>
                         ) : canEdit && isHovered ? (
                           <View style={styles.addHint}>
                             <Text style={[styles.addHintText, { color: theme.primary }]}>+</Text>
                           </View>
                         ) : null}
+                        {/* Absence dot indicator (when shift is present on absence day) */}
+                        {hasAbsence && displayShiftType && (
+                          <View style={[
+                            styles.absenceDot,
+                            { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] },
+                          ]} />
+                        )}
                         {/* Pending change indicator dot */}
                         {isPending && (
                           <View style={[
@@ -553,6 +623,27 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
             <Text style={[styles.legendLabel, { color: theme.text }]}>{SHIFT_TYPE_LABELS.custom}</Text>
           </View>
         </View>
+
+        {/* Absence legend - only show if there are absences */}
+        {absenceMap && absenceMap.size > 0 && (
+          <>
+            <View style={styles.legendDivider} />
+            <View style={styles.legendItems}>
+              {(['vacation', 'sick_leave', 'day_off', 'business_trip', 'study_leave'] as AbsenceType[]).map((type) => (
+                <View key={type} style={styles.legendItem}>
+                  <View style={[styles.legendBadge, { backgroundColor: ABSENCE_TYPE_COLORS[type] + '30' }]}>
+                    <Text style={[styles.legendBadgeText, { color: ABSENCE_TYPE_COLORS[type] }]}>
+                      {getAbsenceShortLabel(type)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.legendLabel, { color: theme.text }]}>
+                    {ABSENCE_TYPE_LABELS[type]}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
       </View>
 
       {/* Quick Shift Picker */}
@@ -720,5 +811,29 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  absenceBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  absenceText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  absenceDot: {
+    position: 'absolute',
+    bottom: 2,
+    left: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  legendDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    marginVertical: 8,
   },
 });
