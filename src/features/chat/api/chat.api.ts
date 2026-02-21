@@ -958,6 +958,50 @@ export const toggleChatPinned = async (chatId: number, isPinned: boolean): Promi
 };
 
 /**
+ * Mute a chat for a specific duration
+ * @param chatId - ID of chat to mute
+ * @param duration - Duration: '1h', '12h', or 'forever'
+ */
+export const muteChat = async (chatId: number, duration: '1h' | '12h' | 'forever'): Promise<{ muted_until: string }> => {
+  const response = await api.put<{ muted_until: string }>(API_ENDPOINTS.CHAT.MUTE(chatId), { duration });
+  return response.data;
+};
+
+/**
+ * Unmute a chat
+ * @param chatId - ID of chat to unmute
+ */
+export const unmuteChat = async (chatId: number): Promise<void> => {
+  await api.put(API_ENDPOINTS.CHAT.UNMUTE(chatId));
+};
+
+/**
+ * Get global mute preferences (mute all channels / groups)
+ */
+export const getGlobalMutePreferences = async (): Promise<{
+  mute_all_channels_until?: string | null;
+  mute_all_groups_until?: string | null;
+}> => {
+  const response = await api.get(API_ENDPOINTS.CHAT.MUTE_PREFERENCES);
+  return response.data.preferences || {};
+};
+
+/**
+ * Update global mute preferences
+ * @param prefs - Object with mute_all_channels and/or mute_all_groups values
+ */
+export const updateGlobalMutePreferences = async (prefs: {
+  mute_all_channels?: '1h' | '12h' | 'forever' | 'off';
+  mute_all_groups?: '1h' | '12h' | 'forever' | 'off';
+}): Promise<{
+  mute_all_channels_until?: string | null;
+  mute_all_groups_until?: string | null;
+}> => {
+  const response = await api.put(API_ENDPOINTS.CHAT.MUTE_PREFERENCES, prefs);
+  return response.data.preferences || {};
+};
+
+/**
  * Get all attachments for a chat
  * @param chatId - ID of chat to get attachments from
  * @param limit - Number of attachments to retrieve (default: 50, max: 100)

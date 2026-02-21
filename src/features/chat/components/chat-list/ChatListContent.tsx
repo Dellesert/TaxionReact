@@ -48,6 +48,8 @@ interface ChatListContentProps {
   onMarkAsRead: (chatId: number) => void;
   onDeleteChat: (chatId: number, clearHistory?: boolean) => void;
   onClearHistory: (chatId: number) => void;
+  onMuteChat: (chatId: number, duration: '1h' | '12h' | 'forever') => void;
+  onUnmuteChat: (chatId: number) => void;
 }
 
 export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentProps>(({
@@ -71,6 +73,8 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
   onMarkAsRead,
   onDeleteChat,
   onClearHistory,
+  onMuteChat,
+  onUnmuteChat,
 }, ref) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -160,6 +164,8 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
           onMarkAsRead={() => onMarkAsRead(item.id)}
           onDelete={onDeleteChat}
           onClearHistory={() => onClearHistory(item.id)}
+          onMute={onMuteChat}
+          onUnmute={onUnmuteChat}
         />
       );
     },
@@ -172,6 +178,8 @@ export const ChatListContent = forwardRef<ChatListContentRef, ChatListContentPro
       onMarkAsRead,
       onDeleteChat,
       onClearHistory,
+      onMuteChat,
+      onUnmuteChat,
       typingUsers,
     ]
   );

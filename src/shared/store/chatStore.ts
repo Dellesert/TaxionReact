@@ -148,7 +148,7 @@ interface ChatState {
   markChatAsRead: (chatId: number) => Promise<void>;
   pinChat: (chatId: number) => Promise<void>;
   unpinChat: (chatId: number) => Promise<void>;
-  muteChat: (chatId: number) => Promise<void>;
+  muteChat: (chatId: number, duration: '1h' | '12h' | 'forever') => Promise<void>;
   unmuteChat: (chatId: number) => Promise<void>;
   toggleFavorite: (chatId: number) => Promise<void>;
   handleNewMessage: (message: Message, isLatest?: boolean) => Promise<void>;
@@ -1463,31 +1463,129 @@ export const useChatStore = create<ChatState>()(
     }
   },
 
-  muteChat: async (chatId: number) => {
+  muteChat: async (chatId: number, duration: '1h' | '12h' | 'forever' = 'forever') => {
     try {
-      // TODO: implement mute functionality when backend endpoint is ready
-      console.warn('Mute chat not yet implemented on backend');
-      set((state) => ({
-        chats: state.chats.map((chat) =>
-          chat.id === chatId ? { ...chat, is_muted: true } : chat
-        ),
-      }));
+      // Optimistic update — tabs + chats
+      const updateMuted = (c: Chat) =>
+        c.id === chatId ? { ...c, is_muted: true } : c;
+
+      set((state) => {
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(updateMuted),
+            regularChats: tab.regularChats.map(updateMuted),
+          };
+        });
+        const currentTabData = updatedTabs[state.currentTab];
+        return {
+          tabs: updatedTabs,
+          chats: [...currentTabData.pinnedChats, ...currentTabData.regularChats],
+        };
+      });
+
+      const result = await chatApi.muteChat(chatId, duration);
+
+      // Update with server response (muted_until)
+      const updateWithResult = (c: Chat) =>
+        c.id === chatId ? { ...c, is_muted: true, muted_until: result.muted_until } : c;
+
+      set((state) => {
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(updateWithResult),
+            regularChats: tab.regularChats.map(updateWithResult),
+          };
+        });
+        const currentTabData = updatedTabs[state.currentTab];
+        return {
+          tabs: updatedTabs,
+          chats: [...currentTabData.pinnedChats, ...currentTabData.regularChats],
+        };
+      });
     } catch (error: any) {
-      set({ error: error.message || 'Failed to mute chat' });
+      // Revert optimistic update
+      const revertMuted = (c: Chat) =>
+        c.id === chatId ? { ...c, is_muted: false, muted_until: null } : c;
+
+      set((state) => {
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(revertMuted),
+            regularChats: tab.regularChats.map(revertMuted),
+          };
+        });
+        const currentTabData = updatedTabs[state.currentTab];
+        return {
+          tabs: updatedTabs,
+          chats: [...currentTabData.pinnedChats, ...currentTabData.regularChats],
+          error: error.message || 'Failed to mute chat',
+        };
+      });
+      throw error;
     }
   },
 
   unmuteChat: async (chatId: number) => {
     try {
-      // TODO: implement unmute functionality when backend endpoint is ready
-      console.warn('Unmute chat not yet implemented on backend');
-      set((state) => ({
-        chats: state.chats.map((chat) =>
-          chat.id === chatId ? { ...chat, is_muted: false } : chat
-        ),
-      }));
+      // Optimistic update — tabs + chats
+      const updateUnmuted = (c: Chat) =>
+        c.id === chatId ? { ...c, is_muted: false, muted_until: null } : c;
+
+      set((state) => {
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(updateUnmuted),
+            regularChats: tab.regularChats.map(updateUnmuted),
+          };
+        });
+        const currentTabData = updatedTabs[state.currentTab];
+        return {
+          tabs: updatedTabs,
+          chats: [...currentTabData.pinnedChats, ...currentTabData.regularChats],
+        };
+      });
+
+      await chatApi.unmuteChat(chatId);
     } catch (error: any) {
-      set({ error: error.message || 'Failed to unmute chat' });
+      // Revert optimistic update
+      const revertUnmuted = (c: Chat) =>
+        c.id === chatId ? { ...c, is_muted: true } : c;
+
+      set((state) => {
+        const updatedTabs = { ...state.tabs };
+        Object.keys(updatedTabs).forEach(tabKey => {
+          const tab = updatedTabs[tabKey as TabName];
+          if (!tab.loaded) return;
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(revertUnmuted),
+            regularChats: tab.regularChats.map(revertUnmuted),
+          };
+        });
+        const currentTabData = updatedTabs[state.currentTab];
+        return {
+          tabs: updatedTabs,
+          chats: [...currentTabData.pinnedChats, ...currentTabData.regularChats],
+          error: error.message || 'Failed to unmute chat',
+        };
+      });
+      throw error;
     }
   },
 

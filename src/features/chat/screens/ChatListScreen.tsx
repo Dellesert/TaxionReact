@@ -116,6 +116,25 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
     handleClearHistory,
   } = useChatListActions();
 
+  const muteChat = useChatStore((state) => state.muteChat);
+  const unmuteChat = useChatStore((state) => state.unmuteChat);
+
+  const handleMuteChat = useCallback(async (chatId: number, duration: '1h' | '12h' | 'forever') => {
+    try {
+      await muteChat(chatId, duration);
+    } catch (error) {
+      console.error('Failed to mute chat:', error);
+    }
+  }, [muteChat]);
+
+  const handleUnmuteChat = useCallback(async (chatId: number) => {
+    try {
+      await unmuteChat(chatId);
+    } catch (error) {
+      console.error('Failed to unmute chat:', error);
+    }
+  }, [unmuteChat]);
+
   // Handler declarations (before hook usage)
   const handleSwitchFilter = useCallback(
     async (newFilter: ChatFilter) => {
@@ -456,6 +475,8 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ onChatSelect, isDesktop
           onMarkAsRead={handleMarkAsRead}
           onDeleteChat={handleDeleteChat}
           onClearHistory={handleClearHistory}
+          onMuteChat={handleMuteChat}
+          onUnmuteChat={handleUnmuteChat}
         />
       </View>
 

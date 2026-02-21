@@ -139,6 +139,9 @@ export const API_ENDPOINTS = {
     REMOVE_MEMBER: (chatId: number, userId: number) => `/chats/${chatId}/members/${userId}/`,
     CLEAR_HISTORY: (id: number) => `/chats/${id}/clear-history`,
     UNREAD_COUNT: '/chats/unread-count',
+    MUTE: (id: number) => `/chats/${id}/mute`,
+    UNMUTE: (id: number) => `/chats/${id}/unmute`,
+    MUTE_PREFERENCES: '/chats/mute-preferences',
   },
 
   // Message

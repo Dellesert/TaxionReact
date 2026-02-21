@@ -173,6 +173,7 @@ export interface Chat {
   creator?: User;
   is_pinned?: boolean;
   is_muted?: boolean;
+  muted_until?: string | null;
   is_favorite?: boolean;
   is_active?: boolean;
   unread_count?: number;

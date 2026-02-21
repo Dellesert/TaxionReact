@@ -25,13 +25,15 @@ interface ChatItemProps {
   onClearHistory?: (chatId: number) => void;
   onToggleFavorite?: (chatId: number) => void;
   onTogglePinned?: (chatId: number) => void;
+  onMute?: (chatId: number, duration: '1h' | '12h' | 'forever') => void;
+  onUnmute?: (chatId: number) => void;
   isEditMode?: boolean;
   isSelected?: boolean;
   itemIndex?: number;
   typingUsers?: TypingIndicator[];
 }
 
-const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRead, onDelete, onClearHistory, onToggleFavorite, onTogglePinned, isEditMode, isSelected, itemIndex = 0, typingUsers = [] }) => {
+const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRead, onDelete, onClearHistory, onToggleFavorite, onTogglePinned, onMute, onUnmute, isEditMode, isSelected, itemIndex = 0, typingUsers = [] }) => {
   const { theme } = useTheme();
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -39,6 +41,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showClearSavedModal, setShowClearSavedModal] = useState(false);
   const [clearHistory, setClearHistory] = useState(false);
+  const [showMuteModal, setShowMuteModal] = useState(false);
 
   // Prefetch hook for preloading chat messages
   const { prefetchChatDelayed, cancelPrefetch } = useChatPrefetch();
@@ -307,6 +310,20 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     onTogglePinned?.(chat.id);
   };
 
+  const handleMutePress = () => {
+    setShowContextMenu(false);
+    if (chat.is_muted) {
+      onUnmute?.(chat.id);
+    } else {
+      setShowMuteModal(true);
+    }
+  };
+
+  const handleMuteAction = (duration: '1h' | '12h' | 'forever') => {
+    setShowMuteModal(false);
+    onMute?.(chat.id, duration);
+  };
+
   // Handle press in - start prefetch
   const handlePressIn = useCallback(() => {
     if (!isEditMode) {
@@ -401,6 +418,14 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   testID={`favorite-star-${chat.id}`}
                 />
               )}
+              {chat.is_muted && (
+                <Ionicons
+                  name="notifications-off"
+                  size={14}
+                  color={theme.textTertiary}
+                  style={styles.mutedTimeIcon}
+                />
+              )}
               {chat.last_message && (
                 <Text style={[styles.time, dynamicStyles.time]}>
                   {formatDistanceToNow(new Date(chat.last_message.created_at), {
@@ -452,9 +477,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
             </View>
 
             <View style={styles.badges}>
-              {chat.is_muted && (
-                <Ionicons name="notifications-off" size={16} color={theme.textTertiary} style={styles.muteIcon} />
-              )}
               {!!chat.unread_count && chat.unread_count > 0 && (
                 <View style={[
                   styles.unreadBadge,
@@ -562,6 +584,21 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
+                  {/* Уведомления (mute/unmute) */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleMutePress}
+                  >
+                    <Ionicons
+                      name={chat.is_muted ? "notifications-outline" : "notifications-off-outline"}
+                      size={22}
+                      color={theme.text}
+                    />
+                    <Text style={[styles.menuText, { color: theme.text }]}>
+                      {chat.is_muted ? 'Включить уведомления' : 'Отключить уведомления'}
+                    </Text>
+                  </TouchableOpacity>
+
                   {/* Удалить */}
                   {onDelete && (
                     <TouchableOpacity
@@ -654,6 +691,21 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
+                  {/* Уведомления (mute/unmute) */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleMutePress}
+                  >
+                    <Ionicons
+                      name={chat.is_muted ? "notifications-outline" : "notifications-off-outline"}
+                      size={22}
+                      color={theme.text}
+                    />
+                    <Text style={[styles.menuText, { color: theme.text }]}>
+                      {chat.is_muted ? 'Включить уведомления' : 'Отключить уведомления'}
+                    </Text>
+                  </TouchableOpacity>
+
                   {/* Удалить */}
                   {onDelete && (
                     <TouchableOpacity
@@ -673,6 +725,38 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
         </View>
         )}
       </Modal>
+
+      {/* Mute Duration Modal */}
+      <ActionModal
+        visible={showMuteModal}
+        title="Отключить уведомления"
+        onDismiss={() => setShowMuteModal(false)}
+        actions={[
+          {
+            text: 'На 1 час',
+            icon: 'time-outline',
+            style: 'default',
+            onPress: () => handleMuteAction('1h'),
+          },
+          {
+            text: 'На 12 часов',
+            icon: 'time-outline',
+            style: 'default',
+            onPress: () => handleMuteAction('12h'),
+          },
+          {
+            text: 'Навсегда',
+            icon: 'notifications-off-outline',
+            style: 'default',
+            onPress: () => handleMuteAction('forever'),
+          },
+          {
+            text: 'Отмена',
+            style: 'cancel',
+            onPress: () => setShowMuteModal(false),
+          },
+        ]}
+      />
 
       {/* Delete Modal */}
       <ActionModal
@@ -828,8 +912,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 8,
   },
-  muteIcon: {
-    marginRight: 4,
+  mutedTimeIcon: {
+    marginTop: -1,
   },
   unreadBadge: {
     borderRadius: 10,

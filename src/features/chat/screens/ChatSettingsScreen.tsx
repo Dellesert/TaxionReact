@@ -3,8 +3,8 @@
  * Экран настроек чата (Refactored)
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ChatStackParamList } from '@navigation/types';
@@ -20,6 +20,8 @@ import { AttachmentsTab } from '../components/attachments/AttachmentsTab';
 import { ForwardMessageModal } from '../components/modals/ForwardMessageModal';
 import { Message, Attachment } from '../types/chat.types';
 import { sendMessage } from '../api/chat.api';
+import { useChatStore } from '@shared/store/chatStore';
+import { Ionicons } from '@expo/vector-icons';
 
 // Hooks
 import { useChatSettingsData } from '../hooks/useChatSettingsData';
@@ -494,6 +496,7 @@ const ChatSettingsScreen: React.FC<Props> = ({ route, navigation }) => {
         ]}
         onDismiss={() => setShowDeleteModal(false)}
       />
+
 
       {/* Forward Image Modal */}
       <ForwardMessageModal
