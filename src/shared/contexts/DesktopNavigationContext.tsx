@@ -3,7 +3,7 @@
  * Контекст для управления навигацией на десктопе
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 
 export interface DesktopNavigationParams {
   // Chat navigation
@@ -26,11 +26,21 @@ export interface DesktopNavigationParams {
   [key: string]: any;
 }
 
+/**
+ * Navigation guard callback.
+ * Called before navigateToTab changes the active tab.
+ * Return `true` to allow navigation, `false` to block it.
+ * Can also be async (e.g. to show a confirmation dialog).
+ */
+export type NavigationGuard = (targetTab: string) => boolean | Promise<boolean>;
+
 interface DesktopNavigationContextValue {
   activeTab: string;
   navigationParams: DesktopNavigationParams | null;
   navigateToTab: (tab: string, params?: DesktopNavigationParams) => void;
   clearNavigationParams: () => void;
+  registerNavigationGuard: (guard: NavigationGuard) => void;
+  unregisterNavigationGuard: (guard: NavigationGuard) => void;
 }
 
 export const DesktopNavigationContext = createContext<DesktopNavigationContextValue | null>(null);
@@ -62,8 +72,23 @@ interface DesktopNavigationProviderProps {
 export const DesktopNavigationProvider: React.FC<DesktopNavigationProviderProps> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<string>('Chats');
   const [navigationParams, setNavigationParams] = useState<DesktopNavigationParams | null>(null);
+  const guardsRef = useRef<Set<NavigationGuard>>(new Set());
 
-  const navigateToTab = useCallback((tab: string, params?: DesktopNavigationParams) => {
+  const registerNavigationGuard = useCallback((guard: NavigationGuard) => {
+    guardsRef.current.add(guard);
+  }, []);
+
+  const unregisterNavigationGuard = useCallback((guard: NavigationGuard) => {
+    guardsRef.current.delete(guard);
+  }, []);
+
+  const navigateToTab = useCallback(async (tab: string, params?: DesktopNavigationParams) => {
+    // Run all registered guards; if any returns false, block navigation
+    for (const guard of guardsRef.current) {
+      const allowed = await guard(tab);
+      if (!allowed) return;
+    }
+
     setActiveTab(tab);
     if (params) {
       setNavigationParams(params);
@@ -85,6 +110,8 @@ export const DesktopNavigationProvider: React.FC<DesktopNavigationProviderProps>
     navigationParams,
     navigateToTab,
     clearNavigationParams,
+    registerNavigationGuard,
+    unregisterNavigationGuard,
   };
 
   return (

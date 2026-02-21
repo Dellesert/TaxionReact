@@ -33,7 +33,8 @@ interface ActionModalContextValue {
       icon?: string;
       style?: 'default' | 'primary' | 'destructive';
     }>,
-    message?: string
+    message?: string,
+    onCancel?: () => void,
   ) => void;
 }
 
@@ -41,6 +42,7 @@ const ActionModalContext = createContext<ActionModalContextValue | undefined>(un
 
 export const ActionModalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [modalOptions, setModalOptions] = useState<ActionModalOptions | null>(null);
+  const onDismissCallbackRef = React.useRef<(() => void) | null>(null);
 
   const showModal = useCallback((options: ActionModalOptions) => {
     setModalOptions(options);
@@ -48,6 +50,7 @@ export const ActionModalProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const hideModal = useCallback(() => {
     setModalOptions(null);
+    onDismissCallbackRef.current = null;
   }, []);
 
   const showConfirm = useCallback(
@@ -102,8 +105,14 @@ export const ActionModalProvider: React.FC<{ children: React.ReactNode }> = ({ c
         icon?: string;
         style?: 'default' | 'primary' | 'destructive';
       }>,
-      message?: string
+      message?: string,
+      onCancel?: () => void,
     ) => {
+      const handleCancel = () => {
+        onCancel?.();
+        hideModal();
+      };
+
       const actions: ActionModalButton[] = [
         ...options.map((option) => ({
           text: option.text,
@@ -116,12 +125,12 @@ export const ActionModalProvider: React.FC<{ children: React.ReactNode }> = ({ c
         })),
         {
           text: 'Отмена',
-          onPress: () => {
-            hideModal();
-          },
+          onPress: handleCancel,
           style: 'cancel' as const,
         },
       ];
+
+      onDismissCallbackRef.current = onCancel || null;
 
       showModal({
         title,
@@ -153,7 +162,10 @@ export const ActionModalProvider: React.FC<{ children: React.ReactNode }> = ({ c
           title={modalOptions.title}
           message={modalOptions.message}
           actions={modalOptions.actions}
-          onDismiss={hideModal}
+          onDismiss={() => {
+            onDismissCallbackRef.current?.();
+            hideModal();
+          }}
           dismissable={modalOptions.dismissable}
         />
       )}

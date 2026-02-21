@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { useDesktopNavigation, type NavigationGuard } from '@shared/contexts/DesktopNavigationContext';
 
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAnimationType } from '@shared/hooks/useAnimationType';
@@ -68,6 +69,7 @@ export const ScheduleDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const { scheduleId } = route.params;
   const isWideScreen = useIsWideScreen();
+  const { registerNavigationGuard, unregisterNavigationGuard } = useDesktopNavigation();
   const { showConfirm, showOptions } = useActionModal();
   const { showSuccess, showError } = useNotification();
   const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
@@ -447,6 +449,42 @@ export const ScheduleDetailScreen: React.FC = () => {
 
     return unsubscribe;
   }, [hasPendingChanges, pendingCount, navigation, handleSavePendingChanges, discardPendingChanges, showOptions]);
+
+  // Desktop navigation guard: prevent switching tabs via SideNavBar with unsaved changes
+  useEffect(() => {
+    if (!hasPendingChanges) return;
+
+    const guard: NavigationGuard = (_targetTab) => {
+      return new Promise<boolean>((resolve) => {
+        showOptions(
+          'Несохранённые изменения',
+          [
+            {
+              text: `Сохранить (${pendingCount})`,
+              onPress: async () => {
+                await handleSavePendingChanges();
+                resolve(true);
+              },
+              style: 'primary',
+            },
+            {
+              text: 'Не сохранять',
+              onPress: () => {
+                discardPendingChanges();
+                resolve(true);
+              },
+              style: 'destructive',
+            },
+          ],
+          `У вас ${pendingCount} несохранённых изменений в графике.`,
+          () => resolve(false), // onCancel — user dismissed the dialog
+        );
+      });
+    };
+
+    registerNavigationGuard(guard);
+    return () => unregisterNavigationGuard(guard);
+  }, [hasPendingChanges, pendingCount, handleSavePendingChanges, discardPendingChanges, showOptions, registerNavigationGuard, unregisterNavigationGuard]);
 
   // Keyboard shortcuts (Electron): Ctrl/Cmd+S to save, Escape to discard
   useEffect(() => {
