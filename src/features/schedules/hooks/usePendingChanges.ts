@@ -5,7 +5,15 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import type { ShiftType, ScheduleEntry, CreateScheduleEntryRequest, UpdateScheduleEntryRequest } from '../types/schedule.types';
+import type {
+  ShiftType,
+  ScheduleEntry,
+  CreateScheduleEntryRequest,
+  UpdateScheduleEntryRequest,
+  CreateEntryResult,
+  UpdateEntryResult,
+  ScheduleEntryWarning,
+} from '../types/schedule.types';
 
 export type PendingChangeType = 'create' | 'update' | 'delete';
 
@@ -21,16 +29,19 @@ export interface PendingChange {
   existingEntryId?: number;
   /** Original entry before change (for revert) */
   originalEntry?: ScheduleEntry | null;
+  /** If true, warnings were acknowledged and force will be sent on next save */
+  forceApplied?: boolean;
 }
 
-interface BatchSaveResult {
+export interface BatchSaveResult {
   succeeded: string[];
   failed: Array<{ cellKey: string; error: string }>;
+  warned: Array<{ cellKey: string; warnings: ScheduleEntryWarning[] }>;
 }
 
 interface StoreActions {
-  createEntry: (scheduleId: number, data: CreateScheduleEntryRequest) => Promise<ScheduleEntry>;
-  updateEntry: (scheduleId: number, entryId: number, data: UpdateScheduleEntryRequest) => Promise<void>;
+  createEntry: (scheduleId: number, data: CreateScheduleEntryRequest) => Promise<CreateEntryResult>;
+  updateEntry: (scheduleId: number, entryId: number, data: UpdateScheduleEntryRequest) => Promise<UpdateEntryResult>;
   deleteEntry: (scheduleId: number, entryId: number) => Promise<void>;
 }
 
@@ -45,6 +56,7 @@ export const executeBatchSave = async (
 ): Promise<BatchSaveResult> => {
   const succeeded: string[] = [];
   const failed: Array<{ cellKey: string; error: string }> = [];
+  const warned: Array<{ cellKey: string; warnings: ScheduleEntryWarning[] }> = [];
 
   const sorted = Array.from(changes.values()).sort((a, b) => {
     const order: Record<PendingChangeType, number> = { delete: 0, update: 1, create: 2 };
@@ -54,30 +66,44 @@ export const executeBatchSave = async (
   for (const change of sorted) {
     try {
       switch (change.type) {
-        case 'create':
-          await store.createEntry(scheduleId, {
+        case 'create': {
+          const result = await store.createEntry(scheduleId, {
             user_id: change.userId,
             date: `${change.dateKey}T00:00:00Z`,
             shift_type: change.shiftType!,
+            force: change.forceApplied ?? false,
           });
+          if (result.created) {
+            succeeded.push(change.cellKey);
+          } else if (result.warnings?.length) {
+            warned.push({ cellKey: change.cellKey, warnings: result.warnings });
+          }
           break;
-        case 'update':
-          await store.updateEntry(scheduleId, change.existingEntryId!, {
+        }
+        case 'update': {
+          const result = await store.updateEntry(scheduleId, change.existingEntryId!, {
             shift_type: change.shiftType!,
+            force: change.forceApplied ?? false,
           });
+          if (result.created) {
+            succeeded.push(change.cellKey);
+          } else if (result.warnings?.length) {
+            warned.push({ cellKey: change.cellKey, warnings: result.warnings });
+          }
           break;
+        }
         case 'delete':
           await store.deleteEntry(scheduleId, change.existingEntryId!);
+          succeeded.push(change.cellKey);
           break;
       }
-      succeeded.push(change.cellKey);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Ошибка сохранения';
       failed.push({ cellKey: change.cellKey, error: message });
     }
   }
 
-  return { succeeded, failed };
+  return { succeeded, failed, warned };
 };
 
 export const usePendingChanges = () => {
@@ -102,7 +128,7 @@ export const usePendingChanges = () => {
 
       if (existing?.type === 'create') {
         // Re-editing a pending create — keep it as create with updated shift type
-        next.set(cellKey, { ...existing, shiftType });
+        next.set(cellKey, { ...existing, shiftType, forceApplied: false });
       } else if (existing?.type === 'delete' && existing.originalEntry) {
         // Was marked for delete, now re-assigning — treat as update of original entry
         next.set(cellKey, {
@@ -177,6 +203,20 @@ export const usePendingChanges = () => {
     });
   }, []);
 
+  /** Mark specific pending changes with forceApplied=true for re-save */
+  const markForForce = useCallback((cellKeys: string[]) => {
+    setChanges(prev => {
+      const next = new Map(prev);
+      for (const key of cellKeys) {
+        const change = next.get(key);
+        if (change) {
+          next.set(key, { ...change, forceApplied: true });
+        }
+      }
+      return next;
+    });
+  }, []);
+
   /** Discard all pending changes */
   const discardAll = useCallback(() => {
     setChanges(new Map());
@@ -195,6 +235,7 @@ export const usePendingChanges = () => {
     addDelete,
     removeChange,
     removeSucceeded,
+    markForForce,
     discardAll,
   };
 };

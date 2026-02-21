@@ -51,6 +51,7 @@ import {
   type CreateTemplateEntryRequest,
   type CreateBatchTemplateEntriesRequest,
   type ShiftType,
+  type ScheduleEntryWarning,
 } from '../types/schedule.types';
 import { templateApi, scheduleApi } from '../api/schedule.api';
 import { usePendingChanges, executeBatchSave } from '../hooks/usePendingChanges';
@@ -86,6 +87,7 @@ export const ScheduleDetailScreen: React.FC = () => {
     addChange: addPendingChange,
     addDelete: addPendingDelete,
     removeSucceeded,
+    markForForce,
     discardAll: discardPendingChanges,
   } = usePendingChanges();
 
@@ -108,6 +110,9 @@ export const ScheduleDetailScreen: React.FC = () => {
 
   // Group members for the schedule's linked user group
   const [groupMembers, setGroupMembers] = useState<ScheduleUser[]>([]);
+
+  // Warnings for cells that had validation warnings (absence/conflict)
+  const [cellWarnings, setCellWarnings] = useState<Map<string, ScheduleEntryWarning[]>>(new Map());
 
   // User filter state for recurring schedules
   const [showUserFilterPicker, setShowUserFilterPicker] = useState(false);
@@ -230,18 +235,62 @@ export const ScheduleDetailScreen: React.FC = () => {
     setSaveErrors([]);
 
     try {
-      const { succeeded, failed } = await executeBatchSave(
+      const { succeeded, failed, warned } = await executeBatchSave(
         schedule.id,
         pendingChanges,
         { createEntry, updateEntry, deleteEntry },
       );
 
-      if (failed.length > 0) {
+      // Remove succeeded from pending
+      if (succeeded.length > 0) {
         removeSucceeded(succeeded);
+      }
+
+      if (warned.length > 0) {
+        // Store warnings so the grid can show indicators
+        const newWarnings = new Map<string, ScheduleEntryWarning[]>();
+        for (const w of warned) {
+          newWarnings.set(w.cellKey, w.warnings);
+        }
+        setCellWarnings(newWarnings);
+
+        // Build warning message for confirmation dialog
+        const warningMessages = warned
+          .map(w => w.warnings.map(warn => warn.message).join('; '))
+          .join('\n');
+        const total = succeeded.length + failed.length + warned.length;
+
+        showConfirm(
+          `Предупреждения (${warned.length})`,
+          `${warningMessages}\n\nНазначить все равно?`,
+          () => {
+            // User confirmed — mark warned entries for force and re-save
+            markForForce(warned.map(w => w.cellKey));
+            setCellWarnings(new Map());
+            // Trigger re-save after state update (will be called manually)
+          },
+          () => {
+            // User cancelled — keep warned entries as pending with visual indicators
+          },
+          {
+            confirmText: 'Назначить',
+            cancelText: 'Оставить',
+            destructive: false,
+          },
+        );
+
+        if (failed.length > 0) {
+          setSaveErrors(failed);
+          showError(`${failed.length} из ${total} изменений не сохранено`);
+        } else if (succeeded.length > 0) {
+          showSuccess(`Сохранено ${succeeded.length} из ${total} изменений`);
+        }
+      } else if (failed.length > 0) {
         setSaveErrors(failed);
         showError(`${failed.length} из ${succeeded.length + failed.length} изменений не сохранено`);
       } else {
         discardPendingChanges();
+        setCellWarnings(new Map());
         showSuccess(`Сохранено ${succeeded.length} изменений`);
       }
     } catch (err) {
@@ -250,7 +299,7 @@ export const ScheduleDetailScreen: React.FC = () => {
       setIsSavingPending(false);
       refresh();
     }
-  }, [schedule, pendingChanges, createEntry, updateEntry, deleteEntry, removeSucceeded, discardPendingChanges, refresh, showSuccess, showError, setIsSavingPending, setSaveErrors]);
+  }, [schedule, pendingChanges, createEntry, updateEntry, deleteEntry, removeSucceeded, markForForce, discardPendingChanges, refresh, showSuccess, showError, showConfirm, setIsSavingPending, setSaveErrors]);
 
   // Handler for discarding all pending changes with confirmation
   const handleDiscardPendingChanges = useCallback(() => {
@@ -420,13 +469,43 @@ export const ScheduleDetailScreen: React.FC = () => {
 
     if (entryId) {
       // Update existing entry
-      await updateEntry(schedule.id, entryId, data as UpdateScheduleEntryRequest);
+      const result = await updateEntry(schedule.id, entryId, data as UpdateScheduleEntryRequest);
+      if (!result.created && result.warnings?.length) {
+        // Warnings returned — ask user to confirm
+        const warningMessages = result.warnings.map(w => w.message).join('\n');
+        showConfirm(
+          'Предупреждение',
+          `${warningMessages}\n\nСохранить изменения?`,
+          async () => {
+            await updateEntry(schedule.id, entryId, { ...data, force: true } as UpdateScheduleEntryRequest);
+            refresh();
+          },
+          undefined,
+          { confirmText: 'Сохранить', cancelText: 'Отмена', destructive: false },
+        );
+        return;
+      }
     } else {
       // Create new entry
-      await createEntry(schedule.id, data as CreateScheduleEntryRequest);
+      const result = await createEntry(schedule.id, data as CreateScheduleEntryRequest);
+      if (!result.created && result.warnings?.length) {
+        // Warnings returned — ask user to confirm
+        const warningMessages = result.warnings.map(w => w.message).join('\n');
+        showConfirm(
+          'Предупреждение',
+          `${warningMessages}\n\nНазначить смену?`,
+          async () => {
+            await createEntry(schedule.id, { ...data, force: true } as CreateScheduleEntryRequest);
+            refresh();
+          },
+          undefined,
+          { confirmText: 'Назначить', cancelText: 'Отмена', destructive: false },
+        );
+        return;
+      }
     }
     refresh();
-  }, [schedule, createEntry, updateEntry, refresh]);
+  }, [schedule, createEntry, updateEntry, refresh, showConfirm]);
 
   const handleDeleteEntry = useCallback(async (entryId: number) => {
     if (!schedule) return;
@@ -502,7 +581,7 @@ export const ScheduleDetailScreen: React.FC = () => {
     setFilterUserName(userName);
   }, []);
 
-  // Handler for adding entry from Shifts View
+  // Handler for adding entry from Shifts View (immediate mode)
   const handleShiftsAddEntry = useCallback(async (
     userId: number,
     dateKey: string, // YYYY-MM-DD
@@ -510,21 +589,65 @@ export const ScheduleDetailScreen: React.FC = () => {
   ) => {
     if (!schedule) return;
 
-    const createData: CreateScheduleEntryRequest = {
-      user_id: userId,
-      date: `${dateKey}T00:00:00Z`,
-      shift_type: shiftType,
-    };
-    await createEntry(schedule.id, createData);
-    // Store updates entries optimistically, no refresh needed
-  }, [schedule, createEntry]);
+    try {
+      const result = await createEntry(schedule.id, {
+        user_id: userId,
+        date: `${dateKey}T00:00:00Z`,
+        shift_type: shiftType,
+      });
+
+      // If warnings returned without creation, ask user to confirm
+      if (!result.created && result.warnings?.length) {
+        const warningMessages = result.warnings.map(w => w.message).join('\n');
+        showConfirm(
+          'Предупреждение',
+          `${warningMessages}\n\nНазначить смену?`,
+          async () => {
+            try {
+              await createEntry(schedule.id, {
+                user_id: userId,
+                date: `${dateKey}T00:00:00Z`,
+                shift_type: shiftType,
+                force: true,
+              });
+            } catch {
+              showError('Не удалось создать запись');
+            }
+          },
+          undefined,
+          { confirmText: 'Назначить', cancelText: 'Отмена', destructive: false },
+        );
+      }
+    } catch {
+      showError('Не удалось создать запись');
+    }
+  }, [schedule, createEntry, showConfirm, showError]);
 
   // Handler for updating entry (replace user) from Shifts View
   const handleShiftsUpdateEntry = useCallback(async (entryId: number, userId: number) => {
     if (!schedule) return;
-    await updateEntry(schedule.id, entryId, { user_id: userId });
-    // Store updates entries optimistically, no refresh needed
-  }, [schedule, updateEntry]);
+    try {
+      const result = await updateEntry(schedule.id, entryId, { user_id: userId });
+      if (!result.created && result.warnings?.length) {
+        const warningMessages = result.warnings.map(w => w.message).join('\n');
+        showConfirm(
+          'Предупреждение',
+          `${warningMessages}\n\nСохранить изменения?`,
+          async () => {
+            try {
+              await updateEntry(schedule.id, entryId, { user_id: userId, force: true });
+            } catch {
+              showError('Не удалось обновить запись');
+            }
+          },
+          undefined,
+          { confirmText: 'Сохранить', cancelText: 'Отмена', destructive: false },
+        );
+      }
+    } catch {
+      showError('Не удалось обновить запись');
+    }
+  }, [schedule, updateEntry, showConfirm, showError]);
 
   // Handler for entry deletion from Shifts View
   const handleShiftsEntryDelete = useCallback(async (entryId: number) => {
@@ -772,6 +895,65 @@ export const ScheduleDetailScreen: React.FC = () => {
                       </TouchableOpacity>
                     )}
                   </View>
+                  {/* Warning panel for cells with validation warnings */}
+                  {cellWarnings.size > 0 && (
+                    <View style={[styles.warningPanel, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                      <View style={styles.warningPanelHeader}>
+                        <View style={styles.warningPanelTitleRow}>
+                          <Ionicons name="warning" size={16} color="#D97706" />
+                          <Text style={[styles.warningPanelTitle, { color: '#92400E' }]}>
+                            Предупреждения ({cellWarnings.size})
+                          </Text>
+                        </View>
+                        <View style={styles.warningPanelActions}>
+                          <TouchableOpacity
+                            style={[styles.warningPanelButton, { backgroundColor: '#D97706' }]}
+                            onPress={() => {
+                              markForForce(Array.from(cellWarnings.keys()));
+                              setCellWarnings(new Map());
+                              handleSavePendingChanges();
+                            }}
+                          >
+                            <Text style={styles.warningPanelButtonText}>Назначить все равно</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.warningPanelButton, { backgroundColor: '#9CA3AF' }]}
+                            onPress={() => {
+                              // Remove warned pending changes
+                              for (const key of cellWarnings.keys()) {
+                                const change = pendingChanges.get(key);
+                                if (change) {
+                                  removeSucceeded([key]);
+                                }
+                              }
+                              setCellWarnings(new Map());
+                            }}
+                          >
+                            <Text style={styles.warningPanelButtonText}>Отменить</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <View style={styles.warningPanelList}>
+                        {Array.from(cellWarnings.entries()).map(([cellKey, warnings]) => {
+                          const [userIdStr, dateKey] = cellKey.split('-', 2);
+                          const fullDateKey = cellKey.substring(userIdStr.length + 1);
+                          const member = groupMembers.find(m => m.id === Number(userIdStr));
+                          return (
+                            <View key={cellKey} style={styles.warningPanelItem}>
+                              <Text style={[styles.warningPanelItemUser, { color: '#92400E' }]}>
+                                {member?.name || `#${userIdStr}`} ({fullDateKey})
+                              </Text>
+                              {warnings.map((w, i) => (
+                                <Text key={i} style={[styles.warningPanelItemMessage, { color: '#B45309' }]}>
+                                  {w.type === 'absence' ? '📅' : '⚠️'} {w.message}
+                                </Text>
+                              ))}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
                   {isLoadingEntries ? (
                     <View style={styles.entriesLoader}>
                       <ActivityIndicator size="small" color={theme.primary} />
@@ -787,6 +969,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                       onPendingEntryDelete={addPendingDelete}
                       absenceMap={absenceMap}
                       onAbsenceShiftConfirm={handleAbsenceShiftConfirm}
+                      warningMap={cellWarnings}
                     />
                   )}
                 </View>
@@ -1631,5 +1814,58 @@ const styles = StyleSheet.create({
   },
   filterModalList: {
     flexGrow: 0,
+  },
+
+  // Warning panel styles
+  warningPanel: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  warningPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  warningPanelTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  warningPanelTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  warningPanelActions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  warningPanelButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  warningPanelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  warningPanelList: {
+    marginTop: 8,
+    gap: 4,
+  },
+  warningPanelItem: {
+    gap: 2,
+  },
+  warningPanelItemUser: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  warningPanelItemMessage: {
+    fontSize: 11,
+    paddingLeft: 4,
   },
 });

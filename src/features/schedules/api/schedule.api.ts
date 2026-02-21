@@ -12,6 +12,9 @@ import type {
   CreateScheduleEntryRequest,
   CreateBatchEntriesRequest,
   UpdateScheduleEntryRequest,
+  CreateEntryResult,
+  UpdateEntryResult,
+  ScheduleEntryWarning,
   CreateTemplateRequest,
   CreateTemplateEntryRequest,
   CreateBatchTemplateEntriesRequest,
@@ -147,12 +150,20 @@ export const scheduleApi = {
   createScheduleEntry: async (
     scheduleId: number,
     data: CreateScheduleEntryRequest
-  ): Promise<ScheduleEntry> => {
-    const response = await api.post<{ entry: ScheduleEntry }>(
+  ): Promise<CreateEntryResult> => {
+    const response = await api.post<{
+      entry: ScheduleEntry | null;
+      warnings?: ScheduleEntryWarning[];
+      created: boolean;
+    }>(
       SCHEDULE_ENDPOINTS.ENTRIES(scheduleId),
       data
     );
-    return response.data.entry;
+    return {
+      entry: response.data.entry,
+      warnings: response.data.warnings,
+      created: response.data.created ?? !!response.data.entry,
+    };
   },
 
   createBatchEntries: async (
@@ -170,12 +181,20 @@ export const scheduleApi = {
     scheduleId: number,
     entryId: number,
     data: UpdateScheduleEntryRequest
-  ): Promise<ScheduleEntry> => {
-    const response = await api.put<{ entry: ScheduleEntry }>(
+  ): Promise<UpdateEntryResult> => {
+    const response = await api.put<{
+      entry: ScheduleEntry | null;
+      warnings?: ScheduleEntryWarning[];
+      created: boolean;
+    }>(
       SCHEDULE_ENDPOINTS.ENTRY(scheduleId, entryId),
       data
     );
-    return response.data.entry;
+    return {
+      entry: response.data.entry,
+      warnings: response.data.warnings,
+      created: response.data.created ?? !!response.data.entry,
+    };
   },
 
   deleteScheduleEntry: async (

@@ -201,10 +201,12 @@ export interface CreateScheduleEntryRequest {
   title?: string;
   description?: string;
   location?: string;
+  force?: boolean;
 }
 
 export interface CreateBatchEntriesRequest {
   entries: CreateScheduleEntryRequest[];
+  force?: boolean;
 }
 
 export interface UpdateScheduleEntryRequest {
@@ -216,6 +218,28 @@ export interface UpdateScheduleEntryRequest {
   description?: string;
   location?: string;
   is_confirmed?: boolean;
+  force?: boolean;
+}
+
+// Warning types for schedule entry validation
+export type ScheduleWarningType = 'absence' | 'conflict';
+
+export interface ScheduleEntryWarning {
+  type: ScheduleWarningType;
+  message: string;
+}
+
+// Response for create/update with warning support
+export interface CreateEntryResult {
+  entry: ScheduleEntry | null;
+  warnings?: ScheduleEntryWarning[];
+  created: boolean;
+}
+
+export interface UpdateEntryResult {
+  entry: ScheduleEntry | null;
+  warnings?: ScheduleEntryWarning[];
+  created: boolean; // true if actually updated
 }
 
 export interface CreateTemplateRequest {

@@ -10,6 +10,8 @@ import type {
   CreateScheduleEntryRequest,
   UpdateScheduleRequest,
   UpdateScheduleEntryRequest,
+  CreateEntryResult,
+  UpdateEntryResult,
 } from '../types/schedule.types';
 import type { ApiError } from '@/types/common.types';
 
@@ -94,12 +96,12 @@ interface ScheduleState {
   createEntry: (
     scheduleId: number,
     data: CreateScheduleEntryRequest
-  ) => Promise<ScheduleEntry>;
+  ) => Promise<CreateEntryResult>;
   updateEntry: (
     scheduleId: number,
     entryId: number,
     data: UpdateScheduleEntryRequest
-  ) => Promise<void>;
+  ) => Promise<UpdateEntryResult>;
   deleteEntry: (scheduleId: number, entryId: number) => Promise<void>;
 
   // Actions - Templates
@@ -310,15 +312,17 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set({ isSubmitting: true, error: null });
 
     try {
-      // Use single entry API - returns proper error message from backend if user is absent
-      const entry = await scheduleApi.createScheduleEntry(scheduleId, data);
+      const result = await scheduleApi.createScheduleEntry(scheduleId, data);
 
-      set((state) => ({
-        entries: [...state.entries, entry].sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        ),
-      }));
-      return entry;
+      // Only add to state if entry was actually created
+      if (result.created && result.entry) {
+        set((state) => ({
+          entries: [...state.entries, result.entry!].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          ),
+        }));
+      }
+      return result;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Не удалось создать запись');
       set({ error: message });
@@ -332,15 +336,21 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set({ isSubmitting: true, error: null });
 
     try {
-      const updated = await scheduleApi.updateScheduleEntry(
+      const result = await scheduleApi.updateScheduleEntry(
         scheduleId,
         entryId,
         data
       );
-      set((state) => ({
-        entries: state.entries.map((e) => (e.id === entryId ? updated : e)),
-        myEntries: state.myEntries.map((e) => (e.id === entryId ? updated : e)),
-      }));
+
+      // Only update state if entry was actually updated
+      if (result.created && result.entry) {
+        const updated = result.entry;
+        set((state) => ({
+          entries: state.entries.map((e) => (e.id === entryId ? updated : e)),
+          myEntries: state.myEntries.map((e) => (e.id === entryId ? updated : e)),
+        }));
+      }
+      return result;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Не удалось обновить запись');
       set({ error: message });

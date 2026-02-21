@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, Pressable, GestureResponderEvent } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
-import type { Schedule, ScheduleEntry, ScheduleUser, ShiftType } from '../types/schedule.types';
+import type { Schedule, ScheduleEntry, ScheduleUser, ShiftType, ScheduleEntryWarning } from '../types/schedule.types';
 import { SHIFT_TYPE_LABELS } from '../types/schedule.types';
 import { ShiftQuickPicker } from './ShiftQuickPicker';
 import { getHoliday } from '@features/absences/constants/russianHolidays.constants';
@@ -40,6 +40,8 @@ interface ScheduleGridViewProps {
     absenceLabel: string,
     userName: string,
   ) => Promise<boolean>;
+  // Warning indicators for cells with validation warnings (absence/conflict override)
+  warningMap?: Map<string, ScheduleEntryWarning[]>;
 }
 
 interface UserRow {
@@ -159,6 +161,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   onPendingEntryDelete,
   absenceMap,
   onAbsenceShiftConfirm,
+  warningMap,
 }) => {
   const { theme } = useTheme();
 
@@ -566,6 +569,10 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                     const absenceLookup = absenceMap?.get(cellKey) || null;
                     const hasAbsence = !!absenceLookup;
 
+                    // Check warnings for this cell
+                    const cellWarningList = warningMap?.get(cellKey);
+                    const hasWarning = !!cellWarningList && cellWarningList.length > 0;
+
                     // Absence span info for continuous band display
                     const spanInfo = hasAbsence && absenceSpanMap ? absenceSpanMap.get(cellKey) : undefined;
                     const spanPosition = spanInfo?.position ?? 'single';
@@ -591,8 +598,10 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           today && { backgroundColor: theme.primary + '10' },
                           canEdit && styles.entryCellClickable,
                           canEdit && isHovered && { backgroundColor: (isRedDay ? theme.error : theme.textSecondary) + '15' },
-                          isPending && styles.pendingCell,
-                          isPending && { borderColor: theme.primary + '60' },
+                          isPending && !hasWarning && styles.pendingCell,
+                          isPending && !hasWarning && { borderColor: theme.primary + '60' },
+                          hasWarning && styles.pendingCell,
+                          hasWarning && { borderColor: '#F59E0B80' },
                           hasAbsence && isSpanLabelCell && spanLength > 1 && Platform.OS === 'web' && { overflow: 'visible' as any, zIndex: 2 },
                         ]}
                         onPress={(e) => handleCellPress(e, cellInfo)}
@@ -668,10 +677,17 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           ]} />
                         )}
                         {/* Pending change indicator dot */}
-                        {isPending && (
+                        {isPending && !hasWarning && (
                           <View style={[
                             styles.pendingDot,
                             { backgroundColor: pendingType === 'delete' ? '#EF4444' : theme.primary },
+                          ]} />
+                        )}
+                        {/* Warning indicator dot */}
+                        {hasWarning && (
+                          <View style={[
+                            styles.pendingDot,
+                            { backgroundColor: '#F59E0B' },
                           ]} />
                         )}
                       </Pressable>
