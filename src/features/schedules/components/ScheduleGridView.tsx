@@ -225,6 +225,54 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   const CELL_WIDTH = 36;
   const NAME_COLUMN_WIDTH = 180;
 
+  // Pre-compute absence span info for continuous colored band display
+  const absenceSpanMap = useMemo(() => {
+    if (!absenceMap || absenceMap.size === 0) return null;
+
+    const spanMap = new Map<string, { position: 'single' | 'start' | 'middle' | 'end'; spanLength: number; indexInSpan: number }>();
+
+    for (const userRow of userRows) {
+      let currentAbsenceId: number | null = null;
+      let spanCells: string[] = [];
+
+      const finalizeSpan = () => {
+        if (spanCells.length === 0) return;
+        const len = spanCells.length;
+        spanCells.forEach((key, idx) => {
+          let position: 'single' | 'start' | 'middle' | 'end';
+          if (len === 1) position = 'single';
+          else if (idx === 0) position = 'start';
+          else if (idx === len - 1) position = 'end';
+          else position = 'middle';
+          spanMap.set(key, { position, spanLength: len, indexInSpan: idx });
+        });
+        spanCells = [];
+      };
+
+      for (let i = 0; i < dates.length; i++) {
+        const dateKey = formatDateKey(dates[i]);
+        const cellKey = `${userRow.userId}-${dateKey}`;
+        const absenceEntry = absenceMap.get(cellKey);
+        const absenceId = absenceEntry?.absence.id ?? null;
+
+        if (absenceId !== null && absenceId === currentAbsenceId) {
+          spanCells.push(cellKey);
+        } else {
+          finalizeSpan();
+          if (absenceId !== null) {
+            currentAbsenceId = absenceId;
+            spanCells = [cellKey];
+          } else {
+            currentAbsenceId = null;
+          }
+        }
+      }
+      finalizeSpan();
+    }
+
+    return spanMap;
+  }, [absenceMap, userRows, dates]);
+
   // Handle cell press - open quick picker
   const handleCellPress = useCallback(async (
     event: GestureResponderEvent,
@@ -516,6 +564,13 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                     const absenceLookup = absenceMap?.get(cellKey) || null;
                     const hasAbsence = !!absenceLookup;
 
+                    // Absence span info for continuous band display
+                    const spanInfo = hasAbsence && absenceSpanMap ? absenceSpanMap.get(cellKey) : undefined;
+                    const spanPosition = spanInfo?.position ?? 'single';
+                    const spanLength = spanInfo?.spanLength ?? 1;
+                    const spanIndex = spanInfo?.indexInSpan ?? 0;
+                    const isSpanLabelCell = spanIndex === Math.floor((spanLength - 1) / 2);
+
                     const cellInfo: CellInfo = {
                       userId: userRow.userId,
                       userName: userRow.userName,
@@ -538,12 +593,26 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           canEdit && isHovered && hasAbsence && { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] + '25' },
                           isPending && styles.pendingCell,
                           isPending && { borderColor: theme.primary + '60' },
+                          hasAbsence && isSpanLabelCell && spanLength > 1 && Platform.OS === 'web' && { overflow: 'visible' as any, zIndex: 2 },
                         ]}
                         onPress={(e) => handleCellPress(e, cellInfo)}
                         onHoverIn={() => canEdit && setHoveredCell(cellKey)}
                         onHoverOut={() => setHoveredCell(null)}
                         disabled={!canEdit}
                       >
+                        {/* Absence band segment - continuous colored bar across span */}
+                        {hasAbsence && (
+                          <View
+                            style={[
+                              styles.absenceSpanSegment,
+                              { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] + '30' },
+                              (spanPosition === 'start' || spanPosition === 'single') && styles.absenceSpanStart,
+                              (spanPosition === 'end' || spanPosition === 'single') && styles.absenceSpanEnd,
+                            ]}
+                            pointerEvents="none"
+                          />
+                        )}
+                        {/* Shift badge, absence label (center cell only), or add hint */}
                         {displayShiftType ? (
                           <View style={[
                             styles.shiftBadge,
@@ -553,19 +622,40 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                               {getShiftShortLabel(displayShiftType)}
                             </Text>
                           </View>
-                        ) : hasAbsence ? (
-                          <View style={[
-                            styles.absenceBadge,
-                            { backgroundColor: ABSENCE_TYPE_COLORS[absenceLookup!.type] + '30' },
-                          ]}>
-                            <Text style={[
-                              styles.absenceText,
-                              { color: ABSENCE_TYPE_COLORS[absenceLookup!.type] },
-                            ]}>
+                        ) : hasAbsence && isSpanLabelCell ? (
+                          spanLength > 1 ? (
+                            <View
+                              style={[
+                                styles.absenceSpanLabelContainer,
+                                {
+                                  width: CELL_WIDTH * spanLength - 8,
+                                  left: -(spanIndex * CELL_WIDTH) + 4,
+                                },
+                              ]}
+                              pointerEvents="none"
+                            >
+                              <Text
+                                style={[
+                                  styles.absenceSpanLabel,
+                                  { color: ABSENCE_TYPE_COLORS[absenceLookup!.type] },
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {ABSENCE_TYPE_LABELS[absenceLookup!.type]}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text
+                              style={[
+                                styles.absenceSpanLabel,
+                                { color: ABSENCE_TYPE_COLORS[absenceLookup!.type] },
+                              ]}
+                              numberOfLines={1}
+                            >
                               {getAbsenceShortLabel(absenceLookup!.type)}
                             </Text>
-                          </View>
-                        ) : canEdit && isHovered ? (
+                          )
+                        ) : !hasAbsence && canEdit && isHovered ? (
                           <View style={styles.addHint}>
                             <Text style={[styles.addHintText, { color: theme.primary }]}>+</Text>
                           </View>
@@ -812,15 +902,33 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  absenceBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
+  absenceSpanSegment: {
+    position: 'absolute',
+    top: 10,
+    bottom: 10,
+    left: 0,
+    right: 0,
   },
-  absenceText: {
-    fontSize: 9,
+  absenceSpanStart: {
+    left: 4,
+    borderTopLeftRadius: 6,
+    borderBottomLeftRadius: 6,
+  },
+  absenceSpanEnd: {
+    right: 4,
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  absenceSpanLabelContainer: {
+    position: 'absolute',
+    top: 10,
+    bottom: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  absenceSpanLabel: {
+    fontSize: 11,
     fontWeight: '700',
   },
   absenceDot: {
