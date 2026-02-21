@@ -136,9 +136,9 @@ function createTray() {
 
     // Resize for tray (16x16 on Windows, 22x22 on macOS, 24x24 on Linux)
     if (process.platform === 'win32') {
-      trayIcon = trayIcon.resize({ width: 16, height: 16 });
+      trayIcon = trayIcon.resize({ width: 14, height: 14 });
     } else if (process.platform === 'darwin') {
-      trayIcon = trayIcon.resize({ width: 22, height: 22 });
+      trayIcon = trayIcon.resize({ width: 16, height: 16 });
       // macOS: Set as template image for automatic dark/light mode adaptation
       trayIcon.setTemplateImage(true);
     } else {
