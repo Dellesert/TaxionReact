@@ -72,6 +72,7 @@ export const ScheduleDetailScreen: React.FC = () => {
   const { showSuccess, showError } = useNotification();
   const deleteSchedule = useScheduleStore((state) => state.deleteSchedule);
   const updateSchedule = useScheduleStore((state) => state.updateSchedule);
+  const publishScheduleAction = useScheduleStore((state) => state.publishSchedule);
   const createEntry = useScheduleStore((state) => state.createEntry);
   const updateEntry = useScheduleStore((state) => state.updateEntry);
   const deleteEntry = useScheduleStore((state) => state.deleteEntry);
@@ -96,6 +97,8 @@ export const ScheduleDetailScreen: React.FC = () => {
 
   const { canEdit, canManageEntries } = useSchedulePermissions(schedule);
 
+  const isDraft = schedule?.status === 'draft';
+
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [selectedUserId, setSelectedUserId] = React.useState<number | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -113,6 +116,23 @@ export const ScheduleDetailScreen: React.FC = () => {
 
   // Warnings for cells that had validation warnings (absence/conflict)
   const [cellWarnings, setCellWarnings] = useState<Map<string, ScheduleEntryWarning[]>>(new Map());
+
+  // Publish state
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const handlePublishSchedule = useCallback(async () => {
+    if (!schedule || schedule.status !== 'draft') return;
+    setIsPublishing(true);
+    try {
+      await publishScheduleAction(schedule.id);
+      showSuccess('График опубликован');
+      refresh();
+    } catch (err) {
+      showError('Не удалось опубликовать график');
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [schedule, publishScheduleAction, refresh, showSuccess, showError]);
 
   // User filter state for recurring schedules
   const [showUserFilterPicker, setShowUserFilterPicker] = useState(false);
@@ -379,9 +399,12 @@ export const ScheduleDetailScreen: React.FC = () => {
         onSavePendingChanges={handleSavePendingChanges}
         onDiscardPendingChanges={handleDiscardPendingChanges}
         isSavingChanges={isSavingPending}
+        isDraft={isDraft}
+        onPublish={canEdit ? handlePublishSchedule : undefined}
+        isPublishing={isPublishing}
       />
     );
-  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu, handleMenuButtonLayout, handleViewModeChange, pendingCount, handleSavePendingChanges, handleDiscardPendingChanges, isSavingPending]);
+  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu, handleMenuButtonLayout, handleViewModeChange, pendingCount, handleSavePendingChanges, handleDiscardPendingChanges, isSavingPending, isDraft, handlePublishSchedule, isPublishing]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -1112,6 +1135,13 @@ export const ScheduleDetailScreen: React.FC = () => {
                   <Text style={[styles.sidebarTitle, { color: theme.text }]}>О графике</Text>
                 </View>
 
+                {isDraft && (
+                  <View style={[styles.sidebarDraftBanner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                    <Ionicons name="document-text-outline" size={16} color="#D97706" />
+                    <Text style={styles.sidebarDraftText}>Черновик</Text>
+                  </View>
+                )}
+
                 <View style={styles.sidebarSection}>
                   <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
                   <Text style={[styles.sidebarValue, { color: theme.text }]}>
@@ -1171,6 +1201,32 @@ export const ScheduleDetailScreen: React.FC = () => {
         ) : (
           // Mobile: Original single-column layout
           <>
+            {/* Draft banner with publish button (mobile) */}
+            {isDraft && canEdit && (
+              <View style={[styles.mobileDraftBanner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                <View style={styles.mobileDraftInfo}>
+                  <Ionicons name="document-text-outline" size={18} color="#D97706" />
+                  <Text style={styles.mobileDraftText}>
+                    Черновик — не виден другим пользователям
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.mobilePublishButton, { opacity: isPublishing ? 0.6 : 1 }]}
+                  onPress={handlePublishSchedule}
+                  disabled={isPublishing}
+                >
+                  {isPublishing ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="send" size={16} color="#FFFFFF" />
+                      <Text style={styles.mobilePublishText}>Опубликовать</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Schedule Info Card */}
             <View
               style={[
@@ -1867,5 +1923,56 @@ const styles = StyleSheet.create({
   warningPanelItemMessage: {
     fontSize: 11,
     paddingLeft: 4,
+  },
+
+  // Draft banner styles (sidebar)
+  sidebarDraftBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  sidebarDraftText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+
+  // Draft banner styles (mobile)
+  mobileDraftBanner: {
+    margin: 16,
+    marginBottom: 0,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  mobileDraftInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mobileDraftText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#92400E',
+    flex: 1,
+  },
+  mobilePublishButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#10B981',
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  mobilePublishText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

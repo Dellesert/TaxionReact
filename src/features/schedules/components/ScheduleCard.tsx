@@ -70,6 +70,14 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({
               </Text>
             </View>
           )}
+          {schedule.status === 'draft' && (
+            <View
+              style={[styles.draftBadge, { backgroundColor: theme.primary + '20' }]}
+            >
+              <Ionicons name="document-text-outline" size={10} color={theme.primary} />
+              <Text style={[styles.draftBadgeText, { color: theme.primary }]}>Черновик</Text>
+            </View>
+          )}
           {!schedule.is_active && (
             <View
               style={[styles.inactiveBadge, { backgroundColor: theme.warning }]}
@@ -151,6 +159,18 @@ const styles = StyleSheet.create({
   modeBadgeText: {
     fontSize: 10,
     fontWeight: '600',
+  },
+  draftBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  draftBadgeText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
   },
   inactiveBadge: {
     paddingHorizontal: 6,

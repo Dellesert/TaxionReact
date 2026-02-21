@@ -31,6 +31,7 @@ import type {
 const SCHEDULE_ENDPOINTS = {
   LIST: '/schedules',
   DETAIL: (id: number) => `/schedules/${id}`,
+  PUBLISH: (id: number) => `/schedules/${id}/publish`,
   ENTRIES: (id: number) => `/schedules/${id}/entries`,
   ENTRY: (scheduleId: number, entryId: number) =>
     `/schedules/${scheduleId}/entries/${entryId}`,
@@ -104,6 +105,13 @@ export const scheduleApi = {
 
   deleteSchedule: async (id: number): Promise<void> => {
     await api.delete(SCHEDULE_ENDPOINTS.DETAIL(id));
+  },
+
+  publishSchedule: async (id: number): Promise<Schedule> => {
+    const response = await api.post<{ schedule: Schedule }>(
+      SCHEDULE_ENDPOINTS.PUBLISH(id)
+    );
+    return response.data.schedule;
   },
 
   // ============================================

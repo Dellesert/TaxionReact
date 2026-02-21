@@ -30,6 +30,12 @@ interface TitleBarScheduleDetailControlsProps {
   onDiscardPendingChanges?: () => void;
   /** Whether batch save is in progress */
   isSavingChanges?: boolean;
+  /** Whether the schedule is a draft */
+  isDraft?: boolean;
+  /** Callback when Publish button is pressed */
+  onPublish?: () => void;
+  /** Whether publish is in progress */
+  isPublishing?: boolean;
 }
 
 // Иконки для видов
@@ -52,6 +58,9 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
   onSavePendingChanges,
   onDiscardPendingChanges,
   isSavingChanges = false,
+  isDraft = false,
+  onPublish,
+  isPublishing = false,
 }) => {
   const { theme } = useTheme();
   const menuButtonRef = useRef<View>(null);
@@ -180,6 +189,42 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
     );
   };
 
+  // Render publish button for draft schedules
+  const renderPublishButton = () => {
+    if (!isDraft || !onPublish) return null;
+
+    return (
+      <View
+        style={[
+          styles.publishButton,
+          { backgroundColor: isPublishing ? '#10B981' + '80' : '#10B981' },
+        ]}
+        // @ts-ignore - Web-only
+        onClick={isPublishing ? undefined : onPublish}
+        title="Опубликовать график"
+        onMouseEnter={(e: any) => {
+          if (!isPublishing && e.currentTarget?.style) {
+            e.currentTarget.style.opacity = '0.85';
+          }
+        }}
+        onMouseLeave={(e: any) => {
+          if (e.currentTarget?.style) {
+            e.currentTarget.style.opacity = '1';
+          }
+        }}
+      >
+        {isPublishing ? (
+          <ActivityIndicator size={12} color="#FFFFFF" />
+        ) : (
+          <>
+            <Ionicons name="send" size={13} color="#FFFFFF" />
+            <Text style={styles.publishButtonText}>Опубликовать</Text>
+          </>
+        )}
+      </View>
+    );
+  };
+
   // Show only view switcher (for left controls)
   if (showViewSwitcherOnly) {
     return (
@@ -193,6 +238,7 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
   if (showMenuOnly) {
     return (
       <View style={styles.container}>
+        {renderPublishButton()}
         {renderPendingChangesControls()}
         {canEdit && onOpenMenu && renderMenuButton()}
       </View>
@@ -204,6 +250,9 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
     <View style={styles.container}>
       {/* View Switcher - only for monthly mode */}
       {showViewSwitcher && renderViewSwitcher()}
+
+      {/* Publish button for drafts */}
+      {renderPublishButton()}
 
       {/* Pending changes controls */}
       {renderPendingChangesControls()}
@@ -284,6 +333,21 @@ const styles = StyleSheet.create({
     transition: 'opacity 0.15s ease',
   } as any,
   saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  } as any,
+  publishButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    cursor: 'pointer',
+    transition: 'opacity 0.15s ease',
+  } as any,
+  publishButtonText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',

@@ -457,6 +457,13 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
 
   return (
     <View style={styles.container}>
+      {schedule.status === 'draft' && (
+        <View style={[styles.draftBanner, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
+          <Text style={[styles.draftBannerText, { color: theme.primary }]}>
+            Черновик — график не виден другим пользователям до публикации
+          </Text>
+        </View>
+      )}
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
         <View>
           {/* Header row with dates */}
@@ -769,6 +776,19 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  draftBanner: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginHorizontal: 8,
+    marginBottom: 8,
+  },
+  draftBannerText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   headerRow: {
     flexDirection: 'row',

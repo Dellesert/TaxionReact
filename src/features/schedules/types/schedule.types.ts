@@ -12,6 +12,8 @@ export type ShiftType = 'morning' | 'evening' | 'full_day' | 'custom';
 
 export type ScheduleMode = 'recurring' | 'monthly';
 
+export type ScheduleStatus = 'draft' | 'published';
+
 export const SCHEDULE_TYPE_LABELS: Record<ScheduleType, string> = {
   paid_services: 'Платные услуги',
   on_duty: 'Дежурства',
@@ -45,6 +47,11 @@ export const EDIT_PERMISSION_LABELS: Record<ScheduleEditPermission, string> = {
 export const SCHEDULE_MODE_LABELS: Record<ScheduleMode, string> = {
   monthly: 'Ежемесячный',
   recurring: 'Повторяющийся',
+};
+
+export const SCHEDULE_STATUS_LABELS: Record<ScheduleStatus, string> = {
+  draft: 'Черновик',
+  published: 'Опубликован',
 };
 
 // ============================================
@@ -85,6 +92,8 @@ export interface Schedule {
   evening_end: string;
   color: string;
   is_active: boolean;
+  status: ScheduleStatus;
+  published_at?: string;
   imported_from?: string;
   entries_count?: number;
   viewer_ids?: number[];
@@ -363,6 +372,7 @@ export interface ApplyTemplateResponse {
 export interface ScheduleFilters {
   type?: ScheduleType;
   is_active?: boolean;
+  status?: ScheduleStatus;
   department_id?: number;
   search?: string;
   start_date?: string;

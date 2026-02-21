@@ -86,6 +86,7 @@ interface ScheduleState {
     data: UpdateScheduleRequest
   ) => Promise<void>;
   deleteSchedule: (id: number) => Promise<void>;
+  publishSchedule: (id: number) => Promise<Schedule>;
 
   // Actions - Entries
   loadScheduleEntries: (
@@ -253,6 +254,27 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : 'Не удалось удалить график';
+      set({ error: message });
+      throw error;
+    } finally {
+      set({ isSubmitting: false });
+    }
+  },
+
+  publishSchedule: async (id) => {
+    set({ isSubmitting: true, error: null });
+
+    try {
+      const published = await scheduleApi.publishSchedule(id);
+      set((state) => ({
+        schedules: state.schedules.map((s) => (s.id === id ? published : s)),
+        currentSchedule:
+          state.currentSchedule?.id === id ? published : state.currentSchedule,
+      }));
+      return published;
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось опубликовать график';
       set({ error: message });
       throw error;
     } finally {
