@@ -1257,7 +1257,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   stepTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     marginBottom: 12,
   },
@@ -1302,7 +1302,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderWidth: 1,
     borderRadius: 12,
     gap: 12,
@@ -1331,13 +1331,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   audienceChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 2,
   },
   audienceChipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   infoSection: {
@@ -1349,8 +1349,8 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
   },
   eventTypeRow: {
     gap: 12,
@@ -1411,7 +1411,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
     gap: 8,
@@ -1435,7 +1435,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
   },
   compactHeaderButton: {
@@ -1459,9 +1459,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   navButtonCompact: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   navButtonTextCompact: {
     fontSize: 14,
@@ -1484,7 +1484,7 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 6,
+    borderRadius: 8,
     marginLeft: 12,
     // @ts-ignore
     cursor: 'pointer',
@@ -1507,9 +1507,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 8,
-    gap: 5,
+    gap: 4,
     marginRight: 8,
     // @ts-ignore
     cursor: 'pointer',
@@ -1569,7 +1569,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   desktopSectionTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
   },

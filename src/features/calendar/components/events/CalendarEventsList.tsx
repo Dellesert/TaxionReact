@@ -86,9 +86,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginTop: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 8,
     alignSelf: 'flex-start',
   },
   holidayTagText: {

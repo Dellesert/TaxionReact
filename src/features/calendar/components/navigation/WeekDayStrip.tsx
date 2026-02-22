@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     textTransform: 'capitalize',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   dayNumberContainer: {
     width: 36,

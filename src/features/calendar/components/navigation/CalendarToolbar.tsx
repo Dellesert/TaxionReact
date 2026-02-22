@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 1,
+    gap: 4,
     flex: 1,
   },
   todayButton: {
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   todayButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   monthNavigation: {
@@ -166,15 +166,15 @@ const styles = StyleSheet.create({
   },
   centerSection: {
     flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
-    gap: 2,
+    borderRadius: 8,
+    padding: 4,
+    gap: 4,
   },
   viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
+    gap: 8,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     ...(Platform.OS === 'web' ? {

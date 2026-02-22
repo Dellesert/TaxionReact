@@ -72,8 +72,8 @@ const styles = StyleSheet.create({
   },
   pill: {
     paddingHorizontal: 20,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
     minWidth: 80,
     alignItems: 'center',
     justifyContent: 'center',

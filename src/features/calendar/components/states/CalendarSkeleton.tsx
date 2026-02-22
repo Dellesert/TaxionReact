@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   weekdayHeader: {
     width: 24,
     height: 14,
-    borderRadius: 7,
+    borderRadius: 8,
   },
   weekRow: {
     flexDirection: 'row',
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   dayNumber: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 12,
   },
   eventDot: {
     width: 6,

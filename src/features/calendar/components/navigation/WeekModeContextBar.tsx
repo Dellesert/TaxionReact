@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
   },
   pill: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
     minWidth: 120,
     alignItems: 'center',
     justifyContent: 'center',

@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   containerCompact: {
-    borderRadius: 10,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
   dayContainer: {
     flex: 1,
     aspectRatio: 1,
-    padding: 3,
+    padding: 4,
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
       cursor: 'pointer',
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   eventDot: {
     width: 8,

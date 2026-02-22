@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
   weekdayRow: {
     flexDirection: 'row',
     paddingHorizontal: 8,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   dayContainer: {
     flex: 1,
     aspectRatio: 1,
-    padding: 3,
+    padding: 4,
     ...(Platform.OS === 'web'
       ? {
           // @ts-ignore - web only
@@ -713,19 +713,19 @@ const styles = StyleSheet.create({
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 3,
+    bottom: 4,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   dotsContainerToday: {
-    bottom: 3,
+    bottom: 4,
   },
   dotsContainerWithSubstitution: {
-    bottom: 3,
+    bottom: 4,
   },
   eventDot: {
     width: 8,

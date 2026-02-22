@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   eventContent: {
     flex: 1,
     padding: 12,
-    gap: 10,
+    gap: 8,
   },
   titleRow: {
     flexDirection: 'row',
@@ -122,13 +122,13 @@ const styles = StyleSheet.create({
   eventTitle: {
     height: 18,
     flex: 1,
-    borderRadius: 9,
+    borderRadius: 8,
     marginRight: 8,
   },
   statusBadge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 12,
   },
   infoRow: {
     flexDirection: 'row',
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   infoIcon: {
     width: 16,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   infoText: {
     height: 14,
     width: 120,
-    borderRadius: 7,
+    borderRadius: 8,
   },
   participantsRow: {
     flexDirection: 'row',
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   participantCount: {
     width: 32,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 8,
     marginLeft: 12,
   },
 });

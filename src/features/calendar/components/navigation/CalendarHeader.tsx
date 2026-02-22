@@ -138,7 +138,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 const styles = StyleSheet.create({
   // Mobile styles
   mobileHeaderContainer: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 44,
     borderRadius: 22,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderWidth: 2,
     ...Platform.select({
       web: {

@@ -149,7 +149,7 @@ export const DayEventsSheet: React.FC<DayEventsSheetProps> = ({
                           )}
                           {event.location && (
                             <View style={styles.locationRow}>
-                              <Ionicons name="location-outline" size={14} color={theme.textTertiary} />
+                              <Ionicons name="location-outline" size={16} color={theme.textTertiary} />
                               <Text style={[styles.eventLocation, { color: theme.textTertiary }]} numberOfLines={1}>
                                 {event.location}
                               </Text>
@@ -176,8 +176,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     maxHeight: SCREEN_HEIGHT * 0.6,
   },
   handleBar: {
@@ -198,12 +198,12 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     textTransform: 'capitalize',
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     marginTop: 4,
   },
@@ -217,19 +217,19 @@ const styles = StyleSheet.create({
   eventItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 8,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   eventColorBar: {
     width: 4,
@@ -242,11 +242,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   eventTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   eventTime: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   locationRow: {
