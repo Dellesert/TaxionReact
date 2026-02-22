@@ -21,6 +21,7 @@ const NotificationSettingsContent: React.FC = () => {
     settings,
     handleToggleChannel,
     handleToggleType,
+    handleToggleGlobalMute,
     handlePriorityChange,
     handleQuietHoursChange,
     handleToggleAdvanced,
@@ -78,6 +79,32 @@ const NotificationSettingsContent: React.FC = () => {
             description="Уведомления по SMS (скоро будет доступно)"
             value={false}
             disabled
+            isLast
+          />
+        </ProfileMenuSection>
+
+        {/* Групповые чаты и каналы */}
+        <ProfileMenuSection
+          title="ГРУППОВЫЕ ЧАТЫ И КАНАЛЫ"
+          description="Отключить все уведомления от групп или каналов"
+        >
+          <NotificationSettingItem
+            icon="people"
+            iconColor="#F59E0B"
+            title="Отключить уведомления от групп"
+            description="Не получать уведомления от всех групповых чатов"
+            value={settings.muteAllGroups}
+            onValueChange={(value) => handleToggleGlobalMute('groups', value)}
+            isLoading={saving === 'mute_all_groups'}
+          />
+          <NotificationSettingItem
+            icon="megaphone"
+            iconColor="#8B5CF6"
+            title="Отключить уведомления от каналов"
+            description="Не получать уведомления от всех каналов"
+            value={settings.muteAllChannels}
+            onValueChange={(value) => handleToggleGlobalMute('channels', value)}
+            isLoading={saving === 'mute_all_channels'}
             isLast
           />
         </ProfileMenuSection>

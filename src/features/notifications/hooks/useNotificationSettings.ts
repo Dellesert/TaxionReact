@@ -6,12 +6,20 @@ import {
   NotificationType,
   NotificationPriority,
 } from '../api/notificationPreferences.api';
+import {
+  getGlobalMutePreferences,
+  updateGlobalMutePreferences,
+} from '@/features/chat/api/chat.api';
 
 export interface NotificationSettings {
   // Основные каналы
   push: boolean;
   email: boolean;
   sms: boolean;
+
+  // Глобальное отключение уведомлений от групп/каналов
+  muteAllGroups: boolean;
+  muteAllChannels: boolean;
 
   // Категории уведомлений
   message: boolean;
@@ -34,6 +42,8 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   push: true,
   email: false,
   sms: false,
+  muteAllGroups: false,
+  muteAllChannels: false,
   message: true,
   mention: true,
   task: true,
@@ -72,9 +82,21 @@ export const useNotificationSettings = () => {
   const loadPreferences = useCallback(async () => {
     try {
       setLoading(true);
-      const prefs = await getUserPreferences();
+      const [prefs, mutePrefs] = await Promise.all([
+        getUserPreferences(),
+        getGlobalMutePreferences(),
+      ]);
 
       const newSettings: NotificationSettings = { ...DEFAULT_SETTINGS };
+
+      // Глобальные mute-настройки (muted = timestamp в будущем)
+      const now = new Date();
+      newSettings.muteAllGroups = mutePrefs.mute_all_groups_until
+        ? new Date(mutePrefs.mute_all_groups_until) > now
+        : false;
+      newSettings.muteAllChannels = mutePrefs.mute_all_channels_until
+        ? new Date(mutePrefs.mute_all_channels_until) > now
+        : false;
 
       // Берем настройки из первого типа уведомлений (они общие для всех типов)
       const firstPref = prefs[0];
@@ -328,6 +350,34 @@ export const useNotificationSettings = () => {
     [updateAdvancedSetting]
   );
 
+  /**
+   * Toggle global mute for all groups or all channels
+   */
+  const handleToggleGlobalMute = useCallback(
+    async (type: 'groups' | 'channels', value: boolean) => {
+      const field = type === 'groups' ? 'muteAllGroups' : 'muteAllChannels';
+      const savingKey = type === 'groups' ? 'mute_all_groups' : 'mute_all_channels';
+      setSettings((prev) => ({ ...prev, [field]: value }));
+      setSaving(savingKey);
+
+      try {
+        const param =
+          type === 'groups'
+            ? { mute_all_groups: value ? 'forever' as const : 'off' as const }
+            : { mute_all_channels: value ? 'forever' as const : 'off' as const };
+        await updateGlobalMutePreferences(param);
+        showSuccess('Настройки сохранены');
+      } catch (error: any) {
+        console.error('Error updating global mute:', error);
+        showError(error.message || 'Не удалось сохранить настройки');
+        setSettings((prev) => ({ ...prev, [field]: !value }));
+      } finally {
+        setSaving(null);
+      }
+    },
+    [showSuccess, showError]
+  );
+
   // Load preferences on mount
   useEffect(() => {
     loadPreferences();
@@ -339,6 +389,7 @@ export const useNotificationSettings = () => {
     settings,
     handleToggleChannel,
     handleToggleType,
+    handleToggleGlobalMute,
     handlePriorityChange,
     handleQuietHoursChange,
     handleToggleAdvanced,
