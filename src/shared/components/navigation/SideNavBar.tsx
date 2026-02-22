@@ -282,6 +282,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
         onLoadMore={searchLoadMore}
         anchorPosition={searchAnchorPosition}
         desktopNavigateToTab={navigateToTab}
+        activeRoute={activeRoute}
       />
 
       {/* Navigation Items */}

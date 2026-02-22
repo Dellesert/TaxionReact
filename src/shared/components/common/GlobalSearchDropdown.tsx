@@ -3,7 +3,7 @@
  * Dropdown с результатами глобального поиска, сгруппированными по категориям
  */
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 // @ts-ignore - react-dom types not installed
 import ReactDOM from 'react-dom';
 import {
@@ -43,6 +43,7 @@ interface GlobalSearchDropdownProps {
   onLoadMore: (type: SearchEntityType) => void;
   anchorPosition: { x: number; y: number };
   desktopNavigateToTab: (tab: string, params?: DesktopNavigationParams) => void;
+  activeRoute?: string;
 }
 
 const CATEGORY_CONFIG: Record<SearchEntityType, {
@@ -98,6 +99,7 @@ export const GlobalSearchDropdown: React.FC<GlobalSearchDropdownProps> = ({
   onLoadMore,
   anchorPosition,
   desktopNavigateToTab,
+  activeRoute,
 }) => {
   const { theme } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -357,9 +359,18 @@ export const GlobalSearchDropdown: React.FC<GlobalSearchDropdownProps> = ({
     );
   }, [theme, renderResultItem, onLoadMore, isLoadingMore]);
 
-  if (!visible) return null;
+  // Сортируем категории: сначала те, что соответствуют текущей открытой странице
+  const sortedResults = useMemo(() => {
+    const sortedResults = results || [];
+    if (!activeRoute || sortedResults.length <= 1) return sortedResults;
+    return [...sortedResults].sort((a, b) => {
+      const aMatch = CATEGORY_CONFIG[a.type]?.tab === activeRoute ? 0 : 1;
+      const bMatch = CATEGORY_CONFIG[b.type]?.tab === activeRoute ? 0 : 1;
+      return aMatch - bMatch;
+    });
+  }, [results, activeRoute]);
 
-  const safeResults = results || [];
+  if (!visible) return null;
 
   const dropdownStyle = {
     left: anchorPosition.x,
@@ -368,7 +379,7 @@ export const GlobalSearchDropdown: React.FC<GlobalSearchDropdownProps> = ({
   };
 
   const renderContent = () => {
-    if (isLoading && safeResults.length === 0) {
+    if (isLoading && sortedResults.length === 0) {
       return (
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
@@ -387,7 +398,7 @@ export const GlobalSearchDropdown: React.FC<GlobalSearchDropdownProps> = ({
       );
     }
 
-    if (safeResults.length === 0) {
+    if (sortedResults.length === 0) {
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="search-outline" size={40} color={theme.textTertiary} />
@@ -401,7 +412,7 @@ export const GlobalSearchDropdown: React.FC<GlobalSearchDropdownProps> = ({
 
     return (
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator>
-        {safeResults.map(renderCategory)}
+        {sortedResults.map(renderCategory)}
       </ScrollView>
     );
   };
