@@ -237,10 +237,18 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                               {override.userName}
                             </Text>
                           </View>
-                        ) : user.match_score !== undefined && user.match_score > 0 ? (
-                          <Text style={[styles.matchScoreText, { color: theme.warning }]}>
-                            Совпадение: {Math.round(user.match_score * 100)}%
-                          </Text>
+                        ) : user.user_id && user.match_score !== undefined && user.match_score > 0 ? (
+                          <View>
+                            <View style={styles.overrideInfo}>
+                              <Ionicons name="arrow-forward" size={14} color={theme.warning} />
+                              <Text style={[styles.overrideName, { color: theme.warning }]}>
+                                {systemUsersMap.get(user.user_id) || `ID: ${user.user_id}`}
+                              </Text>
+                            </View>
+                            <Text style={[styles.matchScoreText, { color: theme.textSecondary }]}>
+                              Совпадение: {Math.round(user.match_score * 100)}%
+                            </Text>
+                          </View>
                         ) : null}
                       </View>
                       {editable && (
