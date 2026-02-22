@@ -187,16 +187,14 @@ export const ScheduleDetailScreen: React.FC = () => {
     }
   }, [isElectron, schedule?.type, viewMode]);
 
-  // Load group members when schedule has a linked user group
+  // Load group members (from user group or schedule assignments for imported schedules)
   useEffect(() => {
-    if (schedule?.user_group_id) {
+    if (schedule?.id) {
       scheduleApi.getScheduleGroupMembers(schedule.id)
         .then((members) => setGroupMembers(members))
         .catch((err) => console.error('Failed to load group members:', err));
-    } else {
-      setGroupMembers([]);
     }
-  }, [schedule?.id, schedule?.user_group_id]);
+  }, [schedule?.id]);
 
   // Fetch absences for all grid users in the schedule date range
   const gridUserIds = useMemo(
