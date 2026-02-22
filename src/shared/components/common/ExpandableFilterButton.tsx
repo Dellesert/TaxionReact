@@ -40,6 +40,7 @@ export const ExpandableFilterButton: React.FC<ExpandableFilterButtonProps> = ({
 }) => {
   const { theme } = useTheme();
   const [isHovered, setIsHovered] = useState(false);
+  const [labelWidth, setLabelWidth] = useState(0);
   const widthAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -60,7 +61,7 @@ export const ExpandableFilterButton: React.FC<ExpandableFilterButtonProps> = ({
 
   const animatedWidth = widthAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 68], // Ширина для текста "Фильтры"
+    outputRange: [0, labelWidth],
   });
 
   const animatedGap = widthAnim.interpolate({
@@ -116,6 +117,13 @@ export const ExpandableFilterButton: React.FC<ExpandableFilterButtonProps> = ({
       {hasActiveFilters && (
         <View style={[styles.filterIndicator, { backgroundColor: theme.primary }]} />
       )}
+      {/* Hidden text to measure actual label width */}
+      <Text
+        style={styles.hiddenLabel}
+        onLayout={(e) => setLabelWidth(Math.ceil(e.nativeEvent.layout.width))}
+      >
+        {label}
+      </Text>
     </Animated.View>
   );
 };
@@ -153,6 +161,14 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  } as any,
+  hiddenLabel: {
+    position: 'absolute',
+    opacity: 0,
+    fontSize: 13,
+    fontWeight: '500',
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
   } as any,
 });
 
