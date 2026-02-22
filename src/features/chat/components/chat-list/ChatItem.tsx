@@ -13,6 +13,7 @@ import { ActionModal } from '@shared/components/common/ActionModal';
 import { useChatPrefetch } from '@shared/hooks/usePrefetch';
 import { getTypingUserNames, formatTypingText } from '../../utils/chatScreenHelpers';
 import { stripFormatting } from '../../utils/formatting';
+import { getSystemMessagePreview } from '../messages/SystemMessageBanner';
 import { useAnimationStore } from '@shared/store/animationStore';
 import * as Haptics from 'expo-haptics';
 
@@ -143,6 +144,12 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     if (!chat.last_message) return 'Нет сообщений';
 
     const message = chat.last_message;
+
+    // Системное сообщение — показываем текст события без префикса отправителя
+    if (message.message_type === 'system') {
+      return getSystemMessagePreview(message);
+    }
+
     const isCurrentUser = message.sender_id === currentUser?.id;
 
     // Определяем префикс отправителя

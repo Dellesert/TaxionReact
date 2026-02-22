@@ -472,6 +472,7 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             sender: messageData?.sender, // Don't provide fallback - let MessageItem fetch it
             status: messageData?.status || 'sent',
             link_preview: messageData?.link_preview,
+            system_data: messageData?.system_data,
           };
 
           // Pass is_latest flag to the store for auto-scroll logic

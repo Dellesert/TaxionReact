@@ -93,6 +93,29 @@ export interface LinkPreview {
   site_name?: string;
 }
 
+// System Message Data (parsed from system_data JSON string)
+export type SystemMessageAction =
+  | 'member_added'
+  | 'member_removed'
+  | 'member_left'
+  | 'member_joined'
+  | 'chat_name_changed'
+  | 'chat_description_changed'
+  | 'chat_avatar_changed'
+  | 'message_pinned'
+  | 'message_unpinned'
+  | 'chat_created'
+  | 'member_role_changed';
+
+export interface SystemMessageData {
+  action: SystemMessageAction;
+  actor_id: number;
+  actor_name: string;
+  target_id?: number;
+  target_name?: string;
+  extra?: Record<string, any>;
+}
+
 // Chat Link Response (from GET /chats/:id/links)
 export interface ChatLink {
   message_id: number;
@@ -137,6 +160,7 @@ export interface Message {
   poll_data?: MessagePollData; // Данные опроса для сообщений типа 'poll'
   task_data?: MessageTaskData; // Данные задачи для сообщений типа 'task'
   link_preview?: LinkPreview; // Превью ссылки из текста сообщения
+  system_data?: string; // JSON строка с метаданными системного сообщения
   // Forward-related fields
   forwarded_from_message_id?: number; // ID оригинального сообщения
   original_sender_id?: number; // ID оригинального отправителя

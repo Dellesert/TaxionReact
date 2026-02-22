@@ -5,6 +5,7 @@ import { MessageItem } from './MessageItem';
 import { DateSeparator } from '../common/DateSeparator';
 import { UnreadMessagesBanner } from './UnreadMessagesBanner';
 import { MessageSkeleton } from './MessageSkeleton';
+import { SystemMessageBanner } from './SystemMessageBanner';
 import { ChatEmptyMessages } from '../states/ChatEmptyMessages';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useCustomScrollbarStyle } from '@shared/hooks/useCustomScrollbarStyle';
@@ -333,6 +334,11 @@ export const MessageListComponent: React.FC<MessageListComponentProps> = ({
 
           // Рендер сообщения
           const message = item.data;
+
+          // Системное сообщение: рендерим центрированный баннер
+          if (message.message_type === 'system') {
+            return <SystemMessageBanner message={message} />;
+          }
 
           // Показываем встроенный баннер при наличии непрочитанных
           // Есть два случая:
