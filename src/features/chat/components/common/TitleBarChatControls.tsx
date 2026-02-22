@@ -51,6 +51,12 @@ export const TitleBarChatControls: React.FC<TitleBarChatControlsProps> = ({
       label: 'Групповой чат',
       onPress: () => onCreateChatType?.('group'),
     },
+    {
+      key: 'channel',
+      icon: 'megaphone',
+      label: 'Создать канал',
+      onPress: () => onCreateChatType?.('channel'),
+    },
   ], [onCreateChatType]);
 
   // Show only edit/done button (for left controls)
