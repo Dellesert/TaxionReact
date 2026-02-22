@@ -284,7 +284,15 @@ const EditUserGroupScreen: React.FC = () => {
                 >
                   <Avatar imageUrl={member.avatar} name={member.name} size={40} />
                   <View style={styles.userInfo}>
-                    <Text style={[styles.userName, { color: theme.text }]}>{member.name}</Text>
+                    <View style={styles.userNameRow}>
+                      <Text style={[styles.userName, { color: theme.text }]}>{member.name}</Text>
+                      {member.role === 'department_head' && (
+                        <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 6 }} />
+                      )}
+                      {member.role === 'admin' && (
+                        <Ionicons name="shield" size={16} color="#3B82F6" style={{ marginLeft: 6 }} />
+                      )}
+                    </View>
                     <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{member.email}</Text>
                     {member.position && (
                       <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{member.position}</Text>
@@ -340,6 +348,7 @@ const EditUserGroupScreen: React.FC = () => {
           title="Добавить участников"
           multiSelect={true}
           excludeUserIds={Array.isArray(members) ? members.map(u => u.id) : []}
+          includeCurrentUser={true}
         />
       </View>
     </SafeAreaView>
@@ -446,6 +455,10 @@ const styles = StyleSheet.create({
   userInfo: {
     flex: 1,
     marginLeft: 12,
+  },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   userName: {
     fontSize: 15,
