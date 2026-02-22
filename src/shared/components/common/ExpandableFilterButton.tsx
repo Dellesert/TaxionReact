@@ -60,7 +60,7 @@ export const ExpandableFilterButton: React.FC<ExpandableFilterButtonProps> = ({
 
   const animatedWidth = widthAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 56], // Ширина для текста "Фильтры"
+    outputRange: [0, 68], // Ширина для текста "Фильтры"
   });
 
   const animatedGap = widthAnim.interpolate({
