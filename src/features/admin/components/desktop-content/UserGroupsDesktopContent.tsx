@@ -102,8 +102,7 @@ const UserGroupsDesktopContent: React.FC = () => {
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = windowWidth - SIDEBAR_WIDTH;
   const isNarrow = contentWidth < 600;
-  const isMedium = contentWidth >= 600 && contentWidth < 900;
-  const gridColumns = isNarrow ? 1 : isMedium ? 2 : 3;
+  const gridColumns = isNarrow ? 1 : 2;
   const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
   const horizontalPadding = isNarrow ? 16 : 32;
   const { user } = useAuthStore();
