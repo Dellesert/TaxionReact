@@ -663,6 +663,11 @@ export default function App() {
           chatStore.loadUnreadCount().catch((error) => {
             console.error('[App] Failed to refresh chat unread count on window focus:', error);
           });
+
+          // Run cache maintenance (throttled)
+          import('@shared/utils/cacheMaintenance')
+            .then(({ runCacheMaintenance }) => runCacheMaintenance())
+            .catch(() => {});
         }
       };
 
