@@ -254,7 +254,6 @@ const PollDetailScreen: React.FC = () => {
         headerRight: hasActions && poll ? () => (
           isElectron && isDesktop ? (
             <View
-              // @ts-ignore - Web-only style properties
               style={{
                 width: 32,
                 height: 32,
@@ -265,7 +264,7 @@ const PollDetailScreen: React.FC = () => {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 transition: 'background-color 0.15s ease',
-              }}
+              } as any}
               // @ts-ignore
               onClick={() => setShowActionMenu(true)}
               onMouseEnter={(e: any) => {
