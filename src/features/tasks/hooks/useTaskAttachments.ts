@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { TaskAttachment } from '../types/task.types';
 import * as taskApi from '../api/task.api';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import FileViewer from 'react-native-file-viewer';
 import { Platform } from 'react-native';
@@ -9,6 +8,7 @@ import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { fileApi } from '@api/fileApi';
 import { getUserById } from '@api/user.api';
+import { getCachedFileUri, cacheFile } from '@shared/utils/fileCache';
 
 /**
  * Custom hook for managing task attachments
@@ -127,24 +127,21 @@ export const useTaskAttachments = (taskId: string) => {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       } else {
-        // For mobile: download file and open with FileViewer
+        // For mobile: check file cache first, download if missing
         const downloadUrl = fileApi.getDownloadUrl(file.file_name);
-
-        // Decode filename and create safe filename
         const originalFileName = decodeURIComponent(attachment.file_name);
-        const fileExtension = originalFileName.split('.').pop() || '';
-        const safeFileName = `file_${Date.now()}.${fileExtension}`;
-        const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
 
-        const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri, {
-          headers: {
-            'X-Session-ID': sessionId,
-          },
-        });
+        // Try to get from cache
+        let localUri = getCachedFileUri(downloadUrl);
+
+        if (!localUri) {
+          // Download and cache the file
+          localUri = await cacheFile(downloadUrl, sessionId);
+        }
 
         // Open file with native viewer
         try {
-          await FileViewer.open(downloadResult.uri, {
+          await FileViewer.open(localUri, {
             displayName: originalFileName,
             showOpenWithDialog: true,
             showAppsSuggestions: true,
@@ -154,11 +151,10 @@ export const useTaskAttachments = (taskId: string) => {
           const isAvailable = await Sharing.isAvailableAsync();
 
           if (isAvailable) {
-            await Sharing.shareAsync(downloadResult.uri, {
+            await Sharing.shareAsync(localUri, {
               UTI: attachment.mime_type,
               mimeType: attachment.mime_type,
             });
-          } else {
           }
         }
       }

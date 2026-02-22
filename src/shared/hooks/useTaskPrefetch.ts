@@ -6,7 +6,7 @@
 import { useCallback, useRef } from 'react';
 import { useTaskStore } from '@shared/store/taskStore';
 import * as taskApi from '@/features/tasks/api/task.api';
-import { Task } from '@/features/tasks/types/task.types';
+import type { Task } from '@/features/tasks/types/task.types';
 
 // Кэш для отслеживания уже загруженных данных
 const prefetchedTasks = new Set<number>();
@@ -90,8 +90,9 @@ export const useTaskPrefetch = (options: UseTaskPrefetchOptions = {}) => {
             const subtasks = await taskApi.getSubtasks(taskId);
             // Кэшируем подзадачи индивидуально
             subtasks.forEach(cacheTask);
-            // Кэшируем список подзадач для parent
+            // Кэшируем список подзадач для parent (in-memory + persistent)
             subtasksCache.set(taskId, { subtasks, timestamp: Date.now() });
+            useTaskStore.getState().setSubtasks(taskId, subtasks);
           } catch (error) {
             console.warn(`[TaskPrefetch] Failed to prefetch subtasks for task ${taskId}:`, error);
           }
@@ -237,9 +238,15 @@ export const getTaskFromCache = (taskId: number): Task | null => {
  * Получить подзадачи из глобального кэша
  */
 export const getSubtasksFromCache = (parentTaskId: number): Task[] | null => {
+  // 1. In-memory cache (fastest, 5-min TTL)
   const cached = subtasksCache.get(parentTaskId);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.subtasks;
+  }
+  // 2. Persistent Zustand store (survives restart)
+  const persisted = useTaskStore.getState().subtasksByParentId[parentTaskId];
+  if (persisted && persisted.length > 0) {
+    return persisted;
   }
   return null;
 };
@@ -252,6 +259,7 @@ export const clearAllTaskCache = () => {
   taskCache.clear();
   subtasksCache.clear();
   prefetchInProgress.clear();
+  useTaskStore.getState().clearSubtasks();
 };
 
 export default useTaskPrefetch;

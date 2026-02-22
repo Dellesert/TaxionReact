@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import FileViewer from 'react-native-file-viewer';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { MessageStatus } from '../common/MessageStatus';
 import { Message } from '../../types/chat.types';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
+import { getCachedFileUri, cacheFile } from '@shared/utils/fileCache';
 
 interface Attachment {
   id: number;
@@ -196,40 +196,20 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       } else {
-        // Mobile: Download and open with file viewer
-        // Decode filename and create safe filename for iOS
+        // Mobile: Check file cache first, download if missing
         const originalFileName = decodeURIComponent(attachment.file_name);
 
-        // Extract file extension
-        const fileExtension = originalFileName.split('.').pop() || '';
+        // Try to get from cache
+        let localUri = getCachedFileUri(fileUrl);
 
-        // Create safe filename using timestamp and original extension
-        const safeFileName = `file_${Date.now()}.${fileExtension}`;
-
-        // Use cache directory which is more reliable for temporary downloads
-        const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
-
-        // Prepare headers for mobile download
-        const downloadHeaders: { [key: string]: string } = {};
-        if (!isPublicFile && sessionId) {
-          downloadHeaders['X-Session-ID'] = sessionId;
-        }
-
-        const downloadResult = await FileSystem.downloadAsync(
-          fileUrl,
-          fileUri,
-          {
-            headers: downloadHeaders,
-          }
-        );
-
-        if (downloadResult.status !== 200) {
-          throw new Error(`Download failed with status: ${downloadResult.status}`);
+        if (!localUri) {
+          // Download and cache the file
+          localUri = await cacheFile(fileUrl, !isPublicFile ? sessionId : null);
         }
 
         // Open file with native viewer
         try {
-          await FileViewer.open(downloadResult.uri, {
+          await FileViewer.open(localUri, {
             displayName: originalFileName,
             showOpenWithDialog: true,
             showAppsSuggestions: true,
@@ -239,11 +219,10 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           const isAvailable = await Sharing.isAvailableAsync();
 
           if (isAvailable) {
-            await Sharing.shareAsync(downloadResult.uri, {
+            await Sharing.shareAsync(localUri, {
               UTI: attachment.mime_type,
               mimeType: attachment.mime_type,
             });
-          } else {
           }
         }
       }

@@ -18,6 +18,7 @@ const CHATS_WITH_MESSAGES_LIMIT = 30;
 const CALENDAR_RANGE_MAX_AGE_DAYS = 60;
 const POLL_CACHE_LIMIT = 50;
 const TASK_CACHE_LIMIT_PER_STATUS = 30;
+const SUBTASKS_PARENT_LIMIT = 20;
 const MAINTENANCE_THROTTLE_MS = 5 * 60 * 1000; // 5 minutes
 
 // ---- Throttle state ----
@@ -204,6 +205,29 @@ export function pruneTasks(): number {
   return totalRemoved;
 }
 
+export function pruneSubtasks(): number {
+  const state = useTaskStore.getState();
+  const subtasksByParentId = state.subtasksByParentId;
+
+  if (!subtasksByParentId) return 0;
+
+  const parentIds = Object.keys(subtasksByParentId).map(Number);
+  if (parentIds.length <= SUBTASKS_PARENT_LIMIT) return 0;
+
+  // Keep the most recent entries (highest IDs = most recently created tasks)
+  const sortedIds = parentIds.sort((a, b) => b - a);
+  const idsToKeep = new Set(sortedIds.slice(0, SUBTASKS_PARENT_LIMIT));
+  const pruned: Record<number, any[]> = {};
+
+  for (const id of idsToKeep) {
+    pruned[id] = subtasksByParentId[id];
+  }
+
+  const removedCount = parentIds.length - SUBTASKS_PARENT_LIMIT;
+  useTaskStore.setState({ subtasksByParentId: pruned });
+  return removedCount;
+}
+
 // ---- Orchestrator ----
 
 interface MaintenanceOptions {
@@ -225,6 +249,7 @@ export async function runCacheMaintenance(options: MaintenanceOptions = {}): Pro
   const usersResult = pruneExpiredUsers();
   const pollsResult = prunePolls();
   const tasksResult = pruneTasks();
+  const subtasksResult = pruneSubtasks();
 
   const totalPruned =
     messagesResult.messagesRemoved +
@@ -232,7 +257,8 @@ export async function runCacheMaintenance(options: MaintenanceOptions = {}): Pro
     calendarResult +
     usersResult +
     pollsResult +
-    tasksResult;
+    tasksResult +
+    subtasksResult;
 
   if (totalPruned > 0) {
     console.log('[CacheMaintenance] Pruned:', {
@@ -241,6 +267,7 @@ export async function runCacheMaintenance(options: MaintenanceOptions = {}): Pro
       expiredUsers: usersResult,
       polls: pollsResult,
       tasks: tasksResult,
+      subtasks: subtasksResult,
     });
   }
 
@@ -254,13 +281,18 @@ export async function runCacheMaintenance(options: MaintenanceOptions = {}): Pro
       getCacheLimit(),
     ]);
 
-    // Include video cache size on native
+    // Include video + file cache sizes on native
     let totalSize = storageInfo.totalSize;
     if (isNative) {
       try {
         const { getVideoCacheSize } = await import('@shared/utils/videoCache');
         const videoInfo = await getVideoCacheSize();
         totalSize += videoInfo.totalSize;
+      } catch {}
+      try {
+        const { getFileCacheSize } = await import('@shared/utils/fileCache');
+        const fileInfo = await getFileCacheSize();
+        totalSize += fileInfo.totalSize;
       } catch {}
     }
 

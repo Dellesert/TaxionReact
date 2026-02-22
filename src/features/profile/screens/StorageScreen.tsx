@@ -30,6 +30,7 @@ import {
   setCacheLimit,
 } from '@shared/storage';
 import { getVideoCacheSize, clearVideoCache } from '@shared/utils/videoCache';
+import { getFileCacheSize, clearFileCache } from '@shared/utils/fileCache';
 
 interface CacheInfo {
   mmkv: StorageInfo;
@@ -37,6 +38,8 @@ interface CacheInfo {
   imageCacheFileCount: number;
   videoCache: number;
   videoCacheFileCount: number;
+  fileCache: number;
+  fileCacheFileCount: number;
   documentCache: number;
   totalCache: number;
   cacheLimit: number;
@@ -189,11 +192,23 @@ export default function StorageScreen() {
         }
       }
 
+      // Get file cache size
+      let fileCacheSize = 0;
+      let fileCacheFileCount = 0;
+      if (isNative) {
+        try {
+          const fileStats = await getFileCacheSize();
+          fileCacheSize = fileStats.totalSize;
+          fileCacheFileCount = fileStats.fileCount;
+        } catch (e) {
+        }
+      }
+
       const cacheLimit = await getCacheLimit();
 
-      // Общий размер = данные (MMKV) + изображения + видео
+      // Общий размер = данные (MMKV) + изображения + видео + файлы
       // documentCache не включаем - это системный кэш Expo/Metro
-      const totalCache = mmkvInfo.totalSize + imageCacheSize + videoCacheSize;
+      const totalCache = mmkvInfo.totalSize + imageCacheSize + videoCacheSize + fileCacheSize;
 
       // Считаем процент от данных + изображений + видео
       const usagePercent = cacheLimit > 0 ? Math.min(100, (totalCache / cacheLimit) * 100) : 0;
@@ -204,6 +219,8 @@ export default function StorageScreen() {
         imageCacheFileCount,
         videoCache: videoCacheSize,
         videoCacheFileCount,
+        fileCache: fileCacheSize,
+        fileCacheFileCount,
         documentCache: documentCacheSize,
         totalCache,
         cacheLimit,
@@ -299,6 +316,32 @@ export default function StorageScreen() {
     );
   };
 
+  const handleClearFileCache = async () => {
+    Alert.alert(
+      'Очистить кэш файлов',
+      'Все кэшированные документы будут удалены. Файлы будут загружены заново при открытии.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Очистить',
+          style: 'destructive',
+          onPress: async () => {
+            setIsClearing(true);
+            try {
+              await clearFileCache();
+              await loadCacheInfo();
+              Alert.alert('Готово', 'Кэш файлов очищен');
+            } catch (error) {
+              Alert.alert('Ошибка', 'Не удалось очистить кэш файлов');
+            } finally {
+              setIsClearing(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleClearAllCache = async () => {
     Alert.alert(
       'Очистить весь кэш',
@@ -315,6 +358,7 @@ export default function StorageScreen() {
               await Image.clearDiskCache();
               await Image.clearMemoryCache();
               await clearVideoCache();
+              await clearFileCache();
 
               // Clear file cache
               const clearCacheDir = FileSystem.cacheDirectory;
@@ -623,7 +667,7 @@ export default function StorageScreen() {
                   : 'Системный'}
               </Text>
             </View>
-            <View style={[styles.row, styles.rowLast]}>
+            <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
                   <Ionicons name="videocam" size={20} color="#EF4444" />
@@ -639,6 +683,24 @@ export default function StorageScreen() {
               </View>
               <Text style={styles.rowValue}>
                 {isNative ? formatBytes(cacheInfo?.videoCache || 0) : 'Системный'}
+              </Text>
+            </View>
+            <View style={[styles.row, styles.rowLast]}>
+              <View style={styles.rowLeft}>
+                <View style={[styles.rowIcon, { backgroundColor: '#10B98120' }]}>
+                  <Ionicons name="document-text" size={20} color="#10B981" />
+                </View>
+                <View style={styles.rowTextContainer}>
+                  <Text style={styles.rowTitle}>Файлы</Text>
+                  <Text style={styles.rowSubtitle}>
+                    {isNative && cacheInfo?.fileCacheFileCount
+                      ? `${cacheInfo.fileCacheFileCount} файлов`
+                      : 'PDF, документы и другие файлы'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.rowValue}>
+                {isNative ? formatBytes(cacheInfo?.fileCache || 0) : 'Системный'}
               </Text>
             </View>
           </View>
@@ -733,7 +795,7 @@ export default function StorageScreen() {
                   {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.row, styles.rowLast]}
+                  style={styles.row}
                   onPress={handleClearVideoCache}
                   disabled={isClearing}
                 >
@@ -744,6 +806,22 @@ export default function StorageScreen() {
                     <View style={styles.rowTextContainer}>
                       <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш видео</Text>
                       <Text style={styles.rowSubtitle}>Кэшированные видеозаписи</Text>
+                    </View>
+                  </View>
+                  {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.row, styles.rowLast]}
+                  onPress={handleClearFileCache}
+                  disabled={isClearing}
+                >
+                  <View style={styles.rowLeft}>
+                    <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
+                      <Ionicons name="document-text-outline" size={20} color="#EF4444" />
+                    </View>
+                    <View style={styles.rowTextContainer}>
+                      <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш файлов</Text>
+                      <Text style={styles.rowSubtitle}>PDF, документы и другие файлы</Text>
                     </View>
                   </View>
                   {isClearing && <ActivityIndicator size="small" color="#EF4444" />}

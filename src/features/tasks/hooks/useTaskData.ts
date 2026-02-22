@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Task } from '../types/task.types';
 import * as taskApi from '../api/task.api';
 import { getTaskFromCache, getSubtasksFromCache } from '@shared/hooks/useTaskPrefetch';
+import { useTaskStore } from '@shared/store/taskStore';
 
 /**
  * Custom hook for managing task data loading and state
@@ -34,6 +35,8 @@ export const useTaskData = (taskId: string) => {
     try {
       const subtasksData = await taskApi.getSubtasks(parentTaskId);
       setSubtasks(subtasksData);
+      // Persist to Zustand store for offline/restart access
+      useTaskStore.getState().setSubtasks(parentTaskId, subtasksData);
     } catch (error) {
       console.error('Failed to load subtasks:', error);
     }

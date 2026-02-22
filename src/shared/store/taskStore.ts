@@ -30,6 +30,7 @@ interface TaskCacheStore {
   // Cached data
   tasksByStatus: TasksByStatus;
   totals: TotalsByStatus;
+  subtasksByParentId: Record<number, Task[]>;
   lastUpdated: number | null;
 
   // Actions
@@ -39,6 +40,10 @@ interface TaskCacheStore {
   mergeTasks: (tasks: Task[], status: StatusTab) => void;
   /** Remove deleted tasks by IDs (for differential sync) */
   removeTasks: (taskIds: number[], status: StatusTab) => void;
+  /** Set subtasks for a parent task */
+  setSubtasks: (parentId: number, subtasks: Task[]) => void;
+  /** Clear subtasks for a specific parent or all */
+  clearSubtasks: (parentId?: number) => void;
   getCachedTasks: () => TasksByStatus;
   getCachedTotals: () => TotalsByStatus;
   clearCache: () => void;
@@ -80,6 +85,7 @@ export const useTaskStore = create<TaskCacheStore>()(
     (set, get) => ({
       tasksByStatus: initialTasksByStatus,
       totals: preloadedTotals || initialTotals,
+      subtasksByParentId: {},
       lastUpdated: null,
 
       setTasksForStatus: (status: StatusTab, tasks: Task[], total: number) => {
@@ -153,6 +159,27 @@ export const useTaskStore = create<TaskCacheStore>()(
         });
       },
 
+      setSubtasks: (parentId: number, subtasks: Task[]) => {
+        set((state) => ({
+          subtasksByParentId: {
+            ...state.subtasksByParentId,
+            [parentId]: subtasks,
+          },
+          lastUpdated: Date.now(),
+        }));
+      },
+
+      clearSubtasks: (parentId?: number) => {
+        if (parentId !== undefined) {
+          set((state) => {
+            const { [parentId]: _, ...rest } = state.subtasksByParentId;
+            return { subtasksByParentId: rest };
+          });
+        } else {
+          set({ subtasksByParentId: {} });
+        }
+      },
+
       getCachedTasks: () => get().tasksByStatus,
 
       getCachedTotals: () => get().totals,
@@ -161,6 +188,7 @@ export const useTaskStore = create<TaskCacheStore>()(
         set({
           tasksByStatus: initialTasksByStatus,
           totals: initialTotals,
+          subtasksByParentId: {},
           lastUpdated: null,
         });
       },
@@ -171,10 +199,11 @@ export const useTaskStore = create<TaskCacheStore>()(
       partialize: (state) => ({
         tasksByStatus: state.tasksByStatus,
         totals: state.totals,
+        subtasksByParentId: state.subtasksByParentId,
         lastUpdated: state.lastUpdated,
       }),
       skipHydration: !isNative,
-      version: 2,
+      version: 3,
     }
   )
 );
