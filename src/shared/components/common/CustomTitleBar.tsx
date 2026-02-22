@@ -186,7 +186,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
 
       {/* Center Controls from context - absolutely positioned to stay centered */}
       {centerControls && (
-        <View style={[styles.centerControlsContainer, { left: sidebarWidth, right: 156 }]}>
+        <View style={styles.centerControlsContainer}>
           <View style={styles.centerControlsInner}>
             {centerControls}
           </View>
@@ -366,6 +366,7 @@ const styles = StyleSheet.create({
   centerControlsContainer: {
     position: 'absolute',
     top: 0,
+    left: 0,
     right: 0,
     bottom: 0,
     flexDirection: 'row',
