@@ -1240,7 +1240,7 @@ export const ScheduleDetailScreen: React.FC = () => {
           // Mobile: Original single-column layout
           <>
             {/* Draft banner with publish button (mobile) */}
-            {isDraft && canEdit && (
+            {isDraft && canEdit && !hasPendingChanges && (
               <View style={[styles.mobileDraftBanner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
                 <View style={styles.mobileDraftInfo}>
                   <Ionicons name="document-text-outline" size={18} color="#D97706" />

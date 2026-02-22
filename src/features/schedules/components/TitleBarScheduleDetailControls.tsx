@@ -191,7 +191,7 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
 
   // Render publish button for draft schedules
   const renderPublishButton = () => {
-    if (!isDraft || !onPublish) return null;
+    if (!isDraft || !onPublish || (pendingChangesCount && pendingChangesCount > 0)) return null;
 
     return (
       <View
