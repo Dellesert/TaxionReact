@@ -26,8 +26,6 @@ export function TitleBarPeriodSwitcher<T extends string>({
   onChange,
 }: TitleBarPeriodSwitcherProps<T>) {
   const { theme } = useTheme();
-  const currentOption = options.find(o => o.value === value);
-
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundTertiary }]}>
       {options.map((option) => (
@@ -62,9 +60,6 @@ export function TitleBarPeriodSwitcher<T extends string>({
           </Text>
         </View>
       ))}
-      <Text style={[styles.label, { color: theme.text }]}>
-        {currentOption?.label}
-      </Text>
     </View>
   );
 }
@@ -97,9 +92,4 @@ const styles = StyleSheet.create({
   shortLabelActive: {
     fontWeight: '700',
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginHorizontal: 6,
-  } as any,
 });
