@@ -107,6 +107,7 @@ const PollDetailScreen: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
+  const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
 
   // Derived state
   const isCreatorOrAdmin = poll
@@ -198,6 +199,11 @@ const PollDetailScreen: React.FC = () => {
     return <TitleBarBackButton onGoBack={handleGoBack} />;
   }, [isElectron, isDesktop, handleGoBack]);
 
+  const handleOpenMenuFromTitleBar = useCallback((position: { x: number; y: number; width: number; height: number }) => {
+    setMenuButtonPosition(position);
+    setShowActionMenu(true);
+  }, []);
+
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop || !poll) return null;
     return (
@@ -211,16 +217,17 @@ const PollDetailScreen: React.FC = () => {
         onClose={handleCloseAction}
         onEdit={() => setShowEditModal(true)}
         onDelete={handleDeleteAction}
+        onOpenMenu={handleOpenMenuFromTitleBar}
       />
     );
-  }, [isElectron, isDesktop, poll, permissions.can_edit, permissions.can_delete_or_close, isPublishing, isDeleting, handlePublishAction, handleCloseAction, handleDeleteAction]);
+  }, [isElectron, isDesktop, poll, permissions.can_edit, permissions.can_delete_or_close, isPublishing, isDeleting, handlePublishAction, handleCloseAction, handleDeleteAction, handleOpenMenuFromTitleBar]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Опрос',
     leftControls: titleBarLeftControls,
     rightControls: titleBarRightControls,
-    enabled: isElectron && isDesktop,
+    enabled: isElectron && isDesktop && !isFromChat,
   });
 
   // Load poll data on mount
@@ -245,12 +252,39 @@ const PollDetailScreen: React.FC = () => {
           </View>
         ),
         headerRight: hasActions && poll ? () => (
-          <TouchableOpacity
-            onPress={() => setShowActionMenu(true)}
-            style={{ padding: 4, marginRight: 8 }}
-          >
-            <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
-          </TouchableOpacity>
+          isElectron && isDesktop ? (
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: theme.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+                // @ts-ignore
+                cursor: 'pointer',
+                transition: 'background-color 0.15s ease',
+              }}
+              // @ts-ignore
+              onClick={() => setShowActionMenu(true)}
+              onMouseEnter={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+              }}
+              onMouseLeave={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={14} color={theme.text} />
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => setShowActionMenu(true)}
+              style={{ padding: 4, marginRight: 8 }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+            </TouchableOpacity>
+          )
         ) : undefined,
       });
     }
@@ -262,7 +296,11 @@ const PollDetailScreen: React.FC = () => {
     isDeleting,
     theme.primary,
     theme.text,
+    theme.border,
+    theme.backgroundTertiary,
     hasActions,
+    isElectron,
+    isDesktop,
   ]);
 
   // Handlers
@@ -518,6 +556,7 @@ const PollDetailScreen: React.FC = () => {
               setShowResults(!showResults);
             }}
             isDesktop={isDesktop}
+            buttonPosition={menuButtonPosition}
           />
         )}
       </View>
