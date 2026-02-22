@@ -226,7 +226,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   }, [entries, groupMembers]);
 
   const CELL_WIDTH = 36;
-  const NAME_COLUMN_WIDTH = 180;
+  const NAME_COLUMN_WIDTH = 220;
 
   // Pre-compute absence span info for continuous colored band display
   const absenceSpanMap = useMemo(() => {
@@ -529,7 +529,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                       imageUrl={userRow.userAvatar}
                       size={28}
                     />
-                    <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
+                    <Text style={[styles.userName, { color: theme.text }]} numberOfLines={2}>
                       {userRow.userName}
                     </Text>
                   </View>
