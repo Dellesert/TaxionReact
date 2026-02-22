@@ -519,10 +519,11 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                 </Text>
               </View>
             ) : (
-              userRows.map((userRow) => (
+              userRows.map((userRow, rowIndex) => (
                 <View key={userRow.userId} style={[styles.userRow, { borderColor: theme.border }]}>
                   {/* User name cell */}
                   <View style={[styles.nameCell, { width: NAME_COLUMN_WIDTH, backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <Text style={[styles.rowNumber, { color: theme.textTertiary }]}>{rowIndex + 1}</Text>
                     <Avatar
                       name={userRow.userName}
                       imageUrl={userRow.userAvatar}
@@ -831,6 +832,12 @@ const styles = StyleSheet.create({
   userRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
+  },
+  rowNumber: {
+    fontSize: 12,
+    fontWeight: '500',
+    minWidth: 18,
+    textAlign: 'center',
   },
   userName: {
     fontSize: 13,
