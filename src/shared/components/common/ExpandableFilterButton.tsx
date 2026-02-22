@@ -61,7 +61,7 @@ export const ExpandableFilterButton: React.FC<ExpandableFilterButtonProps> = ({
 
   const animatedWidth = widthAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, labelWidth],
+    outputRange: [0, labelWidth + 6],
   });
 
   const animatedGap = widthAnim.interpolate({

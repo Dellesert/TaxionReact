@@ -264,8 +264,26 @@ const UsersDesktopContent: React.FC = () => {
     }
   };
 
-  // Backend now handles all filtering and search
-  const filteredUsers = users;
+  // Client-side filtering as fallback (in case backend ignores search/role params)
+  const filteredUsers = useMemo(() => {
+    let result = users;
+
+    if (debouncedSearch) {
+      const query = debouncedSearch.toLowerCase();
+      result = result.filter(u =>
+        u.name?.toLowerCase().includes(query) ||
+        u.email?.toLowerCase().includes(query) ||
+        u.position?.toLowerCase().includes(query) ||
+        u.department?.name?.toLowerCase().includes(query)
+      );
+    }
+
+    if (selectedRole !== 'all') {
+      result = result.filter(u => u.role === selectedRole);
+    }
+
+    return result;
+  }, [users, debouncedSearch, selectedRole]);
 
   const dynamicStyles = StyleSheet.create({
     container: {
