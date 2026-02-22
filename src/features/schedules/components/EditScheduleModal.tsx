@@ -187,6 +187,9 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
+  // Window controls hover state (for desktop Electron title bar)
+  const [hoveredWindowBtn, setHoveredWindowBtn] = useState<'minimize' | 'maximize' | 'close' | null>(null);
+
   // Load schedule data when modal opens
   useEffect(() => {
     if (schedule && visible) {
@@ -418,26 +421,85 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         statusBarTranslucent
       >
         <View style={[styles.desktopElectronContainer, { backgroundColor: theme.background }]}>
-          {/* Desktop Header */}
-          <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-            <TouchableOpacity onPress={handleClose} style={styles.desktopHeaderCloseButton}>
-              <Ionicons name="close" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
-            <Text style={[styles.desktopHeaderTitle, { color: theme.text }]}>Редактирование графика</Text>
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isLoading}
-              style={[styles.desktopSaveButton, { backgroundColor: theme.primary }, isLoading && { opacity: 0.7 }]}
+          {/* Custom Title Bar */}
+          <View style={[styles.desktopTitleBar, { backgroundColor: theme.backgroundSecondary }]}>
+            {/* Back button */}
+            <View
+              style={styles.desktopTitleBarBackButton}
+              // @ts-ignore - Web-only event handlers
+              onClick={handleClose}
+              onMouseEnter={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+              }}
+              onMouseLeave={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <Ionicons name="arrow-back" size={18} color={theme.text} />
+            </View>
+
+            {/* Title — draggable area */}
+            <View style={styles.desktopTitleBarDragArea}>
+              <Text style={[styles.desktopTitleBarTitle, { color: theme.text }]} numberOfLines={1}>
+                Редактирование графика
+              </Text>
+            </View>
+
+            {/* Save button */}
+            <View
+              style={[styles.desktopTitleBarSaveButton, { backgroundColor: theme.primary }]}
+              // @ts-ignore - Web-only event handlers
+              onClick={isLoading ? undefined : handleSave}
+              onMouseEnter={(e: any) => {
+                if (e.currentTarget?.style && !isLoading) e.currentTarget.style.opacity = '0.85';
+              }}
+              onMouseLeave={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.opacity = '1';
+              }}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                  <Text style={styles.desktopSaveButtonText}>Сохранить</Text>
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                  <Text style={styles.desktopTitleBarSaveText}>Сохранить</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </View>
+
+            {/* Window controls */}
+            <View style={styles.desktopWindowControls}>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'minimize' && { backgroundColor: theme.border }]}
+                // @ts-ignore
+                onClick={() => window.electron?.minimize?.()}
+                onMouseEnter={() => setHoveredWindowBtn('minimize')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="remove" size={14} color={theme.text} />
+              </View>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'maximize' && { backgroundColor: theme.border }]}
+                // @ts-ignore
+                onClick={() => window.electron?.maximize?.()}
+                onMouseEnter={() => setHoveredWindowBtn('maximize')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="square-outline" size={12} color={theme.text} />
+              </View>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'close' && { backgroundColor: '#E81123' }]}
+                // @ts-ignore
+                onClick={() => window.electron?.close?.()}
+                onMouseEnter={() => setHoveredWindowBtn('close')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="close" size={14} color={hoveredWindowBtn === 'close' ? '#FFFFFF' : theme.text} />
+              </View>
+            </View>
+
+            {/* Bottom border */}
+            <View style={[styles.desktopTitleBarBorder, { backgroundColor: theme.border }]} />
           </View>
 
           {/* Two-Column Content */}
@@ -2262,38 +2324,79 @@ const styles = StyleSheet.create({
   desktopElectronContainer: {
     flex: 1,
   },
-  desktopHeader: {
+  desktopTitleBar: {
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    gap: 16,
+    position: 'relative',
+    // @ts-ignore - Web-only styles
+    WebkitAppRegion: 'no-drag',
+    userSelect: 'none',
   },
-  desktopHeaderCloseButton: {
+  desktopTitleBarBackButton: {
     width: 36,
     height: 36,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 6,
+    marginLeft: 12,
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+    WebkitAppRegion: 'no-drag',
   },
-  desktopHeaderTitle: {
+  desktopTitleBarDragArea: {
     flex: 1,
-    fontSize: 18,
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    // @ts-ignore
+    WebkitAppRegion: 'drag',
+  },
+  desktopTitleBarTitle: {
+    fontSize: 16,
     fontWeight: '700',
   },
-  desktopSaveButton: {
+  desktopTitleBarSaveButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 5,
+    marginRight: 8,
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'opacity 0.15s ease',
+    WebkitAppRegion: 'no-drag',
   },
-  desktopSaveButtonText: {
+  desktopTitleBarSaveText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
+  },
+  desktopWindowControls: {
+    flexDirection: 'row',
+    height: '100%',
+    flexShrink: 0,
+    // @ts-ignore
+    WebkitAppRegion: 'no-drag',
+  },
+  desktopWindowControlButton: {
+    width: 40,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+  },
+  desktopTitleBarBorder: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 1,
   },
   desktopScrollView: {
     flex: 1,
