@@ -9,7 +9,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
   useWindowDimensions,
@@ -21,6 +20,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
+import { TitleBarMetricsControls } from '../common/TitleBarMetricsControls';
 import {
   getDashboardAnalytics,
   formatBytes,
@@ -49,11 +49,25 @@ const MetricsDesktopContent: React.FC = () => {
     }
   }, [navigation]);
 
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
+
+  const handlePeriodChange = useCallback((period: PeriodType) => {
+    setSelectedPeriod(period);
+  }, []);
+
   // TitleBar controls for Electron
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron) return null;
-    return <TitleBarBackButton onGoBack={handleGoBack} />;
-  }, [isElectron, handleGoBack]);
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <TitleBarBackButton onGoBack={handleGoBack} />
+        <TitleBarMetricsControls
+          selectedPeriod={selectedPeriod}
+          onPeriodChange={handlePeriodChange}
+        />
+      </View>
+    );
+  }, [isElectron, handleGoBack, selectedPeriod, handlePeriodChange]);
 
   // Integrate with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -62,8 +76,6 @@ const MetricsDesktopContent: React.FC = () => {
     rightControls: null,
     enabled: isElectron,
   });
-
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
@@ -91,42 +103,9 @@ const MetricsDesktopContent: React.FC = () => {
     loadAnalytics();
   };
 
-  const periods: { key: PeriodType; label: string }[] = [
-    { key: 'today', label: 'Сегодня' },
-    { key: 'week', label: 'Неделя' },
-    { key: 'month', label: 'Месяц' },
-    { key: 'year', label: 'Год' },
-  ];
-
   const dynamicStyles = StyleSheet.create({
     contentWrapper: {
       padding: 16,
-    },
-    periodSelector: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: isNarrow ? 8 : 12,
-      marginBottom: isNarrow ? 16 : 24,
-    },
-    periodButton: {
-      paddingVertical: 10,
-      paddingHorizontal: 24,
-      borderRadius: 10,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-      borderWidth: 1,
-      borderColor: 'transparent',
-    },
-    periodButtonActive: {
-      backgroundColor: theme.primary,
-      borderColor: theme.primary,
-    },
-    periodButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
-    periodButtonTextActive: {
-      color: '#FFFFFF',
     },
     metricsGrid: {
       flexDirection: isNarrow ? 'column' : 'row',
@@ -292,30 +271,6 @@ const MetricsDesktopContent: React.FC = () => {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        {/* Period Selector */}
-        <View style={dynamicStyles.periodSelector}>
-          {periods.map((period) => (
-            <TouchableOpacity
-              key={period.key}
-              style={[
-                dynamicStyles.periodButton,
-                selectedPeriod === period.key && dynamicStyles.periodButtonActive,
-              ]}
-              onPress={() => setSelectedPeriod(period.key)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  dynamicStyles.periodButtonText,
-                  selectedPeriod === period.key && dynamicStyles.periodButtonTextActive,
-                ]}
-              >
-                {period.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
       {dashboardData ? (
         <View style={dynamicStyles.metricsGrid}>
           {/* Active Users */}
