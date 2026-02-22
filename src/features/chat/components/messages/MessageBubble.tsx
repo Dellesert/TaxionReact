@@ -18,8 +18,7 @@ import { LinkPreviewCard } from './LinkPreviewCard';
 import { MessageReactions } from './MessageReactions';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 import { Image } from 'expo-image';
-import * as secureStorage from '@shared/utils/secureStorage';
-import { STORAGE_KEYS } from '@shared/constants/app.constants';
+import { useAuthStore } from '@shared/store/authStore';
 
 // ─── Single emoji detection ──────────────────────────────────────────────────
 
@@ -106,13 +105,8 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   // Высота блока ответа — для абсолютного позиционирования (чтобы reply не расширял пузырь)
   const [replyHeight, setReplyHeight] = useState(50);
 
-  // Загружаем sessionId для авторизованных запросов к превью
-  const [sessionId, setSessionId] = React.useState<string | null>(null);
-  useEffect(() => {
-    if (message.reply_to?.attachments?.length) {
-      secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID).then(setSessionId);
-    }
-  }, [message.reply_to?.attachments]);
+  // SessionId для авторизованных запросов к превью
+  const sessionId = useAuthStore((s) => s.sessionId);
 
   // ⚠️ ВАЖНО: Фильтруем контент удалённых сообщений!
   // Бэкенд больше НЕ фильтрует контент в WebSocket

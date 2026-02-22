@@ -8,6 +8,7 @@ import FileViewer from 'react-native-file-viewer';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useAuthStore } from '@shared/store/authStore';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { isImageFile, isVideoFile, formatDuration, formatTime, replaceLocalhostWithIP } from '../../utils/message.utils';
@@ -66,17 +67,8 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
 }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
-  const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const sessionId = useAuthStore((s) => s.sessionId);
   const [blobUrls, setBlobUrls] = React.useState<{ [key: number]: string }>({});
-
-  // Load session ID once
-  React.useEffect(() => {
-    const loadSessionId = async () => {
-      const authSessionId = await secureStorage.getItemAsync(STORAGE_KEYS.SESSION_ID);
-      setSessionId(authSessionId);
-    };
-    loadSessionId();
-  }, []);
 
   // Unified media array (images + videos) preserving original order
   const media = React.useMemo(
@@ -310,12 +302,10 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
                 }
             )
           }
-          style={styles.imagePreview}
+          style={[styles.imagePreview, { backgroundColor: theme.backgroundTertiary }]}
           contentFit="cover"
           contentPosition="center"
-          transition={200}
           cachePolicy={isLocal ? "none" : "disk"}
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           placeholderContentFit="cover"
           priority={isVisible ? "high" : "low"}
           recyclingKey={isLocal ? `media-local-${gridIndex}` : `attachment-${attachment.id}`}
@@ -469,12 +459,10 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
                 }
             )
           }
-          style={styles.imagePreview}
+          style={[styles.imagePreview, { backgroundColor: theme.backgroundTertiary }]}
           contentFit="cover"
           contentPosition="center"
-          transition={200}
           cachePolicy={isLocalVideo ? "none" : "disk"}
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           placeholderContentFit="cover"
           priority={isVisible ? "high" : "low"}
           recyclingKey={isLocalVideo ? `video-local-${index}` : `video-thumb-${attachment.id}`}

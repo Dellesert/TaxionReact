@@ -99,6 +99,8 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const isElectronApp = Platform.OS === 'web' && typeof window !== 'undefined' && !!(window as any).electron;
+  const isDesktopElectron = isDesktop && isElectronApp;
   const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
@@ -246,15 +248,16 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     };
   }, []);
 
-  // Animation when step changes
+  // Animation when step changes (skip on desktop Electron)
   useEffect(() => {
+    if (isDesktopElectron) return;
     Animated.spring(slideAnim, {
       toValue: 0,
       useNativeDriver: true,
       tension: 50,
       friction: 7,
     }).start();
-  }, [currentStep]);
+  }, [currentStep, isDesktopElectron]);
 
   // Navigation handlers
   const goToNextStep = () => {
@@ -404,6 +407,584 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   if (!schedule) return null;
 
+  // ===== DESKTOP ELECTRON: Full-screen two-column layout =====
+  if (isDesktopElectron) {
+    return (
+      <Modal
+        visible={visible}
+        animationType={animationType}
+        transparent={false}
+        onRequestClose={handleClose}
+        statusBarTranslucent
+      >
+        <View style={[styles.desktopElectronContainer, { backgroundColor: theme.background }]}>
+          {/* Desktop Header */}
+          <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <TouchableOpacity onPress={handleClose} style={styles.desktopHeaderCloseButton}>
+              <Ionicons name="close" size={24} color={theme.textSecondary} />
+            </TouchableOpacity>
+            <Text style={[styles.desktopHeaderTitle, { color: theme.text }]}>Редактирование графика</Text>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isLoading}
+              style={[styles.desktopSaveButton, { backgroundColor: theme.primary }, isLoading && { opacity: 0.7 }]}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                  <Text style={styles.desktopSaveButtonText}>Сохранить</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Two-Column Content */}
+          <ScrollView
+            style={styles.desktopScrollView}
+            contentContainerStyle={styles.desktopScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.desktopColumnsWrapper}>
+              {/* === LEFT COLUMN === */}
+              <View style={styles.desktopColumn}>
+                {/* Section: Title & Description */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Основная информация</Text>
+
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>Название *</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Например: График дежурств на январь"
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={title}
+                      onChangeText={setTitle}
+                      maxLength={255}
+                    />
+                    <Text style={[styles.charCount, { color: theme.textTertiary }]}>{title.length}/255</Text>
+                  </View>
+
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>Описание (необязательно)</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Дополнительная информация о графике..."
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={description}
+                      onChangeText={setDescription}
+                      maxLength={2000}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                    />
+                    <Text style={[styles.charCount, { color: theme.textTertiary }]}>{description.length}/2000</Text>
+                  </View>
+                </View>
+
+                {/* Section: Schedule Type */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Тип графика</Text>
+                  <View style={styles.stepContent}>
+                    {SCHEDULE_TYPES.map((item) => (
+                      <TouchableOpacity
+                        key={item.value}
+                        onPress={() => handleTypeChange(item.value)}
+                        style={[
+                          styles.typeCard,
+                          styles.desktopTypeCard,
+                          { backgroundColor: theme.background, borderColor: theme.border },
+                          scheduleType === item.value && { borderColor: theme.primary, borderWidth: 2 },
+                        ]}
+                      >
+                        <View style={[
+                          styles.typeIcon,
+                          styles.desktopTypeIcon,
+                          { backgroundColor: scheduleType === item.value ? theme.primary : theme.backgroundSecondary },
+                        ]}>
+                          <Ionicons
+                            name={item.icon as any}
+                            size={22}
+                            color={scheduleType === item.value ? '#FFFFFF' : theme.primary}
+                          />
+                        </View>
+                        <View style={styles.typeInfo}>
+                          <Text style={[styles.typeTitle, { color: theme.text, fontSize: 15 }]}>{item.label}</Text>
+                          <Text style={[styles.typeDescription, { color: theme.textSecondary, fontSize: 13 }]}>
+                            {item.description}
+                          </Text>
+                        </View>
+                        {scheduleType === item.value && (
+                          <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              {/* === RIGHT COLUMN === */}
+              <View style={styles.desktopColumn}>
+                {/* Section: Period & Shift Times */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Период и время смен</Text>
+
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>Период действия</Text>
+                    <View style={styles.monthNavigation}>
+                      <TouchableOpacity
+                        style={[styles.monthArrowButton, { backgroundColor: theme.backgroundSecondary }]}
+                        onPress={goToPreviousMonth}
+                      >
+                        <Ionicons name="chevron-back" size={22} color={theme.primary} />
+                      </TouchableOpacity>
+                      <Text style={[styles.monthLabel, { color: theme.text }]}>
+                        {format(startDate, 'LLLL yyyy', { locale: ru })}
+                      </Text>
+                      <TouchableOpacity
+                        style={[styles.monthArrowButton, { backgroundColor: theme.backgroundSecondary }]}
+                        onPress={goToNextMonth}
+                      >
+                        <Ionicons name="chevron-forward" size={22} color={theme.primary} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.dateRow}>
+                      <TouchableOpacity
+                        style={[styles.dateButton, { backgroundColor: theme.background, borderColor: theme.border, flex: 1 }]}
+                        onPress={() => setShowStartDatePicker(true)}
+                      >
+                        <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                        <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                          {format(startDate, 'dd MMM yyyy', { locale: ru })}
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={[styles.dateSeparator, { color: theme.textSecondary }]}>—</Text>
+                      <TouchableOpacity
+                        style={[styles.dateButton, { backgroundColor: theme.background, borderColor: theme.border, flex: 1 }]}
+                        onPress={() => setShowEndDatePicker(true)}
+                      >
+                        <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                        <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                          {format(endDate, 'dd MMM yyyy', { locale: ru })}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>Время смен</Text>
+
+                    <View style={[styles.shiftCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                      <View style={styles.shiftHeader}>
+                        <Ionicons name="sunny-outline" size={20} color="#F59E0B" />
+                        <Text style={[styles.shiftLabel, { color: theme.text }]}>Утренняя смена</Text>
+                      </View>
+                      <View style={styles.timeInputGroup}>
+                        <TouchableOpacity
+                          style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                          onPress={() => setShowMorningStartPicker(true)}
+                        >
+                          <Text style={[styles.timeInputText, { color: theme.text }]}>{morningStart}</Text>
+                        </TouchableOpacity>
+                        <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
+                        <TouchableOpacity
+                          style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                          onPress={() => setShowMorningEndPicker(true)}
+                        >
+                          <Text style={[styles.timeInputText, { color: theme.text }]}>{morningEnd}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    <View style={[styles.shiftCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                      <View style={styles.shiftHeader}>
+                        <Ionicons name="moon-outline" size={20} color="#8B5CF6" />
+                        <Text style={[styles.shiftLabel, { color: theme.text }]}>Вечерняя смена</Text>
+                      </View>
+                      <View style={styles.timeInputGroup}>
+                        <TouchableOpacity
+                          style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                          onPress={() => setShowEveningStartPicker(true)}
+                        >
+                          <Text style={[styles.timeInputText, { color: theme.text }]}>{eveningStart}</Text>
+                        </TouchableOpacity>
+                        <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>—</Text>
+                        <TouchableOpacity
+                          style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                          onPress={() => setShowEveningEndPicker(true)}
+                        >
+                          <Text style={[styles.timeInputText, { color: theme.text }]}>{eveningEnd}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Section: Settings */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Настройки</Text>
+
+                  {/* User Group Selector */}
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>Группа пользователей</Text>
+                    <Text style={[styles.inputHint, { color: theme.textTertiary }]}>
+                      Привяжите группу, чтобы в графике были только её участники
+                    </Text>
+
+                    {selectedGroup ? (
+                      <View style={[styles.selectedGroupCard, { backgroundColor: theme.background, borderColor: theme.primary }]}>
+                        <View style={styles.selectedGroupInfo}>
+                          <Ionicons name="people-circle" size={24} color={theme.primary} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.selectedGroupName, { color: theme.text }]}>
+                              {selectedGroup.name}
+                            </Text>
+                            <Text style={[styles.selectedGroupCount, { color: theme.textSecondary }]}>
+                              {selectedGroup.member_count} участник(ов)
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setUserGroupId(null);
+                              setSelectedGroup(null);
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="close-circle" size={24} color={theme.textTertiary} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={openGroupPicker}
+                        style={[styles.userSelectorButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      >
+                        <View style={styles.userSelectorContent}>
+                          <Ionicons name="people-circle-outline" size={20} color={theme.primary} />
+                          <Text style={[styles.userSelectorText, { color: theme.textSecondary }]}>
+                            Выбрать группу (необязательно)
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Visibility */}
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>Видимость</Text>
+                    {VISIBILITY_OPTIONS.map((item) => (
+                      <TouchableOpacity
+                        key={item.value}
+                        onPress={() => setVisibility(item.value)}
+                        style={[
+                          styles.visibilityCard,
+                          styles.desktopOptionCard,
+                          { backgroundColor: theme.background, borderColor: theme.border },
+                          visibility === item.value && { borderColor: theme.primary, borderWidth: 2 },
+                        ]}
+                      >
+                        <View style={[
+                          styles.visibilityIcon,
+                          styles.desktopOptionIcon,
+                          { backgroundColor: visibility === item.value ? theme.primary : theme.backgroundSecondary },
+                        ]}>
+                          <Ionicons
+                            name={item.icon as any}
+                            size={16}
+                            color={visibility === item.value ? '#FFFFFF' : theme.primary}
+                          />
+                        </View>
+                        <View style={styles.visibilityInfo}>
+                          <Text style={[styles.visibilityTitle, { color: theme.text, fontSize: 14 }]}>{item.label}</Text>
+                          <Text style={[styles.visibilityDescription, { color: theme.textSecondary, fontSize: 12 }]}>
+                            {item.description}
+                          </Text>
+                        </View>
+                        {visibility === item.value && (
+                          <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+
+                    {visibility === 'specific_users' && (
+                      <TouchableOpacity
+                        onPress={() => setShowViewerSelector(true)}
+                        style={[styles.userSelectorButton, { backgroundColor: theme.background, borderColor: theme.primary }]}
+                      >
+                        <View style={styles.userSelectorContent}>
+                          <Ionicons name="people" size={20} color={theme.primary} />
+                          <Text style={[styles.userSelectorText, { color: theme.text }]}>
+                            {selectedViewers.length > 0
+                              ? `Выбрано: ${selectedViewers.length}`
+                              : viewerIds.length > 0
+                              ? `Выбрано: ${viewerIds.length}`
+                              : 'Выбрать пользователей'}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Edit Permissions */}
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>Права редактирования</Text>
+                    {EDIT_PERMISSION_OPTIONS.map((item) => (
+                      <TouchableOpacity
+                        key={item.value}
+                        onPress={() => setEditPermission(item.value)}
+                        style={[
+                          styles.visibilityCard,
+                          styles.desktopOptionCard,
+                          { backgroundColor: theme.background, borderColor: theme.border },
+                          editPermission === item.value && { borderColor: theme.primary, borderWidth: 2 },
+                        ]}
+                      >
+                        <View style={[
+                          styles.visibilityIcon,
+                          styles.desktopOptionIcon,
+                          { backgroundColor: editPermission === item.value ? theme.primary : theme.backgroundSecondary },
+                        ]}>
+                          <Ionicons
+                            name={item.icon as any}
+                            size={16}
+                            color={editPermission === item.value ? '#FFFFFF' : theme.primary}
+                          />
+                        </View>
+                        <View style={styles.visibilityInfo}>
+                          <Text style={[styles.visibilityTitle, { color: theme.text, fontSize: 14 }]}>{item.label}</Text>
+                          <Text style={[styles.visibilityDescription, { color: theme.textSecondary, fontSize: 12 }]}>
+                            {item.description}
+                          </Text>
+                        </View>
+                        {editPermission === item.value && (
+                          <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+
+                    {editPermission === 'specific_users' && (
+                      <TouchableOpacity
+                        onPress={() => setShowEditorSelector(true)}
+                        style={[styles.userSelectorButton, { backgroundColor: theme.background, borderColor: theme.primary }]}
+                      >
+                        <View style={styles.userSelectorContent}>
+                          <Ionicons name="create" size={20} color={theme.primary} />
+                          <Text style={[styles.userSelectorText, { color: theme.text }]}>
+                            {selectedEditors.length > 0
+                              ? `Выбрано: ${selectedEditors.length}`
+                              : editorIds.length > 0
+                              ? `Выбрано: ${editorIds.length}`
+                              : 'Выбрать редакторов'}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Color Picker */}
+                  <View style={styles.inputSection}>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>Цвет графика</Text>
+                    <View style={styles.colorRow}>
+                      {SCHEDULE_COLORS.map((c) => (
+                        <TouchableOpacity
+                          key={c.value}
+                          style={[
+                            styles.colorOption,
+                            { backgroundColor: c.value },
+                            color === c.value && styles.colorOptionSelected,
+                          ]}
+                          onPress={() => setColor(c.value)}
+                        >
+                          {color === c.value && (
+                            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Group picker modal */}
+          <Modal
+            visible={showGroupPicker}
+            animationType="none"
+            transparent={true}
+            onRequestClose={closeGroupPicker}
+          >
+            <TouchableWithoutFeedback onPress={closeGroupPicker}>
+              <Animated.View style={[
+                styles.groupPickerOverlay,
+                { opacity: groupPickerOverlayAnim },
+                styles.groupPickerOverlayDesktop,
+              ]}>
+                <TouchableWithoutFeedback>
+                  <Animated.View style={[
+                    styles.groupPickerContainer,
+                    { backgroundColor: theme.card },
+                    styles.groupPickerContainerDesktop,
+                  ]}>
+                    <View style={[styles.groupPickerHeader, { borderBottomColor: theme.border }]}>
+                      <Text style={[styles.groupPickerTitle, { color: theme.text }]}>
+                        Выберите группу
+                      </Text>
+                      <TouchableOpacity onPress={closeGroupPicker}>
+                        <Ionicons name="close" size={24} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.groupPickerList}>
+                      {isLoadingGroups ? (
+                        <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 20 }} />
+                      ) : availableGroups.length === 0 ? (
+                        <Text style={[styles.groupPickerEmpty, { color: theme.textSecondary }]}>
+                          Нет доступных групп
+                        </Text>
+                      ) : (
+                        availableGroups.map((group) => (
+                          <TouchableOpacity
+                            key={group.id}
+                            onPress={() => {
+                              setUserGroupId(group.id);
+                              setSelectedGroup(group);
+                              closeGroupPicker();
+                            }}
+                            style={[
+                              styles.groupPickerItem,
+                              { borderBottomColor: theme.border },
+                              userGroupId === group.id && { backgroundColor: theme.primary + '10' },
+                            ]}
+                          >
+                            <Ionicons name="people-circle" size={28} color={theme.primary} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.groupPickerItemName, { color: theme.text }]}>
+                                {group.name}
+                              </Text>
+                              {group.description ? (
+                                <Text style={[styles.groupPickerItemDesc, { color: theme.textTertiary }]} numberOfLines={1}>
+                                  {group.description}
+                                </Text>
+                              ) : null}
+                              <Text style={[styles.groupPickerItemCount, { color: theme.textSecondary }]}>
+                                {group.member_count} участник(ов)
+                              </Text>
+                            </View>
+                            {userGroupId === group.id && (
+                              <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                            )}
+                          </TouchableOpacity>
+                        ))
+                      )}
+                    </ScrollView>
+                  </Animated.View>
+                </TouchableWithoutFeedback>
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </Modal>
+
+          {/* Date Pickers */}
+          {showStartDatePicker && (
+            <DatePickerModal
+              visible={showStartDatePicker}
+              value={startDate}
+              onChange={handleStartDateChange}
+              onClose={() => setShowStartDatePicker(false)}
+              mode="date"
+            />
+          )}
+          {showEndDatePicker && (
+            <DatePickerModal
+              visible={showEndDatePicker}
+              value={endDate}
+              onChange={handleEndDateChange}
+              onClose={() => setShowEndDatePicker(false)}
+              minimumDate={startDate}
+              mode="date"
+            />
+          )}
+
+          {/* Time Pickers */}
+          {showMorningStartPicker && (
+            <DatePickerModal
+              visible={showMorningStartPicker}
+              value={parseTimeToDate(morningStart)}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) setMorningStart(formatDateToTime(selectedDate));
+              }}
+              onClose={() => setShowMorningStartPicker(false)}
+              mode="time"
+            />
+          )}
+          {showMorningEndPicker && (
+            <DatePickerModal
+              visible={showMorningEndPicker}
+              value={parseTimeToDate(morningEnd)}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) setMorningEnd(formatDateToTime(selectedDate));
+              }}
+              onClose={() => setShowMorningEndPicker(false)}
+              mode="time"
+            />
+          )}
+          {showEveningStartPicker && (
+            <DatePickerModal
+              visible={showEveningStartPicker}
+              value={parseTimeToDate(eveningStart)}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) setEveningStart(formatDateToTime(selectedDate));
+              }}
+              onClose={() => setShowEveningStartPicker(false)}
+              mode="time"
+            />
+          )}
+          {showEveningEndPicker && (
+            <DatePickerModal
+              visible={showEveningEndPicker}
+              value={parseTimeToDate(eveningEnd)}
+              onChange={(_event: any, selectedDate?: Date) => {
+                if (selectedDate) setEveningEnd(formatDateToTime(selectedDate));
+              }}
+              onClose={() => setShowEveningEndPicker(false)}
+              mode="time"
+            />
+          )}
+
+          {/* User Selector Modals */}
+          <UserSelectorModal
+            visible={showViewerSelector}
+            onClose={() => setShowViewerSelector(false)}
+            selectedUserIds={viewerIds}
+            onSelectionChange={(ids, users) => {
+              setViewerIds(ids);
+              if (users) setSelectedViewers(users);
+            }}
+            multiSelect={true}
+            title="Кто может видеть график"
+            includeCurrentUser={true}
+          />
+          <UserSelectorModal
+            visible={showEditorSelector}
+            onClose={() => setShowEditorSelector(false)}
+            selectedUserIds={editorIds}
+            onSelectionChange={(ids, users) => {
+              setEditorIds(ids);
+              if (users) setSelectedEditors(users);
+            }}
+            multiSelect={true}
+            title="Кто может редактировать"
+            includeCurrentUser={true}
+          />
+        </View>
+      </Modal>
+    );
+  }
+
+  // ===== MOBILE: Step-by-step wizard (unchanged) =====
   return (
     <Modal
       visible={visible}
@@ -1676,6 +2257,90 @@ const styles = StyleSheet.create({
   groupPickerItemCount: {
     fontSize: 12,
     marginTop: 2,
+  },
+  // ===== Desktop Electron styles =====
+  desktopElectronContainer: {
+    flex: 1,
+  },
+  desktopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 16,
+  },
+  desktopHeaderCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopHeaderTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  desktopSaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  desktopSaveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  desktopScrollView: {
+    flex: 1,
+  },
+  desktopScrollContent: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+  desktopColumnsWrapper: {
+    flexDirection: 'row',
+    gap: 24,
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  desktopColumn: {
+    flex: 1,
+    gap: 20,
+  },
+  desktopSection: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    gap: 16,
+  },
+  desktopSectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  desktopTypeCard: {
+    padding: 12,
+    gap: 12,
+  },
+  desktopTypeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  desktopOptionCard: {
+    padding: 10,
+    gap: 10,
+  },
+  desktopOptionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
 });
 
