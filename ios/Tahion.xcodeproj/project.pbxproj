@@ -7,39 +7,39 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		122BFDA5E12D4991A47CD80D /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 14529118A72644D3A439D507 /* GoogleService-Info.plist */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		2BA69FB808A64430BF8A102E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6215D79B555C4D0490414219 /* PrivacyInfo.xcprivacy */; };
-		2C5E4B419BCB4AD491462D13 /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 436A0A00C4B447658C8D6A18 /* ShareExtension.appex */; };
+		26AEB4B1D77CE56FB4F08F47 /* libPods-Tahion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E3E4AA2C3869F46B08E6A36B /* libPods-Tahion.a */; };
+		288290EA759C48639BEBAA7F /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = 6D631021DEB8410D8806A600 /* ShareExtensionPreprocessor.js */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		4387CF1AB5293FEDF4DB1618 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A4B7B3F4E2AD2FAB16D4B04 /* ExpoModulesProvider.swift */; };
-		5850853E18A74074B350B072 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8470751212D8450E899BF2BF /* MainInterface.storyboard */; };
-		82FBDC763FCF44BAA6868237 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9835D93B9A1A45A6A5E9A883 /* ShareViewController.swift */; };
-		856E495AA9FDA49D9D63C351 /* libPods-Tahion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B1882D67E5956EDDEFAFFB8B /* libPods-Tahion.a */; };
+		46C8653EF49A40E292AA36BC /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 55698D5A7B3342618D6DF6FC /* MainInterface.storyboard */; };
+		4F8118CC87CB41E0878FFB12 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E6BCB5817754462CA2CC9C78 /* GoogleService-Info.plist */; };
+		7169354EB7D54BA9B3B43604 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A67C46A0C04D4778BC46DD1E /* PrivacyInfo.xcprivacy */; };
+		727E25D2818B45099E98A1C3 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23504308D18442C0A02DF860 /* ShareViewController.swift */; };
+		B07DFB832D32B267DCA7B7CD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A67C46A0C04D4778BC46DD1E /* PrivacyInfo.xcprivacy */; };
+		B95BD87776464C2283DD69D2 /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 8955D4BAF81042BF9C753EF5 /* ShareExtension.appex */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		EF7B4CD82ECEDC00357B1F41 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6215D79B555C4D0490414219 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		F7E7D2D1322D4F58B9BB4034 /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = 47658F5EA0E94B738E01FF78 /* ShareExtensionPreprocessor.js */; };
+		F8931E08714607C064654B5B /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF37478B565095B2B631B0E8 /* ExpoModulesProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		A7271A517B5F49C4894476E8 /* PBXContainerItemProxy */ = {
+		CAD87CC1880C4D458756A4D7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 8B36F55074C345E5BC56A50A;
+			remoteGlobalIDString = 63303F0B137849E1BD9D65C9;
 			remoteInfo = ShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		CF7DE114BD014F41BAA509F9 /* Copy Files */ = {
+		29386A1B18DC4A188AFBB1F0 /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				2C5E4B419BCB4AD491462D13 /* ShareExtension.appex in Copy Files */,
+				B95BD87776464C2283DD69D2 /* ShareExtension.appex in Copy Files */,
 			);
 			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -47,26 +47,26 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0DEA2CE389A71CDA86F19AD5 /* Pods-Tahion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tahion.debug.xcconfig"; path = "Target Support Files/Pods-Tahion/Pods-Tahion.debug.xcconfig"; sourceTree = "<group>"; };
+		0747EA0117FC38F23F9EAB97 /* Pods-Tahion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tahion.debug.xcconfig"; path = "Target Support Files/Pods-Tahion/Pods-Tahion.debug.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Tahion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tahion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Tahion/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Tahion/Info.plist; sourceTree = "<group>"; };
-		14529118A72644D3A439D507 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Tahion/GoogleService-Info.plist"; sourceTree = "<group>"; };
-		1A4B7B3F4E2AD2FAB16D4B04 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Tahion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		436A0A00C4B447658C8D6A18 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ShareExtension.appex; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		47658F5EA0E94B738E01FF78 /* ShareExtensionPreprocessor.js */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtensionPreprocessor.js; path = ShareExtensionPreprocessor.js; sourceTree = "<group>"; };
-		6215D79B555C4D0490414219 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		65D41B5DC7BA771AEDD7B6D8 /* Pods-Tahion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tahion.release.xcconfig"; path = "Target Support Files/Pods-Tahion/Pods-Tahion.release.xcconfig"; sourceTree = "<group>"; };
-		8470751212D8450E899BF2BF /* MainInterface.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MainInterface.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
-		9835D93B9A1A45A6A5E9A883 /* ShareViewController.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareViewController.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		23504308D18442C0A02DF860 /* ShareViewController.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareViewController.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		54E5F9D04E704902BD05906A /* ShareExtension.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtension.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		55698D5A7B3342618D6DF6FC /* MainInterface.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MainInterface.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
+		6D631021DEB8410D8806A600 /* ShareExtensionPreprocessor.js */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtensionPreprocessor.js; path = ShareExtensionPreprocessor.js; sourceTree = "<group>"; };
+		8955D4BAF81042BF9C753EF5 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ShareExtension.appex; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		923A22A139FDAD7619BFA7D8 /* Pods-Tahion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tahion.release.xcconfig"; path = "Target Support Files/Pods-Tahion/Pods-Tahion.release.xcconfig"; sourceTree = "<group>"; };
+		A67C46A0C04D4778BC46DD1E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Tahion/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B1882D67E5956EDDEFAFFB8B /* libPods-Tahion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Tahion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AD2749DA44324B98871861EE /* ShareExtension-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "ShareExtension-Info.plist"; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		DF37478B565095B2B631B0E8 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Tahion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		E3E4AA2C3869F46B08E6A36B /* libPods-Tahion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Tahion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E6BCB5817754462CA2CC9C78 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Tahion/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Tahion/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Tahion-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Tahion-Bridging-Header.h"; path = "Tahion/Tahion-Bridging-Header.h"; sourceTree = "<group>"; };
-		FA44F3C86A184867B14C289C /* ShareExtension-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "ShareExtension-Info.plist"; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; };
-		FBED3B4D9C864CF7866074A0 /* ShareExtension.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtension.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,11 +74,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				856E495AA9FDA49D9D63C351 /* libPods-Tahion.a in Frameworks */,
+				26AEB4B1D77CE56FB4F08F47 /* libPods-Tahion.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		84FBE5AF2C1D48F7A1F56DCB /* Frameworks */ = {
+		1BF2EF366F14442185606B8F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -88,14 +88,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0A39EA3DE3EA9D2878F98589 /* Pods */ = {
+		119905B524B84CEB89E4A94B /* ShareExtension */ = {
 			isa = PBXGroup;
 			children = (
-				0DEA2CE389A71CDA86F19AD5 /* Pods-Tahion.debug.xcconfig */,
-				65D41B5DC7BA771AEDD7B6D8 /* Pods-Tahion.release.xcconfig */,
+				23504308D18442C0A02DF860 /* ShareViewController.swift */,
+				55698D5A7B3342618D6DF6FC /* MainInterface.storyboard */,
+				6D631021DEB8410D8806A600 /* ShareExtensionPreprocessor.js */,
+				A67C46A0C04D4778BC46DD1E /* PrivacyInfo.xcprivacy */,
+				AD2749DA44324B98871861EE /* ShareExtension-Info.plist */,
+				54E5F9D04E704902BD05906A /* ShareExtension.entitlements */,
 			);
-			name = Pods;
-			path = Pods;
+			name = ShareExtension;
+			path = ShareExtension;
 			sourceTree = "<group>";
 		};
 		13B07FAE1A68108700A75B9A /* Tahion */ = {
@@ -107,7 +111,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				14529118A72644D3A439D507 /* GoogleService-Info.plist */,
+				E6BCB5817754462CA2CC9C78 /* GoogleService-Info.plist */,
 			);
 			name = Tahion;
 			sourceTree = "<group>";
@@ -116,23 +120,25 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				B1882D67E5956EDDEFAFFB8B /* libPods-Tahion.a */,
+				E3E4AA2C3869F46B08E6A36B /* libPods-Tahion.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		32BE77038FC5DC16BCE32A81 /* ExpoModulesProviders */ = {
+		58FA83F3EF3FA4DFC630753A /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				3479CAEC9677035D4B41BFC0 /* Tahion */,
+				0747EA0117FC38F23F9EAB97 /* Pods-Tahion.debug.xcconfig */,
+				923A22A139FDAD7619BFA7D8 /* Pods-Tahion.release.xcconfig */,
 			);
-			name = ExpoModulesProviders;
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
-		3479CAEC9677035D4B41BFC0 /* Tahion */ = {
+		78946A9822367F5E71E4F5E4 /* Tahion */ = {
 			isa = PBXGroup;
 			children = (
-				1A4B7B3F4E2AD2FAB16D4B04 /* ExpoModulesProvider.swift */,
+				DF37478B565095B2B631B0E8 /* ExpoModulesProvider.swift */,
 			);
 			name = Tahion;
 			sourceTree = "<group>";
@@ -151,9 +157,9 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				A6748F8D981148019FB90E14 /* ShareExtension */,
-				0A39EA3DE3EA9D2878F98589 /* Pods */,
-				32BE77038FC5DC16BCE32A81 /* ExpoModulesProviders */,
+				119905B524B84CEB89E4A94B /* ShareExtension */,
+				58FA83F3EF3FA4DFC630753A /* Pods */,
+				DA94835C59DFCA54BDFCD779 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -164,23 +170,9 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* Tahion.app */,
-				436A0A00C4B447658C8D6A18 /* ShareExtension.appex */,
+				8955D4BAF81042BF9C753EF5 /* ShareExtension.appex */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		A6748F8D981148019FB90E14 /* ShareExtension */ = {
-			isa = PBXGroup;
-			children = (
-				9835D93B9A1A45A6A5E9A883 /* ShareViewController.swift */,
-				8470751212D8450E899BF2BF /* MainInterface.storyboard */,
-				47658F5EA0E94B738E01FF78 /* ShareExtensionPreprocessor.js */,
-				6215D79B555C4D0490414219 /* PrivacyInfo.xcprivacy */,
-				FA44F3C86A184867B14C289C /* ShareExtension-Info.plist */,
-				FBED3B4D9C864CF7866074A0 /* ShareExtension.entitlements */,
-			);
-			name = ShareExtension;
-			path = ShareExtension;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -192,6 +184,14 @@
 			path = Tahion/Supporting;
 			sourceTree = "<group>";
 		};
+		DA94835C59DFCA54BDFCD779 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				78946A9822367F5E71E4F5E4 /* Tahion */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -200,33 +200,33 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Tahion" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				72B0B4EF5A7E2002ECCC3E7B /* [Expo] Configure project */,
+				573B213F274A63CF3F79F7FD /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				CF7DE114BD014F41BAA509F9 /* Copy Files */,
-				396B8866AADB65E750152A2B /* [CP] Embed Pods Frameworks */,
-				C3F3F5840FACBC08B58593C4 /* [CP-User] [RNFB] Core Configuration */,
+				29386A1B18DC4A188AFBB1F0 /* Copy Files */,
+				69B1FA3D816C781C6457443F /* [CP] Embed Pods Frameworks */,
+				A99CF099CACD271B08066BFF /* [CP-User] [RNFB] Core Configuration */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				F63FF012C69546AE88E75B12 /* PBXTargetDependency */,
+				4087F6846D03451FA5BB3E24 /* PBXTargetDependency */,
 			);
 			name = Tahion;
 			productName = Tahion;
 			productReference = 13B07F961A680F5B00A75B9A /* Tahion.app */;
 			productType = "com.apple.product-type.application";
 		};
-		8B36F55074C345E5BC56A50A /* ShareExtension */ = {
+		63303F0B137849E1BD9D65C9 /* ShareExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 22F564FD13874CA98B1218C2 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildConfigurationList = CD2FAF4260A54FAC93CECB8B /* Build configuration list for PBXNativeTarget "ShareExtension" */;
 			buildPhases = (
-				EF8DD8D2587348F09328A4D7 /* Sources */,
-				30E35631F01344479EB5C558 /* Resources */,
-				84FBE5AF2C1D48F7A1F56DCB /* Frameworks */,
+				32EEA78A7D2D45B4ACF36B51 /* Sources */,
+				7A1A5687DDBC41E28E9C3AE9 /* Resources */,
+				1BF2EF366F14442185606B8F /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -234,7 +234,7 @@
 			);
 			name = ShareExtension;
 			productName = ShareExtension;
-			productReference = 436A0A00C4B447658C8D6A18 /* ShareExtension.appex */;
+			productReference = 8955D4BAF81042BF9C753EF5 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -264,7 +264,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* Tahion */,
-				8B36F55074C345E5BC56A50A /* ShareExtension */,
+				63303F0B137849E1BD9D65C9 /* ShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -277,18 +277,18 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				122BFDA5E12D4991A47CD80D /* GoogleService-Info.plist in Resources */,
-				EF7B4CD82ECEDC00357B1F41 /* PrivacyInfo.xcprivacy in Resources */,
+				4F8118CC87CB41E0878FFB12 /* GoogleService-Info.plist in Resources */,
+				B07DFB832D32B267DCA7B7CD /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		30E35631F01344479EB5C558 /* Resources */ = {
+		7A1A5687DDBC41E28E9C3AE9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5850853E18A74074B350B072 /* MainInterface.storyboard in Resources */,
-				F7E7D2D1322D4F58B9BB4034 /* ShareExtensionPreprocessor.js in Resources */,
-				2BA69FB808A64430BF8A102E /* PrivacyInfo.xcprivacy in Resources */,
+				46C8653EF49A40E292AA36BC /* MainInterface.storyboard in Resources */,
+				288290EA759C48639BEBAA7F /* ShareExtensionPreprocessor.js in Resources */,
+				7169354EB7D54BA9B3B43604 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -334,29 +334,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		396B8866AADB65E750152A2B /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		72B0B4EF5A7E2002ECCC3E7B /* [Expo] Configure project */ = {
+		573B213F274A63CF3F79F7FD /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -379,6 +357,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Tahion/expo-configure-project.sh\"\n";
+		};
+		69B1FA3D816C781C6457443F /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -448,7 +448,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Tahion/Pods-Tahion-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		C3F3F5840FACBC08B58593C4 /* [CP-User] [RNFB] Core Configuration */ = {
+		A99CF099CACD271B08066BFF /* [CP-User] [RNFB] Core Configuration */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -469,32 +469,32 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				4387CF1AB5293FEDF4DB1618 /* ExpoModulesProvider.swift in Sources */,
+				F8931E08714607C064654B5B /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		EF8DD8D2587348F09328A4D7 /* Sources */ = {
+		32EEA78A7D2D45B4ACF36B51 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				82FBDC763FCF44BAA6868237 /* ShareViewController.swift in Sources */,
+				727E25D2818B45099E98A1C3 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		F63FF012C69546AE88E75B12 /* PBXTargetDependency */ = {
+		4087F6846D03451FA5BB3E24 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 8B36F55074C345E5BC56A50A /* ShareExtension */;
-			targetProxy = A7271A517B5F49C4894476E8 /* PBXContainerItemProxy */;
+			target = 63303F0B137849E1BD9D65C9 /* ShareExtension */;
+			targetProxy = CAD87CC1880C4D458756A4D7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 0DEA2CE389A71CDA86F19AD5 /* Pods-Tahion.debug.xcconfig */;
+			baseConfigurationReference = 0747EA0117FC38F23F9EAB97 /* Pods-Tahion.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -530,7 +530,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 65D41B5DC7BA771AEDD7B6D8 /* Pods-Tahion.release.xcconfig */;
+			baseConfigurationReference = 923A22A139FDAD7619BFA7D8 /* Pods-Tahion.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -558,13 +558,13 @@
 			};
 			name = Release;
 		};
-		765ECC83F573493ABF69C71D /* Release */ = {
+		6498F5AFE7EA434683EBBF72 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "ShareExtension/ShareExtension-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -701,13 +701,13 @@
 			};
 			name = Release;
 		};
-		89C7ED9A39834376A9527A48 /* Debug */ = {
+		AFACCEDDB075406E84E3443A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -742,20 +742,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		22F564FD13874CA98B1218C2 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				89C7ED9A39834376A9527A48 /* Debug */,
-				765ECC83F573493ABF69C71D /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "Tahion" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CD2FAF4260A54FAC93CECB8B /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AFACCEDDB075406E84E3443A /* Debug */,
+				6498F5AFE7EA434683EBBF72 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
