@@ -184,15 +184,14 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
       {/* Spacer for flex layout - draggable area */}
       <View style={styles.dragSpacer} />
 
-      {/* Center Controls from context */}
+      {/* Center Controls from context - absolutely positioned to stay centered */}
       {centerControls && (
-        <View style={styles.centerControlsContainer}>
-          {centerControls}
+        <View style={[styles.centerControlsContainer, { left: sidebarWidth }]}>
+          <View style={styles.centerControlsInner}>
+            {centerControls}
+          </View>
         </View>
       )}
-
-      {/* Spacer for flex layout - draggable area (second spacer when center controls exist) */}
-      {centerControls && <View style={styles.dragSpacer} />}
 
       {/* Right Controls from context */}
       {rightControls && (
@@ -365,12 +364,20 @@ const styles = StyleSheet.create({
     WebkitAppRegion: 'drag',
   },
   centerControlsContainer: {
-    height: '100%',
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 1,
+    justifyContent: 'center',
     // @ts-ignore - Web-only styles
+    pointerEvents: 'none',
     WebkitAppRegion: 'no-drag',
+  },
+  centerControlsInner: {
+    // @ts-ignore - Web-only styles
+    pointerEvents: 'auto',
   },
   rightControlsContainer: {
     height: '100%',
