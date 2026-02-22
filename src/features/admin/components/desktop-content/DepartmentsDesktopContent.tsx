@@ -22,6 +22,7 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { ExpandableCreateButton } from '@shared/components/common/ExpandableCreateButton';
 import * as userApi from '@api/user.api';
 import { Department } from '@/types/user.types';
 
@@ -79,22 +80,13 @@ const DepartmentsDesktopContent: React.FC = () => {
   const titleBarRightControls = useMemo(() => {
     if (!isElectron) return null;
     return (
-      <View
-        style={[titleBarStyles.createButton, { backgroundColor: theme.primary }]}
-        // @ts-ignore - Web-only event handlers
-        onClick={() => setShowCreateModal(true)}
-        onMouseEnter={(e: any) => {
-          if (e.currentTarget?.style) e.currentTarget.style.opacity = '0.85';
-        }}
-        onMouseLeave={(e: any) => {
-          if (e.currentTarget?.style) e.currentTarget.style.opacity = '1';
-        }}
-      >
-        <Ionicons name="add" size={16} color="#FFFFFF" />
-        <Text style={titleBarStyles.createButtonText}>Создать</Text>
-      </View>
+      <ExpandableCreateButton
+        label="Создать"
+        title="Создать отдел"
+        onPress={() => setShowCreateModal(true)}
+      />
     );
-  }, [isElectron, theme.primary]);
+  }, [isElectron]);
 
   useTitleBarControlsIntegration({
     pageTitle: 'Управление отделами',
