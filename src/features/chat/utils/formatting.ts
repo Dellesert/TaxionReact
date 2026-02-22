@@ -159,7 +159,7 @@ export function stripFormatting(text: string): string {
   if (!text) return '';
   return text
     // Spoiler (двойная палка, обрабатываем первым т.к. multi-char)
-    .replace(/\|\|([^|]+)\|\|/g, '$1')
+    .replace(/\|\|([^|]+)\|\|/g, 'спойлер')
     // Code
     .replace(/`([^`]+)`/g, '$1')
     // Bold
