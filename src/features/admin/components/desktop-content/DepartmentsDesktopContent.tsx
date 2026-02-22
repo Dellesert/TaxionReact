@@ -596,21 +596,6 @@ const titleBarStyles = StyleSheet.create({
     cursor: 'pointer',
     padding: 2,
   } as any,
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    cursor: 'pointer',
-    transition: 'opacity 0.15s ease',
-  } as any,
-  createButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
 });
 
 export default DepartmentsDesktopContent;
