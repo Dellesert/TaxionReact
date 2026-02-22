@@ -254,6 +254,7 @@ const PollDetailScreen: React.FC = () => {
         headerRight: hasActions && poll ? () => (
           isElectron && isDesktop ? (
             <View
+              // @ts-ignore - Web-only style properties
               style={{
                 width: 32,
                 height: 32,
@@ -262,7 +263,6 @@ const PollDetailScreen: React.FC = () => {
                 borderColor: theme.border,
                 alignItems: 'center',
                 justifyContent: 'center',
-                // @ts-ignore
                 cursor: 'pointer',
                 transition: 'background-color 0.15s ease',
               }}
