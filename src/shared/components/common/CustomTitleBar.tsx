@@ -29,7 +29,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
 
   const theme = useThemeStore((state) => state.theme);
   const [hoveredButton, setHoveredButton] = useState<'minimize' | 'maximize' | 'close' | null>(null);
-  const { pageTitle, leftControls, rightControls, isPageLoading } = useTitleBarControls();
+  const { pageTitle, leftControls, centerControls, rightControls, isPageLoading } = useTitleBarControls();
   const { sidebarWidth, isCollapsed, toggleCollapsed } = useSidebar();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
   const [notificationDropdownVisible, setNotificationDropdownVisible] = useState(false);
@@ -183,6 +183,16 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
 
       {/* Spacer for flex layout - draggable area */}
       <View style={styles.dragSpacer} />
+
+      {/* Center Controls from context */}
+      {centerControls && (
+        <View style={styles.centerControlsContainer}>
+          {centerControls}
+        </View>
+      )}
+
+      {/* Spacer for flex layout - draggable area (second spacer when center controls exist) */}
+      {centerControls && <View style={styles.dragSpacer} />}
 
       {/* Right Controls from context */}
       {rightControls && (
@@ -353,6 +363,14 @@ const styles = StyleSheet.create({
     height: '100%',
     // @ts-ignore - Web-only styles
     WebkitAppRegion: 'drag',
+  },
+  centerControlsContainer: {
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    // @ts-ignore - Web-only styles
+    WebkitAppRegion: 'no-drag',
   },
   rightControlsContainer: {
     height: '100%',

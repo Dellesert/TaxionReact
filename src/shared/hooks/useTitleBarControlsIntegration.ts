@@ -13,6 +13,8 @@ interface UseTitleBarControlsIntegrationOptions {
   pageTitle: string;
   /** Компонент с контролами для левой части тайтлбара */
   leftControls?: ReactNode | null;
+  /** Компонент с контролами для центральной части тайтлбара */
+  centerControls?: ReactNode | null;
   /** Компонент с контролами для правой части тайтлбара */
   rightControls?: ReactNode | null;
   /** Индикатор загрузки рядом с заголовком (только лоадер, без текста) */
@@ -37,6 +39,7 @@ interface UseTitleBarControlsIntegrationOptions {
 export const useTitleBarControlsIntegration = ({
   pageTitle,
   leftControls = null,
+  centerControls = null,
   rightControls = null,
   isPageLoading = false,
   enabled = true,
@@ -57,10 +60,11 @@ export const useTitleBarControlsIntegration = ({
     // Set title and controls when component mounts or props change
     titleBarControls.setPageTitle(pageTitle);
     titleBarControls.setLeftControls(leftControls);
+    titleBarControls.setCenterControls(centerControls);
     titleBarControls.setRightControls(rightControls);
     titleBarControls.setIsPageLoading(isPageLoading);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isElectron, enabled, pageTitle, leftControls, rightControls, isPageLoading]);
+  }, [isElectron, enabled, pageTitle, leftControls, centerControls, rightControls, isPageLoading]);
 
   // Also use useFocusEffect to restore controls when navigating back within a stack
   // This handles the case when navigating from Detail screen back to List screen
@@ -73,10 +77,11 @@ export const useTitleBarControlsIntegration = ({
       // Restore title and controls when screen gains focus (e.g., navigating back)
       titleBarControls.setPageTitle(pageTitle);
       titleBarControls.setLeftControls(leftControls);
+      titleBarControls.setCenterControls(centerControls);
       titleBarControls.setRightControls(rightControls);
       titleBarControls.setIsPageLoading(isPageLoading);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isElectron, enabled, pageTitle, leftControls, rightControls, isPageLoading])
+    }, [isElectron, enabled, pageTitle, leftControls, centerControls, rightControls, isPageLoading])
   );
 
   return {

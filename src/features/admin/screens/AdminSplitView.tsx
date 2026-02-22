@@ -3,11 +3,11 @@
  * macOS-style split view для администрирования: sidebar navigation + content area
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
-import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { useTitleBarControls } from '@shared/contexts/TitleBarControlsContext';
 import { AdminSidebarNavigation, AdminSection } from '../components/common/AdminSidebarNavigation';
 import { AdminContentArea } from '../components/common/AdminContentArea';
 
@@ -30,17 +30,31 @@ export const AdminSplitView: React.FC = () => {
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
 
-  // Clear TitleBar controls when entering admin section
-  useTitleBarControlsIntegration({
-    pageTitle: 'Администрирование',
-    leftControls: null,
-    rightControls: null,
-    enabled: isElectron,
-  });
+  const sectionTitles: Record<AdminSection, string> = {
+    'analytics': 'Аналитика',
+    'departments': 'Управление отделами',
+    'users': 'Пользователи',
+    'user-groups': 'Группы пользователей',
+  };
+
+  // Set page title only (child components manage their own controls)
+  const titleBarControls = useTitleBarControls();
+
+  useEffect(() => {
+    if (isElectron) {
+      titleBarControls.setPageTitle(sectionTitles[activeSection] || 'Администрирование');
+    }
+  }, [activeSection, isElectron]);
 
   const handleSectionChange = useCallback((section: AdminSection) => {
+    // Clear controls synchronously before re-render so child's useEffect can set new ones
+    if (isElectron) {
+      titleBarControls.setLeftControls(null);
+      titleBarControls.setCenterControls(null);
+      titleBarControls.setRightControls(null);
+    }
     setActiveSection(section);
-  }, []);
+  }, [isElectron]);
 
   const renderContent = () => {
     switch (activeSection) {

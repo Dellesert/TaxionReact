@@ -10,6 +10,8 @@ interface TitleBarControlsContextValue {
   pageTitle: string;
   /** Компонент с контролами для левой части тайтлбара */
   leftControls: ReactNode | null;
+  /** Компонент с контролами для центральной части тайтлбара */
+  centerControls: ReactNode | null;
   /** Компонент с контролами для правой части тайтлбара (перед уведомлениями) */
   rightControls: ReactNode | null;
   /** Индикатор загрузки рядом с заголовком */
@@ -18,6 +20,8 @@ interface TitleBarControlsContextValue {
   setPageTitle: (title: string) => void;
   /** Установить левые контролы */
   setLeftControls: (controls: ReactNode | null) => void;
+  /** Установить центральные контролы */
+  setCenterControls: (controls: ReactNode | null) => void;
   /** Установить правые контролы */
   setRightControls: (controls: ReactNode | null) => void;
   /** Установить индикатор загрузки */
@@ -31,11 +35,13 @@ const TitleBarControlsContext = createContext<TitleBarControlsContextValue | nul
 export const TitleBarControlsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [pageTitle, setPageTitle] = useState('');
   const [leftControls, setLeftControls] = useState<ReactNode | null>(null);
+  const [centerControls, setCenterControls] = useState<ReactNode | null>(null);
   const [rightControls, setRightControls] = useState<ReactNode | null>(null);
   const [isPageLoading, setIsPageLoading] = useState(false);
 
   const clearControls = useCallback(() => {
     setLeftControls(null);
+    setCenterControls(null);
     setRightControls(null);
     setIsPageLoading(false);
   }, []);
@@ -43,14 +49,16 @@ export const TitleBarControlsProvider: React.FC<{ children: ReactNode }> = ({ ch
   const value = useMemo<TitleBarControlsContextValue>(() => ({
     pageTitle,
     leftControls,
+    centerControls,
     rightControls,
     isPageLoading,
     setPageTitle,
     setLeftControls,
+    setCenterControls,
     setRightControls,
     setIsPageLoading,
     clearControls,
-  }), [pageTitle, leftControls, rightControls, isPageLoading, clearControls]);
+  }), [pageTitle, leftControls, centerControls, rightControls, isPageLoading, clearControls]);
 
   return (
     <TitleBarControlsContext.Provider value={value}>

@@ -3,7 +3,7 @@
  * Desktop версия управления отделами с поиском в header
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   TextInput,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +21,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import * as userApi from '@api/user.api';
 import { Department } from '@/types/user.types';
 
@@ -44,6 +46,62 @@ const DepartmentsDesktopContent: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newDepartmentName, setNewDepartmentName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  // TitleBar: search (center) + create button (right)
+  const titleBarCenterControls = useMemo(() => {
+    if (!isElectron) return null;
+    return (
+      <View style={titleBarStyles.searchContainer}>
+        <Ionicons name="search" size={16} color={theme.textSecondary} />
+        <TextInput
+          style={[titleBarStyles.searchInput, { color: theme.text }]}
+          placeholder="Поиск отделов..."
+          placeholderTextColor={theme.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <View
+            style={titleBarStyles.clearButton}
+            // @ts-ignore - Web-only event handlers
+            onClick={() => setSearchQuery('')}
+          >
+            <Ionicons name="close-circle" size={16} color={theme.textSecondary} />
+          </View>
+        )}
+      </View>
+    );
+  }, [isElectron, searchQuery, theme]);
+
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron) return null;
+    return (
+      <View
+        style={[titleBarStyles.createButton, { backgroundColor: theme.primary }]}
+        // @ts-ignore - Web-only event handlers
+        onClick={() => setShowCreateModal(true)}
+        onMouseEnter={(e: any) => {
+          if (e.currentTarget?.style) e.currentTarget.style.opacity = '0.85';
+        }}
+        onMouseLeave={(e: any) => {
+          if (e.currentTarget?.style) e.currentTarget.style.opacity = '1';
+        }}
+      >
+        <Ionicons name="add" size={16} color="#FFFFFF" />
+        <Text style={titleBarStyles.createButtonText}>Создать</Text>
+      </View>
+    );
+  }, [isElectron, theme.primary]);
+
+  useTitleBarControlsIntegration({
+    pageTitle: 'Управление отделами',
+    centerControls: titleBarCenterControls,
+    rightControls: titleBarRightControls,
+    enabled: isElectron,
+  });
 
   // Check admin access
   if (user?.role !== 'admin' && user?.role !== 'super_admin') {
@@ -237,43 +295,45 @@ const DepartmentsDesktopContent: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      {/* Header with title, description and create button */}
-      <View style={[dynamicStyles.header, { backgroundColor: isDark ? theme.card : '#FAFAFA' }]}>
-        <View style={dynamicStyles.headerTop}>
-          <View style={dynamicStyles.headerText}>
-            <Text style={dynamicStyles.headerTitle}>Управление отделами</Text>
-            <Text style={dynamicStyles.headerDescription}>
-              Создание и редактирование структуры организации
-            </Text>
+      {/* Header with title, description and create button — only for non-Electron */}
+      {!isElectron && (
+        <View style={[dynamicStyles.header, { backgroundColor: isDark ? theme.card : '#FAFAFA' }]}>
+          <View style={dynamicStyles.headerTop}>
+            <View style={dynamicStyles.headerText}>
+              <Text style={dynamicStyles.headerTitle}>Управление отделами</Text>
+              <Text style={dynamicStyles.headerDescription}>
+                Создание и редактирование структуры организации
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={dynamicStyles.createButton}
+              onPress={() => setShowCreateModal(true)}
+            >
+              <Ionicons name="add" size={20} color="#FFFFFF" />
+              <Text style={dynamicStyles.createButtonText}>Создать отдел</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={dynamicStyles.createButton}
-            onPress={() => setShowCreateModal(true)}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={dynamicStyles.createButtonText}>Создать отдел</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Search Row */}
-        <View style={dynamicStyles.searchRow}>
-          <View style={dynamicStyles.searchContainer}>
-            <Ionicons name="search" size={18} color={theme.textSecondary} />
-            <TextInput
-              style={dynamicStyles.searchInput}
-              placeholder="Поиск отделов..."
-              placeholderTextColor={theme.textTertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-              </TouchableOpacity>
-            )}
+          {/* Search Row */}
+          <View style={dynamicStyles.searchRow}>
+            <View style={dynamicStyles.searchContainer}>
+              <Ionicons name="search" size={18} color={theme.textSecondary} />
+              <TextInput
+                style={dynamicStyles.searchInput}
+                placeholder="Поиск отделов..."
+                placeholderTextColor={theme.textTertiary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -517,6 +577,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 22,
+  },
+});
+
+const titleBarStyles = StyleSheet.create({
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(128,128,128,0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 6,
+    minWidth: 220,
+    maxWidth: 360,
+    flex: 1,
+  } as any,
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    height: 28,
+    // @ts-ignore
+    outlineStyle: 'none',
+  } as any,
+  clearButton: {
+    cursor: 'pointer',
+    padding: 2,
+  } as any,
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    cursor: 'pointer',
+    transition: 'opacity 0.15s ease',
+  } as any,
+  createButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 
