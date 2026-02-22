@@ -228,6 +228,21 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
     [deleteNotification]
   );
 
+  const handleViewAllNotifications = useCallback(() => {
+    onClose();
+
+    if (isWideScreen && desktopNavigateToTab) {
+      setTimeout(() => {
+        desktopNavigateToTab('Notifications');
+      }, 300);
+    } else if (navigationRef?.current?.isReady()) {
+      setTimeout(() => {
+        // @ts-ignore
+        navigationRef.current.navigate('NotificationList');
+      }, 300);
+    }
+  }, [onClose, isWideScreen, desktopNavigateToTab, navigationRef]);
+
   // Group notifications by date
   type DateSection = {
     title: string;
@@ -448,6 +463,28 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
           }
           style={styles.list}
         />
+
+        {/* Кнопка "Все уведомления" */}
+        <View
+          style={[styles.viewAllButton, { borderTopColor: theme.border }]}
+          // @ts-ignore - Web-only event handlers
+          onClick={handleViewAllNotifications}
+          onMouseEnter={(e: any) => {
+            if (e.currentTarget?.style) {
+              e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+            }
+          }}
+          onMouseLeave={(e: any) => {
+            if (e.currentTarget?.style) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          <Text style={[styles.viewAllText, { color: theme.primary }]}>
+            Все уведомления
+          </Text>
+          <Ionicons name="arrow-forward" size={16} color={theme.primary} />
+        </View>
       </Animated.View>
     </>
   );
@@ -565,5 +602,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        cursor: 'pointer',
+        transition: 'background-color 0.15s ease',
+      },
+    }),
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
