@@ -1,7 +1,7 @@
 {
   "version": "1.0.1",
   "ios": {
-    "buildNumber": "36"
+    "buildNumber": "37"
   },
   "android": {
     "versionCode": 34
