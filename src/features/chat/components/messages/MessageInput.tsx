@@ -171,6 +171,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [message, setMessage] = useState('');
   const [inputHeight, setInputHeight] = useState(42);
   const [hasSelection, setHasSelection] = useState(false);
+  const [showFormattingToolbar, setShowFormattingToolbar] = useState(false);
   const [attachmentsProcessing, setAttachmentsProcessing] = useState(false);
   const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
   const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
@@ -368,6 +369,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       setSelection({ start, end });
       const selected = start !== end;
       setHasSelection(prev => prev !== selected ? selected : prev);
+      // Показываем тулбар при появлении выделения (скрываем только по крестику)
+      if (selected) setShowFormattingToolbar(true);
     },
     []
   );
@@ -388,12 +391,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   // Форматы, несовместимые с code (code не поддерживает вложенное форматирование)
   const TEXT_STYLE_TYPES: FormatType[] = ['bold', 'italic', 'strikethrough'];
 
-  // Закрыть тулбар форматирования (снимаем выделение)
+  // Закрыть тулбар форматирования (только по крестику)
   const handleCloseFormattingToolbar = useCallback(() => {
-    const pos = selectionRef.current.end;
-    setSelection({ start: pos, end: pos });
+    setShowFormattingToolbar(false);
     setHasSelection(false);
-    inputRef.current?.blur();
   }, []);
 
   // Применяем форматирование к выделенному тексту (добавляем диапазон)
@@ -656,9 +657,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   return (
     <View style={Platform.OS === 'web' ? styles.rootWeb : undefined}>
       {/* На вебе всё что над инпутом позиционируется абсолютно, чтобы не сдвигать его вниз */}
-      {Platform.OS === 'web' && (hasIndicators || hasSelection) && (
+      {Platform.OS === 'web' && (hasIndicators || showFormattingToolbar) && (
         <View style={styles.floatingAboveWeb}>
-          {hasSelection && (
+          {showFormattingToolbar && (
             <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} onClose={handleCloseFormattingToolbar} />
           )}
           {indicatorsContent}
@@ -668,7 +669,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       {Platform.OS !== 'web' && (
         <>
           {indicatorsContent}
-          {hasSelection && (
+          {showFormattingToolbar && (
             <FormattingToolbar onFormat={handleFormat} activeFormats={activeFormats} onClose={handleCloseFormattingToolbar} />
           )}
         </>
