@@ -3,7 +3,7 @@
  * Контекст для глобального управления модальными окнами с действиями
  */
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { ActionModal } from '@shared/components/common/ActionModal';
 import { ActionModalOptions, ActionModalButton } from '@types/modal.types';
 
@@ -22,6 +22,7 @@ interface ActionModalContextValue {
       confirmText?: string;
       cancelText?: string;
       destructive?: boolean;
+      customContent?: ReactNode;
     }
   ) => void;
   /** Показать модальное окно с выбором из списка опций */
@@ -63,6 +64,7 @@ export const ActionModalProvider: React.FC<{ children: React.ReactNode }> = ({ c
         confirmText?: string;
         cancelText?: string;
         destructive?: boolean;
+        customContent?: ReactNode;
       }
     ) => {
       const actions: ActionModalButton[] = [
@@ -89,6 +91,7 @@ export const ActionModalProvider: React.FC<{ children: React.ReactNode }> = ({ c
       showModal({
         title,
         message,
+        customContent: options?.customContent,
         actions,
         dismissable: true,
       });
@@ -161,6 +164,7 @@ export const ActionModalProvider: React.FC<{ children: React.ReactNode }> = ({ c
           visible={!!modalOptions}
           title={modalOptions.title}
           message={modalOptions.message}
+          customContent={modalOptions.customContent}
           actions={modalOptions.actions}
           onDismiss={() => {
             onDismissCallbackRef.current?.();

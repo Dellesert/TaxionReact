@@ -24,6 +24,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   visible,
   title,
   message,
+  customContent,
   actions,
   onDismiss,
   dismissable = true,
@@ -100,6 +101,9 @@ export const ActionModal: React.FC<ActionModalProps> = ({
             {message && (
               <Text style={[styles.message, dynamicStyles.message]}>{message}</Text>
             )}
+
+            {/* Кастомный контент */}
+            {customContent}
 
             {/* Чекбокс (опционально) */}
             {checkbox && (

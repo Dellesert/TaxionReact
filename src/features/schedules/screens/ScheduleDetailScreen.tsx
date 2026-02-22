@@ -136,6 +136,25 @@ export const ScheduleDetailScreen: React.FC = () => {
     }
   }, [schedule, publishScheduleAction, refresh, showSuccess, showError]);
 
+  // Helper: render styled warning list for confirmation dialogs
+  const renderWarningList = useCallback((warnings: ScheduleEntryWarning[], questionText: string) => (
+    <View style={warningStyles.container}>
+      {warnings.map((w, i) => (
+        <View key={i} style={warningStyles.warningItem}>
+          <Text style={warningStyles.warningIcon}>
+            {w.type === 'absence' ? '📅' : '⚠️'}
+          </Text>
+          <Text style={[warningStyles.warningText, { color: '#92400E' }]}>
+            {w.message}
+          </Text>
+        </View>
+      ))}
+      <Text style={[warningStyles.question, { color: theme.text }]}>
+        {questionText}
+      </Text>
+    </View>
+  ), [theme.text]);
+
   // User filter state for recurring schedules
   const [showUserFilterPicker, setShowUserFilterPicker] = useState(false);
   const [filterUserId, setFilterUserId] = useState<number | null>(null);
@@ -276,15 +295,61 @@ export const ScheduleDetailScreen: React.FC = () => {
         }
         setCellWarnings(newWarnings);
 
-        // Build warning message for confirmation dialog
-        const warningMessages = warned
-          .map(w => w.warnings.map(warn => warn.message).join('; '))
-          .join('\n');
+        // Build styled warning content for confirmation dialog
         const total = succeeded.length + failed.length + warned.length;
+
+        // Group warnings by user for better readability
+        const warningsByUser = new Map<number, { userName: string; dateKey: string; warnings: ScheduleEntryWarning[] }[]>();
+        for (const w of warned) {
+          const dashIdx = w.cellKey.indexOf('-');
+          const uId = Number(w.cellKey.substring(0, dashIdx));
+          const dKey = w.cellKey.substring(dashIdx + 1);
+          const member = groupMembers.find(m => m.id === uId);
+          if (!warningsByUser.has(uId)) {
+            warningsByUser.set(uId, []);
+          }
+          warningsByUser.get(uId)!.push({
+            userName: member?.name || `#${uId}`,
+            dateKey: dKey,
+            warnings: w.warnings,
+          });
+        }
+
+        const warningContent = (
+          <View style={warningStyles.container}>
+            {Array.from(warningsByUser.entries()).map(([userId, items]) => (
+              <View key={userId} style={[warningStyles.userGroup, { backgroundColor: theme.backgroundTertiary, borderColor: theme.border }]}>
+                <Text style={[warningStyles.userName, { color: theme.text }]}>
+                  {items[0].userName}
+                </Text>
+                {items.map((item, idx) => (
+                  <View key={idx} style={warningStyles.warningRow}>
+                    <Text style={[warningStyles.dateLabel, { color: theme.textSecondary }]}>
+                      {item.dateKey}
+                    </Text>
+                    {item.warnings.map((w, wi) => (
+                      <View key={wi} style={warningStyles.warningItem}>
+                        <Text style={[warningStyles.warningIcon]}>
+                          {w.type === 'absence' ? '📅' : '⚠️'}
+                        </Text>
+                        <Text style={[warningStyles.warningText, { color: '#92400E' }]}>
+                          {w.message}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            ))}
+            <Text style={[warningStyles.question, { color: theme.text }]}>
+              Назначить все равно?
+            </Text>
+          </View>
+        );
 
         showConfirm(
           `Предупреждения (${warned.length})`,
-          `${warningMessages}\n\nНазначить все равно?`,
+          '',
           () => {
             // User confirmed — mark warned entries for force and re-save
             markForForce(warned.map(w => w.cellKey));
@@ -296,8 +361,9 @@ export const ScheduleDetailScreen: React.FC = () => {
           },
           {
             confirmText: 'Назначить',
-            cancelText: 'Оставить',
+            cancelText: 'Отменить',
             destructive: false,
+            customContent: warningContent,
           },
         );
 
@@ -321,7 +387,7 @@ export const ScheduleDetailScreen: React.FC = () => {
       setIsSavingPending(false);
       refresh();
     }
-  }, [schedule, pendingChanges, createEntry, updateEntry, deleteEntry, removeSucceeded, markForForce, discardPendingChanges, refresh, showSuccess, showError, showConfirm, setIsSavingPending, setSaveErrors]);
+  }, [schedule, pendingChanges, createEntry, updateEntry, deleteEntry, removeSucceeded, markForForce, discardPendingChanges, refresh, showSuccess, showError, showConfirm, setIsSavingPending, setSaveErrors, theme, groupMembers]);
 
   // Handler for discarding all pending changes with confirmation
   const handleDiscardPendingChanges = useCallback(() => {
@@ -533,16 +599,16 @@ export const ScheduleDetailScreen: React.FC = () => {
       const result = await updateEntry(schedule.id, entryId, data as UpdateScheduleEntryRequest);
       if (!result.created && result.warnings?.length) {
         // Warnings returned — ask user to confirm
-        const warningMessages = result.warnings.map(w => w.message).join('\n');
+        const content = renderWarningList(result.warnings, 'Сохранить изменения?');
         showConfirm(
           'Предупреждение',
-          `${warningMessages}\n\nСохранить изменения?`,
+          '',
           async () => {
             await updateEntry(schedule.id, entryId, { ...data, force: true } as UpdateScheduleEntryRequest);
             refresh();
           },
           undefined,
-          { confirmText: 'Сохранить', cancelText: 'Отмена', destructive: false },
+          { confirmText: 'Сохранить', cancelText: 'Отмена', destructive: false, customContent: content },
         );
         return;
       }
@@ -551,16 +617,16 @@ export const ScheduleDetailScreen: React.FC = () => {
       const result = await createEntry(schedule.id, data as CreateScheduleEntryRequest);
       if (!result.created && result.warnings?.length) {
         // Warnings returned — ask user to confirm
-        const warningMessages = result.warnings.map(w => w.message).join('\n');
+        const content = renderWarningList(result.warnings, 'Назначить смену?');
         showConfirm(
           'Предупреждение',
-          `${warningMessages}\n\nНазначить смену?`,
+          '',
           async () => {
             await createEntry(schedule.id, { ...data, force: true } as CreateScheduleEntryRequest);
             refresh();
           },
           undefined,
-          { confirmText: 'Назначить', cancelText: 'Отмена', destructive: false },
+          { confirmText: 'Назначить', cancelText: 'Отмена', destructive: false, customContent: content },
         );
         return;
       }
@@ -659,10 +725,10 @@ export const ScheduleDetailScreen: React.FC = () => {
 
       // If warnings returned without creation, ask user to confirm
       if (!result.created && result.warnings?.length) {
-        const warningMessages = result.warnings.map(w => w.message).join('\n');
+        const content = renderWarningList(result.warnings, 'Назначить смену?');
         showConfirm(
           'Предупреждение',
-          `${warningMessages}\n\nНазначить смену?`,
+          '',
           async () => {
             try {
               await createEntry(schedule.id, {
@@ -676,7 +742,7 @@ export const ScheduleDetailScreen: React.FC = () => {
             }
           },
           undefined,
-          { confirmText: 'Назначить', cancelText: 'Отмена', destructive: false },
+          { confirmText: 'Назначить', cancelText: 'Отмена', destructive: false, customContent: content },
         );
       }
     } catch {
@@ -690,10 +756,10 @@ export const ScheduleDetailScreen: React.FC = () => {
     try {
       const result = await updateEntry(schedule.id, entryId, { user_id: userId });
       if (!result.created && result.warnings?.length) {
-        const warningMessages = result.warnings.map(w => w.message).join('\n');
+        const content = renderWarningList(result.warnings, 'Сохранить изменения?');
         showConfirm(
           'Предупреждение',
-          `${warningMessages}\n\nСохранить изменения?`,
+          '',
           async () => {
             try {
               await updateEntry(schedule.id, entryId, { user_id: userId, force: true });
@@ -702,7 +768,7 @@ export const ScheduleDetailScreen: React.FC = () => {
             }
           },
           undefined,
-          { confirmText: 'Сохранить', cancelText: 'Отмена', destructive: false },
+          { confirmText: 'Сохранить', cancelText: 'Отмена', destructive: false, customContent: content },
         );
       }
     } catch {
@@ -2012,5 +2078,51 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+});
+
+// Styles for warning confirmation dialogs
+const warningStyles = StyleSheet.create({
+  container: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  userGroup: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 10,
+    gap: 6,
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  warningRow: {
+    gap: 4,
+  },
+  dateLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  warningItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  warningIcon: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  warningText: {
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
+  },
+  question: {
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

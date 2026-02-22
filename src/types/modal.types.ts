@@ -30,6 +30,8 @@ export interface ActionModalProps {
   title: string;
   /** Сообщение (опционально) */
   message?: string;
+  /** Кастомный контент вместо/после message */
+  customContent?: React.ReactNode;
   /** Массив кнопок действий */
   actions: ActionModalButton[];
   /** Обработчик закрытия по нажатию вне окна */
@@ -45,6 +47,8 @@ export interface ActionModalOptions {
   title: string;
   /** Сообщение (опционально) */
   message?: string;
+  /** Кастомный контент вместо/после message */
+  customContent?: React.ReactNode;
   /** Массив кнопок действий */
   actions: ActionModalButton[];
   /** Возможность закрыть по нажатию вне окна */
