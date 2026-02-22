@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { Avatar } from '@shared/components/common/Avatar';
 import {
   SearchCategory,
   SearchResult,
@@ -299,11 +300,47 @@ export const GlobalSearchDropdown: React.FC<GlobalSearchDropdownProps> = ({
     );
   }, [theme]);
 
+  const getResultAvatarProps = useCallback((result: SearchResult): { imageUrl?: string; thumbnailUrl?: string; name: string } => {
+    switch (result.entity_type) {
+      case 'chat': {
+        const meta = result.metadata as ChatSearchMetadata;
+        return { imageUrl: meta.avatar, name: result.title || '' };
+      }
+      case 'message': {
+        const meta = result.metadata as MessageSearchMetadata;
+        return {
+          imageUrl: meta.sender_avatar,
+          thumbnailUrl: meta.sender_avatar_thumbnail,
+          name: meta.sender_name || '',
+        };
+      }
+      case 'task': {
+        const meta = result.metadata as TaskSearchMetadata;
+        return { imageUrl: meta.creator_avatar, name: meta.creator_name || '' };
+      }
+      case 'poll': {
+        const meta = result.metadata as PollSearchMetadata;
+        return { imageUrl: meta.creator_avatar, name: meta.creator_name || '' };
+      }
+      case 'event': {
+        const meta = result.metadata as EventSearchMetadata;
+        return { imageUrl: meta.creator_avatar, name: meta.creator_name || '' };
+      }
+      case 'schedule': {
+        const meta = result.metadata as ScheduleSearchMetadata;
+        return { imageUrl: meta.creator_avatar, name: meta.creator_name || '' };
+      }
+      default:
+        return { name: result.title || '' };
+    }
+  }, []);
+
   const renderResultItem = useCallback((result: SearchResult) => {
+    const avatarProps = getResultAvatarProps(result);
     return (
       <TouchableOpacity
         key={`${result.entity_type}-${result.entity_id}`}
-        style={styles.resultItem}
+        style={[styles.resultItem, styles.resultItemRow]}
         onPress={() => handleResultPress(result)}
         activeOpacity={0.7}
         // @ts-ignore - Web-only hover
@@ -318,23 +355,31 @@ export const GlobalSearchDropdown: React.FC<GlobalSearchDropdownProps> = ({
           }
         }}
       >
-        <Text numberOfLines={1} style={[styles.resultTitle, { color: theme.text }]}>
-          {result.title}
-        </Text>
-        {result.content ? (
-          <View style={styles.resultContentContainer}>
-            {renderHighlightedText(
-              result.content,
-              theme.textSecondary,
-              (theme.warning || '#F59E0B') + '40',
-              theme.text,
-            )}
-          </View>
-        ) : null}
-        {renderMetadataBadges(result)}
+        <Avatar
+          imageUrl={avatarProps.imageUrl}
+          thumbnailUrl={avatarProps.thumbnailUrl}
+          name={avatarProps.name}
+          size={32}
+        />
+        <View style={styles.resultItemContent}>
+          <Text numberOfLines={1} style={[styles.resultTitle, { color: theme.text }]}>
+            {result.title}
+          </Text>
+          {result.content ? (
+            <View style={styles.resultContentContainer}>
+              {renderHighlightedText(
+                result.content,
+                theme.textSecondary,
+                (theme.warning || '#F59E0B') + '40',
+                theme.text,
+              )}
+            </View>
+          ) : null}
+          {renderMetadataBadges(result)}
+        </View>
       </TouchableOpacity>
     );
-  }, [theme, handleResultPress, renderMetadataBadges]);
+  }, [theme, handleResultPress, renderMetadataBadges, getResultAvatarProps]);
 
   const renderCategory = useCallback((category: SearchCategory) => {
     const config = CATEGORY_CONFIG[category.type];
@@ -572,6 +617,14 @@ const styles = StyleSheet.create({
     transition: 'background-color 0.1s ease',
     borderRadius: 4,
     marginHorizontal: 4,
+  },
+  resultItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  resultItemContent: {
+    flex: 1,
   },
   resultTitle: {
     fontSize: 14,
