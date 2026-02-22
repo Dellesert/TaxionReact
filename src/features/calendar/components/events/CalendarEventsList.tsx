@@ -37,8 +37,8 @@ export const CalendarEventsList: React.FC<CalendarEventsListProps> = ({
             <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
               <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
               {holiday && (
-                <View style={[styles.holidayTag, { backgroundColor: theme.error + '12' }]} pointerEvents="none">
-                  <Ionicons name="gift-outline" size={10} color={theme.error} />
+                <View style={[styles.holidayTag, { backgroundColor: theme.error + '20' }]} pointerEvents="none">
+                  <Ionicons name="gift-outline" size={16} color={theme.error} />
                   <Text style={[styles.holidayTagText, { color: theme.error }]} numberOfLines={1}>
                     {holiday.name}
                   </Text>

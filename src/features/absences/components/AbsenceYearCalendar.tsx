@@ -313,7 +313,7 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
                   key={dayIndex}
                   style={[
                     styles.dayCell,
-                    calendarDay.isHoliday && !hasAbsences && [styles.holidayCell, { backgroundColor: theme.error + '15' }],
+                    calendarDay.isHoliday && !hasAbsences && [styles.holidayCell, { backgroundColor: theme.error + '20' }],
                     hasAbsences && [styles.dayCellWithAbsence, { backgroundColor: bgColor + '30' }],
                     calendarDay.isToday && [styles.todayCell, { borderColor: theme.primary }],
                   ]}
@@ -744,14 +744,14 @@ const styles = StyleSheet.create({
     } : {}),
   },
   dayCellWithAbsence: {
-    borderRadius: 6,
+    borderRadius: 8,
   },
   holidayCell: {
-    borderRadius: 6,
+    borderRadius: 8,
   },
   todayCell: {
     borderWidth: 1.5,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   dayText: {
     fontSize: 11,

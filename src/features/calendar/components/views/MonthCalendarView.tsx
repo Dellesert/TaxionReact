@@ -215,7 +215,7 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
           bottom: 0,
           left: 2,
           right: 2,
-          backgroundColor: theme.error + '15',
+          backgroundColor: theme.error + '20',
           borderRadius: 8,
         }} />
       )}

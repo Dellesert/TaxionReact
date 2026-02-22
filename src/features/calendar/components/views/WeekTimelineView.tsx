@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   holidayLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '500',
     textAlign: 'center',
     paddingHorizontal: 4,

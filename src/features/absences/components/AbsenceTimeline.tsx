@@ -342,7 +342,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
           return (
             <View
               key={holiday.date}
-              style={[styles.holidayLine, { left: position, backgroundColor: theme.error + '25' }]}
+              style={[styles.holidayLine, { left: position, backgroundColor: theme.error + '20' }]}
               // @ts-ignore - Web-only
               title={holiday.name}
             />

@@ -12,10 +12,10 @@ export const HolidayBanner: React.FC<HolidayBannerProps> = ({ holidayName }) => 
 
   return (
     <View
-      style={[styles.container, { backgroundColor: theme.error + '12', borderColor: theme.error + '30' }]}
+      style={[styles.container, { backgroundColor: theme.error + '20', borderColor: theme.error + '30' }]}
       pointerEvents="none"
     >
-      <Ionicons name="gift-outline" size={14} color={theme.error} />
+      <Ionicons name="gift-outline" size={16} color={theme.error} />
       <Text style={[styles.text, { color: theme.error }]} numberOfLines={1}>
         {holidayName}
       </Text>
