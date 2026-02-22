@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,15 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useDebounce } from '@shared/hooks/useDebounce';
 import * as userApi from '@api/user.api';
 import { User } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { ActionMenu } from '@shared/components/common/ActionMenu';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
+import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
+import { TitleBarDepartmentControls } from '@features/admin/components/common/TitleBarDepartmentControls';
 import { AdminStackParamList } from '@navigation/types';
 
 type EditDepartmentRouteProp = RouteProp<AdminStackParamList, 'EditDepartment'>;
@@ -41,7 +45,6 @@ const EditDepartmentScreen: React.FC = () => {
   const { departmentId } = route.params;
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [departmentUsers, setDepartmentUsers] = useState<User[]>([]);
 
   const [name, setName] = useState('');
@@ -50,16 +53,68 @@ const EditDepartmentScreen: React.FC = () => {
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+  const isDesktop = useIsWideScreen();
 
-  // Clear TitleBar controls when editing department
+  // Auto-save: debounce name changes
+  const debouncedName = useDebounce(name, 800);
+  const initialLoadDone = useRef(false);
+  const lastSavedName = useRef('');
+
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (!debouncedName.trim() || debouncedName.trim() === lastSavedName.current) return;
+
+    const autoSave = async () => {
+      try {
+        await userApi.updateDepartment(departmentId, {
+          name: debouncedName.trim(),
+          head_id: headId,
+        });
+        lastSavedName.current = debouncedName.trim();
+      } catch (error: any) {
+        console.error('Auto-save failed:', error);
+        showError('Не удалось сохранить изменения');
+      }
+    };
+
+    autoSave();
+  }, [debouncedName]);
+
+  // TitleBar controls for Electron desktop
+  const handleGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  const handleOpenMenuFromTitleBar = useCallback((position: { x: number; y: number; width: number; height: number }) => {
+    setMenuButtonPosition(position);
+    setShowActionMenu(true);
+  }, []);
+
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return <TitleBarBackButton onGoBack={handleGoBack} label="К отделам" />;
+  }, [isElectron, isDesktop, handleGoBack]);
+
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <TitleBarDepartmentControls
+        onOpenMenu={handleOpenMenuFromTitleBar}
+      />
+    );
+  }, [isElectron, isDesktop, handleOpenMenuFromTitleBar]);
+
   useTitleBarControlsIntegration({
-    pageTitle: 'Редактирование отдела',
-    leftControls: null,
-    rightControls: null,
-    enabled: isElectron,
+    pageTitle: name || 'Редактирование отдела',
+    leftControls: titleBarLeftControls,
+    rightControls: titleBarRightControls,
+    enabled: isElectron && isDesktop,
   });
 
   useEffect(() => {
@@ -74,6 +129,7 @@ const EditDepartmentScreen: React.FC = () => {
       const dept = await userApi.getDepartment(departmentId);
       setName(dept.name);
       setHeadId(dept.head_id);
+      lastSavedName.current = dept.name;
 
       // Load department users
       const users = await userApi.getDepartmentUsers(departmentId);
@@ -90,29 +146,7 @@ const EditDepartmentScreen: React.FC = () => {
       showError('Не удалось загрузить данные отдела');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!name.trim()) {
-      showError('Введите название отдела');
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      await userApi.updateDepartment(departmentId, {
-        name: name.trim(),
-        head_id: headId,
-      });
-
-      showSuccess('Отдел обновлен');
-      navigation.goBack();
-    } catch (error: any) {
-      console.error('Failed to update department:', error);
-      showError('Не удалось обновить отдел');
-    } finally {
-      setIsSaving(false);
+      initialLoadDone.current = true;
     }
   };
 
@@ -235,24 +269,13 @@ const EditDepartmentScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={theme.primary} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование отдела</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isSaving}
-              style={{ opacity: isSaving ? 0.5 : 1 }}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color={theme.primary} />
-              ) : (
-                <Ionicons name="checkmark" size={24} color={theme.primary} />
-              )}
+        {/* Header - hidden on desktop Electron (controls are in TitleBar) */}
+        {!(isElectron && isDesktop) && (
+          <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color={theme.primary} />
             </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование отдела</Text>
             <TouchableOpacity
               onPress={() => setShowActionMenu(true)}
               style={{ padding: 4 }}
@@ -260,7 +283,7 @@ const EditDepartmentScreen: React.FC = () => {
               <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
             </TouchableOpacity>
           </View>
-        </View>
+        )}
 
         <ScrollView
           style={styles.content}
@@ -364,6 +387,8 @@ const EditDepartmentScreen: React.FC = () => {
               disabled: isDeleting,
             },
           ]}
+          isDesktop={isDesktop}
+          buttonPosition={menuButtonPosition}
         />
 
         {/* User Selector Modal */}
@@ -412,9 +437,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
-  saveButton: {
-    padding: 4,
-  },
   content: {
     flex: 1,
   },
@@ -449,14 +471,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 80,
-    textAlignVertical: 'top',
   },
   addButton: {
     flexDirection: 'row',
