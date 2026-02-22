@@ -3,7 +3,7 @@
  * Desktop версия управления группами пользователей с поиском в header
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   TextInput,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +22,8 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { ActionMenu } from '@shared/components/common/ActionMenu';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { ExpandableCreateButton } from '@shared/components/common/ExpandableCreateButton';
 import { getUserGroups, createUserGroup, updateUserGroupMembers, deleteUserGroup, reorderUserGroups } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
@@ -104,7 +107,6 @@ const UserGroupsDesktopContent: React.FC = () => {
   const isNarrow = contentWidth < 600;
   const gridColumns = isNarrow ? 1 : 2;
   const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
-  const horizontalPadding = isNarrow ? 16 : 32;
   const { user } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
@@ -125,6 +127,86 @@ const UserGroupsDesktopContent: React.FC = () => {
   // HTML5 Drag and Drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+
+  const handleOpenActionMenu = useCallback(() => {
+    if (menuButtonRef.current) {
+      // @ts-ignore - Web-only method
+      const rect = menuButtonRef.current.getBoundingClientRect?.();
+      if (rect) {
+        setMenuButtonPosition({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+        setShowActionMenu(true);
+      } else {
+        menuButtonRef.current.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
+          setMenuButtonPosition({ x: pageX, y: pageY, width, height });
+          setShowActionMenu(true);
+        });
+      }
+    } else {
+      setShowActionMenu(true);
+    }
+  }, []);
+
+  // TitleBar center controls - search input (hidden in reorder mode)
+  const titleBarCenterControls = useMemo(() => {
+    if (!isElectron || isReorderMode) return null;
+    return (
+      <View style={titleBarStyles.searchContainer}>
+        <Ionicons name="search" size={14} color={theme.textSecondary} />
+        <TextInput
+          style={[titleBarStyles.searchInput, { color: theme.text }]}
+          placeholder="Поиск групп..."
+          placeholderTextColor={theme.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={14} color={theme.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }, [isElectron, isReorderMode, searchQuery, theme]);
+
+  // TitleBar right controls - create button + menu
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron) return null;
+    return (
+      <View style={titleBarStyles.rightControlsRow}>
+        <ExpandableCreateButton
+          label="Создать"
+          title="Создать группу"
+          onPress={() => setShowCreateModal(true)}
+        />
+        <View
+          ref={menuButtonRef}
+          style={[titleBarStyles.menuButton, { backgroundColor: theme.backgroundTertiary }]}
+          // @ts-ignore - Web-only
+          onClick={handleOpenActionMenu}
+          onMouseEnter={(e: any) => {
+            if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.border;
+          }}
+          onMouseLeave={(e: any) => {
+            if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+          }}
+        >
+          <Ionicons name="ellipsis-vertical" size={14} color={theme.text} />
+        </View>
+      </View>
+    );
+  }, [isElectron, theme, handleOpenActionMenu]);
+
+  // Integrate with TitleBar
+  useTitleBarControlsIntegration({
+    pageTitle: 'Группы пользователей',
+    centerControls: titleBarCenterControls,
+    rightControls: titleBarRightControls,
+    isPageLoading: isLoading,
+    enabled: isElectron,
+  });
 
   // Check access
   if (user?.role !== 'admin' && user?.role !== 'super_admin' && user?.role !== 'department_head') {
@@ -244,17 +326,6 @@ const UserGroupsDesktopContent: React.FC = () => {
     }
   }, [groups]);
 
-  const handleOpenActionMenu = () => {
-    if (menuButtonRef.current) {
-      menuButtonRef.current.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
-        setMenuButtonPosition({ x: pageX, y: pageY, width, height });
-        setShowActionMenu(true);
-      });
-    } else {
-      setShowActionMenu(true);
-    }
-  };
-
   const filteredGroups = groups.filter((group) =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (group.description && group.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -264,71 +335,6 @@ const UserGroupsDesktopContent: React.FC = () => {
     container: {
       flex: 1,
       backgroundColor: theme.background,
-    },
-    header: {
-      paddingHorizontal: horizontalPadding,
-      paddingTop: isNarrow ? 20 : 32,
-      paddingBottom: isNarrow ? 16 : 24,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTop: {
-      flexDirection: isNarrow ? 'column' : 'row',
-      justifyContent: 'space-between',
-      alignItems: isNarrow ? 'stretch' : 'flex-start',
-      marginBottom: isNarrow ? 12 : 20,
-      gap: isNarrow ? 12 : 24,
-    },
-    headerText: {
-      flex: 1,
-    },
-    headerTitle: {
-      fontSize: isNarrow ? 22 : 28,
-      fontWeight: '700',
-      color: theme.text,
-      marginBottom: 6,
-      letterSpacing: -0.5,
-    },
-    headerDescription: {
-      fontSize: 15,
-      color: theme.textSecondary,
-      lineHeight: 22,
-    },
-    searchRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    searchContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      gap: 8,
-      maxWidth: isNarrow ? undefined : 500,
-      flex: isNarrow ? 1 : undefined,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: 15,
-      color: theme.text,
-    },
-    createButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: theme.primary,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 12,
-    },
-    createButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: '#FFFFFF',
     },
     groupCard: {
       backgroundColor: theme.backgroundSecondary,
@@ -450,55 +456,6 @@ const UserGroupsDesktopContent: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      {/* Header */}
-      <View style={[dynamicStyles.header, { backgroundColor: isDark ? theme.card : '#FAFAFA' }]}>
-        <View style={dynamicStyles.headerTop}>
-          <View style={dynamicStyles.headerText}>
-            <Text style={dynamicStyles.headerTitle}>Управление группами</Text>
-            <Text style={dynamicStyles.headerDescription}>
-              Создание и управление группами пользователей
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <TouchableOpacity
-              style={dynamicStyles.createButton}
-              onPress={() => setShowCreateModal(true)}
-            >
-              <Ionicons name="add" size={20} color="#FFFFFF" />
-              <Text style={dynamicStyles.createButtonText}>Создать группу</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              ref={menuButtonRef}
-              style={[styles.menuButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-              onPress={handleOpenActionMenu}
-            >
-              <Ionicons name="ellipsis-vertical" size={20} color={theme.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Search Row - hidden in reorder mode */}
-        {!isReorderMode && (
-          <View style={dynamicStyles.searchRow}>
-            <View style={dynamicStyles.searchContainer}>
-              <Ionicons name="search" size={18} color={theme.textSecondary} />
-              <TextInput
-                style={dynamicStyles.searchInput}
-                placeholder="Поиск групп..."
-                placeholderTextColor={theme.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        )}
-      </View>
-
       {/* Reorder mode banner */}
       {isReorderMode && (
         <View style={[styles.reorderBanner, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
@@ -838,11 +795,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     lineHeight: 22,
   },
-  menuButton: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
   reorderBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -882,6 +834,43 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
   },
+});
+
+const titleBarStyles = StyleSheet.create({
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    height: 28,
+    gap: 6,
+    minWidth: 200,
+    maxWidth: 360,
+    borderWidth: 1,
+    borderColor: 'rgba(128, 128, 128, 0.2)',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    height: 28,
+    // @ts-ignore - Web-only
+    outlineStyle: 'none',
+  } as any,
+  rightControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  } as any,
+  menuButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+  } as any,
 });
 
 export default UserGroupsDesktopContent;
