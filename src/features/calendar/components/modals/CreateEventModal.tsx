@@ -68,6 +68,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
+  const isElectronApp =
+    Platform.OS === 'web' &&
+    typeof window !== 'undefined' &&
+    !!(window as any).electron;
+  const isDesktopElectron = isDesktop && isElectronApp;
   const animationType = useAnimationType(isDesktop ? 'fade' : 'slide');
   const { showSuccess, showError } = useNotification();
   const insets = useSafeAreaInsets();
@@ -76,6 +81,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const isEditMode = !!editEvent;
   const canAddParticipants = user && (user.role === 'admin' || user.role === 'super_admin' || user.role === 'department_head');
+
+  const [hoveredWindowBtn, setHoveredWindowBtn] = useState<
+    'minimize' | 'maximize' | 'close' | null
+  >(null);
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -145,15 +154,16 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   }, [editEvent, visible]);
 
-  // Animation when step changes
+  // Animation when step changes (skip on desktop Electron edit mode)
   useEffect(() => {
+    if (isDesktopElectron && isEditMode) return;
     Animated.spring(slideAnim, {
       toValue: 0,
       useNativeDriver: true,
       tension: 50,
       friction: 7,
     }).start();
-  }, [currentStep]);
+  }, [currentStep, isDesktopElectron, isEditMode]);
 
   const handleReset = () => {
     setCurrentStep(1);
@@ -350,6 +360,380 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   };
 
+  // ===== DESKTOP ELECTRON (edit mode only) =====
+  if (isDesktopElectron && isEditMode) {
+    return (
+      <Modal
+        visible={visible}
+        animationType="fade"
+        transparent={false}
+        onRequestClose={handleClose}
+        statusBarTranslucent
+      >
+        <View style={[styles.desktopElectronContainer, { backgroundColor: theme.background }]}>
+          {/* Custom Title Bar */}
+          <View style={[styles.desktopTitleBar, { backgroundColor: theme.backgroundSecondary }]}>
+            {/* Back button */}
+            <View
+              style={styles.desktopTitleBarBackButton}
+              // @ts-ignore
+              onClick={handleClose}
+              onMouseEnter={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+              }}
+              onMouseLeave={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <Ionicons name="arrow-back" size={18} color={theme.text} />
+            </View>
+
+            {/* Title — draggable area */}
+            <View style={styles.desktopTitleBarDragArea}>
+              <Text style={[styles.desktopTitleBarTitle, { color: theme.text }]} numberOfLines={1}>
+                Редактирование события
+              </Text>
+            </View>
+
+            {/* Save button */}
+            <View
+              style={[styles.desktopTitleBarSaveButton, { backgroundColor: theme.primary }]}
+              // @ts-ignore
+              onClick={isLoading || !title.trim() ? undefined : handleCreate}
+              onMouseEnter={(e: any) => {
+                if (e.currentTarget?.style && !isLoading && title.trim()) e.currentTarget.style.opacity = '0.85';
+              }}
+              onMouseLeave={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.opacity = '1';
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                  <Text style={styles.desktopTitleBarSaveText}>Сохранить</Text>
+                </>
+              )}
+            </View>
+
+            {/* Window controls */}
+            <View style={styles.desktopWindowControls}>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'minimize' && { backgroundColor: theme.border }]}
+                // @ts-ignore
+                onClick={() => (window as any).electron?.minimize?.()}
+                onMouseEnter={() => setHoveredWindowBtn('minimize')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="remove" size={14} color={theme.text} />
+              </View>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'maximize' && { backgroundColor: theme.border }]}
+                // @ts-ignore
+                onClick={() => (window as any).electron?.maximize?.()}
+                onMouseEnter={() => setHoveredWindowBtn('maximize')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="square-outline" size={12} color={theme.text} />
+              </View>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'close' && { backgroundColor: '#E81123' }]}
+                // @ts-ignore
+                onClick={() => (window as any).electron?.close?.()}
+                onMouseEnter={() => setHoveredWindowBtn('close')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="close" size={14} color={hoveredWindowBtn === 'close' ? '#FFFFFF' : theme.text} />
+              </View>
+            </View>
+
+            {/* Bottom border */}
+            <View style={[styles.desktopTitleBarBorder, { backgroundColor: theme.border }]} />
+          </View>
+
+          {/* Two-Column Content */}
+          <ScrollView
+            style={styles.desktopScrollView}
+            contentContainerStyle={styles.desktopScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.desktopColumnsWrapper}>
+              {/* === LEFT COLUMN: основная информация + тип === */}
+              <View style={styles.desktopColumn}>
+                {/* Section: Basic Info */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Основная информация</Text>
+
+                  <View>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Название *</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Например: Планерка команды"
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={title}
+                      onChangeText={setTitle}
+                      maxLength={200}
+                    />
+                  </View>
+
+                  <View>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Описание (необязательно)</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Опишите детали события..."
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={description}
+                      onChangeText={setDescription}
+                      multiline
+                      numberOfLines={6}
+                      textAlignVertical="top"
+                      maxLength={500}
+                    />
+                    <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+                      {description.length}/500
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Section: Event Type & Color */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Тип и цвет</Text>
+
+                  <View>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Тип события *</Text>
+                    <View style={styles.eventTypeRow}>
+                      {EVENT_TYPES.map((type) => (
+                        <TouchableOpacity
+                          key={type.value}
+                          style={[
+                            styles.eventTypeCard,
+                            { backgroundColor: theme.background, borderColor: theme.border },
+                            eventType === type.value && {
+                              backgroundColor: theme.primary + '15',
+                              borderColor: theme.primary,
+                              borderWidth: 2,
+                            },
+                          ]}
+                          onPress={() => setEventType(type.value)}
+                        >
+                          <Ionicons
+                            name={type.icon as any}
+                            size={24}
+                            color={eventType === type.value ? theme.primary : theme.textSecondary}
+                          />
+                          <Text style={[
+                            styles.eventTypeLabel,
+                            { color: theme.text },
+                            eventType === type.value && { color: theme.primary, fontWeight: '600' }
+                          ]}>
+                            {type.label}
+                          </Text>
+                          {eventType === type.value && (
+                            <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
+                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {eventType === 'personal' && (
+                    <View style={[styles.infoSection, { backgroundColor: theme.background }]}>
+                      <Ionicons name="information-circle" size={20} color={theme.primary} />
+                      <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                        Личные события видны только вам и не имеют участников
+                      </Text>
+                    </View>
+                  )}
+
+                  <View>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Цвет</Text>
+                    <View style={styles.colorRow}>
+                      {EVENT_COLORS.map((c) => (
+                        <TouchableOpacity
+                          key={c.value}
+                          style={[
+                            styles.colorOption,
+                            { backgroundColor: c.value },
+                            color === c.value && styles.colorOptionSelected,
+                          ]}
+                          onPress={() => setColor(c.value)}
+                        >
+                          {color === c.value && (
+                            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* === RIGHT COLUMN: время/место + участники === */}
+              <View style={styles.desktopColumn}>
+                {/* Section: Time & Location */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Время и место</Text>
+
+                  <View style={styles.switchRow}>
+                    <Text style={[styles.switchLabel, { color: theme.text }]}>Весь день</Text>
+                    <Switch
+                      value={allDay}
+                      onValueChange={setAllDay}
+                      trackColor={{ false: theme.border, true: theme.primary }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+
+                  <View>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Начало *</Text>
+                    <TouchableOpacity
+                      style={[styles.dateButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      onPress={() => setShowStartDatePicker(true)}
+                    >
+                      <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                      <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                        {format(startDate, allDay ? 'dd MMMM yyyy' : 'dd MMMM yyyy, HH:mm', { locale: ru })}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Окончание *</Text>
+                    <TouchableOpacity
+                      style={[styles.dateButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      onPress={() => setShowEndDatePicker(true)}
+                    >
+                      <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                      <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                        {format(endDate, allDay ? 'dd MMMM yyyy' : 'dd MMMM yyyy, HH:mm', { locale: ru })}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Место (необязательно)</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Например: Конференц-зал"
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={location}
+                      onChangeText={setLocation}
+                      maxLength={200}
+                    />
+                  </View>
+                </View>
+
+                {/* Section: Participants (only for non-personal events) */}
+                {shouldShowParticipantsStep && (
+                  <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Участники</Text>
+
+                    {canAddParticipants && (
+                      <>
+                        <View>
+                          <Text style={[styles.label, { color: theme.textSecondary }]}>Аудитория</Text>
+                          <View style={styles.audienceRow}>
+                            <TouchableOpacity
+                              style={[
+                                styles.audienceChip,
+                                { backgroundColor: theme.background, borderColor: theme.border },
+                                audienceType === 'all' && { backgroundColor: theme.primary, borderColor: theme.primary },
+                              ]}
+                              onPress={() => setAudienceType('all')}
+                            >
+                              <Text style={[styles.audienceChipText, { color: theme.text }, audienceType === 'all' && { color: '#FFFFFF' }]}>
+                                Все сотрудники
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.audienceChip,
+                                { backgroundColor: theme.background, borderColor: theme.border },
+                                audienceType === 'department' && { backgroundColor: theme.primary, borderColor: theme.primary },
+                              ]}
+                              onPress={() => setAudienceType('department')}
+                            >
+                              <Text style={[styles.audienceChipText, { color: theme.text }, audienceType === 'department' && { color: '#FFFFFF' }]}>
+                                Мой отдел
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.audienceChip,
+                                { backgroundColor: theme.background, borderColor: theme.border },
+                                audienceType === 'selected_users' && { backgroundColor: theme.primary, borderColor: theme.primary },
+                              ]}
+                              onPress={() => setAudienceType('selected_users')}
+                            >
+                              <Text style={[styles.audienceChipText, { color: theme.text }, audienceType === 'selected_users' && { color: '#FFFFFF' }]}>
+                                Выбрать
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        {audienceType === 'selected_users' && (
+                          <View>
+                            <Text style={[styles.label, { color: theme.textSecondary }]}>Участники *</Text>
+                            <UserSelector
+                              selectedUserIds={selectedParticipants}
+                              onSelectionChange={setSelectedParticipants}
+                              multiSelect={true}
+                              placeholder="Выберите участников"
+                              modalTitle="Выбрать участников"
+                            />
+                          </View>
+                        )}
+                      </>
+                    )}
+
+                    {!canAddParticipants && (
+                      <View style={[styles.infoSection, { backgroundColor: theme.background }]}>
+                        <Ionicons name="information-circle" size={20} color={theme.primary} />
+                        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                          Только администраторы и руководители могут добавлять участников к событиям
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Date Pickers */}
+          {showStartDatePicker && (
+            <DatePickerModal
+              visible={showStartDatePicker}
+              value={startDate}
+              onChange={handleDateChange('start')}
+              onClose={() => setShowStartDatePicker(false)}
+              minimumDate={new Date()}
+              mode={allDay ? 'date' : 'datetime'}
+            />
+          )}
+
+          {showEndDatePicker && (
+            <DatePickerModal
+              visible={showEndDatePicker}
+              value={endDate}
+              onChange={handleDateChange('end')}
+              onClose={() => setShowEndDatePicker(false)}
+              minimumDate={startDate}
+              mode={allDay ? 'date' : 'datetime'}
+            />
+          )}
+        </View>
+      </Modal>
+    );
+  }
+
+  // ===== MOBILE / CREATE MODE =====
   return (
     <Modal
       visible={visible}
@@ -1081,6 +1465,113 @@ const styles = StyleSheet.create({
   },
   navButtonTextCompact: {
     fontSize: 14,
+  },
+  // ===== Desktop Electron styles =====
+  desktopElectronContainer: {
+    flex: 1,
+  },
+  desktopTitleBar: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    // @ts-ignore
+    WebkitAppRegion: 'no-drag',
+    userSelect: 'none',
+  },
+  desktopTitleBarBackButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    marginLeft: 12,
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+    WebkitAppRegion: 'no-drag',
+  },
+  desktopTitleBarDragArea: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    // @ts-ignore
+    WebkitAppRegion: 'drag',
+  },
+  desktopTitleBarTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  desktopTitleBarSaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 5,
+    marginRight: 8,
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'opacity 0.15s ease',
+    WebkitAppRegion: 'no-drag',
+  },
+  desktopTitleBarSaveText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  desktopWindowControls: {
+    flexDirection: 'row',
+    height: '100%',
+    flexShrink: 0,
+    // @ts-ignore
+    WebkitAppRegion: 'no-drag',
+  },
+  desktopWindowControlButton: {
+    width: 40,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+  },
+  desktopTitleBarBorder: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+  },
+  desktopScrollView: {
+    flex: 1,
+  },
+  desktopScrollContent: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+  desktopColumnsWrapper: {
+    flexDirection: 'row',
+    gap: 24,
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  desktopColumn: {
+    flex: 1,
+    gap: 20,
+  },
+  desktopSection: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    gap: 16,
+  },
+  desktopSectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 4,
   },
 });
 
