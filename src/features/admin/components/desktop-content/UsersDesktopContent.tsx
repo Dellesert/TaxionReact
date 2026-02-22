@@ -3,7 +3,7 @@
  * Desktop версия управления пользователями
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   TextInput,
   useWindowDimensions,
+  Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -20,6 +22,8 @@ import { useAuthStore } from '@shared/store/authStore';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useDebounce } from '@shared/hooks/useDebounce';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
+import { ExpandableFilterButton } from '@shared/components/common/ExpandableFilterButton';
 import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -33,7 +37,6 @@ const UsersDesktopContent: React.FC = () => {
   const isNarrow = contentWidth < 600;
   const gridColumns = isNarrow ? 1 : 2;
   const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
-  const horizontalPadding = isNarrow ? 16 : 32;
   const { user: currentUser } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showOptions, showConfirm } = useActionModal();
@@ -41,6 +44,12 @@ const UsersDesktopContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole | 'all'>('all');
+  const [filterMenuVisible, setFilterMenuVisible] = useState(false);
+  const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const filterButtonRef = useRef<View>(null) as React.RefObject<View>;
+
+  // Check if running in Electron
+  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
 
   // Debounce search query for backend search (300ms delay)
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -68,6 +77,85 @@ const UsersDesktopContent: React.FC = () => {
       setIsLoading(false);
     }
   }, [debouncedSearch, selectedRole, showError]);
+
+  // Role filter options
+  const ROLE_FILTERS: { key: UserRole | 'all'; label: string }[] = [
+    { key: 'all', label: 'Все' },
+    { key: 'employee', label: 'Сотрудники' },
+    { key: 'department_head', label: 'Руководители' },
+    { key: 'admin', label: 'Админы' },
+  ];
+
+  const handleFilterToggle = useCallback(() => {
+    if (filterButtonRef.current) {
+      // @ts-ignore - Web-only method
+      const rect = filterButtonRef.current.getBoundingClientRect?.();
+      if (rect) {
+        setFilterButtonPosition({
+          x: rect.left,
+          y: rect.top,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+    }
+    setFilterMenuVisible(prev => !prev);
+  }, []);
+
+  const handleRoleSelect = useCallback((role: UserRole | 'all') => {
+    setSelectedRole(role);
+    setFilterMenuVisible(false);
+  }, []);
+
+  const getRoleFilterLabel = () => {
+    const found = ROLE_FILTERS.find(f => f.key === selectedRole);
+    return found?.label || 'Все';
+  };
+
+  // TitleBar center controls - search input
+  const titleBarCenterControls = useMemo(() => {
+    if (!isElectron) return null;
+    return (
+      <View style={titleBarStyles.searchContainer}>
+        <Ionicons name="search" size={14} color={theme.textSecondary} />
+        <TextInput
+          style={[titleBarStyles.searchInput, { color: theme.text }]}
+          placeholder="Поиск пользователей..."
+          placeholderTextColor={theme.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={14} color={theme.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }, [isElectron, searchQuery, theme]);
+
+  // TitleBar right controls - filter button
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron) return null;
+    return (
+      <ExpandableFilterButton
+        label={getRoleFilterLabel()}
+        title="Фильтр по роли"
+        onPress={handleFilterToggle}
+        hasActiveFilters={selectedRole !== 'all'}
+        buttonRef={filterButtonRef}
+      />
+    );
+  }, [isElectron, selectedRole, handleFilterToggle]);
+
+  // Integrate with TitleBar
+  useTitleBarControlsIntegration({
+    pageTitle: 'Пользователи',
+    centerControls: titleBarCenterControls,
+    rightControls: titleBarRightControls,
+    isPageLoading: isLoading,
+    enabled: isElectron,
+  });
 
   // Check admin access
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
@@ -184,65 +272,6 @@ const UsersDesktopContent: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      paddingHorizontal: horizontalPadding,
-      paddingTop: isNarrow ? 20 : 32,
-      paddingBottom: isNarrow ? 16 : 24,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTop: {
-      marginBottom: isNarrow ? 12 : 20,
-    },
-    headerTitle: {
-      fontSize: isNarrow ? 22 : 28,
-      fontWeight: '700',
-      color: theme.text,
-      marginBottom: 6,
-      letterSpacing: -0.5,
-    },
-    headerDescription: {
-      fontSize: 15,
-      color: theme.textSecondary,
-      lineHeight: 22,
-    },
-    searchAndFilterRow: {
-      flexDirection: isNarrow ? 'column' : 'row',
-      alignItems: isNarrow ? 'stretch' : 'center',
-      gap: 12,
-    },
-    searchContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      gap: 8,
-      flex: isNarrow ? undefined : 1,
-      maxWidth: isNarrow ? undefined : 500,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: 15,
-      color: theme.text,
-    },
-    filterChips: {
-      flexDirection: 'row',
-      gap: 8,
-      flexWrap: isNarrow ? 'wrap' : undefined,
-    },
-    filterChip: {
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 10,
-    },
-    filterChipText: {
-      fontSize: 14,
-      fontWeight: '600',
-    },
     userCard: {
       backgroundColor: theme.backgroundSecondary,
       borderRadius: 16,
@@ -266,103 +295,6 @@ const UsersDesktopContent: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      {/* Header with title, description, search and filters */}
-      <View style={[dynamicStyles.header, { backgroundColor: isDark ? theme.card : '#FAFAFA' }]}>
-        <View style={dynamicStyles.headerTop}>
-          <Text style={dynamicStyles.headerTitle}>Управление пользователями</Text>
-          <Text style={dynamicStyles.headerDescription}>
-            Добавление, редактирование и управление правами пользователей
-          </Text>
-        </View>
-
-        {/* Search and Filter Row */}
-        <View style={dynamicStyles.searchAndFilterRow}>
-          <View style={dynamicStyles.searchContainer}>
-            <Ionicons name="search" size={18} color={theme.textSecondary} />
-            <TextInput
-              style={dynamicStyles.searchInput}
-              placeholder="Поиск пользователей..."
-              placeholderTextColor={theme.textTertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Role Filters */}
-          <View style={dynamicStyles.filterChips}>
-            <TouchableOpacity
-              style={[
-                dynamicStyles.filterChip,
-                { backgroundColor: selectedRole === 'all' ? theme.primary : theme.backgroundSecondary },
-              ]}
-              onPress={() => setSelectedRole('all')}
-            >
-              <Text
-                style={[
-                  dynamicStyles.filterChipText,
-                  { color: selectedRole === 'all' ? '#FFF' : theme.text },
-                ]}
-              >
-                Все
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                dynamicStyles.filterChip,
-                { backgroundColor: selectedRole === 'employee' ? theme.primary : theme.backgroundSecondary },
-              ]}
-              onPress={() => setSelectedRole('employee')}
-            >
-              <Text
-                style={[
-                  dynamicStyles.filterChipText,
-                  { color: selectedRole === 'employee' ? '#FFF' : theme.text },
-                ]}
-              >
-                Сотрудники
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                dynamicStyles.filterChip,
-                { backgroundColor: selectedRole === 'department_head' ? theme.primary : theme.backgroundSecondary },
-              ]}
-              onPress={() => setSelectedRole('department_head')}
-            >
-              <Text
-                style={[
-                  dynamicStyles.filterChipText,
-                  { color: selectedRole === 'department_head' ? '#FFF' : theme.text },
-                ]}
-              >
-                Руководители
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                dynamicStyles.filterChip,
-                { backgroundColor: selectedRole === 'admin' ? theme.primary : theme.backgroundSecondary },
-              ]}
-              onPress={() => setSelectedRole('admin')}
-            >
-              <Text
-                style={[
-                  dynamicStyles.filterChipText,
-                  { color: selectedRole === 'admin' ? '#FFF' : theme.text },
-                ]}
-              >
-                Админы
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
       {/* Content */}
       {isLoading ? (
         <View style={styles.centerContainer}>
@@ -470,6 +402,62 @@ const UsersDesktopContent: React.FC = () => {
           </View>
         </ScrollView>
       )}
+
+      {/* Role Filter Dropdown */}
+      <Modal
+        visible={filterMenuVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setFilterMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={filterDropdownStyles.overlay}
+          activeOpacity={1}
+          onPress={() => setFilterMenuVisible(false)}
+        >
+          <View
+            style={[
+              filterDropdownStyles.menu,
+              {
+                backgroundColor: theme.card,
+                top: filterButtonPosition
+                  ? filterButtonPosition.y + filterButtonPosition.height + 8
+                  : 60,
+                right: 16,
+              },
+            ]}
+          >
+            {ROLE_FILTERS.map((filter) => (
+              <TouchableOpacity
+                key={filter.key}
+                style={[
+                  filterDropdownStyles.menuItem,
+                  selectedRole === filter.key && {
+                    backgroundColor: theme.backgroundSecondary,
+                  },
+                ]}
+                onPress={() => handleRoleSelect(filter.key)}
+              >
+                <Text
+                  style={[
+                    filterDropdownStyles.menuItemText,
+                    { color: theme.text },
+                    selectedRole === filter.key && {
+                      color: theme.primary,
+                      fontWeight: '600',
+                    },
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+                {selectedRole === filter.key && (
+                  <Ionicons name="checkmark" size={20} color={theme.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -589,6 +577,59 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 22,
+  },
+});
+
+const titleBarStyles = StyleSheet.create({
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    height: 28,
+    gap: 6,
+    minWidth: 200,
+    maxWidth: 360,
+    borderWidth: 1,
+    borderColor: 'rgba(128, 128, 128, 0.2)',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    height: 28,
+    // @ts-ignore - Web-only
+    outlineStyle: 'none',
+  } as any,
+});
+
+const filterDropdownStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  menu: {
+    position: 'absolute',
+    minWidth: 180,
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
 
