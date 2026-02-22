@@ -353,6 +353,10 @@ export default function StorageScreen() {
         text: option.label,
         onPress: async () => {
           await setCacheLimit(option.value);
+          // Enforce the new limit immediately
+          import('@shared/utils/cacheMaintenance')
+            .then(({ runCacheMaintenance }) => runCacheMaintenance({ force: true }))
+            .catch(() => {});
           await loadCacheInfo();
         },
       }))

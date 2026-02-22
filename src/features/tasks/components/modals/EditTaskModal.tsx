@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useAnimationType } from '@shared/hooks/useAnimationType';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Task, TaskPriority, TaskChecklist } from '../../types/task.types';
@@ -42,9 +43,14 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   onTaskUpdated,
 }) => {
   const { theme, isDark } = useTheme();
-  const animationType = useAnimationType('slide');
+  const isDesktop = useIsWideScreen();
+  const isElectronApp = Platform.OS === 'web' && typeof window !== 'undefined' && !!(window as any).electron;
+  const isDesktopElectron = isDesktop && isElectronApp;
+  const animationType = useAnimationType(isDesktopElectron ? 'fade' : 'slide');
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
+
+  const [hoveredWindowBtn, setHoveredWindowBtn] = useState<'minimize' | 'maximize' | 'close' | null>(null);
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');

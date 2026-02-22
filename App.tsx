@@ -632,6 +632,11 @@ export default function App() {
           chatStore.loadUnreadCount().catch((error) => {
             console.error('[App] Failed to refresh chat unread count on visibility change:', error);
           });
+
+          // Run cache maintenance (throttled)
+          import('@shared/utils/cacheMaintenance')
+            .then(({ runCacheMaintenance }) => runCacheMaintenance())
+            .catch(() => {});
         }
       };
 
@@ -704,6 +709,11 @@ export default function App() {
         chatStore.loadUnreadCount().catch((error) => {
           console.error('[App] Failed to refresh chat unread count on foreground:', error);
         });
+
+        // Run cache maintenance (throttled)
+        import('@shared/utils/cacheMaintenance')
+          .then(({ runCacheMaintenance }) => runCacheMaintenance())
+          .catch(() => {});
       }
 
       appState = nextAppState;

@@ -267,6 +267,13 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
 
       hasWarmedRef.current = true;
       onComplete?.(results);
+
+      // Run cache maintenance after warming (delayed to let UI settle)
+      setTimeout(() => {
+        import('@shared/utils/cacheMaintenance')
+          .then(({ runCacheMaintenance }) => runCacheMaintenance())
+          .catch((e) => console.warn('[CacheWarming] Maintenance error:', e));
+      }, 2000);
     } catch (error) {
       console.error('[CacheWarming] Failed:', error);
     } finally {

@@ -297,8 +297,9 @@ export const getCacheUsagePercent = async (): Promise<number> => {
 };
 
 /**
- * Enforce cache limit by clearing old data
- * Clears in order: calendar -> polls -> tasks -> users -> chats
+ * Enforce cache limit by clearing old data.
+ * 1) Tries granular pruning first (trim messages, expired users, old calendar ranges)
+ * 2) Falls back to clearing entire stores in priority order if still over limit
  */
 export const enforceCacheLimit = async (): Promise<boolean> => {
   const [storageInfo, limit] = await Promise.all([getStorageSize(), getCacheLimit()]);
@@ -307,24 +308,48 @@ export const enforceCacheLimit = async (): Promise<boolean> => {
     return false; // Limit not exceeded
   }
 
-
   try {
-    // Cleanup order: least important data first
+    // Phase 1: Try granular pruning first
+    try {
+      const {
+        pruneMessages,
+        pruneCalendarRanges,
+        pruneExpiredUsers,
+        prunePolls,
+        pruneTasks,
+      } = await import('@shared/utils/cacheMaintenance');
+
+      pruneMessages();
+      pruneCalendarRanges();
+      pruneExpiredUsers();
+      prunePolls();
+      pruneTasks();
+
+      // Re-check size after pruning
+      const newStorageInfo = await getStorageSize();
+      if (newStorageInfo.totalSize <= limit) {
+        return true; // Granular pruning was sufficient
+      }
+    } catch (e) {
+      // Pruning module not available — proceed with wholesale clearing
+    }
+
+    // Phase 2: Clear entire stores in priority order (least important first)
+    const currentStorageInfo = await getStorageSize();
     const cleanupOrder = [
-      { id: STORAGE_IDS.calendar, name: 'Calendar', size: storageInfo.calendarSize },
-      { id: STORAGE_IDS.poll, name: 'Polls', size: storageInfo.pollSize },
-      { id: STORAGE_IDS.task, name: 'Tasks', size: storageInfo.taskSize },
-      { id: STORAGE_IDS.user, name: 'Users', size: storageInfo.userSize },
-      { id: STORAGE_IDS.chat, name: 'Chats', size: storageInfo.chatSize },
+      { id: STORAGE_IDS.calendar, name: 'Calendar', size: currentStorageInfo.calendarSize },
+      { id: STORAGE_IDS.poll, name: 'Polls', size: currentStorageInfo.pollSize },
+      { id: STORAGE_IDS.task, name: 'Tasks', size: currentStorageInfo.taskSize },
+      { id: STORAGE_IDS.user, name: 'Users', size: currentStorageInfo.userSize },
+      { id: STORAGE_IDS.chat, name: 'Chats', size: currentStorageInfo.chatSize },
     ];
 
-    let currentSize = storageInfo.totalSize;
+    let currentSize = currentStorageInfo.totalSize;
 
     for (const storage of cleanupOrder) {
       if (currentSize <= limit) break;
 
       if (storage.size > 0) {
-
         if (isNative) {
           const mmkv = mmkvInstances[storage.id];
           mmkv?.clearAll();
