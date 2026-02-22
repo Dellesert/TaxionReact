@@ -136,6 +136,18 @@ export const GlobalSearchDropdown: React.FC<GlobalSearchDropdownProps> = ({
     }
   }, [visible]);
 
+  // Закрытие по Escape
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !visible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [visible, onClose]);
+
   const handleResultPress = useCallback((result: SearchResult) => {
     onClose();
 
