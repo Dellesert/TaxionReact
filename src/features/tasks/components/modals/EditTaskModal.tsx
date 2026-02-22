@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
   },
   headerButton: {
@@ -967,9 +967,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   priorityChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
     borderWidth: 2,
   },
   priorityChipText: {
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderWidth: 1,
     borderRadius: 12,
     gap: 12,
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   clearButton: {
-    padding: 4,
+    padding: 8,
   },
   addChecklistContainer: {
     flexDirection: 'row',
@@ -1038,7 +1038,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   removeButton: {
-    padding: 4,
+    padding: 8,
   },
   emptyState: {
     alignItems: 'center',
@@ -1117,7 +1117,7 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 6,
+    borderRadius: 8,
     marginLeft: 12,
     // @ts-ignore
     cursor: 'pointer',
@@ -1140,9 +1140,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 8,
-    gap: 5,
+    gap: 4,
     marginRight: 8,
     // @ts-ignore
     cursor: 'pointer',
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   desktopSectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
   },

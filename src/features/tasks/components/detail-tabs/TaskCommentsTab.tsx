@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   commentAuthor: {
     fontSize: 14,
@@ -346,8 +346,8 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     fontSize: 15,
     minHeight: 44,
     maxHeight: 100,
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loadMore: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: 'center',
   },
   loadMoreText: {
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   menuButton: {
-    padding: 4,
+    padding: 8,
     marginLeft: 8,
   },
   menuOverlay: {
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     gap: 12,
   },

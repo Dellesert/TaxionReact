@@ -75,31 +75,31 @@ export const MonthPicker: React.FC<MonthPickerProps> = React.memo(({
       >
         <TouchableOpacity
           onPress={handlePrevMonth}
-          style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+          style={[styles.arrowButton, compact && styles.arrowButtonCompact, { backgroundColor: theme.backgroundTertiary }]}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-back" size={20} color={theme.text} />
+          <Ionicons name="chevron-back" size={compact ? 16 : 20} color={theme.text} />
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleToday}
-          style={styles.monthButton}
+          style={[styles.monthButton, compact && styles.monthButtonCompact]}
           activeOpacity={isCurrentMonth ? 1 : 0.6}
           disabled={isCurrentMonth}
         >
-          <Text style={[styles.monthText, { color: theme.text }]}>
+          <Text style={[styles.monthText, compact && styles.monthTextCompact, { color: theme.text }]}>
             {monthLabel}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleNextMonth}
-          style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+          style={[styles.arrowButton, compact && styles.arrowButtonCompact, { backgroundColor: theme.backgroundTertiary }]}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-forward" size={20} color={theme.text} />
+          <Ionicons name="chevron-forward" size={compact ? 16 : 20} color={theme.text} />
         </TouchableOpacity>
       </View>
     </View>
@@ -134,15 +134,27 @@ const styles = StyleSheet.create({
     }),
   },
   containerCompact: {
-    justifyContent: 'flex-start',
-    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    ...Platform.select({
+      ios: {
+        shadowOpacity: 0,
+      },
+      android: {
+        elevation: 0,
+      },
+    }),
   },
   arrowButton: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  arrowButtonCompact: {
+    width: 32,
+    height: 32,
   },
   monthButton: {
     alignItems: 'center',
@@ -150,9 +162,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     minWidth: 140,
   },
+  monthButtonCompact: {
+    paddingHorizontal: 46,
+    paddingVertical: 8,
+    minWidth: 120,
+  },
   monthText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
-    letterSpacing: 0.2,
+  },
+  monthTextCompact: {
+    fontSize: 15,
   },
 });

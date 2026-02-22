@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   dateSeparator: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
     marginBottom: 12,
     marginTop: 8,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   activityItem: {
     flexDirection: 'row',

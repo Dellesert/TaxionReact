@@ -584,7 +584,7 @@ const TaskDetailScreen: React.FC = () => {
               }
               showDivider={false}
               withShadow={false}
-              containerStyle={{ paddingTop: 14, paddingBottom: 14 }}
+              containerStyle={{ paddingTop: 16, paddingBottom: 16 }}
             />
           </View>
         )}
@@ -897,7 +897,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    gap: 6,
+    gap: 8,
   },
   statusButtonSecondary: {
     borderWidth: 1,

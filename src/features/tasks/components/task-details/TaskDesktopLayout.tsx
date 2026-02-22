@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 10,
+    gap: 12,
     borderTopWidth: 1,
   },
   commentInput: {
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 14,
     lineHeight: 18,
     borderWidth: 1.5,
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 18,
+    paddingVertical: 16,
     ...Platform.select({
       web: {
         transitionProperty: 'background-color',
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   historyTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.3,
   },

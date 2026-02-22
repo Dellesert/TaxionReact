@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@shared/hooks/useTheme';
 
 interface ExpandAllSubtasksButtonProps {
   expanded: boolean;
@@ -13,6 +14,8 @@ export const ExpandAllSubtasksButton: React.FC<ExpandAllSubtasksButtonProps> = (
   count,
   onToggle,
 }) => {
+  const { theme } = useTheme();
+
   return (
     <TouchableOpacity
       style={styles.expandAllButton}
@@ -22,9 +25,9 @@ export const ExpandAllSubtasksButton: React.FC<ExpandAllSubtasksButtonProps> = (
       <Ionicons
         name={expanded ? 'chevron-up' : 'chevron-down'}
         size={18}
-        color="#6b7280"
+        color={theme.textSecondary}
       />
-      <Text style={styles.expandAllText}>
+      <Text style={[styles.expandAllText, { color: theme.textSecondary }]}>
         {expanded ? 'Свернуть все подзадачи' : 'Развернуть все подзадачи'} ({count})
       </Text>
     </TouchableOpacity>
@@ -36,13 +39,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     gap: 8,
     backgroundColor: 'transparent',
   },
   expandAllText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#6b7280',
   },
 });

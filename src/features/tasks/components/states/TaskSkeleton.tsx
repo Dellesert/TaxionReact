@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   },
   descLine: {
     height: 12,
-    borderRadius: 6,
+    borderRadius: 8,
     marginBottom: 8,
   },
   descLineLong: {
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   badge: {
     height: 20,
     width: 60,
-    borderRadius: 10,
+    borderRadius: 12,
   },
 });
 

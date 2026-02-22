@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   delegatedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -375,8 +375,8 @@ const styles = StyleSheet.create({
   descriptionContainer: {
     marginBottom: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -386,17 +386,17 @@ const styles = StyleSheet.create({
   },
   descriptionHeader: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   descriptionLabel: {
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: -0.2,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   descriptionContent: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   descriptionText: {
     fontSize: 14,
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   descriptionFooter: {
     paddingHorizontal: 12,
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 8,
     marginTop: 4,
     borderTopWidth: 1,
     flexDirection: 'row',
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priorityBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
@@ -513,8 +513,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   groupProgressHeaderLeft: {
     flexDirection: 'row',
@@ -548,13 +548,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   groupAssigneeLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     flex: 1,
   },
   groupAssigneeName: {
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },

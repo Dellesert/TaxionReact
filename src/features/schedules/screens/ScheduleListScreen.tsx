@@ -362,6 +362,7 @@ export const ScheduleListScreen: React.FC = () => {
                 <MonthPicker
                   selectedDate={selectedMonth}
                   onMonthChange={handleMonthChange}
+                  compact
                 />
               </View>
               <ScrollView

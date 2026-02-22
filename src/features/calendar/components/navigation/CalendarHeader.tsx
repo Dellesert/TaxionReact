@@ -105,7 +105,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
   // Mobile header content
   return (
-    <View style={[styles.mobileHeaderContainer, { backgroundColor: theme.card, paddingTop: topPadding + 6 }]}>
+    <View style={[styles.mobileHeaderContainer, { backgroundColor: theme.card, paddingTop: topPadding + 8 }]}>
       <View style={styles.container}>
         <View style={styles.left}>
           <NotificationBell />
@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
     width: 80,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     flex: 1,
     textAlign: 'center',
   },
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
     paddingHorizontal: 16,
     borderWidth: 2,
     ...Platform.select({
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     }) as any),
   },
   clearButton: {
-    padding: 4,
+    padding: 8,
     marginLeft: 8,
     ...Platform.select({
       web: {

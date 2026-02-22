@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     borderWidth: 1,
     shadowColor: '#000',
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   attachmentUploader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   attachmentUploaderName: {
     fontSize: 11,
@@ -239,8 +239,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 14,
-    borderRadius: 10,
+    padding: 12,
+    borderRadius: 12,
     borderWidth: 2,
     borderStyle: 'dashed',
     marginTop: 8,

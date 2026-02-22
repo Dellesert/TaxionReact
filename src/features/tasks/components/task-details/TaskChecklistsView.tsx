@@ -615,8 +615,8 @@ const styles = StyleSheet.create({
   checklistContainer: {
     marginBottom: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -629,12 +629,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 0,
   },
   checklistHeaderExpanded: {
-    paddingBottom: 10,
-    marginBottom: 10,
+    paddingBottom: 8,
+    marginBottom: 8,
     borderBottomWidth: 1,
   },
   checklistHeaderLeft: {
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
   checklistTitle: {
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: -0.2,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   checklistCount: {
@@ -661,15 +661,15 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    paddingVertical: 10,
+    gap: 8,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     marginBottom: 8,
     borderRadius: 8,
     borderWidth: 1,
   },
   itemCheckbox: {
-    paddingTop: 1,
+    padding: 8,
   },
   checkbox: {
     width: 22,
@@ -707,17 +707,17 @@ const styles = StyleSheet.create({
   addItemInput: {
     flex: 1,
     fontSize: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     backgroundColor: '#f9fafb',
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
   checklistFooter: {
     paddingHorizontal: 12,
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 8,
     marginTop: 4,
     borderTopWidth: 1,
     flexDirection: 'row',
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   priorityBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },

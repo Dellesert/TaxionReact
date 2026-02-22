@@ -670,12 +670,12 @@ const styles = StyleSheet.create({
   headerCell: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   headerText: {
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
     opacity: 0.7,
   },
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
-    borderRadius: 6,
+    borderRadius: 8,
     ...(Platform.OS === 'web' && {
       transitionProperty: 'background-color, transform',
       transitionDuration: '0.2s',
@@ -857,7 +857,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 6,
+    marginTop: 8,
     flexWrap: 'wrap',
   },
   metaBadge: {
@@ -880,13 +880,13 @@ const styles = StyleSheet.create({
   tagBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
   },
   tagText: {
     fontSize: 10,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   priorityContainer: {
     flexDirection: 'row',
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
   deadlineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   deadlineIcon: {
     marginTop: 1,
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flex: 1,
     maxWidth: 120,
   },
@@ -942,8 +942,8 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
     alignSelf: 'flex-start',
     ...Platform.select({
       web: {

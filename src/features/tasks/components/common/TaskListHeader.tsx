@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 0,
-    paddingVertical: 10,
+    paddingVertical: 12,
     gap: 12,
     minHeight: 52,
   },
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   desktopTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   titleIcon: {
     marginTop: 2,
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 44,
     borderRadius: 22,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderWidth: 2,
     ...Platform.select({
       web: {
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     }) as any),
   },
   clearButton: {
-    padding: 4,
+    padding: 8,
     marginLeft: 8,
     ...Platform.select({
       web: {
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   desktopRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     flexShrink: 0,
   },
   desktopButton: {
@@ -363,10 +363,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 44, // Accessibility: minimum touch target
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 2,
-    gap: 6,
+    gap: 8,
     position: 'relative',
     ...Platform.select({
       web: {
@@ -416,9 +416,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 44, // Accessibility: minimum touch target
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 8,
     ...Platform.select({
       web: {
         cursor: 'pointer',

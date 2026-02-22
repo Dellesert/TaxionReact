@@ -510,7 +510,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             styles.eventTypeCard,
                             { backgroundColor: theme.background, borderColor: theme.border },
                             eventType === type.value && {
-                              backgroundColor: theme.primary + '15',
+                              backgroundColor: theme.primary + '20',
                               borderColor: theme.primary,
                               borderWidth: 2,
                             },
@@ -816,7 +816,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
             <ScrollView
               style={[styles.content, { backgroundColor: theme.background }]}
-              contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 10 : 100 }}
+              contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 8 : 100 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
@@ -941,7 +941,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             styles.eventTypeCard,
                             { backgroundColor: theme.card, borderColor: theme.border },
                             eventType === type.value && {
-                              backgroundColor: theme.primary + '15',
+                              backgroundColor: theme.primary + '20',
                               borderColor: theme.primary,
                               borderWidth: 2,
                             },
@@ -1235,7 +1235,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 4,
   },
   progressContainer: {
     paddingHorizontal: 20,
@@ -1248,7 +1248,7 @@ const styles = StyleSheet.create({
   progressStep: {
     flex: 1,
     height: 4,
-    borderRadius: 2,
+    borderRadius: 4,
   },
   content: {
     flex: 1,
@@ -1333,7 +1333,7 @@ const styles = StyleSheet.create({
   audienceChip: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 2,
   },
   audienceChipText: {

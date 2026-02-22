@@ -90,14 +90,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderTopWidth: 1,
     borderBottomWidth: 0,
-    gap: 6,
+    gap: 8,
     minHeight: 44, // Fixed minimum height to prevent jumping
   },
   tab: {
     flex: 1,
     minHeight: 36, // Fixed tab height
     paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     width: '100%',
   },
   tabLabel: {
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
   },
   tabCount: {
     fontSize: 11,

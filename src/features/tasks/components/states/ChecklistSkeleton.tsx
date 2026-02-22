@@ -126,12 +126,12 @@ const styles = StyleSheet.create({
   icon: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   checklistTitle: {
     height: 18,
     width: '50%',
-    borderRadius: 9,
+    borderRadius: 8,
   },
   progressCircle: {
     width: 32,
@@ -147,12 +147,12 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   itemText: {
     flex: 1,
     height: 14,
-    borderRadius: 7,
+    borderRadius: 8,
   },
   checklistFooter: {
     flexDirection: 'row',
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   assigneeName: {
     height: 14,
     width: 100,
-    borderRadius: 7,
+    borderRadius: 8,
   },
 });
 

@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   resetButtonText: {
     fontSize: 14,
@@ -553,13 +553,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     marginBottom: 12,
   },
   badge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 8,
     minWidth: 20,
     alignItems: 'center',
   },
@@ -576,11 +576,11 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 2,
-    gap: 6,
+    gap: 8,
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -605,9 +605,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    gap: 10,
+    gap: 8,
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 20,
     height: 20,
-    borderRadius: 6,
+    borderRadius: 4,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -643,11 +643,11 @@ const styles = StyleSheet.create({
   sortItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 2,
-    gap: 10,
+    gap: 8,
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -674,9 +674,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 8,
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   applyButton: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
     ...Platform.select({

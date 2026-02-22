@@ -408,7 +408,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
             <ScrollView
               style={[styles.content, { backgroundColor: theme.background }]}
-              contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 10 : 20 }}
+              contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 8 : 20 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
@@ -849,7 +849,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
   },
   compactHeaderButton: {
@@ -954,7 +954,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentTypeTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
@@ -1014,7 +1014,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   removeButton: {
-    padding: 4,
+    padding: 8,
   },
   emptyState: {
     alignItems: 'center',
@@ -1049,9 +1049,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   priorityChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 16,
     borderWidth: 2,
   },
   priorityChipText: {
@@ -1062,7 +1062,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderWidth: 1,
     borderRadius: 12,
     gap: 12,
@@ -1072,7 +1072,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   clearButton: {
-    padding: 4,
+    padding: 8,
   },
   infoSection: {
     flexDirection: 'row',
@@ -1105,17 +1105,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
     gap: 8,
     flex: 1,
   },
   navButtonCompact: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 10,
-    gap: 6,
+    borderRadius: 12,
+    gap: 8,
   },
   backButton: {
     borderWidth: 1,

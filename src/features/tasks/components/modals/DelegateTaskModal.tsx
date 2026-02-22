@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   closeButton: {
-    padding: 4,
+    padding: 8,
     width: 32,
   },
   modalTitle: {
@@ -451,10 +451,10 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   searchClearButton: {
-    padding: 4,
+    padding: 8,
   },
   listContainer: {
     paddingBottom: 16,
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
     backgroundColor: '#E94444',
     borderRadius: 8,
   },
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   delegateButton: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: '#E94444',
     borderRadius: 8,
     alignItems: 'center',

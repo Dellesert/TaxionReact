@@ -290,11 +290,11 @@ const styles = StyleSheet.create({
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     backgroundColor: '#eff6ff',
-    borderRadius: 6,
+    borderRadius: 8,
   },
   uploadButtonText: {
     fontSize: 14,

@@ -29,7 +29,7 @@ export const TaskAccessDenied: React.FC<TaskAccessDeniedProps> = ({ onGoBack }) 
             style={{
               width: 40,
               height: 40,
-              borderRadius: 20,
+              borderRadius: 16,
               backgroundColor: theme.backgroundTertiary,
               alignItems: 'center',
               justifyContent: 'center',

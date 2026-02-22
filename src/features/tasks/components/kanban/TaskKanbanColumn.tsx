@@ -129,7 +129,7 @@ export const TaskKanbanColumn: React.FC<TaskKanbanColumnProps> = ({
 const styles = StyleSheet.create({
   column: {
     borderRadius: 12,
-    marginHorizontal: 6,
+    marginHorizontal: 8,
     marginBottom: 24,
     overflow: 'hidden',
     ...Platform.select({
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   columnTitle: {
     fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   statusLine: {
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     ...Platform.select({
       web: {
         boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',

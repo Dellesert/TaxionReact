@@ -190,15 +190,15 @@ const styles = StyleSheet.create({
   monthPicker: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     borderRadius: 8,
   } as any,
   arrowButton: {
     width: 24,
     height: 24,
-    borderRadius: 6,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',

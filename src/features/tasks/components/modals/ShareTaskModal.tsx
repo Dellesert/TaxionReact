@@ -179,7 +179,7 @@ const ShareTaskModal: React.FC<ShareTaskModalProps> = ({
       borderBottomColor: theme.border,
     },
     closeButton: {
-      padding: 4,
+      padding: 8,
     },
     headerTitle: {
       flex: 1,
@@ -227,6 +227,7 @@ const ShareTaskModal: React.FC<ShareTaskModalProps> = ({
       fontWeight: '600',
       color: theme.textSecondary,
       textTransform: 'uppercase',
+      letterSpacing: 0.5,
       paddingHorizontal: 16,
       paddingVertical: 12,
       backgroundColor: theme.backgroundSecondary,

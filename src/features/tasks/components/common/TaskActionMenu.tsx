@@ -79,7 +79,7 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
         key: 'emergency',
         icon: 'warning-outline',
         label: 'Аварийное завершение',
-        color: '#F59E0B',
+        color: theme.warning,
         onPress: onEmergencyComplete,
       });
     }
@@ -90,7 +90,7 @@ export const TaskActionMenu: React.FC<TaskActionMenuProps> = ({
         key: 'delete',
         icon: 'trash-outline',
         label: 'Удалить',
-        color: '#EF4444',
+        color: theme.error,
         onPress: onDelete,
       });
     }

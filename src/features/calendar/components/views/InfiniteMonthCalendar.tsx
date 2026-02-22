@@ -634,10 +634,10 @@ const styles = StyleSheet.create({
     // Shadow for iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     // Shadow for Android
-    elevation: 2,
+    elevation: 3,
   },
   monthHeader: {
     paddingVertical: 16,
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   monthHeaderText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     textTransform: 'capitalize',
   },
@@ -654,7 +654,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   weekdayContainer: {
     flex: 1,
@@ -695,7 +694,7 @@ const styles = StyleSheet.create({
     height: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
+    borderRadius: 12,
   },
   todayCircle: {
     // backgroundColor is set dynamically with theme.primary
@@ -735,6 +734,6 @@ const styles = StyleSheet.create({
   moreIndicator: {
     fontSize: 7,
     fontWeight: '600',
-    marginLeft: 1,
+    marginLeft: 0,
   },
 });

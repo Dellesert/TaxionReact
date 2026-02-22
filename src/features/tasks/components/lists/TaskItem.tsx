@@ -694,8 +694,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 0,
-    paddingTop: 6,
-    paddingRight: 6,
+    paddingTop: 8,
+    paddingRight: 8,
   },
   cardWrapper: {
     flexDirection: 'row',
@@ -743,10 +743,10 @@ const styles = StyleSheet.create({
   subtaskCard: {
     marginLeft: 44,
     marginRight: 16,
-    marginTop: 6,
+    marginTop: 8,
     marginBottom: 4,
-    padding: 14,
-    borderRadius: 14,
+    padding: 12,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -799,7 +799,7 @@ const styles = StyleSheet.create({
     left: 17,
     top: 20,
     zIndex: 1,
-    borderRadius: 9,
+    borderRadius: 8,
     padding: 1,
   },
   subtaskConnectorIcon: {
@@ -819,15 +819,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     backgroundColor: '#d1fae5',
-    borderRadius: 6,
+    borderRadius: 8,
   },
   completedCheckText: {
     fontSize: 11,
     fontWeight: '600',
     color: '#059669',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   completedTitle: {
     textDecorationLine: 'line-through',
@@ -842,11 +843,11 @@ const styles = StyleSheet.create({
   },
   priorityBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 8,
   },
   subtaskPriorityBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     maxWidth: 100,
     alignSelf: 'flex-start',
@@ -855,11 +856,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   subtaskPriorityText: {
     fontSize: 10,
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   badges: {
     flexDirection: 'row',
@@ -869,9 +870,9 @@ const styles = StyleSheet.create({
   delegatedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     backgroundColor: '#f3e8ff',
     borderRadius: 8,
   },
@@ -880,17 +881,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#8b5cf6',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   delegatedBadgeInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   delegatedTextInline: {
     fontSize: 12,
@@ -900,7 +901,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 12,
-    padding: 4,
+    padding: 8,
     zIndex: 2,
   },
   priorityBadgeCorner: {
@@ -908,7 +909,7 @@ const styles = StyleSheet.create({
     top: -8,
     right: -12,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -923,9 +924,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -943,11 +944,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   priorityTextCornerSubtask: {
-    fontSize: 9,
-    letterSpacing: 0.6,
+    fontSize: 10,
+    letterSpacing: 0.5,
   },
   subtaskHeader: {
     marginBottom: 8,
@@ -956,7 +957,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     lineHeight: 22,
-    marginBottom: 10,
+    marginBottom: 8,
     letterSpacing: -0.2,
   },
   subtaskTitle: {
@@ -968,7 +969,7 @@ const styles = StyleSheet.create({
   deadlineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     marginBottom: 12,
   },
   deadlineText: {
@@ -1001,7 +1002,7 @@ const styles = StyleSheet.create({
   progressBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   progressText: {
     fontSize: 12,
@@ -1019,7 +1020,7 @@ const styles = StyleSheet.create({
   },
   subtasksToggle: {
     paddingHorizontal: 0,
-    paddingVertical: 10,
+    paddingVertical: 8,
     backgroundColor: 'transparent',
     ...Platform.select({
       web: {
@@ -1037,7 +1038,7 @@ const styles = StyleSheet.create({
   subtasksToggleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   subtasksToggleText: {
     fontSize: 13,
@@ -1060,7 +1061,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   subtasksMetaRow: {
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: 2,
   },
   subtasksMetaInfo: {
@@ -1083,7 +1084,7 @@ const styles = StyleSheet.create({
   avatarChain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flex: 1,
     flexWrap: 'wrap',
     minWidth: 0,
@@ -1113,7 +1114,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   attachmentCount: {
     fontSize: 13,

@@ -365,7 +365,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                       { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
                       myParticipation.status === 'accepted' && [
                         styles.responseButtonActive,
-                        { backgroundColor: '#10B981', borderColor: '#10B981' },
+                        { backgroundColor: theme.success, borderColor: theme.success },
                       ],
                     ]}
                     onPress={() => handleUpdateStatus('accepted')}
@@ -374,7 +374,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                     <Ionicons
                       name="checkmark-circle"
                       size={22}
-                      color={myParticipation.status === 'accepted' ? '#FFFFFF' : '#10B981'}
+                      color={myParticipation.status === 'accepted' ? '#FFFFFF' : theme.success}
                     />
                     <Text
                       style={[
@@ -392,7 +392,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                       { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
                       myParticipation.status === 'maybe' && [
                         styles.responseButtonActive,
-                        { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
+                        { backgroundColor: theme.warning, borderColor: theme.warning },
                       ],
                     ]}
                     onPress={() => handleUpdateStatus('maybe')}
@@ -401,7 +401,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                     <Ionicons
                       name="help-circle"
                       size={22}
-                      color={myParticipation.status === 'maybe' ? '#FFFFFF' : '#F59E0B'}
+                      color={myParticipation.status === 'maybe' ? '#FFFFFF' : theme.warning}
                     />
                     <Text
                       style={[
@@ -419,7 +419,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                       { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
                       myParticipation.status === 'declined' && [
                         styles.responseButtonActive,
-                        { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+                        { backgroundColor: theme.error, borderColor: theme.error },
                       ],
                     ]}
                     onPress={() => handleUpdateStatus('declined')}
@@ -428,7 +428,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                     <Ionicons
                       name="close-circle"
                       size={22}
-                      color={myParticipation.status === 'declined' ? '#FFFFFF' : '#EF4444'}
+                      color={myParticipation.status === 'declined' ? '#FFFFFF' : theme.error}
                     />
                     <Text
                       style={[
@@ -446,27 +446,27 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
 
             {/* Participation stats (not for personal events) */}
             {participants.length > 0 && displayEvent.type !== 'personal' && (
-              <View style={styles.statsContainer}>
+              <View style={[styles.statsContainer, { borderTopColor: theme.border }]}>
                 {acceptedParticipants.length > 0 && (
-                  <View style={[styles.statBadge, { backgroundColor: '#10B98120' }]}>
-                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                    <Text style={[styles.statText, { color: '#10B981' }]}>
+                  <View style={[styles.statBadge, { backgroundColor: theme.success + '20' }]}>
+                    <Ionicons name="checkmark-circle" size={16} color={theme.success} />
+                    <Text style={[styles.statText, { color: theme.success }]}>
                       {acceptedParticipants.length}
                     </Text>
                   </View>
                 )}
                 {maybeParticipants.length > 0 && (
-                  <View style={[styles.statBadge, { backgroundColor: '#F59E0B20' }]}>
-                    <Ionicons name="help-circle" size={16} color="#F59E0B" />
-                    <Text style={[styles.statText, { color: '#F59E0B' }]}>
+                  <View style={[styles.statBadge, { backgroundColor: theme.warning + '20' }]}>
+                    <Ionicons name="help-circle" size={16} color={theme.warning} />
+                    <Text style={[styles.statText, { color: theme.warning }]}>
                       {maybeParticipants.length}
                     </Text>
                   </View>
                 )}
                 {declinedParticipants.length > 0 && (
-                  <View style={[styles.statBadge, { backgroundColor: '#EF444420' }]}>
-                    <Ionicons name="close-circle" size={16} color="#EF4444" />
-                    <Text style={[styles.statText, { color: '#EF4444' }]}>
+                  <View style={[styles.statBadge, { backgroundColor: theme.error + '20' }]}>
+                    <Ionicons name="close-circle" size={16} color={theme.error} />
+                    <Text style={[styles.statText, { color: theme.error }]}>
                       {declinedParticipants.length}
                     </Text>
                   </View>
@@ -521,8 +521,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           {/* Location Card */}
           {displayEvent.location && (
             <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={[styles.infoCardIcon, { backgroundColor: '#3B82F6' + '20' }]}>
-                <Ionicons name="location-outline" size={22} color="#3B82F6" />
+              <View style={[styles.infoCardIcon, { backgroundColor: theme.info + '20' }]}>
+                <Ionicons name="location-outline" size={22} color={theme.info} />
               </View>
               <View style={styles.infoCardContent}>
                 <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>Место</Text>
@@ -574,7 +574,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 participants={acceptedParticipants}
                 title="Принято"
                 icon="checkmark-circle"
-                color="#10B981"
+                color={theme.success}
                 defaultExpanded={true}
                 initialPreview={INITIAL_PREVIEW}
                 loadMoreCount={LOAD_MORE_COUNT}
@@ -586,7 +586,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 participants={maybeParticipants}
                 title="Возможно"
                 icon="help-circle"
-                color="#F59E0B"
+                color={theme.warning}
                 defaultExpanded={false}
                 initialPreview={INITIAL_PREVIEW}
                 loadMoreCount={LOAD_MORE_COUNT}
@@ -598,7 +598,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 participants={pendingParticipants}
                 title="Ожидание"
                 icon="time-outline"
-                color="#6B7280"
+                color={theme.textSecondary}
                 defaultExpanded={false}
                 initialPreview={INITIAL_PREVIEW}
                 loadMoreCount={LOAD_MORE_COUNT}
@@ -610,7 +610,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 participants={declinedParticipants}
                 title="Отклонено"
                 icon="close-circle"
-                color="#EF4444"
+                color={theme.error}
                 defaultExpanded={false}
                 initialPreview={INITIAL_PREVIEW}
                 loadMoreCount={LOAD_MORE_COUNT}
@@ -680,7 +680,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             key: 'delete',
             icon: 'trash-outline',
             label: 'Удалить',
-            color: '#EF4444',
+            color: theme.error,
             onPress: handleDelete,
             disabled: isDeleting,
           },
@@ -765,9 +765,9 @@ const styles = StyleSheet.create({
   responseButtonActive: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   responseButtonText: {
     fontSize: 13,
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    // borderTopColor set inline via theme.border
   },
   statBadge: {
     flexDirection: 'row',

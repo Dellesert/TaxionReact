@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   actionButton: {
     width: 32,
@@ -261,11 +261,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     height: 18,
     width: '40%',
-    borderRadius: 9,
+    borderRadius: 8,
   },
   descLine: {
     height: 12,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   descLineLong: {
     width: '90%',
@@ -302,12 +302,12 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   checklistText: {
     flex: 1,
     height: 14,
-    borderRadius: 7,
+    borderRadius: 8,
   },
   subtaskItem: {
     flexDirection: 'row',
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   subtaskMeta: {
     height: 12,
     width: '40%',
-    borderRadius: 6,
+    borderRadius: 8,
   },
   subtaskBadge: {
     height: 24,

@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    borderRadius: 2,
+    borderRadius: 4,
   },
   header: {
     flexDirection: 'row',
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   eventColorBar: {
     width: 4,
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 4,
     marginRight: 12,
   },
   eventContent: {

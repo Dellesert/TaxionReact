@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    padding: 3,
+    borderRadius: 12,
+    padding: 4,
     gap: 2,
     flexShrink: 0,
     ...Platform.select({
@@ -131,9 +131,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 8,
-    gap: 6,
+    gap: 8,
     minHeight: 44, // Accessibility: minimum touch target
     ...Platform.select({
       web: {

@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     overflow: 'hidden',
@@ -614,7 +614,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   weekdayContainer: {
     flex: 1,
@@ -710,6 +709,6 @@ const styles = StyleSheet.create({
   moreIndicator: {
     fontSize: 7,
     fontWeight: '600',
-    marginLeft: 1,
+    marginLeft: 0,
   },
 });

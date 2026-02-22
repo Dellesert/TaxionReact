@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 28,
     paddingHorizontal: 8,
-    borderRadius: 6,
+    borderRadius: 8,
     gap: 4,
     cursor: 'pointer',
     transition: 'background-color 0.15s ease',

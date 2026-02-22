@@ -49,13 +49,13 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
   const getStatusBadge = (status: EventParticipantStatus) => {
     switch (status) {
       case 'accepted':
-        return { icon: 'checkmark-circle', color: '#10B981', label: 'Принято' };
+        return { icon: 'checkmark-circle', color: theme.success, label: 'Принято' };
       case 'declined':
-        return { icon: 'close-circle', color: '#EF4444', label: 'Отклонено' };
+        return { icon: 'close-circle', color: theme.error, label: 'Отклонено' };
       case 'maybe':
-        return { icon: 'help-circle', color: '#F59E0B', label: 'Возможно' };
+        return { icon: 'help-circle', color: theme.warning, label: 'Возможно' };
       case 'pending':
-        return { icon: 'time', color: '#6B7280', label: 'Ожидание' };
+        return { icon: 'time', color: theme.textSecondary, label: 'Ожидание' };
     }
   };
 
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
