@@ -1,52 +1,52 @@
 /**
- * TitleBarMetricsControls
- * Переключатель периода для TitleBar (левая часть) на экране основных показателей
+ * TitleBarPeriodSwitcher
+ * Универсальный переключатель периода для TitleBar (левая часть)
  * По аналогии с TitleBarViewSwitcher в задачах
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
-import type { PeriodType } from '@api/analytics.api';
 
-const PERIOD_OPTIONS: { value: PeriodType; label: string; short: string }[] = [
-  { value: 'today', label: 'Сегодня', short: 'Д' },
-  { value: 'week', label: 'Неделя', short: 'Н' },
-  { value: 'month', label: 'Месяц', short: 'М' },
-  { value: 'year', label: 'Год', short: 'Г' },
-];
-
-interface TitleBarMetricsControlsProps {
-  selectedPeriod: PeriodType;
-  onPeriodChange: (period: PeriodType) => void;
+export interface PeriodOption<T extends string> {
+  value: T;
+  label: string;
+  short: string;
 }
 
-export const TitleBarMetricsControls: React.FC<TitleBarMetricsControlsProps> = ({
-  selectedPeriod,
-  onPeriodChange,
-}) => {
+interface TitleBarPeriodSwitcherProps<T extends string> {
+  options: PeriodOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+}
+
+export function TitleBarPeriodSwitcher<T extends string>({
+  options,
+  value,
+  onChange,
+}: TitleBarPeriodSwitcherProps<T>) {
   const { theme } = useTheme();
-  const currentOption = PERIOD_OPTIONS.find(o => o.value === selectedPeriod);
+  const currentOption = options.find(o => o.value === value);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundTertiary }]}>
-      {PERIOD_OPTIONS.map((option) => (
+      {options.map((option) => (
         <View
           key={option.value}
           style={[
             styles.button,
-            selectedPeriod === option.value && [styles.activeButton, { backgroundColor: theme.backgroundSecondary }],
+            value === option.value && [styles.activeButton, { backgroundColor: theme.backgroundSecondary }],
           ]}
           // @ts-ignore - Web-only
-          onClick={() => onPeriodChange(option.value)}
+          onClick={() => onChange(option.value)}
           title={option.label}
           onMouseEnter={(e: any) => {
-            if (selectedPeriod !== option.value && e.currentTarget?.style) {
+            if (value !== option.value && e.currentTarget?.style) {
               e.currentTarget.style.backgroundColor = theme.border;
             }
           }}
           onMouseLeave={(e: any) => {
-            if (selectedPeriod !== option.value && e.currentTarget?.style) {
+            if (value !== option.value && e.currentTarget?.style) {
               e.currentTarget.style.backgroundColor = 'transparent';
             }
           }}
@@ -54,8 +54,8 @@ export const TitleBarMetricsControls: React.FC<TitleBarMetricsControlsProps> = (
           <Text
             style={[
               styles.shortLabel,
-              { color: selectedPeriod === option.value ? theme.primary : theme.textSecondary },
-              selectedPeriod === option.value && styles.shortLabelActive,
+              { color: value === option.value ? theme.primary : theme.textSecondary },
+              value === option.value && styles.shortLabelActive,
             ]}
           >
             {option.short}
@@ -67,7 +67,7 @@ export const TitleBarMetricsControls: React.FC<TitleBarMetricsControlsProps> = (
       </Text>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -80,8 +80,9 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 28,
+    minWidth: 28,
     height: 26,
+    paddingHorizontal: 6,
     borderRadius: 4,
     cursor: 'pointer',
     transition: 'all 0.15s ease',

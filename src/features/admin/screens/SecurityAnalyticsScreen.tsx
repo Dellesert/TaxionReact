@@ -23,6 +23,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
+import { TitleBarPeriodSwitcher, type PeriodOption } from '../components/common/TitleBarMetricsControls';
 import {
   getSecurityDashboard,
   type SecurityDashboardData,
@@ -58,11 +59,27 @@ const SecurityAnalyticsScreen: React.FC = () => {
     }
   }, [navigation]);
 
+  const securityPeriodOptions: PeriodOption<string>[] = useMemo(() => [
+    { value: '1d', label: '24 часа', short: '24ч' },
+    { value: '7d', label: '7 дней', short: '7д' },
+    { value: '30d', label: '30 дней', short: '30д' },
+    { value: '90d', label: '90 дней', short: '90д' },
+  ], []);
+
   // TitleBar controls for Electron
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron) return null;
-    return <TitleBarBackButton onGoBack={handleGoBack} />;
-  }, [isElectron, handleGoBack]);
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <TitleBarBackButton onGoBack={handleGoBack} />
+        <TitleBarPeriodSwitcher
+          options={securityPeriodOptions}
+          value={selectedPeriod}
+          onChange={setSelectedPeriod}
+        />
+      </View>
+    );
+  }, [isElectron, handleGoBack, selectedPeriod, securityPeriodOptions]);
 
   // Integrate with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -139,13 +156,6 @@ const SecurityAnalyticsScreen: React.FC = () => {
     }
   };
 
-  const periods = [
-    { key: '1d', label: '24ч' },
-    { key: '7d', label: '7д' },
-    { key: '30d', label: '30д' },
-    { key: '90d', label: '90д' },
-  ];
-
   const dynamicStyles = StyleSheet.create({
     container: {
       flex: 1,
@@ -198,38 +208,6 @@ const SecurityAnalyticsScreen: React.FC = () => {
       fontSize: 15,
       color: theme.textSecondary,
       lineHeight: 22,
-    },
-    periodSelector: {
-      flexDirection: 'row',
-      gap: 10,
-      marginBottom: 24,
-      padding: 4,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-      borderRadius: 12,
-    },
-    periodButton: {
-      flex: 1,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 10,
-      alignItems: 'center',
-    },
-    periodButtonActive: {
-      backgroundColor: theme.primary,
-      shadowColor: theme.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    periodButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
-    periodButtonTextActive: {
-      color: '#FFFFFF',
-      fontWeight: '700',
     },
     statsGrid: {
       flexDirection: 'row',
@@ -507,29 +485,6 @@ const SecurityAnalyticsScreen: React.FC = () => {
               Мониторинг безопасности и подозрительной активности
             </Text>
           </View>
-
-          {/* Period Selector */}
-          <View style={dynamicStyles.periodSelector}>
-          {periods.map((period) => (
-            <TouchableOpacity
-              key={period.key}
-              style={[
-                dynamicStyles.periodButton,
-                selectedPeriod === period.key && dynamicStyles.periodButtonActive,
-              ]}
-              onPress={() => setSelectedPeriod(period.key)}
-            >
-              <Text
-                style={[
-                  dynamicStyles.periodButtonText,
-                  selectedPeriod === period.key && dynamicStyles.periodButtonTextActive,
-                ]}
-              >
-                {period.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
 
         {securityData ? (
           <>

@@ -23,6 +23,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
+import { TitleBarPeriodSwitcher, type PeriodOption } from '../components/common/TitleBarMetricsControls';
 import {
   getTopPerformers,
   type EmployeePerformance,
@@ -58,11 +59,27 @@ const PerformanceAnalyticsScreen: React.FC = () => {
     }
   }, [navigation]);
 
+  const periodOptions: PeriodOption<PeriodType>[] = useMemo(() => [
+    { value: 'today', label: 'Сегодня', short: 'Д' },
+    { value: 'week', label: 'Неделя', short: 'Н' },
+    { value: 'month', label: 'Месяц', short: 'М' },
+    { value: 'year', label: 'Год', short: 'Г' },
+  ], []);
+
   // TitleBar controls for Electron
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron) return null;
-    return <TitleBarBackButton onGoBack={handleGoBack} />;
-  }, [isElectron, handleGoBack]);
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <TitleBarBackButton onGoBack={handleGoBack} />
+        <TitleBarPeriodSwitcher
+          options={periodOptions}
+          value={selectedPeriod}
+          onChange={setSelectedPeriod}
+        />
+      </View>
+    );
+  }, [isElectron, handleGoBack, selectedPeriod, periodOptions]);
 
   // Integrate with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -95,13 +112,6 @@ const PerformanceAnalyticsScreen: React.FC = () => {
     setIsRefreshing(true);
     loadPerformers();
   };
-
-  const periods: { key: PeriodType; label: string }[] = [
-    { key: 'today', label: 'Сегодня' },
-    { key: 'week', label: 'Неделя' },
-    { key: 'month', label: 'Месяц' },
-    { key: 'year', label: 'Год' },
-  ];
 
   const getMedalEmoji = (index: number): string => {
     switch (index) {
@@ -181,38 +191,6 @@ const PerformanceAnalyticsScreen: React.FC = () => {
       fontSize: 15,
       color: theme.textSecondary,
       lineHeight: 22,
-    },
-    periodSelector: {
-      flexDirection: 'row',
-      gap: 8,
-      marginBottom: 24,
-      padding: 4,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-      borderRadius: 12,
-    },
-    periodButton: {
-      flex: 1,
-      paddingVertical: 10,
-      paddingHorizontal: 8,
-      borderRadius: 10,
-      alignItems: 'center',
-    },
-    periodButtonActive: {
-      backgroundColor: theme.primary,
-      shadowColor: theme.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    periodButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
-    periodButtonTextActive: {
-      color: '#FFFFFF',
-      fontWeight: '700',
     },
     performersList: {
       flexDirection: 'row',
@@ -402,29 +380,6 @@ const PerformanceAnalyticsScreen: React.FC = () => {
             <Text style={dynamicStyles.sectionDescription}>
               Рейтинг лучших сотрудников по результатам работы
             </Text>
-          </View>
-
-          {/* Period Selector */}
-          <View style={dynamicStyles.periodSelector}>
-            {periods.map((period) => (
-              <TouchableOpacity
-                key={period.key}
-                style={[
-                  dynamicStyles.periodButton,
-                  selectedPeriod === period.key && dynamicStyles.periodButtonActive,
-                ]}
-                onPress={() => setSelectedPeriod(period.key)}
-              >
-                <Text
-                  style={[
-                    dynamicStyles.periodButtonText,
-                    selectedPeriod === period.key && dynamicStyles.periodButtonTextActive,
-                  ]}
-                >
-                  {period.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
           </View>
 
           {topPerformers.length > 0 ? (

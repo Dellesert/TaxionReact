@@ -20,7 +20,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
-import { TitleBarMetricsControls } from '../common/TitleBarMetricsControls';
+import { TitleBarPeriodSwitcher, type PeriodOption } from '../common/TitleBarMetricsControls';
 import {
   getDashboardAnalytics,
   formatBytes,
@@ -51,9 +51,12 @@ const MetricsDesktopContent: React.FC = () => {
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('week');
 
-  const handlePeriodChange = useCallback((period: PeriodType) => {
-    setSelectedPeriod(period);
-  }, []);
+  const periodOptions: PeriodOption<PeriodType>[] = useMemo(() => [
+    { value: 'today', label: 'Сегодня', short: 'Д' },
+    { value: 'week', label: 'Неделя', short: 'Н' },
+    { value: 'month', label: 'Месяц', short: 'М' },
+    { value: 'year', label: 'Год', short: 'Г' },
+  ], []);
 
   // TitleBar controls for Electron
   const titleBarLeftControls = useMemo(() => {
@@ -61,13 +64,14 @@ const MetricsDesktopContent: React.FC = () => {
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <TitleBarBackButton onGoBack={handleGoBack} />
-        <TitleBarMetricsControls
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={handlePeriodChange}
+        <TitleBarPeriodSwitcher
+          options={periodOptions}
+          value={selectedPeriod}
+          onChange={setSelectedPeriod}
         />
       </View>
     );
-  }, [isElectron, handleGoBack, selectedPeriod, handlePeriodChange]);
+  }, [isElectron, handleGoBack, selectedPeriod, periodOptions]);
 
   // Integrate with TitleBar in Electron
   useTitleBarControlsIntegration({
