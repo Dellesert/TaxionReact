@@ -235,6 +235,362 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
     }
   };
 
+  // ===== DESKTOP ELECTRON: Full-screen two-column layout =====
+  if (isDesktopElectron) {
+    return (
+      <Modal
+        visible={visible}
+        animationType={animationType}
+        transparent={false}
+        onRequestClose={onClose}
+        statusBarTranslucent
+      >
+        <View style={[styles.desktopElectronContainer, { backgroundColor: theme.background }]}>
+          {/* Custom Title Bar */}
+          <View style={[styles.desktopTitleBar, { backgroundColor: theme.backgroundSecondary }]}>
+            {/* Back button */}
+            <View
+              style={styles.desktopTitleBarBackButton}
+              // @ts-ignore
+              onClick={onClose}
+              onMouseEnter={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+              }}
+              onMouseLeave={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <Ionicons name="arrow-back" size={18} color={theme.text} />
+            </View>
+
+            {/* Title — draggable area */}
+            <View style={styles.desktopTitleBarDragArea}>
+              <Text style={[styles.desktopTitleBarTitle, { color: theme.text }]} numberOfLines={1}>
+                Редактирование задачи
+              </Text>
+            </View>
+
+            {/* Save button */}
+            <View
+              style={[styles.desktopTitleBarSaveButton, { backgroundColor: theme.primary }]}
+              // @ts-ignore
+              onClick={isSaving || !title.trim() ? undefined : handleSave}
+              onMouseEnter={(e: any) => {
+                if (e.currentTarget?.style && !isSaving && title.trim()) e.currentTarget.style.opacity = '0.85';
+              }}
+              onMouseLeave={(e: any) => {
+                if (e.currentTarget?.style) e.currentTarget.style.opacity = '1';
+              }}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                  <Text style={styles.desktopTitleBarSaveText}>Сохранить</Text>
+                </>
+              )}
+            </View>
+
+            {/* Window controls */}
+            <View style={styles.desktopWindowControls}>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'minimize' && { backgroundColor: theme.border }]}
+                // @ts-ignore
+                onClick={() => window.electron?.minimize?.()}
+                onMouseEnter={() => setHoveredWindowBtn('minimize')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="remove" size={14} color={theme.text} />
+              </View>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'maximize' && { backgroundColor: theme.border }]}
+                // @ts-ignore
+                onClick={() => window.electron?.maximize?.()}
+                onMouseEnter={() => setHoveredWindowBtn('maximize')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="square-outline" size={12} color={theme.text} />
+              </View>
+              <View
+                style={[styles.desktopWindowControlButton, hoveredWindowBtn === 'close' && { backgroundColor: '#E81123' }]}
+                // @ts-ignore
+                onClick={() => window.electron?.close?.()}
+                onMouseEnter={() => setHoveredWindowBtn('close')}
+                onMouseLeave={() => setHoveredWindowBtn(null)}
+              >
+                <Ionicons name="close" size={14} color={hoveredWindowBtn === 'close' ? '#FFFFFF' : theme.text} />
+              </View>
+            </View>
+
+            {/* Bottom border */}
+            <View style={[styles.desktopTitleBarBorder, { backgroundColor: theme.border }]} />
+          </View>
+
+          {/* Two-Column Content */}
+          <ScrollView
+            style={styles.desktopScrollView}
+            contentContainerStyle={styles.desktopScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.desktopColumnsWrapper}>
+              {/* === LEFT COLUMN: "что" === */}
+              <View style={styles.desktopColumn}>
+                {/* Section: Basic Info */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Основная информация</Text>
+
+                  <View style={styles.field}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Название</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Введите название задачи..."
+                      placeholderTextColor={theme.inputPlaceholder}
+                      value={title}
+                      onChangeText={setTitle}
+                      maxLength={100}
+                    />
+                  </View>
+
+                  <View style={styles.field}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Приоритет</Text>
+                    <View style={styles.priorityRow}>
+                      {priorities.map((p) => (
+                        <TouchableOpacity
+                          key={p.value}
+                          onPress={() => setPriority(p.value)}
+                          style={[
+                            styles.priorityChip,
+                            { backgroundColor: theme.background, borderColor: theme.border },
+                            priority === p.value && {
+                              backgroundColor: p.color,
+                              borderColor: p.color,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.priorityChipText,
+                              { color: theme.text },
+                              priority === p.value && { color: '#FFFFFF', fontWeight: '600' },
+                            ]}
+                          >
+                            {p.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+
+                {/* Section: Content */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Содержимое</Text>
+
+                  {/* Choice buttons when no content exists */}
+                  {showContentChoice && (
+                    <View style={styles.contentChoiceContainer}>
+                      <Text style={[styles.choiceDescription, { color: theme.textSecondary }]}>
+                        Выберите тип содержимого для задачи
+                      </Text>
+
+                      <TouchableOpacity
+                        onPress={() => setSelectedContentType('description')}
+                        style={[styles.choiceButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      >
+                        <View style={[styles.choiceIcon, { backgroundColor: theme.primary }]}>
+                          <Ionicons name="document-text-outline" size={24} color="#FFFFFF" />
+                        </View>
+                        <View style={styles.choiceInfo}>
+                          <Text style={[styles.choiceTitle, { color: theme.text }]}>Описание</Text>
+                          <Text style={[styles.choiceSubtitle, { color: theme.textSecondary }]}>
+                            Добавьте текстовое описание
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => setSelectedContentType('checklist')}
+                        style={[styles.choiceButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      >
+                        <View style={[styles.choiceIcon, { backgroundColor: theme.primary }]}>
+                          <Ionicons name="checkbox-outline" size={24} color="#FFFFFF" />
+                        </View>
+                        <View style={styles.choiceInfo}>
+                          <Text style={[styles.choiceTitle, { color: theme.text }]}>Чек-лист</Text>
+                          <Text style={[styles.choiceSubtitle, { color: theme.textSecondary }]}>
+                            Список пунктов для отметки
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Description Section */}
+                  {showDescription && (
+                    <View style={styles.field}>
+                      <Text style={[styles.label, { color: theme.textSecondary }]}>Описание</Text>
+                      <TextInput
+                        style={[styles.textArea, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                        placeholder="Добавьте описание задачи..."
+                        placeholderTextColor={theme.inputPlaceholder}
+                        value={description}
+                        onChangeText={setDescription}
+                        multiline
+                        numberOfLines={6}
+                        textAlignVertical="top"
+                        maxLength={500}
+                      />
+                      <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+                        {description.length}/500
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Checklist Section */}
+                  {showChecklists && (
+                    <View style={styles.field}>
+                      <Text style={[styles.label, { color: theme.textSecondary }]}>Чек-лист</Text>
+
+                      {loadingChecklists ? (
+                        <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
+                      ) : (
+                        <>
+                          <View style={styles.addChecklistContainer}>
+                            <TextInput
+                              style={[styles.checklistInput, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                              placeholder="Добавить пункт..."
+                              placeholderTextColor={theme.inputPlaceholder}
+                              value={newItemText}
+                              onChangeText={setNewItemText}
+                              onSubmitEditing={handleAddItem}
+                              returnKeyType="done"
+                              multiline
+                              textAlignVertical="top"
+                              maxLength={200}
+                            />
+                            <TouchableOpacity
+                              onPress={handleAddItem}
+                              style={[styles.addButton, { backgroundColor: newItemText.trim() ? theme.primary : theme.backgroundSecondary }]}
+                              disabled={!newItemText.trim()}
+                            >
+                              <Ionicons name="add" size={24} color={newItemText.trim() ? '#FFFFFF' : theme.textTertiary} />
+                            </TouchableOpacity>
+                          </View>
+
+                          {checklistItems.filter(item => !item._deleted).length > 0 ? (
+                            <View style={styles.checklistItemsContainer}>
+                              {checklistItems.filter(item => !item._deleted).map((item) => {
+                                const actualIndex = checklistItems.indexOf(item);
+                                return (
+                                  <View key={actualIndex} style={[styles.checklistItem, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                                    <View style={[styles.checkbox, { borderColor: theme.border }]} />
+                                    <Text style={[styles.itemText, { color: theme.text }]} numberOfLines={3}>
+                                      {item.title}
+                                    </Text>
+                                    <TouchableOpacity onPress={() => handleRemoveItem(actualIndex)} style={styles.removeButton}>
+                                      <Ionicons name="close-circle" size={20} color={theme.error} />
+                                    </TouchableOpacity>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          ) : (
+                            <View style={[styles.emptyState, { backgroundColor: theme.background }]}>
+                              <Ionicons name="list-outline" size={32} color={theme.textTertiary} />
+                              <Text style={[styles.emptyText, { color: theme.textTertiary }]}>
+                                Нет пунктов в чек-листе
+                              </Text>
+                            </View>
+                          )}
+                        </>
+                      )}
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* === RIGHT COLUMN: "когда/кому" === */}
+              <View style={styles.desktopColumn}>
+                {/* Section: Details */}
+                <View style={[styles.desktopSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.desktopSectionTitle, { color: theme.text }]}>Детали</Text>
+
+                  {/* Due Date */}
+                  <View style={styles.field}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Срок выполнения</Text>
+                    <TouchableOpacity
+                      style={[styles.dateButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                      <Text style={[styles.dateButtonText, { color: dueDate ? theme.text : theme.textTertiary }]}>
+                        {dueDate
+                          ? format(dueDate, 'dd MMMM yyyy, HH:mm', { locale: ru })
+                          : 'Не указан'}
+                      </Text>
+                      {dueDate && (
+                        <TouchableOpacity
+                          onPress={() => setDueDate(undefined)}
+                          style={styles.clearButton}
+                        >
+                          <Ionicons name="close-circle" size={20} color={theme.textTertiary} />
+                        </TouchableOpacity>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Assignee */}
+                  <View style={styles.field}>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>
+                      {isGroupTask ? 'Исполнители' : 'Исполнитель'}
+                    </Text>
+                    {isGroupTask && (
+                      <View style={[styles.infoBox, { backgroundColor: theme.background }]}>
+                        <Ionicons name="people-outline" size={18} color="#8B5CF6" />
+                        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                          Групповая задача (минимум 2 исполнителя)
+                        </Text>
+                      </View>
+                    )}
+                    <UserSelector
+                      selectedUserIds={isGroupTask ? assigneeIds : (assigneeId ? [assigneeId] : [])}
+                      onSelectionChange={isGroupTask ? setAssigneeIds : (ids) => setAssigneeId(ids[0])}
+                      multiSelect={isGroupTask}
+                      placeholder={isGroupTask ? 'Выберите исполнителей' : 'Не назначен'}
+                      modalTitle={isGroupTask ? 'Выбрать исполнителей' : 'Выбрать исполнителя'}
+                      filterForTaskAssignment={true}
+                    />
+                    {isGroupTask && assigneeIds.length > 0 && assigneeIds.length < 2 && (
+                      <Text style={{ color: '#EF4444', fontSize: 13, marginTop: 4 }}>
+                        Выберите ещё {2 - assigneeIds.length} исполнител{assigneeIds.length === 1 ? 'я' : 'ей'}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Date Picker Modal */}
+          {showDatePicker && (
+            <DatePickerModal
+              visible={showDatePicker}
+              value={dueDate || new Date()}
+              onChange={handleDateChange}
+              onClose={() => setShowDatePicker(false)}
+              minimumDate={new Date()}
+              mode="datetime"
+            />
+          )}
+        </View>
+      </Modal>
+    );
+  }
+
+  // ===== MOBILE (без изменений) =====
   return (
     <Modal
       visible={visible}
@@ -742,6 +1098,113 @@ const styles = StyleSheet.create({
   choiceSubtitle: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  // ===== Desktop Electron styles =====
+  desktopElectronContainer: {
+    flex: 1,
+  },
+  desktopTitleBar: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    // @ts-ignore
+    WebkitAppRegion: 'no-drag',
+    userSelect: 'none',
+  },
+  desktopTitleBarBackButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    marginLeft: 12,
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+    WebkitAppRegion: 'no-drag',
+  },
+  desktopTitleBarDragArea: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    // @ts-ignore
+    WebkitAppRegion: 'drag',
+  },
+  desktopTitleBarTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  desktopTitleBarSaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 5,
+    marginRight: 8,
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'opacity 0.15s ease',
+    WebkitAppRegion: 'no-drag',
+  },
+  desktopTitleBarSaveText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  desktopWindowControls: {
+    flexDirection: 'row',
+    height: '100%',
+    flexShrink: 0,
+    // @ts-ignore
+    WebkitAppRegion: 'no-drag',
+  },
+  desktopWindowControlButton: {
+    width: 40,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+  },
+  desktopTitleBarBorder: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+  },
+  desktopScrollView: {
+    flex: 1,
+  },
+  desktopScrollContent: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+  desktopColumnsWrapper: {
+    flexDirection: 'row',
+    gap: 24,
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  desktopColumn: {
+    flex: 1,
+    gap: 20,
+  },
+  desktopSection: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    gap: 16,
+  },
+  desktopSectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 4,
   },
 });
 
