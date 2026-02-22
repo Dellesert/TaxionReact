@@ -596,8 +596,8 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
           <ActivityIndicator color="#FFFFFF" />
         ) : (
           <>
-            <Ionicons name="eye" size={20} color="#FFFFFF" />
-            <Text style={styles.previewButtonText}>Предпросмотр</Text>
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            <Text style={styles.previewButtonText}>Далее</Text>
           </>
         )}
       </TouchableOpacity>
@@ -700,7 +700,7 @@ export const ImportScheduleModal: React.FC<ImportScheduleModalProps> = ({
           <Text style={[styles.headerTitle, { color: theme.text }]}>
             {step === 'select' && 'Импорт графика'}
             {step === 'configure' && 'Настройка'}
-            {step === 'preview' && 'Предпросмотр'}
+            {step === 'preview' && 'Подтверждение'}
             {step === 'importing' && 'Импорт'}
             {step === 'success' && 'Готово'}
           </Text>

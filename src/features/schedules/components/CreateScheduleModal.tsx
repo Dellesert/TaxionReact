@@ -609,7 +609,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       switch (importStep) {
         case 'select': return 'Выбор файла';
         case 'configure': return 'Настройка';
-        case 'preview': return 'Предпросмотр';
+        case 'preview': return 'Подтверждение';
         case 'importing': return 'Импорт';
         case 'success': return 'Готово';
         default: return '';
@@ -1729,8 +1729,8 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
                         <>
-                          <Ionicons name="eye" size={isKeyboardVisible ? 18 : 20} color="#FFFFFF" />
-                          <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: '#FFFFFF' }]}>Предпросмотр</Text>
+                          <Ionicons name="arrow-forward" size={isKeyboardVisible ? 18 : 20} color="#FFFFFF" />
+                          <Text style={[styles.navButtonText, isKeyboardVisible && styles.navButtonTextCompact, { color: '#FFFFFF' }]}>Далее</Text>
                         </>
                       )}
                     </TouchableOpacity>
