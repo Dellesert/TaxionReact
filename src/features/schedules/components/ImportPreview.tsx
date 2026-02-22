@@ -68,7 +68,18 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
     };
   }, [preview.users, userMappingOverrides]);
 
-  const hasWarnings = preview.warnings && preview.warnings.length > 0;
+  // Фильтруем предупреждения — убираем те, для которых пользователь уже переопределён
+  const activeWarnings = useMemo(() => {
+    if (!preview.warnings || preview.warnings.length === 0) return [];
+    if (!userMappingOverrides || userMappingOverrides.size === 0) return preview.warnings;
+
+    const overriddenNames = Array.from(userMappingOverrides.keys());
+    return preview.warnings.filter((warning) =>
+      !overriddenNames.some((name) => warning.includes(name))
+    );
+  }, [preview.warnings, userMappingOverrides]);
+
+  const hasWarnings = activeWarnings.length > 0;
   const hasIssues = !matchStats.allPerfect || hasWarnings;
 
   // Загружаем пользователей системы при включённом режиме редактирования
@@ -169,7 +180,7 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                   Предупреждения
                 </Text>
               </View>
-              {preview.warnings!.map((warning, index) => (
+              {activeWarnings.map((warning, index) => (
                 <Text
                   key={index}
                   style={[styles.warningText, { color: theme.text }]}
