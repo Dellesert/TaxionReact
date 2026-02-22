@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Message } from '../../types/chat.types';
-import { formatTime, isImageFile, isVideoFile } from '../../utils/message.utils';
+import { formatDateTime, isImageFile, isVideoFile } from '../../utils/message.utils';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 import { stripFormatting } from '../../utils/formatting';
 import { ReactionBar } from '../messages/ReactionBar';
@@ -226,7 +226,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                     )}
 
                     <Text style={[styles.previewTime, { color: theme.textSecondary }]}>
-                      {formatTime(message.created_at)}
+                      {formatDateTime(message.created_at)}
                     </Text>
                   </>
                 );
@@ -443,7 +443,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       )}
 
                       <Text style={[styles.previewTime, { color: theme.textSecondary }]}>
-                        {formatTime(message.created_at)}
+                        {formatDateTime(message.created_at)}
                       </Text>
                     </>
                   );

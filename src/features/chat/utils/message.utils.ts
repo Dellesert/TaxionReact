@@ -16,6 +16,30 @@ export const formatTime = (dateString: string): string => {
 };
 
 /**
+ * Форматирует дату и время сообщения для контекстного меню
+ * Примеры: "22 февраля 2026 г., 14:35" или "5 марта, 09:15" (если текущий год)
+ */
+export const formatDateTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const isCurrentYear = date.getFullYear() === now.getFullYear();
+
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    day: 'numeric',
+    month: 'long',
+    ...(isCurrentYear ? {} : { year: 'numeric' }),
+  };
+
+  const datePart = date.toLocaleDateString('ru-RU', dateOptions);
+  const timePart = date.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return `${datePart}, ${timePart}`;
+};
+
+/**
  * Проверяет, является ли файл изображением
  */
 export const isImageFile = (mimeType: string): boolean => {
