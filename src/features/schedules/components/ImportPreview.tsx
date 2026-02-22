@@ -33,29 +33,43 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
   const [isUserSelectorVisible, setIsUserSelectorVisible] = useState(false);
   const [systemUsersMap, setSystemUsersMap] = useState<Map<number, string>>(new Map());
 
+  // Порог уверенного совпадения (100%)
+  const MATCH_THRESHOLD = 1.0;
+
   // Считаем статистику совпадений
   const matchStats = useMemo(() => {
     const total = preview.users.length;
     let matched = 0;
+    let uncertain = 0;
     let unmatched = 0;
-    const unmatchedUsers: ImportedUser[] = [];
+    const problemUsers: ImportedUser[] = [];
 
     preview.users.forEach((user) => {
       if (userMappingOverrides?.has(user.name)) {
         matched++;
-      } else if (user.is_unmatched) {
+      } else if (user.is_unmatched || !user.user_id) {
         unmatched++;
-        unmatchedUsers.push(user);
+        problemUsers.push(user);
+      } else if (user.match_score !== undefined && user.match_score < MATCH_THRESHOLD) {
+        uncertain++;
+        problemUsers.push(user);
       } else {
         matched++;
       }
     });
 
-    return { total, matched, unmatched, unmatchedUsers, allMatched: unmatched === 0 };
+    return {
+      total,
+      matched,
+      uncertain,
+      unmatched,
+      problemUsers,
+      allPerfect: uncertain === 0 && unmatched === 0,
+    };
   }, [preview.users, userMappingOverrides]);
 
   const hasWarnings = preview.warnings && preview.warnings.length > 0;
-  const hasIssues = !matchStats.allMatched || hasWarnings;
+  const hasIssues = !matchStats.allPerfect || hasWarnings;
 
   // Загружаем пользователей системы при включённом режиме редактирования
   useEffect(() => {
@@ -166,8 +180,8 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
             </View>
           )}
 
-          {/* Несопоставленные сотрудники */}
-          {matchStats.unmatched > 0 && (
+          {/* Проблемные сотрудники */}
+          {matchStats.problemUsers.length > 0 && (
             <View
               style={[
                 styles.unmatchedCard,
@@ -177,14 +191,18 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
               <View style={styles.unmatchedHeader}>
                 <Ionicons name="people" size={20} color={theme.warning} />
                 <Text style={[styles.unmatchedTitle, { color: theme.text }]}>
-                  Не удалось сопоставить ({matchStats.unmatched} из {matchStats.total})
+                  {matchStats.unmatched > 0 && matchStats.uncertain > 0
+                    ? `Не найдено: ${matchStats.unmatched}, неточное совпадение: ${matchStats.uncertain}`
+                    : matchStats.unmatched > 0
+                      ? `Не удалось сопоставить (${matchStats.unmatched} из ${matchStats.total})`
+                      : `Неточное совпадение (${matchStats.uncertain} из ${matchStats.total})`}
                 </Text>
               </View>
               <Text style={[styles.unmatchedHint, { color: theme.textSecondary }]}>
                 Выберите сотрудников вручную или исправьте в черновике после импорта
               </Text>
               <View style={styles.unmatchedList}>
-                {matchStats.unmatchedUsers.map((user, index) => {
+                {matchStats.problemUsers.map((user, index) => {
                   const override = userMappingOverrides?.get(user.name);
                   const hasOverride = !!override;
 
@@ -212,14 +230,18 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                         <Text style={[styles.unmatchedUserName, { color: theme.text }]}>
                           {user.name}
                         </Text>
-                        {hasOverride && (
+                        {hasOverride ? (
                           <View style={styles.overrideInfo}>
                             <Ionicons name="arrow-forward" size={14} color={theme.success} />
                             <Text style={[styles.overrideName, { color: theme.success }]}>
                               {override.userName}
                             </Text>
                           </View>
-                        )}
+                        ) : user.match_score !== undefined && user.match_score > 0 ? (
+                          <Text style={[styles.matchScoreText, { color: theme.warning }]}>
+                            Совпадение: {Math.round(user.match_score * 100)}%
+                          </Text>
+                        ) : null}
                       </View>
                       {editable && (
                         <View style={styles.editActions}>
@@ -445,5 +467,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     flex: 1,
+  },
+  matchScoreText: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });
