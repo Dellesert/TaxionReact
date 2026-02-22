@@ -113,21 +113,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   title: {
     fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   eventsList: {
     gap: 8,
   },
   eventItem: {
     borderLeftWidth: 3,
-    paddingLeft: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingLeft: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   eventItemWeb: {
     ...(Platform.OS === 'web' ? {
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   eventTime: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   eventDate: {
     fontSize: 12,

@@ -293,6 +293,17 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   );
 };
 
+const sidebarShadow = Platform.OS === 'web' ? {
+  // @ts-ignore - web only
+  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+} : {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  elevation: 3,
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -306,47 +317,28 @@ const styles = StyleSheet.create({
     width: 350,
     borderRadius: 16,
     borderWidth: 1,
-    margin: 16,
-    marginRight: 0,
+    marginTop: 16,
+    marginBottom: 16,
+    marginLeft: 16,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-    }),
+    ...sidebarShadow,
   },
   leftSidebarContent: {
     padding: 16,
   },
   centerPanel: {
     flex: 1,
-    minWidth: 0, // Important for flex shrinking
+    minWidth: 0,
   },
   rightSidebar: {
     width: 380,
     borderRadius: 16,
     borderWidth: 1,
-    margin: 16,
-    marginLeft: 0,
+    marginTop: 16,
+    marginBottom: 16,
+    marginRight: 16,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-    }),
-  },
-  rightSidebarContent: {
-    padding: 16,
+    ...sidebarShadow,
   },
   emptyStateContainer: {
     flexGrow: 1,

@@ -139,7 +139,7 @@ const ParticipantGroup: React.FC<ParticipantGroupProps> = ({
           )}
           {showCollapseButton && (
             <TouchableOpacity
-              style={[styles.showMoreButton, { borderColor: theme.border, marginTop: 4 }]}
+              style={[styles.showMoreButton, { borderColor: theme.border }]}
               onPress={handleCollapse}
             >
               <Text style={[styles.showMoreText, { color: theme.textSecondary }]}>
@@ -661,13 +661,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 8,
     borderBottomWidth: 1,
     minHeight: 56,
   },
   headerLeft: {
-    width: 60,
+    width: 48,
     alignItems: 'flex-start',
   },
   backButton: {
@@ -680,19 +680,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
   },
   headerRight: {
-    width: 60,
+    width: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingRight: 8,
   },
   actionMenuButton: {
-    padding: 4,
+    padding: 8,
   },
   eventTitle: {
     fontSize: 24,
@@ -701,7 +700,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   responseSection: {
-    marginTop: 8,
+    marginTop: 12,
   },
   responseSectionLabel: {
     fontSize: 12,
@@ -712,14 +711,14 @@ const styles = StyleSheet.create({
   },
   responseButtons: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   responseButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 12,
@@ -730,7 +729,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 4,
   },
   responseButtonText: {
@@ -749,10 +748,10 @@ const styles = StyleSheet.create({
   statBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   statText: {
     fontSize: 14,
@@ -772,14 +771,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   sectionTitleAlt: {
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   descriptionText: {
     fontSize: 15,
@@ -789,10 +788,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    padding: 14,
+    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   infoCardIcon: {
     width: 44,
@@ -806,7 +805,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   infoCardLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -832,7 +831,7 @@ const styles = StyleSheet.create({
   creatorName: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   creatorLabel: {
     fontSize: 12,
@@ -845,7 +844,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
@@ -882,7 +881,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     minWidth: 160,

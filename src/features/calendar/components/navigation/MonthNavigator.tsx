@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 16,
   } as any,
   navButton: {
     alignItems: 'center',
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     marginHorizontal: 8,
     borderRadius: 8,
     cursor: 'pointer',

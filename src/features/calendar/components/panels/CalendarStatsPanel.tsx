@@ -93,7 +93,7 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
         {/* Day */}
         <View style={[styles.countCard, { backgroundColor: theme.card }]}>
           <View style={[styles.iconCircle, { backgroundColor: '#3B82F6' + '20' }]}>
-            <Ionicons name="today" size={14} color="#3B82F6" />
+            <Ionicons name="today" size={16} color="#3B82F6" />
           </View>
           <View style={styles.countContent}>
             <Text style={[styles.countNumber, { color: theme.text }]} numberOfLines={1}>
@@ -108,7 +108,7 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
         {/* This Week */}
         <View style={[styles.countCard, { backgroundColor: theme.card }]}>
           <View style={[styles.iconCircle, { backgroundColor: '#10B981' + '20' }]}>
-            <Ionicons name="calendar" size={14} color="#10B981" />
+            <Ionicons name="calendar" size={16} color="#10B981" />
           </View>
           <View style={styles.countContent}>
             <Text style={[styles.countNumber, { color: theme.text }]} numberOfLines={1}>
@@ -123,7 +123,7 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
         {/* This Month */}
         <View style={[styles.countCard, { backgroundColor: theme.card }]}>
           <View style={[styles.iconCircle, { backgroundColor: '#8B5CF6' + '20' }]}>
-            <Ionicons name="calendar-outline" size={14} color="#8B5CF6" />
+            <Ionicons name="calendar-outline" size={16} color="#8B5CF6" />
           </View>
           <View style={styles.countContent}>
             <Text style={[styles.countNumber, { color: theme.text }]} numberOfLines={1}>
@@ -138,7 +138,7 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
 
       {/* Event Type Distribution */}
       {!isCompact && stats.totalEvents > 0 && (
-        <View style={styles.chartSection}>
+        <View style={[styles.chartSection, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Типы событий (Месяц)</Text>
 
           {/* Visual Bar Chart */}
@@ -177,34 +177,32 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginTop: 16,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
   },
   countsRow: {
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
+    gap: 8,
   },
   countCard: {
     flex: 1,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
-    borderRadius: 10,
-    gap: 4,
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
-    minHeight: 64,
   },
   iconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -214,33 +212,33 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   countNumber: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   countLabel: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
     textAlign: 'center',
   },
   chartSection: {
-    marginTop: 8,
-    paddingTop: 12,
+    marginTop: 16,
+    paddingTop: 16,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   chartBars: {
-    gap: 10,
+    gap: 12,
   },
   chartRow: {
-    gap: 8,
+    gap: 4,
   },
   chartLabel: {
     flexDirection: 'row',
@@ -249,9 +247,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   chartDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   chartLabelText: {
     fontSize: 12,
@@ -261,18 +259,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    height: 24,
+    height: 20,
     flex: 1,
   },
   chartBar: {
     height: '100%',
-    borderRadius: 4,
-    minWidth: 2,
+    borderRadius: 6,
+    minWidth: 4,
   },
   chartValue: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    minWidth: 30,
+    minWidth: 24,
     flexShrink: 0,
   },
 });
