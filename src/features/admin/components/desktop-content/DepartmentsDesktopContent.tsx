@@ -37,7 +37,6 @@ const DepartmentsDesktopContent: React.FC = () => {
 
   const gridColumns = isNarrow ? 1 : 2;
   const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
-  const horizontalPadding = isNarrow ? 16 : 32;
   const { user } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
@@ -56,7 +55,7 @@ const DepartmentsDesktopContent: React.FC = () => {
     if (!isElectron) return null;
     return (
       <View style={titleBarStyles.searchContainer}>
-        <Ionicons name="search" size={16} color={theme.textSecondary} />
+        <Ionicons name="search" size={14} color={theme.textSecondary} />
         <TextInput
           style={[titleBarStyles.searchInput, { color: theme.text }]}
           placeholder="Поиск отделов..."
@@ -65,13 +64,9 @@ const DepartmentsDesktopContent: React.FC = () => {
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
-          <View
-            style={titleBarStyles.clearButton}
-            // @ts-ignore - Web-only event handlers
-            onClick={() => setSearchQuery('')}
-          >
-            <Ionicons name="close-circle" size={16} color={theme.textSecondary} />
-          </View>
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={14} color={theme.textSecondary} />
+          </TouchableOpacity>
         )}
       </View>
     );
@@ -182,71 +177,6 @@ const DepartmentsDesktopContent: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      paddingHorizontal: horizontalPadding,
-      paddingTop: isNarrow ? 20 : 32,
-      paddingBottom: isNarrow ? 16 : 24,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTop: {
-      flexDirection: isNarrow ? 'column' : 'row',
-      justifyContent: 'space-between',
-      alignItems: isNarrow ? 'stretch' : 'flex-start',
-      marginBottom: isNarrow ? 12 : 20,
-      gap: isNarrow ? 12 : 24,
-    },
-    headerText: {
-      flex: 1,
-    },
-    headerTitle: {
-      fontSize: isNarrow ? 22 : 28,
-      fontWeight: '700',
-      color: theme.text,
-      marginBottom: 6,
-      letterSpacing: -0.5,
-    },
-    headerDescription: {
-      fontSize: 15,
-      color: theme.textSecondary,
-      lineHeight: 22,
-    },
-    searchRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    searchContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      gap: 8,
-      maxWidth: isNarrow ? undefined : 500,
-      flex: isNarrow ? 1 : undefined,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: 15,
-      color: theme.text,
-    },
-    createButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: theme.primary,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 12,
-    },
-    createButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: '#FFFFFF',
-    },
     departmentCard: {
       backgroundColor: theme.backgroundSecondary,
       borderRadius: 16,
@@ -287,46 +217,6 @@ const DepartmentsDesktopContent: React.FC = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      {/* Header with title, description and create button — only for non-Electron */}
-      {!isElectron && (
-        <View style={[dynamicStyles.header, { backgroundColor: isDark ? theme.card : '#FAFAFA' }]}>
-          <View style={dynamicStyles.headerTop}>
-            <View style={dynamicStyles.headerText}>
-              <Text style={dynamicStyles.headerTitle}>Управление отделами</Text>
-              <Text style={dynamicStyles.headerDescription}>
-                Создание и редактирование структуры организации
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={dynamicStyles.createButton}
-              onPress={() => setShowCreateModal(true)}
-            >
-              <Ionicons name="add" size={20} color="#FFFFFF" />
-              <Text style={dynamicStyles.createButtonText}>Создать отдел</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Row */}
-          <View style={dynamicStyles.searchRow}>
-            <View style={dynamicStyles.searchContainer}>
-              <Ionicons name="search" size={18} color={theme.textSecondary} />
-              <TextInput
-                style={dynamicStyles.searchInput}
-                placeholder="Поиск отделов..."
-                placeholderTextColor={theme.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </View>
-      )}
-
       {/* Create Modal */}
       {showCreateModal && (
         <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
@@ -576,25 +466,22 @@ const titleBarStyles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(128,128,128,0.1)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: 'transparent',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    height: 28,
     gap: 6,
-    minWidth: 220,
+    minWidth: 200,
     maxWidth: 360,
-    flex: 1,
-  } as any,
+    borderWidth: 1,
+    borderColor: 'rgba(128, 128, 128, 0.2)',
+  },
   searchInput: {
     flex: 1,
     fontSize: 13,
     height: 28,
-    // @ts-ignore
+    // @ts-ignore - Web-only
     outlineStyle: 'none',
-  } as any,
-  clearButton: {
-    cursor: 'pointer',
-    padding: 2,
   } as any,
 });
 
