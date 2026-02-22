@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -174,6 +174,15 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
+  const [actionMenuPosition, setActionMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
+  const actionMenuButtonRef = useRef<View>(null);
+
+  const handleOpenActionMenu = useCallback(() => {
+    actionMenuButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setActionMenuPosition({ x, y, width, height });
+      setShowActionMenu(true);
+    });
+  }, []);
 
   const myParticipation = user && event.participants ? event.participants.find(p => p.user_id === user.id) : null;
   const isCreator = user && event.created_by === user.id;
@@ -303,7 +312,8 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         <View style={styles.headerRight}>
           {canManage && !isScheduleEvent && (
             <TouchableOpacity
-              onPress={() => setShowActionMenu(true)}
+              ref={actionMenuButtonRef}
+              onPress={handleOpenActionMenu}
               style={styles.actionMenuButton}
             >
               <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
@@ -620,6 +630,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         visible={showActionMenu}
         onClose={() => setShowActionMenu(false)}
         isDesktop={true}
+        buttonPosition={actionMenuPosition}
         items={[
           {
             key: 'edit',
