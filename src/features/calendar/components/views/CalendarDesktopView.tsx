@@ -175,6 +175,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.leftSidebarContent}
+            style={{ backgroundColor: theme.background }}
           >
             {/* Upcoming Events Card */}
             <UpcomingEventsCard
@@ -230,53 +231,55 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
               ))}
             </View>
           </View>
-          {/* Holiday banner for day view */}
-          {viewMode === 'day' && (() => {
-            const holiday = getHoliday(selectedDate);
-            return holiday ? <HolidayBanner holidayName={holiday.name} /> : null;
-          })()}
+          <View style={{ flex: 1, backgroundColor: theme.background }}>
+            {/* Holiday banner for day view */}
+            {viewMode === 'day' && (() => {
+              const holiday = getHoliday(selectedDate);
+              return holiday ? <HolidayBanner holidayName={holiday.name} /> : null;
+            })()}
 
-          {isLoading ? (
-            <EventListSkeleton />
-          ) : viewMode === 'week' ? (
-            weekDisplayMode === 'timeline' ? (
-              <WeekTimelineView
-                selectedDate={selectedDate}
-                events={events}
-                onEventPress={handleEventPress}
-              />
-            ) : (
-              sections.length === 0 ? (
-                <ScrollView
-                  contentContainerStyle={styles.emptyStateContainer}
-                  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                >
-                  <CalendarEmptyState />
-                </ScrollView>
-              ) : (
-                <CalendarEventsList
-                  sections={sections}
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
+            {isLoading ? (
+              <EventListSkeleton />
+            ) : viewMode === 'week' ? (
+              weekDisplayMode === 'timeline' ? (
+                <WeekTimelineView
+                  selectedDate={selectedDate}
+                  events={events}
                   onEventPress={handleEventPress}
                 />
+              ) : (
+                sections.length === 0 ? (
+                  <ScrollView
+                    contentContainerStyle={styles.emptyStateContainer}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                  >
+                    <CalendarEmptyState />
+                  </ScrollView>
+                ) : (
+                  <CalendarEventsList
+                    sections={sections}
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    onEventPress={handleEventPress}
+                  />
+                )
               )
-            )
-          ) : sections.length === 0 ? (
-            <ScrollView
-              contentContainerStyle={styles.emptyStateContainer}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            >
-              <CalendarEmptyState />
-            </ScrollView>
-          ) : (
-            <CalendarEventsList
-              sections={sections}
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              onEventPress={handleEventPress}
-            />
-          )}
+            ) : sections.length === 0 ? (
+              <ScrollView
+                contentContainerStyle={styles.emptyStateContainer}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              >
+                <CalendarEmptyState />
+              </ScrollView>
+            ) : (
+              <CalendarEventsList
+                sections={sections}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                onEventPress={handleEventPress}
+              />
+            )}
+          </View>
         </View>
 
         {/* Right Sidebar - Event Details (only when event selected) */}
