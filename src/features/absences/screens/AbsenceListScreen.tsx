@@ -554,7 +554,7 @@ export const AbsenceListScreen: React.FC = () => {
                 <View style={[styles.calendarSidebarHeader, { borderColor: theme.border }]}>
                   <Text style={[styles.calendarSidebarTitle, { color: theme.text }]}>Сотрудники</Text>
                 </View>
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.calendarSidebarContent}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.calendarSidebarContent} style={{ backgroundColor: theme.background }}>
                   {/* All employees option */}
                   <TouchableOpacity
                     style={[
@@ -706,13 +706,15 @@ export const AbsenceListScreen: React.FC = () => {
                     </TouchableOpacity>
                   </View>
                 </View>
-                <AbsenceYearCalendar
-                  year={selectedYear}
-                  absences={filteredAbsences}
-                  selectedTypeFilter={selectedTypeFilter}
-                  colorMode={colorMode}
-                  onAbsencePress={handleAbsencePress}
-                />
+                <View style={{ flex: 1, backgroundColor: theme.background }}>
+                  <AbsenceYearCalendar
+                    year={selectedYear}
+                    absences={filteredAbsences}
+                    selectedTypeFilter={selectedTypeFilter}
+                    colorMode={colorMode}
+                    onAbsencePress={handleAbsencePress}
+                  />
+                </View>
               </View>
             </View>
           ) : viewMode === 'timeline' ? (
@@ -797,6 +799,7 @@ export const AbsenceListScreen: React.FC = () => {
               </View>
               {/* List Content */}
               <ScrollView
+                style={{ backgroundColor: theme.background }}
                 contentContainerStyle={styles.rowsScrollContent}
                 showsVerticalScrollIndicator={false}
               >

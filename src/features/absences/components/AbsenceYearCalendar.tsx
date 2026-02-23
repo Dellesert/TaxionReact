@@ -384,12 +384,6 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
         {Array.from({ length: 12 }, (_, i) => renderMonth(i))}
       </View>
 
-      {/* Legend */}
-      {renderLegend() && (
-        <View style={[styles.legendContainer, { borderColor: theme.border }]}>
-          {renderLegend()}
-        </View>
-      )}
     </ScrollView>
   );
 };

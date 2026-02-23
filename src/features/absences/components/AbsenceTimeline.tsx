@@ -448,7 +448,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
       {/* User list */}
       <ScrollView
         ref={sidebarScrollRef}
-        style={styles.sidebarList}
+        style={[styles.sidebarList, { backgroundColor: theme.background }]}
         showsVerticalScrollIndicator={false}
         scrollEnabled={false}
       >
@@ -644,7 +644,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
               {renderHeaders()}
 
               {/* Timeline rows */}
-              <View style={styles.timelineRows}>
+              <View style={[styles.timelineRows, { backgroundColor: theme.background }]}>
                 {userRows.map(renderUserRow)}
               </View>
 
