@@ -1334,6 +1334,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                         onAddEntry={handleShiftsAddEntry}
                         onUpdateEntry={handleShiftsUpdateEntry}
                         onDeleteEntry={handleShiftsEntryDelete}
+                        groupMembers={groupMembers}
                       />
                     </FadeIn>
                   )}

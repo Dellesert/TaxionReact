@@ -22,7 +22,7 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
 import { getUsers } from '@api/user.api';
 import type { User } from '@/types/user.types';
-import type { ScheduleEntry } from '../types/schedule.types';
+import type { ScheduleEntry, ScheduleUser } from '../types/schedule.types';
 
 interface UserQuickPickerProps {
   visible: boolean;
@@ -35,6 +35,7 @@ interface UserQuickPickerProps {
   onClose: () => void;
   isLoading?: boolean;
   existingUserIds?: number[]; // Users already assigned to this cell
+  groupMembers?: ScheduleUser[]; // If provided, show only group members instead of all users
 }
 
 export const UserQuickPicker: React.FC<UserQuickPickerProps> = ({
@@ -48,6 +49,7 @@ export const UserQuickPicker: React.FC<UserQuickPickerProps> = ({
   onClose,
   isLoading = false,
   existingUserIds = [],
+  groupMembers,
 }) => {
   const { theme } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -60,10 +62,24 @@ export const UserQuickPicker: React.FC<UserQuickPickerProps> = ({
   // Load users when picker opens
   useEffect(() => {
     if (visible) {
-      loadUsers();
+      if (groupMembers && groupMembers.length > 0) {
+        // Use group members directly instead of fetching all users
+        setUsers(groupMembers.map(m => ({
+          id: m.id,
+          name: m.name,
+          first_name: m.first_name,
+          last_name: m.last_name,
+          middle_name: m.middle_name,
+          email: m.email,
+          avatar: m.avatar,
+        } as User)));
+        setIsLoadingUsers(false);
+      } else {
+        loadUsers();
+      }
       setSearchQuery('');
     }
-  }, [visible]);
+  }, [visible, groupMembers]);
 
   useEffect(() => {
     if (visible) {

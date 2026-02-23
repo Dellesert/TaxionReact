@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Platform, Pressable, GestureRespond
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Avatar } from '@shared/components/common/Avatar';
-import type { Schedule, ScheduleEntry, ShiftType } from '../types/schedule.types';
+import type { Schedule, ScheduleEntry, ScheduleUser, ShiftType } from '../types/schedule.types';
 import { UserQuickPicker } from './UserQuickPicker';
 
 interface ScheduleShiftsViewProps {
@@ -13,6 +13,7 @@ interface ScheduleShiftsViewProps {
   onAddEntry?: (userId: number, dateKey: string, shiftType: ShiftType) => Promise<void>;
   onUpdateEntry?: (entryId: number, userId: number) => Promise<void>;
   onDeleteEntry?: (entryId: number) => Promise<void>;
+  groupMembers?: ScheduleUser[];
 }
 
 interface DateRow {
@@ -122,6 +123,7 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
   onAddEntry,
   onUpdateEntry,
   onDeleteEntry,
+  groupMembers,
 }) => {
   const { theme } = useTheme();
 
@@ -425,6 +427,7 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
         onClose={handleClosePicker}
         isLoading={isLoading}
         existingUserIds={selectedCell?.existingUserIds || []}
+        groupMembers={groupMembers}
       />
     </View>
   );
