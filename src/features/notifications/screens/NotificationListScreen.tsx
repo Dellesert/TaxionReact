@@ -3,8 +3,8 @@
  * Экран со списком уведомлений
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, Platform } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, Platform, Animated } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@shared/store/notificationStore';
@@ -23,11 +23,27 @@ import { useNotificationListActions } from '../hooks/useNotificationListActions'
 import { NotificationEmptyState } from '../components/NotificationEmptyState';
 import { NotificationLoadingFooter } from '../components/NotificationLoadingFooter';
 import { NotificationSkeleton } from '../components/NotificationSkeleton';
+import { NotificationListSkeleton } from '../components/states/NotificationListSkeleton';
 
 // Utils
 import { shouldShowMarkAllButton, isNotificationListEmpty } from '../utils/notificationHelpers';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+
+// FadeIn wrapper — плавное появление контента после скелетона
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
+  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
+  useEffect(() => {
+    if (enabled) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [opacity, enabled]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
 
 // Filter types
 type NotificationFilter = 'all' | 'message' | 'task' | 'event' | 'poll' | 'system';
@@ -36,6 +52,7 @@ const NotificationListScreen: React.FC = () => {
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
   const { markAsRead, deleteAllNotifications } = useNotificationStore();
+  const mountTime = useRef(Date.now());
 
   // Сбрасываем контролы TitleBar при переходе на этот экран
   useTitleBarControlsIntegration({
@@ -325,30 +342,36 @@ const NotificationListScreen: React.FC = () => {
 
       {/* List Container - Centered on Desktop */}
       <View style={isWideScreen ? styles.desktopListContainer : styles.listContainer}>
-        <FlashList
-          data={flattenedData}
-          renderItem={renderItem}
-          estimatedItemHeight={90}
-          getItemType={getItemType}
-          keyExtractor={(item, index) =>
-            item.type === 'header' ? `header-${item.title}` : `notification-${item.data.id}`
-          }
-          ListEmptyComponent={renderEmpty}
-          ListFooterComponent={renderFooter}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading && isNotificationListEmpty(notifications)}
-              onRefresh={handleRefresh}
-              colors={['#3B82F6']}
-              tintColor="#3B82F6"
+        {isWideScreen && isLoading && isNotificationListEmpty(notifications) ? (
+          <NotificationListSkeleton />
+        ) : (
+          <FadeIn enabled={isWideScreen && Date.now() - mountTime.current > 150}>
+            <FlashList
+              data={flattenedData}
+              renderItem={renderItem}
+              estimatedItemHeight={90}
+              getItemType={getItemType}
+              keyExtractor={(item, index) =>
+                item.type === 'header' ? `header-${item.title}` : `notification-${item.data.id}`
+              }
+              ListEmptyComponent={renderEmpty}
+              ListFooterComponent={renderFooter}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isLoading && isNotificationListEmpty(notifications)}
+                  onRefresh={handleRefresh}
+                  colors={['#3B82F6']}
+                  tintColor="#3B82F6"
+                />
+              }
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.5}
+              contentContainerStyle={
+                isNotificationListEmpty(notifications) ? styles.emptyListContainer : undefined
+              }
             />
-          }
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          contentContainerStyle={
-            isNotificationListEmpty(notifications) ? styles.emptyListContainer : undefined
-          }
-        />
+          </FadeIn>
+        )}
       </View>
     </View>
   );

@@ -39,6 +39,7 @@ import { AdminDesktopFallback } from '@features/admin/components/states/AdminDes
 import { TasksDesktopFallback } from '@features/tasks/components/states/TasksDesktopFallback';
 import { PollsDesktopFallback } from '@features/polls/components/states/PollsDesktopFallback';
 import { ProfileDesktopFallback } from '@features/profile/components/states/ProfileDesktopFallback';
+import { NotificationsDesktopFallback } from '@features/notifications/components/states/NotificationsDesktopFallback';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -97,7 +98,11 @@ const MainNavigatorContent: React.FC = () => {
             </Suspense>
           );
         case 'Notifications':
-          return <NotificationNavigator />;
+          return (
+            <Suspense fallback={<NotificationsDesktopFallback />}>
+              <NotificationNavigator />
+            </Suspense>
+          );
         case 'Admin':
           return (
             <Suspense fallback={<AdminDesktopFallback />}>
