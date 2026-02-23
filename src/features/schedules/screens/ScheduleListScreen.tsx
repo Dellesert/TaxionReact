@@ -359,11 +359,45 @@ export const ScheduleListScreen: React.FC = () => {
             <View style={[styles.mainPanel, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
               <View style={[styles.mainPanelHeader, { borderColor: theme.border }]}>
                 <Text style={[styles.mainPanelTitle, { color: theme.text }]}>Список графиков</Text>
-                <MonthPicker
-                  selectedDate={selectedMonth}
-                  onMonthChange={handleMonthChange}
-                  compact
-                />
+                <View style={styles.headerMonthPicker}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const d = new Date(selectedMonth);
+                      d.setMonth(d.getMonth() - 1);
+                      handleMonthChange(d);
+                    }}
+                    style={[styles.headerMonthArrow, { backgroundColor: theme.backgroundTertiary }]}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="chevron-back" size={16} color={theme.text} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleMonthChange(new Date())}
+                    activeOpacity={
+                      selectedMonth.getMonth() === new Date().getMonth() &&
+                      selectedMonth.getFullYear() === new Date().getFullYear() ? 1 : 0.6
+                    }
+                    disabled={
+                      selectedMonth.getMonth() === new Date().getMonth() &&
+                      selectedMonth.getFullYear() === new Date().getFullYear()
+                    }
+                  >
+                    <Text style={[styles.headerMonthText, { color: theme.text }]}>
+                      {['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'][selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const d = new Date(selectedMonth);
+                      d.setMonth(d.getMonth() + 1);
+                      handleMonthChange(d);
+                    }}
+                    style={[styles.headerMonthArrow, { backgroundColor: theme.backgroundTertiary }]}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="chevron-forward" size={16} color={theme.text} />
+                  </TouchableOpacity>
+                </View>
               </View>
               <ScrollView
                 contentContainerStyle={styles.columnsScrollContent}
@@ -560,8 +594,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  monthPickerContainer: {
+  headerMonthPicker: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+  },
+  headerMonthArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerMonthText: {
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginHorizontal: 4,
   },
   summarySidebar: {
     width: 380,

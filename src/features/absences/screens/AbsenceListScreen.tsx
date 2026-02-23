@@ -1169,12 +1169,12 @@ const styles = StyleSheet.create({
   calendarHeaderYearPicker: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   calendarHeaderArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1183,6 +1183,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     minWidth: 40,
     textAlign: 'center',
+    lineHeight: 24,
+    marginHorizontal: 12,
   },
 });
 

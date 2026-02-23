@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Poll } from '../../types/poll.types';
 import { PollListContent } from '../lists/PollListContent';
@@ -29,6 +29,36 @@ export const PollViewSwitcher: React.FC<PollViewSwitcherProps> = (props) => {
 
   // Use viewMode from props if provided, otherwise use internal state
   const viewMode = props.viewMode ?? internalViewMode;
+
+  // Smooth view transition state
+  const [displayedViewMode, setDisplayedViewMode] = useState<ViewMode>(viewMode);
+  const [viewTransitioning, setViewTransitioning] = useState(false);
+  const skipTransition = useRef(true);
+
+  // Enable transitions after initial load
+  useEffect(() => {
+    const timer = setTimeout(() => { skipTransition.current = false; }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Animate view mode change on web
+  useEffect(() => {
+    if (viewMode === displayedViewMode) return;
+    if (Platform.OS === 'web' && !skipTransition.current) {
+      setViewTransitioning(true);
+      const timer = setTimeout(() => {
+        setDisplayedViewMode(viewMode);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setViewTransitioning(false);
+          });
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      setDisplayedViewMode(viewMode);
+    }
+  }, [viewMode, displayedViewMode]);
 
   // Load saved view mode on mount (only if viewMode not provided via props)
   useEffect(() => {
@@ -64,8 +94,12 @@ export const PollViewSwitcher: React.FC<PollViewSwitcherProps> = (props) => {
   return (
     <View style={styles.container}>
       {/* Content based on view mode */}
-      <View style={styles.content}>
-        {viewMode === 'grid' && (
+      <View style={[
+        styles.content,
+        Platform.OS === 'web' && styles.viewTransition,
+        viewTransitioning && styles.viewTransitionFadeOut,
+      ]}>
+        {displayedViewMode === 'grid' && (
           <PollListContent
             polls={props.polls}
             isLoading={props.isLoading}
@@ -81,7 +115,7 @@ export const PollViewSwitcher: React.FC<PollViewSwitcherProps> = (props) => {
           />
         )}
 
-        {viewMode === 'table' && (
+        {displayedViewMode === 'table' && (
           <PollTableView
             polls={props.polls}
             isLoading={props.isLoading}
@@ -106,5 +140,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  viewTransition: {
+    ...Platform.select({
+      web: {
+        transition: 'opacity 0.15s ease-in-out',
+      },
+    }),
+  } as any,
+  viewTransitionFadeOut: {
+    opacity: 0,
   },
 });
