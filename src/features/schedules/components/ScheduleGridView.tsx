@@ -175,6 +175,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   const [isLoading] = useState(false);
   const [hoveredCell, setHoveredCell] = useState<string | null>(null); // "userId-dateKey"
   const [hoveredRow, setHoveredRow] = useState<number | null>(null); // userId
+  const [hoveredColumn, setHoveredColumn] = useState<number | null>(null); // date index for column highlight
 
   // Optimistic updates - only used in immediate mode (not batch mode)
   const [optimisticUpdates, setOptimisticUpdates] = useState<Map<string, ShiftType | 'deleted'>>(new Map());
@@ -489,7 +490,11 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                     { width: CELL_WIDTH, backgroundColor: theme.card, borderColor: theme.border },
                     weekend && { backgroundColor: theme.backgroundSecondary },
                     today && { backgroundColor: theme.primary + '20' },
+                    hoveredColumn === index && { backgroundColor: theme.primary + '12' },
                   ]}
+                  // @ts-ignore - Web-only mouse events
+                  onMouseEnter={() => setHoveredColumn(index)}
+                  onMouseLeave={() => setHoveredColumn((prev: number | null) => prev === index ? null : prev)}
                 >
                   <Text style={[
                     styles.dayNumber,
@@ -614,7 +619,9 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           { width: CELL_WIDTH, borderColor: theme.border },
                           weekend && { backgroundColor: theme.backgroundSecondary + '50' },
                           today && { backgroundColor: theme.primary + '10' },
+                          hoveredColumn === index && !isHovered && { backgroundColor: theme.primary + '06' },
                           hoveredRow === userRow.userId && !isHovered && { backgroundColor: theme.textSecondary + '08' },
+                          hoveredColumn === index && hoveredRow === userRow.userId && !isHovered && { backgroundColor: theme.primary + '12' },
                           canEdit && styles.entryCellClickable,
                           canEdit && isHovered && { backgroundColor: (isRedDay ? theme.error : theme.textSecondary) + '15' },
                           isPending && !hasWarning && styles.pendingCell,
@@ -624,9 +631,14 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           hasAbsence && isSpanLabelCell && spanLength > 1 && Platform.OS === 'web' && { overflow: 'visible' as any, zIndex: 2 },
                         ]}
                         onPress={(e) => handleCellPress(e, cellInfo)}
-                        onHoverIn={() => canEdit && setHoveredCell(cellKey)}
-                        onHoverOut={() => setHoveredCell(null)}
-                        disabled={!canEdit}
+                        onHoverIn={() => {
+                          if (canEdit) setHoveredCell(cellKey);
+                          setHoveredColumn(index);
+                        }}
+                        onHoverOut={() => {
+                          setHoveredCell(null);
+                          setHoveredColumn((prev) => prev === index ? null : prev);
+                        }}
                       >
                         {/* Absence band segment - continuous colored bar across span */}
                         {hasAbsence && (
@@ -836,7 +848,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 6,
     borderRightWidth: 1,
-  },
+    ...Platform.select({
+      web: {
+        transition: 'background-color 0.15s ease',
+      },
+    }),
+  } as any,
   dayNumber: {
     fontSize: 14,
     fontWeight: '600',
@@ -878,7 +895,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRightWidth: 1,
     minHeight: 44,
-  },
+    ...Platform.select({
+      web: {
+        transition: 'background-color 0.15s ease',
+      },
+    }),
+  } as any,
   shiftBadge: {
     width: 24,
     height: 24,
