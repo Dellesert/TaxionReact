@@ -671,7 +671,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerCenter: {
     flex: 1,
@@ -691,7 +694,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   actionMenuButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   eventTitle: {
     fontSize: 24,

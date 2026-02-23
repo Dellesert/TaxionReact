@@ -1,18 +1,14 @@
 /**
  * AbsenceYearCalendar
  * Yearly calendar view displaying all absences with color-coded date highlighting
- * Includes a user list sidebar for filtering
  */
 
-import React, { useMemo, useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
-import { Avatar } from '@shared/components/common/Avatar';
 import {
   Absence,
   AbsenceType,
-  AbsenceUser,
   AbsenceColorMode,
   ABSENCE_TYPE_COLORS,
   ABSENCE_TYPE_LABELS,
@@ -102,15 +98,12 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
   const { theme } = useTheme();
   const { holidayMap } = useRussianHolidays(year);
 
-  // Selected user filter
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-
-  // Get unique users from absences
+  // Get unique users from absences (for legend)
   const users = useMemo(() => {
-    const userMap = new Map<number, AbsenceUser>();
+    const userMap = new Map<number, { id: number; name: string; color?: string }>();
     for (const absence of absences) {
       if (absence.user && !userMap.has(absence.user.id)) {
-        userMap.set(absence.user.id, absence.user);
+        userMap.set(absence.user.id, { id: absence.user.id, name: absence.user.name, color: absence.user.color });
       }
     }
     return Array.from(userMap.values()).sort((a, b) =>
@@ -118,20 +111,8 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
     );
   }, [absences]);
 
-  // Filter absences by selected user and type
-  const filteredAbsences = useMemo(() => {
-    let filtered = absences;
-
-    if (selectedUserId !== null) {
-      filtered = filtered.filter(a => a.user_id === selectedUserId);
-    }
-
-    if (selectedTypeFilter) {
-      filtered = filtered.filter(a => a.type === selectedTypeFilter);
-    }
-
-    return filtered;
-  }, [absences, selectedUserId, selectedTypeFilter]);
+  // Absences are already filtered by parent
+  const filteredAbsences = absences;
 
   // Get color based on colorMode
   const getAbsenceColor = useCallback((absence: Absence): string => {
@@ -247,16 +228,6 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
       onDayPress(calendarDay.date, calendarDay.absences.map(a => a.absence));
     }
   }, [onDayPress, onAbsencePress]);
-
-  // Handle user selection
-  const handleUserSelect = useCallback((userId: number | null) => {
-    setSelectedUserId(prev => prev === userId ? null : userId);
-  }, []);
-
-  // Get user's absences for sidebar display
-  const getUserAbsences = useCallback((userId: number) => {
-    return absences.filter(a => a.user_id === userId);
-  }, [absences]);
 
   // Render a single month
   const renderMonth = useCallback((month: number) => {
@@ -402,280 +373,40 @@ export const AbsenceYearCalendar: React.FC<AbsenceYearCalendarProps> = ({
     );
   }, [filteredAbsences, theme, colorMode, users]);
 
-  // Render user item in sidebar
-  const renderUserItem = useCallback((user: AbsenceUser) => {
-    const isSelected = selectedUserId === user.id;
-    const userAbsences = getUserAbsences(user.id);
-    const absenceCount = userAbsences.length;
-    const userColor = user.color || getUserColorById(user.id);
-
-    return (
-      <TouchableOpacity
-        key={user.id}
-        style={[
-          styles.userItem,
-          { borderColor: theme.border },
-          isSelected && [styles.userItemSelected, { backgroundColor: theme.backgroundSecondary, borderColor: theme.primary }],
-        ]}
-        onPress={() => handleUserSelect(user.id)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.avatarWithColor}>
-          <Avatar
-            name={user.name || ''}
-            imageUrl={user.avatar}
-            userId={user.id}
-            size={36}
-          />
-          <View style={[styles.userColorDot, { backgroundColor: userColor }]} />
-        </View>
-        <View style={styles.userInfo}>
-          <Text
-            style={[styles.userName, { color: theme.text }]}
-            numberOfLines={1}
-          >
-            {user.name}
-          </Text>
-          <Text style={[styles.userAbsenceCount, { color: theme.textSecondary }]}>
-            {absenceCount} {absenceCount === 1 ? 'отсутствие' : absenceCount < 5 ? 'отсутствия' : 'отсутствий'}
-          </Text>
-        </View>
-        {isSelected && (
-          <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
-        )}
-      </TouchableOpacity>
-    );
-  }, [selectedUserId, theme, getUserAbsences, handleUserSelect]);
-
-  // Render selected user's absences list
-  const renderSelectedUserAbsences = useCallback(() => {
-    if (selectedUserId === null) return null;
-
-    const userAbsences = getUserAbsences(selectedUserId);
-    const selectedUser = users.find(u => u.id === selectedUserId);
-
-    if (userAbsences.length === 0) return null;
-
-    return (
-      <View style={[styles.userAbsencesList, { borderColor: theme.border }]}>
-        <Text style={[styles.userAbsencesTitle, { color: theme.textSecondary }]}>
-          Отсутствия {selectedUser?.name}:
-        </Text>
-        {userAbsences.map(absence => (
-          <TouchableOpacity
-            key={absence.id}
-            style={[styles.absenceItem, { backgroundColor: ABSENCE_TYPE_COLORS[absence.type] + '15' }]}
-            onPress={() => onAbsencePress?.(absence)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.absenceColorDot, { backgroundColor: ABSENCE_TYPE_COLORS[absence.type] }]} />
-            <View style={styles.absenceInfo}>
-              <Text style={[styles.absenceType, { color: theme.text }]}>
-                {ABSENCE_TYPE_LABELS[absence.type]}
-              </Text>
-              <Text style={[styles.absenceDates, { color: theme.textSecondary }]}>
-                {new Date(absence.start_date).toLocaleDateString('ru-RU')} — {new Date(absence.end_date).toLocaleDateString('ru-RU')}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  }, [selectedUserId, users, getUserAbsences, theme, onAbsencePress]);
-
   return (
-    <View style={styles.container}>
-      {/* Left Sidebar - Users List */}
-      <View style={[styles.sidebar, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={styles.sidebarHeader}>
-          <Text style={[styles.sidebarTitle, { color: theme.text }]}>Сотрудники</Text>
-          {selectedUserId !== null && (
-            <TouchableOpacity
-              onPress={() => setSelectedUserId(null)}
-              style={[styles.clearButton, { backgroundColor: theme.backgroundSecondary }]}
-            >
-              <Text style={[styles.clearButtonText, { color: theme.primary }]}>Сбросить</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <ScrollView
-          style={styles.usersList}
-          showsVerticalScrollIndicator={false}
-        >
-          {users.map(renderUserItem)}
-
-          {/* Selected user's absences */}
-          {renderSelectedUserAbsences()}
-        </ScrollView>
-
-        {/* Legend - at the bottom of sidebar */}
-        {renderLegend() && (
-          <View style={[styles.sidebarLegend, { borderColor: theme.border }]}>
-            {renderLegend()}
-          </View>
-        )}
+    <ScrollView
+      style={styles.calendarContainer}
+      contentContainerStyle={styles.calendarContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Months Grid */}
+      <View style={styles.monthsGrid}>
+        {Array.from({ length: 12 }, (_, i) => renderMonth(i))}
       </View>
 
-      {/* Right Content - Calendar */}
-      <ScrollView
-        style={styles.calendarContainer}
-        contentContainerStyle={styles.calendarContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Months Grid */}
-        <View style={styles.monthsGrid}>
-          {Array.from({ length: 12 }, (_, i) => renderMonth(i))}
+      {/* Legend */}
+      {renderLegend() && (
+        <View style={[styles.legendContainer, { borderColor: theme.border }]}>
+          {renderLegend()}
         </View>
-      </ScrollView>
-    </View>
+      )}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  // Sidebar styles
-  sidebar: {
-    width: 280,
-    borderRadius: 16,
-    borderWidth: 1,
-    margin: 16,
-    marginRight: 0,
-    overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {}),
-  },
-  sidebarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  sidebarTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  clearButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  clearButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  usersList: {
-    flex: 1,
-    paddingHorizontal: 12,
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    marginBottom: 6,
-    gap: 10,
-  },
-  userItemSelected: {
-    borderWidth: 1,
-  },
-  avatarWithColor: {
-    position: 'relative',
-  },
-  userColorDot: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  userAbsenceCount: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  userAbsencesList: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
-  sidebarLegend: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-  },
-  sidebarLegendTitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  userAbsencesTitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  absenceItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 6,
-    gap: 10,
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore
-      cursor: 'pointer',
-    } : {}),
-  },
-  absenceColorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  absenceInfo: {
-    flex: 1,
-  },
-  absenceType: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  absenceDates: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  // Calendar styles
   calendarContainer: {
     flex: 1,
   },
   calendarContent: {
     padding: 16,
   },
-  calendarTitleContainer: {
-    marginBottom: 16,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  calendarTitleText: {
-    fontSize: 14,
-    fontWeight: '600',
+  legendContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    marginTop: 16,
   },
   legendItems: {
     flexDirection: 'row',

@@ -113,6 +113,7 @@ const styles = StyleSheet.create({
   },
   wrapperCompact: {
     paddingHorizontal: 0,
+    paddingVertical: 0,
     alignSelf: 'center',
   },
   container: {

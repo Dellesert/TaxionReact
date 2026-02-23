@@ -39,7 +39,9 @@ import {
   ABSENCE_TYPE_COLORS,
 } from '../types/absence.types';
 import { AbsenceCard } from '../components/AbsenceCard';
+import { Avatar } from '@shared/components/common/Avatar';
 import { CustomScrollView } from '@shared/components/common/CustomScrollView';
+import { getUserColorById } from '../constants/userColors.constants';
 
 // Type for sections grouped by absence type
 interface AbsenceSection {
@@ -514,13 +516,131 @@ export const AbsenceListScreen: React.FC = () => {
         {/* Desktop layout for Electron - calendar, timeline or columns view */}
         {isElectron && isDesktop ? (
           viewMode === 'calendar' ? (
-            <AbsenceYearCalendar
-              year={selectedYear}
-              absences={filteredAbsences}
-              selectedTypeFilter={selectedTypeFilter}
-              colorMode={colorMode}
-              onAbsencePress={handleAbsencePress}
-            />
+            <View style={styles.calendarDesktopRow}>
+              {/* Left Sidebar - Employees */}
+              <View style={[styles.calendarSidebar, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
+                <View style={[styles.calendarSidebarHeader, { borderColor: theme.border }]}>
+                  <Text style={[styles.calendarSidebarTitle, { color: theme.text }]}>Сотрудники</Text>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.calendarSidebarContent}>
+                  {/* All employees option */}
+                  <TouchableOpacity
+                    style={[
+                      styles.employeeItem,
+                      { backgroundColor: !selectedUserId ? theme.primary + '15' : 'transparent' },
+                    ]}
+                    onPress={() => handleUserFilterChange(null, null)}
+                  >
+                    <View style={[styles.employeeAvatar, { backgroundColor: theme.backgroundSecondary }]}>
+                      <Ionicons name="people" size={18} color={theme.textSecondary} />
+                    </View>
+                    <Text style={[styles.employeeName, { color: !selectedUserId ? theme.primary : theme.text }]}>
+                      Все сотрудники
+                    </Text>
+                    {!selectedUserId && (
+                      <Ionicons name="checkmark" size={18} color={theme.primary} />
+                    )}
+                  </TouchableOpacity>
+                  {/* Unique users from absences */}
+                  {(() => {
+                    const usersMap = new Map<number, { id: number; name: string; avatar?: string; count: number }>();
+                    for (const absence of filteredAbsences) {
+                      if (absence.user) {
+                        const existing = usersMap.get(absence.user.id);
+                        if (existing) {
+                          existing.count++;
+                        } else {
+                          usersMap.set(absence.user.id, {
+                            id: absence.user.id,
+                            name: absence.user.name,
+                            avatar: absence.user.avatar,
+                            count: 1,
+                          });
+                        }
+                      }
+                    }
+                    const users = Array.from(usersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+                    return users.map((user) => (
+                      <TouchableOpacity
+                        key={user.id}
+                        style={[
+                          styles.employeeItem,
+                          { backgroundColor: selectedUserId === user.id ? theme.primary + '15' : 'transparent' },
+                        ]}
+                        onPress={() => handleUserFilterChange(user.id, user.name)}
+                      >
+                        <Avatar name={user.name} imageUrl={user.avatar} size={32} />
+                        <Text
+                          style={[styles.employeeName, { color: selectedUserId === user.id ? theme.primary : theme.text }]}
+                          numberOfLines={1}
+                        >
+                          {user.name}
+                        </Text>
+                        <View style={[styles.employeeCount, { backgroundColor: theme.backgroundSecondary }]}>
+                          <Text style={[styles.employeeCountText, { color: theme.textSecondary }]}>{user.count}</Text>
+                        </View>
+                        {selectedUserId === user.id && (
+                          <Ionicons name="checkmark" size={18} color={theme.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ));
+                  })()}
+                </ScrollView>
+                {/* Legend by color mode */}
+                <View style={[styles.sidebarLegend, { borderColor: theme.border }]}>
+                  <View style={styles.legendItems}>
+                    {colorMode === 'by_user' ? (
+                      (() => {
+                        const usersMap = new Map<number, { id: number; name: string; color?: string }>();
+                        for (const absence of filteredAbsences) {
+                          if (absence.user && !usersMap.has(absence.user.id)) {
+                            usersMap.set(absence.user.id, {
+                              id: absence.user.id,
+                              name: absence.user.name,
+                              color: absence.user.color,
+                            });
+                          }
+                        }
+                        return Array.from(usersMap.values())
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((user) => (
+                            <View key={user.id} style={styles.legendItem}>
+                              <View style={[styles.legendColorBar, { backgroundColor: user.color || getUserColorById(user.id) }]} />
+                              <Text style={[styles.legendText, { color: theme.textSecondary }]} numberOfLines={1}>
+                                {user.name}
+                              </Text>
+                            </View>
+                          ));
+                      })()
+                    ) : (
+                      ABSENCE_TYPES
+                        .filter(type => filteredAbsences.some(a => a.type === type))
+                        .map((type) => (
+                          <View key={type} style={styles.legendItem}>
+                            <View style={[styles.legendColorBar, { backgroundColor: ABSENCE_TYPE_COLORS[type] }]} />
+                            <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+                              {ABSENCE_TYPE_LABELS[type]}
+                            </Text>
+                          </View>
+                        ))
+                    )}
+                  </View>
+                </View>
+              </View>
+              {/* Main Panel - Year Calendar */}
+              <View style={[styles.calendarMainPanel, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
+                <View style={[styles.calendarMainHeader, { borderColor: theme.border }]}>
+                  <Text style={[styles.calendarMainTitle, { color: theme.text }]}>Календарь</Text>
+                </View>
+                <AbsenceYearCalendar
+                  year={selectedYear}
+                  absences={filteredAbsences}
+                  selectedTypeFilter={selectedTypeFilter}
+                  colorMode={colorMode}
+                  onAbsencePress={handleAbsencePress}
+                />
+              </View>
+            </View>
           ) : viewMode === 'timeline' ? (
             <AbsenceTimeline
               year={selectedYear}
@@ -894,6 +1014,129 @@ const styles = StyleSheet.create({
   rowCardStretch: {
     flex: 1,
     marginBottom: 0,
+  },
+  // Calendar desktop two-panel layout
+  calendarDesktopRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  calendarSidebar: {
+    width: 380,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginRight: 0,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
+  },
+  calendarSidebarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    minHeight: 56,
+  },
+  calendarSidebarTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  calendarSidebarContent: {
+    padding: 8,
+  },
+  employeeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  employeeAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  employeeName: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  employeeCount: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  employeeCountText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  sidebarLegend: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  legendItems: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendColorBar: {
+    width: 16,
+    height: 4,
+    borderRadius: 2,
+  },
+  legendText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  calendarMainPanel: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
+  },
+  calendarMainHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    minHeight: 56,
+  },
+  calendarMainTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
