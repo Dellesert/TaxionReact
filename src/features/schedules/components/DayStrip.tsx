@@ -146,9 +146,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     textAlign: 'center' as const,
-    marginBottom: 4,
+    marginBottom: 6,
     marginTop: 2,
-    paddingBottom: 4,
+    paddingBottom: 6,
   },
   container: {
     borderRadius: 12,
