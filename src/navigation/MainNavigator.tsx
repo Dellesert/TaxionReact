@@ -38,6 +38,7 @@ import { AbsenceDesktopFallback } from '@features/absences/components/states/Abs
 import { AdminDesktopFallback } from '@features/admin/components/states/AdminDesktopFallback';
 import { TasksDesktopFallback } from '@features/tasks/components/states/TasksDesktopFallback';
 import { PollsDesktopFallback } from '@features/polls/components/states/PollsDesktopFallback';
+import { ProfileDesktopFallback } from '@features/profile/components/states/ProfileDesktopFallback';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -104,7 +105,11 @@ const MainNavigatorContent: React.FC = () => {
             </Suspense>
           );
         case 'Profile':
-          return <ProfileNavigator />;
+          return (
+            <Suspense fallback={<ProfileDesktopFallback />}>
+              <ProfileNavigator />
+            </Suspense>
+          );
         default:
           return <ChatNavigator />;
       }
