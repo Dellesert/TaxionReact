@@ -1047,7 +1047,7 @@ export const ScheduleDetailScreen: React.FC = () => {
           ]}>
             {/* Left sidebar - Collapsible Info Card */}
             {showInfoCard && (
-              <View style={[styles.infoCardPanel, { backgroundColor: theme.background }]}>
+              <View style={[styles.infoCardPanel, { backgroundColor: theme.background, borderColor: theme.border }]}>
                 {/* Header — "Описание" (same style as right card header) */}
                 <View style={[styles.sectionHeader, { paddingHorizontal: 20, paddingVertical: 0, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border, marginBottom: 0, backgroundColor: theme.card }]}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, height: 34 }}>
@@ -1128,7 +1128,7 @@ export const ScheduleDetailScreen: React.FC = () => {
               {/* Entries Section - Grid/Shifts View for desktop or List View */}
               {displayedViewMode === 'grid' && schedule.mode === 'monthly' ? (
                 // Desktop Grid View - employees as rows, dates as columns
-                <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
+                <View style={[styles.desktopCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                   <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
@@ -1222,7 +1222,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                 </View>
               ) : displayedViewMode === 'shifts' && schedule.mode === 'monthly' ? (
                 // Desktop Shifts View - dates as rows, morning/evening columns
-                <View style={[styles.desktopCard, { backgroundColor: theme.background }]}>
+                <View style={[styles.desktopCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
                   <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
@@ -1295,7 +1295,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                 </View>
               ) : (
                 // Standard List View
-                <View style={[styles.desktopCard, { backgroundColor: theme.background }]}>
+                <View style={[styles.desktopCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
                   <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
@@ -1982,16 +1982,18 @@ const styles = StyleSheet.create({
   desktopCard: {
     padding: 20,
     borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
     ...Platform.select({
       web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
       },
       default: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
+        shadowOpacity: 0.08,
         shadowRadius: 8,
-        elevation: 2,
+        elevation: 3,
       },
     }),
   },
@@ -2001,17 +2003,18 @@ const styles = StyleSheet.create({
     width: 360,
     flexShrink: 0,
     borderRadius: 16,
+    borderWidth: 1,
     overflow: 'hidden',
     ...Platform.select({
       web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
       },
       default: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
+        shadowOpacity: 0.08,
         shadowRadius: 8,
-        elevation: 2,
+        elevation: 3,
       },
     }),
   },
