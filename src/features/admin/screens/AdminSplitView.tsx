@@ -42,6 +42,7 @@ export const AdminSplitView: React.FC = () => {
 
   useEffect(() => {
     if (isElectron) {
+      titleBarControls.clearControls();
       titleBarControls.setPageTitle(sectionTitles[activeSection] || 'Администрирование');
     }
   }, [activeSection, isElectron]);
