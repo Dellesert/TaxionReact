@@ -1006,9 +1006,18 @@ export const ScheduleDetailScreen: React.FC = () => {
                     style={styles.iconButton}
                     onPress={handleOpenMenu}
                 >
-                  <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+                  <Ionicons name="ellipsis-vertical" size={22} color={theme.primary} />
                 </TouchableOpacity>
               )}
+                {/* Add entry button */}
+                {canManageEntries && (
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={handleAddEntry}
+                  >
+                    <Ionicons name="add" size={28} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           }
@@ -1204,7 +1213,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                 </View>
               ) : displayedViewMode === 'shifts' && schedule.mode === 'monthly' ? (
                 // Desktop Shifts View - dates as rows, morning/evening columns
-                <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
+                <View style={[styles.desktopCard, { backgroundColor: theme.background }]}>
                   <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
@@ -1277,7 +1286,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                 </View>
               ) : (
                 // Standard List View
-                <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
+                <View style={[styles.desktopCard, { backgroundColor: theme.background }]}>
                   <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
@@ -1486,21 +1495,6 @@ export const ScheduleDetailScreen: React.FC = () => {
                     : filteredEntries.length}
                   )
                 </Text>
-                {canManageEntries && (
-                  <TouchableOpacity
-                    style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                    onPress={handleAddEntry}
-                  >
-                    <Ionicons name="add" size={18} color={theme.primary} />
-                    <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                      Добавить
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* User filter chip */}
-              <View style={styles.userFilterContainer}>
                 <TouchableOpacity
                   style={[
                     styles.userFilterChip,

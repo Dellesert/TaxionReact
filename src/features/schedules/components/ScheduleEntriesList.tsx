@@ -110,7 +110,7 @@ export const ScheduleEntriesList: React.FC<ScheduleEntriesListProps> = ({
           <View
             style={[
               styles.sectionHeader,
-              { borderBottomColor: theme.border, backgroundColor: theme.background },
+              { borderBottomColor: theme.border, backgroundColor: theme.card },
               section.isToday && { backgroundColor: theme.primaryLight + '15' },
             ]}
           >

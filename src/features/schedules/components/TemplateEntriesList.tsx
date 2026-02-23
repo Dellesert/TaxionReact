@@ -187,7 +187,7 @@ export const TemplateEntriesList: React.FC<TemplateEntriesListProps> = ({
         return (
           <View key={day.value} style={styles.daySection}>
             {/* Day Header */}
-            <View style={styles.dayHeader}>
+            <View style={[styles.dayHeader, { backgroundColor: theme.card }]}>
               <Ionicons name="calendar-outline" size={18} color={theme.primary} />
               <Text style={[styles.dayTitle, { color: theme.text }]}>
                 {day.label}
