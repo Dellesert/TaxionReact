@@ -273,7 +273,7 @@ export const AbsenceListScreen: React.FC = () => {
         colorMode={colorMode}
         onColorModeChange={handleColorModeChange}
         showYearPickerOnly
-        hideYearPicker={viewMode === 'calendar'}
+        hideYearPicker
       />
     );
   }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode, handleViewModeChange, isViewModeLoaded, colorMode, handleColorModeChange]);
@@ -781,6 +781,7 @@ export const AbsenceListScreen: React.FC = () => {
               selectedTypeFilter={selectedTypeFilter}
               colorMode={colorMode}
               onAbsencePress={handleAbsencePress}
+              onYearChange={handleYearChange}
             />
           ) : (
             <View style={[styles.listCard, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>

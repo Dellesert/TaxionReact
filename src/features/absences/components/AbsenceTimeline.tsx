@@ -35,6 +35,7 @@ interface AbsenceTimelineProps {
   selectedTypeFilter?: AbsenceType | null;
   colorMode?: AbsenceColorMode;
   onAbsencePress?: (absence: Absence) => void;
+  onYearChange?: (year: number) => void;
 }
 
 // Month names in Russian
@@ -134,6 +135,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
   selectedTypeFilter,
   colorMode = 'by_type',
   onAbsencePress,
+  onYearChange,
 }) => {
   const { theme } = useTheme();
   const { holidays } = useRussianHolidays(year);
@@ -633,6 +635,33 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
         <View style={[styles.timelineContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={[styles.timelineHeader, { borderColor: theme.border }]}>
             <Text style={[styles.timelineHeaderText, { color: theme.text }]}>График</Text>
+            {onYearChange && (
+              <View style={styles.timelineHeaderYearPicker}>
+                <TouchableOpacity
+                  onPress={() => onYearChange(year - 1)}
+                  style={styles.timelineHeaderArrow}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => onYearChange(new Date().getFullYear())}
+                  activeOpacity={year === new Date().getFullYear() ? 1 : 0.6}
+                  disabled={year === new Date().getFullYear()}
+                >
+                  <Text style={[styles.timelineHeaderYearText, { color: theme.text }]}>
+                    {year}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => onYearChange(year + 1)}
+                  style={styles.timelineHeaderArrow}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
           <CustomScrollView
             ref={scrollViewRef}
@@ -768,6 +797,26 @@ const styles = StyleSheet.create({
   timelineHeaderText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  timelineHeaderYearPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  timelineHeaderArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineHeaderYearText: {
+    fontSize: 15,
+    fontWeight: '600',
+    minWidth: 40,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginHorizontal: 12,
   },
   // Timeline styles
   timelineContainer: {
