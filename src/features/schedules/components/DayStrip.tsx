@@ -68,7 +68,7 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
   };
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { borderBottomColor: theme.border }]}>
       <View style={[styles.container, { backgroundColor: theme.card, shadowColor: theme.shadow }]}>
         <Text style={[styles.monthYearLabel, { color: theme.textSecondary }]}>
           {monthYearLabel}
@@ -77,7 +77,7 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
         <View style={styles.daysRow}>
           <TouchableOpacity
             onPress={handlePrevWeek}
-            style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+            style={[styles.arrowButton, { marginRight: 6 }]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.7}
           >
@@ -124,7 +124,7 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
 
           <TouchableOpacity
             onPress={handleNextWeek}
-            style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+            style={[styles.arrowButton, { marginLeft: 6 }]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.7}
           >
@@ -138,8 +138,9 @@ export const DayStrip: React.FC<DayStripProps> = React.memo(({
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
     paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   monthYearLabel: {
     fontSize: 13,

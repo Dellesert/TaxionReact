@@ -637,10 +637,10 @@ export const AbsenceListScreen: React.FC = () => {
                   <View style={styles.calendarHeaderYearPicker}>
                     <TouchableOpacity
                       onPress={() => handleYearChange(selectedYear - 1)}
-                      style={[styles.calendarHeaderArrow, { backgroundColor: theme.backgroundTertiary }]}
+                      style={styles.calendarHeaderArrow}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="chevron-back" size={16} color={theme.text} />
+                      <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleYearChange(new Date().getFullYear())}
@@ -653,10 +653,10 @@ export const AbsenceListScreen: React.FC = () => {
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleYearChange(selectedYear + 1)}
-                      style={[styles.calendarHeaderArrow, { backgroundColor: theme.backgroundTertiary }]}
+                      style={styles.calendarHeaderArrow}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="chevron-forward" size={16} color={theme.text} />
+                      <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
                     </TouchableOpacity>
                   </View>
                 </View>

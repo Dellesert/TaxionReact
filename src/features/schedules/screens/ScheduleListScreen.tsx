@@ -366,10 +366,10 @@ export const ScheduleListScreen: React.FC = () => {
                       d.setMonth(d.getMonth() - 1);
                       handleMonthChange(d);
                     }}
-                    style={[styles.headerMonthArrow, { backgroundColor: theme.backgroundTertiary }]}
+                    style={styles.headerMonthArrow}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="chevron-back" size={16} color={theme.text} />
+                    <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleMonthChange(new Date())}
@@ -392,10 +392,10 @@ export const ScheduleListScreen: React.FC = () => {
                       d.setMonth(d.getMonth() + 1);
                       handleMonthChange(d);
                     }}
-                    style={[styles.headerMonthArrow, { backgroundColor: theme.backgroundTertiary }]}
+                    style={styles.headerMonthArrow}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="chevron-forward" size={16} color={theme.text} />
+                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
                   </TouchableOpacity>
                 </View>
               </View>
