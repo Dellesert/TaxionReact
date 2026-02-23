@@ -162,7 +162,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
           {/* Month Navigator Header - only when toolbar is hidden (Electron) */}
           {hideToolbar && (
             <View style={[styles.centerPanelHeader, { borderColor: theme.border }]}>
-              <Text style={[styles.centerPanelTitle, { color: theme.text }]}>Календарь</Text>
+              <Text style={[styles.centerPanelTitle, { color: theme.text }]}>Обзор</Text>
               <MonthNavigator
                 selectedDate={selectedDate}
                 onPrevious={() => handleMonthNavigate('prev')}
