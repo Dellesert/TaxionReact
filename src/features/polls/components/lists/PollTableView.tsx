@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Poll } from '../../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
+import { Avatar } from '@shared/components/common/Avatar';
 import { PollListEmptyState } from '../states/PollListEmptyState';
 import { PollListErrorState } from '../states/PollListErrorState';
 
@@ -319,9 +320,16 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
 
                 {/* Creator Column */}
                 <View style={[styles.cell, styles.creatorColumn]}>
-                  <Text style={[styles.cellText, { color: theme.text }]} numberOfLines={1}>
-                    {getCreatorName(poll)}
-                  </Text>
+                  <View style={styles.creatorContainer}>
+                    <Avatar
+                      name={getCreatorName(poll)}
+                      imageUrl={poll.creator?.avatar}
+                      size={22}
+                    />
+                    <Text style={[styles.cellText, { color: theme.text }]} numberOfLines={1}>
+                      {getCreatorName(poll)}
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -452,6 +460,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  creatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   loadingContainer: {
     flex: 1,
