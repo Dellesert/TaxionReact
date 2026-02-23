@@ -491,18 +491,10 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
     </View>
   );
 
-  // Empty state
-  if (userRows.length === 0) {
-    return (
-      <View style={[styles.emptyContainer, { backgroundColor: theme.background }]}>
-        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-          {selectedTypeFilter
-            ? `Нет отпусков типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за ${year}`
-            : `Нет отпусков за ${year}`}
-        </Text>
-      </View>
-    );
-  }
+  // Empty state message
+  const emptyMessage = selectedTypeFilter
+    ? `Нет отпусков типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за ${year}`
+    : `Нет отпусков за ${year}`;
 
   // Render hover popup
   const renderPopup = () => {
@@ -663,36 +655,45 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
               </View>
             )}
           </View>
-          <CustomScrollView
-            ref={scrollViewRef}
-            horizontal
-            style={styles.timelineScroll}
-            contentContainerStyle={{ width: timelineWidth }}
-            onScroll={handleTimelineScroll}
-            scrollEventThrottle={16}
-          >
-            <View>
-              {/* Headers */}
-              {renderHeaders()}
-
-              {/* Timeline rows */}
-              <View style={[styles.timelineRows, { backgroundColor: theme.background }]}>
-                {userRows.map(renderUserRow)}
-              </View>
-
-              {/* Today indicator in header */}
-              {todayPosition !== null && (
-                <View
-                  style={[
-                    styles.todayIndicator,
-                    { left: todayPosition, top: 0, backgroundColor: theme.error },
-                  ]}
-                >
-                  <Text style={styles.todayIndicatorText}>Сегодня</Text>
-                </View>
-              )}
+          {userRows.length === 0 ? (
+            <View style={[styles.emptyContainer, { backgroundColor: theme.background }]}>
+              <Ionicons name="calendar-outline" size={48} color={theme.textSecondary} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                {emptyMessage}
+              </Text>
             </View>
-          </CustomScrollView>
+          ) : (
+            <CustomScrollView
+              ref={scrollViewRef}
+              horizontal
+              style={styles.timelineScroll}
+              contentContainerStyle={{ width: timelineWidth }}
+              onScroll={handleTimelineScroll}
+              scrollEventThrottle={16}
+            >
+              <View>
+                {/* Headers */}
+                {renderHeaders()}
+
+                {/* Timeline rows */}
+                <View style={[styles.timelineRows, { backgroundColor: theme.background }]}>
+                  {userRows.map(renderUserRow)}
+                </View>
+
+                {/* Today indicator in header */}
+                {todayPosition !== null && (
+                  <View
+                    style={[
+                      styles.todayIndicator,
+                      { left: todayPosition, top: 0, backgroundColor: theme.error },
+                    ]}
+                  >
+                    <Text style={styles.todayIndicatorText}>Сегодня</Text>
+                  </View>
+                )}
+              </View>
+            </CustomScrollView>
+          )}
         </View>
       </View>
 
@@ -710,6 +711,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
   },
   emptyText: {
     fontSize: 16,
