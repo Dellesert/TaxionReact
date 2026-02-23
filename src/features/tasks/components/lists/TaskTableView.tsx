@@ -364,12 +364,10 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                   style={[
                     styles.row,
                     {
-                      backgroundColor: isSubtask ? theme.primary + '08' : theme.card,
-                      borderColor: theme.border,
-                      borderLeftColor: isSubtask ? theme.primary : theme.border,
-                      borderLeftWidth: isSubtask ? 3 : 1,
+                      backgroundColor: isEvenRow ? theme.card : 'transparent',
+                      borderBottomColor: theme.border,
                     },
-                    isHovered && styles.rowHovered,
+                    isHovered && { backgroundColor: theme.primary + '12' },
                     isSubtask && styles.subtaskRow,
                   ]}
                   onPress={() => onTaskPress(task)}
@@ -379,19 +377,10 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                 >
                   <View style={[styles.cell, styles.titleColumn]}>
                     <View style={styles.titleRow}>
-                      {/* Indentation with visual connector */}
-                      {level > 0 && (
-                        <View style={styles.indentContainer}>
-                          <View style={[styles.verticalConnector, { backgroundColor: theme.primary + '40' }]} />
-                          <View style={[styles.horizontalConnector, { backgroundColor: theme.primary + '40' }]} />
-                          <View style={[styles.connectorDot, { backgroundColor: theme.primary }]} />
-                        </View>
-                      )}
-
                       {/* Expand/Collapse button */}
-                      {hasSubtasks && !isSubtask ? (
+                      {hasSubtasks && !isSubtask && (
                         <TouchableOpacity
-                          style={[styles.expandButton, { backgroundColor: isExpanded ? theme.primary + '15' : 'transparent' }]}
+                          style={styles.expandButton}
                           onPress={(e) => {
                             e.stopPropagation();
                             handleToggleExpand(task.id);
@@ -399,132 +388,19 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                         >
                           <Ionicons
                             name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-                            size={18}
-                            color={isExpanded ? theme.primary : theme.text}
+                            size={14}
+                            color={theme.text}
                           />
                         </TouchableOpacity>
-                      ) : !isSubtask ? (
-                        <View style={styles.expandButtonPlaceholder} />
-                      ) : null}
+                      )}
 
-                      {/* Task info */}
-                      <View style={styles.titleContent}>
-                        <View style={styles.taskTitleRow}>
-                          {isSubtask && (
-                            <View style={[styles.subtaskBadge, { backgroundColor: theme.primary + '20', borderColor: theme.primary }]}>
-                              <Ionicons name="git-branch-outline" size={12} color={theme.primary} />
-                            </View>
-                          )}
-                          <Text style={[styles.cellText, styles.taskTitle, { color: theme.text }, isSubtask && styles.subtaskTitle]} numberOfLines={2}>
-                            {task.title}
-                          </Text>
-                        </View>
-                        {task.description ? (
-                          <Text style={[styles.descriptionText, { color: theme.textSecondary }]} numberOfLines={1}>
-                            {task.description}
-                          </Text>
-                        ) : null}
+                      {isSubtask && (
+                        <Ionicons name="return-down-forward-outline" size={12} color={theme.textSecondary} style={{ marginRight: 4 }} />
+                      )}
 
-                        {/* Delegation chain - always show on separate line */}
-                        {(() => {
-                          // Build delegation chain
-                          const chain: { name: string; id?: number }[] = [];
-
-                          if (task.delegation_chain && task.delegation_chain.length > 0) {
-                            // Use delegation_chain from backend
-                            task.delegation_chain.forEach(u => chain.push({ name: u.name, id: u.id }));
-                          } else {
-                            // Fallback: build from creator -> assignees
-                            if (task.creator) {
-                              chain.push({ name: task.creator.name, id: task.creator.id });
-                            }
-
-                            if (task.assignees && task.assignees.length > 0) {
-                              task.assignees.forEach(a => {
-                                if (!chain.find(u => u.id === a.id)) {
-                                  chain.push({ name: a.name, id: a.id });
-                                }
-                              });
-                            }
-                          }
-
-                          // Format user name (replace current user with "Я")
-                          const formatUserName = (userName: string, userId?: number): string => {
-                            if (user && userId === user.id) return 'Я';
-                            // Extract first name (before space)
-                            return userName.split(' ')[0];
-                          };
-
-                          const delegationText = chain.length > 0
-                            ? chain.map(u => formatUserName(u.name, u.id)).join(' → ')
-                            : '—';
-
-                          return (
-                            <View style={styles.delegationRow}>
-                              <Ionicons name="person-outline" size={12} color={theme.textSecondary} />
-                              <Text style={[styles.delegationRowText, { color: theme.textSecondary }]} numberOfLines={1}>
-                                {delegationText}
-                              </Text>
-                            </View>
-                          );
-                        })()}
-
-                        <View style={styles.taskMetaRow}>
-                          {/* Subtasks count - always show */}
-                          <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                            <Ionicons name="git-branch-outline" size={12} color={theme.textSecondary} />
-                            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                              {task.subtasks?.length || task.subtask_count || 0}
-                            </Text>
-                          </View>
-
-                          {/* Comments count - always show */}
-                          <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                            <Ionicons name="chatbubble-outline" size={12} color={theme.textSecondary} />
-                            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                              {task.comment_count || 0}
-                            </Text>
-                          </View>
-
-                          {/* Attachments count - always show */}
-                          <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                            <Ionicons name="attach-outline" size={12} color={theme.textSecondary} />
-                            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                              {task.attachment_count || 0}
-                            </Text>
-                          </View>
-                          {task.tags && task.tags.length > 0 && task.tags.slice(0, 2).map((tag, idx) => (
-                            <View key={idx} style={[styles.tagBadge, { backgroundColor: theme.primary + '20', borderColor: theme.primary }]}>
-                              <Text style={[styles.tagText, { color: theme.primary }]}>
-                                {tag}
-                              </Text>
-                            </View>
-                          ))}
-                          {task.tags && task.tags.length > 2 && (
-                            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                              +{task.tags.length - 2}
-                            </Text>
-                          )}
-                          {task.progress_percentage > 0 && (
-                            <View style={styles.progressContainer}>
-                              <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
-                                <View
-                                  style={[
-                                    styles.progressFill,
-                                    {
-                                      width: `${task.progress_percentage}%`,
-                                      backgroundColor: task.progress_percentage === 100 ? '#10B981' : theme.primary
-                                    }
-                                  ]}
-                                />
-                              </View>
-                              <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-                                {task.progress_percentage}%
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
+                      <Text style={[styles.cellText, { color: theme.text, fontWeight: isSubtask ? '400' : '500' }]} numberOfLines={1}>
+                        {task.title}
+                      </Text>
                     </View>
                   </View>
 
@@ -654,13 +530,13 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     flex: 1,
+    marginHorizontal: 16,
   },
   headerRow: {
     flexDirection: 'row',
-    borderBottomWidth: 2,
-    paddingVertical: 16,
-    paddingHorizontal: 28,
-    marginBottom: 8,
+    borderBottomWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     ...(Platform.OS === 'web' && {
       position: 'sticky',
       top: 0,
@@ -700,280 +576,93 @@ const styles = StyleSheet.create({
   },
   bodyContainer: {
     flex: 1,
-    paddingTop: 4,
   },
   row: {
     flexDirection: 'row',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    minHeight: 80,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    borderBottomWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    minHeight: 40,
     ...(Platform.OS === 'web' && {
-      transitionProperty: 'all',
-      transitionDuration: '0.2s',
-      transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
       cursor: 'pointer',
     }),
   },
   rowHovered: Platform.select({
     web: {
-      transform: [{ translateY: -2 }],
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.12,
-      shadowRadius: 16,
-      elevation: 6,
+      opacity: 0.85,
     },
-    default: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 4,
-    },
+    default: {},
   }),
   subtaskRow: {
-    marginLeft: 24,
-    marginRight: 16,
-    minHeight: 70,
-    paddingVertical: 16,
+    paddingLeft: 32,
   },
   cell: {
     justifyContent: 'center',
   },
   cellText: {
-    fontSize: 14,
-    lineHeight: 20,
-    letterSpacing: -0.1,
-  },
-  taskTitle: {
-    fontWeight: '700',
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  descriptionText: {
     fontSize: 13,
     lineHeight: 18,
-    marginTop: 4,
-    opacity: 0.8,
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flex: 1,
   },
-  indentContainer: {
-    width: 40,
-    marginRight: 8,
-    position: 'relative',
-    height: '100%',
-    minHeight: 40,
-  },
-  verticalConnector: {
-    position: 'absolute',
-    left: 15,
-    top: 0,
-    bottom: '50%',
-    width: 2,
-    borderRadius: 1,
-  },
-  horizontalConnector: {
-    position: 'absolute',
-    left: 15,
-    top: '50%',
-    width: 20,
-    height: 2,
-    borderRadius: 1,
-  },
-  connectorDot: {
-    position: 'absolute',
-    left: 32,
-    top: '50%',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: -3,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-    }),
-  },
   expandButton: {
-    width: 28,
-    height: 28,
+    width: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
-    borderRadius: 8,
+    marginRight: 4,
     ...(Platform.OS === 'web' && {
-      transitionProperty: 'background-color, transform',
-      transitionDuration: '0.2s',
       cursor: 'pointer',
     }),
   },
   expandButtonPlaceholder: {
-    width: 24,
+    width: 20,
     marginRight: 4,
   },
   titleContent: {
     flex: 1,
-    gap: 4,
-  },
-  taskTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  subtaskBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    flexShrink: 0,
   },
   subtaskTitle: {
-    fontSize: 14,
-    opacity: 0.95,
-  },
-  taskMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-    flexWrap: 'wrap',
-  },
-  metaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
-      },
-    }),
-  },
-  metaText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  tagBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  tagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    opacity: 0.8,
   },
   priorityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   priorityDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-    }),
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   deadlineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
   deadlineIcon: {
-    marginTop: 1,
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    maxWidth: 120,
-  },
-  progressBar: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 11,
-    fontWeight: '500',
-    minWidth: 32,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
     alignSelf: 'flex-start',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-    }),
   },
   statusText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontWeight: '600',
   },
   actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     ...(Platform.OS === 'web' && {
-      transitionProperty: 'opacity, transform',
-      transitionDuration: '0.15s',
       cursor: 'pointer',
     }),
   },
@@ -1004,22 +693,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  delegationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    marginBottom: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  delegationRowText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
   },
 });
