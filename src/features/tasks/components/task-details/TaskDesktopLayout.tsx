@@ -1,10 +1,10 @@
 /**
  * Task Desktop Layout
  * Компонент для отображения деталей задачи на широких экранах
- * Layout: Три равные колонки - Обзор, Вложения, Комментарии
+ * Layout: Две колонки - Обзор (слева) + Табы: Вложения/Комментарии/История (справа)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -16,6 +16,13 @@ import { TaskCommentsTab } from '../detail-tabs/TaskCommentsTab';
 import { TaskHistoryTab } from '../detail-tabs/TaskHistoryTab';
 
 type TaskPermissions = ReturnType<typeof useTaskPermissions>;
+type DesktopTabType = 'attachments' | 'comments' | 'history';
+
+const TAB_CONFIG: { key: DesktopTabType; icon: string; label: string }[] = [
+  { key: 'attachments', icon: 'attach-outline', label: 'Вложения' },
+  { key: 'comments', icon: 'chatbubble-outline', label: 'Комментарии' },
+  { key: 'history', icon: 'time-outline', label: 'История' },
+];
 
 interface TaskDesktopLayoutProps {
   task: Task;
@@ -99,47 +106,53 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
   onLoadActivities,
 }) => {
   const { theme } = useTheme();
-  const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [hoveredSection, setHoveredSection] = useState<'overview' | 'attachments' | 'comments' | 'history' | null>(null);
+  const [activeRightTab, setActiveRightTab] = useState<DesktopTabType>('attachments');
+  const [hoveredCard, setHoveredCard] = useState<'left' | 'right' | null>(null);
+  const [hoveredTab, setHoveredTab] = useState<DesktopTabType | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
-  // Load activities on mount to show count badge
-  useEffect(() => {
-    if (activities.length === 0 && onLoadActivities) {
+  const handleTabChange = (tab: DesktopTabType) => {
+    setActiveRightTab(tab);
+    if (tab === 'history' && !historyLoaded && onLoadActivities) {
       onLoadActivities();
+      setHistoryLoaded(true);
     }
-  }, []);
+  };
 
-  const handleHistoryToggle = () => {
-    setHistoryExpanded(!historyExpanded);
+  const getBadgeCount = (tab: DesktopTabType): number => {
+    switch (tab) {
+      case 'attachments': return attachments.length;
+      case 'comments': return comments.length;
+      case 'history': return activities.length;
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Main Content Area - Three Columns with Horizontal Scroll */}
-      <ScrollView
-        horizontal
-        style={styles.mainContentScrollView}
-        contentContainerStyle={styles.mainContent}
-        showsHorizontalScrollIndicator={true}
-      >
-        {/* Left Column - Overview */}
+      <View style={styles.columnsRow}>
+        {/* LEFT COLUMN - Task Overview */}
         <View
-          style={styles.column}
+          style={styles.leftColumn}
           // @ts-ignore - web-only props
-          onMouseEnter={Platform.OS === 'web' ? () => setHoveredSection('overview') : undefined}
-          onMouseLeave={Platform.OS === 'web' ? () => setHoveredSection(null) : undefined}
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredCard('left') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredCard(null) : undefined}
         >
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-          >
-            <View style={[
-              styles.card,
-              { backgroundColor: theme.card },
-              hoveredSection === 'overview' && styles.cardHovered,
-            ]}>
+          <View style={[
+            styles.leftCard,
+            { backgroundColor: theme.card },
+            hoveredCard === 'left' && styles.cardHovered,
+          ]}>
+            {/* Left card header */}
+            <View style={[styles.leftCardHeader, { borderBottomColor: theme.border }]}>
+              <Ionicons name="clipboard-outline" size={18} color={theme.primary} />
+              <Text style={[styles.leftCardTitle, { color: theme.text }]}>Задача</Text>
+            </View>
+            <ScrollView
+              style={styles.leftCardScroll}
+              contentContainerStyle={styles.leftCardContent}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+            >
               <TaskOverviewTab
                 task={task}
                 subtasks={subtasks}
@@ -152,186 +165,170 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
                 onCreateSubtaskPress={onCreateSubtaskPress}
                 onUserPress={onUserPress}
               />
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* Middle Column - Attachments */}
-        <View
-          style={styles.column}
-          // @ts-ignore - web-only props
-          onMouseEnter={Platform.OS === 'web' ? () => setHoveredSection('attachments') : undefined}
-          onMouseLeave={Platform.OS === 'web' ? () => setHoveredSection(null) : undefined}
-        >
-          <View style={[
-            styles.card,
-            styles.fullHeightCard,
-            { backgroundColor: theme.card },
-            hoveredSection === 'attachments' && styles.cardHovered,
-          ]}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardHeaderLeft}>
-                <Ionicons name="attach" size={20} color={theme.primary} />
-                <Text style={[styles.cardTitle, { color: theme.text }]}>
-                  Вложения
-                </Text>
-                {attachments.length > 0 && (
-                  <View style={[styles.badge, { backgroundColor: theme.primary }]}>
-                    <Text style={styles.badgeText}>{attachments.length}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            <ScrollView
-              style={styles.cardContent}
-              contentContainerStyle={styles.cardScrollContent}
-              showsVerticalScrollIndicator={false}
-              nestedScrollEnabled={true}
-            >
-              <TaskAttachmentsTab
-                attachments={attachments}
-                isLoading={isLoadingAttachments}
-                isUploading={isUploadingAttachment}
-                canUpload={!isDelegatedByMe && task.status !== 'done'}
-                currentUserId={currentUserId}
-                onAttachmentPress={onAttachmentPress}
-                onAttachmentLongPress={onAttachmentLongPress}
-                onPickFile={onPickFile}
-              />
             </ScrollView>
           </View>
         </View>
 
-        {/* Right Column - Comments */}
+        {/* RIGHT COLUMN - Tabbed Panel */}
         <View
-          style={styles.column}
+          style={styles.rightColumn}
           // @ts-ignore - web-only props
-          onMouseEnter={Platform.OS === 'web' ? () => setHoveredSection('comments') : undefined}
-          onMouseLeave={Platform.OS === 'web' ? () => setHoveredSection(null) : undefined}
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredCard('right') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredCard(null) : undefined}
         >
           <View style={[
-            styles.card,
-            styles.fullHeightCard,
+            styles.rightCard,
             { backgroundColor: theme.card },
-            hoveredSection === 'comments' && styles.cardHovered,
+            hoveredCard === 'right' && styles.cardHovered,
           ]}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardHeaderLeft}>
-                <Ionicons name="chatbubble-outline" size={20} color={theme.primary} />
-                <Text style={[styles.cardTitle, { color: theme.text }]}>
-                  Комментарии
-                </Text>
-                {comments.length > 0 && (
-                  <View style={[styles.badge, { backgroundColor: theme.primary }]}>
-                    <Text style={styles.badgeText}>{comments.length}</Text>
-                  </View>
-                )}
-              </View>
+            {/* Tab Bar */}
+            <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
+              {TAB_CONFIG.map(({ key, icon, label }) => {
+                const isActive = activeRightTab === key;
+                const isHovered = hoveredTab === key;
+                const count = getBadgeCount(key);
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.tabItem,
+                      isActive && { borderBottomColor: theme.primary },
+                      isHovered && !isActive && styles.tabItemHovered,
+                    ]}
+                    onPress={() => handleTabChange(key)}
+                    activeOpacity={0.7}
+                    // @ts-ignore - web-only props
+                    onMouseEnter={Platform.OS === 'web' ? () => setHoveredTab(key) : undefined}
+                    onMouseLeave={Platform.OS === 'web' ? () => setHoveredTab(null) : undefined}
+                  >
+                    <Ionicons
+                      name={icon as any}
+                      size={18}
+                      color={isActive ? theme.primary : theme.textSecondary}
+                    />
+                    <Text style={[
+                      styles.tabLabel,
+                      { color: isActive ? theme.primary : theme.textSecondary },
+                      isActive && { fontWeight: '700' },
+                    ]}>
+                      {label}
+                    </Text>
+                    {count > 0 && (
+                      <View style={[
+                        styles.tabBadge,
+                        { backgroundColor: isActive ? theme.primary : theme.backgroundTertiary },
+                      ]}>
+                        <Text style={[
+                          styles.tabBadgeText,
+                          { color: isActive ? '#FFFFFF' : theme.textSecondary },
+                        ]}>
+                          {count}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            <ScrollView style={styles.cardContent} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
-              <View style={styles.commentsContent}>
-                <TaskCommentsTab
-                  comments={comments}
-                  hasMoreComments={hasMoreComments}
-                  isLoadingMore={isLoadingMoreComments}
-                  editingCommentId={editingCommentId}
-                  editingCommentText={editingCommentText}
+
+            {/* Tab Content */}
+            {activeRightTab === 'attachments' && (
+              <ScrollView
+                style={styles.tabContent}
+                contentContainerStyle={styles.tabContentInner}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+              >
+                <TaskAttachmentsTab
+                  attachments={attachments}
+                  isLoading={isLoadingAttachments}
+                  isUploading={isUploadingAttachment}
+                  canUpload={!isDelegatedByMe && task.status !== 'done'}
                   currentUserId={currentUserId}
-                  onLoadMore={onLoadMoreComments}
-                  onEditComment={onEditComment}
-                  onSaveEdit={onSaveEdit}
-                  onCancelEdit={onCancelEdit}
-                  onDeleteComment={onDeleteComment}
-                  onUserPress={onUserPress}
-                  setEditingCommentText={setEditingCommentText}
+                  onAttachmentPress={onAttachmentPress}
+                  onAttachmentLongPress={onAttachmentLongPress}
+                  onPickFile={onPickFile}
                 />
-              </View>
-            </ScrollView>
-            {/* Comment Input */}
-            {!isDelegatedByMe && task.status !== 'done' && (
-              <View style={[styles.commentInputContainer, { borderTopColor: theme.border }]}>
-                <TextInput
-                  style={[styles.commentInput, {
-                    backgroundColor: theme.backgroundSecondary,
-                    color: theme.text,
-                    borderColor: theme.border,
-                  }]}
-                  placeholder="Написать комментарий..."
-                  placeholderTextColor={theme.textSecondary}
-                  value={newComment}
-                  onChangeText={setNewComment}
-                  multiline
-                  maxLength={1000}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    { backgroundColor: newComment.trim() && !isSendingComment ? theme.primary : theme.backgroundTertiary }
-                  ]}
-                  onPress={onSendComment}
-                  disabled={!newComment.trim() || isSendingComment}
+              </ScrollView>
+            )}
+
+            {activeRightTab === 'comments' && (
+              <View style={styles.commentsContainer}>
+                <ScrollView
+                  style={styles.tabContent}
+                  contentContainerStyle={styles.commentsScrollContent}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
                 >
-                  {isSendingComment ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="send" size={18} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
+                  <TaskCommentsTab
+                    comments={comments}
+                    hasMoreComments={hasMoreComments}
+                    isLoadingMore={isLoadingMoreComments}
+                    editingCommentId={editingCommentId}
+                    editingCommentText={editingCommentText}
+                    currentUserId={currentUserId}
+                    onLoadMore={onLoadMoreComments}
+                    onEditComment={onEditComment}
+                    onSaveEdit={onSaveEdit}
+                    onCancelEdit={onCancelEdit}
+                    onDeleteComment={onDeleteComment}
+                    onUserPress={onUserPress}
+                    setEditingCommentText={setEditingCommentText}
+                  />
+                </ScrollView>
+                {/* Comment Input - pinned at bottom */}
+                {!isDelegatedByMe && task.status !== 'done' && (
+                  <View style={[styles.commentInputContainer, { borderTopColor: theme.border }]}>
+                    <TextInput
+                      style={[styles.commentInput, {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      }]}
+                      placeholder="Написать комментарий..."
+                      placeholderTextColor={theme.textSecondary}
+                      value={newComment}
+                      onChangeText={setNewComment}
+                      multiline
+                      maxLength={1000}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.sendButton,
+                        { backgroundColor: newComment.trim() && !isSendingComment ? theme.primary : theme.backgroundTertiary }
+                      ]}
+                      onPress={onSendComment}
+                      disabled={!newComment.trim() || isSendingComment}
+                    >
+                      {isSendingComment ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Ionicons name="send" size={18} color="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
+            )}
+
+            {activeRightTab === 'history' && (
+              <ScrollView
+                style={styles.tabContent}
+                contentContainerStyle={styles.tabContentInner}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+              >
+                <TaskHistoryTab
+                  activities={activities}
+                  isLoading={isLoadingActivities}
+                  task={task}
+                  currentUserId={currentUserId}
+                  onUserPress={onUserPress}
+                />
+              </ScrollView>
             )}
           </View>
         </View>
-      </ScrollView>
-
-      {/* History Section (раскрывающаяся секция внизу) */}
-      <View style={[styles.historySection, { borderTopColor: theme.border }]}>
-        <TouchableOpacity
-          style={[
-            styles.historyHeader,
-            { backgroundColor: theme.card },
-            hoveredSection === 'history' && styles.historyHeaderHovered,
-          ]}
-          onPress={handleHistoryToggle}
-          activeOpacity={0.7}
-          // @ts-ignore - web-only props
-          onMouseEnter={Platform.OS === 'web' ? () => setHoveredSection('history') : undefined}
-          onMouseLeave={Platform.OS === 'web' ? () => setHoveredSection(null) : undefined}
-        >
-          <View style={styles.historyHeaderLeft}>
-            <Ionicons name="time-outline" size={20} color={theme.primary} />
-            <Text style={[styles.historyTitle, { color: theme.text }]}>
-              История изменений
-            </Text>
-            {activities.length > 0 && (
-              <View style={[styles.badge, { backgroundColor: theme.backgroundTertiary }]}>
-                <Text style={[styles.badgeText, { color: theme.textSecondary }]}>
-                  {activities.length}
-                </Text>
-              </View>
-            )}
-          </View>
-          <Ionicons
-            name={historyExpanded ? 'chevron-up' : 'chevron-down'}
-            size={24}
-            color={theme.textSecondary}
-          />
-        </TouchableOpacity>
-
-        {historyExpanded && (
-          <ScrollView
-            style={[styles.historyContent, { backgroundColor: theme.card }]}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-          >
-            <TaskHistoryTab
-              activities={activities}
-              isLoading={isLoadingActivities}
-              task={task}
-              currentUserId={currentUserId}
-              onUserPress={onUserPress}
-            />
-          </ScrollView>
-        )}
       </View>
     </View>
   );
@@ -341,31 +338,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  mainContentScrollView: {
+  columnsRow: {
     flex: 1,
-  },
-  mainContent: {
     flexDirection: 'row',
-    padding: 20,
-    gap: 20,
-    minWidth: '100%',
-    minHeight: '100%',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
+    padding: 24,
+    gap: 24,
   },
-  column: {
-    width: 360,
-    minWidth: 280,
-    height: '100%',
+
+  // Left column
+  leftColumn: {
+    flex: 2,
+    minWidth: 360,
+    maxWidth: 600,
   },
-  scrollView: {
-    height: '100%',
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  card: {
+  leftCard: {
+    flex: 1,
     borderRadius: 16,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
     ...Platform.select({
       web: {
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)',
@@ -382,6 +373,54 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  leftCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  leftCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  leftCardScroll: {
+    flex: 1,
+  },
+  leftCardContent: {
+    paddingBottom: 20,
+  },
+
+  // Right column
+  rightColumn: {
+    flex: 3,
+    minWidth: 400,
+  },
+  rightCard: {
+    flex: 1,
+    borderRadius: 16,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)',
+        transitionProperty: 'box-shadow, transform',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease-out',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 4,
+      },
+    }),
+  },
+
   cardHovered: {
     ...Platform.select({
       web: {
@@ -396,62 +435,71 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  fullHeightCard: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  cardHeader: {
+
+  // Tab bar
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
+    borderBottomWidth: 1,
+    paddingHorizontal: 8,
   },
-  cardHeaderLeft: {
+  tabItem: {
+    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  badge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
     ...Platform.select({
       web: {
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
+        cursor: 'pointer',
+        transitionProperty: 'border-color, background-color',
+        transitionDuration: '0.15s',
       },
     }),
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+  tabItemHovered: {
+    ...Platform.select({
+      web: {
+        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+      },
+    }),
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  tabBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+  },
+  tabBadgeText: {
+    fontSize: 12,
     fontWeight: '700',
   },
-  cardContent: {
+
+  // Tab content
+  tabContent: {
     flex: 1,
   },
-  cardScrollContent: {
+  tabContentInner: {
     padding: 20,
   },
-  commentsContent: {
+
+  // Comments specific
+  commentsContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  commentsScrollContent: {
     padding: 20,
   },
   commentInputContainer: {
@@ -476,7 +524,7 @@ const styles = StyleSheet.create({
       web: {
         transitionProperty: 'border-color, box-shadow',
         transitionDuration: '0.2s',
-        outlineStyle: 'none',
+        outlineStyle: 'none' as any,
       },
     }),
   },
@@ -502,42 +550,5 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
     }),
-  },
-  historySection: {
-    borderTopWidth: 2,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    ...Platform.select({
-      web: {
-        transitionProperty: 'background-color',
-        transitionDuration: '0.15s',
-        cursor: 'pointer',
-      },
-    }),
-  },
-  historyHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  historyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  historyHeaderHovered: {
-    ...Platform.select({
-      web: {
-        backgroundColor: 'rgba(0, 0, 0, 0.02)',
-      },
-    }),
-  },
-  historyContent: {
-    maxHeight: 500,
   },
 });
