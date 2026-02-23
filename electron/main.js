@@ -54,6 +54,24 @@ function setCloseBehavior(behavior) {
   appSettingsStore.set('closeBehavior', behavior);
 }
 
+// Zoom level options: 'small' (0.85) | 'standard' (1.0) | 'large' (1.15)
+const ZOOM_FACTORS = { small: 0.9, standard: 1.0, large: 1.1 };
+
+function getZoomLevel() {
+  return appSettingsStore.get('zoomLevel', 'standard');
+}
+
+function setZoomLevel(level) {
+  appSettingsStore.set('zoomLevel', level);
+}
+
+function applyZoomLevel() {
+  if (!mainWindow) return;
+  const level = getZoomLevel();
+  const factor = ZOOM_FACTORS[level] || 1.0;
+  mainWindow.webContents.setZoomFactor(factor);
+}
+
 // Flag to track if we're really quitting
 let isQuitting = false;
 
@@ -406,6 +424,9 @@ function createWindow() {
 
   // Show window when ready and close splash
   mainWindow.once('ready-to-show', () => {
+    // Apply saved zoom level
+    applyZoomLevel();
+
     mainWindow.show();
 
     // Close splash window after main window is shown
@@ -928,6 +949,25 @@ function setupIPCHandlers() {
       return { success: true, behavior };
     } catch (error) {
       console.error('[Tray] Error setting close behavior:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Zoom settings handlers
+  ipcMain.handle('zoom:getLevel', async () => {
+    return getZoomLevel();
+  });
+
+  ipcMain.handle('zoom:setLevel', async (event, level) => {
+    try {
+      if (!ZOOM_FACTORS[level]) {
+        throw new Error('Invalid zoom level');
+      }
+      setZoomLevel(level);
+      applyZoomLevel();
+      return { success: true, level };
+    } catch (error) {
+      console.error('[Zoom] Error setting zoom level:', error);
       return { success: false, error: error.message };
     }
   });

@@ -22,6 +22,7 @@ import NotificationSettingsContent from '../components/sections/NotificationSett
 import ThemeSettingsContent from '../components/sections/ThemeSettingsContent';
 import TraySettingsContent from '../components/sections/TraySettingsContent';
 import AnimationSettingsContent from '../components/sections/AnimationSettingsContent';
+import ZoomSettingsContent from '../components/sections/ZoomSettingsContent';
 import StorageContent from '../components/sections/StorageContent';
 import AboutContent from '../components/sections/AboutContent';
 import AccountsSettingsContent from '../components/sections/AccountsSettingsContent';
@@ -118,6 +119,16 @@ export const ProfileSplitView: React.FC = () => {
             description="Настройте внешний вид приложения"
           >
             <ThemeSettingsContent />
+          </ProfileContentArea>
+        );
+
+      case 'zoom':
+        return (
+          <ProfileContentArea
+            title="Масштаб"
+            description="Настройте масштаб интерфейса приложения"
+          >
+            <ZoomSettingsContent />
           </ProfileContentArea>
         );
 

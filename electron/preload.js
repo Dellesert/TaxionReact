@@ -34,6 +34,8 @@ contextBridge.exposeInMainWorld('electron', {
         'updater:getStatus',
         'tray:getCloseBehavior',
         'tray:setCloseBehavior',
+        'zoom:getLevel',
+        'zoom:setLevel',
         'file:save',
       ];
 
@@ -146,6 +148,12 @@ contextBridge.exposeInMainWorld('electron', {
      * @returns {Promise<{currentVersion: string, lastCheckTime: Date|null, autoCheckEnabled: boolean}>}
      */
     getStatus: () => ipcRenderer.invoke('updater:getStatus'),
+  },
+
+  // Zoom API
+  zoom: {
+    getLevel: () => ipcRenderer.invoke('zoom:getLevel'),
+    setLevel: (level) => ipcRenderer.invoke('zoom:setLevel', level),
   },
 
   // Tray API

@@ -17,6 +17,7 @@ export type ProfileSection =
   | 'passkey'
   | 'notifications'
   | 'theme'
+  | 'zoom'
   | 'tray'
   | 'animations'
   | 'storage'
@@ -71,6 +72,7 @@ const getSidebarStructure = (): SidebarGroup[] => {
       items: [
         { id: 'notifications', label: 'Уведомления', icon: 'notifications-outline', iconColor: '#E94444' },
         { id: 'theme', label: 'Тема оформления', icon: 'color-palette-outline', iconColor: '#44aae9ff' },
+        ...(isElectronApp ? [{ id: 'zoom' as ProfileSection, label: 'Масштаб', icon: 'resize-outline' as keyof typeof Ionicons.glyphMap, iconColor: '#6366F1' }] : []),
         { id: 'tray', label: 'Системный трей', icon: 'apps-outline', iconColor: '#8B5CF6' },
         ...(isElectronApp ? [{ id: 'animations' as ProfileSection, label: 'Быстродействие', icon: 'flash-outline' as keyof typeof Ionicons.glyphMap, iconColor: '#F59E0B' }] : []),
         { id: 'storage', label: 'Данные и память', icon: 'server-outline', iconColor: '#10B981' },
