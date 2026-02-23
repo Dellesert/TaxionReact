@@ -36,6 +36,8 @@ interface TitleBarScheduleDetailControlsProps {
   onPublish?: () => void;
   /** Whether publish is in progress */
   isPublishing?: boolean;
+  /** Callback when Add entry button is pressed */
+  onAddEntry?: () => void;
 }
 
 // Иконки для видов
@@ -61,6 +63,7 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
   isDraft = false,
   onPublish,
   isPublishing = false,
+  onAddEntry,
 }) => {
   const { theme } = useTheme();
   const menuButtonRef = useRef<View>(null);
@@ -234,10 +237,30 @@ export const TitleBarScheduleDetailControls: React.FC<TitleBarScheduleDetailCont
     );
   }
 
+  // Render add entry button
+  const renderAddEntryButton = () => {
+    if (!onAddEntry) return null;
+
+    return (
+      <View
+        style={[styles.addEntryButton, { borderColor: theme.border }]}
+        // @ts-ignore - Web-only
+        onClick={onAddEntry}
+        title="Добавить запись"
+        onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = theme.backgroundTertiary)}
+        onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.backgroundColor = 'transparent')}
+      >
+        <Ionicons name="add" size={14} color={theme.primary} />
+        <Text style={[styles.addEntryButtonText, { color: theme.primary }]}>Добавить</Text>
+      </View>
+    );
+  };
+
   // Show only menu button (for right controls)
   if (showMenuOnly) {
     return (
       <View style={styles.container}>
+        {renderAddEntryButton()}
         {renderPublishButton()}
         {renderPendingChangesControls()}
         {canEdit && onOpenMenu && renderMenuButton()}
@@ -349,6 +372,21 @@ const styles = StyleSheet.create({
   } as any,
   publishButtonText: {
     color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  } as any,
+  addEntryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+  } as any,
+  addEntryButtonText: {
     fontSize: 12,
     fontWeight: '600',
   } as any,

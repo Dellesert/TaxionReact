@@ -174,6 +174,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
   const [selectedCell, setSelectedCell] = useState<CellInfo | null>(null);
   const [isLoading] = useState(false);
   const [hoveredCell, setHoveredCell] = useState<string | null>(null); // "userId-dateKey"
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null); // userId
 
   // Optimistic updates - only used in immediate mode (not batch mode)
   const [optimisticUpdates, setOptimisticUpdates] = useState<Map<string, ShiftType | 'deleted'>>(new Map());
@@ -520,9 +521,15 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
               </View>
             ) : (
               userRows.map((userRow, rowIndex) => (
-                <View key={userRow.userId} style={[styles.userRow, { borderColor: theme.border }]}>
+                <View
+                  key={userRow.userId}
+                  style={[styles.userRow, { borderColor: theme.border }]}
+                  // @ts-ignore - Web-only mouse events
+                  onMouseEnter={() => setHoveredRow(userRow.userId)}
+                  onMouseLeave={() => setHoveredRow((prev) => prev === userRow.userId ? null : prev)}
+                >
                   {/* User name cell */}
-                  <View style={[styles.nameCell, { width: NAME_COLUMN_WIDTH, backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={[styles.nameCell, { width: NAME_COLUMN_WIDTH, backgroundColor: hoveredRow === userRow.userId ? theme.backgroundSecondary : theme.card, borderColor: theme.border }]}>
                     <Text style={[styles.rowNumber, { color: theme.textTertiary }]}>{rowIndex + 1}</Text>
                     <Avatar
                       name={userRow.userName}
@@ -604,6 +611,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                           { width: CELL_WIDTH, borderColor: theme.border },
                           weekend && { backgroundColor: theme.backgroundSecondary + '50' },
                           today && { backgroundColor: theme.primary + '10' },
+                          hoveredRow === userRow.userId && !isHovered && { backgroundColor: theme.textSecondary + '08' },
                           canEdit && styles.entryCellClickable,
                           canEdit && isHovered && { backgroundColor: (isRedDay ? theme.error : theme.textSecondary) + '15' },
                           isPending && !hasWarning && styles.pendingCell,
@@ -806,7 +814,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderRightWidth: 1,
-  },
+    ...Platform.select({
+      web: {
+        transition: 'background-color 0.15s ease',
+      },
+    }),
+  } as any,
   headerText: {
     fontSize: 12,
     fontWeight: '600',
@@ -832,7 +845,12 @@ const styles = StyleSheet.create({
   userRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-  },
+    ...Platform.select({
+      web: {
+        transition: 'background-color 0.15s ease',
+      },
+    }),
+  } as any,
   rowNumber: {
     fontSize: 12,
     fontWeight: '500',

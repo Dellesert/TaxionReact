@@ -5,7 +5,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, SectionList } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ScheduleEntryRow } from './ScheduleEntryRow';
 import { formatScheduleDate, isToday, groupEntriesByDate } from '../utils/scheduleHelpers';
@@ -55,7 +55,7 @@ export const ScheduleEntriesList: React.FC<ScheduleEntriesListProps> = ({
     <View
       style={[
         styles.sectionHeader,
-        { backgroundColor: theme.background },
+        { backgroundColor: 'transparent' },
         section.isToday && { backgroundColor: theme.primaryLight + '15' },
       ]}
     >
@@ -96,18 +96,52 @@ export const ScheduleEntriesList: React.FC<ScheduleEntriesListProps> = ({
   }
 
   return (
-    <SectionList
-      sections={sections}
-      keyExtractor={(item) => item.id.toString()}
-      renderSectionHeader={renderSectionHeader}
-      renderItem={renderItem}
-      stickySectionHeadersEnabled={false}
-      contentContainerStyle={styles.listContent}
-      showsVerticalScrollIndicator={false}
-      scrollEnabled={false}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-      SectionSeparatorComponent={() => <View style={styles.sectionSeparator} />}
-    />
+    <View style={styles.listContent}>
+      {sections.map((section, sectionIndex) => (
+        <View
+          key={section.dateKey}
+          style={[
+            styles.sectionCard,
+            { borderColor: theme.border },
+            section.isToday && { borderColor: theme.primary + '40' },
+            sectionIndex > 0 && { marginTop: 10 },
+          ]}
+        >
+          <View
+            style={[
+              styles.sectionHeader,
+              { borderBottomColor: theme.border, backgroundColor: theme.background },
+              section.isToday && { backgroundColor: theme.primaryLight + '15' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: section.isToday ? theme.primary : theme.text },
+              ]}
+            >
+              {section.title}
+            </Text>
+            {section.isToday && (
+              <View style={[styles.todayBadge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.todayBadgeText}>Сегодня</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.sectionItems}>
+            {section.data.map((item, itemIndex) => (
+              <View key={item.id} style={[styles.itemContainer, itemIndex > 0 && { marginTop: 8 }]}>
+                <ScheduleEntryRow
+                  entry={item}
+                  showUser
+                  onPress={onEntryPress ? () => onEntryPress(item) : undefined}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+    </View>
   );
 };
 
@@ -115,15 +149,21 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 100,
   },
+  sectionCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
     gap: 8,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
@@ -137,15 +177,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  itemContainer: {
-    paddingHorizontal: 16,
+  sectionItems: {
+    padding: 10,
   },
-  separator: {
-    height: 8,
-  },
-  sectionSeparator: {
-    height: 8,
-  },
+  itemContainer: {},
   emptyContainer: {
     flex: 1,
     alignItems: 'center',

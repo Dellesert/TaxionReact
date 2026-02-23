@@ -457,6 +457,12 @@ export const ScheduleDetailScreen: React.FC = () => {
     );
   }, [isElectron, isWideScreen, handleGoBack, schedule, viewMode, handleViewModeChange]);
 
+  const handleAddEntry = useCallback(() => {
+    setSelectedEntry(null); // null means create new
+    setSelectedTemplateEntry(null);
+    setShowEditEntryModal(true);
+  }, []);
+
   // TitleBar right controls - menu button + pending changes controls
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isWideScreen || !schedule) return null;
@@ -476,9 +482,10 @@ export const ScheduleDetailScreen: React.FC = () => {
         isDraft={isDraft}
         onPublish={canEdit ? handlePublishSchedule : undefined}
         isPublishing={isPublishing}
+        onAddEntry={canManageEntries ? handleAddEntry : undefined}
       />
     );
-  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, handleOpenMenu, handleMenuButtonLayout, handleViewModeChange, pendingCount, handleSavePendingChanges, handleDiscardPendingChanges, isSavingPending, isDraft, handlePublishSchedule, isPublishing]);
+  }, [isElectron, isWideScreen, schedule, viewMode, canEdit, canManageEntries, handleOpenMenu, handleMenuButtonLayout, handleViewModeChange, pendingCount, handleSavePendingChanges, handleDiscardPendingChanges, isSavingPending, isDraft, handlePublishSchedule, isPublishing, handleAddEntry]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -582,11 +589,6 @@ export const ScheduleDetailScreen: React.FC = () => {
     setShowEditScheduleModal(true);
   }, []);
 
-  const handleAddEntry = useCallback(() => {
-    setSelectedEntry(null); // null means create new
-    setSelectedTemplateEntry(null);
-    setShowEditEntryModal(true);
-  }, []);
 
   const handleSaveSchedule = useCallback(async (data: UpdateScheduleRequest) => {
     if (!schedule) return;
@@ -1081,30 +1083,17 @@ export const ScheduleDetailScreen: React.FC = () => {
               {viewMode === 'grid' && schedule.mode === 'monthly' ? (
                 // Desktop Grid View - employees as rows, dates as columns
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
-                  <View style={[styles.sectionHeader, { paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <View style={[styles.sectionHeader, { marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
-                        style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
+                        style={[styles.infoToggleButton, { width: 28, height: 28, borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
                         onPress={() => setShowInfoCard(!showInfoCard)}
                       >
-                        <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
+                        <Ionicons name="information-circle-outline" size={16} color={showInfoCard ? theme.primary : theme.textSecondary} />
                       </TouchableOpacity>
-                      <Text style={[styles.sectionTitle, { color: theme.text }]} numberOfLines={1}>
+                      <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 14 }]} numberOfLines={1}>
                         {schedule.title}
                       </Text>
-                    </View>
-                    <View style={styles.sectionHeaderActions}>
-                      {canManageEntries && (
-                        <TouchableOpacity
-                          style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                          onPress={handleAddEntry}
-                        >
-                          <Ionicons name="add" size={18} color={theme.primary} />
-                          <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                            Добавить
-                          </Text>
-                        </TouchableOpacity>
-                      )}
                     </View>
                   </View>
                   {/* Warning panel for cells with validation warnings */}
@@ -1192,25 +1181,12 @@ export const ScheduleDetailScreen: React.FC = () => {
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>
                       Даты × Смены ({entries.length})
                     </Text>
-                    <View style={styles.sectionHeaderActions}>
-                      {canManageEntries && (
-                        <TouchableOpacity
-                          style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                          onPress={handleAddEntry}
-                        >
-                          <Ionicons name="add" size={18} color={theme.primary} />
-                          <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                            Добавить
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity
+                    <TouchableOpacity
                         style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
                         onPress={() => setShowInfoCard(!showInfoCard)}
                       >
                         <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
                       </TouchableOpacity>
-                    </View>
                   </View>
                   {isLoadingEntries ? (
                     <View style={styles.entriesLoader}>
@@ -1230,37 +1206,22 @@ export const ScheduleDetailScreen: React.FC = () => {
               ) : (
                 // Standard List View
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                      {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Записи'} (
-                      {schedule.mode === 'recurring'
-                        ? filteredTemplateEntries.length
-                        : filteredEntries.length}
-                      )
-                    </Text>
-                    <View style={styles.sectionHeaderActions}>
-                      {canManageEntries && (
-                        <TouchableOpacity
-                          style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                          onPress={handleAddEntry}
-                        >
-                          <Ionicons name="add" size={18} color={theme.primary} />
-                          <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                            Добавить
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                  <View style={[styles.sectionHeader, { marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
-                        style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
+                        style={[styles.infoToggleButton, { width: 28, height: 28, borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
                         onPress={() => setShowInfoCard(!showInfoCard)}
                       >
-                        <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
+                        <Ionicons name="information-circle-outline" size={16} color={showInfoCard ? theme.primary : theme.textSecondary} />
                       </TouchableOpacity>
+                      <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 14 }]} numberOfLines={1}>
+                        {schedule.mode === 'recurring' ? 'Шаблон недели' : 'Смены'} (
+                        {schedule.mode === 'recurring'
+                          ? filteredTemplateEntries.length
+                          : filteredEntries.length}
+                        )
+                      </Text>
                     </View>
-                  </View>
-
-                  {/* User filter chip */}
-                  <View style={styles.userFilterContainer}>
                     <TouchableOpacity
                       style={[
                         styles.userFilterChip,
@@ -1960,6 +1921,7 @@ const styles = StyleSheet.create({
   infoToggleButton: {
     width: 34,
     height: 34,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
