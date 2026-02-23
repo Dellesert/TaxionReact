@@ -299,7 +299,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.tableContainer}>
+      <View style={[styles.tableContainer, { borderColor: theme.border, backgroundColor: theme.card }]}>
         {/* Header */}
         <View style={[styles.headerRow, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
           <View style={[styles.headerCell, styles.titleColumn]}>
@@ -357,6 +357,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
                 const isHovered = hoveredRowId === task.id;
                 const isEvenRow = index % 2 === 0;
+                const isLastRow = index === tasksWithSubtasks.length - 1;
 
                 return (
                 <TouchableOpacity
@@ -367,6 +368,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                       backgroundColor: isEvenRow ? theme.card : 'transparent',
                       borderBottomColor: theme.border,
                     },
+                    isLastRow && { borderBottomWidth: 0 },
                     isHovered && { backgroundColor: theme.primary + '12' },
                     isSubtask && styles.subtaskRow,
                   ]}
@@ -529,8 +531,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tableContainer: {
-    flex: 1,
     marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    padding: 8,
   },
   headerRow: {
     flexDirection: 'row',
