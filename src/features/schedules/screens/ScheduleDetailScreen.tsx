@@ -162,6 +162,8 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [showUserFilterPicker, setShowUserFilterPicker] = useState(false);
   const [filterUserId, setFilterUserId] = useState<number | null>(null);
   const [filterUserName, setFilterUserName] = useState<string | null>(null);
+  const filterButtonRef = useRef<any>(null);
+  const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
@@ -1223,12 +1225,21 @@ export const ScheduleDetailScreen: React.FC = () => {
                       </Text>
                     </View>
                     <TouchableOpacity
+                      ref={filterButtonRef}
                       style={[
                         styles.userFilterChip,
                         { backgroundColor: theme.card, borderColor: theme.border },
                         filterUserId ? { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary } : null,
                       ]}
-                      onPress={() => setShowUserFilterPicker(true)}
+                      onPress={() => {
+                        if (isElectron && filterButtonRef.current) {
+                          const rect = filterButtonRef.current.getBoundingClientRect?.();
+                          if (rect) {
+                            setFilterButtonPosition({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+                          }
+                        }
+                        setShowUserFilterPicker(true);
+                      }}
                     >
                       <Ionicons
                         name="person"
@@ -1531,23 +1542,26 @@ export const ScheduleDetailScreen: React.FC = () => {
         onDeleteTemplateEntry={handleDeleteTemplateEntry}
       />
 
-      {/* User Filter Picker - shows only users from the schedule */}
-      <Modal
-        visible={showUserFilterPicker}
-        transparent
-        animationType={animationType}
-        onRequestClose={() => setShowUserFilterPicker(false)}
-      >
-        <TouchableOpacity
-          style={styles.filterModalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowUserFilterPicker(false)}
+      {/* User Filter Picker - desktop: dropdown under button, mobile: centered modal */}
+      {isElectron && isWideScreen && showUserFilterPicker && filterButtonPosition ? (
+        <View
+          style={{ position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}
+          // @ts-ignore - Web-only
+          onClick={() => setShowUserFilterPicker(false)}
         >
-          <View style={[styles.filterModalContent, { backgroundColor: theme.card }]}>
-            <Text style={[styles.filterModalTitle, { color: theme.text }]}>
-              Фильтр по сотруднику
-            </Text>
-
+          <View
+            style={[
+              styles.filterDropdown,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                top: filterButtonPosition.y + filterButtonPosition.height + 4,
+                left: filterButtonPosition.x + filterButtonPosition.width - 280,
+              },
+            ]}
+            // @ts-ignore - Web-only: prevent closing when clicking inside
+            onClick={(e: any) => e.stopPropagation()}
+          >
             {/* "All employees" option */}
             <TouchableOpacity
               style={[
@@ -1596,8 +1610,75 @@ export const ScheduleDetailScreen: React.FC = () => {
               style={styles.filterModalList}
             />
           </View>
-        </TouchableOpacity>
-      </Modal>
+        </View>
+      ) : (
+        <Modal
+          visible={showUserFilterPicker}
+          transparent
+          animationType={animationType}
+          onRequestClose={() => setShowUserFilterPicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.filterModalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowUserFilterPicker(false)}
+          >
+            <View style={[styles.filterModalContent, { backgroundColor: theme.card }]}>
+              <Text style={[styles.filterModalTitle, { color: theme.text }]}>
+                Фильтр по сотруднику
+              </Text>
+
+              {/* "All employees" option */}
+              <TouchableOpacity
+                style={[
+                  styles.filterModalItem,
+                  { borderBottomColor: theme.border },
+                  !filterUserId && { backgroundColor: theme.backgroundSecondary },
+                ]}
+                onPress={() => {
+                  handleUserFilterChange(null, null);
+                  setShowUserFilterPicker(false);
+                }}
+              >
+                <Ionicons name="people-outline" size={20} color={theme.primary} />
+                <Text style={[styles.filterModalItemText, { color: theme.text }]}>
+                  Все сотрудники
+                </Text>
+                {!filterUserId && (
+                  <Ionicons name="checkmark" size={20} color={theme.primary} />
+                )}
+              </TouchableOpacity>
+
+              <FlatList
+                data={scheduleUsers}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.filterModalItem,
+                      { borderBottomColor: theme.border },
+                      filterUserId === item.id && { backgroundColor: theme.backgroundSecondary },
+                    ]}
+                    onPress={() => {
+                      handleUserFilterChange(item.id, item.name);
+                      setShowUserFilterPicker(false);
+                    }}
+                  >
+                    <Avatar name={item.name} imageUrl={item.avatar} size={28} />
+                    <Text style={[styles.filterModalItemText, { color: theme.text }]} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    {filterUserId === item.id && (
+                      <Ionicons name="checkmark" size={20} color={theme.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.filterModalList}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
@@ -1927,6 +2008,19 @@ const styles = StyleSheet.create({
   },
 
   // User filter styles
+  filterDropdown: {
+    position: 'fixed' as any,
+    width: 280,
+    maxHeight: 360,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+      },
+    }),
+  } as any,
   userFilterContainer: {
     marginBottom: 12,
   },
