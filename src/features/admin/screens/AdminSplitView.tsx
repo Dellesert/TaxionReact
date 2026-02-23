@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTitleBarControls } from '@shared/contexts/TitleBarControlsContext';
@@ -18,14 +18,10 @@ import UsersDesktopContent from '../components/desktop-content/UsersDesktopConte
 import UserGroupsDesktopContent from '../components/desktop-content/UserGroupsDesktopContent';
 
 export const AdminSplitView: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  const { width } = useWindowDimensions();
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const [activeSection, setActiveSection] = useState<AdminSection>(isAdmin ? 'analytics' : 'user-groups');
-
-  // Responsive sidebar width
-  const sidebarWidth = width < 1024 ? 260 : 320;
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
@@ -117,6 +113,8 @@ export const AdminSplitView: React.FC = () => {
     }
   };
 
+  const cardBgColor = isDark ? theme.card : '#FFFFFF';
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Sidebar Navigation */}
@@ -124,11 +122,12 @@ export const AdminSplitView: React.FC = () => {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         userRole={user?.role}
-        width={sidebarWidth}
       />
 
       {/* Content Area */}
-      <View style={styles.content}>{renderContent()}</View>
+      <View style={[styles.content, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
+        {renderContent()}
+      </View>
     </View>
   );
 };
@@ -140,6 +139,21 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginLeft: 16,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
   },
 });
 

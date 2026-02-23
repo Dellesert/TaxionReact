@@ -24,12 +24,13 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
   headerActions,
   noPadding = false,
 }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   const dynamicStyles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.background,
+      overflow: 'hidden',
     },
     header: {
       paddingHorizontal: 32,
@@ -37,7 +38,7 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
       paddingBottom: 16,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
-      backgroundColor: isDark ? theme.card : '#FFFFFF',
+      backgroundColor: theme.backgroundSecondary,
     },
     headerTop: {
       flexDirection: 'row',
