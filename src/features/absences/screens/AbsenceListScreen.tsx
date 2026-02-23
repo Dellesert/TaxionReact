@@ -10,6 +10,7 @@ import {
   Dimensions,
   ScrollView,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,7 +30,6 @@ import { YearPicker } from '../components/YearPicker';
 import { TitleBarAbsenceControls, AbsenceViewMode } from '../components/TitleBarAbsenceControls';
 import { AbsenceYearCalendar } from '../components/AbsenceYearCalendar';
 import { AbsenceTimeline } from '../components/AbsenceTimeline';
-import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import {
   Absence,
   AbsenceType,
@@ -113,6 +113,8 @@ export const AbsenceListScreen: React.FC = () => {
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
+  const userFilterButtonRef = useRef<any>(null);
+  const [userFilterButtonPosition, setUserFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
 
   // View mode state (list vs calendar) - only for desktop
   const [viewMode, setViewMode] = useState<AbsenceViewMode>('list');
@@ -297,6 +299,21 @@ export const AbsenceListScreen: React.FC = () => {
     );
   }, [absences, searchQuery]);
 
+  // Unique users from absences for the filter dropdown
+  const absenceUsers = useMemo(() => {
+    const usersMap = new Map<number, { id: number; name: string; avatar?: string }>();
+    for (const absence of absences) {
+      if (absence.user && !usersMap.has(absence.user.id)) {
+        usersMap.set(absence.user.id, {
+          id: absence.user.id,
+          name: absence.user.name,
+          avatar: absence.user.avatar,
+        });
+      }
+    }
+    return Array.from(usersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [absences]);
+
   // Group absences by type for desktop columns view
   const absenceSections = useMemo((): AbsenceSection[] => {
     const grouped = new Map<AbsenceType, Absence[]>();
@@ -476,8 +493,8 @@ export const AbsenceListScreen: React.FC = () => {
           />
         )}
 
-        {/* User Filter Chip - hide when in calendar/timeline mode (they have their own user display) */}
-        {!(isElectron && isDesktop && (viewMode === 'calendar' || viewMode === 'timeline')) && (
+        {/* User Filter Chip - hide on desktop Electron (integrated into view headers) */}
+        {!(isElectron && isDesktop) && (
           <View style={styles.userFilterContainer}>
             <TouchableOpacity
               style={[
@@ -678,50 +695,123 @@ export const AbsenceListScreen: React.FC = () => {
               onAbsencePress={handleAbsencePress}
             />
           ) : (
-            <ScrollView
-              contentContainerStyle={styles.rowsScrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {absenceSections.length === 0 ? (
-                renderDesktopEmpty()
-              ) : (
-                <View style={styles.rowsContainer}>
-                  {absenceSections.map((section) => (
-                    <View
-                      key={section.type}
-                      style={styles.typeRow}
-                    >
-                      <View style={[styles.rowHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                        <View style={[styles.rowColorDot, { backgroundColor: section.color }]} />
-                        <Text style={[styles.rowTitle, { color: theme.text }]}>
-                          {section.title}
-                        </Text>
-                        <View style={[styles.rowCount, { backgroundColor: theme.background }]}>
-                          <Text style={[styles.rowCountText, { color: theme.textSecondary }]}>
-                            {section.data.length}
-                          </Text>
-                        </View>
-                      </View>
-                      <CustomScrollView
-                        horizontal
-                        thumbColor={`${section.color}66`}
-                        style={styles.rowCardsScroll}
-                      >
-                        {section.data.map((absence) => (
-                          <View key={absence.id} style={styles.rowCardWrapper}>
-                            <AbsenceCard
-                              absence={absence}
-                              onPress={() => handleAbsencePress(absence)}
-                              style={styles.rowCardStretch}
-                            />
-                          </View>
-                        ))}
-                      </CustomScrollView>
-                    </View>
-                  ))}
+            <View style={[styles.listCard, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
+              {/* List Header - year picker left, user filter right */}
+              <View style={[styles.listCardHeader, { borderColor: theme.border }]}>
+                <View style={styles.listCardHeaderLeft}>
+                  <TouchableOpacity
+                    onPress={() => handleYearChange(selectedYear - 1)}
+                    style={styles.listHeaderArrow}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleYearChange(new Date().getFullYear())}
+                    activeOpacity={selectedYear === new Date().getFullYear() ? 1 : 0.6}
+                    disabled={selectedYear === new Date().getFullYear()}
+                  >
+                    <Text style={[styles.listHeaderYearText, { color: theme.text }]}>
+                      {selectedYear}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleYearChange(selectedYear + 1)}
+                    style={styles.listHeaderArrow}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                  </TouchableOpacity>
                 </View>
-              )}
-            </ScrollView>
+                <TouchableOpacity
+                  ref={userFilterButtonRef}
+                  style={[
+                    styles.listHeaderUserFilter,
+                    { borderColor: theme.border },
+                    selectedUserId ? { borderColor: theme.primary, backgroundColor: theme.primary + '10' } : null,
+                  ]}
+                  onPress={() => {
+                    if (isElectron && userFilterButtonRef.current) {
+                      const rect = userFilterButtonRef.current.getBoundingClientRect?.();
+                      if (rect) {
+                        setUserFilterButtonPosition({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+                      }
+                    }
+                    setShowUserPicker(true);
+                  }}
+                >
+                  <Ionicons
+                    name="person"
+                    size={15}
+                    color={selectedUserId ? theme.primary : theme.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.listHeaderUserFilterText,
+                      { color: selectedUserId ? theme.primary : theme.textSecondary },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {selectedUserName || 'Все сотрудники'}
+                  </Text>
+                  {selectedUserId ? (
+                    <TouchableOpacity
+                      onPress={() => handleUserFilterChange(null, null)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close-circle" size={16} color={theme.primary} />
+                    </TouchableOpacity>
+                  ) : (
+                    <Ionicons name="chevron-down" size={14} color={theme.textSecondary} />
+                  )}
+                </TouchableOpacity>
+              </View>
+              {/* List Content */}
+              <ScrollView
+                contentContainerStyle={styles.rowsScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {absenceSections.length === 0 ? (
+                  renderDesktopEmpty()
+                ) : (
+                  <View style={styles.rowsContainer}>
+                    {absenceSections.map((section) => (
+                      <View
+                        key={section.type}
+                        style={styles.typeRow}
+                      >
+                        <View style={[styles.rowHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                          <View style={[styles.rowColorDot, { backgroundColor: section.color }]} />
+                          <Text style={[styles.rowTitle, { color: theme.text }]}>
+                            {section.title}
+                          </Text>
+                          <View style={[styles.rowCount, { backgroundColor: theme.background }]}>
+                            <Text style={[styles.rowCountText, { color: theme.textSecondary }]}>
+                              {section.data.length}
+                            </Text>
+                          </View>
+                        </View>
+                        <CustomScrollView
+                          horizontal
+                          thumbColor={`${section.color}66`}
+                          style={styles.rowCardsScroll}
+                        >
+                          {section.data.map((absence) => (
+                            <View key={absence.id} style={styles.rowCardWrapper}>
+                              <AbsenceCard
+                                absence={absence}
+                                onPress={() => handleAbsencePress(absence)}
+                                style={styles.rowCardStretch}
+                              />
+                            </View>
+                          ))}
+                        </CustomScrollView>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
           )
         ) : (
           // Mobile/tablet list layout
@@ -803,22 +893,138 @@ export const AbsenceListScreen: React.FC = () => {
         onAbsenceDeleted={handleAbsenceDeleted}
       />
 
-      {/* User Filter Modal */}
-      <UserSelectorModal
-        visible={showUserPicker}
-        onClose={() => setShowUserPicker(false)}
-        selectedUserIds={selectedUserId ? [selectedUserId] : []}
-        onSelectionChange={(userIds, selectedUsers) => {
-          if (userIds.length > 0) {
-            handleUserFilterChange(userIds[0], selectedUsers?.[0]?.name || null);
-          }
-          setShowUserPicker(false);
-        }}
-        multiSelect={false}
-        title="Фильтр по сотруднику"
-        mode="radio"
-        includeCurrentUser={true}
-      />
+      {/* User Filter Picker - desktop: dropdown under button, mobile: centered modal */}
+      {isElectron && isDesktop && showUserPicker && userFilterButtonPosition ? (
+        <View
+          style={{ position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}
+          // @ts-ignore - Web-only
+          onClick={() => setShowUserPicker(false)}
+        >
+          <View
+            style={[
+              styles.userFilterDropdown,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                top: userFilterButtonPosition.y + userFilterButtonPosition.height + 4,
+                left: userFilterButtonPosition.x + userFilterButtonPosition.width - 280,
+              },
+            ]}
+            // @ts-ignore - Web-only: prevent closing when clicking inside
+            onClick={(e: any) => e.stopPropagation()}
+          >
+            <TouchableOpacity
+              style={[
+                styles.userFilterDropdownItem,
+                { borderBottomColor: theme.border },
+                !selectedUserId && { backgroundColor: theme.backgroundSecondary },
+              ]}
+              onPress={() => {
+                handleUserFilterChange(null, null);
+                setShowUserPicker(false);
+              }}
+            >
+              <Ionicons name="people-outline" size={20} color={theme.primary} />
+              <Text style={[styles.userFilterDropdownItemText, { color: theme.text }]}>
+                Все сотрудники
+              </Text>
+              {!selectedUserId && (
+                <Ionicons name="checkmark" size={20} color={theme.primary} />
+              )}
+            </TouchableOpacity>
+            <FlatList
+              data={absenceUsers}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.userFilterDropdownItem,
+                    { borderBottomColor: theme.border },
+                    selectedUserId === item.id && { backgroundColor: theme.backgroundSecondary },
+                  ]}
+                  onPress={() => {
+                    handleUserFilterChange(item.id, item.name);
+                    setShowUserPicker(false);
+                  }}
+                >
+                  <Avatar name={item.name} imageUrl={item.avatar} size={28} />
+                  <Text style={[styles.userFilterDropdownItemText, { color: theme.text }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  {selectedUserId === item.id && (
+                    <Ionicons name="checkmark" size={20} color={theme.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+              style={styles.userFilterDropdownList}
+            />
+          </View>
+        </View>
+      ) : (
+        <Modal
+          visible={showUserPicker}
+          transparent
+          animationType={animationType}
+          onRequestClose={() => setShowUserPicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.userFilterModalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowUserPicker(false)}
+          >
+            <View style={[styles.userFilterModalContent, { backgroundColor: theme.card }]}>
+              <Text style={[styles.userFilterModalTitle, { color: theme.text }]}>
+                Фильтр по сотруднику
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.userFilterDropdownItem,
+                  { borderBottomColor: theme.border },
+                  !selectedUserId && { backgroundColor: theme.backgroundSecondary },
+                ]}
+                onPress={() => {
+                  handleUserFilterChange(null, null);
+                  setShowUserPicker(false);
+                }}
+              >
+                <Ionicons name="people-outline" size={20} color={theme.primary} />
+                <Text style={[styles.userFilterDropdownItemText, { color: theme.text }]}>
+                  Все сотрудники
+                </Text>
+                {!selectedUserId && (
+                  <Ionicons name="checkmark" size={20} color={theme.primary} />
+                )}
+              </TouchableOpacity>
+              <FlatList
+                data={absenceUsers}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.userFilterDropdownItem,
+                      { borderBottomColor: theme.border },
+                      selectedUserId === item.id && { backgroundColor: theme.backgroundSecondary },
+                    ]}
+                    onPress={() => {
+                      handleUserFilterChange(item.id, item.name);
+                      setShowUserPicker(false);
+                    }}
+                  >
+                    <Avatar name={item.name} imageUrl={item.avatar} size={28} />
+                    <Text style={[styles.userFilterDropdownItemText, { color: theme.text }]} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    {selectedUserId === item.id && (
+                      <Ionicons name="checkmark" size={20} color={theme.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.userFilterDropdownList}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
@@ -920,6 +1126,55 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     maxWidth: 200,
   },
+  // User filter dropdown styles
+  userFilterDropdown: {
+    position: 'fixed' as any,
+    width: 280,
+    maxHeight: 360,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+      },
+    }),
+  } as any,
+  userFilterDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  userFilterDropdownItemText: {
+    fontSize: 15,
+    flex: 1,
+  },
+  userFilterDropdownList: {
+    flexGrow: 0,
+  },
+  userFilterModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  userFilterModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '70%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  userFilterModalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    padding: 16,
+    paddingBottom: 12,
+  },
   // Desktop styles
   desktopHeader: {
     flexDirection: 'row',
@@ -975,6 +1230,66 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  // Desktop list card layout
+  listCard: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
+  },
+  listCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    minHeight: 56,
+  },
+  listCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  listHeaderArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listHeaderYearText: {
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginHorizontal: 4,
+  },
+  listHeaderUserFilter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  listHeaderUserFilterText: {
+    fontSize: 13,
+    fontWeight: '500',
+    maxWidth: 180,
   },
   // Desktop horizontal rows layout
   rowsScrollContent: {
