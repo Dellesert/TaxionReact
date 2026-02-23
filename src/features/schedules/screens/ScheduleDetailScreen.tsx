@@ -1048,18 +1048,16 @@ export const ScheduleDetailScreen: React.FC = () => {
             {/* Left sidebar - Collapsible Info Card */}
             {showInfoCard && (
               <View style={[styles.infoCardPanel, { backgroundColor: theme.card }]}>
-                <View style={[styles.sidebarColorBar, { backgroundColor: typeColor }]} />
-
                 {/* Header — "Описание" (same style as right card header) */}
                 <View style={[styles.sectionHeader, { paddingHorizontal: 20, paddingVertical: 0, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border, marginBottom: 0 }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, height: 34 }}>
                     <Ionicons name="document-text-outline" size={16} color={theme.primary} />
                     <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 14 }]} numberOfLines={1}>Описание</Text>
                   </View>
                 </View>
 
-                {/* Content — theme.background */}
-                <View style={[styles.infoCardContent, { backgroundColor: theme.background, flex: 1 }]}>
+                {/* Info fields — white background */}
+                <View style={[styles.infoCardContent, { backgroundColor: theme.card, borderRadius: 12 }]}>
                   <View style={styles.infoCardSection}>
                     <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
                     <Text style={[styles.sidebarValue, { color: theme.text }]}>
@@ -1074,13 +1072,16 @@ export const ScheduleDetailScreen: React.FC = () => {
                     </Text>
                   </View>
 
-                  <View style={styles.infoCardSection}>
+                  <View style={[styles.infoCardSection, { marginBottom: 0 }]}>
                     <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Видимость</Text>
                     <Text style={[styles.sidebarValue, { color: theme.text }]}>
                       {VISIBILITY_LABELS[schedule.visibility]}
                     </Text>
                   </View>
+                </View>
 
+                {/* Rest — default background */}
+                <View style={[styles.infoCardContent, { backgroundColor: theme.background, flex: 1 }]}>
                   {isDraft && (
                     <View style={[styles.infoCardDraftBadge, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
                       <Ionicons name="document-text-outline" size={14} color="#D97706" />
