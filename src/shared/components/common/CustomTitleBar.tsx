@@ -223,7 +223,7 @@ export const CustomTitleBar: React.FC<CustomTitleBarProps> = ({
         >
           <Ionicons
             name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
-            size={16}
+            size={20}
             color={theme.text}
           />
           {unreadCount > 0 && (
