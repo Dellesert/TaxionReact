@@ -33,6 +33,7 @@ import { AnimatedTabBar } from '@shared/components/navigation/AnimatedTabBar';
 import { SideNavBar } from '@shared/components/navigation/SideNavBar';
 import { CalendarDesktopFallback } from '@features/calendar/components/states/CalendarDesktopFallback';
 import { ScheduleDesktopFallback } from '@features/schedules/components/states/ScheduleDesktopFallback';
+import { ChatDesktopFallback } from '@features/chat/components/states/ChatDesktopFallback';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -59,7 +60,11 @@ const MainNavigatorContent: React.FC = () => {
         case 'Polls':
           return <PollNavigator />;
         case 'Chats':
-          return <ChatNavigator />;
+          return (
+            <Suspense fallback={<ChatDesktopFallback />}>
+              <ChatNavigator />
+            </Suspense>
+          );
         case 'Calendar':
           return (
             <Suspense fallback={<CalendarDesktopFallback />}>
