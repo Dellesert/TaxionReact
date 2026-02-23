@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@shared/store/notificationStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import NotificationItem from '@shared/components/common/NotificationItem';
 import ScreenHeader from '@shared/components/common/ScreenHeader';
 import { Notification, NotificationType } from '@/types/notification.types';
@@ -35,6 +36,12 @@ const NotificationListScreen: React.FC = () => {
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
   const { markAsRead, deleteAllNotifications } = useNotificationStore();
+
+  // Сбрасываем контролы TitleBar при переходе на этот экран
+  useTitleBarControlsIntegration({
+    pageTitle: 'Уведомления',
+    enabled: isWideScreen,
+  });
 
   // Filter state
   const [selectedFilter, setSelectedFilter] = useState<NotificationFilter>('all');
