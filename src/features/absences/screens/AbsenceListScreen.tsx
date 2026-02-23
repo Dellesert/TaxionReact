@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
   FlatList,
+  Animated,
 } from 'react-native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,6 +43,9 @@ import { AbsenceCard } from '../components/AbsenceCard';
 import { Avatar } from '@shared/components/common/Avatar';
 import { CustomScrollView } from '@shared/components/common/CustomScrollView';
 import { getUserColorById } from '../constants/userColors.constants';
+import { AbsenceListSkeleton } from '../components/states/AbsenceListSkeleton';
+import { AbsenceCalendarSkeleton } from '../components/states/AbsenceCalendarSkeleton';
+import { AbsenceTimelineSkeleton } from '../components/states/AbsenceTimelineSkeleton';
 
 // Type for sections grouped by absence type
 interface AbsenceSection {
@@ -79,6 +83,19 @@ const FILTER_OPTIONS: { key: AbsenceType | 'all'; label: string }[] = [
   { key: 'all', label: 'Все' },
   ...ABSENCE_TYPES.map((type) => ({ key: type, label: ABSENCE_TYPE_LABELS[type] })),
 ];
+
+// Плавное появление контента при переходе от скелетона
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [opacity]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
 
 export const AbsenceListScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
@@ -639,6 +656,10 @@ export const AbsenceListScreen: React.FC = () => {
             viewTransitioning && styles.viewTransitionFadeOut,
           ]}>
           {displayedViewMode === 'calendar' ? (
+            isLoading ? (
+              <AbsenceCalendarSkeleton />
+            ) : (
+            <FadeIn>
             <View style={styles.calendarDesktopRow}>
               {/* Left Sidebar - Employees */}
               <View style={[styles.calendarSidebar, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
@@ -808,15 +829,23 @@ export const AbsenceListScreen: React.FC = () => {
                 </View>
               </View>
             </View>
+            </FadeIn>
+            )
           ) : displayedViewMode === 'timeline' ? (
-            <AbsenceTimeline
-              year={selectedYear}
-              absences={filteredAbsences}
-              selectedTypeFilter={selectedTypeFilter}
-              colorMode={colorMode}
-              onAbsencePress={handleAbsencePress}
-              onYearChange={handleYearChange}
-            />
+            isLoading ? (
+              <AbsenceTimelineSkeleton />
+            ) : (
+              <FadeIn>
+                <AbsenceTimeline
+                  year={selectedYear}
+                  absences={filteredAbsences}
+                  selectedTypeFilter={selectedTypeFilter}
+                  colorMode={colorMode}
+                  onAbsencePress={handleAbsencePress}
+                  onYearChange={handleYearChange}
+                />
+              </FadeIn>
+            )
           ) : (
             <View style={[styles.listCard, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
               {/* List Header - year picker left, user filter right */}
@@ -890,51 +919,57 @@ export const AbsenceListScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
               {/* List Content */}
-              <ScrollView
-                style={{ backgroundColor: theme.background }}
-                contentContainerStyle={styles.rowsScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {absenceSections.length === 0 ? (
-                  renderDesktopEmpty()
-                ) : (
-                  <View style={styles.rowsContainer}>
-                    {absenceSections.map((section) => (
-                      <View
-                        key={section.type}
-                        style={styles.typeRow}
-                      >
-                        <View style={[styles.rowHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                          <View style={[styles.rowColorDot, { backgroundColor: section.color }]} />
-                          <Text style={[styles.rowTitle, { color: theme.text }]}>
-                            {section.title}
-                          </Text>
-                          <View style={[styles.rowCount, { backgroundColor: theme.background }]}>
-                            <Text style={[styles.rowCountText, { color: theme.textSecondary }]}>
-                              {section.data.length}
-                            </Text>
-                          </View>
-                        </View>
-                        <CustomScrollView
-                          horizontal
-                          thumbColor={`${section.color}66`}
-                          style={styles.rowCardsScroll}
-                        >
-                          {section.data.map((absence) => (
-                            <View key={absence.id} style={styles.rowCardWrapper}>
-                              <AbsenceCard
-                                absence={absence}
-                                onPress={() => handleAbsencePress(absence)}
-                                style={styles.rowCardStretch}
-                              />
+              {isLoading ? (
+                <AbsenceListSkeleton />
+              ) : (
+                <FadeIn>
+                  <ScrollView
+                    style={{ backgroundColor: theme.background }}
+                    contentContainerStyle={styles.rowsScrollContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {absenceSections.length === 0 ? (
+                      renderDesktopEmpty()
+                    ) : (
+                      <View style={styles.rowsContainer}>
+                        {absenceSections.map((section) => (
+                          <View
+                            key={section.type}
+                            style={styles.typeRow}
+                          >
+                            <View style={[styles.rowHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                              <View style={[styles.rowColorDot, { backgroundColor: section.color }]} />
+                              <Text style={[styles.rowTitle, { color: theme.text }]}>
+                                {section.title}
+                              </Text>
+                              <View style={[styles.rowCount, { backgroundColor: theme.background }]}>
+                                <Text style={[styles.rowCountText, { color: theme.textSecondary }]}>
+                                  {section.data.length}
+                                </Text>
+                              </View>
                             </View>
-                          ))}
-                        </CustomScrollView>
+                            <CustomScrollView
+                              horizontal
+                              thumbColor={`${section.color}66`}
+                              style={styles.rowCardsScroll}
+                            >
+                              {section.data.map((absence) => (
+                                <View key={absence.id} style={styles.rowCardWrapper}>
+                                  <AbsenceCard
+                                    absence={absence}
+                                    onPress={() => handleAbsencePress(absence)}
+                                    style={styles.rowCardStretch}
+                                  />
+                                </View>
+                              ))}
+                            </CustomScrollView>
+                          </View>
+                        ))}
                       </View>
-                    ))}
-                  </View>
-                )}
-              </ScrollView>
+                    )}
+                  </ScrollView>
+                </FadeIn>
+              )}
             </View>
           )}
           </View>

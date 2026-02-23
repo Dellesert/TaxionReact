@@ -38,15 +38,17 @@ import { ScheduleListContentSkeleton } from '../components/states/ScheduleListCo
 import { SCHEDULE_TYPE_LABELS, type Schedule, type ScheduleType, type ScheduleListTab } from '../types/schedule.types';
 import type { ScheduleStackParamList } from '../navigation/types';
 
-const FadeIn: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
+  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
   useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [opacity]);
+    if (enabled) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [opacity, enabled]);
   return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
 };
 
@@ -105,6 +107,9 @@ export const ScheduleListScreen: React.FC = () => {
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
+
+  // Track mount time — only fade if loading took long enough for skeleton to be visible
+  const mountTime = useRef(Date.now());
 
   // Daily summary (mobile only)
   const [activeTab, setActiveTab] = useState<ScheduleListTab>('summary');
@@ -361,7 +366,7 @@ export const ScheduleListScreen: React.FC = () => {
               {isSummaryLoading && !summary ? (
                 <ScheduleSidebarSkeleton />
               ) : (
-                <FadeIn>
+                <FadeIn enabled={Date.now() - mountTime.current > 150}>
                   <DayStrip
                     selectedDate={summaryDate}
                     onDateChange={changeSummaryDate}
@@ -425,7 +430,7 @@ export const ScheduleListScreen: React.FC = () => {
               {isLoading ? (
                 <ScheduleListContentSkeleton />
               ) : (
-                <FadeIn>
+                <FadeIn enabled={Date.now() - mountTime.current > 150}>
                   <ScrollView
                     style={{ backgroundColor: theme.background }}
                     contentContainerStyle={styles.columnsScrollContent}

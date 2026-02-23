@@ -34,6 +34,7 @@ import { SideNavBar } from '@shared/components/navigation/SideNavBar';
 import { CalendarDesktopFallback } from '@features/calendar/components/states/CalendarDesktopFallback';
 import { ScheduleDesktopFallback } from '@features/schedules/components/states/ScheduleDesktopFallback';
 import { ChatDesktopFallback } from '@features/chat/components/states/ChatDesktopFallback';
+import { AbsenceDesktopFallback } from '@features/absences/components/states/AbsenceDesktopFallback';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -78,7 +79,11 @@ const MainNavigatorContent: React.FC = () => {
             </Suspense>
           );
         case 'Absences':
-          return <AbsenceNavigator />;
+          return (
+            <Suspense fallback={<AbsenceDesktopFallback />}>
+              <AbsenceNavigator />
+            </Suspense>
+          );
         case 'Notifications':
           return <NotificationNavigator />;
         case 'Admin':
