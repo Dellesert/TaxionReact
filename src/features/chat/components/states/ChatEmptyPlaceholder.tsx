@@ -12,7 +12,7 @@ export const ChatEmptyPlaceholder: React.FC = () => {
   const { theme } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}>
       <View style={styles.content}>
         <View style={[styles.iconContainer, { backgroundColor: theme.backgroundSecondary }]}>
           <Ionicons name="chatbubbles-outline" size={64} color={theme.textTertiary} />
