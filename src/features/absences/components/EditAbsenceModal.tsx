@@ -201,19 +201,20 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
             style={[
               styles.header,
               { backgroundColor: theme.card, borderBottomColor: theme.border },
+              isDesktop && styles.headerDesktop,
             ]}
           >
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <Ionicons name="close" size={28} color={theme.textSecondary} />
+            <TouchableOpacity onPress={onClose} style={[styles.headerButton, isDesktop && styles.headerButtonDesktop]}>
+              <Ionicons name="close" size={isDesktop ? 22 : 28} color={theme.textSecondary} />
             </TouchableOpacity>
 
             <View style={styles.headerCenter}>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>
+              <Text style={[styles.headerTitle, { color: theme.text }, isDesktop && styles.headerTitleDesktop]}>
                 Редактирование
               </Text>
             </View>
 
-            <View style={styles.headerButton} />
+            <View style={[styles.headerButton, isDesktop && styles.headerButtonDesktop]} />
           </View>
 
           {/* Content */}
@@ -495,11 +496,18 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
+  headerDesktop: {
+    paddingVertical: 10,
+  },
   headerButton: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerButtonDesktop: {
+    width: 32,
+    height: 32,
   },
   headerCenter: {
     flex: 1,
@@ -508,6 +516,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  headerTitleDesktop: {
+    fontSize: 16,
   },
   content: {
     flex: 1,
