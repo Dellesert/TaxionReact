@@ -4,3 +4,6 @@ export { PollListErrorState } from './PollListErrorState';
 export { PollErrorState } from './PollErrorState';
 export { PollSkeleton } from './PollSkeleton';
 export { PollDetailSkeleton } from './PollDetailSkeleton';
+export { PollDetailDesktopSkeleton } from './PollDetailDesktopSkeleton';
+export { PollBoardSkeleton } from './PollBoardSkeleton';
+export { PollsDesktopFallback } from './PollsDesktopFallback';

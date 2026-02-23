@@ -24,6 +24,7 @@ import { usePollVoting } from '../hooks/usePollVoting';
 import { usePollActions } from '../hooks/usePollActions';
 import { usePollPermissions } from '../hooks/usePollPermissions';
 import { PollDetailSkeleton } from '../components/states/PollDetailSkeleton';
+import { PollDetailDesktopSkeleton } from '../components/states/PollDetailDesktopSkeleton';
 import EditPollModal from '../components/modals/EditPollModal';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { PollHeader } from '../components/headers/PollHeader';
@@ -341,17 +342,24 @@ const PollDetailScreen: React.FC = () => {
   // Show content skeleton only when loading and no poll data yet
   const showContentSkeleton = isLoading && !poll;
 
-  // Fade animation for content
+  // Fade animation for content (skip fade when data comes from cache)
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const mountTime = useRef(Date.now());
 
   useEffect(() => {
     if (!showContentSkeleton && poll) {
-      // Fade in content when loaded
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      const loadDuration = Date.now() - mountTime.current;
+      if (loadDuration > 150) {
+        // Data took time to load — skeleton was visible, fade in smoothly
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      } else {
+        // Data came from cache — show content instantly
+        fadeAnim.setValue(1);
+      }
     } else {
       fadeAnim.setValue(0);
     }
@@ -388,7 +396,9 @@ const PollDetailScreen: React.FC = () => {
         )}
 
         {/* Loading state - content skeleton */}
-        {showContentSkeleton && <PollDetailSkeleton isFromChat={isFromChat} />}
+        {showContentSkeleton && (
+          isDesktop ? <PollDetailDesktopSkeleton /> : <PollDetailSkeleton isFromChat={isFromChat} />
+        )}
 
         {/* Error state */}
         {!showContentSkeleton && error && (
