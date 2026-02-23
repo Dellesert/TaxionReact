@@ -131,10 +131,38 @@ export const AbsenceListScreen: React.FC = () => {
 
   // View mode state (list vs calendar) - only for desktop
   const [viewMode, setViewMode] = useState<AbsenceViewMode>('list');
+  const [displayedViewMode, setDisplayedViewMode] = useState<AbsenceViewMode>('list');
+  const [viewTransitioning, setViewTransitioning] = useState(false);
+  const skipTransition = useRef(true);
   const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
 
   // Color mode state (by_type vs by_user)
   const [colorMode, setColorMode] = useState<AbsenceColorMode>('by_type');
+
+  // Enable transitions after initial load
+  useEffect(() => {
+    const timer = setTimeout(() => { skipTransition.current = false; }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Animate view mode change on web
+  useEffect(() => {
+    if (viewMode === displayedViewMode) return;
+    if (Platform.OS === 'web' && !skipTransition.current) {
+      setViewTransitioning(true);
+      const timer = setTimeout(() => {
+        setDisplayedViewMode(viewMode);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setViewTransitioning(false);
+          });
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      setDisplayedViewMode(viewMode);
+    }
+  }, [viewMode, displayedViewMode]);
 
   // Load saved view mode and color mode on mount
   useEffect(() => {
@@ -146,6 +174,7 @@ export const AbsenceListScreen: React.FC = () => {
         ]);
         if (savedViewMode && (savedViewMode === 'list' || savedViewMode === 'calendar' || savedViewMode === 'timeline')) {
           setViewMode(savedViewMode as AbsenceViewMode);
+          setDisplayedViewMode(savedViewMode as AbsenceViewMode);
         }
         if (savedColorMode && (savedColorMode === 'by_type' || savedColorMode === 'by_user')) {
           setColorMode(savedColorMode as AbsenceColorMode);
@@ -604,7 +633,12 @@ export const AbsenceListScreen: React.FC = () => {
 
         {/* Desktop layout for Electron - calendar, timeline or columns view */}
         {isElectron && isDesktop ? (
-          viewMode === 'calendar' ? (
+          <View style={[
+            styles.viewContent,
+            Platform.OS === 'web' && styles.viewTransition,
+            viewTransitioning && styles.viewTransitionFadeOut,
+          ]}>
+          {displayedViewMode === 'calendar' ? (
             <View style={styles.calendarDesktopRow}>
               {/* Left Sidebar - Employees */}
               <View style={[styles.calendarSidebar, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
@@ -774,7 +808,7 @@ export const AbsenceListScreen: React.FC = () => {
                 </View>
               </View>
             </View>
-          ) : viewMode === 'timeline' ? (
+          ) : displayedViewMode === 'timeline' ? (
             <AbsenceTimeline
               year={selectedYear}
               absences={filteredAbsences}
@@ -902,7 +936,8 @@ export const AbsenceListScreen: React.FC = () => {
                 )}
               </ScrollView>
             </View>
-          )
+          )}
+          </View>
         ) : (
           // Mobile/tablet list layout
           <AbsenceList
@@ -1574,6 +1609,19 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  viewContent: {
+    flex: 1,
+  },
+  viewTransition: {
+    ...Platform.select({
+      web: {
+        transition: 'opacity 0.15s ease-in-out',
+      },
+    }),
+  } as any,
+  viewTransitionFadeOut: {
+    opacity: 0,
   },
   calendarMainPanel: {
     flex: 1,
