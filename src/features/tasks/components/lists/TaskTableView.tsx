@@ -9,6 +9,7 @@ import { useTaskPermissions } from '../../hooks/useTaskPermissions';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTaskActions } from '../../hooks/useTaskActions';
+import { Avatar } from '@shared/components/common/Avatar';
 import { TaskActionMenu } from '../common/TaskActionMenu';
 import EditTaskModal from '../modals/EditTaskModal';
 import { DelegateTaskModal } from '../modals/DelegateTaskModal';
@@ -322,6 +323,10 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
             <Text style={[styles.headerText, { color: theme.text }]}>Создано</Text>
           </View>
 
+          <View style={[styles.headerCell, styles.creatorColumn]}>
+            <Text style={[styles.headerText, { color: theme.text }]}>Автор</Text>
+          </View>
+
           <View style={[styles.headerCell, styles.actionsColumn]}>
             <Text style={[styles.headerText, { color: theme.text }]}>Действия</Text>
           </View>
@@ -451,6 +456,19 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                     </Text>
                   </View>
 
+                  <View style={[styles.cell, styles.creatorColumn]}>
+                    <View style={styles.creatorContainer}>
+                      <Avatar
+                        name={task.creator?.name || '?'}
+                        imageUrl={task.creator?.avatar}
+                        size={22}
+                      />
+                      <Text style={[styles.cellText, { color: theme.text }]} numberOfLines={1}>
+                        {user && task.creator?.id === user.id ? 'Я' : (task.creator?.name?.split(' ')[0] || '—')}
+                      </Text>
+                    </View>
+                  </View>
+
                   <View style={[styles.cell, styles.actionsColumn]}>
                     {hasAvailableActions(task) && (
                       <TouchableOpacity
@@ -577,6 +595,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 100,
   },
+  creatorColumn: {
+    flex: 1,
+    minWidth: 100,
+  },
   actionsColumn: {
     width: 80,
   },
@@ -648,6 +670,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  creatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   deadlineIcon: {
   },
