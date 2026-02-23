@@ -107,6 +107,9 @@ export const ScheduleDetailScreen: React.FC = () => {
   const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   const menuButtonRef = useRef<any>(null);
 
+  // Info card collapsed state (desktop) — hidden by default only in grid view
+  const [showInfoCard, setShowInfoCard] = useState(true);
+
   // Edit modals state
   const [showEditScheduleModal, setShowEditScheduleModal] = useState(false);
   const [showEditEntryModal, setShowEditEntryModal] = useState(false);
@@ -186,6 +189,11 @@ export const ScheduleDetailScreen: React.FC = () => {
       localStorage.setItem(key, viewMode);
     }
   }, [isElectron, schedule?.type, viewMode]);
+
+  // Show/hide info card based on view mode: hidden by default in grid, shown in others
+  useEffect(() => {
+    setShowInfoCard(viewMode !== 'grid');
+  }, [viewMode]);
 
   // Load group members (from user group or schedule assignments for imported schedules)
   useEffect(() => {
@@ -996,9 +1004,78 @@ export const ScheduleDetailScreen: React.FC = () => {
         }
       >
         {isWideScreen ? (
-          // Desktop: Two-column layout
+          // Desktop layout
           <View style={styles.desktopLayout}>
-            {/* Left Column - Main Content (Entries) */}
+            {/* Left sidebar - Collapsible Info Card */}
+            {showInfoCard && (
+              <View style={[styles.infoCardPanel, { backgroundColor: theme.card }]}>
+                <View style={[styles.sidebarColorBar, { backgroundColor: typeColor }]} />
+
+                <View style={styles.infoCardContent}>
+                  <View style={styles.infoCardSection}>
+                    <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
+                    <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                      {SCHEDULE_TYPE_LABELS[schedule.type]}
+                    </Text>
+                  </View>
+
+                  <View style={styles.infoCardSection}>
+                    <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Период</Text>
+                    <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                      {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} — {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
+                    </Text>
+                  </View>
+
+                  <View style={styles.infoCardSection}>
+                    <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Видимость</Text>
+                    <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                      {VISIBILITY_LABELS[schedule.visibility]}
+                    </Text>
+                  </View>
+
+                  {isDraft && (
+                    <View style={[styles.infoCardDraftBadge, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                      <Ionicons name="document-text-outline" size={14} color="#D97706" />
+                      <Text style={styles.sidebarDraftText}>Черновик</Text>
+                    </View>
+                  )}
+
+                  {schedule.description && (
+                    <View style={[styles.infoCardSection, styles.infoCardDescriptionRow]}>
+                      <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Описание</Text>
+                      <Text style={[styles.sidebarDescription, { color: theme.text }]}>
+                        {schedule.description}
+                      </Text>
+                    </View>
+                  )}
+
+                  {schedule.creator && (
+                    <TouchableOpacity
+                      style={[styles.infoCardCreator, { borderTopColor: theme.border }]}
+                      onPress={handleCreatorPress}
+                      activeOpacity={0.7}
+                    >
+                      <Avatar
+                        name={schedule.creator.name}
+                        imageUrl={schedule.creator.avatar}
+                        size={32}
+                      />
+                      <View style={styles.sidebarCreatorInfo}>
+                        <Text style={[styles.sidebarCreatorLabel, { color: theme.textSecondary }]}>
+                          Создатель
+                        </Text>
+                        <Text style={[styles.sidebarCreatorName, { color: theme.text }]}>
+                          {schedule.creator.name}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Right - Main Content (Entries) */}
             <View style={styles.desktopLeftColumn}>
               {/* Entries Section - Grid/Shifts View for desktop or List View */}
               {viewMode === 'grid' && schedule.mode === 'monthly' ? (
@@ -1008,17 +1085,25 @@ export const ScheduleDetailScreen: React.FC = () => {
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>
                       Сотрудники × Даты ({entries.length})
                     </Text>
-                    {canManageEntries && (
+                    <View style={styles.sectionHeaderActions}>
+                      {canManageEntries && (
+                        <TouchableOpacity
+                          style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                          onPress={handleAddEntry}
+                        >
+                          <Ionicons name="add" size={18} color={theme.primary} />
+                          <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                            Добавить
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
-                        style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                        onPress={handleAddEntry}
+                        style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
+                        onPress={() => setShowInfoCard(!showInfoCard)}
                       >
-                        <Ionicons name="add" size={18} color={theme.primary} />
-                        <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                          Добавить
-                        </Text>
+                        <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
                       </TouchableOpacity>
-                    )}
+                    </View>
                   </View>
                   {/* Warning panel for cells with validation warnings */}
                   {cellWarnings.size > 0 && (
@@ -1105,17 +1190,25 @@ export const ScheduleDetailScreen: React.FC = () => {
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>
                       Даты × Смены ({entries.length})
                     </Text>
-                    {canManageEntries && (
+                    <View style={styles.sectionHeaderActions}>
+                      {canManageEntries && (
+                        <TouchableOpacity
+                          style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                          onPress={handleAddEntry}
+                        >
+                          <Ionicons name="add" size={18} color={theme.primary} />
+                          <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                            Добавить
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
-                        style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                        onPress={handleAddEntry}
+                        style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
+                        onPress={() => setShowInfoCard(!showInfoCard)}
                       >
-                        <Ionicons name="add" size={18} color={theme.primary} />
-                        <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                          Добавить
-                        </Text>
+                        <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
                       </TouchableOpacity>
-                    )}
+                    </View>
                   </View>
                   {isLoadingEntries ? (
                     <View style={styles.entriesLoader}>
@@ -1143,17 +1236,25 @@ export const ScheduleDetailScreen: React.FC = () => {
                         : filteredEntries.length}
                       )
                     </Text>
-                    {canManageEntries && (
+                    <View style={styles.sectionHeaderActions}>
+                      {canManageEntries && (
+                        <TouchableOpacity
+                          style={[styles.addEntryButton, { borderColor: theme.primary }]}
+                          onPress={handleAddEntry}
+                        >
+                          <Ionicons name="add" size={18} color={theme.primary} />
+                          <Text style={[styles.addEntryText, { color: theme.primary }]}>
+                            Добавить
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
-                        style={[styles.addEntryButton, { borderColor: theme.primary }]}
-                        onPress={handleAddEntry}
+                        style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
+                        onPress={() => setShowInfoCard(!showInfoCard)}
                       >
-                        <Ionicons name="add" size={18} color={theme.primary} />
-                        <Text style={[styles.addEntryText, { color: theme.primary }]}>
-                          Добавить
-                        </Text>
+                        <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
                       </TouchableOpacity>
-                    )}
+                    </View>
                   </View>
 
                   {/* User filter chip */}
@@ -1226,79 +1327,6 @@ export const ScheduleDetailScreen: React.FC = () => {
               )}
             </View>
 
-            {/* Right Column - Sidebar (Info Card) */}
-            <View style={styles.desktopRightColumn}>
-              {/* Schedule Info Card */}
-              <View style={[styles.sidebarCard, { backgroundColor: theme.card }]}>
-                <View style={[styles.sidebarColorBar, { backgroundColor: typeColor }]} />
-
-                <View style={styles.sidebarHeader}>
-                  <Ionicons name="information-circle" size={20} color={theme.primary} />
-                  <Text style={[styles.sidebarTitle, { color: theme.text }]}>О графике</Text>
-                </View>
-
-                {isDraft && (
-                  <View style={[styles.sidebarDraftBanner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
-                    <Ionicons name="document-text-outline" size={16} color="#D97706" />
-                    <Text style={styles.sidebarDraftText}>Черновик</Text>
-                  </View>
-                )}
-
-                <View style={styles.sidebarSection}>
-                  <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
-                  <Text style={[styles.sidebarValue, { color: theme.text }]}>
-                    {SCHEDULE_TYPE_LABELS[schedule.type]}
-                  </Text>
-                </View>
-
-                <View style={styles.sidebarSection}>
-                  <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Период</Text>
-                  <Text style={[styles.sidebarValue, { color: theme.text }]}>
-                    {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} — {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
-                  </Text>
-                </View>
-
-                <View style={styles.sidebarSection}>
-                  <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Видимость</Text>
-                  <Text style={[styles.sidebarValue, { color: theme.text }]}>
-                    {VISIBILITY_LABELS[schedule.visibility]}
-                  </Text>
-                </View>
-
-                {schedule.description && (
-                  <View style={styles.sidebarSection}>
-                    <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Описание</Text>
-                    <Text style={[styles.sidebarDescription, { color: theme.text }]}>
-                      {schedule.description}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Creator Block */}
-                {schedule.creator && (
-                  <TouchableOpacity
-                    style={[styles.sidebarCreator, { borderTopColor: theme.border }]}
-                    onPress={handleCreatorPress}
-                    activeOpacity={0.7}
-                  >
-                    <Avatar
-                      name={schedule.creator.name}
-                      imageUrl={schedule.creator.avatar}
-                      size={36}
-                    />
-                    <View style={styles.sidebarCreatorInfo}>
-                      <Text style={[styles.sidebarCreatorLabel, { color: theme.textSecondary }]}>
-                        Создатель
-                      </Text>
-                      <Text style={[styles.sidebarCreatorName, { color: theme.text }]}>
-                        {schedule.creator.name}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
           </View>
         ) : (
           // Mobile: Original single-column layout
@@ -1803,19 +1831,15 @@ const styles = StyleSheet.create({
   desktopContentContainer: {
     paddingHorizontal: 16,
     paddingVertical: 20,
+    paddingBottom: 40,
   },
   desktopLayout: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     gap: 20,
   },
   desktopLeftColumn: {
     flex: 1,
-  },
-  desktopRightColumn: {
-    width: 320,
-    flexShrink: 0,
   },
   desktopCard: {
     padding: 20,
@@ -1834,9 +1858,10 @@ const styles = StyleSheet.create({
     }),
   },
 
-  // Sidebar styles
-  sidebarCard: {
-    padding: 20,
+  // Info card panel styles (collapsible, above content)
+  infoCardPanel: {
+    width: 360,
+    flexShrink: 0,
     borderRadius: 16,
     overflow: 'hidden',
     ...Platform.select({
@@ -1852,31 +1877,42 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  infoCardContent: {
+    padding: 16,
+    paddingTop: 12,
+  },
+  infoCardSection: {
+    marginBottom: 14,
+  },
+  infoCardDraftBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  infoCardDescriptionRow: {
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  infoCardCreator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+    paddingTop: 14,
+    borderTopWidth: 1,
+  },
   sidebarColorBar: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     height: 4,
-  },
-  sidebarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 20,
-    paddingTop: 4,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
-  },
-  sidebarTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    flex: 1,
-  },
-  sidebarSection: {
-    marginBottom: 16,
   },
   sidebarLabel: {
     fontSize: 12,
@@ -1894,13 +1930,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  sidebarCreator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
+  sidebarDraftText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D97706',
   },
   sidebarCreatorInfo: {
     flex: 1,
@@ -1915,6 +1948,20 @@ const styles = StyleSheet.create({
   sidebarCreatorName: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  // Section header actions (Добавить + info button)
+  sectionHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoToggleButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // User filter styles
@@ -2025,22 +2072,6 @@ const styles = StyleSheet.create({
   warningPanelItemMessage: {
     fontSize: 11,
     paddingLeft: 4,
-  },
-
-  // Draft banner styles (sidebar)
-  sidebarDraftBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  sidebarDraftText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#92400E',
   },
 
   // Draft banner styles (mobile)
