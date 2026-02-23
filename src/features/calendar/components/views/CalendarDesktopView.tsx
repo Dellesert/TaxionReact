@@ -159,20 +159,23 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
       <View style={styles.contentContainer}>
         {/* Left Sidebar - Mini Calendar & Stats */}
         <View style={[styles.leftSidebar, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.leftSidebarContent}
-          >
-            {/* Month Navigator - only when toolbar is hidden (Electron) */}
-            {hideToolbar && (
+          {/* Month Navigator Header - only when toolbar is hidden (Electron) */}
+          {hideToolbar && (
+            <View style={[styles.centerPanelHeader, { borderColor: theme.border }]}>
+              <Text style={[styles.centerPanelTitle, { color: theme.text }]}>Календарь</Text>
               <MonthNavigator
                 selectedDate={selectedDate}
                 onPrevious={() => handleMonthNavigate('prev')}
                 onNext={() => handleMonthNavigate('next')}
                 onToday={() => handleMonthNavigate('today')}
+                compact
               />
-            )}
-
+            </View>
+          )}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.leftSidebarContent}
+          >
             {/* Upcoming Events Card */}
             <UpcomingEventsCard
               events={monthEvents}

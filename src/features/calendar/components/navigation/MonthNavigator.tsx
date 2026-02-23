@@ -15,6 +15,8 @@ interface MonthNavigatorProps {
   onPrevious: () => void;
   onNext: () => void;
   onToday: () => void;
+  /** Compact inline mode for use inside a header bar */
+  compact?: boolean;
 }
 
 export const MonthNavigator: React.FC<MonthNavigatorProps> = ({
@@ -22,10 +24,40 @@ export const MonthNavigator: React.FC<MonthNavigatorProps> = ({
   onPrevious,
   onNext,
   onToday,
+  compact = false,
 }) => {
   const { theme } = useTheme();
 
   const monthText = format(selectedDate, 'LLLL yyyy', { locale: ru });
+
+  if (compact) {
+    return (
+      <View style={styles.compactContainer}>
+        <View
+          style={styles.compactArrow}
+          // @ts-ignore - Web-only
+          onClick={onPrevious}
+        >
+          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
+        </View>
+        <View
+          // @ts-ignore - Web-only
+          onClick={onToday}
+          style={styles.compactDateButton}
+          title="Перейти к сегодня"
+        >
+          <Text style={[styles.compactMonthText, { color: theme.text }]}>{monthText}</Text>
+        </View>
+        <View
+          style={styles.compactArrow}
+          // @ts-ignore - Web-only
+          onClick={onNext}
+        >
+          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -93,5 +125,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     textTransform: 'capitalize',
+  } as any,
+  // Compact mode styles
+  compactContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  } as any,
+  compactArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  } as any,
+  compactDateButton: {
+    cursor: 'pointer',
+  } as any,
+  compactMonthText: {
+    fontSize: 15,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+    lineHeight: 24,
+    marginHorizontal: 4,
   } as any,
 });

@@ -631,6 +631,9 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
 
         {/* Timeline area */}
         <View style={[styles.timelineContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.timelineHeader, { borderColor: theme.border }]}>
+            <Text style={[styles.timelineHeaderText, { color: theme.text }]}>График</Text>
+          </View>
           <CustomScrollView
             ref={scrollViewRef}
             horizontal
@@ -753,6 +756,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
+  timelineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    minHeight: 56,
+  },
+  timelineHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   // Timeline styles
   timelineContainer: {
     flex: 1,
@@ -761,7 +777,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     margin: 16,
     marginLeft: 16,
-    padding: 12,
     ...(Platform.OS === 'web' ? {
       // @ts-ignore
       boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
