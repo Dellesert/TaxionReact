@@ -347,12 +347,14 @@ export const ScheduleListScreen: React.FC = () => {
                 selectedDate={summaryDate}
                 onDateChange={changeSummaryDate}
               />
-              <DailySummaryView
-                summary={summary}
-                isLoading={isSummaryLoading}
-                error={summaryError}
-                onRefresh={refreshSummary}
-              />
+              <View style={{ flex: 1, backgroundColor: theme.background }}>
+                <DailySummaryView
+                  summary={summary}
+                  isLoading={isSummaryLoading}
+                  error={summaryError}
+                  onRefresh={refreshSummary}
+                />
+              </View>
             </View>
 
             {/* Main Panel - Schedule columns */}
@@ -400,6 +402,7 @@ export const ScheduleListScreen: React.FC = () => {
                 </View>
               </View>
               <ScrollView
+                style={{ backgroundColor: theme.background }}
                 contentContainerStyle={styles.columnsScrollContent}
                 showsVerticalScrollIndicator={false}
               >

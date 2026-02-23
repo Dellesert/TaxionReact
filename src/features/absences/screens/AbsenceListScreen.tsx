@@ -57,6 +57,19 @@ const getYearRange = (year: number): { start_date: string; end_date: string } =>
   end_date: `${year}-12-31`,
 });
 
+// Parse date string to local date
+const parseLocalDate = (dateStr: string): Date => {
+  const datePart = dateStr.substring(0, 10);
+  const [year, month, day] = datePart.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+// Calculate duration in days
+const getDurationDays = (start: Date, end: Date): number => {
+  const diffTime = end.getTime() - start.getTime();
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+};
+
 // Storage keys
 const ABSENCE_VIEW_MODE_STORAGE_KEY = '@absence_view_mode';
 const ABSENCE_COLOR_MODE_STORAGE_KEY = '@absence_color_mode';
@@ -553,56 +566,72 @@ export const AbsenceListScreen: React.FC = () => {
                     <View style={[styles.employeeAvatar, { backgroundColor: theme.backgroundSecondary }]}>
                       <Ionicons name="people" size={18} color={theme.textSecondary} />
                     </View>
-                    <Text style={[styles.employeeName, { color: !selectedUserId ? theme.primary : theme.text }]}>
-                      Все сотрудники
-                    </Text>
+                    <View style={styles.employeeInfo}>
+                      <Text style={[styles.employeeName, { color: !selectedUserId ? theme.primary : theme.text }]}>
+                        Все сотрудники
+                      </Text>
+                    </View>
                     {!selectedUserId && (
                       <Ionicons name="checkmark" size={18} color={theme.primary} />
                     )}
                   </TouchableOpacity>
                   {/* Unique users from absences */}
                   {(() => {
-                    const usersMap = new Map<number, { id: number; name: string; avatar?: string; count: number }>();
+                    const usersMap = new Map<number, { id: number; name: string; avatar?: string; color?: string; count: number; totalDays: number }>();
                     for (const absence of filteredAbsences) {
                       if (absence.user) {
                         const existing = usersMap.get(absence.user.id);
+                        const start = parseLocalDate(absence.start_date);
+                        const end = parseLocalDate(absence.end_date);
+                        const days = getDurationDays(start, end);
                         if (existing) {
                           existing.count++;
+                          existing.totalDays += days;
                         } else {
                           usersMap.set(absence.user.id, {
                             id: absence.user.id,
                             name: absence.user.name,
                             avatar: absence.user.avatar,
+                            color: absence.user.color,
                             count: 1,
+                            totalDays: days,
                           });
                         }
                       }
                     }
                     const users = Array.from(usersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-                    return users.map((user) => (
-                      <TouchableOpacity
-                        key={user.id}
-                        style={[
-                          styles.employeeItem,
-                          { backgroundColor: selectedUserId === user.id ? theme.primary + '15' : 'transparent' },
-                        ]}
-                        onPress={() => handleUserFilterChange(user.id, user.name)}
-                      >
-                        <Avatar name={user.name} imageUrl={user.avatar} size={32} />
-                        <Text
-                          style={[styles.employeeName, { color: selectedUserId === user.id ? theme.primary : theme.text }]}
-                          numberOfLines={1}
+                    return users.map((user) => {
+                      const userColor = user.color || getUserColorById(user.id);
+                      return (
+                        <TouchableOpacity
+                          key={user.id}
+                          style={[
+                            styles.employeeItem,
+                            { backgroundColor: selectedUserId === user.id ? theme.primary + '15' : 'transparent' },
+                          ]}
+                          onPress={() => handleUserFilterChange(user.id, user.name)}
                         >
-                          {user.name}
-                        </Text>
-                        <View style={[styles.employeeCount, { backgroundColor: theme.backgroundSecondary }]}>
-                          <Text style={[styles.employeeCountText, { color: theme.textSecondary }]}>{user.count}</Text>
-                        </View>
-                        {selectedUserId === user.id && (
-                          <Ionicons name="checkmark" size={18} color={theme.primary} />
-                        )}
-                      </TouchableOpacity>
-                    ));
+                          <View style={styles.avatarWithColor}>
+                            <Avatar name={user.name} imageUrl={user.avatar} size={36} />
+                            <View style={[styles.userColorDot, { backgroundColor: userColor, borderColor: isDark ? theme.card : '#FFFFFF' }]} />
+                          </View>
+                          <View style={styles.employeeInfo}>
+                            <Text
+                              style={[styles.employeeName, { color: selectedUserId === user.id ? theme.primary : theme.text }]}
+                              numberOfLines={1}
+                            >
+                              {user.name}
+                            </Text>
+                            <Text style={[styles.employeeMeta, { color: theme.textSecondary }]}>
+                              {user.count} {user.count === 1 ? 'отсутствие' : user.count < 5 ? 'отсутствия' : 'отсутствий'} · {user.totalDays} дн.
+                            </Text>
+                          </View>
+                          {selectedUserId === user.id && (
+                            <Ionicons name="checkmark" size={18} color={theme.primary} />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    });
                   })()}
                 </ScrollView>
                 {/* Legend by color mode */}
@@ -1364,7 +1393,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   calendarSidebar: {
-    width: 380,
+    width: 280,
     borderRadius: 16,
     borderWidth: 1,
     margin: 16,
@@ -1384,7 +1413,7 @@ const styles = StyleSheet.create({
   calendarSidebarHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
@@ -1395,36 +1424,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   calendarSidebarContent: {
-    padding: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   employeeItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    padding: 10,
     borderRadius: 10,
+    marginBottom: 6,
   },
   employeeAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  employeeName: {
-    fontSize: 14,
-    fontWeight: '500',
+  avatarWithColor: {
+    position: 'relative' as const,
+  },
+  userColorDot: {
+    position: 'absolute' as const,
+    bottom: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+  },
+  employeeInfo: {
     flex: 1,
   },
-  employeeCount: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  employeeCountText: {
-    fontSize: 12,
+  employeeName: {
+    fontSize: 13,
     fontWeight: '500',
+  },
+  employeeMeta: {
+    fontSize: 11,
+    marginTop: 2,
   },
   sidebarLegend: {
     paddingHorizontal: 12,

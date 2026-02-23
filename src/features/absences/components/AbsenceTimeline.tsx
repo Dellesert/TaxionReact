@@ -439,7 +439,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
   const renderSidebar = () => (
     <View style={[styles.sidebar, { backgroundColor: theme.card, borderColor: theme.border }]}>
       {/* Header */}
-      <View style={styles.sidebarHeader}>
+      <View style={[styles.sidebarHeader, { borderColor: theme.border }]}>
         <Text style={[styles.sidebarHeaderText, { color: theme.text }]}>
           Сотрудники
         </Text>
@@ -706,15 +706,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    minHeight: 56,
   },
   sidebarHeaderText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   sidebarList: {
     flex: 1,
     paddingHorizontal: 12,
+    paddingTop: 8,
   },
   sidebarRow: {
     flexDirection: 'row',
