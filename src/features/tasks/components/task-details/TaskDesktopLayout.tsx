@@ -181,6 +181,12 @@ export const TaskDesktopLayout: React.FC<TaskDesktopLayoutProps> = ({
             { backgroundColor: theme.card },
             hoveredCard === 'right' && styles.cardHovered,
           ]}>
+            {/* Right card header */}
+            <View style={[styles.rightCardHeader, { borderBottomColor: theme.border }]}>
+              <Ionicons name="document-text-outline" size={18} color={theme.primary} />
+              <Text style={[styles.rightCardTitle, { color: theme.text }]}>Детали</Text>
+            </View>
+
             {/* Tab Bar */}
             <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
               {TAB_CONFIG.map(({ key, icon, label }) => {
@@ -341,8 +347,8 @@ const styles = StyleSheet.create({
   columnsRow: {
     flex: 1,
     flexDirection: 'row',
-    padding: 24,
-    gap: 24,
+    padding: 16,
+    gap: 16,
   },
 
   // Left column
@@ -394,6 +400,19 @@ const styles = StyleSheet.create({
   },
 
   // Right column
+  rightCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  rightCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
   rightColumn: {
     flex: 3,
     minWidth: 400,
