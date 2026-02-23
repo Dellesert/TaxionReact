@@ -1081,10 +1081,18 @@ export const ScheduleDetailScreen: React.FC = () => {
               {viewMode === 'grid' && schedule.mode === 'monthly' ? (
                 // Desktop Grid View - employees as rows, dates as columns
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                      Сотрудники × Даты ({entries.length})
-                    </Text>
+                  <View style={[styles.sectionHeader, { paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                      <TouchableOpacity
+                        style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
+                        onPress={() => setShowInfoCard(!showInfoCard)}
+                      >
+                        <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
+                      </TouchableOpacity>
+                      <Text style={[styles.sectionTitle, { color: theme.text }]} numberOfLines={1}>
+                        {schedule.title}
+                      </Text>
+                    </View>
                     <View style={styles.sectionHeaderActions}>
                       {canManageEntries && (
                         <TouchableOpacity
@@ -1097,12 +1105,6 @@ export const ScheduleDetailScreen: React.FC = () => {
                           </Text>
                         </TouchableOpacity>
                       )}
-                      <TouchableOpacity
-                        style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
-                        onPress={() => setShowInfoCard(!showInfoCard)}
-                      >
-                        <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
-                      </TouchableOpacity>
                     </View>
                   </View>
                   {/* Warning panel for cells with validation warnings */}
@@ -1958,8 +1960,6 @@ const styles = StyleSheet.create({
   infoToggleButton: {
     width: 34,
     height: 34,
-    borderRadius: 10,
-    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
