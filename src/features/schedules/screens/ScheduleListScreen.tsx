@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Platform,
+  Animated,
 } from 'react-native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,8 +33,22 @@ import { ScheduleTabs } from '../components/ScheduleTabs';
 import { DayStrip } from '../components/DayStrip';
 import { DailySummaryView } from '../components/DailySummaryView';
 import { TitleBarScheduleControls } from '../components/TitleBarScheduleControls';
+import { ScheduleSidebarSkeleton } from '../components/states/ScheduleSidebarSkeleton';
+import { ScheduleListContentSkeleton } from '../components/states/ScheduleListContentSkeleton';
 import { SCHEDULE_TYPE_LABELS, type Schedule, type ScheduleType, type ScheduleListTab } from '../types/schedule.types';
 import type { ScheduleStackParamList } from '../navigation/types';
+
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [opacity]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
 
 // Helper to format date as YYYY-MM-DD
 const formatDateForApi = (date: Date): string => {
@@ -343,18 +358,24 @@ export const ScheduleListScreen: React.FC = () => {
           <View style={styles.desktopRow}>
             {/* Left Sidebar - Daily Summary */}
             <View style={[styles.summarySidebar, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
-              <DayStrip
-                selectedDate={summaryDate}
-                onDateChange={changeSummaryDate}
-              />
-              <View style={{ flex: 1, backgroundColor: theme.background }}>
-                <DailySummaryView
-                  summary={summary}
-                  isLoading={isSummaryLoading}
-                  error={summaryError}
-                  onRefresh={refreshSummary}
-                />
-              </View>
+              {isSummaryLoading && !summary ? (
+                <ScheduleSidebarSkeleton />
+              ) : (
+                <FadeIn>
+                  <DayStrip
+                    selectedDate={summaryDate}
+                    onDateChange={changeSummaryDate}
+                  />
+                  <View style={{ flex: 1, backgroundColor: theme.background }}>
+                    <DailySummaryView
+                      summary={summary}
+                      isLoading={isSummaryLoading}
+                      error={summaryError}
+                      onRefresh={refreshSummary}
+                    />
+                  </View>
+                </FadeIn>
+              )}
             </View>
 
             {/* Main Panel - Schedule columns */}
@@ -401,44 +422,50 @@ export const ScheduleListScreen: React.FC = () => {
                   </TouchableOpacity>
                 </View>
               </View>
-              <ScrollView
-                style={{ backgroundColor: theme.background }}
-                contentContainerStyle={styles.columnsScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {sections.length === 0 ? (
-                  <View style={styles.emptyContainerDesktop}>
-                    {renderEmpty()}
-                  </View>
-                ) : (
-                  <View style={styles.sectionsContainer}>
-                    {sections.map((section) => (
-                      <View key={section.title} style={styles.sectionBlock}>
-                        <View style={styles.sectionBlockHeader}>
-                          <Text style={[styles.sectionBlockTitle, { color: theme.text }]}>
-                            {section.title}
-                          </Text>
-                          <View style={[styles.sectionBlockCount, { backgroundColor: theme.backgroundSecondary }]}>
-                            <Text style={[styles.sectionBlockCountText, { color: theme.textSecondary }]}>
-                              {section.data.length}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={styles.sectionCardsRow}>
-                          {section.data.map((schedule) => (
-                            <View key={schedule.id} style={styles.sectionCardWrapper}>
-                              <ScheduleCard
-                                schedule={schedule}
-                                onPress={() => handleSchedulePress(schedule)}
-                              />
-                            </View>
-                          ))}
-                        </View>
+              {isLoading ? (
+                <ScheduleListContentSkeleton />
+              ) : (
+                <FadeIn>
+                  <ScrollView
+                    style={{ backgroundColor: theme.background }}
+                    contentContainerStyle={styles.columnsScrollContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {sections.length === 0 ? (
+                      <View style={styles.emptyContainerDesktop}>
+                        {renderEmpty()}
                       </View>
-                    ))}
-                  </View>
-                )}
-              </ScrollView>
+                    ) : (
+                      <View style={styles.sectionsContainer}>
+                        {sections.map((section) => (
+                          <View key={section.title} style={styles.sectionBlock}>
+                            <View style={styles.sectionBlockHeader}>
+                              <Text style={[styles.sectionBlockTitle, { color: theme.text }]}>
+                                {section.title}
+                              </Text>
+                              <View style={[styles.sectionBlockCount, { backgroundColor: theme.backgroundSecondary }]}>
+                                <Text style={[styles.sectionBlockCountText, { color: theme.textSecondary }]}>
+                                  {section.data.length}
+                                </Text>
+                              </View>
+                            </View>
+                            <View style={styles.sectionCardsRow}>
+                              {section.data.map((schedule) => (
+                                <View key={schedule.id} style={styles.sectionCardWrapper}>
+                                  <ScheduleCard
+                                    schedule={schedule}
+                                    onPress={() => handleSchedulePress(schedule)}
+                                  />
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </ScrollView>
+                </FadeIn>
+              )}
             </View>
           </View>
         ) : activeTab === 'summary' ? (

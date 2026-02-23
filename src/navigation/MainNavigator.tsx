@@ -32,6 +32,7 @@ const AbsenceNavigator = lazy(() => import('@features/absences/navigation/Absenc
 import { AnimatedTabBar } from '@shared/components/navigation/AnimatedTabBar';
 import { SideNavBar } from '@shared/components/navigation/SideNavBar';
 import { CalendarDesktopFallback } from '@features/calendar/components/states/CalendarDesktopFallback';
+import { ScheduleDesktopFallback } from '@features/schedules/components/states/ScheduleDesktopFallback';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -66,7 +67,11 @@ const MainNavigatorContent: React.FC = () => {
             </Suspense>
           );
         case 'Schedules':
-          return <ScheduleNavigator />;
+          return (
+            <Suspense fallback={<ScheduleDesktopFallback />}>
+              <ScheduleNavigator />
+            </Suspense>
+          );
         case 'Absences':
           return <AbsenceNavigator />;
         case 'Notifications':
