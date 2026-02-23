@@ -1047,7 +1047,7 @@ export const ScheduleDetailScreen: React.FC = () => {
           ]}>
             {/* Left sidebar - Collapsible Info Card */}
             {showInfoCard && (
-              <View style={[styles.infoCardPanel, { backgroundColor: theme.card }]}>
+              <View style={[styles.infoCardPanel, { backgroundColor: theme.background }]}>
                 {/* Header — "Описание" (same style as right card header) */}
                 <View style={[styles.sectionHeader, { paddingHorizontal: 20, paddingVertical: 0, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border, marginBottom: 0 }]}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, height: 34 }}>
@@ -1057,7 +1057,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                 </View>
 
                 {/* Info fields — white background */}
-                <View style={[styles.infoCardContent, { backgroundColor: theme.card, borderRadius: 12 }]}>
+                <View style={[styles.infoCardContent, { backgroundColor: theme.card, borderRadius: 12, overflow: 'hidden' }]}>
                   <View style={styles.infoCardSection}>
                     <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
                     <Text style={[styles.sidebarValue, { color: theme.text }]}>
