@@ -35,6 +35,7 @@ import { CalendarDesktopFallback } from '@features/calendar/components/states/Ca
 import { ScheduleDesktopFallback } from '@features/schedules/components/states/ScheduleDesktopFallback';
 import { ChatDesktopFallback } from '@features/chat/components/states/ChatDesktopFallback';
 import { AbsenceDesktopFallback } from '@features/absences/components/states/AbsenceDesktopFallback';
+import { AdminDesktopFallback } from '@features/admin/components/states/AdminDesktopFallback';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -87,7 +88,11 @@ const MainNavigatorContent: React.FC = () => {
         case 'Notifications':
           return <NotificationNavigator />;
         case 'Admin':
-          return <AdminNavigator />;
+          return (
+            <Suspense fallback={<AdminDesktopFallback />}>
+              <AdminNavigator />
+            </Suspense>
+          );
         case 'Profile':
           return <ProfileNavigator />;
         default:

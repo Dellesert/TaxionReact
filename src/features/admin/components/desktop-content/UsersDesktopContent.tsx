@@ -10,11 +10,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   TextInput,
   useWindowDimensions,
   Modal,
   Platform,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -27,11 +27,23 @@ import { ExpandableFilterButton } from '@shared/components/common/ExpandableFilt
 import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
+import { AdminListSkeleton } from '../states/AdminListSkeleton';
 
 const SIDEBAR_WIDTH = 320;
 
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
+  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
+  useEffect(() => {
+    if (enabled) {
+      Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    }
+  }, [opacity, enabled]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
+
 const UsersDesktopContent: React.FC = () => {
   const { theme, isDark } = useTheme();
+  const mountTime = useRef(Date.now());
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = windowWidth - SIDEBAR_WIDTH;
   const isNarrow = contentWidth < 600;
@@ -315,9 +327,7 @@ const UsersDesktopContent: React.FC = () => {
     <View style={dynamicStyles.container}>
       {/* Content */}
       {isLoading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <AdminListSkeleton variant="user" count={6} />
       ) : filteredUsers.length === 0 ? (
         <View style={styles.centerContainer}>
           <Ionicons name="people-outline" size={64} color={theme.textTertiary} />
@@ -326,6 +336,7 @@ const UsersDesktopContent: React.FC = () => {
           </Text>
         </View>
       ) : (
+        <FadeIn enabled={Date.now() - mountTime.current > 150}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.contentInner}>
             <View style={dynamicStyles.usersList}>
@@ -419,6 +430,7 @@ const UsersDesktopContent: React.FC = () => {
             </View>
           </View>
         </ScrollView>
+        </FadeIn>
       )}
 
       {/* Role Filter Dropdown */}

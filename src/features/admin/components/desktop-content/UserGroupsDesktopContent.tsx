@@ -14,6 +14,7 @@ import {
   TextInput,
   useWindowDimensions,
   Platform,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -27,8 +28,19 @@ import { ExpandableCreateButton } from '@shared/components/common/ExpandableCrea
 import { getUserGroups, createUserGroup, updateUserGroupMembers, deleteUserGroup, reorderUserGroups } from '@api/user-group.api';
 import { UserGroup } from '@/types/user.types';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
+import { AdminListSkeleton } from '../states/AdminListSkeleton';
 
 const SIDEBAR_WIDTH = 320;
+
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
+  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
+  useEffect(() => {
+    if (enabled) {
+      Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    }
+  }, [opacity, enabled]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
 
 /** Обёртка для drag-and-drop через HTML5 API (RN Web View не поддерживает drag-события напрямую) */
 const DraggableRow: React.FC<{
@@ -102,6 +114,7 @@ const DraggableRow: React.FC<{
 const UserGroupsDesktopContent: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
+  const mountTime = useRef(Date.now());
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = windowWidth - SIDEBAR_WIDTH;
   const isNarrow = contentWidth < 600;
@@ -554,9 +567,7 @@ const UserGroupsDesktopContent: React.FC = () => {
 
       {/* Content */}
       {isLoading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <AdminListSkeleton variant="group" count={6} />
       ) : (isReorderMode ? groups : filteredGroups).length === 0 ? (
         <View style={styles.centerContainer}>
           <Ionicons name="people-circle-outline" size={64} color={theme.textTertiary} />
@@ -571,6 +582,7 @@ const UserGroupsDesktopContent: React.FC = () => {
           </View>
         </ScrollView>
       ) : (
+        <FadeIn enabled={Date.now() - mountTime.current > 150}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.contentInner}>
             <View style={dynamicStyles.groupList}>
@@ -638,6 +650,7 @@ const UserGroupsDesktopContent: React.FC = () => {
             </View>
           </View>
         </ScrollView>
+        </FadeIn>
       )}
 
       {/* User Selector Modal for create group */}

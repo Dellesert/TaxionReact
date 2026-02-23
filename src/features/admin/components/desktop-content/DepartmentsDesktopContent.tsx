@@ -3,7 +3,7 @@
  * Desktop версия управления отделами с поиском в header
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   TextInput,
   useWindowDimensions,
   Platform,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -25,12 +26,24 @@ import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControl
 import { ExpandableCreateButton } from '@shared/components/common/ExpandableCreateButton';
 import * as userApi from '@api/user.api';
 import { Department } from '@/types/user.types';
+import { AdminListSkeleton } from '../states/AdminListSkeleton';
 
 const SIDEBAR_WIDTH = 320;
+
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
+  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
+  useEffect(() => {
+    if (enabled) {
+      Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    }
+  }, [opacity, enabled]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
 
 const DepartmentsDesktopContent: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
+  const mountTime = useRef(Date.now());
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = windowWidth - SIDEBAR_WIDTH;
   const isNarrow = contentWidth < 600;
@@ -266,9 +279,7 @@ const DepartmentsDesktopContent: React.FC = () => {
 
       {/* Content */}
       {isLoading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+        <AdminListSkeleton variant="department" count={6} />
       ) : filteredDepartments.length === 0 ? (
         <View style={styles.centerContainer}>
           <Ionicons name="business-outline" size={64} color={theme.textTertiary} />
@@ -277,6 +288,7 @@ const DepartmentsDesktopContent: React.FC = () => {
           </Text>
         </View>
       ) : (
+        <FadeIn enabled={Date.now() - mountTime.current > 150}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.contentInner}>
             <View style={dynamicStyles.departmentList}>
@@ -342,6 +354,7 @@ const DepartmentsDesktopContent: React.FC = () => {
             </View>
           </View>
         </ScrollView>
+        </FadeIn>
       )}
     </View>
   );

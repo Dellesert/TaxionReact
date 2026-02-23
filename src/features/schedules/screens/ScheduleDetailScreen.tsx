@@ -7,6 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
   Platform,
   Modal,
   FlatList,
@@ -57,8 +58,24 @@ import {
 import { templateApi, scheduleApi } from '../api/schedule.api';
 import { usePendingChanges, executeBatchSave } from '../hooks/usePendingChanges';
 import { useScheduleAbsences } from '../hooks/useScheduleAbsences';
+import { ScheduleDetailInfoSkeleton } from '../components/states/ScheduleDetailInfoSkeleton';
+import { ScheduleDetailContentSkeleton } from '../components/states/ScheduleDetailContentSkeleton';
 import type { AbsenceType } from '@features/absences/types/absence.types';
 import type { ScheduleStackParamList } from '../navigation/types';
+
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
+  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
+  useEffect(() => {
+    if (enabled) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [opacity, enabled]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
 
 type RouteProps = RouteProp<ScheduleStackParamList, 'ScheduleDetail'>;
 
@@ -78,6 +95,9 @@ export const ScheduleDetailScreen: React.FC = () => {
   const createEntry = useScheduleStore((state) => state.createEntry);
   const updateEntry = useScheduleStore((state) => state.updateEntry);
   const deleteEntry = useScheduleStore((state) => state.deleteEntry);
+
+  // Track mount time to decide whether FadeIn should animate
+  const mountTime = useRef(Date.now());
 
   // Pending changes for batch mode in Grid View
   const {
@@ -875,6 +895,29 @@ export const ScheduleDetailScreen: React.FC = () => {
   ];
 
   if (isLoading && !schedule) {
+    // Desktop: show skeleton layout matching the real desktop layout
+    if (isElectron && isWideScreen) {
+      return (
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={[styles.contentContainer, styles.desktopContentContainer]}
+          >
+            <View style={styles.desktopLayout}>
+              <View style={[styles.infoCardPanel, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <ScheduleDetailInfoSkeleton />
+              </View>
+              <View style={styles.desktopLeftColumn}>
+                <View style={[styles.desktopCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <ScheduleDetailContentSkeleton />
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+
     return (
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
@@ -1048,78 +1091,80 @@ export const ScheduleDetailScreen: React.FC = () => {
             {/* Left sidebar - Collapsible Info Card */}
             {showInfoCard && (
               <View style={[styles.infoCardPanel, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                {/* Header — "Описание" (same style as right card header) */}
-                <View style={[styles.sectionHeader, { paddingHorizontal: 20, paddingVertical: 0, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border, marginBottom: 0, backgroundColor: theme.card }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, height: 34 }}>
-                    <Ionicons name="document-text-outline" size={16} color={theme.primary} />
-                    <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 14 }]} numberOfLines={1}>Описание</Text>
-                  </View>
-                </View>
-
-                {/* Info fields — white background */}
-                <View style={[styles.infoCardContent, { backgroundColor: theme.card, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, overflow: 'hidden' }]}>
-                  <View style={styles.infoCardSection}>
-                    <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
-                    <Text style={[styles.sidebarValue, { color: theme.text }]}>
-                      {SCHEDULE_TYPE_LABELS[schedule.type]}
-                    </Text>
-                  </View>
-
-                  <View style={styles.infoCardSection}>
-                    <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Период</Text>
-                    <Text style={[styles.sidebarValue, { color: theme.text }]}>
-                      {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} — {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
-                    </Text>
-                  </View>
-
-                  <View style={[styles.infoCardSection, { marginBottom: 0 }]}>
-                    <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Видимость</Text>
-                    <Text style={[styles.sidebarValue, { color: theme.text }]}>
-                      {VISIBILITY_LABELS[schedule.visibility]}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Rest — default background */}
-                <View style={[styles.infoCardContent, { backgroundColor: theme.background, flex: 1 }]}>
-                  {isDraft && (
-                    <View style={[styles.infoCardDraftBadge, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
-                      <Ionicons name="document-text-outline" size={14} color="#D97706" />
-                      <Text style={styles.sidebarDraftText}>Черновик</Text>
+                <FadeIn enabled={Date.now() - mountTime.current > 150}>
+                  {/* Header — "Описание" (same style as right card header) */}
+                  <View style={[styles.sectionHeader, { paddingHorizontal: 20, paddingVertical: 0, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border, marginBottom: 0, backgroundColor: theme.card }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, height: 34 }}>
+                      <Ionicons name="document-text-outline" size={16} color={theme.primary} />
+                      <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 14 }]} numberOfLines={1}>Описание</Text>
                     </View>
-                  )}
+                  </View>
 
-                  {schedule.description && (
-                    <View style={[styles.infoCardSection, styles.infoCardDescriptionRow]}>
-                      <Text style={[styles.sidebarDescription, { color: theme.text }]}>
-                        {schedule.description}
+                  {/* Info fields — white background */}
+                  <View style={[styles.infoCardContent, { backgroundColor: theme.card, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, overflow: 'hidden' }]}>
+                    <View style={styles.infoCardSection}>
+                      <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
+                      <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                        {SCHEDULE_TYPE_LABELS[schedule.type]}
                       </Text>
                     </View>
-                  )}
 
-                  {schedule.creator && (
-                    <TouchableOpacity
-                      style={[styles.infoCardCreator, { borderTopColor: theme.border }]}
-                      onPress={handleCreatorPress}
-                      activeOpacity={0.7}
-                    >
-                      <Avatar
-                        name={schedule.creator.name}
-                        imageUrl={schedule.creator.avatar}
-                        size={32}
-                      />
-                      <View style={styles.sidebarCreatorInfo}>
-                        <Text style={[styles.sidebarCreatorLabel, { color: theme.textSecondary }]}>
-                          Создатель
-                        </Text>
-                        <Text style={[styles.sidebarCreatorName, { color: theme.text }]}>
-                          {schedule.creator.name}
+                    <View style={styles.infoCardSection}>
+                      <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Период</Text>
+                      <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                        {formatScheduleDate(schedule.start_date, 'dd.MM.yyyy')} — {formatScheduleDate(schedule.end_date, 'dd.MM.yyyy')}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.infoCardSection, { marginBottom: 0 }]}>
+                      <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Видимость</Text>
+                      <Text style={[styles.sidebarValue, { color: theme.text }]}>
+                        {VISIBILITY_LABELS[schedule.visibility]}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Rest — default background */}
+                  <View style={[styles.infoCardContent, { backgroundColor: theme.background, flex: 1 }]}>
+                    {isDraft && (
+                      <View style={[styles.infoCardDraftBadge, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                        <Ionicons name="document-text-outline" size={14} color="#D97706" />
+                        <Text style={styles.sidebarDraftText}>Черновик</Text>
+                      </View>
+                    )}
+
+                    {schedule.description && (
+                      <View style={[styles.infoCardSection, styles.infoCardDescriptionRow]}>
+                        <Text style={[styles.sidebarDescription, { color: theme.text }]}>
+                          {schedule.description}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-                    </TouchableOpacity>
-                  )}
-                </View>
+                    )}
+
+                    {schedule.creator && (
+                      <TouchableOpacity
+                        style={[styles.infoCardCreator, { borderTopColor: theme.border }]}
+                        onPress={handleCreatorPress}
+                        activeOpacity={0.7}
+                      >
+                        <Avatar
+                          name={schedule.creator.name}
+                          imageUrl={schedule.creator.avatar}
+                          size={32}
+                        />
+                        <View style={styles.sidebarCreatorInfo}>
+                          <Text style={[styles.sidebarCreatorLabel, { color: theme.textSecondary }]}>
+                            Создатель
+                          </Text>
+                          <Text style={[styles.sidebarCreatorName, { color: theme.text }]}>
+                            {schedule.creator.name}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </FadeIn>
               </View>
             )}
 
@@ -1202,22 +1247,22 @@ export const ScheduleDetailScreen: React.FC = () => {
                     </View>
                   )}
                   {isLoadingEntries ? (
-                    <View style={styles.entriesLoader}>
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    </View>
+                    <ScheduleDetailContentSkeleton showHeader={false} />
                   ) : (
-                    <ScheduleGridView
-                      schedule={schedule}
-                      entries={entries}
-                      groupMembers={groupMembers}
-                      canEdit={canManageEntries}
-                      pendingChanges={pendingChanges}
-                      onPendingShiftSelect={addPendingChange}
-                      onPendingEntryDelete={addPendingDelete}
-                      absenceMap={absenceMap}
-                      onAbsenceShiftConfirm={handleAbsenceShiftConfirm}
-                      warningMap={cellWarnings}
-                    />
+                    <FadeIn enabled={Date.now() - mountTime.current > 150}>
+                      <ScheduleGridView
+                        schedule={schedule}
+                        entries={entries}
+                        groupMembers={groupMembers}
+                        canEdit={canManageEntries}
+                        pendingChanges={pendingChanges}
+                        onPendingShiftSelect={addPendingChange}
+                        onPendingEntryDelete={addPendingDelete}
+                        absenceMap={absenceMap}
+                        onAbsenceShiftConfirm={handleAbsenceShiftConfirm}
+                        warningMap={cellWarnings}
+                      />
+                    </FadeIn>
                   )}
                 </View>
               ) : displayedViewMode === 'shifts' && schedule.mode === 'monthly' ? (
@@ -1279,18 +1324,18 @@ export const ScheduleDetailScreen: React.FC = () => {
                     </TouchableOpacity>
                   </View>
                   {isLoadingEntries ? (
-                    <View style={styles.entriesLoader}>
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    </View>
+                    <ScheduleDetailContentSkeleton showHeader={false} />
                   ) : (
-                    <ScheduleShiftsView
-                      schedule={schedule}
-                      entries={filteredEntries}
-                      canEdit={canManageEntries}
-                      onAddEntry={handleShiftsAddEntry}
-                      onUpdateEntry={handleShiftsUpdateEntry}
-                      onDeleteEntry={handleShiftsEntryDelete}
-                    />
+                    <FadeIn enabled={Date.now() - mountTime.current > 150}>
+                      <ScheduleShiftsView
+                        schedule={schedule}
+                        entries={filteredEntries}
+                        canEdit={canManageEntries}
+                        onAddEntry={handleShiftsAddEntry}
+                        onUpdateEntry={handleShiftsUpdateEntry}
+                        onDeleteEntry={handleShiftsEntryDelete}
+                      />
+                    </FadeIn>
                   )}
                 </View>
               ) : (
@@ -1358,19 +1403,21 @@ export const ScheduleDetailScreen: React.FC = () => {
 
                   {schedule.mode === 'recurring' ? (
                     // Recurring mode - show template entries by day of week
-                    <TemplateEntriesList
-                      entries={filteredTemplateEntries}
-                      onEntryPress={canManageEntries ? (templateEntry) => {
-                        setSelectedTemplateEntry(templateEntry);
-                        setShowEditEntryModal(true);
-                      } : undefined}
-                    />
+                    <FadeIn enabled={Date.now() - mountTime.current > 150}>
+                      <TemplateEntriesList
+                        entries={filteredTemplateEntries}
+                        onEntryPress={canManageEntries ? (templateEntry) => {
+                          setSelectedTemplateEntry(templateEntry);
+                          setShowEditEntryModal(true);
+                        } : undefined}
+                      />
+                    </FadeIn>
                   ) : isLoadingEntries ? (
-                    <View style={styles.entriesLoader}>
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    </View>
+                    <ScheduleDetailContentSkeleton showHeader={false} />
                   ) : filteredEntries.length > 0 ? (
-                    <ScheduleEntriesList entries={filteredEntries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
+                    <FadeIn enabled={Date.now() - mountTime.current > 150}>
+                      <ScheduleEntriesList entries={filteredEntries} onEntryPress={canManageEntries ? handleEntryPress : undefined} />
+                    </FadeIn>
                   ) : (
                     <View style={styles.emptyEntries}>
                       <Ionicons
