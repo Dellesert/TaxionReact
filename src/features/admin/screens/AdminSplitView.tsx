@@ -5,6 +5,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTitleBarControls } from '@shared/contexts/TitleBarControlsContext';
@@ -42,6 +43,16 @@ export const AdminSplitView: React.FC = () => {
       titleBarControls.setPageTitle(sectionTitles[activeSection] || 'Администрирование');
     }
   }, [activeSection, isElectron]);
+
+  // Restore controls when navigating back from sub-screens (e.g. MetricsAnalytics → AdminHub)
+  useFocusEffect(
+    useCallback(() => {
+      if (isElectron) {
+        titleBarControls.clearControls();
+        titleBarControls.setPageTitle(sectionTitles[activeSection] || 'Администрирование');
+      }
+    }, [isElectron, activeSection])
+  );
 
   const handleSectionChange = useCallback((section: AdminSection) => {
     // Clear controls synchronously before re-render so child's useEffect can set new ones
