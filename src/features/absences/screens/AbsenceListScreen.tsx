@@ -246,6 +246,7 @@ export const AbsenceListScreen: React.FC = () => {
 
 
   // TitleBar left controls - year picker and view toggle
+  // In calendar view, year picker is shown in the card header instead
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
@@ -257,6 +258,7 @@ export const AbsenceListScreen: React.FC = () => {
         colorMode={colorMode}
         onColorModeChange={handleColorModeChange}
         showYearPickerOnly
+        hideYearPicker={viewMode === 'calendar'}
       />
     );
   }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode, handleViewModeChange, isViewModeLoaded, colorMode, handleColorModeChange]);
@@ -631,6 +633,32 @@ export const AbsenceListScreen: React.FC = () => {
               <View style={[styles.calendarMainPanel, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
                 <View style={[styles.calendarMainHeader, { borderColor: theme.border }]}>
                   <Text style={[styles.calendarMainTitle, { color: theme.text }]}>Календарь</Text>
+                  {/* Year Picker in card header */}
+                  <View style={styles.calendarHeaderYearPicker}>
+                    <TouchableOpacity
+                      onPress={() => handleYearChange(selectedYear - 1)}
+                      style={[styles.calendarHeaderArrow, { backgroundColor: theme.backgroundTertiary }]}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="chevron-back" size={16} color={theme.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleYearChange(new Date().getFullYear())}
+                      activeOpacity={selectedYear === new Date().getFullYear() ? 1 : 0.6}
+                      disabled={selectedYear === new Date().getFullYear()}
+                    >
+                      <Text style={[styles.calendarHeaderYearText, { color: theme.text }]}>
+                        {selectedYear}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleYearChange(selectedYear + 1)}
+                      style={[styles.calendarHeaderArrow, { backgroundColor: theme.backgroundTertiary }]}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="chevron-forward" size={16} color={theme.text} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <AbsenceYearCalendar
                   year={selectedYear}
@@ -1128,7 +1156,7 @@ const styles = StyleSheet.create({
   calendarMainHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
@@ -1137,6 +1165,24 @@ const styles = StyleSheet.create({
   calendarMainTitle: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  calendarHeaderYearPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  calendarHeaderArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarHeaderYearText: {
+    fontSize: 15,
+    fontWeight: '600',
+    minWidth: 40,
+    textAlign: 'center',
   },
 });
 

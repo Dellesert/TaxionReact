@@ -33,6 +33,8 @@ interface TitleBarAbsenceControlsProps {
   colorMode?: AbsenceColorMode;
   /** Callback when color mode changes */
   onColorModeChange?: (mode: AbsenceColorMode) => void;
+  /** Hide year picker (e.g. when it's shown in card header instead) */
+  hideYearPicker?: boolean;
 }
 
 export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = ({
@@ -48,6 +50,7 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
   filterButtonRef,
   colorMode = 'by_type',
   onColorModeChange,
+  hideYearPicker = false,
 }) => {
   const { theme } = useTheme();
 
@@ -244,39 +247,41 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
         )}
 
         {/* Year Picker */}
-        <View style={[styles.yearPicker, { backgroundColor: theme.card }]}>
-          <View
-            style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
-            // @ts-ignore - Web-only
-            onClick={handlePrevYear}
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="chevron-back" size={14} color={theme.text} />
-          </View>
+        {!hideYearPicker && (
+          <View style={[styles.yearPicker, { backgroundColor: theme.card }]}>
+            <View
+              style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+              // @ts-ignore - Web-only
+              onClick={handlePrevYear}
+              onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
+              onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
+            >
+              <Ionicons name="chevron-back" size={14} color={theme.text} />
+            </View>
 
-          <View
-            style={styles.yearButton}
-            // @ts-ignore - Web-only
-            onClick={isCurrentYear ? undefined : handleToday}
-            onMouseEnter={(e: any) => !isCurrentYear && e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Text style={[styles.yearText, { color: theme.text }]}>
-              {selectedYear}
-            </Text>
-          </View>
+            <View
+              style={styles.yearButton}
+              // @ts-ignore - Web-only
+              onClick={isCurrentYear ? undefined : handleToday}
+              onMouseEnter={(e: any) => !isCurrentYear && e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
+              onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
+            >
+              <Text style={[styles.yearText, { color: theme.text }]}>
+                {selectedYear}
+              </Text>
+            </View>
 
-          <View
-            style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
-            // @ts-ignore - Web-only
-            onClick={handleNextYear}
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="chevron-forward" size={14} color={theme.text} />
+            <View
+              style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
+              // @ts-ignore - Web-only
+              onClick={handleNextYear}
+              onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
+              onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
+            >
+              <Ionicons name="chevron-forward" size={14} color={theme.text} />
+            </View>
           </View>
-        </View>
+        )}
       </View>
     );
   }
