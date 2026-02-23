@@ -13,6 +13,7 @@ interface AdminContentAreaProps {
   children: React.ReactNode;
   scrollable?: boolean;
   headerActions?: React.ReactNode;
+  noPadding?: boolean;
 }
 
 export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
@@ -21,6 +22,7 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
   children,
   scrollable = true,
   headerActions,
+  noPadding = false,
 }) => {
   const { theme, isDark } = useTheme();
 
@@ -31,11 +33,11 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
     },
     header: {
       paddingHorizontal: 32,
-      paddingTop: 32,
-      paddingBottom: 24,
+      paddingTop: 20,
+      paddingBottom: 16,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
-      backgroundColor: isDark ? theme.card : '#FAFAFA',
+      backgroundColor: isDark ? theme.card : '#FFFFFF',
     },
     headerTop: {
       flexDirection: 'row',
@@ -47,16 +49,16 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
       flex: 1,
     },
     title: {
-      fontSize: 28,
+      fontSize: 22,
       fontWeight: '700',
       color: theme.text,
-      marginBottom: 6,
-      letterSpacing: -0.5,
+      marginBottom: 4,
+      letterSpacing: -0.3,
     },
     description: {
-      fontSize: 15,
+      fontSize: 14,
       color: theme.textSecondary,
-      lineHeight: 22,
+      lineHeight: 20,
     },
     headerActionsContainer: {
       marginTop: 20,
@@ -98,7 +100,7 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
         })}
       >
         {!scrollable ? (
-          <View style={dynamicStyles.contentInner}>{children}</View>
+          noPadding ? children : <View style={dynamicStyles.contentInner}>{children}</View>
         ) : (
           children
         )}

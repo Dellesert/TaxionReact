@@ -78,20 +78,21 @@ export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
 
   const dynamicStyles = StyleSheet.create({
     container: {
-      backgroundColor: isDark ? theme.card : '#F5F5F7',
+      backgroundColor: isDark ? theme.card : '#FFFFFF',
       borderRightWidth: 1,
       borderRightColor: theme.border,
     },
     scrollContent: {
-      paddingTop: 20,
       paddingBottom: 20,
     },
     headerContainer: {
       paddingHorizontal: 20,
+      paddingTop: 40,
       paddingBottom: 24,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
       marginBottom: 16,
+      backgroundColor: isDark ? theme.card : '#FFFFFF',
     },
     headerTitle: {
       fontSize: 24,
@@ -224,13 +225,7 @@ export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
         contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={dynamicStyles.headerContainer}>
-          <Text style={dynamicStyles.headerTitle}>Администрирование</Text>
-          <Text style={dynamicStyles.headerSubtitle}>
-            Управление системой и пользователями
-          </Text>
-        </View>
+        
 
         {/* Navigation Items */}
         {visibleSections.map(renderItem)}
@@ -244,6 +239,7 @@ const styles = StyleSheet.create({
     width: 320,
     minWidth: 280,
     maxWidth: 360,
+    paddingTop: 26,
   },
   scrollView: {
     flex: 1,
