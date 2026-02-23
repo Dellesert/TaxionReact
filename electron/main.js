@@ -54,21 +54,26 @@ function setCloseBehavior(behavior) {
   appSettingsStore.set('closeBehavior', behavior);
 }
 
-// Zoom level options: 'small' (0.85) | 'standard' (1.0) | 'large' (1.15)
-const ZOOM_FACTORS = { small: 0.9, standard: 1.0, large: 1.1 };
+// Zoom factor: numeric value (0.9 | 0.95 | 1.0 | 1.05 | 1.1)
+const VALID_ZOOM_FACTORS = [0.9, 0.95, 1.0, 1.05, 1.1];
 
 function getZoomLevel() {
-  return appSettingsStore.get('zoomLevel', 'standard');
+  const stored = appSettingsStore.get('zoomLevel', 1.0);
+  // Backward compat: convert old named levels
+  if (typeof stored === 'string') {
+    const map = { small: 0.9, standard: 1.0, large: 1.1 };
+    return map[stored] ?? 1.0;
+  }
+  return stored;
 }
 
-function setZoomLevel(level) {
-  appSettingsStore.set('zoomLevel', level);
+function setZoomLevel(factor) {
+  appSettingsStore.set('zoomLevel', factor);
 }
 
 function applyZoomLevel() {
   if (!mainWindow) return;
-  const level = getZoomLevel();
-  const factor = ZOOM_FACTORS[level] || 1.0;
+  const factor = getZoomLevel();
   mainWindow.webContents.setZoomFactor(factor);
 }
 
@@ -958,14 +963,14 @@ function setupIPCHandlers() {
     return getZoomLevel();
   });
 
-  ipcMain.handle('zoom:setLevel', async (event, level) => {
+  ipcMain.handle('zoom:setLevel', async (event, factor) => {
     try {
-      if (!ZOOM_FACTORS[level]) {
-        throw new Error('Invalid zoom level');
+      if (!VALID_ZOOM_FACTORS.includes(factor)) {
+        throw new Error('Invalid zoom factor');
       }
-      setZoomLevel(level);
+      setZoomLevel(factor);
       applyZoomLevel();
-      return { success: true, level };
+      return { success: true, factor };
     } catch (error) {
       console.error('[Zoom] Error setting zoom level:', error);
       return { success: false, error: error.message };
