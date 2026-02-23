@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Platform, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from 'react-native';
 import { Event, CalendarView, WeekDisplayMode } from '../../types/calendar.types';
-import { EventSection } from '../../utils/calendarHelpers';
+import { EventSection, getViewLabel } from '../../utils/calendarHelpers';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useMonthEvents } from '../../hooks/useMonthEvents';
 import { addMonths, subMonths } from 'date-fns';
@@ -21,6 +21,7 @@ import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '@shared/contexts/NotificationContext';
+
 
 interface CalendarDesktopViewProps {
   selectedDate: Date;
@@ -198,6 +199,34 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
 
         {/* Center Panel - Main Calendar View */}
         <View style={[styles.centerPanel, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
+          <View style={[styles.centerPanelHeader, { borderColor: theme.border }]}>
+            <Text style={[styles.centerPanelTitle, { color: theme.text }]}>
+              {viewMode === 'week' && weekDisplayMode === 'timeline' ? 'Шкала времени' : 'Список событий'}
+            </Text>
+            <View style={styles.viewSwitcher}>
+              {(['day', 'week', 'month'] as CalendarView[]).map((view) => (
+                <TouchableOpacity
+                  key={view}
+                  style={[
+                    styles.viewSwitcherPill,
+                    { backgroundColor: theme.backgroundSecondary },
+                    viewMode === view && { backgroundColor: theme.primary },
+                  ]}
+                  onPress={() => handleViewModeChange(view)}
+                >
+                  <Text
+                    style={[
+                      styles.viewSwitcherText,
+                      { color: theme.textSecondary },
+                      viewMode === view && { color: '#FFFFFF' },
+                    ]}
+                  >
+                    {getViewLabel(view)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
           {/* Holiday banner for day view */}
           {viewMode === 'day' && (() => {
             const holiday = getHoliday(selectedDate);
@@ -337,6 +366,33 @@ const styles = StyleSheet.create({
     marginRight: 16,
     overflow: 'hidden',
     ...sidebarShadow,
+  },
+  centerPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 20,
+    paddingRight: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    minHeight: 56,
+  },
+  centerPanelTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  viewSwitcher: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  viewSwitcherPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  viewSwitcherText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   rightSidebar: {
     width: 380,

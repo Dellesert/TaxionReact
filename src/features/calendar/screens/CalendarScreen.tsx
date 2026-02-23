@@ -16,7 +16,7 @@ import { CalendarEventsList } from '../components/events/CalendarEventsList';
 import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
 import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
 import { TitleBarCalendarControls } from '../components/common/TitleBarCalendarControls';
-import { TitleBarViewSwitcher, ViewOption } from '@shared/components/common/TitleBarViewSwitcher';
+
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
@@ -302,31 +302,17 @@ const CalendarScreen: React.FC = () => {
     setSelectedView(view);
   }, [setSelectedView]);
 
-  // View options for TitleBar switcher
-  const calendarViewOptions: ViewOption<CalendarView>[] = useMemo(() => [
-    { value: 'day', icon: 'today-outline', label: 'День' },
-    { value: 'week', icon: 'calendar-outline', label: 'Неделя' },
-    { value: 'month', icon: 'grid-outline', label: 'Месяц' },
-  ], []);
-
-  // TitleBar left controls - view switcher + week mode toggle
+  // TitleBar left controls - week mode toggle only (view switcher moved to card header)
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <TitleBarViewSwitcher
-          options={calendarViewOptions}
-          value={selectedView}
-          onChange={handleDesktopViewChange}
-        />
-        <TitleBarCalendarControls
-          selectedView={selectedView}
-          weekDisplayMode={weekDisplayMode}
-          onWeekDisplayModeChange={setWeekDisplayMode}
-        />
-      </View>
+      <TitleBarCalendarControls
+        selectedView={selectedView}
+        weekDisplayMode={weekDisplayMode}
+        onWeekDisplayModeChange={setWeekDisplayMode}
+      />
     );
-  }, [isElectron, isDesktop, calendarViewOptions, selectedView, handleDesktopViewChange, weekDisplayMode, setWeekDisplayMode]);
+  }, [isElectron, isDesktop, selectedView, weekDisplayMode, setWeekDisplayMode]);
 
   // TitleBar right controls - create only
   const titleBarRightControls = useMemo(() => {

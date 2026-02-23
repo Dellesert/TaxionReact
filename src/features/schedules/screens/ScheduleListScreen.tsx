@@ -356,9 +356,9 @@ export const ScheduleListScreen: React.FC = () => {
             </View>
 
             {/* Main Panel - Schedule columns */}
-            <View style={styles.mainPanel}>
-              {/* Month picker above schedule list */}
-              <View style={styles.monthPickerContainer}>
+            <View style={[styles.mainPanel, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
+              <View style={[styles.mainPanelHeader, { borderColor: theme.border }]}>
+                <Text style={[styles.mainPanelTitle, { color: theme.text }]}>Список графиков</Text>
                 <MonthPicker
                   selectedDate={selectedMonth}
                   onMonthChange={handleMonthChange}
@@ -530,6 +530,35 @@ const styles = StyleSheet.create({
   mainPanel: {
     flex: 1,
     minWidth: 0,
+    borderRadius: 16,
+    borderWidth: 1,
+    margin: 16,
+    marginLeft: 16,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
+  },
+  mainPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 20,
+    paddingRight: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    minHeight: 56,
+  },
+  mainPanelTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   monthPickerContainer: {
     alignItems: 'center',
